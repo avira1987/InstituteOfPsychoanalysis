@@ -1,0 +1,155 @@
+[
+  {
+    "code": "is_intern",
+    "name_fa": "آیا دانشجو انترن است",
+    "rule_type": "condition",
+    "expression": {"field": "student.is_intern", "operator": "eq", "value": true}
+  },
+  {
+    "code": "is_not_intern",
+    "name_fa": "آیا دانشجو انترن نیست",
+    "rule_type": "condition",
+    "expression": {"field": "student.is_intern", "operator": "eq", "value": false}
+  },
+  {
+    "code": "leave_terms_eq_1",
+    "name_fa": "وقفه ۱ ترمی",
+    "rule_type": "condition",
+    "expression": {"field": "instance.leave_terms", "operator": "eq", "value": 1}
+  },
+  {
+    "code": "leave_terms_eq_2",
+    "name_fa": "وقفه ۲ ترمی",
+    "rule_type": "condition",
+    "expression": {"field": "instance.leave_terms", "operator": "eq", "value": 2}
+  },
+  {
+    "code": "student_eligible_for_therapy",
+    "name_fa": "صلاحیت دانشجو برای درمان",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "and",
+      "conditions": [
+        {"field": "student.course_type", "operator": "in", "value": ["comprehensive", "introductory"]},
+        {"field": "student.term_count", "operator": "gte", "value": 1}
+      ]
+    }
+  },
+  {
+    "code": "student_not_eligible",
+    "name_fa": "عدم صلاحیت دانشجو",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "or",
+      "conditions": [
+        {"field": "student.term_count", "operator": "lt", "value": 1},
+        {"field": "student.is_suspended", "operator": "eq", "value": true}
+      ]
+    }
+  },
+  {
+    "code": "week_9_deadline",
+    "name_fa": "قانون هفته نهم - دوره جامع",
+    "rule_type": "validation",
+    "expression": {
+      "operator": "and",
+      "conditions": [
+        {"field": "student.course_type", "operator": "eq", "value": "comprehensive"},
+        {"field": "student.therapy_started", "operator": "eq", "value": false},
+        {"field": "instance.current_week", "operator": "gt", "value": 9}
+      ]
+    },
+    "error_message_fa": "مهلت آغاز درمان آموزشی (هفته نهم) برای دوره جامع به پایان رسیده است"
+  },
+  {
+    "code": "24_hour_rule",
+    "name_fa": "قانون ۲۴ ساعت",
+    "rule_type": "computation",
+    "expression": {
+      "if": {"field": "instance.hours_until_first_slot", "operator": "lt", "value": 24},
+      "then": "use_next_slot",
+      "else": "use_first_slot"
+    }
+  },
+  {
+    "code": "absence_quota",
+    "name_fa": "سهمیه غیبت مجاز سالانه",
+    "rule_type": "computation",
+    "expression": {
+      "formula": "ceil(student_weekly_sessions * 3)",
+      "reset_cycle": "shamsi_year"
+    }
+  },
+  {
+    "code": "absence_quota_not_exceeded",
+    "name_fa": "سهمیه غیبت تمام نشده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.absences_this_year", "operator": "lt", "value": "instance.absence_quota"}
+  },
+  {
+    "code": "absence_quota_exceeded",
+    "name_fa": "سهمیه غیبت تمام شده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.absences_this_year", "operator": "gte", "value": "instance.absence_quota"}
+  },
+  {
+    "code": "therapy_hours_completed",
+    "name_fa": "ساعات درمان تکمیل شده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.completed_hours", "operator": "gte", "value": "instance.required_hours"}
+  },
+  {
+    "code": "absence_type_student",
+    "name_fa": "نوع غیبت: دانشجو",
+    "rule_type": "condition",
+    "expression": {"field": "instance.absence_type", "operator": "eq", "value": "student"}
+  },
+  {
+    "code": "absence_type_therapist",
+    "name_fa": "نوع غیبت: درمانگر",
+    "rule_type": "condition",
+    "expression": {"field": "instance.absence_type", "operator": "eq", "value": "therapist"}
+  },
+  {
+    "code": "absence_type_mutual",
+    "name_fa": "نوع غیبت: مشترک",
+    "rule_type": "condition",
+    "expression": {"field": "instance.absence_type", "operator": "eq", "value": "mutual"}
+  },
+  {
+    "code": "absence_is_excused",
+    "name_fa": "غیبت موجه",
+    "rule_type": "condition",
+    "expression": {"field": "instance.absence_excused", "operator": "eq", "value": true}
+  },
+  {
+    "code": "absence_is_unexcused",
+    "name_fa": "غیبت غیرموجه",
+    "rule_type": "condition",
+    "expression": {"field": "instance.absence_excused", "operator": "eq", "value": false}
+  },
+  {
+    "code": "change_type_is_restart",
+    "name_fa": "نوع تغییر: آغاز مجدد",
+    "rule_type": "condition",
+    "expression": {"field": "instance.change_type", "operator": "eq", "value": "restart"}
+  },
+  {
+    "code": "change_type_is_therapist",
+    "name_fa": "نوع تغییر: تغییر درمانگر",
+    "rule_type": "condition",
+    "expression": {"field": "instance.change_type", "operator": "eq", "value": "therapist_change"}
+  },
+  {
+    "code": "change_type_is_schedule",
+    "name_fa": "نوع تغییر: تغییر ساعت",
+    "rule_type": "condition",
+    "expression": {"field": "instance.change_type", "operator": "eq", "value": "schedule_change"}
+  },
+  {
+    "code": "payment_max_retries_exceeded",
+    "name_fa": "تعداد تلاش پرداخت بیش از حد مجاز",
+    "rule_type": "condition",
+    "expression": {"field": "instance.payment_retry_count", "operator": "gte", "value": 3}
+  }
+]

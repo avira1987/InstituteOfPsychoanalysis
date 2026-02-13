@@ -1,0 +1,58 @@
+[
+  {
+    "code": "admin",
+    "name_fa": "مدیر سیستم",
+    "name_en": "System Administrator",
+    "permissions": [
+      "manage_processes", "manage_rules", "manage_users", "manage_roles",
+      "view_audit_logs", "override_transitions", "manage_students",
+      "manage_financials", "view_all_reports"
+    ]
+  },
+  {
+    "code": "staff",
+    "name_fa": "کارمند دفتر",
+    "name_en": "Office Staff",
+    "permissions": [
+      "view_students", "manage_payments", "verify_payments",
+      "view_process_instances", "manage_attendance"
+    ]
+  },
+  {
+    "code": "progress_committee",
+    "name_fa": "کمیته پیشرفت",
+    "name_en": "Progress Committee",
+    "permissions": [
+      "review_leave_requests", "approve_leave", "reject_leave",
+      "review_therapy_changes", "approve_therapy_restart",
+      "schedule_meetings", "view_student_progress"
+    ]
+  },
+  {
+    "code": "therapist",
+    "name_fa": "درمانگر",
+    "name_en": "Therapist",
+    "permissions": [
+      "accept_students", "decline_students", "record_attendance",
+      "manage_schedule", "view_assigned_students", "complete_sessions"
+    ]
+  },
+  {
+    "code": "supervisor",
+    "name_fa": "سوپروایزر",
+    "name_en": "Supervisor",
+    "permissions": [
+      "supervise_therapists", "review_session_reports",
+      "approve_therapy_plans", "view_supervised_students"
+    ]
+  },
+  {
+    "code": "student",
+    "name_fa": "دانشجو",
+    "name_en": "Student",
+    "permissions": [
+      "submit_requests", "view_own_profile", "make_payments",
+      "select_therapist", "view_own_sessions", "dispute_fees"
+    ]
+  }
+]

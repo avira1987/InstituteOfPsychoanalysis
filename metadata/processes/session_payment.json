@@ -1,0 +1,88 @@
+{
+  "process": {
+    "code": "session_payment",
+    "name_fa": "پرداخت برای جلسات آتی درمان آموزشی",
+    "name_en": "Therapy Session Payment",
+    "description": "فرایند پرداخت هزینه جلسات درمان آموزشی پیش از برگزاری",
+    "initial_state": "payment_due"
+  },
+  "states": [
+    {"code": "payment_due", "name_fa": "مبلغ قابل پرداخت", "type": "initial", "assigned_role": "system"},
+    {"code": "invoice_generated", "name_fa": "فاکتور صادر شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "awaiting_payment", "name_fa": "در انتظار پرداخت", "type": "intermediate", "assigned_role": "student", "sla_hours": 72},
+    {"code": "payment_verification", "name_fa": "تایید پرداخت", "type": "intermediate", "assigned_role": "staff"},
+    {"code": "payment_confirmed", "name_fa": "پرداخت تایید شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "payment_failed", "name_fa": "پرداخت ناموفق", "type": "intermediate", "assigned_role": "system"},
+    {"code": "session_suspended", "name_fa": "جلسات معلق", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "payment_due",
+      "to": "invoice_generated",
+      "trigger": "generate_invoice",
+      "actions": [
+        {"type": "calculate_session_fee"},
+        {"type": "generate_payment_invoice"}
+      ]
+    },
+    {
+      "from": "invoice_generated",
+      "to": "awaiting_payment",
+      "trigger": "invoice_sent",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "payment_invoice", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "awaiting_payment",
+      "to": "payment_verification",
+      "trigger": "payment_submitted",
+      "required_role": "student"
+    },
+    {
+      "from": "awaiting_payment",
+      "to": "payment_failed",
+      "trigger": "payment_deadline_passed",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "payment_overdue", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "payment_verification",
+      "to": "payment_confirmed",
+      "trigger": "payment_verified",
+      "required_role": "staff",
+      "actions": [
+        {"type": "record_payment"},
+        {"type": "notification", "notification_type": "sms", "template": "payment_confirmed", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "payment_verification",
+      "to": "payment_failed",
+      "trigger": "payment_rejected",
+      "required_role": "staff",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "payment_rejected", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "payment_failed",
+      "to": "awaiting_payment",
+      "trigger": "retry_payment",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "payment_retry", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "payment_failed",
+      "to": "session_suspended",
+      "trigger": "max_retries_exceeded",
+      "conditions": ["payment_max_retries_exceeded"],
+      "actions": [
+        {"type": "suspend_sessions"},
+        {"type": "notification", "notification_type": "sms", "template": "sessions_suspended", "recipients": ["student", "therapist", "admin"]}
+      ]
+    }
+  ]
+}

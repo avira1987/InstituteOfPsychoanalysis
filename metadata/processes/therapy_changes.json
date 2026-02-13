@@ -1,0 +1,110 @@
+{
+  "process": {
+    "code": "therapy_changes",
+    "name_fa": "مدیریت تغییرات درمان آموزشی",
+    "name_en": "Therapy Change Management",
+    "description": "مدیریت تغییرات درمان آموزشی شامل آغاز مجدد، تغییر درمانگر و تغییر ساعت جلسات",
+    "initial_state": "change_request"
+  },
+  "states": [
+    {"code": "change_request", "name_fa": "ثبت درخواست تغییر", "type": "initial", "assigned_role": "student"},
+    {"code": "change_type_determination", "name_fa": "تعیین نوع تغییر", "type": "intermediate", "assigned_role": "system"},
+    {"code": "restart_review", "name_fa": "بررسی آغاز مجدد", "type": "intermediate", "assigned_role": "progress_committee", "sla_hours": 168},
+    {"code": "therapist_change_review", "name_fa": "بررسی تغییر درمانگر", "type": "intermediate", "assigned_role": "progress_committee", "sla_hours": 168},
+    {"code": "schedule_change_review", "name_fa": "بررسی تغییر ساعت", "type": "intermediate", "assigned_role": "therapist", "sla_hours": 72},
+    {"code": "new_therapist_selection", "name_fa": "انتخاب درمانگر جدید", "type": "intermediate", "assigned_role": "student"},
+    {"code": "new_schedule_confirmation", "name_fa": "تایید ساعت جدید", "type": "intermediate", "assigned_role": "student"},
+    {"code": "change_approved", "name_fa": "تغییر تایید شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "change_rejected", "name_fa": "تغییر رد شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "restart_activated", "name_fa": "آغاز مجدد فعال شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "change_request",
+      "to": "change_type_determination",
+      "trigger": "request_submitted",
+      "required_role": "student"
+    },
+    {
+      "from": "change_type_determination",
+      "to": "restart_review",
+      "trigger": "type_restart",
+      "conditions": ["change_type_is_restart"]
+    },
+    {
+      "from": "change_type_determination",
+      "to": "therapist_change_review",
+      "trigger": "type_therapist_change",
+      "conditions": ["change_type_is_therapist"]
+    },
+    {
+      "from": "change_type_determination",
+      "to": "schedule_change_review",
+      "trigger": "type_schedule_change",
+      "conditions": ["change_type_is_schedule"]
+    },
+    {
+      "from": "restart_review",
+      "to": "restart_activated",
+      "trigger": "restart_approved",
+      "required_role": "progress_committee",
+      "actions": [
+        {"type": "reset_therapy_sessions"},
+        {"type": "notification", "notification_type": "sms", "template": "therapy_restart_approved", "recipients": ["student", "therapist"]}
+      ]
+    },
+    {
+      "from": "restart_review",
+      "to": "change_rejected",
+      "trigger": "restart_rejected",
+      "required_role": "progress_committee",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "change_rejected", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "therapist_change_review",
+      "to": "new_therapist_selection",
+      "trigger": "therapist_change_approved",
+      "required_role": "progress_committee"
+    },
+    {
+      "from": "therapist_change_review",
+      "to": "change_rejected",
+      "trigger": "therapist_change_rejected",
+      "required_role": "progress_committee"
+    },
+    {
+      "from": "new_therapist_selection",
+      "to": "change_approved",
+      "trigger": "new_therapist_confirmed",
+      "required_role": "student",
+      "actions": [
+        {"type": "update_therapist"},
+        {"type": "notification", "notification_type": "sms", "template": "therapist_changed", "recipients": ["student", "therapist"]}
+      ]
+    },
+    {
+      "from": "schedule_change_review",
+      "to": "new_schedule_confirmation",
+      "trigger": "schedule_change_approved",
+      "required_role": "therapist"
+    },
+    {
+      "from": "schedule_change_review",
+      "to": "change_rejected",
+      "trigger": "schedule_change_rejected",
+      "required_role": "therapist"
+    },
+    {
+      "from": "new_schedule_confirmation",
+      "to": "change_approved",
+      "trigger": "new_schedule_confirmed",
+      "required_role": "student",
+      "actions": [
+        {"type": "update_schedule"},
+        {"type": "notification", "notification_type": "sms", "template": "schedule_changed", "recipients": ["student", "therapist"]}
+      ]
+    }
+  ]
+}

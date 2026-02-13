@@ -1,0 +1,145 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    شرح کار انجام شده - پروژه انیستیتو روانکاوری تهران
+                              گزارش وضعیت پروژه (فوریه ۲۰۲۵)
+═══════════════════════════════════════════════════════════════════════════════
+
+■ خلاصه پروژه
+─────────────────────────────────────────────────────────────────────────────
+سیستم اتوماسیون آموزشی مبتنی بر متادیتا (Meta-Driven) برای انیستیتو روانکاوری تهران
+که روی ۷ فرایند SOP (دستورالعمل استاندارد) متمرکز است.
+
+■ معماری برنامه‌ریزی‌شده
+─────────────────────────────────────────────────────────────────────────────
+• Backend:        FastAPI + SQLAlchemy (async) + PostgreSQL
+• Core Engine:     Metadata-driven State Machine با Rule Engine
+• Frontend:        React + Vite (پنل ادمین)
+• Infrastructure:  Docker Compose + Redis + Alembic migrations
+
+■ فرایندهای SOP (۷ عدد)
+─────────────────────────────────────────────────────────────────────────────
+۱. مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها          (educational_leave)
+۲. آغاز درمان آموزشی                               (start_therapy)
+۳. مدیریت تغییرات درمان آموزشی                     (therapy_changes)
+۴. برگزاری جلسه اضافی                              (extra_session)
+۵. پرداخت جلسات آتی                                (session_payment)
+۶. حضور و غیاب                                     (attendance_tracking)
+۷. تعیین تکلیف هزینه جلسه                          (fee_determination)
+
+═══════════════════════════════════════════════════════════════════════════════
+                              وضعیت پیاده‌سازی
+═══════════════════════════════════════════════════════════════════════════════
+
+■ بک‌اند (Backend) — تقریباً کامل ✓
+─────────────────────────────────────────────────────────────────────────────
+• Core Engine
+  - engine.py          State Machine Engine
+  - rule_engine.py     RuleEvaluator
+  - transition.py      TransitionManager
+  - event_bus.py       EventBus
+  - audit.py           AuditLogger
+
+• Models
+  - meta_models.py           فرایندها، حالت‌ها، ترنزیشن‌ها، قوانین
+  - operational_models.py   دانشجویان، کاربران، نمونه فرایندها
+  - audit_models.py         لاگ‌های audit
+
+• API Endpoints
+  - Authentication:    login, register, me
+  - Process:           تعریف فرایندها، start، trigger، status، transitions
+  - Admin:             CRUD فرایندها، استیت‌ها، ترنزیشن‌ها، قوانین، کاربران،
+                       audit logs، آمار داشبورد
+  - Student:           مدیریت دانشجویان
+
+• Services
+  - process_service
+  - student_service
+  - notification_service
+  - sla_monitor
+  - payment_service
+  - attendance_service
+
+• Metadata
+  - هر ۷ فرایند در metadata/processes/ با تعریف کامل
+  - metadata/rules/all_rules.json
+  - metadata/roles.json
+
+■ فرانت‌اند (Admin UI) — پیاده‌سازی شده ✓
+─────────────────────────────────────────────────────────────────────────────
+صفحات موجود در React:
+  - Dashboard        آمار و لاگ‌ها
+  - ProcessList      لیست فرایندها
+  - ProcessEditor    ویرایشگر فرایند
+  - RuleManager      مدیریت قوانین
+  - StudentTracker   دانشجویان
+  - UserManagement   مدیریت کاربران
+  - AuditViewer      مشاهده لاگ‌ها
+  - GuidePage        راهنما
+  - LoginPage       ورود
+  - AuthContext     احراز هویت
+
+■ Infrastructure — آماده ✓
+─────────────────────────────────────────────────────────────────────────────
+  - docker-compose.yml (PostgreSQL, Redis, API, Admin UI)
+  - Dockerfile برای API
+  - requirements.txt
+
+■ تست‌ها
+─────────────────────────────────────────────────────────────────────────────
+  - tests/core/test_engine.py
+  - tests/core/test_rule_engine.py
+  - tests/conftest.py
+
+═══════════════════════════════════════════════════════════════════════════════
+                        نقص‌ها و موارد ناتمام
+═══════════════════════════════════════════════════════════════════════════════
+
+• Alembic Migrations
+  فایل‌های migration در alembic/versions/ دیده نشد؛ احتمالاً فقط env.py
+  و script.py.mako موجود است.
+
+• Celery
+  در requirements.txt موجود است ولی استفاده مستقیمی در کد دیده نشد
+  (background jobs برای SLA monitoring یا notifications).
+
+• اتصال واقعی SMS/Email
+  notification_service فقط placeholder دارد و APIهای خارجی متصل نشده‌اند.
+
+• Admin UI Build
+  در صورت نبود پوشه admin-ui/dist، سرور FastAPI فقط API را سرو می‌کند.
+  برای سرو شدن UI باید در admin-ui/ دستور npm run build اجرا شود.
+
+• فایل .env.example
+  در README ذکر شده؛ وجود آن تأیید نشد.
+
+═══════════════════════════════════════════════════════════════════════════════
+                              جمع‌بندی
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────┬───────────┬────────────────┐
+│ بخش                 │ وضعیت     │ درصد تقریبی    │
+├─────────────────────┼───────────┼────────────────┤
+│ Backend Core        │ کامل     │ ۱۰۰٪           │
+│ API Endpoints       │ کامل     │ ۱۰۰٪           │
+│ Metadata (۷ فرایند) │ کامل     │ ۱۰۰٪           │
+│ Admin UI            │ پیاده    │ ~۹۵٪           │
+│ Docker              │ آماده   │ ۱۰۰٪           │
+│ Migrations          │ ناقص     │ نامشخص         │
+│ Notifications       │ Placeholder │ ~۲۰٪       │
+│ Celery Jobs         │ نامشخص   │ ~۰٪            │
+└─────────────────────┴───────────┴────────────────┘
+
+تخمین کلی: پروژه حدود ۷۰–۸۰٪ تکمیل شده است. هسته اصلی، API و فرانت‌اند موجودند.
+موارد باقی‌مانده عمدتاً migrations، اتصال سرویس‌های بیرونی (SMS/Email) و
+احتمالی Celery هستند.
+
+═══════════════════════════════════════════════════════════════════════════════
+                              اصول طراحی کلیدی
+═══════════════════════════════════════════════════════════════════════════════
+
+• بدون منطق سخت‌کد شده: همه قوانین در JSON و rule_definitions ذخیره می‌شوند
+• تغییر قوانین بدون تغییر کد: ویرایش فقط از طریق metadata در دیتابیس
+• Audit trail کامل: لاگ هر ترنزیشن، تغییر قانون و override
+• کنترل دسترسی مبتنی بر نقش (RBAC)
+• نسخه‌گذاری: ProcessDefinition و RuleDefinition دارای version tracking
+
+═══════════════════════════════════════════════════════════════════════════════

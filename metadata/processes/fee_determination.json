@@ -1,0 +1,121 @@
+{
+  "process": {
+    "code": "fee_determination",
+    "name_fa": "تعیین تکلیف هزینه جلسه درمان آموزشی/سوپرویژن فردی",
+    "name_en": "Session Fee Determination",
+    "description": "فرایند تعیین و مدیریت هزینه جلسات درمان آموزشی و سوپرویژن فردی",
+    "initial_state": "fee_calculation"
+  },
+  "states": [
+    {"code": "fee_calculation", "name_fa": "محاسبه هزینه", "type": "initial", "assigned_role": "system"},
+    {"code": "fee_type_determination", "name_fa": "تعیین نوع هزینه", "type": "intermediate", "assigned_role": "system"},
+    {"code": "student_responsible", "name_fa": "مسئولیت دانشجو", "type": "intermediate", "assigned_role": "student"},
+    {"code": "therapist_responsible", "name_fa": "مسئولیت درمانگر", "type": "intermediate", "assigned_role": "therapist"},
+    {"code": "mutual_responsibility", "name_fa": "مسئولیت مشترک", "type": "intermediate", "assigned_role": "system"},
+    {"code": "payment_processing", "name_fa": "پردازش پرداخت", "type": "intermediate", "assigned_role": "staff"},
+    {"code": "debt_registered", "name_fa": "بدهی ثبت شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "fee_settled", "name_fa": "هزینه تسویه شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "fee_waived", "name_fa": "هزینه بخشیده شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "dispute_opened", "name_fa": "اعتراض ثبت شد", "type": "intermediate", "assigned_role": "student"}
+  ],
+  "transitions": [
+    {
+      "from": "fee_calculation",
+      "to": "fee_type_determination",
+      "trigger": "fee_calculated",
+      "actions": [
+        {"type": "calculate_session_fee"}
+      ]
+    },
+    {
+      "from": "fee_type_determination",
+      "to": "student_responsible",
+      "trigger": "student_absence",
+      "conditions": ["absence_type_student"],
+      "description_fa": "غیبت دانشجو - هزینه بر عهده دانشجو"
+    },
+    {
+      "from": "fee_type_determination",
+      "to": "therapist_responsible",
+      "trigger": "therapist_absence",
+      "conditions": ["absence_type_therapist"],
+      "description_fa": "غیبت درمانگر - هزینه بر عهده درمانگر"
+    },
+    {
+      "from": "fee_type_determination",
+      "to": "mutual_responsibility",
+      "trigger": "mutual_absence",
+      "conditions": ["absence_type_mutual"],
+      "description_fa": "غیبت مشترک - تقسیم هزینه"
+    },
+    {
+      "from": "student_responsible",
+      "to": "payment_processing",
+      "trigger": "payment_initiated",
+      "required_role": "student"
+    },
+    {
+      "from": "student_responsible",
+      "to": "dispute_opened",
+      "trigger": "student_disputed",
+      "required_role": "student",
+      "actions": [
+        {"type": "notification", "notification_type": "email", "template": "fee_dispute", "recipients": ["admin"]}
+      ]
+    },
+    {
+      "from": "therapist_responsible",
+      "to": "debt_registered",
+      "trigger": "debt_recorded",
+      "actions": [
+        {"type": "register_therapist_debt"},
+        {"type": "notification", "notification_type": "sms", "template": "debt_registered", "recipients": ["therapist"]}
+      ]
+    },
+    {
+      "from": "mutual_responsibility",
+      "to": "payment_processing",
+      "trigger": "split_payment_initiated",
+      "actions": [
+        {"type": "split_fee_calculation"}
+      ]
+    },
+    {
+      "from": "payment_processing",
+      "to": "fee_settled",
+      "trigger": "payment_completed",
+      "required_role": "staff",
+      "actions": [
+        {"type": "record_payment"},
+        {"type": "notification", "notification_type": "sms", "template": "fee_settled", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "debt_registered",
+      "to": "fee_settled",
+      "trigger": "debt_paid",
+      "actions": [
+        {"type": "record_payment"}
+      ]
+    },
+    {
+      "from": "dispute_opened",
+      "to": "fee_waived",
+      "trigger": "dispute_accepted",
+      "required_role": "admin",
+      "actions": [
+        {"type": "waive_fee"},
+        {"type": "notification", "notification_type": "sms", "template": "fee_waived", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "dispute_opened",
+      "to": "student_responsible",
+      "trigger": "dispute_rejected",
+      "required_role": "admin",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "dispute_rejected", "recipients": ["student"]}
+      ]
+    }
+  ]
+}
