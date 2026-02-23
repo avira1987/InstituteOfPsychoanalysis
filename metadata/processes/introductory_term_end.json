@@ -1,0 +1,188 @@
+{
+  "process": {
+    "code": "introductory_term_end",
+    "name_fa": "فرایند پایان ترم‌های دوره آشنایی",
+    "name_en": "Introductory Course Term End",
+    "number": 32,
+    "description": "فرایند خودکار پایان ترم دوره آشنایی. تریگر: ثبت تمام نمرات توسط اساتید. شامل: تولید کارنامه ترمی (درس، واحد، نمره عددی، نمره حرفی، وضعیت قبولی)، تولید کارنامه کلی تجمیعی (تمام ترم‌ها + بخش‌های درمان/سوپرویژن/کمیته — فرمت آقای صالحی)، بررسی شرط درمان برای دانشجویان مشروط، مسدودیت ثبت‌نام ترم ۲ در صورت عدم ثبت درمانگر، اطلاع‌رسانی ثبت‌نام ترم بعد، شناسایی دانشجویان افت تحصیلی و پیگیری توسط مسئول پذیرش. مردودی: واحد=۰ اما در معدل حساب می‌شود.",
+    "initial_state": "grades_submitted",
+    "trigger_event": "all_instructor_grades_entered"
+  },
+  "states": [
+    {"code": "grades_submitted", "name_fa": "تمام نمرات ثبت شد — شروع فرایند", "type": "initial", "assigned_role": "system"},
+    {"code": "transcript_generated", "name_fa": "کارنامه ترمی و تجمیعی تولید شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "therapy_check", "name_fa": "بررسی وضعیت شرط درمان", "type": "intermediate", "assigned_role": "system"},
+    {"code": "therapy_blocked", "name_fa": "مسدودیت ثبت‌نام — درمانگر فعال ندارد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "registration_notification_sent", "name_fa": "پیامک اطلاع‌رسانی ثبت‌نام ارسال شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "decline_list_generated", "name_fa": "لیست دانشجویان افت تحصیلی تولید شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "followup_in_progress", "name_fa": "پیگیری تماس با دانشجویان افت تحصیلی", "type": "intermediate", "assigned_role": "admissions_officer", "sla_hours": 168},
+    {"code": "followup_complete", "name_fa": "پیگیری تکمیل شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "grades_submitted",
+      "to": "transcript_generated",
+      "trigger": "auto_generate_transcripts",
+      "description_fa": "تولید خودکار کارنامه ترمی و کارنامه تجمیعی (فرمت آقای صالحی) — دروس مردودی: واحد=۰ اما در معدل حساب می‌شود",
+      "actions": [
+        {"type": "generate_term_transcript", "description_fa": "تولید کارنامه ترمی شامل: نام درس، واحد، نمره عددی، نمره حرفی، وضعیت قبولی/مردودی"},
+        {"type": "generate_cumulative_transcript", "description_fa": "تولید کارنامه تجمیعی تمام ترم‌ها شامل بخش‌های درمان آموزشی، سوپرویژن و گزارشات کمیته — فرمت آقای صالحی", "failed_course_logic": "واحد=۰ اما نمره در محاسبه معدل لحاظ می‌شود"},
+        {"type": "enable_pdf_export", "description_fa": "فعال‌سازی خروجی PDF برای کارنامه‌ها"}
+      ]
+    },
+    {
+      "from": "transcript_generated",
+      "to": "therapy_check",
+      "trigger": "transcripts_ready",
+      "description_fa": "کارنامه‌ها آماده — بررسی وضعیت شرط درمان دانشجویان مشروط"
+    },
+    {
+      "from": "therapy_check",
+      "to": "therapy_blocked",
+      "trigger": "therapy_condition_check",
+      "conditions": ["admission_type == 'conditional_therapy'", "no_active_therapist_registered"],
+      "description_fa": "دانشجو مشروط به درمان بوده و هنوز درمانگر فعال ثبت نکرده — مسدودیت ثبت‌نام ترم ۲",
+      "actions": [
+        {"type": "block_next_term_registration", "description_fa": "مسدودیت ثبت‌نام ترم ۲ تا زمان ثبت درمانگر فعال"},
+        {"type": "notification", "notification_type": "sms", "template": "therapy_condition_block", "recipients": ["student"], "description_fa": "پیامک اطلاع‌رسانی مسدودیت ثبت‌نام به دلیل عدم شروع درمان"}
+      ]
+    },
+    {
+      "from": "therapy_check",
+      "to": "registration_notification_sent",
+      "trigger": "therapy_condition_check",
+      "conditions": ["therapy_condition_met_or_not_conditional"],
+      "description_fa": "شرط درمان احراز شده یا دانشجو مشروط نبوده — مجاز به ثبت‌نام ترم بعد"
+    },
+    {
+      "from": "therapy_blocked",
+      "to": "registration_notification_sent",
+      "trigger": "therapist_registered_later",
+      "conditions": ["active_therapist_registered"],
+      "description_fa": "دانشجو درمانگر فعال ثبت کرد — رفع مسدودیت",
+      "actions": [
+        {"type": "unblock_next_term_registration"}
+      ]
+    },
+    {
+      "from": "registration_notification_sent",
+      "to": "decline_list_generated",
+      "trigger": "send_registration_notification",
+      "description_fa": "ارسال پیامک اطلاع‌رسانی مهلت ثبت‌نام ترم بعد به دانشجویان واجد شرایط",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "next_term_registration_open", "recipients": ["eligible_students"], "description_fa": "ارسال پیامک مهلت ثبت‌نام ترم بعد"}
+      ]
+    },
+    {
+      "from": "decline_list_generated",
+      "to": "followup_in_progress",
+      "trigger": "decline_list_ready",
+      "description_fa": "لیست دانشجویانی که همه دروس را پاس نکرده‌اند تولید و به داشبورد مسئول پذیرش ارسال شد",
+      "actions": [
+        {"type": "generate_decline_list", "description_fa": "شناسایی دانشجویانی که حداقل یک درس مردود دارند"},
+        {"type": "send_to_dashboard", "target_role": "admissions_officer", "description_fa": "ارسال لیست به داشبورد مسئول پذیرش"}
+      ]
+    },
+    {
+      "from": "followup_in_progress",
+      "to": "followup_complete",
+      "trigger": "all_followups_done",
+      "required_role": "admissions_officer",
+      "description_fa": "مسئول پذیرش با تمام دانشجویان افت تحصیلی تماس گرفت و تیک پیگیری زد",
+      "constraints": ["all_checkboxes_ticked"]
+    },
+    {
+      "from": "followup_in_progress",
+      "to": "followup_in_progress",
+      "trigger": "sla_warning",
+      "conditions": ["sla_approaching_168h"],
+      "description_fa": "نزدیک شدن به مهلت ۷ روزه — هشدار به معاون مدیر آموزش",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "followup_sla_warning", "recipients": ["deputy_education"], "description_fa": "هشدار تاخیر در پیگیری دانشجویان افت تحصیلی"}
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "code": "term_transcript_table",
+      "name_fa": "فرم ۱: کارنامه ترمی",
+      "used_in_state": "transcript_generated",
+      "type": "report_table",
+      "export_formats": ["pdf"],
+      "columns": [
+        {"name": "course_name", "label_fa": "نام درس", "type": "text"},
+        {"name": "units", "label_fa": "واحد", "type": "number", "note_fa": "دروس مردودی: واحد=۰"},
+        {"name": "numeric_grade", "label_fa": "نمره عددی", "type": "number"},
+        {"name": "letter_grade", "label_fa": "نمره حرفی", "type": "text"},
+        {"name": "pass_fail_status", "label_fa": "وضعیت", "type": "enum", "options": ["قبول", "مردود"]}
+      ],
+      "footer": [
+        {"name": "term_gpa", "label_fa": "معدل ترم", "type": "number"}
+      ]
+    },
+    {
+      "code": "cumulative_transcript",
+      "name_fa": "فرم ۲: کارنامه تجمیعی (فرمت آقای صالحی)",
+      "used_in_state": "transcript_generated",
+      "type": "report_table",
+      "export_formats": ["pdf"],
+      "sections": [
+        {
+          "name": "academic_records",
+          "label_fa": "سوابق تحصیلی",
+          "columns": [
+            {"name": "term", "label_fa": "ترم", "type": "text"},
+            {"name": "course_name", "label_fa": "نام درس", "type": "text"},
+            {"name": "units", "label_fa": "واحد", "type": "number"},
+            {"name": "numeric_grade", "label_fa": "نمره عددی", "type": "number"},
+            {"name": "letter_grade", "label_fa": "نمره حرفی", "type": "text"},
+            {"name": "pass_fail_status", "label_fa": "وضعیت", "type": "enum", "options": ["قبول", "مردود"]}
+          ]
+        },
+        {
+          "name": "therapy_records",
+          "label_fa": "سوابق درمان آموزشی",
+          "columns": [
+            {"name": "therapist_name", "label_fa": "نام درمانگر", "type": "text"},
+            {"name": "total_hours", "label_fa": "مجموع ساعات", "type": "number"},
+            {"name": "status", "label_fa": "وضعیت", "type": "text"}
+          ]
+        },
+        {
+          "name": "supervision_records",
+          "label_fa": "سوابق سوپرویژن",
+          "columns": [
+            {"name": "supervisor_name", "label_fa": "نام سوپروایزر", "type": "text"},
+            {"name": "total_hours", "label_fa": "مجموع ساعات", "type": "number"},
+            {"name": "status", "label_fa": "وضعیت", "type": "text"}
+          ]
+        },
+        {
+          "name": "committee_reports",
+          "label_fa": "گزارشات کمیته‌ها",
+          "columns": [
+            {"name": "committee_name", "label_fa": "نام کمیته", "type": "text"},
+            {"name": "report_date", "label_fa": "تاریخ گزارش", "type": "date"},
+            {"name": "summary", "label_fa": "خلاصه", "type": "text"}
+          ]
+        }
+      ],
+      "footer": [
+        {"name": "cumulative_gpa", "label_fa": "معدل کل", "type": "number"}
+      ]
+    },
+    {
+      "code": "academic_decline_followup_form",
+      "name_fa": "فرم ۳: لیست پیگیری دانشجویان افت تحصیلی",
+      "used_in_state": "followup_in_progress",
+      "type": "checklist_table",
+      "columns": [
+        {"name": "student_name", "label_fa": "نام دانشجو", "type": "text"},
+        {"name": "student_phone", "label_fa": "شماره تماس", "type": "tel"},
+        {"name": "failed_courses", "label_fa": "دروس مردود", "type": "text_list"},
+        {"name": "followup_done", "label_fa": "پیگیری انجام شد", "type": "checkbox", "required": true}
+      ],
+      "submit_label_fa": "ثبت پیگیری‌ها"
+    }
+  ]
+}

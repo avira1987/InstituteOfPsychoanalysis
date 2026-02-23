@@ -1,0 +1,25 @@
+{
+  "process": {
+    "code": "ta_essay_upload",
+    "name_fa": "آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس (کمک‌مدرس)",
+    "name_en": "TA Essay and Film Minutes Upload",
+    "number": 45,
+    "description": "پس از هر جلسه. کمک‌مدرس جستار و دقایق منتخب را آپلود می‌کند (Word + PDF). مهلت ۲۴ ساعت. تاخیر → violation_registration. مدرس ۴ روز بررسی. رد → اصلاح. تایید → مرکز مرجع. مارکتینگ.",
+    "initial_state": "session_ended",
+    "trigger": "class_session_ended"
+  },
+  "states": [
+    {"code": "session_ended", "name_fa": "جلسه کلاس پایان یافت", "type": "initial", "assigned_role": "system"},
+    {"code": "ta_upload", "name_fa": "آپلود جستار و دقایق منتخب", "type": "intermediate", "assigned_role": "teaching_assistant", "sla_hours": 24},
+    {"code": "instructor_review", "name_fa": "تایید علمی توسط مدرس", "type": "intermediate", "assigned_role": "instructor", "sla_days": 4},
+    {"code": "rejected_revision", "name_fa": "رد — اصلاح", "type": "intermediate", "assigned_role": "teaching_assistant"},
+    {"code": "approved_reference_center", "name_fa": "تایید — مرکز مرجع و مارکتینگ", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "session_ended", "to": "ta_upload", "trigger": "process_started", "description_fa": "کمک‌مدرس قالب را دانلود و آپلود می‌کند (Word + PDF)"},
+    {"from": "ta_upload", "to": "instructor_review", "trigger": "uploaded", "actions": [{"type": "notification", "notification_type": "sms", "template": "ta_essay_ready_for_review", "recipients": ["instructor"]}]},
+    {"from": "instructor_review", "to": "rejected_revision", "trigger": "rejected", "required_role": "instructor", "description_fa": "غیر قابل قبول"},
+    {"from": "instructor_review", "to": "approved_reference_center", "trigger": "accepted", "required_role": "instructor", "description_fa": "قابل قبول — ارسال به مرکز مرجع و مارکتینگ"},
+    {"from": "rejected_revision", "to": "instructor_review", "trigger": "revised_and_uploaded", "required_role": "teaching_assistant", "description_fa": "اصلاح و ارسال مجدد"}
+  ]
+}

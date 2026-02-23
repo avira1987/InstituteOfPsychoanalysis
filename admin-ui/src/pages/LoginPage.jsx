@@ -22,7 +22,16 @@ export default function LoginPage() {
       await login(username, password)
       navigate('/')
     } catch (err) {
-      setError('نام کاربری یا رمز عبور اشتباه است')
+      const status = err.response?.status
+      const msg = err.message || ''
+      const detail = err.response?.data?.detail
+      if (status === 401 || (status === 400 && msg.includes('password'))) {
+        setError('نام کاربری یا رمز عبور اشتباه است')
+      } else if (!err.response || (status === 500 && !detail) || msg.includes('Network') || msg.includes('ECONNREFUSED')) {
+        setError('خطا در اتصال به سرور. API روی http://localhost:8000 در حال اجراست؟')
+      } else {
+        setError(detail || msg || 'خطا در ورود. لطفاً دوباره تلاش کنید.')
+      }
     } finally {
       setLoading(false)
     }

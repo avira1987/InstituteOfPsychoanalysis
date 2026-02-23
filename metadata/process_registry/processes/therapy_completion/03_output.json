@@ -1,0 +1,1 @@
+{"_note":"خروجی JSON در metadata/processes/therapy_completion.json ذخیره شده است.","source_file":"metadata/processes/therapy_completion.json","states_count":3,"transitions_count":2,"rules_used":["therapy_threshold_met","clinical_threshold_met","supervision_threshold_met","completion_conditions_not_met"]}

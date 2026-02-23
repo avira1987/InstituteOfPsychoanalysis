@@ -151,5 +151,520 @@
     "name_fa": "تعداد تلاش پرداخت بیش از حد مجاز",
     "rule_type": "condition",
     "expression": {"field": "instance.payment_retry_count", "operator": "gte", "value": 3}
+  },
+  {
+    "code": "already_started_therapy",
+    "name_fa": "درمان آموزشی قبلاً آغاز شده",
+    "rule_type": "condition",
+    "expression": {"field": "student.therapy_started", "operator": "eq", "value": true}
+  },
+  {
+    "code": "therapy_not_started",
+    "name_fa": "درمان آموزشی هنوز آغاز نشده",
+    "rule_type": "condition",
+    "expression": {"field": "student.therapy_started", "operator": "eq", "value": false}
+  },
+  {
+    "code": "schedule_valid_for_course",
+    "name_fa": "اعتبار برنامه هفتگی برای دوره",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "or",
+      "conditions": [
+        {"operator": "and", "conditions": [{"field": "student.course_type", "operator": "eq", "value": "comprehensive"}, {"field": "instance.weekly_sessions", "operator": "gte", "value": 2}]},
+        {"operator": "and", "conditions": [{"field": "student.course_type", "operator": "eq", "value": "introductory"}, {"field": "instance.weekly_sessions", "operator": "gte", "value": 1}, {"field": "instance.weekly_sessions", "operator": "lte", "value": 2}]}
+      ]
+    }
+  },
+  {
+    "code": "has_debt",
+    "name_fa": "دانشجو بدهی دارد",
+    "rule_type": "condition",
+    "expression": {"field": "instance.debt_sessions_count", "operator": "gt", "value": 0}
+  },
+  {
+    "code": "student_on_leave",
+    "name_fa": "دانشجو در وقفه درمان آموزشی",
+    "rule_type": "condition",
+    "expression": {"field": "instance.student_on_leave", "operator": "eq", "value": true}
+  },
+  {
+    "code": "session_cancelled",
+    "name_fa": "جلسه کنسل شده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.session_cancelled", "operator": "eq", "value": true}
+  },
+  {
+    "code": "session_not_paid",
+    "name_fa": "جلسه پرداخت نشده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.session_paid", "operator": "eq", "value": false}
+  },
+  {
+    "code": "session_paid",
+    "name_fa": "جلسه پرداخت شده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.session_paid", "operator": "eq", "value": true}
+  },
+  {
+    "code": "student_not_on_leave",
+    "name_fa": "دانشجو در وقفه نیست",
+    "rule_type": "condition",
+    "expression": {"field": "instance.student_on_leave", "operator": "eq", "value": false}
+  },
+  {
+    "code": "session_not_cancelled",
+    "name_fa": "جلسه کنسل نشده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.session_cancelled", "operator": "eq", "value": false}
+  },
+  {
+    "code": "session_cancelled_by_provider",
+    "name_fa": "جلسه توسط درمانگر یا سوپروایزر کنسل شده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.cancelled_by", "operator": "in", "value": ["therapist", "supervisor"]}
+  },
+  {
+    "code": "payment_selection_valid",
+    "name_fa": "اعتبار انتخاب پرداخت (تسویه بدهی در صورت وجود)",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "or",
+      "conditions": [
+        {"field": "instance.debt_sessions_count", "operator": "lte", "value": 0},
+        {"field": "instance.debt_settlement_included", "operator": "eq", "value": true}
+      ]
+    }
+  },
+  {
+    "code": "therapy_threshold_met",
+    "name_fa": "ساعات درمان آموزشی (۲×هفته) به حدنصاب رسیده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.therapy_hours_2x", "operator": "gte", "value": "instance.therapy_threshold"}
+  },
+  {
+    "code": "clinical_threshold_met",
+    "name_fa": "ساعات تجربه بالینی به حدنصاب رسیده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.clinical_hours", "operator": "gte", "value": "instance.clinical_threshold"}
+  },
+  {
+    "code": "supervision_threshold_met",
+    "name_fa": "ساعات سوپرویژن به حدنصاب رسیده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.supervision_hours", "operator": "gte", "value": "instance.supervision_threshold"}
+  },
+  {
+    "code": "fewer_than_2_weekly_sessions",
+    "name_fa": "کمتر از ۲ جلسه در هفته",
+    "rule_type": "condition",
+    "expression": {"field": "instance.weekly_sessions", "operator": "lt", "value": 2}
+  },
+  {
+    "code": "has_2_or_more_weekly_sessions",
+    "name_fa": "۲ جلسه یا بیشتر در هفته",
+    "rule_type": "condition",
+    "expression": {"field": "instance.weekly_sessions", "operator": "gte", "value": 2}
+  },
+  {
+    "code": "reduction_results_in_2_plus",
+    "name_fa": "بعد از کاهش ۲ جلسه یا بیشتر باقی می‌ماند",
+    "rule_type": "condition",
+    "expression": {"field": "instance.remaining_sessions_after_reduction", "operator": "gte", "value": 2}
+  },
+  {
+    "code": "interruption_less_than_42_days",
+    "name_fa": "بازه وقفه کمتر از ۴۲ روز",
+    "rule_type": "condition",
+    "expression": {"field": "instance.interruption_days", "operator": "lt", "value": 42}
+  },
+  {
+    "code": "interruption_42_days_or_more",
+    "name_fa": "بازه وقفه ۴۲ روز یا بیشتر",
+    "rule_type": "condition",
+    "expression": {"field": "instance.interruption_days", "operator": "gte", "value": 42}
+  },
+  {
+    "code": "would_exceed_3_consecutive_weeks",
+    "name_fa": "انتخاب منجر به بیش از ۳ هفته متوالی کنسلی می‌شود",
+    "rule_type": "condition",
+    "expression": {"field": "instance.would_exceed_consecutive_weeks", "operator": "eq", "value": true}
+  },
+  {
+    "code": "consecutive_weeks_valid",
+    "name_fa": "حداکثر ۳ هفته متوالی رعایت شده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.would_exceed_consecutive_weeks", "operator": "eq", "value": false}
+  },
+  {
+    "code": "cancellation_below_10_percent",
+    "name_fa": "کنسلی کمتر از ۱۰٪",
+    "rule_type": "condition",
+    "expression": {"field": "instance.cancellation_percent_after", "operator": "lt", "value": 10}
+  },
+  {
+    "code": "cancellation_10_to_12_percent",
+    "name_fa": "کنسلی بین ۱۰ تا ۱۲٪",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "and",
+      "conditions": [
+        {"field": "instance.cancellation_percent_after", "operator": "gte", "value": 10},
+        {"field": "instance.cancellation_percent_after", "operator": "lte", "value": 12}
+      ]
+    }
+  },
+  {
+    "code": "cancellation_above_12_percent",
+    "name_fa": "کنسلی بیش از ۱۲٪",
+    "rule_type": "condition",
+    "expression": {"field": "instance.cancellation_percent_after", "operator": "gt", "value": 12}
+  },
+  {
+    "code": "at_48th_supervision_session",
+    "name_fa": "جلسه ۴۸ (قبل از ثبت؛ پس از ثبت می‌شود ۴۹ و قفل ۵۰ باز می‌شود)",
+    "rule_type": "condition",
+    "expression": {"field": "instance.current_supervision_block_attendance", "operator": "eq", "value": 48}
+  },
+  {
+    "code": "not_at_48_or_49_supervision_session",
+    "name_fa": "جلسات ۱ تا ۴۷ (نه ۴۸ و نه ۴۹)",
+    "rule_type": "condition",
+    "expression": {"field": "instance.current_supervision_block_attendance", "operator": "lt", "value": 48}
+  },
+  {
+    "code": "at_49th_supervision_session",
+    "name_fa": "جلسه ۴۹ (قبل از ثبت؛ پس از ثبت می‌شود ۵۰ و ارزیابی الزامی)",
+    "rule_type": "condition",
+    "expression": {"field": "instance.current_supervision_block_attendance", "operator": "eq", "value": 49}
+  },
+  {
+    "code": "at_50th_supervision_session",
+    "name_fa": "رسیدن به جلسه ۵۰ سوپرویژن در بلوک فعلی",
+    "rule_type": "condition",
+    "expression": {"field": "instance.current_supervision_block_attendance", "operator": "eq", "value": 50}
+  },
+  {
+    "code": "not_at_50th_supervision_session",
+    "name_fa": "هنوز به جلسه ۵۰ سوپرویژن نرسیده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.current_supervision_block_attendance", "operator": "lt", "value": 50}
+  },
+  {
+    "code": "supervision_session_paid",
+    "name_fa": "جلسه سوپرویژن پرداخت شده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.supervision_session_paid", "operator": "eq", "value": true}
+  },
+  {
+    "code": "student_on_supervision_leave",
+    "name_fa": "دانشجو در وقفه سوپرویژن",
+    "rule_type": "condition",
+    "expression": {"field": "instance.student_on_supervision_leave", "operator": "eq", "value": true}
+  },
+  {
+    "code": "student_not_on_supervision_leave",
+    "name_fa": "دانشجو در وقفه سوپرویژن نیست",
+    "rule_type": "condition",
+    "expression": {"field": "instance.student_on_supervision_leave", "operator": "eq", "value": false}
+  },
+  {
+    "code": "supervision_session_not_paid",
+    "name_fa": "جلسه سوپرویژن پرداخت نشده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.supervision_session_paid", "operator": "eq", "value": false}
+  },
+  {
+    "code": "max_one_session_per_week",
+    "name_fa": "حداکثر یک جلسه سوپرویژن در هفته",
+    "rule_type": "validation",
+    "expression": {"field": "instance.selected_supervision_weekly_count", "operator": "lte", "value": 1},
+    "error_message_fa": "دانشجو حداکثر یک جلسه در هفته می‌تواند انتخاب کند."
+  },
+  {
+    "code": "first_unannounced_absence",
+    "name_fa": "اولین غیبت بدون اطلاع (کمتر از ۲ پیوسته)",
+    "rule_type": "condition",
+    "expression": {"field": "instance.consecutive_unannounced_count", "operator": "lt", "value": 2}
+  },
+  {
+    "code": "two_consecutive_unannounced",
+    "name_fa": "حداقل ۲ غیبت بدون اطلاع پیوسته",
+    "rule_type": "condition",
+    "expression": {"field": "instance.consecutive_unannounced_count", "operator": "gte", "value": 2}
+  },
+  {
+    "code": "has_credit_sessions",
+    "name_fa": "دانشجو جلسه بستانکار دارد",
+    "rule_type": "condition",
+    "expression": {"field": "instance.credit_sessions_count", "operator": "gt", "value": 0}
+  },
+  {
+    "code": "no_credit_sessions",
+    "name_fa": "دانشجو جلسه بستانکار ندارد",
+    "rule_type": "condition",
+    "expression": {"field": "instance.credit_sessions_count", "operator": "lte", "value": 0}
+  },
+  {
+    "code": "termination_reason_1_or_2",
+    "name_fa": "علت قطع: گزینه ۱ یا ۲ (مسیر استاندارد)",
+    "rule_type": "condition",
+    "expression": {"field": "instance.termination_reason_code", "operator": "in", "value": [1, 2]}
+  },
+  {
+    "code": "termination_reason_3",
+    "name_fa": "علت قطع: گزینه ۳ (مسیر علمی)",
+    "rule_type": "condition",
+    "expression": {"field": "instance.termination_reason_code", "operator": "eq", "value": 3}
+  },
+  {
+    "code": "termination_reason_4",
+    "name_fa": "علت قطع: گزینه ۴ (مسیر انضباطی)",
+    "rule_type": "condition",
+    "expression": {"field": "instance.termination_reason_code", "operator": "eq", "value": 4}
+  },
+  {
+    "code": "reduction_results_in_1",
+    "name_fa": "بعد از کاهش فقط ۱ جلسه باقی می‌ماند",
+    "rule_type": "condition",
+    "expression": {"field": "instance.remaining_sessions_after_reduction", "operator": "eq", "value": 1}
+  },
+  {
+    "code": "comprehensive_course_only",
+    "name_fa": "فقط دوره جامع",
+    "rule_type": "condition",
+    "expression": {"field": "student.course_type", "operator": "eq", "value": "comprehensive"}
+  },
+  {
+    "code": "has_2_or_more_weekly_supervision_sessions",
+    "name_fa": "۲ جلسه یا بیشتر سوپرویژن در هفته",
+    "rule_type": "condition",
+    "expression": {"field": "instance.supervision_weekly_sessions", "operator": "gte", "value": 2}
+  },
+  {
+    "code": "fewer_than_2_weekly_supervision_sessions",
+    "name_fa": "کمتر از ۲ جلسه سوپرویژن در هفته",
+    "rule_type": "condition",
+    "expression": {"field": "instance.supervision_weekly_sessions", "operator": "lt", "value": 2}
+  },
+  {
+    "code": "supervision_reduction_leaves_at_least_1",
+    "name_fa": "بعد از کاهش حداقل یک جلسه سوپرویژن باقی می‌ماند",
+    "rule_type": "condition",
+    "expression": {"field": "instance.supervision_remaining_after_reduction", "operator": "gte", "value": 1}
+  },
+  {
+    "code": "completion_conditions_not_met",
+    "name_fa": "شرایط خاتمه احراز نشده",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "or",
+      "conditions": [
+        {"field": "instance.therapy_hours_2x", "operator": "lt", "value": "instance.therapy_threshold"},
+        {"field": "instance.clinical_hours", "operator": "lt", "value": "instance.clinical_threshold"},
+        {"field": "instance.supervision_hours", "operator": "lt", "value": "instance.supervision_threshold"}
+      ]
+    }
+  },
+  {
+    "code": "supervisor_cancel_max_one_session",
+    "name_fa": "حداکثر ۱ جلسه در هر نوبت اجرای فرایند کنسلی سوپروایزر",
+    "rule_type": "validation",
+    "expression": {"field": "instance.selected_sessions_count", "operator": "lte", "value": 1},
+    "error_message_fa": "در هر بار اجرای فرایند کنسلی فقط امکان انتخاب یک جلسه وجود دارد."
+  },
+  {
+    "code": "supervisor_cancel_session_within_4_weeks",
+    "name_fa": "جلسه انتخاب‌شده در بازه ۴ هفته آینده",
+    "rule_type": "validation",
+    "expression": {
+      "operator": "and",
+      "conditions": [
+        {"field": "instance.selected_session_date", "operator": "gte", "value": "today"},
+        {"field": "instance.selected_session_date", "operator": "lte", "value": "today_plus_28_days"}
+      ]
+    },
+    "error_message_fa": "فقط جلسات ۴ هفته آینده قابل انتخاب هستند."
+  },
+  {
+    "code": "supervision_interruption_less_than_21_days",
+    "name_fa": "بازه وقفه سوپرویژن کمتر از ۲۱ روز",
+    "rule_type": "condition",
+    "expression": {"field": "instance.supervision_interruption_days", "operator": "lt", "value": 21}
+  },
+  {
+    "code": "supervision_interruption_21_days_or_more",
+    "name_fa": "بازه وقفه سوپرویژن ۲۱ روز یا بیشتر",
+    "rule_type": "condition",
+    "expression": {"field": "instance.supervision_interruption_days", "operator": "gte", "value": 21}
+  },
+  {
+    "code": "all_10_introductory_courses_passed",
+    "name_fa": "تمام ۱۰ درس دوره آشنایی پاس شده",
+    "rule_type": "condition",
+    "expression": {"field": "student.introductory_courses_passed_count", "operator": "gte", "value": 10}
+  },
+  {
+    "code": "admission_conditional_on_therapy",
+    "name_fa": "پذیرش مشروط به درمان",
+    "rule_type": "condition",
+    "expression": {"field": "student.admission_type", "operator": "eq", "value": "conditional_therapy"}
+  },
+  {
+    "code": "has_active_therapist",
+    "name_fa": "درمانگر فعال در پورتال ثبت شده",
+    "rule_type": "condition",
+    "expression": {"field": "student.has_active_therapist", "operator": "eq", "value": true}
+  },
+  {
+    "code": "no_active_therapist",
+    "name_fa": "درمانگر فعالی ثبت نشده",
+    "rule_type": "condition",
+    "expression": {"field": "student.has_active_therapist", "operator": "eq", "value": false}
+  },
+  {
+    "code": "student_suspended",
+    "name_fa": "دانشجو تعلیق از آموزش",
+    "rule_type": "condition",
+    "expression": {"field": "student.is_suspended", "operator": "eq", "value": true}
+  },
+  {
+    "code": "student_not_suspended",
+    "name_fa": "دانشجو تعلیق نشده",
+    "rule_type": "condition",
+    "expression": {"field": "student.is_suspended", "operator": "eq", "value": false}
+  },
+  {
+    "code": "failed_prerequisite_to_corequisite",
+    "name_fa": "تبدیل پیش‌نیاز به همنیاز (در صورت مردودی دوره آشنایی)",
+    "rule_type": "computation",
+    "expression": {
+      "if": {"field": "instance.failed_prerequisite_in_prev_term", "operator": "eq", "value": true},
+      "then": "allow_corequisite_enrollment",
+      "else": "enforce_prerequisite"
+    }
+  },
+  {
+    "code": "all_comprehensive_courses_passed",
+    "name_fa": "تمام دروس دوره جامع پاس شده",
+    "rule_type": "condition",
+    "expression": {"field": "student.comprehensive_courses_remaining", "operator": "eq", "value": 0}
+  },
+  {
+    "code": "single_course_admission",
+    "name_fa": "پذیرش تک‌درسی — فقط پرداخت نقدی",
+    "rule_type": "condition",
+    "expression": {"field": "student.admission_type", "operator": "eq", "value": "single_course"}
+  },
+  {
+    "code": "no_active_therapist_registered",
+    "name_fa": "درمانگر فعالی ثبت نشده (همنام)",
+    "rule_type": "condition",
+    "expression": {"field": "student.has_active_therapist", "operator": "eq", "value": false}
+  },
+  {
+    "code": "active_therapist_registered",
+    "name_fa": "درمانگر فعال ثبت شده (همنام)",
+    "rule_type": "condition",
+    "expression": {"field": "student.has_active_therapist", "operator": "eq", "value": true}
+  },
+  {
+    "code": "admission_type == 'conditional_therapy'",
+    "name_fa": "نوع پذیرش مشروط به درمان",
+    "rule_type": "condition",
+    "expression": {"field": "student.admission_type", "operator": "eq", "value": "conditional_therapy"}
+  },
+  {
+    "code": "all_comprehensive_subjects_passed",
+    "name_fa": "تمام دروس دوره جامع پاس شده",
+    "rule_type": "condition",
+    "expression": {"field": "student.comprehensive_courses_remaining", "operator": "eq", "value": 0}
+  },
+  {
+    "code": "pause_less_than_21_days",
+    "name_fa": "وقفه کمتر از ۲۱ روز",
+    "rule_type": "condition",
+    "expression": {"field": "instance.supervision_interruption_days", "operator": "lt", "value": 21}
+  },
+  {
+    "code": "pause_21_days_or_more",
+    "name_fa": "وقفه ۲۱ روز یا بیشتر",
+    "rule_type": "condition",
+    "expression": {"field": "instance.supervision_interruption_days", "operator": "gte", "value": 21}
+  },
+  {
+    "code": "eligible_for_registration",
+    "name_fa": "صلاحیت ثبت‌نام",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "and",
+      "conditions": [
+        {"field": "student.is_suspended", "operator": "eq", "value": false},
+        {"operator": "or", "conditions": [
+          {"field": "student.admission_type", "operator": "ne", "value": "conditional_therapy"},
+          {"field": "student.has_active_therapist", "operator": "eq", "value": true}
+        ]}
+      ]
+    }
+  },
+  {
+    "code": "has_remaining_comprehensive_courses",
+    "name_fa": "دروس دوره جامع باقی‌مانده",
+    "rule_type": "condition",
+    "expression": {"field": "student.comprehensive_courses_remaining", "operator": "gt", "value": 0}
+  },
+  {
+    "code": "installment_not_paid",
+    "name_fa": "قسط پرداخت نشده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.installment_overdue", "operator": "eq", "value": true}
+  },
+  {
+    "code": "result == 'conditional_therapy'",
+    "name_fa": "نتیجه مصاحبه: پذیرش مشروط به درمان",
+    "rule_type": "condition",
+    "expression": {"field": "instance.interview_result", "operator": "eq", "value": "conditional_therapy"}
+  },
+  {
+    "code": "result == 'full_admission'",
+    "name_fa": "نتیجه مصاحبه: پذیرش کامل",
+    "rule_type": "condition",
+    "expression": {"field": "instance.interview_result", "operator": "eq", "value": "full_admission"}
+  },
+  {
+    "code": "result == 'rejected'",
+    "name_fa": "نتیجه مصاحبه: رد",
+    "rule_type": "condition",
+    "expression": {"field": "instance.interview_result", "operator": "eq", "value": "rejected"}
+  },
+  {
+    "code": "result == 'single_course'",
+    "name_fa": "نتیجه مصاحبه: تک‌درس",
+    "rule_type": "condition",
+    "expression": {"field": "instance.interview_result", "operator": "eq", "value": "single_course"}
+  },
+  {
+    "code": "sla_approaching_168h",
+    "name_fa": "نزدیک به مهلت SLA (۱۶۸ ساعت)",
+    "rule_type": "condition",
+    "expression": {"field": "instance.hours_until_sla_deadline", "operator": "lte", "value": 168}
+  },
+  {
+    "code": "therapy_condition_met_or_not_conditional",
+    "name_fa": "شرط درمان برآورده شده یا پذیرش غیرمشروط",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "or",
+      "conditions": [
+        {"field": "student.admission_type", "operator": "ne", "value": "conditional_therapy"},
+        {"field": "student.has_active_therapist", "operator": "eq", "value": true}
+      ]
+    }
+  },
+  {
+    "code": "within_4_weeks_of_term_start",
+    "name_fa": "در ۴ هفته اول شروع ترم",
+    "rule_type": "condition",
+    "expression": {"field": "instance.weeks_since_term_start", "operator": "lte", "value": 4}
   }
 ]

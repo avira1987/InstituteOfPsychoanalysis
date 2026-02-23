@@ -11,6 +11,8 @@ import AuditViewer from './pages/AuditViewer'
 import GuidePage from './pages/GuidePage'
 import LoginPage from './pages/LoginPage'
 import UserManagement from './pages/UserManagement'
+import StudentPortal from './pages/StudentPortal'
+import SupervisorPortal from './pages/SupervisorPortal'
 
 // Error Boundary to catch rendering errors and show them instead of white screen
 class ErrorBoundary extends React.Component {
@@ -48,7 +50,7 @@ class ErrorBoundary extends React.Component {
               </pre>
             </details>
             <button
-              onClick={() => { this.setState({ hasError: false, error: null, errorInfo: null }); window.location.href = '/' }}
+              onClick={() => { this.setState({ hasError: false, error: null, errorInfo: null }); window.location.href = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/' }}
               style={{
                 marginTop: '1rem', padding: '0.75rem 1.5rem', background: '#3b82f6', color: '#fff',
                 border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem'
@@ -97,6 +99,8 @@ export default function App() {
           <Route path="students" element={<StudentTracker />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="audit" element={<AuditViewer />} />
+          <Route path="portal/student" element={<StudentPortal />} />
+          <Route path="portal/supervisor" element={<SupervisorPortal />} />
           <Route path="guide" element={<GuidePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

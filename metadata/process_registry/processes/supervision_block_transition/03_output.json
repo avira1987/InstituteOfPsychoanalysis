@@ -1,0 +1,11 @@
+{
+  "_note": "خروجی JSON در metadata/processes/supervision_block_transition.json ذخیره شده است.",
+  "source_file": "metadata/processes/supervision_block_transition.json",
+  "states_count": 6,
+  "transitions_count": 5,
+  "rules_used": [
+    "at_50th_supervision_session",
+    "not_at_50th_supervision_session",
+    "max_one_session_per_week"
+  ]
+}

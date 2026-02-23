@@ -1,0 +1,108 @@
+{
+  "process": {
+    "code": "supervision_session_reduction",
+    "name_fa": "درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن",
+    "name_en": "Student Request for Reducing Weekly Supervision Sessions",
+    "description": "دو مسیر: الف) ۲+ جلسه در هفته → انتخاب جلسات برای حذف (حداقل ۱ باقی)، حذف، آزادسازی وقت، SMS. ب) ۱ جلسه در هفته → احراز ۱۵۰/۲۵۰/۷۵۰، انتخاب توالی (۲/۳/۴ هفته یک‌بار)، تایید سوپروایزر، ثبت، آزادسازی، SMS.",
+    "initial_state": "initiated",
+    "eligibility": "مسیر الف: ۲ یا بیشتر جلسه سوپرویژن در هفته. مسیر ب: ۱ جلسه در هفته با تکمیل ساعات."
+  },
+  "states": [
+    { "code": "initiated", "name_fa": "آغاز فرایند", "type": "initial", "assigned_role": "student" },
+    { "code": "session_selection", "name_fa": "انتخاب جلسات برای حذف", "type": "intermediate", "assigned_role": "student" },
+    { "code": "multi_reduction_completed", "name_fa": "کاهش جلسات متعدد انجام شد", "type": "terminal", "assigned_role": "system" },
+    { "code": "eligibility_blocked", "name_fa": "شرایط کاهش توالی احراز نشده", "type": "terminal", "assigned_role": "system" },
+    { "code": "structure_selection", "name_fa": "تعیین ساختار جدید (توالی + روز و ساعت)", "type": "intermediate", "assigned_role": "student" },
+    { "code": "supervisor_review", "name_fa": "بررسی و تایید سوپروایزر", "type": "intermediate", "assigned_role": "supervisor" },
+    { "code": "frequency_reduction_completed", "name_fa": "کاهش توالی انجام شد", "type": "terminal", "assigned_role": "system" }
+  ],
+  "transitions": [
+    {
+      "from": "initiated",
+      "to": "session_selection",
+      "trigger": "process_link_clicked",
+      "conditions": ["has_2_or_more_weekly_supervision_sessions"],
+      "description_fa": "۲ جلسه یا بیشتر — نمایش لیست جلسات برای انتخاب حذف"
+    },
+    {
+      "from": "session_selection",
+      "to": "multi_reduction_completed",
+      "trigger": "sessions_selected",
+      "required_role": "student",
+      "conditions": ["supervision_reduction_leaves_at_least_1"],
+      "description_fa": "حداقل یک جلسه باقی — حذف انتخابی، آزادسازی وقت، SMS",
+      "actions": [
+        { "type": "remove_selected_supervision_sessions" },
+        { "type": "release_supervisor_slots_to_available_sheet" },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "supervision_session_reduction_multi",
+          "recipients": ["student", "supervisor"]
+        }
+      ]
+    },
+    {
+      "from": "initiated",
+      "to": "eligibility_blocked",
+      "trigger": "process_link_clicked",
+      "conditions": ["fewer_than_2_weekly_supervision_sessions", "completion_conditions_not_met"],
+      "description_fa": "۱ جلسه در هفته و ساعات تکمیل نشده — نمایش پیام و خاتمه",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "supervision_session_reduction_eligibility_blocked",
+          "recipients": ["student"]
+        }
+      ]
+    },
+    {
+      "from": "initiated",
+      "to": "structure_selection",
+      "trigger": "process_link_clicked",
+      "conditions": ["fewer_than_2_weekly_supervision_sessions", "therapy_threshold_met", "clinical_threshold_met", "supervision_threshold_met"],
+      "description_fa": "۱ جلسه در هفته با ساعات کامل — نمایش فرم انتخاب توالی"
+    },
+    {
+      "from": "structure_selection",
+      "to": "supervisor_review",
+      "trigger": "frequency_day_time_entered",
+      "required_role": "student",
+      "description_fa": "دانشجو توالی و روز/ساعت را وارد کرد — ارسال به سوپروایزر"
+    },
+    {
+      "from": "supervisor_review",
+      "to": "frequency_reduction_completed",
+      "trigger": "supervisor_approved",
+      "required_role": "supervisor",
+      "description_fa": "سوپروایزر تایید کرد — ثبت در LMS، حذف جلسه قبلی، آزادسازی، SMS",
+      "actions": [
+        { "type": "update_supervision_schedule_frequency" },
+        { "type": "remove_weekly_session_from_student_schedule" },
+        { "type": "release_supervisor_slots_to_available_sheet" },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "supervision_session_reduction_approved",
+          "recipients": ["student"]
+        }
+      ]
+    },
+    {
+      "from": "supervisor_review",
+      "to": "structure_selection",
+      "trigger": "supervisor_rejected",
+      "required_role": "supervisor",
+      "description_fa": "سوپروایزر رد کرد — توضیح یا پیشنهاد، بازگشت به دانشجو",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "supervision_session_reduction_rejected",
+          "recipients": ["student"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "process": {
+    "code": "therapy_early_termination",
+    "name_fa": "قطع زودرس درمان آموزشی توسط درمانگر آموزشی",
+    "name_en": "Early Termination of Educational Therapy by Therapist",
+    "description": "بخش ۱: آغاز و مسیریابی. درمانگر یکی از ۴ علت را انتخاب می‌کند. مسیر استاندارد (۱ یا ۲): خاتمه، آزادسازی، مهلت ۵ روز برای آغاز دوباره، در غیر این صورت تخلف. مسیر علمی (۳): زیرفرایند کمیسیون تخصصی. مسیر انضباطی (۴): دانشجو Pending Investigation، زیرفرایند کمیته‌ها.",
+    "initial_state": "reason_selection",
+    "termination_reasons": {
+      "1": "دانشجو گزارش داده ترجیح می‌دهد درمانگر را تغییر دهد",
+      "2": "درمانگر ترجیح می‌دهد و به صلاح دانشجو می‌داند با درمانگر دیگر ادامه دهد",
+      "3": "درمانگر پس از تامل و مشورت با کمیسیون تخصصی به صلاح دانشجو می‌داند درمان تحلیلی نامناسب است",
+      "4": "درمانگر فعلی دوم/سوم/... است و تشخیص می‌دهد دانشجو مناسب درمان تحلیلی نیست"
+    }
+  },
+  "states": [
+    {"code": "reason_selection", "name_fa": "انتخاب علت قطع", "type": "initial", "assigned_role": "therapist"},
+    {"code": "awaiting_student_restart", "name_fa": "در انتظار آغاز دوباره توسط دانشجو (مهلت ۵ روز)", "type": "intermediate", "assigned_role": "student", "sla_days": 5},
+    {"code": "restart_completed", "name_fa": "دانشجو درمان را از سر گرفت", "type": "terminal", "assigned_role": "system"},
+    {"code": "violation_no_restart", "name_fa": "عدم آغاز در مهلت — ثبت تخلف", "type": "terminal", "assigned_role": "system"},
+    {"code": "scientific_referred", "name_fa": "ارجاع به کمیسیون تخصصی (۳)", "type": "terminal", "assigned_role": "system"},
+    {"code": "disciplinary_referred", "name_fa": "ارجاع به کمیته‌ها (۴)", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "reason_selection",
+      "to": "awaiting_student_restart",
+      "trigger": "reason_submitted",
+      "required_role": "therapist",
+      "conditions": ["termination_reason_1_or_2"],
+      "description_fa": "گزینه ۱ یا ۲ — مسیر استاندارد",
+      "actions": [
+        {"type": "log_termination_request"},
+        {"type": "mark_therapy_relationship_terminated"},
+        {"type": "release_therapist_slots_to_available_sheet"},
+        {"type": "record_termination_in_student_portal"},
+        {"type": "notification", "notification_type": "sms", "template": "therapy_early_termination_standard", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "in_app", "template": "therapy_early_termination_standard", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "awaiting_student_restart",
+      "to": "restart_completed",
+      "trigger": "student_restarted_therapy",
+      "description_fa": "دانشجو در مهلت درمان را از سر گرفت"
+    },
+    {
+      "from": "awaiting_student_restart",
+      "to": "violation_no_restart",
+      "trigger": "sla_5days_breach",
+      "description_fa": "مهلت ۵ روز بدون آغاز دوباره",
+      "actions": [
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "no_restart_after_early_termination"}},
+        {"type": "notification", "notification_type": "in_app", "template": "violation_no_restart_5days", "recipients": ["monitoring_committee_officer"]}
+      ]
+    },
+    {
+      "from": "reason_selection",
+      "to": "scientific_referred",
+      "trigger": "reason_submitted",
+      "required_role": "therapist",
+      "conditions": ["termination_reason_3"],
+      "description_fa": "گزینه ۳ — مسیر علمی، ارجاع به کمیسیون تخصصی",
+      "actions": [
+        {"type": "log_termination_request"},
+        {"type": "mark_therapy_relationship_terminated"},
+        {"type": "release_therapist_slots_to_available_sheet"},
+        {"type": "call_bpms_subprocess", "subprocess": "specialized_commission_review", "payload": {"student_id": "instance.student_id", "therapist_id": "instance.therapist_id", "reason_code": 3}}
+      ]
+    },
+    {
+      "from": "reason_selection",
+      "to": "disciplinary_referred",
+      "trigger": "reason_submitted",
+      "required_role": "therapist",
+      "conditions": ["termination_reason_4"],
+      "description_fa": "گزینه ۴ — مسیر انضباطی، دانشجو Pending Investigation",
+      "actions": [
+        {"type": "log_termination_request"},
+        {"type": "mark_therapy_relationship_terminated"},
+        {"type": "set_student_status", "status": "pending_investigation"},
+        {"type": "release_therapist_slots_to_available_sheet"},
+        {"type": "call_bpms_subprocess", "subprocess": "committees_review", "payload": {"reason_code": 4}}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "process": {
+    "code": "specialized_commission_review",
+    "name_fa": "بررسی کمیسیون تخصصی (زیرفرایند الف)",
+    "name_en": "Specialized Commission Review (Sub-process A)",
+    "description": "زیرفرایند الف قطع زودرس. کمیسیون تخصصی پرونده را بررسی کرده و با دانشجو جلسه می‌گذارد. تایید صلاحیت → Unlock LMS، مهلت ۵ روز. رد صلاحیت → ارجاع به زیرفرایند ب با برچسب عدم صلاحیت تخصصی.",
+    "initial_state": "commission_review",
+    "triggered_by": "therapy_early_termination",
+    "trigger_condition": "termination_reason_3"
+  },
+  "states": [
+    {"code": "commission_review", "name_fa": "بررسی کمیسیون تخصصی", "type": "initial", "assigned_role": "specialized_commission"},
+    {"code": "awaiting_student_restart", "name_fa": "در انتظار آغاز دوباره (مهلت ۵ روز)", "type": "intermediate", "assigned_role": "student", "sla_days": 5},
+    {"code": "restart_completed", "name_fa": "دانشجو درمان را از سر گرفت", "type": "terminal", "assigned_role": "system"},
+    {"code": "violation_no_restart", "name_fa": "عدم آغاز در مهلت — ثبت تخلف", "type": "terminal", "assigned_role": "system"},
+    {"code": "referred_to_committees", "name_fa": "ارجاع به کمیته‌ها (عدم صلاحیت تخصصی)", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "commission_review",
+      "to": "awaiting_student_restart",
+      "trigger": "commission_approved",
+      "required_role": "specialized_commission",
+      "description_fa": "کمیسیون تایید صلاحیت کرد — مشکل سلیقه‌ای یا قابلیت رشد",
+      "actions": [
+        {"type": "send_unlock_to_lms"},
+        {"type": "unlock_student_therapist_selection"},
+        {"type": "record_commission_result_in_student_portal", "result": "eligibility_confirmed"},
+        {"type": "notification", "notification_type": "sms", "template": "therapy_early_termination_standard", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "in_app", "template": "therapy_early_termination_standard", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "commission_review",
+      "to": "referred_to_committees",
+      "trigger": "commission_rejected",
+      "required_role": "specialized_commission",
+      "description_fa": "کمیسیون رد صلاحیت — دانشجو مناسب ادامه نیست",
+      "actions": [
+        {"type": "start_process", "process_code": "committees_review", "payload": {"reason": "ineligibility_specialized_commission", "label": "عدم صلاحیت تخصصی"}}
+      ]
+    },
+    {
+      "from": "awaiting_student_restart",
+      "to": "restart_completed",
+      "trigger": "student_restarted_therapy",
+      "description_fa": "دانشجو در مهلت درمان را از سر گرفت"
+    },
+    {
+      "from": "awaiting_student_restart",
+      "to": "violation_no_restart",
+      "trigger": "sla_5days_breach",
+      "description_fa": "مهلت ۵ روز بدون آغاز دوباره",
+      "actions": [
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "no_restart_after_commission_approval"}},
+        {"type": "notification", "notification_type": "in_app", "template": "violation_no_restart_5days", "recipients": ["monitoring_committee_officer"]}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "_note": "خروجی JSON در metadata/processes/therapy_interruption.json ذخیره شده است.",
+  "source_file": "metadata/processes/therapy_interruption.json",
+  "states_count": 8,
+  "transitions_count": 9,
+  "rules_used": ["interruption_less_than_42_days", "interruption_42_days_or_more"]
+}

@@ -1,0 +1,31 @@
+{
+  "process": {
+    "code": "internship_12month_conditional_review",
+    "name_fa": "۱۲ ماه پس از گذشت قبولی به صورت مشروط در انترنی",
+    "name_en": "12-Month Conditional Internship Review",
+    "number": 38,
+    "description": "خودکار در ماه ۱۲ انترنی مشروط. هشدار به مسئول پروژه. کمیته نظارت مجوز ارزیابی مجدد. مصاحبه. دو نتیجه: رفع کامل محدودیت (الگوی استاندارد) یا ادامه مشروط (الگوی محدود). الگوی افزایش ساعات ماه ۱۶، ۲۰، ۲۴، ۲۸، ۳۲، ۳۶ و ...",
+    "initial_state": "month_12_trigger",
+    "trigger": "conditional_intern_enters_month_12"
+  },
+  "states": [
+    {"code": "month_12_trigger", "name_fa": "ورود انترن مشروط به ماه ۱۲", "type": "initial", "assigned_role": "system"},
+    {"code": "supervision_review", "name_fa": "بررسی انضباطی و صدور مجوز کمیته نظارت", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "supervision_rejected", "name_fa": "عدم مجوز — ارجاع به تخلفات", "type": "terminal", "assigned_role": "system"},
+    {"code": "interview_scheduling", "name_fa": "تنظیم وقت مصاحبه ارزیابی مجدد", "type": "intermediate", "assigned_role": "progress_committee_project"},
+    {"code": "interview_held", "name_fa": "برگزاری مصاحبه", "type": "intermediate", "assigned_role": "progress_committee"},
+    {"code": "result_unrestricted", "name_fa": "ادامه با رفع کامل محدودیت", "type": "terminal", "assigned_role": "system"},
+    {"code": "result_conditional", "name_fa": "ادامه مشروط انترنی", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "month_12_trigger", "to": "supervision_review", "trigger": "alert_sent", "description_fa": "هشدار به مسئول پروژه — زمان مصاحبه ارزیابی مجدد فرا رسیده"},
+    {"from": "supervision_review", "to": "supervision_rejected", "trigger": "no_permit", "required_role": "supervision_committee", "description_fa": "مجوز صادر نشد — ارجاع به violation_registration"},
+    {"from": "supervision_review", "to": "interview_scheduling", "trigger": "permit_issued", "required_role": "supervision_committee", "description_fa": "صدور مجوز ارزیابی مجدد"},
+    {"from": "interview_scheduling", "to": "interview_held", "trigger": "interview_scheduled", "actions": [{"type": "notification", "notification_type": "sms", "template": "internship_12month_interview", "recipients": ["student", "progress_scientific", "progress_project"]}]},
+    {"from": "interview_held", "to": "result_unrestricted", "trigger": "result_unrestricted", "required_role": "progress_committee_scientific", "description_fa": "الگوی استاندارد — افزایش از ماه ۱۶"},
+    {"from": "interview_held", "to": "result_conditional", "trigger": "result_conditional", "required_role": "progress_committee_scientific", "description_fa": "الگوی محدود — شیب ملایم‌تر"}
+  ],
+  "forms": [
+    {"code": "internship_12month_result", "name_fa": "نتیجه مصاحبه ارزیابی مجدد", "used_in_state": "interview_held", "fields": [{"name": "result", "label_fa": "نتیجه", "type": "radio", "options": [{"value": "unrestricted", "label_fa": "ادامه با رفع کامل محدودیت"}, {"value": "conditional", "label_fa": "ادامه مشروط انترنی"}]}]}
+  ]
+}

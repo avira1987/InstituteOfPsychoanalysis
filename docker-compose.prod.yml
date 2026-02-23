@@ -1,0 +1,57 @@
+# Production compose - API serves built admin-ui (no separate admin-ui container)
+# Redis maps to 6380 to avoid conflict with host Redis on 6379
+version: "3.8"
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: anistito-db
+    environment:
+      POSTGRES_USER: anistito
+      POSTGRES_PASSWORD: anistito
+      POSTGRES_DB: anistito
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anistito"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    container_name: anistito-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: anistito-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://anistito:anistito@db:5432/anistito
+      DATABASE_URL_SYNC: postgresql://anistito:anistito@db:5432/anistito
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "false"
+      SECRET_KEY: anistito-prod-secret-change-me
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,102 @@
+{
+  "process": {
+    "code": "introductory_course_completion",
+    "name_fa": "فرایند خاتمه دوره آشنایی",
+    "name_en": "Introductory Course Completion",
+    "number": 34,
+    "description": "پس از قبولی دانشجو در هر ۱۰ درس دوره آشنایی، سیستم دعوتنامه ثبت‌نام دوره جامع ارسال می‌کند و گواهی پایان دوره آشنایی صادر می‌شود. گواهی پس از بررسی و تایید کمیته نظارت و امضای الکترونیکی در پورتال دانشجو قرار می‌گیرد.",
+    "initial_state": "all_courses_passed"
+  },
+  "states": [
+    {"code": "all_courses_passed", "name_fa": "قبولی در تمام دروس دوره آشنایی", "type": "initial", "assigned_role": "system"},
+    {"code": "invitation_sent", "name_fa": "ارسال دعوتنامه ثبت‌نام دوره جامع", "type": "intermediate", "assigned_role": "system"},
+    {"code": "certificate_draft_generated", "name_fa": "پیش‌نویس گواهی تولید شده", "type": "intermediate", "assigned_role": "system"},
+    {"code": "certificate_review", "name_fa": "بررسی و تایید کمیته نظارت", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "certificate_approved", "name_fa": "گواهی تایید و در پورتال بارگذاری شده", "type": "intermediate", "assigned_role": "system"},
+    {"code": "process_complete", "name_fa": "فرایند تکمیل شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "all_courses_passed",
+      "to": "invitation_sent",
+      "trigger": "all_10_courses_passed",
+      "description_fa": "سیستم تشخیص داد دانشجو تمام ۱۰ درس را پاس کرده — ارسال پیامک دعوت ثبت‌نام دوره جامع",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "comprehensive_course_invitation",
+          "recipients": ["student"],
+          "message_fa": "دانشجوی گرامی موضوع: درخواست ورود به دوره جامع - به اطلاع میرساند که مهلت شما برای درخواست ورود به دوره جامع رواندرمانی تحلیلی در انستیتو روانکاوی تهران، تاریخ {deadline_date} می باشد."
+        }
+      ]
+    },
+    {
+      "from": "invitation_sent",
+      "to": "certificate_draft_generated",
+      "trigger": "generate_certificate_draft",
+      "description_fa": "سیستم پیش‌نویس گواهی پایان دوره آشنایی را تولید کرد",
+      "actions": [
+        {
+          "type": "generate_certificate",
+          "certificate_template": "introductory_completion",
+          "fields": ["student_name", "id_number", "national_code", "completion_date", "total_units", "total_hours"],
+          "hours_formula": "total_units * 13.5",
+          "certificate_text_fa": "گواهی میشود جناب آقای/سرکار خانم {student_name} با شماره شناسنامه {id_number} و کد ملی {national_code} دوره یک ساله آشنایی کاربردی با رویکرد روانکاوی معاصر که شامل {total_units} واحد ({total_hours} ساعت) آموزش در دروس تئوری و تکنیک رواندرمانی تحلیلی می باشد را در تاریخ {completion_date} تکمیل کرده است.",
+          "signed_by": "یاسمن اکرامی - مسئول علمی کمیته پیشرفت"
+        }
+      ]
+    },
+    {
+      "from": "certificate_draft_generated",
+      "to": "certificate_review",
+      "trigger": "draft_ready_for_review",
+      "description_fa": "پیش‌نویس گواهی آماده بررسی کمیته نظارت",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "certificate_review_needed", "recipients": ["supervision_committee"]}
+      ]
+    },
+    {
+      "from": "certificate_review",
+      "to": "certificate_approved",
+      "trigger": "committee_approved_certificate",
+      "required_role": "supervision_committee",
+      "description_fa": "کمیته نظارت گواهی را تایید و مهر/امضای الکترونیکی زد",
+      "actions": [
+        {"type": "apply_electronic_signature_and_seal"},
+        {"type": "upload_certificate_to_portal"}
+      ]
+    },
+    {
+      "from": "certificate_review",
+      "to": "certificate_draft_generated",
+      "trigger": "committee_requested_revision",
+      "required_role": "supervision_committee",
+      "description_fa": "کمیته نظارت اصلاحاتی درخواست کرد — بازگشت برای ویرایش پیش‌نویس",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "certificate_revision_requested", "recipients": ["admin"]}
+      ]
+    },
+    {
+      "from": "certificate_approved",
+      "to": "process_complete",
+      "trigger": "student_notified",
+      "description_fa": "گواهی در پورتال قرار گرفت — اطلاع‌رسانی به دانشجو",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "certificate_ready_for_download",
+          "recipients": ["student"],
+          "message_fa": "گواهی پایان دوره شما صادر و در پورتال آموزشی (LMS) آماده دانلود می‌باشد."
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "certificate_ready_for_download",
+          "recipients": ["student"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 """Alembic environment configuration for async SQLAlchemy."""
 
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -47,11 +48,13 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode with async engine."""
-    configuration = config.get_section(config.config_ini_section)
-    # Convert sync URL to async URL for migration
-    url = configuration.get("sqlalchemy.url", "")
+    configuration = config.get_section(config.config_ini_section) or {}
+    url = os.getenv("DATABASE_URL") or configuration.get("sqlalchemy.url", "")
+    if not url:
+        raise RuntimeError("DATABASE_URL or sqlalchemy.url must be set")
     if "postgresql://" in url and "asyncpg" not in url:
-        configuration["sqlalchemy.url"] = url.replace("postgresql://", "postgresql+asyncpg://")
+        url = url.replace("postgresql://", "postgresql+asyncpg://")
+    configuration["sqlalchemy.url"] = url
 
     connectable = async_engine_from_config(
         configuration,

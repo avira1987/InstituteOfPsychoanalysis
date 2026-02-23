@@ -1,121 +1,89 @@
 {
   "process": {
     "code": "fee_determination",
-    "name_fa": "تعیین تکلیف هزینه جلسه درمان آموزشی/سوپرویژن فردی",
-    "name_en": "Session Fee Determination",
-    "description": "فرایند تعیین و مدیریت هزینه جلسات درمان آموزشی و سوپرویژن فردی",
-    "initial_state": "fee_calculation"
+    "name_fa": "تعیین تکلیف هزینه جلسه درمان آموزشی یا سوپرویژن فردی",
+    "name_en": "Session Fee Determination (Educational Therapy / Individual Supervision)",
+    "description": "مدیریت مالی غیبت/کنسلی بر اساس سهمیه ۳×جلسات هفتگی. چهار سناریو: بازگشت اعتبار، بدون اقدام، مصادره، ایجاد بدهی. سهمیه سال شمسی، پویا با تغییر برنامه.",
+    "initial_state": "triggered",
+    "allowance_logic": {
+      "formula": "ceil(weekly_sessions * 3)",
+      "weekly_sessions_source": "student.current_schedule.active_weekly_sessions",
+      "reset_cycle": "shamsi_year",
+      "dynamic_recalc": "on_schedule_change",
+      "special_case": "one_per_alternate_week: 1.5 → ceil(4.5)=5"
+    }
   },
   "states": [
-    {"code": "fee_calculation", "name_fa": "محاسبه هزینه", "type": "initial", "assigned_role": "system"},
-    {"code": "fee_type_determination", "name_fa": "تعیین نوع هزینه", "type": "intermediate", "assigned_role": "system"},
-    {"code": "student_responsible", "name_fa": "مسئولیت دانشجو", "type": "intermediate", "assigned_role": "student"},
-    {"code": "therapist_responsible", "name_fa": "مسئولیت درمانگر", "type": "intermediate", "assigned_role": "therapist"},
-    {"code": "mutual_responsibility", "name_fa": "مسئولیت مشترک", "type": "intermediate", "assigned_role": "system"},
-    {"code": "payment_processing", "name_fa": "پردازش پرداخت", "type": "intermediate", "assigned_role": "staff"},
-    {"code": "debt_registered", "name_fa": "بدهی ثبت شد", "type": "intermediate", "assigned_role": "system"},
-    {"code": "fee_settled", "name_fa": "هزینه تسویه شد", "type": "terminal", "assigned_role": "system"},
-    {"code": "fee_waived", "name_fa": "هزینه بخشیده شد", "type": "terminal", "assigned_role": "system"},
-    {"code": "dispute_opened", "name_fa": "اعتراض ثبت شد", "type": "intermediate", "assigned_role": "student"}
+    {"code": "triggered", "name_fa": "راه‌اندازی شده", "type": "initial", "assigned_role": "system"},
+    {"code": "excluded", "name_fa": "خارج از شمول", "type": "terminal", "assigned_role": "system", "metadata": {"reason": "وقفه یا کنسلی توسط درمانگر/سوپروایزر"}},
+    {"code": "scenario_1_credit_returned", "name_fa": "بازگشت اعتبار", "type": "terminal", "assigned_role": "system"},
+    {"code": "scenario_2_no_action", "name_fa": "بدون اقدام مالی", "type": "terminal", "assigned_role": "system"},
+    {"code": "scenario_3_forfeited", "name_fa": "مصادره هزینه", "type": "terminal", "assigned_role": "system"},
+    {"code": "scenario_4_debt_created", "name_fa": "ایجاد بدهی", "type": "terminal", "assigned_role": "system"}
   ],
   "transitions": [
     {
-      "from": "fee_calculation",
-      "to": "fee_type_determination",
-      "trigger": "fee_calculated",
+      "from": "triggered",
+      "to": "excluded",
+      "trigger": "precheck",
+      "conditions": ["student_on_leave"],
+      "priority": 1,
+      "description_fa": "دانشجو در وقفه — فرایند متوقف"
+    },
+    {
+      "from": "triggered",
+      "to": "excluded",
+      "trigger": "precheck",
+      "conditions": ["session_cancelled_by_provider"],
+      "priority": 2,
+      "description_fa": "جلسه توسط درمانگر/سوپروایزر کنسل شده"
+    },
+    {
+      "from": "triggered",
+      "to": "scenario_1_credit_returned",
+      "trigger": "evaluate",
+      "conditions": ["session_paid", "absence_quota_not_exceeded"],
+      "description_fa": "پرداخت کرده + در سهمیه → یک جلسه بستانکار",
       "actions": [
-        {"type": "calculate_session_fee"}
+        {"type": "add_to_credit_balance", "sessions": 1},
+        {"type": "increment_absence_counter"}
       ]
     },
     {
-      "from": "fee_type_determination",
-      "to": "student_responsible",
-      "trigger": "student_absence",
-      "conditions": ["absence_type_student"],
-      "description_fa": "غیبت دانشجو - هزینه بر عهده دانشجو"
-    },
-    {
-      "from": "fee_type_determination",
-      "to": "therapist_responsible",
-      "trigger": "therapist_absence",
-      "conditions": ["absence_type_therapist"],
-      "description_fa": "غیبت درمانگر - هزینه بر عهده درمانگر"
-    },
-    {
-      "from": "fee_type_determination",
-      "to": "mutual_responsibility",
-      "trigger": "mutual_absence",
-      "conditions": ["absence_type_mutual"],
-      "description_fa": "غیبت مشترک - تقسیم هزینه"
-    },
-    {
-      "from": "student_responsible",
-      "to": "payment_processing",
-      "trigger": "payment_initiated",
-      "required_role": "student"
-    },
-    {
-      "from": "student_responsible",
-      "to": "dispute_opened",
-      "trigger": "student_disputed",
-      "required_role": "student",
+      "from": "triggered",
+      "to": "scenario_2_no_action",
+      "trigger": "evaluate",
+      "conditions": ["session_not_paid", "absence_quota_not_exceeded"],
+      "description_fa": "پرداخت نکرده + در سهمیه → فقط کسر از سهمیه",
       "actions": [
-        {"type": "notification", "notification_type": "email", "template": "fee_dispute", "recipients": ["admin"]}
+        {"type": "increment_absence_counter"}
       ]
     },
     {
-      "from": "therapist_responsible",
-      "to": "debt_registered",
-      "trigger": "debt_recorded",
+      "from": "triggered",
+      "to": "scenario_3_forfeited",
+      "trigger": "evaluate",
+      "conditions": ["session_paid", "absence_quota_exceeded"],
+      "description_fa": "پرداخت کرده + خارج سهمیه → مصادره",
       "actions": [
-        {"type": "register_therapist_debt"},
-        {"type": "notification", "notification_type": "sms", "template": "debt_registered", "recipients": ["therapist"]}
+        {"type": "forfeit_session_payment"},
+        {"type": "increment_absence_counter"}
       ]
     },
     {
-      "from": "mutual_responsibility",
-      "to": "payment_processing",
-      "trigger": "split_payment_initiated",
+      "from": "triggered",
+      "to": "scenario_4_debt_created",
+      "trigger": "evaluate",
+      "conditions": ["session_not_paid", "absence_quota_exceeded"],
+      "description_fa": "پرداخت نکرده + خارج سهمیه → بدهکار یا کسر از بستانکاری",
       "actions": [
-        {"type": "split_fee_calculation"}
-      ]
-    },
-    {
-      "from": "payment_processing",
-      "to": "fee_settled",
-      "trigger": "payment_completed",
-      "required_role": "staff",
-      "actions": [
-        {"type": "record_payment"},
-        {"type": "notification", "notification_type": "sms", "template": "fee_settled", "recipients": ["student"]}
-      ]
-    },
-    {
-      "from": "debt_registered",
-      "to": "fee_settled",
-      "trigger": "debt_paid",
-      "actions": [
-        {"type": "record_payment"}
-      ]
-    },
-    {
-      "from": "dispute_opened",
-      "to": "fee_waived",
-      "trigger": "dispute_accepted",
-      "required_role": "admin",
-      "actions": [
-        {"type": "waive_fee"},
-        {"type": "notification", "notification_type": "sms", "template": "fee_waived", "recipients": ["student"]}
-      ]
-    },
-    {
-      "from": "dispute_opened",
-      "to": "student_responsible",
-      "trigger": "dispute_rejected",
-      "required_role": "admin",
-      "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "dispute_rejected", "recipients": ["student"]}
+        {"type": "create_debt_or_deduct_credit"},
+        {"type": "increment_absence_counter"}
       ]
     }
+  ],
+  "triggers": [
+    {"event": "therapist_registered_absence", "source_process": "attendance_tracking"},
+    {"event": "student_cancelled_session", "source": "student_portal"}
   ]
 }

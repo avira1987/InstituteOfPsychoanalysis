@@ -1,0 +1,33 @@
+=====================================================
+دستورات دیپلوی آنیستیتو روی هاست
+=====================================================
+
+مرحله 1 - بیلد محلی و ایجاد بسته (انجام شده):
+  - admin-ui بیلد شد
+  - بسته در: %TEMP%\deploy-anistito.zip
+
+مرحله 2 - آپلود بسته به سرور:
+  اگر PuTTY نصب دارید:
+    pscp -P 2022 -pw parsbpms.com %TEMP%\deploy-anistito.zip root@80.191.11.129:/opt/anistito/
+
+  یا با WinSCP:
+    میزبان: 80.191.11.129
+    پورت: 2022
+    کاربر: root
+    رمز: parsbpms.com
+    آپلود: deploy-anistito.zip به /opt/anistito/
+
+مرحله 3 - اجرای دستورات روی سرور:
+  با PuTTY به سرور وصل شوید سپس:
+
+  cd /opt/anistito
+  unzip -o deploy-anistito.zip -d .
+  rm -f deploy-anistito.zip
+  docker rm -f anistito-api 2>/dev/null || true
+  docker build -t anistito-api .
+  docker run -d --name anistito-api --network anistito-net -p 8000:8000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest sh -c "python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+  sleep 15
+  curl -s http://localhost:8000/health
+
+آدرس نهایی: https://lms.psychoanalysis.ir/anistito/
+ورود: admin / admin123

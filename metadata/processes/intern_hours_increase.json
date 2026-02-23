@@ -1,0 +1,27 @@
+{
+  "process": {
+    "code": "intern_hours_increase",
+    "name_fa": "اضافه شدن حداکثر ساعت‌های ارائه درمان انترن",
+    "name_en": "Intern Therapy Hours Increase",
+    "number": 39,
+    "description": "پایش روزانه سررسیدها. الگوی بدون شرط: ماه ۴+۲، ۷+۲، ۱۲+۳، ۱۶+۳، ۲۰+۳، ۲۴+۴، ۲۸+۵. الگوی مشروط: ماه ۴+۱، ۷+۱، ۱۲+۱. کمیته نظارت تایید/رد. در صورت رد → violation_registration. در صورت تایید: ثبت زمان‌ها در شیت وقت‌های آزاد، افزایش ظرفیت خودکار.",
+    "initial_state": "deadline_reached",
+    "trigger": "intern_month_milestone_reached"
+  },
+  "states": [
+    {"code": "deadline_reached", "name_fa": "رسیدن به سررسید افزایش ساعت", "type": "initial", "assigned_role": "system"},
+    {"code": "supervision_review", "name_fa": "بررسی کمیته نظارت", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "rejected_referral", "name_fa": "عدم تایید — ارجاع به تخلفات", "type": "terminal", "assigned_role": "system"},
+    {"code": "approved_time_coordination", "name_fa": "هماهنگی زمان‌های جدید با انترن", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "hours_increased", "name_fa": "ظرفیت افزایش یافت", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "deadline_reached", "to": "supervision_review", "trigger": "alert_to_supervision", "description_fa": "هشدار به مسئول علمی اجرایی کمیته نظارت"},
+    {"from": "supervision_review", "to": "rejected_referral", "trigger": "rejected", "required_role": "supervision_committee", "actions": [{"type": "refer_to_violation_registration"}, {"type": "notification", "notification_type": "sms", "template": "intern_hours_increase_deferred", "recipients": ["student"]}]},
+    {"from": "supervision_review", "to": "approved_time_coordination", "trigger": "approved", "required_role": "supervision_committee", "description_fa": "تایید صلاحیت — ثبت زمان‌ها در شیت وقت‌های آزاد"},
+    {"from": "approved_time_coordination", "to": "hours_increased", "trigger": "times_registered", "required_role": "supervision_committee", "actions": [{"type": "increase_intern_capacity"}, {"type": "notification", "notification_type": "sms", "template": "intern_hours_increased", "recipients": ["student"]}]}
+  ],
+  "forms": [
+    {"code": "intern_hours_approval", "name_fa": "تایید افزایش ظرفیت انترن", "used_in_state": "supervision_review", "fields": [{"name": "disciplinary_status", "label_fa": "وضعیت انضباطی", "type": "radio", "options": [{"value": "no_violation", "label_fa": "فاقد تخلف"}, {"value": "has_violation", "label_fa": "دارای تخلف — ارجاع به کمیته تخلفات"}]}, {"name": "agreed_times", "label_fa": "زمان‌های توافق شده", "type": "dynamic_list", "fields": ["day", "start_time", "end_time"]}]}
+  ]
+}

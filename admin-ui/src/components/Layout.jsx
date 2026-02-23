@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 
 const navItems = [
   { path: '/', label: 'داشبورد', icon: '📊' },
+  { path: '/portal/student', label: 'پورتال دانشجو', icon: '🎓', roles: ['student', 'admin'] },
+  { path: '/portal/supervisor', label: 'پورتال سوپروایزر', icon: '👁️', roles: ['supervisor', 'therapist', 'admin'] },
   { path: '/processes', label: 'مدیریت فرایندها', icon: '⚙️' },
   { path: '/rules', label: 'مدیریت قوانین', icon: '📋' },
   { path: '/students', label: 'ردیابی دانشجو', icon: '👨‍🎓' },
@@ -31,9 +33,11 @@ export default function Layout() {
     navigate('/login')
   }
 
-  const visibleNav = navItems.filter(
-    (item) => !item.adminOnly || user?.role === 'admin'
-  )
+  const visibleNav = navItems.filter((item) => {
+    if (item.adminOnly && user?.role !== 'admin') return false
+    if (item.roles && !item.roles.includes(user?.role) && user?.role !== 'admin') return false
+    return true
+  })
 
   return (
     <div className="layout">
@@ -85,12 +89,19 @@ export default function Layout() {
       </aside>
 
       <main className="main-content">
-        {/* Mobile header */}
+        {/* Mobile header / top bar */}
         <div className="mobile-header">
           <button className="mobile-menu-btn" onClick={() => setMobileOpen(!mobileOpen)}>
             ☰
           </button>
           <span className="mobile-title">انیستیتو روانکاوری تهران</span>
+          <button
+            className="header-logout-btn"
+            onClick={handleLogout}
+            title="خروج"
+          >
+            🚪 خروج
+          </button>
         </div>
         <Outlet />
       </main>

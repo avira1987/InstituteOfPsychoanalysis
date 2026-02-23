@@ -1,0 +1,1 @@
+{"_note":"خروجی JSON در metadata/processes/therapy_early_termination.json ذخیره شده است.","source_file":"metadata/processes/therapy_early_termination.json","states_count":6,"transitions_count":5,"rules_used":["termination_reason_1_or_2","termination_reason_3","termination_reason_4"]}

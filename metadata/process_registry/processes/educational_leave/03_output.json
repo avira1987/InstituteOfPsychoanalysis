@@ -1,0 +1,6 @@
+{
+  "_note": "خروجی JSON در metadata/processes/educational_leave.json ذخیره شده است. این فایل برای ارجاع.",
+  "source_file": "../../processes/educational_leave.json",
+  "states_count": 13,
+  "transitions_count": 16
+}

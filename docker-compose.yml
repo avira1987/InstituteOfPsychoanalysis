@@ -58,6 +58,7 @@ services:
       - ./app:/app/app
       - ./metadata:/app/metadata
       - ./alembic:/app/alembic
+      - ./admin-ui/dist:/app/admin-ui/dist
     restart: unless-stopped
     command: >
       sh -c "alembic upgrade head &&
@@ -78,6 +79,7 @@ services:
       - ./admin-ui/public:/app/public
     environment:
       VITE_API_URL: http://localhost:8000
+      VITE_PROXY_TARGET: http://api:8000
     restart: unless-stopped
 
 volumes:

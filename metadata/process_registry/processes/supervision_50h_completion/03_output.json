@@ -1,0 +1,17 @@
+{
+  "_note": "خروجی JSON در metadata/processes/supervision_50h_completion.json ذخیره شده است.",
+  "source_file": "metadata/processes/supervision_50h_completion.json",
+  "states_count": 11,
+  "transitions_count": 14,
+  "rules_used": [
+    "session_cancelled",
+    "student_on_supervision_leave",
+    "supervision_session_not_paid",
+    "supervision_session_paid",
+    "student_not_on_supervision_leave",
+    "session_not_cancelled",
+    "at_48th_supervision_session",
+    "at_49th_supervision_session",
+    "not_at_48_or_49_supervision_session"
+  ]
+}

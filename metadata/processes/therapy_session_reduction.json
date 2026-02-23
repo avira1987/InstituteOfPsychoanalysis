@@ -1,0 +1,87 @@
+{
+  "process": {
+    "code": "therapy_session_reduction",
+    "name_fa": "درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی",
+    "name_en": "Student Request to Reduce Weekly Educational Therapy Sessions",
+    "description": "مدیریت Tapering. شرط ورود: حداقل ۲ جلسه در هفته. کاهش به ۱ جلسه پیش از تکمیل ۲۵۰/۷۵۰/۱۵۰ = تخلف آموزشی با هشدار و ثبت در کمیته نظارت. حذف جلسات، آزادسازی وقت درمانگر، ثبت تاریخچه.",
+    "initial_state": "initiated"
+  },
+  "states": [
+    {"code": "initiated", "name_fa": "آغاز فرایند", "type": "initial", "assigned_role": "student"},
+    {"code": "blocked", "name_fa": "ورود ممنوع (کمتر از ۲ جلسه)", "type": "terminal", "assigned_role": "system"},
+    {"code": "session_selection", "name_fa": "انتخاب جلسات برای حذف", "type": "intermediate", "assigned_role": "student"},
+    {"code": "violation_warning", "name_fa": "هشدار تخلف آموزشی (تایید الزامی)", "type": "intermediate", "assigned_role": "student"},
+    {"code": "reduction_completed", "name_fa": "کاهش انجام شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "reduction_with_violation", "name_fa": "کاهش با ثبت تخلف", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "initiated",
+      "to": "blocked",
+      "trigger": "process_link_clicked",
+      "conditions": ["fewer_than_2_weekly_sessions"],
+      "description_fa": "کمتر از ۲ جلسه — ورود ممنوع",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "therapy_session_reduction_blocked", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "initiated",
+      "to": "session_selection",
+      "trigger": "process_link_clicked",
+      "conditions": ["has_2_or_more_weekly_sessions"],
+      "description_fa": "۲ جلسه یا بیشتر — نمایش برنامه برای انتخاب"
+    },
+    {
+      "from": "session_selection",
+      "to": "reduction_completed",
+      "trigger": "sessions_selected",
+      "required_role": "student",
+      "conditions": ["reduction_results_in_2_plus"],
+      "description_fa": "کاهش به ۲ جلسه یا بیشتر — اجرای مستقیم",
+      "actions": [
+        {"type": "remove_selected_therapy_sessions"},
+        {"type": "release_therapist_slots_to_available_sheet"},
+        {"type": "record_therapy_change_history"}
+      ]
+    },
+    {
+      "from": "session_selection",
+      "to": "reduction_completed",
+      "trigger": "sessions_selected",
+      "required_role": "student",
+      "conditions": ["reduction_results_in_1", "therapy_threshold_met", "clinical_threshold_met", "supervision_threshold_met"],
+      "description_fa": "کاهش به ۱ جلسه با تکمیل ساعات — مجاز",
+      "actions": [
+        {"type": "remove_selected_therapy_sessions"},
+        {"type": "release_therapist_slots_to_available_sheet"},
+        {"type": "record_therapy_change_history"}
+      ]
+    },
+    {
+      "from": "session_selection",
+      "to": "violation_warning",
+      "trigger": "sessions_selected",
+      "required_role": "student",
+      "conditions": ["reduction_results_in_1", "completion_conditions_not_met"],
+      "description_fa": "کاهش به ۱ جلسه بدون تکمیل — هشدار تخلف",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "therapy_session_reduction_violation_warning", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "violation_warning",
+      "to": "reduction_with_violation",
+      "trigger": "student_confirmed_with_violation",
+      "required_role": "student",
+      "description_fa": "دانشجو با علم به تخلف تایید کرد",
+      "actions": [
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "session_reduction_before_completion"}},
+        {"type": "notification", "notification_type": "in_app", "template": "violation_session_reduction", "recipients": ["monitoring_committee_officer"]},
+        {"type": "remove_selected_therapy_sessions"},
+        {"type": "release_therapist_slots_to_available_sheet"},
+        {"type": "record_therapy_change_history"}
+      ]
+    }
+  ]
+}

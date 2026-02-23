@@ -247,6 +247,11 @@ class StateMachineEngine:
 
         # 6. Post-transition actions
         actions = transition.actions or []
+        action_results = []
+        if actions:
+            from app.services.action_handler import ActionHandler
+            handler = ActionHandler(self.db)
+            action_results = await handler.handle_actions(actions, instance, payload or {})
 
         # 7. Audit
         await self.audit_logger.log_transition(

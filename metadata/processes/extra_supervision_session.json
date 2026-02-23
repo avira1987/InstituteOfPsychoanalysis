@@ -1,0 +1,102 @@
+{
+  "process": {
+    "code": "extra_supervision_session",
+    "name_fa": "درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن",
+    "name_en": "Extra Individual Supervision Session",
+    "description": "جلسه تکمیلی (Ad-hoc) در یک هفته خاص. توافق دوجانبه پیش از پرداخت. شامل: ثبت درخواست (تاریخ/ساعت)، ارجاع به سوپروایزر با SMS، تصمیم سوپروایزر (تایید / رد+پیشنهاد / عدم امکان)، پرداخت، ثبت، لینک آنلاین، SMS تایید. ساعات مطابق فرایند تکمیل دوره‌های ۵۰ ساعته.",
+    "initial_state": "extra_request"
+  },
+  "states": [
+    {"code": "extra_request", "name_fa": "ثبت درخواست جلسه اضافی سوپرویژن", "type": "initial", "assigned_role": "student"},
+    {"code": "supervisor_review", "name_fa": "بررسی و تصمیم سوپروایزر", "type": "intermediate", "assigned_role": "supervisor"},
+    {"code": "student_response", "name_fa": "پاسخ دانشجو به پیشنهاد جایگزین", "type": "intermediate", "assigned_role": "student"},
+    {"code": "payment_required", "name_fa": "پرداخت جلسه اضافی سوپرویژن", "type": "intermediate", "assigned_role": "student"},
+    {"code": "extra_session_confirmed", "name_fa": "جلسه اضافی سوپرویژن تایید و ثبت شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "extra_session_completed", "name_fa": "جلسه اضافی برگزار شد", "type": "terminal", "assigned_role": "supervisor"},
+    {"code": "extra_request_rejected", "name_fa": "امکان برگزاری جلسه اضافه وجود ندارد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "extra_request",
+      "to": "supervisor_review",
+      "trigger": "extra_requested",
+      "required_role": "student",
+      "description_fa": "دانشجو تاریخ و ساعت مدنظر را وارد کرد",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "extra_supervision_request", "recipients": ["supervisor"]}
+      ]
+    },
+    {
+      "from": "supervisor_review",
+      "to": "payment_required",
+      "trigger": "supervisor_approved",
+      "required_role": "supervisor",
+      "description_fa": "سوپروایزر زمان پیشنهادی را تایید کرد",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "extra_supervision_approved", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "supervisor_review",
+      "to": "student_response",
+      "trigger": "supervisor_proposed_alternative",
+      "required_role": "supervisor",
+      "description_fa": "سوپروایزر زمان را رد و پیشنهاد جایگزین داد",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "extra_supervision_alternative_proposed", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "supervisor_review",
+      "to": "extra_request_rejected",
+      "trigger": "supervisor_unavailable",
+      "required_role": "supervisor",
+      "description_fa": "سوپروایزر امکان برگزاری ندارد",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "extra_supervision_rejected", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "sms", "template": "extra_supervision_rejected", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "student_response",
+      "to": "payment_required",
+      "trigger": "student_confirmed_alternative",
+      "required_role": "student",
+      "description_fa": "دانشجو زمان پیشنهادی را تایید کرد"
+    },
+    {
+      "from": "student_response",
+      "to": "supervisor_review",
+      "trigger": "student_reentered_time",
+      "required_role": "student",
+      "description_fa": "دانشجو زمان دیگری وارد کرد — بازگشت به سوپروایزر",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "extra_supervision_request", "recipients": ["supervisor"]}
+      ]
+    },
+    {
+      "from": "payment_required",
+      "to": "extra_session_confirmed",
+      "trigger": "payment_completed",
+      "required_role": "student",
+      "description_fa": "پرداخت موفق — ثبت در پورتال، فیلد حضور/غیاب، لینک آنلاین، SMS",
+      "actions": [
+        {"type": "create_extra_supervision_session_record"},
+        {"type": "create_attendance_field_for_session"},
+        {"type": "activate_online_session_link"},
+        {"type": "notification", "notification_type": "sms", "template": "extra_supervision_confirmed", "recipients": ["student", "supervisor"]}
+      ]
+    },
+    {
+      "from": "extra_session_confirmed",
+      "to": "extra_session_completed",
+      "trigger": "session_held",
+      "required_role": "supervisor",
+      "description_fa": "جلسه برگزار شد — مطابق SOP تکمیل دوره‌های ۵۰ ساعته",
+      "actions": [
+        {"type": "record_supervision_attendance"},
+        {"type": "add_hour_to_supervision_block"}
+      ]
+    }
+  ]
+}

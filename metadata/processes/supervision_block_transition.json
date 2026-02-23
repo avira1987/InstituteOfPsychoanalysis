@@ -1,0 +1,81 @@
+{
+  "process": {
+    "code": "supervision_block_transition",
+    "name_fa": "آغاز سوپرویژن فردی دوم یا سوم یا چهارم یا پنجم",
+    "name_en": "Start Next Individual Supervision Block (2nd, 3rd, 4th, 5th)",
+    "description": "انتقال بین بلوک‌های ۵۰ ساعته سوپرویژن. قفل منطقی: دانشجو باید ابتدا سوپروایزر و زمان دوره بعدی را انتخاب و جلسه اول آن را پرداخت کند، سپس امکان پرداخت جلسه ۵۰ام فعلی باز می‌شود. قانون ۲۴ ساعت. حداکثر ۱ جلسه در هفته.",
+    "initial_state": "payment_intent_50th",
+    "constraints": {
+      "max_weekly_sessions": 1,
+      "blocks_per_supervisor_tracked": true,
+      "mandatory_message_fa": "دانشجوی گرامی، برای پرداخت جهت حضور در 50مین جلسه سوپرویژن باید اول زمان و سوپرویژن بعدی خود را انتخاب کنید تا قادر به پرداخت برای حضور در 50مین جلسه سوپرویژن باشید"
+    }
+  },
+  "states": [
+    {"code": "payment_intent_50th", "name_fa": "قصد پرداخت جلسه ۵۰ام", "type": "initial", "assigned_role": "student"},
+    {"code": "not_at_50th", "name_fa": "هنوز به جلسه ۵۰ نرسیده", "type": "terminal", "assigned_role": "system"},
+    {"code": "supervisor_slots_displayed", "name_fa": "نمایش شیت وقت‌های آزاد سوپروایزرها", "type": "intermediate", "assigned_role": "student"},
+    {"code": "slot_selected", "name_fa": "انتخاب سوپروایزر و زمان (قانون ۲۴ ساعت اعمال شده)", "type": "intermediate", "assigned_role": "student"},
+    {"code": "new_block_first_paid", "name_fa": "پرداخت جلسه اول دوره جدید انجام شد — قفل ۵۰ام باز شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "both_paid_completed", "name_fa": "هر دو پرداخت انجام و اطلاع‌رسانی", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "payment_intent_50th",
+      "to": "not_at_50th",
+      "trigger": "check_attendance",
+      "conditions": ["not_at_50th_supervision_session"],
+      "description_fa": "هنوز به جلسه ۵۰ نرسیده — فرایند تکمیل دوره‌های ۵۰ ساعتی",
+      "actions": [{"type": "redirect_to_process", "process_code": "session_payment", "context": "supervision_regular"}]
+    },
+    {
+      "from": "payment_intent_50th",
+      "to": "supervisor_slots_displayed",
+      "trigger": "check_attendance",
+      "conditions": ["at_50th_supervision_session"],
+      "description_fa": "به جلسه ۵۰ رسیده — نمایش سوابق و وقت‌های آزاد",
+      "actions": [
+        {"type": "display_supervision_history"},
+        {"type": "display_available_supervisor_slots"},
+        {"type": "display_mandatory_message"}
+      ]
+    },
+    {
+      "from": "supervisor_slots_displayed",
+      "to": "slot_selected",
+      "trigger": "student_selects_supervisor_and_time",
+      "required_role": "student",
+      "conditions": ["max_one_session_per_week"],
+      "description_fa": "انتخاب روز و ساعت — محاسبه تاریخ شروع با قانون ۲۴ ساعت",
+      "actions": [
+        {"type": "apply_24h_rule_for_start_date"},
+        {"type": "display_calculated_start_date"}
+      ]
+    },
+    {
+      "from": "slot_selected",
+      "to": "new_block_first_paid",
+      "trigger": "payment_success_new_block_first",
+      "required_role": "student",
+      "description_fa": "پرداخت جلسه اول دوره جدید موفق",
+      "actions": [
+        {"type": "remove_slot_from_available"},
+        {"type": "register_new_supervision_block_in_lms"},
+        {"type": "enable_attendance_for_new_supervisor"},
+        {"type": "unlock_payment_for_50th_session"}
+      ]
+    },
+    {
+      "from": "new_block_first_paid",
+      "to": "both_paid_completed",
+      "trigger": "payment_success_50th",
+      "required_role": "student",
+      "description_fa": "پرداخت جلسه ۵۰ام موفق",
+      "actions": [
+        {"type": "create_online_link_50th"},
+        {"type": "enable_attendance_for_current_supervisor_50th"},
+        {"type": "notification", "notification_type": "sms", "template": "supervision_block_transition_complete", "recipients": ["student", "new_supervisor"]}
+      ]
+    }
+  ]
+}

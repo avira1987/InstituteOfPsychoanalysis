@@ -600,6 +600,53 @@ async def get_dashboard_stats(
     }
 
 
+@router.post("/sync-metadata")
+async def sync_metadata_from_json(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    """Sync rule and process definitions from metadata. Adds only missing items."""
+    import json
+    from pathlib import Path
+    from app.meta.seed import load_process, sync_rules
+
+    METADATA_DIR = Path(__file__).resolve().parents[2].parent / "metadata"
+    PROCESSES_DIR = METADATA_DIR / "processes"
+    if not PROCESSES_DIR.exists():
+        raise HTTPException(status_code=500, detail="metadata/processes directory not found")
+
+    # 1. Sync rules
+    rules_added = await sync_rules(db)
+    await db.commit()
+
+    # 2. Sync processes
+    result = await db.execute(select(ProcessDefinition.code))
+    existing_codes = set(result.scalars().all())
+
+    processes_added = 0
+    for pf in sorted(PROCESSES_DIR.glob("*.json")):
+        with open(pf, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        code = data.get("process", {}).get("code")
+        if not code or code in existing_codes:
+            continue
+        await load_process(db, pf)
+        existing_codes.add(code)
+        processes_added += 1
+
+    await db.commit()
+    msg = []
+    if rules_added:
+        msg.append(f"{rules_added} قانون")
+    if processes_added:
+        msg.append(f"{processes_added} فرایند")
+    return {
+        "added_rules": rules_added,
+        "added_processes": processes_added,
+        "message": f"اضافه شد: {', '.join(msg) or 'هیچ مورد جدیدی'}" if msg else "هیچ مورد جدیدی یافت نشد",
+    }
+
+
 # ─── User Management Endpoints ──────────────────────────────────
 
 @router.get("/users")
@@ -682,6 +729,24 @@ async def deactivate_user(
     user.is_active = False
     await db.flush()
     return {"message": f"User '{user.username}' deactivated"}
+
+
+# ─── Test SMS (Dev) ───────────────────────────────────────────────
+
+class TestSMSRequest(BaseModel):
+    phone: str = Field(..., description="شماره موبایل (مثلاً 09123456789)")
+    message: str = Field(..., description="متن پیامک")
+
+
+@router.post("/test-sms", summary="تست ارسال پیامک")
+async def test_sms(
+    req: TestSMSRequest,
+    current_user: User = Depends(require_role("admin")),
+):
+    """ارسال یک پیامک تستی برای اطمینان از عملکرد درگاه پیامکی."""
+    from app.services.sms_gateway import send_sms
+    result = await send_sms(req.phone, req.message)
+    return {"success": result.get("success", False), "provider": result.get("provider", ""), "response": result}
 
 
 # ─── Helper Functions ───────────────────────────────────────────

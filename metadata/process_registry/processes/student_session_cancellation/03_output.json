@@ -1,0 +1,13 @@
+{
+  "_note": "خروجی JSON در metadata/processes/student_session_cancellation.json ذخیره شده است.",
+  "source_file": "metadata/processes/student_session_cancellation.json",
+  "states_count": 6,
+  "transitions_count": 5,
+  "rules_used": [
+    "would_exceed_3_consecutive_weeks",
+    "consecutive_weeks_valid",
+    "cancellation_below_10_percent",
+    "cancellation_10_to_12_percent",
+    "cancellation_above_12_percent"
+  ]
+}

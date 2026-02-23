@@ -1,0 +1,25 @@
+{
+  "process": {
+    "code": "ta_blog_content",
+    "name_fa": "ثبت محتوای وبلاگ از محتوای درسی (کمک‌مدرس)",
+    "name_en": "TA Blog Content from Class",
+    "number": 46,
+    "description": "پس از هر جلسه. کمک‌مدرس خلاصه کاربردی مباحث را در فیلد متنی می‌نویسد (حدود نیم صفحه A4). مهلت ۲۴ ساعت. تاخیر → violation_registration. مدرس ۴ روز بررسی. رد → اصلاح. تایید → پیش‌نویس مارکتینگ و امتیازدهی.",
+    "initial_state": "session_ended",
+    "trigger": "class_session_ended"
+  },
+  "states": [
+    {"code": "session_ended", "name_fa": "جلسه کلاس پایان یافت", "type": "initial", "assigned_role": "system"},
+    {"code": "ta_write", "name_fa": "نگارش محتوای وبلاگ", "type": "intermediate", "assigned_role": "teaching_assistant", "sla_hours": 24},
+    {"code": "instructor_review", "name_fa": "تایید علمی توسط مدرس", "type": "intermediate", "assigned_role": "instructor", "sla_days": 4},
+    {"code": "rejected_revision", "name_fa": "رد — اصلاح", "type": "intermediate", "assigned_role": "teaching_assistant"},
+    {"code": "approved_marketing_draft", "name_fa": "تایید — پیش‌نویس مارکتینگ", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "session_ended", "to": "ta_write", "trigger": "process_started", "description_fa": "کمک‌مدرس متن را در فیلد متنی می‌نویسد (حدود نیم صفحه A4)"},
+    {"from": "ta_write", "to": "instructor_review", "trigger": "content_submitted", "actions": [{"type": "notification", "notification_type": "sms", "template": "ta_blog_ready_for_review", "recipients": ["instructor"]}]},
+    {"from": "instructor_review", "to": "rejected_revision", "trigger": "rejected", "required_role": "instructor", "description_fa": "غیر قابل قبول — توضیحات الزامی"},
+    {"from": "instructor_review", "to": "approved_marketing_draft", "trigger": "accepted", "required_role": "instructor", "description_fa": "قابل قبول — پیش‌نویس مارکتینگ و امتیازدهی"},
+    {"from": "rejected_revision", "to": "instructor_review", "trigger": "revised_and_submitted", "required_role": "teaching_assistant", "description_fa": "اصلاح و ارسال مجدد"}
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "_note": "خروجی JSON در metadata/processes/start_therapy.json ذخیره شده است.",
+  "source_file": "metadata/processes/start_therapy.json",
+  "states_count": 10,
+  "transitions_count": 10
+}

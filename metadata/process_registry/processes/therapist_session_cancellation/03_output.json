@@ -1,0 +1,1 @@
+{"_note":"خروجی JSON در metadata/processes/therapist_session_cancellation.json ذخیره شده است.","source_file":"metadata/processes/therapist_session_cancellation.json","states_count":8,"transitions_count":11,"rules_used":["has_credit_sessions","no_credit_sessions"]}

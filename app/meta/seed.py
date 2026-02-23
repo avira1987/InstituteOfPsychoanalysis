@@ -45,6 +45,47 @@ async def load_rules(db: AsyncSession):
     logger.info(f"Loaded {count} rule definitions")
 
 
+async def sync_rules(db: AsyncSession) -> int:
+    """Add only missing rules from all_rules.json. Returns count of added rules."""
+    from sqlalchemy import select
+
+    rules_file = METADATA_DIR / "rules" / "all_rules.json"
+    if not rules_file.exists():
+        logger.warning(f"Rules file not found: {rules_file}")
+        return 0
+
+    with open(rules_file, "r", encoding="utf-8") as f:
+        rules_data = json.load(f)
+
+    result = await db.execute(select(RuleDefinition.code))
+    existing_codes = set(result.scalars().all())
+
+    added = 0
+    for rule in rules_data:
+        code = rule.get("code")
+        if not code or code in existing_codes:
+            continue
+        rule_def = RuleDefinition(
+            id=uuid.uuid4(),
+            code=code,
+            name_fa=rule["name_fa"],
+            name_en=rule.get("name_en"),
+            rule_type=rule.get("rule_type", "condition"),
+            expression=rule["expression"],
+            parameters=rule.get("parameters"),
+            error_message_fa=rule.get("error_message_fa"),
+            is_active=True,
+            version=1,
+        )
+        db.add(rule_def)
+        existing_codes.add(code)
+        added += 1
+
+    if added:
+        logger.info(f"Synced {added} new rule(s)")
+    return added
+
+
 async def load_process(db: AsyncSession, process_file: Path):
     """Load a process definition from a JSON file."""
     with open(process_file, "r", encoding="utf-8") as f:

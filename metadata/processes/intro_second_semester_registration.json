@@ -1,0 +1,187 @@
+{
+  "process": {
+    "code": "intro_second_semester_registration",
+    "name_fa": "فرایند ثبت‌نام دانشجو برای ترم دوم دوره آشنایی",
+    "name_en": "Introductory Course Second Semester Registration",
+    "number": 33,
+    "description": "ثبت‌نام دانشجو برای ترم دوم دوره آشنایی. شامل: بررسی صلاحیت (شرط درمان و تعلیق انضباطی)، نمایش دروس مجاز بر اساس نوع پذیرش (تک‌درس: فقط تئوری روانکاوی ۲ / کامل و مشروط: تمام دروس ترم ۲)، منطق پیش‌نیاز-هم‌نیاز (درس مردودی ترم ۱ به هم‌نیاز تبدیل شده و همزمان قابل اخذ)، انتخاب روش پرداخت (نقدی یا اقساط حداکثر ۴ — تک‌درس فقط نقدی)، پرداخت، ثبت‌نام نهایی و ایجاد لینک کلاس آنلاین.",
+    "initial_state": "eligibility_check"
+  },
+  "states": [
+    {"code": "eligibility_check", "name_fa": "بررسی صلاحیت ثبت‌نام", "type": "initial", "assigned_role": "system"},
+    {"code": "therapy_check_failed", "name_fa": "توقف — شرط درمان برآورده نشده", "type": "terminal", "assigned_role": "system", "ui_hint": "popup_message"},
+    {"code": "suspension_check_failed", "name_fa": "توقف — دانشجو تعلیق شده", "type": "terminal", "assigned_role": "system", "ui_hint": "popup_message"},
+    {"code": "course_selection", "name_fa": "انتخاب دروس ترم دوم", "type": "intermediate", "assigned_role": "student"},
+    {"code": "payment_method", "name_fa": "انتخاب روش پرداخت", "type": "intermediate", "assigned_role": "student"},
+    {"code": "payment_processing", "name_fa": "در حال پرداخت", "type": "intermediate", "assigned_role": "student"},
+    {"code": "registration_complete", "name_fa": "ثبت‌نام نهایی — دروس ثبت و لینک کلاس فعال", "type": "terminal", "assigned_role": "system"},
+    {"code": "installment_overdue", "name_fa": "قسط معوق — بلاک حضور و غیاب", "type": "intermediate", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "eligibility_check",
+      "to": "therapy_check_failed",
+      "trigger": "eligibility_check_result",
+      "conditions": ["admission_type == 'conditional_therapy'", "no_active_therapist_registered"],
+      "description_fa": "دانشجو مشروط به درمان بوده اما درمانگر فعال ثبت نکرده — نمایش پیام خطا",
+      "actions": [
+        {"type": "show_popup", "message_fa": "برای ثبت‌نام ترم دوم ابتدا باید درمان شخصی خود را آغاز و درمانگر فعال ثبت کنید."}
+      ]
+    },
+    {
+      "from": "eligibility_check",
+      "to": "suspension_check_failed",
+      "trigger": "eligibility_check_result",
+      "conditions": ["student_suspended"],
+      "description_fa": "دانشجو تعلیق از آموزش دارد — نمایش پیام خطا",
+      "actions": [
+        {"type": "show_popup", "message_fa": "به دلیل تعلیق از آموزش، امکان ثبت‌نام در ترم جدید وجود ندارد."}
+      ]
+    },
+    {
+      "from": "eligibility_check",
+      "to": "course_selection",
+      "trigger": "eligibility_check_result",
+      "conditions": ["eligible_for_registration"],
+      "description_fa": "صلاحیت تایید شد — نمایش دروس مجاز بر اساس نوع پذیرش",
+      "actions": [
+        {"type": "load_available_courses", "logic": {
+          "single_course": {"allowed": ["تئوری روانکاوی ۲"]},
+          "full_or_conditional": {"allowed": "all_term_2_courses"},
+          "failed_prerequisite_rule": "درس مردودی ترم ۱ به هم‌نیاز تبدیل شده و در لیست دروس قابل اخذ نمایش داده می‌شود"
+        }}
+      ]
+    },
+    {
+      "from": "course_selection",
+      "to": "payment_method",
+      "trigger": "courses_confirmed",
+      "required_role": "student",
+      "description_fa": "دانشجو دروس ترم دوم را انتخاب و تایید کرد"
+    },
+    {
+      "from": "payment_method",
+      "to": "payment_processing",
+      "trigger": "payment_method_selected",
+      "required_role": "student",
+      "description_fa": "روش پرداخت انتخاب شد — هدایت به درگاه پرداخت",
+      "constraints": ["single_course_students_cash_only"]
+    },
+    {
+      "from": "payment_processing",
+      "to": "registration_complete",
+      "trigger": "payment_completed",
+      "description_fa": "پرداخت کامل (نقدی) یا قسط اول (اقساطی) موفق — ثبت‌نام نهایی",
+      "actions": [
+        {"type": "register_courses_in_portal"},
+        {"type": "create_online_class_links", "description_fa": "ایجاد لینک کلاس آنلاین در LMS"},
+        {"type": "schedule_installment_reminders", "condition": "payment_method == 'installment'", "description_fa": "برنامه‌ریزی یادآوری اقساط: پیامک ۱ هفته قبل از سررسید هر قسط"},
+        {"type": "notification", "notification_type": "sms", "template": "registration_confirmed_term2", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "payment_processing",
+      "to": "payment_processing",
+      "trigger": "payment_failed",
+      "description_fa": "پرداخت ناموفق — بازگشت برای تلاش مجدد"
+    },
+    {
+      "from": "registration_complete",
+      "to": "installment_overdue",
+      "trigger": "installment_due_date_passed",
+      "conditions": ["installment_not_paid"],
+      "description_fa": "قسط معوق — بلاک ثبت حضور و غیاب",
+      "actions": [
+        {"type": "block_attendance_registration"},
+        {"type": "notify_instructor", "message_fa": "امکان ثبت حضور برای این دانشجو به دلیل عدم تسویه بدهی شهریه وجود ندارد"}
+      ]
+    },
+    {
+      "from": "installment_overdue",
+      "to": "registration_complete",
+      "trigger": "overdue_installment_paid",
+      "description_fa": "قسط معوق پرداخت شد — رفع بلاک حضور و غیاب",
+      "actions": [
+        {"type": "unblock_attendance_registration"}
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "code": "term2_course_selection_form",
+      "name_fa": "فرم ۱: انتخاب دروس ترم دوم",
+      "used_in_state": "course_selection",
+      "note_fa": "دروس بر اساس نوع پذیرش فیلتر می‌شوند. دروس مردودی ترم ۱ به عنوان هم‌نیاز نمایش داده می‌شوند.",
+      "fields": [
+        {
+          "name": "available_courses",
+          "label_fa": "دروس قابل اخذ",
+          "type": "checkbox_list",
+          "source": "filtered_courses_by_admission_type_and_prerequisites",
+          "format": "{course_name} ({units} واحد) {prerequisite_status}",
+          "prerequisite_display": {
+            "passed": "پیش‌نیاز: پاس شده ✓",
+            "failed_corequisite": "هم‌نیاز: مردودی ترم قبل — قابل اخذ همزمان",
+            "none": ""
+          },
+          "required": true
+        }
+      ],
+      "submit_label_fa": "تایید دروس و ادامه به پرداخت"
+    },
+    {
+      "code": "term2_payment_form",
+      "name_fa": "فرم ۲: انتخاب روش پرداخت ترم دوم",
+      "used_in_state": "payment_method",
+      "fields": [
+        {
+          "name": "payment_method",
+          "label_fa": "روش پرداخت",
+          "type": "radio",
+          "options": [
+            {"value": "cash", "label_fa": "پرداخت نقدی (یکجا)"},
+            {"value": "installment", "label_fa": "پرداخت اقساطی"}
+          ],
+          "required": true,
+          "note_fa": "دانشجویان تک‌درس فقط مجاز به پرداخت نقدی هستند",
+          "restricted_when": {"admission_type": "single_course", "allowed_values": ["cash"]}
+        },
+        {
+          "name": "installment_count",
+          "label_fa": "تعداد اقساط",
+          "type": "select",
+          "options": [
+            {"value": 1, "label_fa": "۱ قسط (پرداخت یکجا)"},
+            {"value": 2, "label_fa": "۲ قسط"},
+            {"value": 3, "label_fa": "۳ قسط"},
+            {"value": 4, "label_fa": "۴ قسط"}
+          ],
+          "visible_when": "payment_method == 'installment'",
+          "required_when": "payment_method == 'installment'"
+        },
+        {
+          "name": "discount_code",
+          "label_fa": "کد تخفیف",
+          "type": "text",
+          "required": false,
+          "placeholder_fa": "در صورت داشتن کد تخفیف وارد کنید"
+        }
+      ],
+      "installment_schedule": {
+        "installment_1": "هنگام ثبت‌نام",
+        "installment_2": "۲۵ روز پس از شروع کلاس‌ها",
+        "subsequent": "هر ۲۵ روز پس از قسط قبلی",
+        "reminder": "۱ هفته قبل از سررسید هر قسط — پیامک یادآوری"
+      },
+      "installment_schedule_table": {
+        "label_fa": "جدول زمان‌بندی اقساط",
+        "columns": [
+          {"name": "installment_number", "label_fa": "شماره قسط"},
+          {"name": "due_date", "label_fa": "تاریخ سررسید"},
+          {"name": "amount", "label_fa": "مبلغ (ریال)"}
+        ]
+      },
+      "submit_label_fa": "پرداخت"
+    }
+  ]
+}

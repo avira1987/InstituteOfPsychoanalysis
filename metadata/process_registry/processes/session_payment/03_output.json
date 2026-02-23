@@ -1,0 +1,6 @@
+{
+  "_note": "خروجی JSON در metadata/processes/session_payment.json ذخیره شده است.",
+  "source_file": "metadata/processes/session_payment.json",
+  "states_count": 6,
+  "transitions_count": 8
+}

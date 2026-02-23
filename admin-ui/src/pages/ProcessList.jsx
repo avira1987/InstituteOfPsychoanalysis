@@ -6,6 +6,7 @@ export default function ProcessList() {
   const navigate = useNavigate()
   const [processes, setProcesses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState({ code: '', name_fa: '', name_en: '', initial_state_code: '', description: '' })
@@ -20,11 +21,23 @@ export default function ProcessList() {
   }, [])
 
   const loadProcesses = async () => {
+    setError(null)
     try {
       const res = await processApi.list()
-      setProcesses(res.data)
+      setProcesses(Array.isArray(res.data) ? res.data : [])
     } catch (err) {
       console.error('Failed to load processes:', err)
+      const status = err.response?.status
+      const detail = err.response?.data?.detail
+      const isNetworkErr = err.code === 'ERR_NETWORK' || !err.response
+      let msg = 'خطا در بارگذاری فرایندها'
+      if (isNetworkErr) msg = 'خطای شبکه (Mixed Content یا قطع اتصال) - صفحه را رفرش کنید'
+      else if (status === 401) msg = 'لطفاً دوباره وارد شوید (ورود مجدد)'
+      else if (status === 403) msg = 'دسترسی غیرمجاز - نقش کاربری شما اجازه دسترسی ندارد'
+      else if (status === 404) msg = 'آدرس API یافت نشد - احتمالاً ProxyPass تنظیم نشده'
+      else if (status === 500) msg = 'خطای سرور: ' + (typeof detail === 'string' ? detail : JSON.stringify(detail || ''))
+      else if (detail && typeof detail === 'string') msg += ': ' + detail
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -41,7 +54,21 @@ export default function ProcessList() {
       // Navigate to editor
       navigate(`/processes/${res.data.id}`)
     } catch (err) {
-      showToast('خطا در ایجاد فرایند: ' + (err.response?.data?.detail || err.message), 'error')
+      const isNetworkErr = err.code === 'ERR_NETWORK' || !err.response
+      let msg = 'خطای نامشخص'
+      if (isNetworkErr) {
+        msg = 'خطای شبکه - درخواست مسدود شد (Mixed Content یا قطع اتصال)'
+      } else {
+        const d = err.response?.data?.detail
+        if (err.response?.status === 401) msg = 'لطفاً دوباره وارد شوید'
+        else if (err.response?.status === 403) msg = 'دسترسی غیرمجاز - نقش کاربری شما اجازه ایجاد فرایند ندارد'
+        else if (err.response?.status === 404) msg = 'آدرس API یافت نشد - ProxyPass یا مسیر بک‌اند را بررسی کنید'
+        else if (Array.isArray(d)) msg = d.map((e) => e?.msg || JSON.stringify(e)).join('؛ ')
+        else if (typeof d === 'string') msg = d
+        else if (d) msg = JSON.stringify(d)
+        else msg = err.message || 'خطا در ارتباط با سرور'
+      }
+      showToast('خطا در ایجاد فرایند: ' + msg, 'error')
     }
   }
 
@@ -124,9 +151,20 @@ export default function ProcessList() {
               ) : processes.length === 0 ? (
                 <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>
                   <div className="empty-state">
-                    <div className="empty-state-icon">⚙️</div>
-                    <p>فرایندی تعریف نشده است</p>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>برای شروع، روی «+ فرایند جدید» کلیک کنید</p>
+                    {error ? (
+                      <>
+                        <div className="empty-state-icon">⚠️</div>
+                        <p style={{ color: 'var(--danger)' }}>{error}</p>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>آدرس API: /anistito/api/admin/processes/</p>
+                        <button className="btn btn-outline" onClick={loadProcesses} style={{ marginTop: '0.5rem' }}>تلاش مجدد</button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="empty-state-icon">⚙️</div>
+                        <p>فرایندی تعریف نشده است</p>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>برای شروع، روی «+ فرایند جدید» کلیک کنید</p>
+                      </>
+                    )}
                   </div>
                 </td></tr>
               ) : (

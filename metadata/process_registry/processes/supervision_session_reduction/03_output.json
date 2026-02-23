@@ -1,0 +1,15 @@
+{
+  "_note": "خروجی JSON در metadata/processes/supervision_session_reduction.json ذخیره شده است.",
+  "source_file": "metadata/processes/supervision_session_reduction.json",
+  "states_count": 7,
+  "transitions_count": 7,
+  "rules_used": [
+    "has_2_or_more_weekly_supervision_sessions",
+    "fewer_than_2_weekly_supervision_sessions",
+    "supervision_reduction_leaves_at_least_1",
+    "completion_conditions_not_met",
+    "therapy_threshold_met",
+    "clinical_threshold_met",
+    "supervision_threshold_met"
+  ]
+}

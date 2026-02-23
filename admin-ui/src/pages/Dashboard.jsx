@@ -10,12 +10,30 @@ export default function Dashboard() {
   const [processes, setProcesses] = useState([])
   const [recentLogs, setRecentLogs] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [debugCount, setDebugCount] = useState(null)
+  const [syncing, setSyncing] = useState(false)
+
+  const handleSyncMetadata = async () => {
+    setSyncing(true)
+    try {
+      const res = await dashboardApi.syncMetadata()
+      const msg = res.data?.message || `${res.data?.added ?? 0} فرایند اضافه شد`
+      alert(msg)
+      loadAll()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'خطا در همگام‌سازی')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   useEffect(() => {
     loadAll()
   }, [])
 
   const loadAll = async () => {
+    setLoadError(null)
     try {
       const [statsRes, procRes, logsRes] = await Promise.all([
         dashboardApi.stats(),
@@ -23,10 +41,19 @@ export default function Dashboard() {
         auditApi.list({ limit: 8, offset: 0 }),
       ])
       setStats(statsRes.data)
-      setProcesses(procRes.data)
-      setRecentLogs(logsRes.data.logs || [])
+      setProcesses(Array.isArray(procRes.data) ? procRes.data : [])
+      setRecentLogs(logsRes.data?.logs || [])
     } catch (err) {
       console.error('Failed to load dashboard:', err)
+      setLoadError(err.response?.status === 401 ? 'لطفاً دوباره وارد شوید' : 'خطا در بارگذاری داشبورد')
+      setStats(null)
+      setProcesses([])
+      setRecentLogs([])
+      // Fallback: endpoint دیباگ بدون auth (همان الگوی لاگین)
+      try {
+        const d = await dashboardApi.debugProcessCount()
+        setDebugCount(d.process_count)
+      } catch (_) {}
     } finally {
       setLoading(false)
     }
@@ -52,6 +79,13 @@ export default function Dashboard() {
           </p>
         </div>
       </div>
+
+      {loadError && (
+        <div className="toast toast-error" style={{ marginBottom: '1rem' }}>
+          {loadError}
+          {debugCount != null && ` | سرور ${debugCount} فرایند دارد — رفرش یا ورود مجدد`}
+        </div>
+      )}
 
       <div className="stats-grid">
         <div className="stat-card">
@@ -92,9 +126,14 @@ export default function Dashboard() {
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">فرایندهای SOP تعریف‌شده</h3>
-            <button className="btn btn-outline btn-sm" onClick={() => navigate('/processes')}>
-              مدیریت
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn btn-outline btn-sm" onClick={handleSyncMetadata} disabled={syncing}>
+                {syncing ? '...' : 'همگام‌سازی از JSON'}
+              </button>
+              <button className="btn btn-outline btn-sm" onClick={() => navigate('/processes')}>
+                مدیریت
+              </button>
+            </div>
           </div>
           <div>
             {loading ? (

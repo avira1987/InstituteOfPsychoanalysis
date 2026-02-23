@@ -1,0 +1,31 @@
+{
+  "process": {
+    "code": "ta_instructor_leave",
+    "name_fa": "مرخصی کمک‌مدرس و مدرسین",
+    "name_en": "TA and Instructor Leave",
+    "number": 53,
+    "description": "کمک‌مدرس یا مدرس درخواست مرخصی می‌دهد. کمیته دروس تایید/رد. در صورت تایید: جایگزین موقت (کمک‌مدرس/مدرس) یا لغو کلاس‌ها. اطلاع‌رسانی به دانشجویان.",
+    "initial_state": "leave_request",
+    "initial_role": "teaching_assistant_or_instructor"
+  },
+  "states": [
+    {"code": "leave_request", "name_fa": "درخواست مرخصی", "type": "initial", "assigned_role": "teaching_assistant_or_instructor"},
+    {"code": "course_committee_review", "name_fa": "بررسی کمیته دروس", "type": "intermediate", "assigned_role": "course_committee_scientific"},
+    {"code": "leave_rejected", "name_fa": "رد مرخصی", "type": "terminal", "assigned_role": "system"},
+    {"code": "substitute_assigned", "name_fa": "جایگزین موقت تعیین شد", "type": "intermediate", "assigned_role": "course_committee_scientific"},
+    {"code": "classes_cancelled", "name_fa": "کلاس‌ها لغو شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "leave_approved", "name_fa": "مرخصی تایید شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "leave_request", "to": "course_committee_review", "trigger": "request_submitted", "required_role": "teaching_assistant_or_instructor", "description_fa": "درخواست به کمیته دروس"},
+    {"from": "course_committee_review", "to": "leave_rejected", "trigger": "rejected", "required_role": "course_committee_scientific", "description_fa": "رد مرخصی"},
+    {"from": "course_committee_review", "to": "substitute_assigned", "trigger": "substitute_chosen", "required_role": "course_committee_scientific", "description_fa": "انتخاب جایگزین موقت — اطلاع به دانشجویان"},
+    {"from": "course_committee_review", "to": "classes_cancelled", "trigger": "cancellation_chosen", "required_role": "course_committee_scientific", "description_fa": "لغو کلاس‌ها — اطلاع به دانشجویان"},
+    {"from": "substitute_assigned", "to": "leave_approved", "trigger": "substitute_confirmed", "description_fa": "جایگزین تایید شد — مرخصی فعال"},
+    {"from": "classes_cancelled", "to": "leave_approved", "trigger": "cancellation_confirmed", "description_fa": "لغو تایید شد — مرخصی فعال"}
+  ],
+  "forms": [
+    {"code": "leave_request_form", "name_fa": "درخواست مرخصی", "used_in_state": "leave_request", "fields": [{"name": "start_date", "label_fa": "تاریخ شروع", "type": "date_picker"}, {"name": "end_date", "label_fa": "تاریخ پایان", "type": "date_picker"}, {"name": "reason", "label_fa": "دلیل", "type": "textarea"}]},
+    {"code": "leave_review_form", "name_fa": "بررسی مرخصی", "used_in_state": "course_committee_review", "fields": [{"name": "decision", "type": "radio", "options": [{"value": "approve_substitute", "label_fa": "تایید با جایگزین"}, {"value": "approve_cancel", "label_fa": "تایید با لغو کلاس‌ها"}, {"value": "reject", "label_fa": "رد"}]}, {"name": "substitute_id", "label_fa": "جایگزین موقت", "type": "user_select", "visible_when": "decision == 'approve_substitute'"}]}
+  ]
+}

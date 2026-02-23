@@ -1,0 +1,98 @@
+{
+  "process": {
+    "code": "therapy_interruption",
+    "name_fa": "وقفه در درمان آموزشی توسط دانشجو",
+    "name_en": "Therapy Interruption by Student",
+    "description": "درخواست وقفه با تاریخ شروع و پایان. کمیته پیشرفت جلسه تعیین و تصمیم می‌گیرد. رد → violation. تایید: < ۴۲ روز حفظ درمانگر/سوپروایزر، در پایان بررسی بازگشت؛ ≥ ۴۲ روز بلافاصله آزادسازی و patient_referral (انترن).",
+    "initial_state": "request_submitted",
+    "duration_threshold_days": 42
+  },
+  "states": [
+    {"code": "request_submitted", "name_fa": "ثبت درخواست وقفه", "type": "initial", "assigned_role": "student"},
+    {"code": "committee_scheduling", "name_fa": "تعیین جلسه توسط کمیته", "type": "intermediate", "assigned_role": "progress_committee"},
+    {"code": "meeting_held", "name_fa": "جلسه برگزار و تصمیم گرفته شد", "type": "intermediate", "assigned_role": "progress_committee"},
+    {"code": "rejected", "name_fa": "رد درخواست وقفه", "type": "terminal", "assigned_role": "system"},
+    {"code": "awaiting_return", "name_fa": "منتظر بازگشت در تاریخ پایان وقفه (< ۴۲ روز)", "type": "intermediate", "assigned_role": "system"},
+    {"code": "returned_successfully", "name_fa": "دانشجو بازگشت", "type": "terminal", "assigned_role": "system"},
+    {"code": "no_return_resources_freed", "name_fa": "عدم بازگشت — آزادسازی و ارجاع", "type": "terminal", "assigned_role": "system"},
+    {"code": "long_interruption_applied", "name_fa": "وقفه بلند (≥ ۴۲ روز) — آزادسازی فوری", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "request_submitted",
+      "to": "committee_scheduling",
+      "trigger": "dates_entered",
+      "required_role": "student",
+      "description_fa": "دانشجو تاریخ شروع و پایان وارد کرد"
+    },
+    {
+      "from": "committee_scheduling",
+      "to": "meeting_held",
+      "trigger": "meeting_scheduled",
+      "required_role": "progress_committee",
+      "description_fa": "کمیته تاریخ، ساعت و حضوری/آنلاین را ثبت کرد",
+      "actions": [
+        {"type": "notification", "notification_type": "email", "template": "therapy_interruption_meeting", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "sms", "template": "therapy_interruption_meeting", "recipients": ["student"]},
+        {"type": "display_meeting_in_portal"}
+      ]
+    },
+    {
+      "from": "meeting_held",
+      "to": "rejected",
+      "trigger": "committee_rejected",
+      "required_role": "progress_committee",
+      "description_fa": "رد درخواست",
+      "actions": [
+        {"type": "display_rejection_explanations"},
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "therapy_interruption_rejected"}},
+        {"type": "notification", "notification_type": "in_app", "template": "therapy_interruption_rejected", "recipients": ["monitoring_committee_officer"]}
+      ]
+    },
+    {
+      "from": "meeting_held",
+      "to": "awaiting_return",
+      "trigger": "committee_approved",
+      "required_role": "progress_committee",
+      "conditions": ["interruption_less_than_42_days"],
+      "description_fa": "تایید — وقفه کمتر از ۴۲ روز، درمانگر و سوپروایزر حفظ",
+      "actions": [
+        {"type": "record_interruption_dates"},
+        {"type": "retain_therapist_and_supervisor"}
+      ]
+    },
+    {
+      "from": "meeting_held",
+      "to": "long_interruption_applied",
+      "trigger": "committee_approved",
+      "required_role": "progress_committee",
+      "conditions": ["interruption_42_days_or_more"],
+      "description_fa": "تایید — وقفه ۴۲ روز یا بیشتر",
+      "actions": [
+        {"type": "record_interruption_dates"},
+        {"type": "release_supervisor_slots"},
+        {"type": "release_therapist_slots"},
+        {"type": "move_to_past_lists"},
+        {"type": "start_process", "process_code": "patient_referral", "payload": {"reason": "therapy_interruption_long"}, "run_if_intern": true}
+      ]
+    },
+    {
+      "from": "awaiting_return",
+      "to": "returned_successfully",
+      "trigger": "student_resumed_therapy",
+      "description_fa": "دانشجو در تاریخ پایان درمان را از سر گرفت"
+    },
+    {
+      "from": "awaiting_return",
+      "to": "no_return_resources_freed",
+      "trigger": "student_did_not_return",
+      "description_fa": "عدم بازگشت در تاریخ پایان",
+      "actions": [
+        {"type": "release_supervisor_slots"},
+        {"type": "release_therapist_slots"},
+        {"type": "move_to_past_lists"},
+        {"type": "start_process", "process_code": "patient_referral", "payload": {"reason": "therapy_interruption_no_return"}, "run_if_intern": true}
+      ]
+    }
+  ]
+}

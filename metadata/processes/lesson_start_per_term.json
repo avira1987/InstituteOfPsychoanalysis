@@ -1,0 +1,22 @@
+{
+  "process": {
+    "code": "lesson_start_per_term",
+    "name_fa": "آغاز هر درس در هر ترم",
+    "name_en": "Lesson Start Per Term",
+    "number": 41,
+    "description": "ثبت‌نام دانشجو در درس. ایجاد لینک آنلاین برای همه (حتی حضوری). فرم‌گیری لیست حضور و غیاب. حضور و غیاب توسط مدرس. ثبت کمک‌مدرسین از فرایند آماده‌سازی پاییز/زمستان.",
+    "initial_state": "student_enrollment",
+    "trigger": "student_registers_for_course"
+  },
+  "states": [
+    {"code": "student_enrollment", "name_fa": "ثبت‌نام دانشجو در درس", "type": "initial", "assigned_role": "student"},
+    {"code": "links_created", "name_fa": "لینک آنلاین ایجاد و فعال", "type": "intermediate", "assigned_role": "system"},
+    {"code": "attendance_list_ready", "name_fa": "لیست حضور و غیاب آماده", "type": "intermediate", "assigned_role": "system"},
+    {"code": "lesson_active", "name_fa": "درس فعال — حضور توسط مدرس", "type": "terminal", "assigned_role": "instructor"}
+  ],
+  "transitions": [
+    {"from": "student_enrollment", "to": "links_created", "trigger": "enrolled", "description_fa": "ایجاد لینک آنلاین برای همه دانشجویان"},
+    {"from": "links_created", "to": "attendance_list_ready", "trigger": "links_placed", "description_fa": "لیست حضور و غیاب تشکیل، کمک‌مدرسین از آماده‌سازی فراخوانی"},
+    {"from": "attendance_list_ready", "to": "lesson_active", "trigger": "ready", "description_fa": "حضور و غیاب آنلاین و دستی توسط مدرس"}
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "process": {
+    "code": "comprehensive_term_start",
+    "name_fa": "آغاز ترم‌های دوره جامع",
+    "name_en": "Comprehensive Term Start",
+    "number": 40,
+    "description": "ثبت‌نام ترم جدید دوره جامع. بررسی تعلیق و مرخصی. دروس ثابت (بدون انتخاب واحد). پرداخت نقدی یا اقساطی (۲-۴ قسط). ثبت در حسابداری. SMS به واحد حسابداری. کنترل حضور: عدم پرداخت اقساط → قفل ثبت حضور.",
+    "initial_state": "eligibility_check",
+    "initial_role": "student"
+  },
+  "states": [
+    {"code": "eligibility_check", "name_fa": "بررسی موانع (تعلیق/مرخصی)", "type": "initial", "assigned_role": "system"},
+    {"code": "blocked", "name_fa": "مسدود — تعلیق یا مرخصی", "type": "terminal", "assigned_role": "system"},
+    {"code": "course_display", "name_fa": "نمایش دروس و شهریه", "type": "intermediate", "assigned_role": "student"},
+    {"code": "payment_choice", "name_fa": "انتخاب نحوه پرداخت", "type": "intermediate", "assigned_role": "student"},
+    {"code": "payment_processing", "name_fa": "پرداخت", "type": "intermediate", "assigned_role": "student"},
+    {"code": "registration_complete", "name_fa": "ثبت‌نام نهایی — لینک کلاس‌ها فعال", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "eligibility_check", "to": "blocked", "trigger": "suspended_or_on_leave", "description_fa": "تعلیق یا مرخصی — Pop-up نمایش داده می‌شود"},
+    {"from": "eligibility_check", "to": "course_display", "trigger": "eligible", "description_fa": "بدون مانع — نمایش دروس ثابت"},
+    {"from": "course_display", "to": "payment_choice", "trigger": "courses_seen", "required_role": "student", "description_fa": "دانشجو نحوه پرداخت را انتخاب می‌کند (نقدی یا ۲-۴ قسط)"},
+    {"from": "payment_choice", "to": "payment_processing", "trigger": "payment_initiated", "required_role": "student", "description_fa": "پرداخت کل یا قسط اول"},
+    {"from": "payment_processing", "to": "registration_complete", "trigger": "payment_confirmed", "description_fa": "ثبت در حسابداری، SMS به واحد حسابداری، دروس فعال، لینک کلاس‌ها", "actions": [{"type": "record_accounting"}, {"type": "notification", "notification_type": "sms", "template": "tuition_payment_to_accounting", "recipients": ["accounting"]}]}
+  ],
+  "forms": [
+    {"code": "comprehensive_term_registration", "name_fa": "ثبت‌نام ترم دوره جامع", "used_in_state": "course_display", "fields": [{"name": "courses", "label_fa": "دروس ارائه شده (الزامی)", "type": "readonly_table"}, {"name": "payment_method", "label_fa": "نحوه پرداخت", "type": "radio", "options": [{"value": "cash", "label_fa": "نقدی"}, {"value": "installment", "label_fa": "اقساطی"}]}, {"name": "installment_count", "label_fa": "تعداد اقساط", "type": "select", "options": [2, 3, 4], "visible_when": "payment_method == 'installment'"}]}
+  ]
+}

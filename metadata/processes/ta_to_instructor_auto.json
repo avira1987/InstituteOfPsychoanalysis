@@ -1,0 +1,21 @@
+{
+  "process": {
+    "code": "ta_to_instructor_auto",
+    "name_fa": "تبدیل کمک‌مدرس به مدرس در هر درس (خودکار)",
+    "name_en": "TA to Instructor Auto-Upgrade",
+    "number": 50,
+    "description": "۱۰۰٪ خودکار. شرط: رتبه دستیار هیئت علمی + ۲ بار کمک‌مدرس موفق در یک درس. بدون تایید کمیته. حذف از لیست کمک‌مدرسین، اضافه به لیست مدرسین. SMS تبریک. Unlock درس بعدی در رسته.",
+    "initial_state": "end_of_term_check",
+    "trigger": "end_of_term_ta_evaluation_done",
+    "automated": true
+  },
+  "states": [
+    {"code": "end_of_term_check", "name_fa": "بررسی پایان ترم", "type": "initial", "assigned_role": "system"},
+    {"code": "conditions_not_met", "name_fa": "شرایط احراز نشد", "type": "terminal", "assigned_role": "system"},
+    {"code": "upgrade_applied", "name_fa": "ارتقا خودکار اعمال شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "end_of_term_check", "to": "conditions_not_met", "trigger": "conditions_failed", "description_fa": "رتبه دستیار هیئت علمی ندارد یا ۲ بار پاس نکرده"},
+    {"from": "end_of_term_check", "to": "upgrade_applied", "trigger": "conditions_met", "description_fa": "حذف از کمک‌مدرسین، اضافه به مدرسین، Unlock درس بعدی، SMS", "actions": [{"type": "move_ta_to_instructor"}, {"type": "unlock_next_course_in_track"}, {"type": "notification", "notification_type": "sms", "template": "ta_to_instructor_auto_congrats", "recipients": ["student"]}]}
+  ]
+}

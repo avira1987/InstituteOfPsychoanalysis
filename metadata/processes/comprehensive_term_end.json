@@ -1,0 +1,138 @@
+{
+  "process": {
+    "code": "comprehensive_term_end",
+    "name_fa": "فرایند پایان ترم‌های دوره جامع",
+    "name_en": "Comprehensive Course Term End",
+    "number": 36,
+    "status": "draft",
+    "note": "این فرایند احتمال تغییر بنیادین زیادی دارد و تا ۸ اسفند تغییرات مشخص میشود",
+    "description": "فرایند خودکار پایان ترم دوره جامع. پس از ورود تمام نمرات دانشجو، کارنامه ترمی و کارنامه کلی (شامل بخش آکادمیک، بالینی و نظارتی) تولید و به صورت PDF قابل دانلود می‌شود. سپس سیستم بررسی می‌کند آیا دانشجو تمام دروس جامع را پاس کرده یا خیر. در صورت باقی‌ماندن دروس، پیامک مهلت ثبت‌نام ترم بعدی ارسال می‌شود.",
+    "initial_state": "grades_submitted",
+    "trigger": "automatic_when_all_term_grades_entered"
+  },
+  "states": [
+    {"code": "grades_submitted", "name_fa": "تمام نمرات ترم وارد شده", "type": "initial", "assigned_role": "system"},
+    {"code": "transcript_generated", "name_fa": "کارنامه‌های ترمی و کلی تولید شده", "type": "intermediate", "assigned_role": "system"},
+    {"code": "graduation_check", "name_fa": "بررسی وضعیت اتمام دروس جامع", "type": "intermediate", "assigned_role": "system"},
+    {"code": "completed_all_courses", "name_fa": "تمام دروس جامع پاس شده", "type": "terminal", "assigned_role": "system"},
+    {"code": "registration_notification_sent", "name_fa": "اطلاعیه ثبت‌نام ترم بعدی ارسال شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "process_complete", "name_fa": "فرایند تکمیل شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "grades_submitted",
+      "to": "transcript_generated",
+      "trigger": "all_grades_entered",
+      "description_fa": "تمام نمرات ترم جاری وارد شده — تولید کارنامه ترمی و کارنامه کلی",
+      "actions": [
+        {"type": "generate_term_transcript"},
+        {"type": "generate_cumulative_transcript", "template_source": "Mr. Salehi"},
+        {"type": "generate_pdf_export"}
+      ]
+    },
+    {
+      "from": "transcript_generated",
+      "to": "graduation_check",
+      "trigger": "transcripts_ready",
+      "description_fa": "کارنامه‌ها آماده شد — بررسی اتمام دروس جامع"
+    },
+    {
+      "from": "graduation_check",
+      "to": "completed_all_courses",
+      "trigger": "all_comprehensive_courses_passed",
+      "conditions": ["all_comprehensive_subjects_passed"],
+      "description_fa": "دانشجو تمام دروس دوره جامع را پاس کرده — بدون ارسال پیامک، فرایند پایان می‌یابد"
+    },
+    {
+      "from": "graduation_check",
+      "to": "registration_notification_sent",
+      "trigger": "remaining_courses_exist",
+      "conditions": ["has_remaining_comprehensive_courses"],
+      "description_fa": "دانشجو هنوز دروس باقی‌مانده دارد — ارسال پیامک مهلت ثبت‌نام ترم بعدی",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "next_term_registration_deadline",
+          "recipients": ["student"],
+          "message_fa": "دانشجوی محترم - موضوع: مهلت ثبت نام در ترم ها - به اطلاع میرساند که مهلت ثبت نام در دروس ترم بعدی تاریخ {deadline_date} می باشد."
+        }
+      ]
+    },
+    {
+      "from": "registration_notification_sent",
+      "to": "process_complete",
+      "trigger": "notification_delivered",
+      "description_fa": "اطلاعیه ارسال شد — فرایند تکمیل"
+    }
+  ],
+  "forms": [
+    {
+      "code": "term_transcript",
+      "name_fa": "کارنامه ترمی دوره جامع",
+      "used_in_state": "transcript_generated",
+      "exportable_pdf": true,
+      "fields": [
+        {"code": "student_name", "label_fa": "نام دانشجو", "type": "text", "auto_filled": true},
+        {"code": "student_id", "label_fa": "شماره دانشجویی", "type": "text", "auto_filled": true},
+        {"code": "term_number", "label_fa": "شماره ترم", "type": "number", "auto_filled": true},
+        {
+          "code": "courses",
+          "label_fa": "دروس",
+          "type": "table",
+          "columns": [
+            {"code": "course_name", "label_fa": "نام درس", "type": "text"},
+            {"code": "units", "label_fa": "تعداد واحد", "type": "number"},
+            {"code": "numeric_grade", "label_fa": "نمره عددی", "type": "number"},
+            {"code": "letter_grade", "label_fa": "نمره حرفی", "type": "text"},
+            {"code": "pass_fail", "label_fa": "قبول/مردود", "type": "select", "options": ["قبول", "مردود"]}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "cumulative_transcript",
+      "name_fa": "کارنامه کلی (قالب آقای صالحی)",
+      "used_in_state": "transcript_generated",
+      "template_source": "Mr. Salehi",
+      "exportable_pdf": true,
+      "sections": [
+        {
+          "code": "academic_section",
+          "name_fa": "بخش آکادمیک",
+          "fields": [
+            {
+              "code": "academic_courses",
+              "label_fa": "سوابق تحصیلی",
+              "type": "table",
+              "columns": [
+                {"code": "course_name", "label_fa": "نام درس", "type": "text"},
+                {"code": "units", "label_fa": "تعداد واحد", "type": "number"},
+                {"code": "grade", "label_fa": "نمره", "type": "number"},
+                {"code": "letter_grade", "label_fa": "نمره حرفی", "type": "text"},
+                {"code": "term_number", "label_fa": "شماره ترم", "type": "number"}
+              ]
+            }
+          ]
+        },
+        {
+          "code": "clinical_section",
+          "name_fa": "بخش بالینی",
+          "fields": [
+            {"code": "therapy_status", "label_fa": "وضعیت درمان", "type": "text"},
+            {"code": "therapist_name", "label_fa": "نام درمانگر", "type": "text"},
+            {"code": "supervision_hours", "label_fa": "ساعات سوپرویژن", "type": "number"},
+            {"code": "supervisor_names", "label_fa": "نام سوپروایزرها", "type": "text_list"}
+          ]
+        },
+        {
+          "code": "supervisory_section",
+          "name_fa": "بخش نظارتی",
+          "fields": [
+            {"code": "supervision_committee_reports_summary", "label_fa": "خلاصه گزارشات کمیته نظارت", "type": "textarea"}
+          ]
+        }
+      ]
+    }
+  ]
+}

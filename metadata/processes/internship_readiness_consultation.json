@@ -1,0 +1,54 @@
+{
+  "process": {
+    "code": "internship_readiness_consultation",
+    "name_fa": "مشورت و تعیین آمادگی برای آغاز انترنی",
+    "name_en": "Internship Readiness Consultation",
+    "number": 37,
+    "description": "شرط: پاس شدن تئوری تکنیک ۳. کمیته نظارت مجوز/رد. مصاحبه کمیته پیشرفت. ۳ نتیجه: قبولی بدون شرط (۳ ساعت)، قبولی مشروط (۱ ساعت)، درخواست دوباره پس از ۳۰ ساعت درمان. قراردادها و سفته. انتخاب سوپروایزر (اعضای هیئت علمی ۱-۵). پرداخت جلسه اول. قانون ۲۴ ساعت.",
+    "initial_state": "auto_trigger",
+    "trigger": "theory_technique_3_passed"
+  },
+  "states": [
+    {"code": "auto_trigger", "name_fa": "شروع خودکار پس از پاس تئوری تکنیک ۳", "type": "initial", "assigned_role": "system"},
+    {"code": "student_request", "name_fa": "ثبت درخواست ارتقا به انترن", "type": "intermediate", "assigned_role": "student"},
+    {"code": "supervision_committee_review", "name_fa": "بررسی و صدور مجوز کمیته نظارت", "type": "intermediate", "assigned_role": "supervision_committee", "sla_days": 2},
+    {"code": "supervision_rejected", "name_fa": "رد توسط کمیته نظارت", "type": "terminal", "assigned_role": "system"},
+    {"code": "interview_scheduling", "name_fa": "تنظیم وقت مصاحبه", "type": "intermediate", "assigned_role": "progress_committee_project", "sla_days": 7},
+    {"code": "interview_held", "name_fa": "برگزاری مصاحبه", "type": "intermediate", "assigned_role": "progress_committee"},
+    {"code": "interview_result_unconditional", "name_fa": "قبولی بدون شرط — ۳ ساعت", "type": "intermediate", "assigned_role": "system"},
+    {"code": "interview_result_conditional", "name_fa": "قبولی مشروط — ۱ ساعت", "type": "intermediate", "assigned_role": "system"},
+    {"code": "interview_result_retry", "name_fa": "درخواست دوباره پس از ۳۰ ساعت درمان", "type": "terminal", "assigned_role": "system"},
+    {"code": "contract_practice", "name_fa": "امضای قرارداد پرکیس", "type": "intermediate", "assigned_role": "student"},
+    {"code": "contract_rules", "name_fa": "امضای قوانین اداری/آموزشی/بالینی", "type": "intermediate", "assigned_role": "student"},
+    {"code": "promissory_note", "name_fa": "تحویل سفته حضوری", "type": "intermediate", "assigned_role": "student"},
+    {"code": "capacity_check", "name_fa": "بررسی بیمار موجود برای ارجاع", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "pending_patient", "name_fa": "منتظر بیمار — Pending", "type": "intermediate", "assigned_role": "system"},
+    {"code": "supervisor_selection", "name_fa": "انتخاب سوپروایزر و زمان", "type": "intermediate", "assigned_role": "student"},
+    {"code": "first_session_payment", "name_fa": "پرداخت جلسه اول سوپرویژن", "type": "intermediate", "assigned_role": "student"},
+    {"code": "internship_started", "name_fa": "انترنی آغاز شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "auto_trigger", "to": "student_request", "trigger": "student_registered_request", "required_role": "student", "description_fa": "دانشجو درخواست ارتقا به انترن را ثبت کرد"},
+    {"from": "student_request", "to": "supervision_committee_review", "trigger": "request_submitted", "description_fa": "درخواست به کمیته نظارت ارسال شد"},
+    {"from": "supervision_committee_review", "to": "supervision_rejected", "trigger": "supervision_rejected", "required_role": "supervision_committee", "description_fa": "کمیته نظارت مجوز نداد"},
+    {"from": "supervision_committee_review", "to": "interview_scheduling", "trigger": "supervision_approved", "required_role": "supervision_committee", "description_fa": "کمیته نظارت مجوز داد"},
+    {"from": "interview_scheduling", "to": "interview_held", "trigger": "interview_scheduled", "required_role": "progress_committee_project", "actions": [{"type": "notification", "notification_type": "sms", "template": "internship_interview_scheduled", "recipients": ["student", "progress_scientific", "progress_project"]}]},
+    {"from": "interview_held", "to": "interview_result_unconditional", "trigger": "result_unconditional", "required_role": "progress_committee_scientific", "description_fa": "قبولی بدون شرط — ۳ ساعت"},
+    {"from": "interview_held", "to": "interview_result_conditional", "trigger": "result_conditional", "required_role": "progress_committee_scientific", "description_fa": "قبولی مشروط — ۱ ساعت"},
+    {"from": "interview_held", "to": "interview_result_retry", "trigger": "result_retry_30h", "required_role": "progress_committee_scientific", "description_fa": "درخواست دوباره پس از ۳۰ ساعت درمان"},
+    {"from": "interview_result_unconditional", "to": "contract_practice", "trigger": "proceed_to_contracts", "description_fa": "ثبت ظرفیت ۳ ساعت، ادامه به قراردادها"},
+    {"from": "interview_result_conditional", "to": "contract_practice", "trigger": "proceed_to_contracts", "description_fa": "ثبت ظرفیت ۱ ساعت، ادامه به قراردادها"},
+    {"from": "contract_practice", "to": "contract_rules", "trigger": "practice_contract_signed", "required_role": "student", "description_fa": "قرارداد پرکیس با OTP امضا شد"},
+    {"from": "contract_rules", "to": "promissory_note", "trigger": "rules_contract_signed", "required_role": "student", "description_fa": "قوانین اداری با OTP امضا شد"},
+    {"from": "promissory_note", "to": "capacity_check", "trigger": "promissory_received", "required_role": "progress_committee", "description_fa": "سفته دریافت شد"},
+    {"from": "capacity_check", "to": "pending_patient", "trigger": "no_patient_available", "description_fa": "بیمار برای ارجاع موجود نیست — Pending"},
+    {"from": "capacity_check", "to": "supervisor_selection", "trigger": "patient_available", "description_fa": "بیمار موجود است"},
+    {"from": "pending_patient", "to": "supervisor_selection", "trigger": "patient_became_available", "description_fa": "وضعیت به بله تغییر کرد"},
+    {"from": "supervisor_selection", "to": "first_session_payment", "trigger": "supervisor_and_time_selected", "required_role": "student", "description_fa": "سوپروایزر و زمان انتخاب شد — قانون ۲۴ ساعت"},
+    {"from": "first_session_payment", "to": "internship_started", "trigger": "payment_completed", "description_fa": "پرداخت انجام شد — ثبت در LMS، حذف از وقت‌های آزاد، SMS", "actions": [{"type": "notification", "notification_type": "sms", "template": "internship_started", "recipients": ["student", "supervisor"]}]}
+  ],
+  "forms": [
+    {"code": "internship_interview_schedule", "name_fa": "تعیین وقت مصاحبه انترنی", "used_in_state": "interview_scheduling", "fields": [{"name": "interview_date", "label_fa": "تاریخ جلسه", "type": "date_picker"}, {"name": "interview_time", "label_fa": "ساعت جلسه", "type": "time_picker"}, {"name": "meeting_type", "label_fa": "نحوه برگزاری", "type": "radio", "options": [{"value": "in_person", "label_fa": "حضوری"}, {"value": "online", "label_fa": "آنلاین"}]}]},
+    {"code": "internship_interview_result", "name_fa": "نتیجه مصاحبه انترنی", "used_in_state": "interview_held", "fields": [{"name": "result", "label_fa": "نتیجه", "type": "radio", "options": [{"value": "unconditional", "label_fa": "قبولی بدون شرط (۳ ساعت)"}, {"value": "conditional", "label_fa": "قبولی مشروط (۱ ساعت)"}, {"value": "retry", "label_fa": "درخواست دوباره پس از ۳۰ ساعت درمان"}]}]}
+  ]
+}

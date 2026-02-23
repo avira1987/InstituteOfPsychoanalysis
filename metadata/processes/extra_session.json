@@ -2,16 +2,16 @@
   "process": {
     "code": "extra_session",
     "name_fa": "برگزاری جلسه اضافی درمان آموزشی",
-    "name_en": "Extra Therapy Session",
-    "description": "فرایند درخواست و برگزاری جلسه اضافی درمان آموزشی",
+    "name_en": "Extra Educational Therapy Session",
+    "description": "انعطاف‌پذیری کنترل‌شده برای جلسات فوق‌العاده. توافق دوجانبه پیش از پرداخت. شامل: ثبت درخواست (تاریخ/ساعت هفته جاری یا آتی)، ارجاع به درمانگر با SMS، تصمیم درمانگر (تایید / رد+پیشنهاد جایگزین با سیکل مذاکره / عدم امکان)، پرداخت، ثبت در تقویم، لینک آنلاین، SMS تایید و ثبت در SOP پر شدن ساعات.",
     "initial_state": "extra_request"
   },
   "states": [
     {"code": "extra_request", "name_fa": "ثبت درخواست جلسه اضافی", "type": "initial", "assigned_role": "student"},
-    {"code": "therapist_availability_check", "name_fa": "بررسی در دسترس بودن درمانگر", "type": "intermediate", "assigned_role": "therapist", "sla_hours": 48},
-    {"code": "session_scheduling", "name_fa": "زمان‌بندی جلسه", "type": "intermediate", "assigned_role": "student"},
-    {"code": "payment_required", "name_fa": "پرداخت مورد نیاز", "type": "intermediate", "assigned_role": "student", "sla_hours": 48},
-    {"code": "extra_session_confirmed", "name_fa": "جلسه اضافی تایید شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "therapist_review", "name_fa": "بررسی و تصمیم درمانگر", "type": "intermediate", "assigned_role": "therapist", "sla_hours": 48},
+    {"code": "student_response", "name_fa": "پاسخ دانشجو به پیشنهاد جایگزین", "type": "intermediate", "assigned_role": "student"},
+    {"code": "payment_required", "name_fa": "پرداخت جلسه اضافی", "type": "intermediate", "assigned_role": "student", "sla_hours": 48},
+    {"code": "extra_session_confirmed", "name_fa": "جلسه اضافی تایید و ثبت شد", "type": "intermediate", "assigned_role": "system"},
     {"code": "extra_session_completed", "name_fa": "جلسه اضافی برگزار شد", "type": "terminal", "assigned_role": "therapist"},
     {"code": "extra_session_cancelled", "name_fa": "جلسه اضافی لغو شد", "type": "terminal", "assigned_role": "system"},
     {"code": "extra_request_rejected", "name_fa": "درخواست رد شد", "type": "terminal", "assigned_role": "system"}
@@ -19,47 +19,86 @@
   "transitions": [
     {
       "from": "extra_request",
-      "to": "therapist_availability_check",
+      "to": "therapist_review",
       "trigger": "extra_requested",
       "required_role": "student",
+      "description_fa": "دانشجو تاریخ و ساعت مدنظر را وارد کرد — ارسال به کارتابل درمانگر",
       "actions": [
         {"type": "notification", "notification_type": "sms", "template": "extra_session_request", "recipients": ["therapist"]}
       ]
     },
     {
-      "from": "therapist_availability_check",
-      "to": "session_scheduling",
-      "trigger": "therapist_available",
-      "required_role": "therapist"
+      "from": "therapist_review",
+      "to": "payment_required",
+      "trigger": "therapist_approved",
+      "required_role": "therapist",
+      "description_fa": "درمانگر زمان پیشنهادی را تایید کرد — هدایت دانشجو به پرداخت",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "extra_session_approved_payment", "recipients": ["student"]}
+      ]
     },
     {
-      "from": "therapist_availability_check",
+      "from": "therapist_review",
+      "to": "student_response",
+      "trigger": "therapist_proposed_alternative",
+      "required_role": "therapist",
+      "description_fa": "درمانگر زمان را رد و زمان جایگزین پیشنهاد کرد",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "extra_session_alternative_proposed", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "therapist_review",
       "to": "extra_request_rejected",
       "trigger": "therapist_unavailable",
       "required_role": "therapist",
+      "description_fa": "درمانگر امکان برگزاری ندارد",
       "actions": [
         {"type": "notification", "notification_type": "sms", "template": "extra_session_rejected", "recipients": ["student"]}
       ]
     },
     {
-      "from": "session_scheduling",
+      "from": "student_response",
       "to": "payment_required",
-      "trigger": "time_selected",
-      "required_role": "student"
+      "trigger": "student_confirmed_alternative",
+      "required_role": "student",
+      "description_fa": "دانشجو زمان پیشنهادی درمانگر را تایید کرد",
+      "actions": []
+    },
+    {
+      "from": "student_response",
+      "to": "extra_request",
+      "trigger": "student_reentered_time",
+      "required_role": "student",
+      "description_fa": "دانشجو زمان دیگری وارد کرد — بازگشت به درمانگر برای تایید",
+      "actions": []
     },
     {
       "from": "payment_required",
       "to": "extra_session_confirmed",
       "trigger": "payment_completed",
+      "description_fa": "پرداخت موفق — ثبت در تقویم، لینک آنلاین، SMS تایید",
       "actions": [
         {"type": "create_extra_session_record"},
+        {"type": "register_in_calendar"},
+        {"type": "create_session_link"},
         {"type": "notification", "notification_type": "sms", "template": "extra_session_confirmed", "recipients": ["student", "therapist"]}
+      ]
+    },
+    {
+      "from": "payment_required",
+      "to": "payment_required",
+      "trigger": "payment_failed",
+      "description_fa": "پرداخت ناموفق — تلاش مجدد",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "payment_rejected", "recipients": ["student"]}
       ]
     },
     {
       "from": "payment_required",
       "to": "extra_session_cancelled",
       "trigger": "payment_timeout",
+      "description_fa": "مهلت پرداخت تمام شد",
       "actions": [
         {"type": "notification", "notification_type": "sms", "template": "extra_session_payment_timeout", "recipients": ["student"]}
       ]
@@ -69,15 +108,17 @@
       "to": "extra_session_completed",
       "trigger": "session_held",
       "required_role": "therapist",
+      "description_fa": "جلسه برگزار شد — ثبت در SOP پر شدن ساعات",
       "actions": [
         {"type": "record_attendance"},
-        {"type": "update_session_count"}
+        {"type": "update_total_hours"}
       ]
     },
     {
       "from": "extra_session_confirmed",
       "to": "extra_session_cancelled",
       "trigger": "session_cancelled",
+      "description_fa": "جلسه لغو شد",
       "actions": [
         {"type": "process_refund"},
         {"type": "notification", "notification_type": "sms", "template": "extra_session_cancelled", "recipients": ["student", "therapist"]}

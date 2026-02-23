@@ -1,0 +1,99 @@
+{
+  "process": {
+    "code": "committees_review",
+    "name_fa": "بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)",
+    "name_en": "Supervision and Education Committees Review (Sub-process B)",
+    "description": "زیرفرایند ب قطع زودرس. کمیته نظارت (۳ روز) پیشنهاد، کمیته آموزش (۶ روز) حکم نهایی. ادامه → Unlock و ۵ روز. قطع → اخراج کامل، نامه رسمی، انترن → patient_referral.",
+    "initial_state": "supervision_review",
+    "triggered_by": ["therapy_early_termination", "specialized_commission_review"],
+    "trigger_conditions": ["termination_reason_4", "commission_eligibility_rejected"]
+  },
+  "states": [
+    {"code": "supervision_review", "name_fa": "بررسی کمیته نظارت", "type": "initial", "assigned_role": "supervision_committee", "sla_days": 3},
+    {"code": "education_review", "name_fa": "تصمیم‌گیری کمیته آموزش", "type": "intermediate", "assigned_role": "education_committee", "sla_days": 6},
+    {"code": "awaiting_student_restart", "name_fa": "در انتظار بازگشت به درمان (مهلت ۵ روز)", "type": "intermediate", "assigned_role": "student", "sla_days": 5},
+    {"code": "restart_completed", "name_fa": "دانشجو درمان را از سر گرفت", "type": "terminal", "assigned_role": "system"},
+    {"code": "violation_no_restart", "name_fa": "عدم آغاز در مهلت — ثبت تخلف", "type": "terminal", "assigned_role": "system"},
+    {"code": "education_terminated", "name_fa": "قطع قطعی آموزش (اخراج)", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "supervision_review",
+      "to": "education_review",
+      "trigger": "supervision_recommendation_submitted",
+      "required_role": "supervision_committee",
+      "description_fa": "کمیته نظارت پیشنهاد ثبت کرد",
+      "actions": [
+        {"type": "store_nezarat_recommendation"},
+        {"type": "create_education_committee_task"}
+      ]
+    },
+    {
+      "from": "supervision_review",
+      "to": "supervision_review",
+      "trigger": "supervision_sla_breach",
+      "description_fa": "۳ روز بدون تعیین جلسه — اطلاع به معاون",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "supervision_committee_sla_breach", "recipients": ["deputy_education"]}
+      ]
+    },
+    {
+      "from": "education_review",
+      "to": "awaiting_student_restart",
+      "trigger": "education_verdict_continue",
+      "required_role": "education_committee",
+      "description_fa": "حکم برائت / ادامه آموزش",
+      "actions": [
+        {"type": "set_student_status", "status": "approved"},
+        {"type": "send_unlock_to_lms"},
+        {"type": "unlock_student_therapist_selection"},
+        {"type": "notification", "notification_type": "sms", "template": "therapy_early_termination_standard", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "in_app", "template": "therapy_early_termination_standard", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "education_review",
+      "to": "education_terminated",
+      "trigger": "education_verdict_terminate",
+      "required_role": "education_committee",
+      "description_fa": "حکم محکومیت / قطع قطعی آموزش",
+      "actions": [
+        {"type": "record_termination_date"},
+        {"type": "deactivate_student_account"},
+        {"type": "revoke_student_access"},
+        {"type": "cancel_all_future_sessions"},
+        {"type": "block_future_enrollment"},
+        {"type": "generate_termination_letter"},
+        {"type": "archive_letter_in_student_file"},
+        {"type": "notification", "notification_type": "sms", "template": "education_termination_notice", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "email", "template": "education_termination_notice", "recipients": ["student"]},
+        {"type": "start_process", "process_code": "patient_referral", "payload": {"reason": "education_terminated_intern"}, "run_if_intern": true}
+      ]
+    },
+    {
+      "from": "education_review",
+      "to": "education_review",
+      "trigger": "education_sla_breach",
+      "description_fa": "۶ روز بدون تعیین — ثبت لاگ",
+      "actions": [
+        {"type": "log_sla_breach_in_portals"}
+      ]
+    },
+    {
+      "from": "awaiting_student_restart",
+      "to": "restart_completed",
+      "trigger": "student_restarted_therapy",
+      "description_fa": "دانشجو در مهلت درمان را از سر گرفت"
+    },
+    {
+      "from": "awaiting_student_restart",
+      "to": "violation_no_restart",
+      "trigger": "sla_5days_breach",
+      "description_fa": "مهلت ۵ روز بدون آغاز دوباره",
+      "actions": [
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "no_restart_after_committees_approval"}},
+        {"type": "notification", "notification_type": "in_app", "template": "violation_no_restart_5days", "recipients": ["monitoring_committee_officer"]}
+      ]
+    }
+  ]
+}

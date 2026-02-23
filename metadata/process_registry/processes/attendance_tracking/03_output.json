@@ -1,0 +1,6 @@
+{
+  "_note": "خروجی JSON در metadata/processes/attendance_tracking.json ذخیره شده است.",
+  "source_file": "metadata/processes/attendance_tracking.json",
+  "states_count": 11,
+  "transitions_count": 14
+}

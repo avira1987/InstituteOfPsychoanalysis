@@ -1,0 +1,85 @@
+{
+  "process": {
+    "code": "supervision_session_increase",
+    "name_fa": "درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن",
+    "name_en": "Student Request for Increasing Weekly Supervision Sessions",
+    "description": "مختص دوره جامع. دانشجو روز و ساعت جلسه سوپرویژن جدید را درخواست می‌کند. سوپروایزر: تایید / رد+پیشنهاد جایگزین (مذاکره) / رد کامل. جلسه اضافه مشمول فرایند تکمیل دوره‌های ۵۰ ساعته.",
+    "initial_state": "request_submitted",
+    "eligibility": "فقط دوره جامع. سایر دانشجویان دسترسی ندارند."
+  },
+  "states": [
+    {"code": "request_submitted", "name_fa": "ثبت درخواست افزایش جلسه سوپرویژن", "type": "initial", "assigned_role": "student"},
+    {"code": "supervisor_review", "name_fa": "بررسی و تصمیم سوپروایزر", "type": "intermediate", "assigned_role": "supervisor"},
+    {"code": "student_response", "name_fa": "پاسخ دانشجو به پیشنهاد جایگزین", "type": "intermediate", "assigned_role": "student"},
+    {"code": "session_added", "name_fa": "جلسه هفتگی سوپرویژن اضافه شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "request_rejected", "name_fa": "امکان افزایش جلسه وجود ندارد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "request_submitted",
+      "to": "supervisor_review",
+      "trigger": "day_time_entered",
+      "required_role": "student",
+      "conditions": ["comprehensive_course_only"],
+      "description_fa": "دانشجو روز و ساعت جلسه سوپرویژن جدید را وارد کرد",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "supervision_session_increase_request", "recipients": ["supervisor"]}
+      ]
+    },
+    {
+      "from": "supervisor_review",
+      "to": "session_added",
+      "trigger": "supervisor_approved",
+      "required_role": "supervisor",
+      "description_fa": "سوپروایزر زمان پیشنهادی را تایید کرد",
+      "actions": [
+        {"type": "add_recurring_supervision_session"},
+        {"type": "connect_to_supervision_50h_completion"},
+        {"type": "notification", "notification_type": "in_app", "template": "supervision_session_increase_approved", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "supervisor_review",
+      "to": "student_response",
+      "trigger": "supervisor_proposed_alternative",
+      "required_role": "supervisor",
+      "description_fa": "سوپروایزر زمان را رد و پیشنهاد جایگزین داد",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "supervision_session_increase_alternative", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "supervisor_review",
+      "to": "request_rejected",
+      "trigger": "supervisor_rejected",
+      "required_role": "supervisor",
+      "description_fa": "سوپروایزر امکان افزایش جلسه را ندارد",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "supervision_session_increase_rejected", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "sms", "template": "supervision_session_increase_rejected", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "student_response",
+      "to": "session_added",
+      "trigger": "student_confirmed_proposal",
+      "required_role": "student",
+      "description_fa": "دانشجو پیشنهاد سوپروایزر را تایید کرد",
+      "actions": [
+        {"type": "add_recurring_supervision_session"},
+        {"type": "connect_to_supervision_50h_completion"},
+        {"type": "notification", "notification_type": "in_app", "template": "supervision_session_increase_approved", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "student_response",
+      "to": "supervisor_review",
+      "trigger": "student_reentered_time",
+      "required_role": "student",
+      "description_fa": "دانشجو روز و ساعت دیگری وارد کرد — بازگشت به سوپروایزر",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "supervision_session_increase_request", "recipients": ["supervisor"]}
+      ]
+    }
+  ]
+}

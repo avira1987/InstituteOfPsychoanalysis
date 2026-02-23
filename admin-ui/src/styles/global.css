@@ -84,6 +84,8 @@ input, select, textarea { font-family: inherit; }
 
 .sidebar-nav {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -1402,6 +1404,7 @@ tr:hover td {
 
 /* ─── Sidebar Footer & User ───────────────────────────────── */
 .sidebar-footer {
+  flex-shrink: 0;
   padding: 0.75rem;
   margin-top: auto;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -1485,6 +1488,20 @@ tr:hover td {
 .mobile-title {
   font-weight: 600;
   font-size: 0.95rem;
+}
+
+.header-logout-btn {
+  margin-inline-start: auto;
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  color: var(--danger, #dc3545);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.header-logout-btn:hover {
+  background: rgba(220, 53, 69, 0.2);
 }
 
 /* ─── Pagination ───────────────────────────────────────────── */

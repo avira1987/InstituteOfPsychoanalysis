@@ -1,0 +1,7 @@
+{
+  "_note": "خروجی JSON در metadata/processes/extra_supervision_session.json ذخیره شده است.",
+  "source_file": "metadata/processes/extra_supervision_session.json",
+  "states_count": 7,
+  "transitions_count": 9,
+  "rules_used": []
+}

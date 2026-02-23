@@ -1,0 +1,25 @@
+{
+  "process": {
+    "code": "ta_student_consultation",
+    "name_fa": "شناسایی، تشویق و مشورت آموزشی به دانشجویان (کمک‌مدرس)",
+    "name_en": "TA Student Identification and Consultation",
+    "number": 44,
+    "description": "اجرا در جلسات ۵، ۱۰، ۱۵. فرم لیست پویا (نام دانشجو، علت انتخاب، محتوای مداخله). مهلت ۴ روز. قفل بعد از مهلت — نمره صفر. ۲ نمره در صورت ثبت موفق. حداکثر ۶ نمره. ارسال به کمیته پیشرفت.",
+    "initial_state": "session_5_10_15",
+    "trigger": "session_5_or_10_or_15_ended"
+  },
+  "states": [
+    {"code": "session_5_10_15", "name_fa": "جلسه ۵ یا ۱۰ یا ۱۵ برگزار شد", "type": "initial", "assigned_role": "system"},
+    {"code": "ta_form_fill", "name_fa": "تکمیل فرم توسط کمک‌مدرس", "type": "intermediate", "assigned_role": "teaching_assistant", "sla_days": 4},
+    {"code": "form_locked", "name_fa": "فرم قفل — نمره صفر", "type": "terminal", "assigned_role": "system"},
+    {"code": "form_submitted", "name_fa": "فرم ثبت — ۲ نمره + ارسال به کمیته پیشرفت", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "session_5_10_15", "to": "ta_form_fill", "trigger": "reminder_sent", "actions": [{"type": "notification", "notification_type": "sms", "template": "ta_consultation_reminder", "recipients": ["teaching_assistant"]}]},
+    {"from": "ta_form_fill", "to": "form_locked", "trigger": "deadline_passed", "description_fa": "۴ روز گذشته — فرم قفل، نمره صفر"},
+    {"from": "ta_form_fill", "to": "form_submitted", "trigger": "form_submitted", "required_role": "teaching_assistant", "description_fa": "۲ نمره + گزارش به کمیته پیشرفت", "actions": [{"type": "add_ta_score", "points": 2}, {"type": "send_to_progress_committee"}]}
+  ],
+  "forms": [
+    {"code": "ta_student_consultation_form", "name_fa": "فرم شناسایی، تشویق و مشورت آموزشی", "used_in_state": "ta_form_fill", "fields": [{"name": "students", "label_fa": "لیست دانشجویان", "type": "dynamic_list", "fields": [{"name": "student_name", "label_fa": "نام دانشجو", "type": "select"}, {"name": "reason", "label_fa": "علت انتخاب (نقطه ضعف/قوت)", "type": "textarea"}, {"name": "intervention", "label_fa": "محتوای مداخله یا مشورت", "type": "textarea"}]}]}
+  ]
+}

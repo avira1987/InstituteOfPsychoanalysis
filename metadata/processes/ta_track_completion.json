@@ -1,0 +1,19 @@
+{
+  "process": {
+    "code": "ta_track_completion",
+    "name_fa": "خاتمه کمک‌مدرس برای هر رسته",
+    "name_en": "TA Track Completion",
+    "number": 52,
+    "description": "۱۰۰٪ خودکار. شرط: کمک‌مدرس مدرس شد در آخرین درس رسته. حذف از لیست کمک‌مدرسین برای آن رسته. SMS تبریک. Unlock درس بعدی در رسته.",
+    "initial_state": "end_of_track_check",
+    "trigger": "ta_became_instructor_in_last_course_of_track",
+    "automated": true
+  },
+  "states": [
+    {"code": "end_of_track_check", "name_fa": "بررسی پایان رسته", "type": "initial", "assigned_role": "system"},
+    {"code": "track_completed", "name_fa": "رسته خاتمه یافت", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "end_of_track_check", "to": "track_completed", "trigger": "conditions_met", "description_fa": "حذف از کمک‌مدرسین رسته، Unlock درس بعدی، SMS تبریک", "actions": [{"type": "remove_ta_from_track"}, {"type": "unlock_next_course_in_track"}, {"type": "notification", "notification_type": "sms", "template": "ta_track_completion_congrats", "recipients": ["student"]}]}
+  ]
+}

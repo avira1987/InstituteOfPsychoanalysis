@@ -1,0 +1,133 @@
+{
+  "process": {
+    "code": "unannounced_absence_reaction",
+    "name_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی",
+    "name_en": "Institute Reaction to Unannounced Absence",
+    "description": "پاسخ به No-Show. فاز ۱: وقفه؟ متوقف. هر غیبت: SMS. ۲+ پیوسته: هشدار به مسئول سایت. فاز ۲: مسئول سایت انتخاب ۱ (قصد غیبت)، ۲ (قطع قطعی)، ۳ (مبهم). ۲ و ۳ → کمیته درمان. تایمر ۳ هفته برای ۳. violation_registration در اکثر شاخه‌ها.",
+    "initial_state": "identified",
+    "triggered_by": "attendance_tracking",
+    "trigger_event": "unexcused_absence_no_cancellation"
+  },
+  "states": [
+    {"code": "identified", "name_fa": "غیبت بدون اطلاع شناسایی شد", "type": "initial", "assigned_role": "system"},
+    {"code": "stopped_on_leave", "name_fa": "متوقف (دانشجو در وقفه)", "type": "terminal", "assigned_role": "system"},
+    {"code": "first_absence_handled", "name_fa": "غیبت اول — SMS ارسال شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "site_manager_review", "name_fa": "بررسی مسئول سایت (۲ جلسه پیوسته)", "type": "intermediate", "assigned_role": "site_manager"},
+    {"code": "option_1_violation", "name_fa": "قصد غیبت معین — تخلف ثبت شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "committee_pending", "name_fa": "در انتظار کمیته درمان آموزشی", "type": "intermediate", "assigned_role": "therapy_committee_chair"},
+    {"code": "committee_executor_review", "name_fa": "پیگیری مجری کمیته", "type": "intermediate", "assigned_role": "therapy_committee_executor"},
+    {"code": "ambiguous_3week_wait", "name_fa": "وضعیت مبهم — تایمر ۳ هفته", "type": "intermediate", "assigned_role": "system", "sla_days": 21},
+    {"code": "student_returned", "name_fa": "دانشجو در ۳ هفته بازگشت", "type": "terminal", "assigned_role": "system"},
+    {"code": "violation_reported", "name_fa": "تخلف به کمیته نظارت ارسال شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "identified",
+      "to": "stopped_on_leave",
+      "trigger": "system_check",
+      "conditions": ["student_on_leave"],
+      "description_fa": "دانشجو در وقفه — متوقف"
+    },
+    {
+      "from": "identified",
+      "to": "first_absence_handled",
+      "trigger": "system_check",
+      "conditions": ["first_unannounced_absence"],
+      "description_fa": "غیبت اول — SMS یادآوری",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "unannounced_absence_reminder", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "identified",
+      "to": "site_manager_review",
+      "trigger": "system_check",
+      "conditions": ["two_consecutive_unannounced"],
+      "description_fa": "۲ جلسه پیوسته — هشدار به مسئول سایت",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "unannounced_absence_alert", "recipients": ["site_manager"]}
+      ]
+    },
+    {
+      "from": "site_manager_review",
+      "to": "option_1_violation",
+      "trigger": "site_manager_option_1",
+      "required_role": "site_manager",
+      "description_fa": "قصد غیبت معین",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "unannounced_absence_option1_sms", "recipients": ["student"]},
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "two_consecutive_no_show"}}
+      ]
+    },
+    {
+      "from": "site_manager_review",
+      "to": "committee_pending",
+      "trigger": "site_manager_option_2",
+      "required_role": "site_manager",
+      "description_fa": "قطع قطعی درمان",
+      "actions": [
+        {"type": "release_therapist_slots"},
+        {"type": "move_therapist_to_past"},
+        {"type": "notification", "notification_type": "sms", "template": "therapy_terminated_notice", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "in_app", "template": "committee_delegation_message", "recipients": ["therapy_committee_chair"]}
+      ]
+    },
+    {
+      "from": "site_manager_review",
+      "to": "ambiguous_3week_wait",
+      "trigger": "site_manager_option_3",
+      "required_role": "site_manager",
+      "description_fa": "وضعیت مبهم",
+      "actions": [
+        {"type": "release_therapist_slots"},
+        {"type": "move_therapist_to_past"},
+        {"type": "notification", "notification_type": "sms", "template": "unannounced_absence_option3_sms", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "ambiguous_3week_wait",
+      "to": "student_returned",
+      "trigger": "student_started_therapy_changes",
+      "description_fa": "دانشجو در ۳ هفته فرایند تغییرات را آغاز کرد"
+    },
+    {
+      "from": "ambiguous_3week_wait",
+      "to": "committee_pending",
+      "trigger": "sla_3weeks_breach",
+      "description_fa": "۳ هفته بدون بازگشت",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "committee_delegation_ambiguous", "recipients": ["therapy_committee_chair"]}
+      ]
+    },
+    {
+      "from": "committee_pending",
+      "to": "committee_executor_review",
+      "trigger": "chair_delegated",
+      "required_role": "therapy_committee_chair",
+      "description_fa": "واگذار کردم"
+    },
+    {
+      "from": "committee_executor_review",
+      "to": "violation_reported",
+      "trigger": "executor_option_a",
+      "required_role": "therapy_committee_executor",
+      "description_fa": "قطع درمان قطعی",
+      "actions": [
+        {"type": "record_result_in_student_portal", "result": "definitive_stop"},
+        {"type": "ensure_therapist_slots_freed"},
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "two_consecutive_no_show_and_stop"}}
+      ]
+    },
+    {
+      "from": "committee_executor_review",
+      "to": "violation_reported",
+      "trigger": "executor_option_b",
+      "required_role": "therapy_committee_executor",
+      "description_fa": "پذیرفته بازگشت",
+      "actions": [
+        {"type": "record_result_in_student_portal", "result": "agreed_to_return"},
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "two_consecutive_no_show"}}
+      ]
+    }
+  ]
+}

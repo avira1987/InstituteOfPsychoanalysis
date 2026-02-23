@@ -1,0 +1,1 @@
+{"_note":"خروجی JSON در metadata/processes/fee_determination.json ذخیره شده است.","source_file":"metadata/processes/fee_determination.json","states_count":6,"transitions_count":6,"rules_used":["student_on_leave","session_cancelled_by_provider","session_paid","session_not_paid","absence_quota_not_exceeded","absence_quota_exceeded"]}

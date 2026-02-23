@@ -1,0 +1,285 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-02-14",
+  "description": "نواقص و وابستگی‌های حل‌نشده — پازل تکامل",
+  "missing_processes": [
+    {
+      "code": "violation_registration",
+      "referenced_by": [
+        "educational_leave",
+        "therapy_session_reduction",
+        "therapy_early_termination",
+        "unannounced_absence_reaction",
+        "therapy_interruption",
+        "student_session_cancellation",
+        "supervision_50h_completion",
+        "internship_readiness_consultation",
+        "internship_12month_conditional_review",
+        "intern_hours_increase",
+        "student_non_registration",
+        "ta_conceptual_questions",
+        "mentor_private_sessions"
+      ],
+      "purpose_fa": "ثبت تخلف",
+      "when_triggered": "رد درخواست وقفه، عدم بازگشت از مرخصی"
+    },
+    {
+      "code": "patient_referral",
+      "referenced_by": [
+        "educational_leave",
+        "committees_review",
+        "therapy_interruption"
+      ],
+      "purpose_fa": "ارجاع بیماران انترن به درمانگران دیگر",
+      "when_triggered": "تایید وقفه ۲ ترمی برای انترن؛ قطع آموزش انترن در committees_review؛ وقفه بلند (≥۴۲ روز) یا عدم بازگشت در تاریخ پایان وقفه کوتاه"
+    }
+  ],
+  "missing_implementations": [
+    {
+      "item": "Action executor for transition actions",
+      "location": "app/core or app/services",
+      "description": "اعلان‌ها و start_process از transitionها اجرا نمی‌شوند. event_bus publish می‌کند ولی handler نداریم."
+    },
+    {
+      "item": "SLA breach → deputy_education",
+      "location": "app/services/sla_monitor.py",
+      "description": "SLA Monitor همیشه به admin می‌فرستد. برای educational_leave باید به deputy_education با قالب committee_sla_breach فرستاده شود."
+    },
+    {
+      "item": "sla_breach_7days auto-trigger",
+      "location": "app/services or cron",
+      "description": "انتقال committee_review→deputy_alerted نیاز به trigger خودکار دارد وقتی SLA نقض شد."
+    },
+    {
+      "item": "resolve_access_restrictions, create_session_link",
+      "location": "app/services or action handlers",
+      "description": "اکشن‌های start_therapy: رفع مسدودیت کلاس/حضور و ایجاد لینک جلسه آنلاین."
+    },
+    {
+      "item": "session_payment actions",
+      "location": "app/services or action handlers",
+      "description": "zero_debt_if_paid, add_to_credit_balance, allocate_credit_to_sessions, unlock_session_links, unlock_attendance_registration."
+    },
+    {
+      "item": "attendance_tracking triggers and logic",
+      "location": "app/services or cron",
+      "description": "therapist_did_not_record, site_manager_sla_breach. add_hour_by_course_and_weekly_sessions برای سه فیلد ساعات."
+    },
+    {
+      "item": "fee_determination actions",
+      "location": "app/services or action handlers",
+      "description": "add_to_credit_balance, forfeit_session_payment, create_debt_or_deduct_credit, increment_absence_counter. student_cancelled_session trigger."
+    },
+    {
+      "item": "therapy_completion actions",
+      "location": "app/services or action handlers",
+      "description": "delete_future_therapy_appointments, release_therapist_slots_to_available_sheet, update_therapy_status. override حدنصاب در پروفایل."
+    },
+    {
+      "item": "therapy_session_increase actions",
+      "location": "app/services or action handlers",
+      "description": "add_recurring_therapy_session. مخفی کردن لینک برای دوره آشنایی."
+    },
+    {
+      "item": "therapy_session_reduction actions",
+      "location": "app/services or action handlers",
+      "description": "remove_selected_therapy_sessions, release_therapist_slots_to_available_sheet, record_therapy_change_history. UI هشدار و تایید اجباری."
+    },
+    {
+      "item": "therapy_early_termination actions",
+      "location": "app/services or action handlers",
+      "description": "log_termination_request, mark_therapy_relationship_terminated, release_therapist_slots, set_student_status, call_bpms_subprocess. SLA ۵ روز برای violation."
+    },
+    {
+      "item": "specialized_commission_review actions",
+      "location": "app/services or BPMS",
+      "description": "send_unlock_to_lms, unlock_student_therapist_selection, record_commission_result. SLA ۵ روز."
+    },
+    {
+      "item": "committees_review actions",
+      "location": "app/services or BPMS",
+      "description": "store_nezarat_recommendation, deactivate_student_account, generate_termination_letter, patient_referral for intern. SLA ۳ و ۶ روز."
+    },
+    {
+      "item": "therapist_session_cancellation actions",
+      "location": "app/services or action handlers",
+      "description": "cancel_session, add_credit_if_paid, deduct_credit_session, register_makeup_session, enable_online_session_link. محدودیت ۱ جلسه."
+    },
+    {
+      "item": "unannounced_absence_reaction actions and triggers",
+      "location": "app/services or cron",
+      "description": "trigger از attendance_tracking. consecutive_unannounced_count. release_therapist_slots, move_therapist_to_past. SLA ۳ هفته."
+    },
+    {
+      "item": "supervisor_session_cancellation actions",
+      "location": "app/services or action handlers",
+      "description": "cancel_supervision_session, add_supervision_credit_if_paid, register_supervision_makeup_session, enable_attendance_registration, activate_online_session_link. محدودیت ۱ جلسه. لینک آنلاین حتی اگر جلسه حضوری باشد."
+    },
+    {
+      "item": "supervision_interruption actions",
+      "location": "app/services or action handlers",
+      "description": "release_supervisor_slot, move_supervisor_to_past_list, record_interruption_dates, monitor_return_at_end_date. آستانه ۲۱ روز. patient_referral اگر ≥۲۱ روز یا غیبت در بازگشت."
+    },
+    {
+      "item": "fall/winter semester preparation pipeline",
+      "location": "app/services or admin panel",
+      "description": "Academic calendar CRUD, tuition management, license tracking, course+instructor management, interview scheduling (15/30/45/60 min slots), marketing campaign trigger, SLA warning system (non-blocking). publish_courses_to_website, publish_academic_calendar."
+    },
+    {
+      "item": "introductory_course_registration flow",
+      "location": "app/services or public site",
+      "description": "Admission form, interview booking with payment, 4 interview outcomes, document upload+review cycle, digital signature via SMS code, credential creation, course selection by admission type, installment payment (4 installments, 25-day intervals), attendance blocking on overdue. block_future_applications."
+    },
+    {
+      "item": "introductory_term_end automation",
+      "location": "app/services or cron",
+      "description": "Auto-trigger on all grades entered. generate_term_transcript, generate_cumulative_transcript (Salehi format). therapy_condition_check → block_term2_registration. academic_decline_list → admissions_officer follow-up (7-day SLA)."
+    },
+    {
+      "item": "intro_second_semester_registration logic",
+      "location": "app/services",
+      "description": "Therapy condition gate, suspension gate, failed_prerequisite_to_corequisite_conversion, course selection filtering by admission type, installment scheduler."
+    },
+    {
+      "item": "introductory_course_completion automation",
+      "location": "app/services",
+      "description": "Auto-trigger on 10 courses passed. generate_certificate (unit × 13.5 hours), electronic_signature_and_seal, upload_certificate_to_portal, PDF generation."
+    },
+    {
+      "item": "comprehensive_course_registration flow",
+      "location": "app/services or LMS",
+      "description": "Triple-layer screening (supervision_committee → progress_executive → progress_scientific). Personal experience report upload (B Nazanin 14). Interview with document sharing. 3 outcomes (confidential rejection reasons). Mandatory 2×/week therapy. All courses mandatory. Installment payment."
+    },
+    {
+      "item": "comprehensive_term_end automation (DRAFT)",
+      "location": "app/services or cron",
+      "description": "DRAFT — may change fundamentally by 8 Esfand. generate_term_transcript, generate_cumulative_transcript (Salehi format). graduation_check: suppress SMS if all courses done."
+    }
+  ],
+  "pending_inputs": [],
+  "dependency_graph": {
+    "educational_leave": [
+      "violation_registration",
+      "patient_referral"
+    ],
+    "start_therapy": [],
+    "extra_session": [
+      "attendance_tracking"
+    ],
+    "session_payment": [],
+    "attendance_tracking": [
+      "fee_determination"
+    ],
+    "fee_determination": [],
+    "therapy_completion": [],
+    "therapy_session_increase": [
+      "attendance_tracking"
+    ],
+    "therapy_session_reduction": [
+      "violation_registration"
+    ],
+    "therapy_early_termination": [
+      "violation_registration",
+      "specialized_commission_review",
+      "committees_review"
+    ],
+    "specialized_commission_review": [
+      "violation_registration",
+      "committees_review"
+    ],
+    "committees_review": [
+      "violation_registration",
+      "patient_referral"
+    ],
+    "therapist_session_cancellation": [
+      "attendance_tracking"
+    ],
+    "unannounced_absence_reaction": [
+      "violation_registration"
+    ],
+    "therapy_interruption": [
+      "violation_registration",
+      "patient_referral"
+    ],
+    "student_session_cancellation": [
+      "violation_registration",
+      "fee_determination"
+    ],
+    "supervision_block_transition": [
+      "session_payment"
+    ],
+    "supervision_50h_completion": [
+      "fee_determination",
+      "violation_registration"
+    ],
+    "supervision_session_increase": [
+      "supervision_50h_completion"
+    ],
+    "extra_supervision_session": [
+      "session_payment",
+      "supervision_50h_completion"
+    ],
+    "supervision_session_reduction": [],
+    "supervisor_session_cancellation": [
+      "supervision_50h_completion"
+    ],
+    "supervision_interruption": [
+      "violation_registration",
+      "patient_referral"
+    ],
+    "fall_semester_preparation": [],
+    "winter_semester_preparation": [
+      "fall_semester_preparation"
+    ],
+    "introductory_course_registration": [],
+    "introductory_term_end": [],
+    "intro_second_semester_registration": [
+      "start_therapy"
+    ],
+    "introductory_course_completion": [],
+    "comprehensive_course_registration": [],
+    "comprehensive_term_end": []
+  },
+  "process_specific_notes": {
+    "start_therapy": "قانون پذیرش مشروط (عدم ثبت‌نام ترم ۲ اگر فرم پر نشده) در فرایند ثبت‌نام باید باشد.",
+    "extra_session": "ثبت ساعات اضافی در Total Hours مطابق SOP attendance_tracking.",
+    "session_payment": "جلسه اول در start_therapy پرداخت می‌شود.",
+    "attendance_tracking": "قانون ویرایش تا ۲۴:۰۰. سه فیلد ساعات. trigger خودکار برای عدم ثبت.",
+    "fee_determination": "۴ اکشن: add_to_credit_balance, forfeit_session_payment, create_debt_or_deduct_credit, increment_absence_counter. trigger کنسلی دانشجو.",
+    "therapy_completion": "override حدنصاب توسط مسئول علمی. اکشن‌های حذف وقت و آزادسازی.",
+    "therapy_session_increase": "فقط دوره جامع. add_recurring_therapy_session. مسدود کردن لینک برای آشنایی.",
+    "therapy_session_reduction": "remove_selected_therapy_sessions, release_therapist_slots. violation_warning با تایید اجباری. وابسته به violation_registration.",
+    "therapy_early_termination": "۴ گزینه. SLA ۵ روز. call_bpms_subprocess. زیرفرایندهای الف و ب.",
+    "specialized_commission_review": "send_unlock_to_lms, unlock_student_therapist_selection. رد صلاحیت → committees_review.",
+    "committees_review": "نظارت ۳ روز، آموزش ۶ روز. اخراج کامل، نامه رسمی. انترن → patient_referral.",
+    "therapist_session_cancellation": "حداکثر ۱ جلسه. add_credit_if_paid, deduct_credit. جلسه جبرانی = attendance.",
+    "unannounced_absence_reaction": "trigger از attendance. consecutive_unannounced_count. کمیته درمان. SLA ۳ هفته.",
+    "therapy_interruption": "محاسبه interruption_days از تاریخ‌ها. شرط‌های interruption_less_than_42_days و interruption_42_days_or_more. در تاریخ پایان وقفه کوتاه: بررسی بازگشت خودکار. release_supervisor_slots, release_therapist_slots, move_to_past_lists. run_if_intern برای patient_referral.",
+    "student_session_cancellation": "محاسبه would_exceed_consecutive_weeks از سوابق کنسلی. فرمول درصد: ceil((held+cancelled)*0.12). پاپ‌آپ هشدار قبل از ثبت. mark_sessions_cancelled_by_student, block_attendance_for_cancelled_sessions. run_for_each_session برای fee_determination.",
+    "supervision_block_transition": "قفل منطقی: پرداخت جلسه اول دوره جدید قبل از جلسه ۵۰. display_supervision_history. قانون ۲۴ ساعت. remove_slot_from_available, unlock_payment_for_50th_session. recipient new_supervisor از instance.",
+    "supervision_50h_completion": "SMS ۴۵ و ۴۸ (جز بلوک ۵). قفل پرداخت ۵۰ تا ثبت ۴۹. ارزیابی ۳ روز. تفکیک بستانکاری سوپرویژن. send_45_48_reminder_if_applicable, unlock_payment_for_50th_session.",
+    "supervision_session_increase": "add_recurring_supervision_session, connect_to_supervision_50h_completion. لاگ در دانشجو، سوپروایزر، ادمین.",
+    "extra_supervision_session": "create_extra_supervision_session_record, create_attendance_field, activate_online_link. اتصال به supervision_50h_completion برای ثبت حضور و +۱ ساعت.",
+    "supervision_session_reduction": "مسیر الف: remove_selected_supervision_sessions, release_supervisor_slots_to_available_sheet. مسیر ب: update_supervision_schedule_frequency, remove_weekly_session_from_student_schedule. متن SMS تایید/رد از دکتر مرادی.",
+    "supervisor_session_cancellation": "cancel_supervision_session, add_supervision_credit_if_paid, register_supervision_makeup_session, enable_attendance_registration, activate_online_session_link. محدودیت ۱ جلسه/نوبت. لینک آنلاین حتی اگر حضوری. ساعات مطابق supervision_50h_completion.",
+    "supervision_interruption": "release_supervisor_slot, move_supervisor_to_past_list, record_interruption_dates, run_patient_referral. آستانه ۲۱ روز. بدون بدهی در بازه وقفه. بررسی بازگشت در پایان وقفه کوتاه.",
+    "fall_semester_preparation": "تقویم آموزشی ۲ ترم، شهریه، پروانه فعالیت، لیست دروس+اساتید، هماهنگی مکان، کمپین مارکتینگ، زمان‌بندی مصاحبه‌ها. SLA هشداری (بدون قفل). publish_courses_to_website, publish_academic_calendar, send_registration_sms.",
+    "winter_semester_preparation": "بازنگری پاییز. فرم‌ها pre-filled از fall_semester_preparation. پروانه، بازبینی دروس، هماهنگی نهایی، مارکتینگ، مصاحبه‌ها. SLA هشداری.",
+    "introductory_course_registration": "فرم پذیرش، انتخاب وقت مصاحبه، پرداخت هزینه مصاحبه، ۴ نتیجه مصاحبه (مشروط/تک‌درس/کامل/رد). بارگذاری مدارک، امضای دیجیتال تعهدنامه. ساخت نام‌کاربری. انتخاب واحد بر اساس نوع پذیرش. اقساط ۴ قسطی. حضور قفل در صورت بدهی. block_future_applications برای رد شدگان.",
+    "introductory_term_end": "generate_term_transcript, generate_cumulative_transcript (قالب صالحی). بررسی شرط درمان مشروطین → block_term2_registration. شناسایی افت تحصیلی → لیست پیگیری مسئول پذیرش (SLA ۷ روز).",
+    "intro_second_semester_registration": "بررسی شرط درمان + تعلیق. failed_prerequisite_rule (تبدیل پیش‌نیاز به همنیاز). تک‌درس فقط نقدی. اقساط + یادآوری. create_online_links.",
+    "introductory_course_completion": "خودکار پس از ۱۰ درس. generate_certificate (هر واحد = ۱۳.۵ ساعت). مهر و امضای الکترونیکی کمیته نظارت. upload_certificate_to_portal. SMS دعوت به دوره جامع.",
+    "comprehensive_course_registration": "غربالگری ۳ لایه (نظارت ← اجرایی پیشرفت ← علمی پیشرفت). آپلود گزارش تجربه شخصی (B Nazanin 14). مصاحبه (۳ نتیجه). rejection_reasons_confidential. درمان ۲×/هفته الزامی. تمام دروس اجباری. اقساط ۴ قسطی.",
+    "comprehensive_term_end": "DRAFT — تا ۸ اسفند ممکن است تغییر کند. generate_term_transcript, generate_cumulative_transcript (قالب صالحی). graduation_check: اگر تمام دروس → بدون SMS. اگر باقیمانده → SMS ثبت‌نام.",
+    "internship_readiness_consultation": "مهلت قبل از شروع انترنی. عدم انجام → violation_registration.",
+    "internship_12month_conditional_review": "خودکار ۱۲ ماه پس از قبولی مشروط. عدم انجام → violation_registration.",
+    "intern_hours_increase": "عدم انجام → violation_registration.",
+    "student_non_registration": "وابسته به educational_leave. عدم ثبت‌نام بدون مرخصی → violation_registration.",
+    "ta_conceptual_questions": "مهلت قبل از جلسه ۳. عدم انجام → violation_registration.",
+    "mentor_private_sessions": "مهلت قبل از جلسه دوم. عدم ثبت تا شروع جلسه دوم → violation_registration + هشدار کمیته + SMS.",
+    "ta_to_assistant_faculty": "شرط: ۲ بار کمک‌مدرس موفق در یک درس. move_ta_to_instructor, upgrade_rank_to_assistant_faculty, unlock_next_course_in_track.",
+    "ta_to_instructor_auto": "۱۰۰٪ خودکار. شرط: رتبه دستیار هیئت علمی + ۲ بار پاس.",
+    "ta_track_completion": "۱۰۰٪ خودکار. شرط: کمک‌مدرس مدرس شد در آخرین درس رسته.",
+    "ta_instructor_leave": "جایگزین موقت یا لغو کلاس‌ها. اطلاع‌رسانی به دانشجویان."
+  }
+}

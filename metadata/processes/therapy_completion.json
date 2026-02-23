@@ -1,0 +1,59 @@
+{
+  "process": {
+    "code": "therapy_completion",
+    "name_fa": "تکمیل و خاتمه درمان آموزشی",
+    "name_en": "Completion and Termination of Educational Therapy",
+    "description": "ایست بازرسی نهایی. اعتبارسنجی ۲۵۰/۷۵۰/۱۵۰ ساعت (با امکان override کمیته). حذف تعهدات آینده، آزادسازی ظرفیت درمانگر، تغییر وضعیت به تکمیل‌شده.",
+    "initial_state": "initiated",
+    "default_thresholds": {
+      "therapy_hours": 250,
+      "therapy_condition": "حداقل دوبار در هفته",
+      "clinical_hours": 750,
+      "supervision_hours": 150
+    },
+    "override": "مسئول علمی کمیته نظارت می‌تواند حدنصاب‌ها را در پروفایل دانشجو تغییر دهد. اولویت با مقادیر دستی."
+  },
+  "states": [
+    {"code": "initiated", "name_fa": "آغاز شده", "type": "initial", "assigned_role": "student"},
+    {"code": "conditions_not_met", "name_fa": "شرایط احراز نشده", "type": "terminal", "assigned_role": "system"},
+    {"code": "therapy_completed", "name_fa": "درمان تکمیل و خاتمه یافت", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "initiated",
+      "to": "conditions_not_met",
+      "trigger": "process_link_clicked",
+      "conditions": ["completion_conditions_not_met"],
+      "description_fa": "یکی از شروط ۲۵۰/۷۵۰/۱۵۰ پاس نشد",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "therapy_completion_conditions_not_met",
+          "recipients": ["student"],
+          "message_fa": "شرایط خاتمه احراز نشده است. وضعیت فعلی: [ساعات دانشجو] / [حدنصاب‌ها]."
+        }
+      ]
+    },
+    {
+      "from": "initiated",
+      "to": "therapy_completed",
+      "trigger": "process_link_clicked",
+      "conditions": ["therapy_threshold_met", "clinical_threshold_met", "supervision_threshold_met"],
+      "priority": 1,
+      "description_fa": "همه شروط احراز شد — خاتمه درمان",
+      "actions": [
+        {"type": "delete_future_therapy_appointments"},
+        {"type": "release_therapist_slots_to_available_sheet"},
+        {"type": "update_therapy_status", "status": "completed_terminated"},
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "therapy_completion_success",
+          "recipients": ["student"],
+          "message_fa": "درمان آموزشی با موفقیت تکمیل و خاتمه یافت."
+        }
+      ]
+    }
+  ]
+}

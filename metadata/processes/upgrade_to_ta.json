@@ -1,0 +1,38 @@
+{
+  "process": {
+    "code": "upgrade_to_ta",
+    "name_fa": "ارتقا به کمک‌مدرس",
+    "name_en": "Upgrade to Teaching Assistant",
+    "number": 46,
+    "description": "شرط: معدل B، ۵۰ ساعت درمان آموزشی، شروع انترنی. کلیک دانشجو. بررسی خودکار ۴ شرط. کمیته نظارت تایید/رد. کمیته دروس: تنظیم وقت مصاحبه، مصاحبه، تعیین رسته. تعهدنامه با OTP. اضافه به لیست کمک‌مدرسین.",
+    "initial_state": "student_click",
+    "initial_role": "student"
+  },
+  "states": [
+    {"code": "student_click", "name_fa": "کلیک دانشجو", "type": "initial", "assigned_role": "student"},
+    {"code": "conditions_not_met", "name_fa": "شرایط احراز نشد", "type": "terminal", "assigned_role": "system"},
+    {"code": "supervision_review", "name_fa": "بررسی کمیته نظارت", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "supervision_rejected", "name_fa": "رد توسط کمیته نظارت", "type": "terminal", "assigned_role": "system"},
+    {"code": "interview_scheduling", "name_fa": "تنظیم وقت مصاحبه", "type": "intermediate", "assigned_role": "course_committee"},
+    {"code": "interview_held", "name_fa": "مصاحبه برگزار شد", "type": "intermediate", "assigned_role": "course_committee"},
+    {"code": "course_committee_rejected", "name_fa": "رد توسط کمیته دروس", "type": "terminal", "assigned_role": "system"},
+    {"code": "track_selection", "name_fa": "انتخاب رسته‌های توافق شده", "type": "intermediate", "assigned_role": "course_committee"},
+    {"code": "commitment_signature", "name_fa": "امضای تعهدنامه", "type": "intermediate", "assigned_role": "student"},
+    {"code": "ta_registered", "name_fa": "کمک‌مدرس ثبت شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "student_click", "to": "conditions_not_met", "trigger": "conditions_failed", "description_fa": "بررسی خودکار: معدل، ۵۰ ساعت درمان، انترنی — عدم احراز"},
+    {"from": "student_click", "to": "supervision_review", "trigger": "conditions_met", "description_fa": "درخواست به کمیته نظارت ارسال شد"},
+    {"from": "supervision_review", "to": "supervision_rejected", "trigger": "rejected", "required_role": "supervision_committee", "description_fa": "رد صلاحیت"},
+    {"from": "supervision_review", "to": "interview_scheduling", "trigger": "approved", "required_role": "supervision_committee", "actions": [{"type": "notification", "notification_type": "sms", "template": "ta_eligibility_approved", "recipients": ["student"]}]},
+    {"from": "interview_scheduling", "to": "interview_held", "trigger": "interview_scheduled", "actions": [{"type": "notification", "notification_type": "sms", "template": "ta_interview_scheduled", "recipients": ["student", "course_committee_scientific", "course_committee_project"]}]},
+    {"from": "interview_held", "to": "course_committee_rejected", "trigger": "rejected", "required_role": "course_committee", "description_fa": "رد صلاحیت توسط کمیته دروس"},
+    {"from": "interview_held", "to": "track_selection", "trigger": "approved", "required_role": "course_committee", "description_fa": "تایید — تعیین رسته"},
+    {"from": "track_selection", "to": "commitment_signature", "trigger": "tracks_registered", "required_role": "course_committee", "actions": [{"type": "notification", "notification_type": "sms", "template": "ta_approved_commitment", "recipients": ["student"]}]},
+    {"from": "commitment_signature", "to": "ta_registered", "trigger": "commitment_signed", "required_role": "student", "description_fa": "امضای OTP — اضافه به لیست کمک‌مدرسین"}
+  ],
+  "forms": [
+    {"code": "ta_interview_schedule", "name_fa": "تنظیم وقت مصاحبه کمک‌مدرس", "used_in_state": "interview_scheduling", "fields": [{"name": "interview_date", "type": "date_picker"}, {"name": "interview_time", "type": "time_picker"}, {"name": "meeting_type", "type": "radio", "options": [{"value": "in_person", "label_fa": "حضوری"}, {"value": "online", "label_fa": "آنلاین"}]}]},
+    {"code": "ta_interview_result", "name_fa": "نتیجه مصاحبه و رسته", "used_in_state": "interview_held", "fields": [{"name": "result", "type": "radio", "options": [{"value": "approve", "label_fa": "تایید"}, {"value": "reject", "label_fa": "رد"}]}, {"name": "tracks", "label_fa": "رسته‌های کمک‌مدرس", "type": "multi_select"}]}
+  ]
+}

@@ -2,19 +2,20 @@
   "process": {
     "code": "educational_leave",
     "name_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها",
-    "name_en": "Educational Leave of Absence",
-    "description": "فرایند درخواست و مدیریت مرخصی آموزشی موقت دانشجویان از ثبت‌نام در کلاس‌ها",
+    "name_en": "Temporary Educational Leave from Class Registration",
+    "description": "مدیریت ساختارمند وقفه‌های تحصیلی دانشجویان با هدف حفظ تعادل میان نیازهای شخصی دانشجو و الزامات آموزش روانکاوی. شامل: ثبت درخواست (۱ یا ۲ ترم)، هشدار انترن+۲ترم، تعیین جلسه ظرف ۷ روز، هشدار به معاون در صورت تاخیر، اطلاع‌رسانی جلسه، تصمیم‌گیری کمیته، رد/تایید با اقدامات متمایز برای انترن (۱ یا ۲ ترم)، بازگشت و پایش ثبت‌نام مجدد.",
     "initial_state": "request_form"
   },
   "states": [
     {"code": "request_form", "name_fa": "ثبت درخواست اولیه", "type": "initial", "assigned_role": "student"},
-    {"code": "committee_review", "name_fa": "بررسی کمیته پیشرفت", "type": "intermediate", "assigned_role": "progress_committee", "sla_hours": 168},
+    {"code": "committee_review", "name_fa": "بررسی و تعیین جلسه توسط کمیته پیشرفت", "type": "intermediate", "assigned_role": "progress_committee", "sla_hours": 168, "on_sla_breach_event": "sla_breach_7days"},
+    {"code": "deputy_alerted", "name_fa": "هشدار به معاون مدیر آموزش", "type": "intermediate", "assigned_role": "deputy_education", "metadata": {"reason": "عدم ثبت جلسه ظرف ۷ روز توسط کمیته پیشرفت"}},
     {"code": "session_scheduled", "name_fa": "جلسه تنظیم شد", "type": "intermediate", "assigned_role": "progress_committee"},
-    {"code": "committee_decision", "name_fa": "تصمیم‌گیری کمیته", "type": "intermediate", "assigned_role": "progress_committee"},
-    {"code": "approved_non_intern", "name_fa": "تایید - غیر انترن", "type": "intermediate", "assigned_role": "system"},
-    {"code": "approved_intern_1term", "name_fa": "تایید - انترن ۱ ترم", "type": "intermediate", "assigned_role": "system"},
-    {"code": "approved_intern_2term", "name_fa": "تایید - انترن ۲ ترم", "type": "intermediate", "assigned_role": "system"},
+    {"code": "committee_decision", "name_fa": "برگزاری جلسه و تصمیم‌گیری", "type": "intermediate", "assigned_role": "progress_committee"},
     {"code": "rejected", "name_fa": "رد درخواست", "type": "terminal", "assigned_role": "system"},
+    {"code": "approved_non_intern", "name_fa": "تایید - دانشجو غیر انترن", "type": "intermediate", "assigned_role": "system"},
+    {"code": "approved_intern_1term", "name_fa": "تایید - انترن وقفه ۱ ترم", "type": "intermediate", "assigned_role": "system"},
+    {"code": "approved_intern_2term", "name_fa": "تایید - انترن وقفه ۲ ترم", "type": "intermediate", "assigned_role": "system"},
     {"code": "on_leave", "name_fa": "در وقفه تحصیلی", "type": "intermediate", "assigned_role": "system"},
     {"code": "return_reminder_sent", "name_fa": "یادآوری بازگشت ارسال شد", "type": "intermediate", "assigned_role": "system", "sla_hours": 336},
     {"code": "returned", "name_fa": "بازگشت به تحصیل", "type": "terminal", "assigned_role": "system"},
@@ -26,29 +27,48 @@
       "to": "committee_review",
       "trigger": "student_submitted",
       "required_role": "student",
+      "description_fa": "ارسال درخواست وقفه (۱ یا ۲ ترم) به کارتابل کمیته پیشرفت. در صورت انترن+۲ترم هشدار نمایش داده شود.",
       "actions": [
-        {"type": "warn_if", "condition": "student.is_intern AND leave_terms == 2", "message_fa": "هشدار: در صورت ۲ ترم وقفه، وضعیت انترنی لغو خواهد شد"}
+        {"type": "warn_if", "condition": "student.is_intern AND leave_terms == 2", "message_fa": "دانشجوی گرامی، با توجه به وضعیت انترنی شما، انتخاب وقفه ۲ ترمی منجر به توقف سوپرویژن فردی و لغو انترنی خواهد شد. بنا به اصول اخلاق حرفه‌ای، بیماران شما به درمانگر دیگری ارجاع داده می‌شوند. لطفاً جهت تسهیل فرایند با بیماران خود صحبت کنید."}
+      ]
+    },
+    {
+      "from": "committee_review",
+      "to": "deputy_alerted",
+      "trigger": "sla_breach_7days",
+      "description_fa": "عدم ثبت جلسه ظرف ۷ روز - هشدار به معاون مدیر آموزش",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "committee_sla_breach", "recipients": ["deputy_education"]}
       ]
     },
     {
       "from": "committee_review",
       "to": "session_scheduled",
       "trigger": "committee_set_meeting",
-      "required_role": "progress_committee"
+      "required_role": "progress_committee",
+      "description_fa": "ثبت تاریخ، ساعت، حضوری/آنلاین و در صورت آنلاین لینک جلسه (حداکثر ۷ روز)",
+      "actions": [
+        {"type": "notification", "notification_type": "email", "template": "meeting_scheduled", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "sms", "template": "meeting_scheduled_sms", "recipients": ["student"]}
+      ]
     },
     {
       "from": "session_scheduled",
       "to": "committee_decision",
       "trigger": "meeting_held",
-      "required_role": "progress_committee"
+      "required_role": "progress_committee",
+      "description_fa": "برگزاری جلسه و ثبت تصمیم (تایید یا رد) و در صورت تایید تعیین انترن/غیرانترن"
     },
     {
       "from": "committee_decision",
       "to": "rejected",
       "trigger": "committee_rejected",
       "required_role": "progress_committee",
+      "description_fa": "رد درخواست همراه با توضیحات - نمایش در پورتال دانشجو و شروع فرایند ثبت تخلف",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "leave_rejected", "recipients": ["student"]}
+        {"type": "notification", "notification_type": "sms", "template": "leave_rejected", "recipients": ["student"]},
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "leave_rejected"}},
+        {"type": "notification", "notification_type": "sms", "template": "leave_rejected_committee_alert", "recipients": ["monitoring_committee_officer"]}
       ]
     },
     {
@@ -57,6 +77,7 @@
       "trigger": "committee_approved",
       "required_role": "progress_committee",
       "conditions": ["is_not_intern"],
+      "description_fa": "تایید درخواست - دانشجو انترن نیست",
       "actions": [
         {"type": "notification", "notification_type": "sms", "template": "leave_approved", "recipients": ["student"]}
       ]
@@ -68,6 +89,7 @@
       "required_role": "progress_committee",
       "conditions": ["is_intern", "leave_terms_eq_1"],
       "priority": 1,
+      "description_fa": "تایید - انترن با وقفه ۱ ترم (سوپرویژن و درمان ادامه می‌یابد)",
       "actions": [
         {"type": "notification", "notification_type": "sms", "template": "leave_approved_intern_1", "recipients": ["student"]}
       ]
@@ -79,16 +101,19 @@
       "required_role": "progress_committee",
       "conditions": ["is_intern", "leave_terms_eq_2"],
       "priority": 2,
+      "description_fa": "تایید - انترن با وقفه ۲ ترم: آزادسازی وقت سوپروایزر + ارجاع بیماران به درمانگران دیگر",
       "actions": [
         {"type": "release_supervisor_slot"},
         {"type": "start_process", "process_code": "patient_referral"},
-        {"type": "notification", "notification_type": "sms", "template": "leave_approved_intern_2_warning", "recipients": ["student"]}
+        {"type": "notification", "notification_type": "sms", "template": "leave_approved_intern_2_warning", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "sms", "template": "intern_2term_referral_started", "recipients": ["monitoring_committee_officer"]}
       ]
     },
     {
       "from": "approved_non_intern",
       "to": "on_leave",
       "trigger": "leave_activated",
+      "description_fa": "اعمال وقفه در پورتال دانشجو (LMS)",
       "actions": [
         {"type": "suspend_class_registration"}
       ]
@@ -97,6 +122,7 @@
       "from": "approved_intern_1term",
       "to": "on_leave",
       "trigger": "leave_activated",
+      "description_fa": "اعمال وقفه - انترنی حفظ می‌شود",
       "actions": [
         {"type": "suspend_class_registration"}
       ]
@@ -105,6 +131,7 @@
       "from": "approved_intern_2term",
       "to": "on_leave",
       "trigger": "leave_activated",
+      "description_fa": "اعمال وقفه - لغو انترنی و آزادسازی وقت سوپروایزر",
       "actions": [
         {"type": "suspend_class_registration"},
         {"type": "revoke_intern_status"}
@@ -114,6 +141,7 @@
       "from": "on_leave",
       "to": "return_reminder_sent",
       "trigger": "send_return_reminder",
+      "description_fa": "پایان مهلت وقفه - ارسال SMS یادآوری (۱۵ بهمن برای ترم پاییز، ۵ مرداد برای ترم زمستان)",
       "actions": [
         {"type": "notification", "notification_type": "sms", "template": "return_reminder", "recipients": ["student"]}
       ]
@@ -121,7 +149,8 @@
     {
       "from": "return_reminder_sent",
       "to": "returned",
-      "trigger": "student_returned",
+      "trigger": "student_registered",
+      "description_fa": "دانشجو برای ترم آینده ثبت‌نام کرد",
       "actions": [
         {"type": "reactivate_class_registration"}
       ]
@@ -130,9 +159,10 @@
       "from": "return_reminder_sent",
       "to": "violation_registered",
       "trigger": "return_deadline_passed",
+      "description_fa": "عدم ثبت‌نام برای ترم آینده - فرایند ثبت تخلف در پورتال کمیته نظارت",
       "actions": [
-        {"type": "register_violation", "violation_type": "no_return_from_leave"},
-        {"type": "notification", "notification_type": "sms", "template": "violation_no_return", "recipients": ["student", "admin"]}
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "no_return_from_leave"}},
+        {"type": "notification", "notification_type": "sms", "template": "violation_no_return", "recipients": ["student", "monitoring_committee_officer"]}
       ]
     }
   ]

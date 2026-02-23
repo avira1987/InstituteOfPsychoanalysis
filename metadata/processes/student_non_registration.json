@@ -1,0 +1,36 @@
+{
+  "process": {
+    "code": "student_non_registration",
+    "name_fa": "عدم ثبت‌نام دانشجو برای ترم بعد",
+    "name_en": "Student Non-Registration for Next Term",
+    "number": 42,
+    "description": "لیست دانشجویان بدون ثبت‌نام و پرداخت. استثنا: مرخصی موقت از کل آموزش، مرخصی آموزشی موقت از ثبت‌نام. جلسه کمیته نظارت. ۳ گزینه: ثبت‌نام (حداکثر ۴ هفته)، مرخصی/وقفه، انصراف. مهلت ۲ و ۳ و ۵ روزه. در صورت عدم اقدام → انصراف از آموزش.",
+    "initial_state": "list_generated",
+    "trigger": "registration_deadline_passed"
+  },
+  "states": [
+    {"code": "list_generated", "name_fa": "لیست دانشجویان بدون ثبت‌نام", "type": "initial", "assigned_role": "system"},
+    {"code": "meeting_scheduled", "name_fa": "جلسه تنظیم شده", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "meeting_held", "name_fa": "جلسه برگزار شد — ثبت نتیجه", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "branch_register", "name_fa": "قصد ثبت‌نام — مهلت ۲ روز", "type": "intermediate", "assigned_role": "student"},
+    {"code": "branch_leave", "name_fa": "قصد مرخصی/وقفه — مهلت ۳ روز", "type": "intermediate", "assigned_role": "student"},
+    {"code": "branch_withdrawal", "name_fa": "قصد انصراف", "type": "terminal", "assigned_role": "system"},
+    {"code": "registration_completed", "name_fa": "ثبت‌نام انجام شد — ثبت غیبت جلسات گذشته", "type": "terminal", "assigned_role": "system"},
+    {"code": "leave_started", "name_fa": "فرایند مرخصی آغاز شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "withdrawal_triggered", "name_fa": "انصراف از آموزش اجرا شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "list_generated", "to": "meeting_scheduled", "trigger": "meeting_scheduled", "required_role": "supervision_committee", "description_fa": "تاریخ و ساعت جلسه ثبت شد"},
+    {"from": "meeting_scheduled", "to": "meeting_held", "trigger": "invitation_sent", "actions": [{"type": "notification", "notification_type": "email", "template": "non_registration_meeting_invite", "recipients": ["student"]}, {"type": "notification", "notification_type": "sms", "template": "non_registration_meeting_invite_sms", "recipients": ["student"]}]},
+    {"from": "meeting_held", "to": "branch_register", "trigger": "choice_register", "required_role": "supervision_committee", "conditions": ["within_4_weeks_of_term_start"], "description_fa": "دانشجو قصد ثبت‌نام دارد — باز کردن ۲ روز"},
+    {"from": "meeting_held", "to": "branch_leave", "trigger": "choice_leave", "required_role": "supervision_committee", "description_fa": "قصد مرخصی یا وقفه — مهلت ۳ روز"},
+    {"from": "meeting_held", "to": "branch_withdrawal", "trigger": "choice_withdrawal", "required_role": "supervision_committee", "description_fa": "قصد انصراف — اجرای فوری انصراف از آموزش"},
+    {"from": "branch_register", "to": "registration_completed", "trigger": "courses_selected", "required_role": "student", "description_fa": "دروس اخذ شد — ثبت غیبت جلسات گذشته"},
+    {"from": "branch_register", "to": "withdrawal_triggered", "trigger": "no_action_2_days", "description_fa": "۲ روز تمام شد — SMS هشدار + ۵ روز بعد انصراف"},
+    {"from": "branch_leave", "to": "leave_started", "trigger": "leave_process_started", "required_role": "student", "description_fa": "یکی از فرایندهای مرخصی آغاز شد"},
+    {"from": "branch_leave", "to": "withdrawal_triggered", "trigger": "no_action_3_days", "description_fa": "۳ روز بدون اقدام — SMS + ۵ روز بعد انصراف"}
+  ],
+  "forms": [
+    {"code": "non_registration_meeting_result", "name_fa": "ثبت نتیجه جلسه", "used_in_state": "meeting_held", "fields": [{"name": "weeks_since_start", "label_fa": "تعداد هفته‌های گذشته از شروع کلاس‌ها", "type": "readonly"}, {"name": "decision", "label_fa": "تصمیم", "type": "radio", "options": [{"value": "register", "label_fa": "قصد ثبت‌نام دارد — حداکثر ۴ هفته"}, {"value": "leave", "label_fa": "قصد مرخصی/وقفه"}, {"value": "withdrawal", "label_fa": "قصد انصراف"}]}]}
+  ]
+}

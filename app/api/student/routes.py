@@ -51,7 +51,7 @@ class StudentResponse(BaseModel):
 
 # ─── Endpoints ──────────────────────────────────────────────────
 
-@router.post("/", response_model=StudentResponse)
+@router.post("", response_model=StudentResponse)
 async def create_student(
     student_data: StudentCreate,
     db: AsyncSession = Depends(get_db),
@@ -84,7 +84,7 @@ async def create_student(
     )
 
 
-@router.get("/", response_model=list[StudentResponse])
+@router.get("", response_model=list[StudentResponse])
 async def list_students(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin", "staff")),

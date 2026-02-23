@@ -1,0 +1,26 @@
+{
+  "process": {
+    "code": "mentor_private_sessions",
+    "name_fa": "ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس",
+    "name_en": "Mentor Private Sessions Registration",
+    "number": 48,
+    "description": "مدرسین دارای کمک‌مدرس. مهلت: قبل از جلسه دوم کلاس. در لحظه شروع جلسه دوم اگر پر نشده: violation_registration، هشدار کمیته دروس، SMS به مسئول علمی کمیته دروس. پس از ثبت: نمایش در پورتال کمک‌مدرس، SMS به هر دو، یادآوری ۲۴ ساعت قبل از هر جلسه.",
+    "initial_state": "instructor_click",
+    "initial_role": "instructor",
+    "deadline": "before_session_2_start"
+  },
+  "states": [
+    {"code": "instructor_click", "name_fa": "کلیک مدرس", "type": "initial", "assigned_role": "instructor"},
+    {"code": "deadline_missed", "name_fa": "تخلف — عدم ثبت تا جلسه دوم", "type": "terminal", "assigned_role": "system"},
+    {"code": "sessions_registered", "name_fa": "۲ جلسه ثبت شد", "type": "intermediate", "assigned_role": "instructor"},
+    {"code": "process_complete", "name_fa": "ثبت نهایی — SMS و یادآوری", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "instructor_click", "to": "deadline_missed", "trigger": "session_2_started_without_registration", "description_fa": "جلسه دوم شروع شد بدون ثبت — violation_registration + هشدار + SMS"},
+    {"from": "instructor_click", "to": "sessions_registered", "trigger": "sessions_entered", "required_role": "instructor", "description_fa": "تاریخ و ساعت ۲ جلسه وارد شد"},
+    {"from": "sessions_registered", "to": "process_complete", "trigger": "registered", "description_fa": "نمایش در پورتال کمک‌مدرس، SMS به هر دو، یادآوری ۲۴h قبل", "actions": [{"type": "notification", "notification_type": "sms", "template": "mentor_sessions_registered", "recipients": ["instructor", "teaching_assistant"]}, {"type": "schedule_reminder", "hours_before": 24}]}
+  ],
+  "forms": [
+    {"code": "mentor_sessions_form", "name_fa": "ثبت زمان ۲ جلسه تدریس خصوصی", "used_in_state": "instructor_click", "fields": [{"name": "session_1_date", "label_fa": "جلسه اول — تاریخ", "type": "date_picker"}, {"name": "session_1_time", "label_fa": "جلسه اول — ساعت", "type": "time_picker"}, {"name": "session_2_date", "label_fa": "جلسه دوم — تاریخ", "type": "date_picker"}, {"name": "session_2_time", "label_fa": "جلسه دوم — ساعت", "type": "time_picker"}]}
+  ]
+}

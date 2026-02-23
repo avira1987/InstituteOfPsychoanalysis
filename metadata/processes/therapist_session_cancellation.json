@@ -1,0 +1,132 @@
+{
+  "process": {
+    "code": "therapist_session_cancellation",
+    "name_fa": "کنسل کردن جلسه از سوی درمانگر آموزشی",
+    "name_en": "Therapist-Initiated Session Cancellation",
+    "description": "حداکثر ۱ جلسه در هر اجرا. دو مسیر: عدم جبرانی (اطلاع، اگر پرداخت کرده +۱ بستانکار) یا قصد جبرانی (پیشنهاد تاریخ/ساعت، پاسخ دانشجو: تایید/رد+پیشنهاد/نمی‌خواهم). تایید → بستانکار یا پرداخت، ثبت جبرانی، لینک آنلاین، attendance. قوانین درمان آموزشی حاکم.",
+    "initial_state": "session_selection",
+    "limit": "یک جلسه در هر نوبت اجرا",
+    "session_range": "۴ هفته آینده"
+  },
+  "states": [
+    {"code": "session_selection", "name_fa": "انتخاب جلسه برای لغو", "type": "initial", "assigned_role": "therapist"},
+    {"code": "make_up_choice", "name_fa": "انتخاب جبرانی یا نه", "type": "intermediate", "assigned_role": "therapist"},
+    {"code": "cancelled_no_make_up", "name_fa": "لغو بدون جبرانی", "type": "terminal", "assigned_role": "system"},
+    {"code": "make_up_proposed", "name_fa": "منتظر پاسخ دانشجو به جلسه جبرانی", "type": "intermediate", "assigned_role": "student"},
+    {"code": "therapist_review_alternative", "name_fa": "بررسی پیشنهاد جایگزین دانشجو", "type": "intermediate", "assigned_role": "therapist"},
+    {"code": "payment_required", "name_fa": "پرداخت جلسه جبرانی (بدون بستانکاری)", "type": "intermediate", "assigned_role": "student", "sla_hours": 48},
+    {"code": "make_up_confirmed", "name_fa": "جلسه جبرانی ثبت شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "cancelled_student_declined", "name_fa": "دانشجو جبرانی نخواست", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "session_selection",
+      "to": "make_up_choice",
+      "trigger": "session_selected",
+      "required_role": "therapist",
+      "description_fa": "درمانگر جلسه را انتخاب کرد — نمایش گزینه جبرانی"
+    },
+    {
+      "from": "make_up_choice",
+      "to": "cancelled_no_make_up",
+      "trigger": "no_make_up",
+      "required_role": "therapist",
+      "description_fa": "امکان جبرانی نیست",
+      "actions": [
+        {"type": "cancel_session"},
+        {"type": "notification", "notification_type": "sms", "template": "therapist_cancellation_no_makeup", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "in_app", "template": "therapist_cancellation_no_makeup", "recipients": ["student"]},
+        {"type": "add_credit_if_paid"}
+      ]
+    },
+    {
+      "from": "make_up_choice",
+      "to": "make_up_proposed",
+      "trigger": "make_up_date_entered",
+      "required_role": "therapist",
+      "description_fa": "قصد جبرانی — تاریخ و ساعت ثبت شد",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "makeup_session_proposed", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "in_app", "template": "makeup_session_proposed", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "make_up_proposed",
+      "to": "make_up_confirmed",
+      "trigger": "student_confirmed",
+      "required_role": "student",
+      "conditions": ["has_credit_sessions"],
+      "description_fa": "دانشجو تایید کرد — بستانکار بود، یک جلسه کسر",
+      "actions": [
+        {"type": "deduct_credit_session"},
+        {"type": "register_makeup_session"},
+        {"type": "enable_attendance_registration"},
+        {"type": "enable_online_session_link"}
+      ]
+    },
+    {
+      "from": "make_up_proposed",
+      "to": "payment_required",
+      "trigger": "student_confirmed",
+      "required_role": "student",
+      "conditions": ["no_credit_sessions"],
+      "description_fa": "دانشجو تایید کرد — بدون بستانکاری، پرداخت لازم"
+    },
+    {
+      "from": "payment_required",
+      "to": "make_up_confirmed",
+      "trigger": "payment_completed",
+      "description_fa": "پرداخت (و تسویه بدهی در صورت وجود) انجام شد",
+      "actions": [
+        {"type": "register_makeup_session"},
+        {"type": "enable_attendance_registration"},
+        {"type": "enable_online_session_link"}
+      ]
+    },
+    {
+      "from": "make_up_proposed",
+      "to": "therapist_review_alternative",
+      "trigger": "student_rejected_and_proposed",
+      "required_role": "student",
+      "description_fa": "دانشجو رد و زمان جدید پیشنهاد داد",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "makeup_alternative_proposed", "recipients": ["therapist"]}
+      ]
+    },
+    {
+      "from": "therapist_review_alternative",
+      "to": "make_up_proposed",
+      "trigger": "therapist_entered_new_makeup",
+      "required_role": "therapist",
+      "description_fa": "درمانگر تاریخ و ساعت جدید ثبت کرد",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "makeup_session_proposed", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "in_app", "template": "makeup_session_proposed", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "therapist_review_alternative",
+      "to": "cancelled_no_make_up",
+      "trigger": "therapist_declined_makeup",
+      "required_role": "therapist",
+      "description_fa": "درمانگر امکان جبرانی ندارد",
+      "actions": [
+        {"type": "cancel_session"},
+        {"type": "notification", "notification_type": "sms", "template": "therapist_cancellation_no_makeup", "recipients": ["student"]},
+        {"type": "add_credit_if_paid"}
+      ]
+    },
+    {
+      "from": "make_up_proposed",
+      "to": "cancelled_student_declined",
+      "trigger": "student_declined_makeup",
+      "required_role": "student",
+      "description_fa": "دانشجو جبرانی نمی‌خواهد",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "student_declined_makeup", "recipients": ["therapist"]},
+        {"type": "notification", "notification_type": "in_app", "template": "student_declined_makeup", "recipients": ["therapist"]},
+        {"type": "deduct_credit_if_has"}
+      ]
+    }
+  ]
+}

@@ -1,12 +1,28 @@
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+// API base: same pattern as login - relative URL in production (prevents Mixed Content)
+// Override via VITE_API_BASE in .env when frontend/backend are on different origins
+export function getApiBase() {
+  if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE.replace(/\/?$/, '/')
+  if (typeof window === 'undefined') {
+    const base = (import.meta.env.BASE_URL || '/anistito/').replace(/\/$/, '') || ''
+    return (base ? base + '/' : '/') + 'api/'
+  }
+  const h = window.location.hostname
+  const p = window.location.port
+  if (h === 'localhost' || h === '127.0.0.1') {
+    if (p === '8000' || p === '') return '/api/'
+    return 'http://localhost:8000/api/'
+  }
+  // Production: use same base path as app (from Vite base config)
+  const base = (import.meta.env.BASE_URL || '/anistito/').replace(/\/$/, '') || ''
+  return (base ? base + '/' : '/') + 'api/'
+}
+const API_BASE = getApiBase()
 
 const api = axios.create({
-  baseURL: `${API_BASE}/api`,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: API_BASE,
+  headers: { 'Content-Type': 'application/json' },
 })
 
 // Add auth token to requests
@@ -24,86 +40,97 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
-      window.location.href = '/login'
+      window.location.href = (import.meta.env.BASE_URL || '') + 'login'
     }
     return Promise.reject(error)
   }
 )
 
+// مسیر پایه اپ (بدون /api) برای endpointهای غیر-API مثل debug
+export function getAppBasePath() {
+  const base = (import.meta.env.BASE_URL || '/anistito/').replace(/\/$/, '') || ''
+  return (base ? base + '/' : '/')
+}
+
 // ─── Auth ──────────────────────────────────────────────────────
 export const authApi = {
   login: (username, password) =>
-    api.post('/auth/login', new URLSearchParams({ username, password }), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    }),
-  me: () => api.get('/auth/me'),
-  register: (data) => api.post('/auth/register', data),
+    api.post('auth/login-json', { username, password }),
+  me: () => api.get('auth/me'),
+  register: (data) => api.post('auth/register', data),
 }
 
 // ─── Processes ─────────────────────────────────────────────────
+// Backend routes have NO trailing slash - avoid 307 redirect (causes Mixed Content)
 export const processApi = {
-  list: (params) => api.get('/admin/processes/', { params }),
-  get: (id) => api.get(`/admin/processes/${id}`),
-  create: (data) => api.post('/admin/processes/', data),
-  update: (id, data) => api.patch(`/admin/processes/${id}`, data),
-  delete: (id) => api.delete(`/admin/processes/${id}`),
+  list: (params) => api.get('admin/processes', { params }),
+  get: (id) => api.get(`admin/processes/${id}`),
+  create: (data) => api.post('admin/processes', data),
+  update: (id, data) => api.patch(`admin/processes/${id}`, data),
+  delete: (id) => api.delete(`admin/processes/${id}`),
   // States
-  getStates: (processId) => api.get(`/admin/processes/${processId}/states/`),
-  createState: (processId, data) => api.post(`/admin/processes/${processId}/states/`, data),
-  updateState: (stateId, data) => api.patch(`/admin/states/${stateId}`, data),
-  deleteState: (stateId) => api.delete(`/admin/states/${stateId}`),
+  getStates: (processId) => api.get(`admin/processes/${processId}/states`),
+  createState: (processId, data) => api.post(`admin/processes/${processId}/states`, data),
+  updateState: (stateId, data) => api.patch(`admin/states/${stateId}`, data),
+  deleteState: (stateId) => api.delete(`admin/states/${stateId}`),
   // Transitions
-  getTransitions: (processId) => api.get(`/admin/processes/${processId}/transitions/`),
-  createTransition: (processId, data) => api.post(`/admin/processes/${processId}/transitions/`, data),
-  updateTransition: (transitionId, data) => api.patch(`/admin/transitions/${transitionId}`, data),
-  deleteTransition: (transitionId) => api.delete(`/admin/transitions/${transitionId}`),
+  getTransitions: (processId) => api.get(`admin/processes/${processId}/transitions`),
+  createTransition: (processId, data) => api.post(`admin/processes/${processId}/transitions`, data),
+  updateTransition: (transitionId, data) => api.patch(`admin/transitions/${transitionId}`, data),
+  deleteTransition: (transitionId) => api.delete(`admin/transitions/${transitionId}`),
 }
 
 // ─── Rules ─────────────────────────────────────────────────────
 export const ruleApi = {
-  list: (params) => api.get('/admin/rules/', { params }),
-  get: (id) => api.get(`/admin/rules/${id}`),
-  create: (data) => api.post('/admin/rules/', data),
-  update: (id, data) => api.patch(`/admin/rules/${id}`, data),
-  delete: (id) => api.delete(`/admin/rules/${id}`),
+  list: (params) => api.get('admin/rules', { params }),
+  get: (id) => api.get(`admin/rules/${id}`),
+  create: (data) => api.post('admin/rules', data),
+  update: (id, data) => api.patch(`admin/rules/${id}`, data),
+  delete: (id) => api.delete(`admin/rules/${id}`),
 }
 
 // ─── Audit ─────────────────────────────────────────────────────
 export const auditApi = {
-  list: (params) => api.get('/admin/audit-logs/', { params }),
+  list: (params) => api.get('admin/audit-logs', { params }),
 }
 
 // ─── Dashboard ─────────────────────────────────────────────────
 export const dashboardApi = {
-  stats: () => api.get('/admin/dashboard/stats'),
+  stats: () => api.get('admin/dashboard/stats'),
+  syncMetadata: () => api.post('admin/sync-metadata'),
+  // endpoint دیباگ بدون نیاز به توکن (همان الگوی لاگین - بدون auth)
+  debugProcessCount: () =>
+    fetch(`${window.location.origin}${getAppBasePath()}debug/process-count`).then((r) =>
+      r.ok ? r.json() : Promise.reject(new Error('debug failed'))
+    ),
 }
 
 // ─── Students ──────────────────────────────────────────────────
 export const studentApi = {
-  list: () => api.get('/students/'),
-  get: (id) => api.get(`/students/${id}`),
-  create: (data) => api.post('/students/', data),
-  update: (id, data) => api.patch(`/students/${id}`, data),
+  list: () => api.get('students'),
+  get: (id) => api.get(`students/${id}`),
+  create: (data) => api.post('students', data),
+  update: (id, data) => api.patch(`students/${id}`, data),
 }
 
 // ─── Process Execution ─────────────────────────────────────────
 export const processExecApi = {
-  definitions: () => api.get('/process/definitions/'),
-  getDefinition: (code) => api.get(`/process/definitions/${code}`),
-  start: (data) => api.post('/process/start', data),
-  trigger: (instanceId, data) => api.post(`/process/${instanceId}/trigger`, data),
-  status: (instanceId) => api.get(`/process/${instanceId}/status`),
-  transitions: (instanceId) => api.get(`/process/${instanceId}/transitions`),
+  definitions: () => api.get('process/definitions'),
+  getDefinition: (code) => api.get(`process/definitions/${code}`),
+  start: (data) => api.post('process/start', data),
+  trigger: (instanceId, data) => api.post(`process/${instanceId}/trigger`, data),
+  status: (instanceId) => api.get(`process/${instanceId}/status`),
+  transitions: (instanceId) => api.get(`process/${instanceId}/transitions`),
   studentInstances: (studentId, params) =>
-    api.get(`/process/instances/student/${studentId}`, { params }),
+    api.get(`process/instances/student/${studentId}`, { params }),
 }
 
 // ─── Users ─────────────────────────────────────────────────────
 export const userApi = {
-  list: (params) => api.get('/admin/users/', { params }),
-  create: (data) => api.post('/auth/register', data),
-  update: (id, data) => api.patch(`/admin/users/${id}`, data),
-  delete: (id) => api.delete(`/admin/users/${id}`),
+  list: (params) => api.get('admin/users', { params }),
+  create: (data) => api.post('auth/register', data),
+  update: (id, data) => api.patch(`admin/users/${id}`, data),
+  delete: (id) => api.delete(`admin/users/${id}`),
 }
 
 export default api

@@ -1,0 +1,720 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-02-14",
+  "description": "فهرست فرایندهای ثبت‌شده — منبع حقیقت برای وضعیت و تکامل",
+  "processes": [
+    {
+      "code": "educational_leave",
+      "name_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/educational_leave",
+      "metadata_path": "metadata/processes/educational_leave.json",
+      "rules_used": [
+        "is_intern",
+        "is_not_intern",
+        "leave_terms_eq_1",
+        "leave_terms_eq_2"
+      ],
+      "roles_needed": [
+        "student",
+        "progress_committee",
+        "deputy_education",
+        "monitoring_committee_officer"
+      ],
+      "sub_process_refs": [
+        "violation_registration",
+        "patient_referral"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "بر اساس فلوچارت و متن ۸ گامی. نواقص: فرایندهای فرعی و اجرای اکشن‌ها."
+    },
+    {
+      "code": "start_therapy",
+      "name_fa": "آغاز درمان آموزشی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/start_therapy",
+      "metadata_path": "metadata/processes/start_therapy.json",
+      "rules_used": [
+        "student_eligible_for_therapy",
+        "therapy_not_started",
+        "already_started_therapy",
+        "student_not_eligible",
+        "week_9_deadline",
+        "schedule_valid_for_course",
+        "24_hour_rule"
+      ],
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "یک‌بارمصرف. قانون ۲۴ ساعت. قانون هفته نهم. پذیرش مشروط در فرایند ثبت‌نام."
+    },
+    {
+      "code": "extra_session",
+      "name_fa": "برگزاری جلسه اضافی درمان آموزشی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/extra_session",
+      "metadata_path": "metadata/processes/extra_session.json",
+      "rules_used": [],
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [
+        "attendance_tracking"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "سیکل مذاکره درمانگر-دانشجو. ثبت ساعات مطابق SOP attendance_tracking."
+    },
+    {
+      "code": "session_payment",
+      "name_fa": "پرداخت برای جلسات آتی درمان آموزشی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/session_payment",
+      "metadata_path": "metadata/processes/session_payment.json",
+      "rules_used": [
+        "payment_selection_valid",
+        "has_debt",
+        "payment_max_retries_exceeded"
+      ],
+      "roles_needed": [
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "شرط بدهی. تخصیص اعتبار. فعال‌سازی لینک و ثبت حضور به‌محض پرداخت."
+    },
+    {
+      "code": "attendance_tracking",
+      "name_fa": "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/attendance_tracking",
+      "metadata_path": "metadata/processes/attendance_tracking.json",
+      "rules_used": [
+        "student_on_leave",
+        "session_cancelled",
+        "session_not_paid",
+        "session_paid",
+        "student_not_on_leave",
+        "session_not_cancelled",
+        "absence_is_excused",
+        "absence_is_unexcused",
+        "absence_quota_not_exceeded",
+        "absence_quota_exceeded"
+      ],
+      "roles_needed": [
+        "therapist",
+        "site_manager",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [
+        "fee_determination"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "پیش‌بررسی وقفه/کنسلی/پرداخت. اسکیلیشن ۲ روزی. سه فیلد ساعات."
+    },
+    {
+      "code": "fee_determination",
+      "name_fa": "تعیین تکلیف هزینه جلسه درمان آموزشی یا سوپرویژن فردی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/fee_determination",
+      "metadata_path": "metadata/processes/fee_determination.json",
+      "rules_used": [
+        "student_on_leave",
+        "session_cancelled_by_provider",
+        "session_paid",
+        "session_not_paid",
+        "absence_quota_not_exceeded",
+        "absence_quota_exceeded",
+        "absence_quota"
+      ],
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "۴ سناریو. سهمیه ۳×هفتگی. سال شمسی. پیش‌شرط وقفه و کنسلی درمانگر."
+    },
+    {
+      "code": "therapy_completion",
+      "name_fa": "تکمیل و خاتمه درمان آموزشی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/therapy_completion",
+      "metadata_path": "metadata/processes/therapy_completion.json",
+      "rules_used": [
+        "therapy_threshold_met",
+        "clinical_threshold_met",
+        "supervision_threshold_met",
+        "completion_conditions_not_met"
+      ],
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "اعتبارسنجی ۲۵۰/۷۵۰/۱۵۰. override کمیته. حذف وقت‌ها، آزادسازی درمانگر."
+    },
+    {
+      "code": "therapy_session_increase",
+      "name_fa": "درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/therapy_session_increase",
+      "metadata_path": "metadata/processes/therapy_session_increase.json",
+      "rules_used": [
+        "comprehensive_course_only"
+      ],
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "فقط دوره جامع. سیکل مذاکره درمانگر-دانشجو. جلسه Recurring، مشمول attendance."
+    },
+    {
+      "code": "therapy_session_reduction",
+      "name_fa": "درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/therapy_session_reduction",
+      "metadata_path": "metadata/processes/therapy_session_reduction.json",
+      "rules_used": [
+        "fewer_than_2_weekly_sessions",
+        "has_2_or_more_weekly_sessions",
+        "reduction_results_in_2_plus",
+        "reduction_results_in_1",
+        "therapy_threshold_met",
+        "clinical_threshold_met",
+        "supervision_threshold_met",
+        "completion_conditions_not_met"
+      ],
+      "roles_needed": [
+        "student",
+        "system",
+        "monitoring_committee_officer"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "Tapering. شرط ≥۲ جلسه. کاهش به ۱ بدون تکمیل = تخلف + violation_registration."
+    },
+    {
+      "code": "therapy_early_termination",
+      "name_fa": "قطع زودرس درمان آموزشی توسط درمانگر آموزشی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/therapy_early_termination",
+      "metadata_path": "metadata/processes/therapy_early_termination.json",
+      "rules_used": [
+        "termination_reason_1_or_2",
+        "termination_reason_3",
+        "termination_reason_4"
+      ],
+      "roles_needed": [
+        "therapist",
+        "student",
+        "system",
+        "monitoring_committee_officer"
+      ],
+      "sub_process_refs": [
+        "violation_registration",
+        "specialized_commission_review",
+        "committees_review"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "۴ گزینه علت. مسیر استاندارد با مهلت ۵ روز. مسیر علمی و انضباطی با BPMS."
+    },
+    {
+      "code": "specialized_commission_review",
+      "name_fa": "بررسی کمیسیون تخصصی (زیرفرایند الف)",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/specialized_commission_review",
+      "metadata_path": "metadata/processes/specialized_commission_review.json",
+      "rules_used": [],
+      "roles_needed": [
+        "specialized_commission",
+        "student",
+        "system",
+        "monitoring_committee_officer"
+      ],
+      "sub_process_refs": [
+        "violation_registration",
+        "committees_review"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "زیرفرایند الف قطع زودرس. تایید → Unlock، ۵ روز. رد → ارجاع به زیرفرایند ب."
+    },
+    {
+      "code": "committees_review",
+      "name_fa": "بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/committees_review",
+      "metadata_path": "metadata/processes/committees_review.json",
+      "rules_used": [
+        "is_intern"
+      ],
+      "roles_needed": [
+        "supervision_committee",
+        "education_committee",
+        "student",
+        "system",
+        "deputy_education",
+        "monitoring_committee_officer"
+      ],
+      "sub_process_refs": [
+        "violation_registration",
+        "patient_referral"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "نظارت ۳ روز، آموزش ۶ روز. ادامه یا قطع. انترن → patient_referral."
+    },
+    {
+      "code": "therapist_session_cancellation",
+      "name_fa": "کنسل کردن جلسه از سوی درمانگر آموزشی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/therapist_session_cancellation",
+      "metadata_path": "metadata/processes/therapist_session_cancellation.json",
+      "rules_used": [
+        "has_credit_sessions",
+        "no_credit_sessions"
+      ],
+      "roles_needed": [
+        "therapist",
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "attendance_tracking"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "۱ جلسه/نوبت. عدم جبرانی یا جبرانی. سیکل مذاکره. بستانکار یا پرداخت."
+    },
+    {
+      "code": "unannounced_absence_reaction",
+      "name_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/unannounced_absence_reaction",
+      "metadata_path": "metadata/processes/unannounced_absence_reaction.json",
+      "rules_used": [
+        "student_on_leave",
+        "first_unannounced_absence",
+        "two_consecutive_unannounced"
+      ],
+      "roles_needed": [
+        "site_manager",
+        "therapy_committee_chair",
+        "therapy_committee_executor",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "No-Show. ۳ حالت مسئول سایت. کمیته درمان. تایمر ۳ هفته برای مبهم."
+    },
+    {
+      "code": "therapy_interruption",
+      "name_fa": "وقفه در درمان آموزشی توسط دانشجو",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/therapy_interruption",
+      "metadata_path": "metadata/processes/therapy_interruption.json",
+      "rules_used": [
+        "interruption_less_than_42_days",
+        "interruption_42_days_or_more"
+      ],
+      "roles_needed": [
+        "student",
+        "progress_committee",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration",
+        "patient_referral"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۱۶. رد → violation_registration. تایید < ۴۲ روز: حفظ درمانگر/سوپروایزر، در پایان بررسی بازگشت. ≥ ۴۲ روز: آزادسازی فوری و patient_referral."
+    },
+    {
+      "code": "student_session_cancellation",
+      "name_fa": "کنسل کردن جلسات درمان آموزشی توسط دانشجو",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/student_session_cancellation",
+      "metadata_path": "metadata/processes/student_session_cancellation.json",
+      "rules_used": [
+        "would_exceed_3_consecutive_weeks",
+        "consecutive_weeks_valid",
+        "cancellation_below_10_percent",
+        "cancellation_10_to_12_percent",
+        "cancellation_above_12_percent"
+      ],
+      "roles_needed": [
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration",
+        "fee_determination"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۱۷. قانون ۳ هفته متوالی. قانون ۱۲٪. ۱۰–۱۲٪ هشدار، >۱۲٪ تخلف. هر جلسه → fee_determination."
+    },
+    {
+      "code": "supervision_block_transition",
+      "name_fa": "آغاز سوپرویژن فردی دوم یا سوم یا چهارم یا پنجم",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/supervision_block_transition",
+      "metadata_path": "metadata/processes/supervision_block_transition.json",
+      "rules_used": [
+        "at_50th_supervision_session",
+        "not_at_50th_supervision_session",
+        "max_one_session_per_week"
+      ],
+      "roles_needed": [
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "session_payment"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۱۹. قفل منطقی: پرداخت جلسه اول دوره جدید قبل از جلسه ۵۰. قانون ۲۴ ساعت. حداکثر ۱ جلسه/هفته."
+    },
+    {
+      "code": "supervision_50h_completion",
+      "name_fa": "تکمیل دوره‌های ۵۰ ساعته سوپرویژن فردی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/supervision_50h_completion",
+      "metadata_path": "metadata/processes/supervision_50h_completion.json",
+      "rules_used": [
+        "at_48th_supervision_session",
+        "at_49th_supervision_session",
+        "not_at_48_or_49_supervision_session",
+        "at_50th_supervision_session",
+        "not_at_50th_supervision_session",
+        "supervision_session_paid",
+        "supervision_session_not_paid"
+      ],
+      "roles_needed": [
+        "student",
+        "supervisor",
+        "site_manager",
+        "system"
+      ],
+      "sub_process_refs": [
+        "fee_determination",
+        "violation_registration"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۲۰. SMS ۴۵ و ۴۸. قفل پرداخت ۵۰ تا ثبت ۴۹. ارزیابی ۳ روز. تفکیک بستانکاری."
+    },
+    {
+      "code": "supervision_session_increase",
+      "name_fa": "درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/supervision_session_increase",
+      "metadata_path": "metadata/processes/supervision_session_increase.json",
+      "rules_used": [
+        "comprehensive_course_only"
+      ],
+      "roles_needed": [
+        "student",
+        "supervisor",
+        "system"
+      ],
+      "sub_process_refs": [
+        "supervision_50h_completion"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۲۱. فقط دوره جامع. مذاکره سوپروایزر-دانشجو. اتصال به supervision_50h_completion."
+    },
+    {
+      "code": "extra_supervision_session",
+      "name_fa": "درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/extra_supervision_session",
+      "metadata_path": "metadata/processes/extra_supervision_session.json",
+      "rules_used": [],
+      "roles_needed": [
+        "student",
+        "supervisor",
+        "system"
+      ],
+      "sub_process_refs": [
+        "session_payment",
+        "supervision_50h_completion"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۲۲. جلسه Ad-hoc تک‌هفته. تایید/رد+پیشنهاد/عدم امکان. پرداخت قبل از جلسه."
+    },
+    {
+      "code": "supervision_session_reduction",
+      "name_fa": "درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/supervision_session_reduction",
+      "metadata_path": "metadata/processes/supervision_session_reduction.json",
+      "rules_used": [
+        "has_2_or_more_weekly_supervision_sessions",
+        "fewer_than_2_weekly_supervision_sessions",
+        "supervision_reduction_leaves_at_least_1",
+        "completion_conditions_not_met",
+        "therapy_threshold_met",
+        "clinical_threshold_met",
+        "supervision_threshold_met"
+      ],
+      "roles_needed": [
+        "student",
+        "supervisor",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۲۳. مسیر الف: ۲+ جلسه → حذف انتخابی. مسیر ب: ۱ جلسه → احراز ۱۵۰/۲۵۰/۷۵۰ + تایید سوپروایزر."
+    },
+    {
+      "code": "supervisor_session_cancellation",
+      "name_fa": "کنسل کردن جلسه از سوی سوپروایزر",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/supervisor_session_cancellation",
+      "metadata_path": "metadata/processes/supervisor_session_cancellation.json",
+      "rules_used": [
+        "supervisor_cancel_max_one_session",
+        "supervisor_cancel_session_within_4_weeks",
+        "supervision_session_paid",
+        "supervision_session_not_paid"
+      ],
+      "roles_needed": [
+        "supervisor",
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "supervision_50h_completion"
+      ],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۲۶. حداکثر ۱ جلسه/نوبت. ۴ هفته آینده. تفکیک از مرخصی سوپروایزر. عدم جبرانی یا جبرانی. سیکل مذاکره. بستانکار یا پرداخت. لینک آنلاین حتی اگر حضوری."
+    },
+    {
+      "code": "supervision_interruption",
+      "name_fa": "وقفه در سوپرویژن فردی توسط دانشجو",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/supervision_interruption",
+      "metadata_path": "metadata/processes/supervision_interruption.json",
+      "rules_used": [
+        "supervision_interruption_less_than_21_days",
+        "supervision_interruption_21_days_or_more"
+      ],
+      "roles_needed": ["student", "progress_committee", "system"],
+      "sub_process_refs": ["violation_registration", "patient_referral"],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۲۸. بدون بدهی در بازه وقفه. آستانه ۲۱ روز. <۲۱: حفظ سوپروایزر، بررسی بازگشت. ≥۲۱: آزادسازی فوری منابع و ارجاع بیماران."
+    },
+    {
+      "code": "fall_semester_preparation",
+      "name_fa": "آماده‌سازی ترم پاییز",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/fall_semester_preparation",
+      "metadata_path": "metadata/processes/fall_semester_preparation.json",
+      "rules_used": [],
+      "roles_needed": ["course_committee_executive", "deputy_education", "course_committee_scientific", "admissions_officer", "site_manager", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۲۹. پایپلاین ترتیبی ۹ مرحله. تقویم آموزشی، شهریه، پروانه، دروس، اساتید، مارکتینگ، مصاحبه‌ها. مهلت‌ها فقط هشداری (قفل نمی‌شود). SLA برای هر مرحله."
+    },
+    {
+      "code": "winter_semester_preparation",
+      "name_fa": "آماده‌سازی ترم زمستان",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/winter_semester_preparation",
+      "metadata_path": "metadata/processes/winter_semester_preparation.json",
+      "rules_used": [],
+      "roles_needed": ["deputy_education", "course_committee_scientific", "admissions_officer", "site_manager", "system"],
+      "sub_process_refs": ["fall_semester_preparation"],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۳۰. بازنگری و به‌روزرسانی برنامه پاییز برای زمستان. فرم‌ها پیش‌پر از پاییز. مهلت‌ها فقط هشداری."
+    },
+    {
+      "code": "introductory_course_registration",
+      "name_fa": "ثبت‌نام دوره آشنایی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/introductory_course_registration",
+      "metadata_path": "metadata/processes/introductory_course_registration.json",
+      "rules_used": [],
+      "roles_needed": ["applicant", "admissions_officer", "interviewer", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۳۱. ۴ فاز: درخواست+مصاحبه، نتایج، مدارک، ثبت‌نام+پرداخت. ۴ حالت پذیرش. امضای دیجیتال تعهدنامه. اقساط ۴ قسطی. حضور قفل در صورت بدهی."
+    },
+    {
+      "code": "introductory_term_end",
+      "name_fa": "پایان ترم‌های دوره آشنایی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/introductory_term_end",
+      "metadata_path": "metadata/processes/introductory_term_end.json",
+      "rules_used": [],
+      "roles_needed": ["admissions_officer", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۳۲. خودکار پس از ثبت تمام نمرات. کارنامه ترمی+کلی. بررسی شرط درمان. مسدودی ثبت‌نام ترم ۲ مشروطین. پیگیری افت تحصیلی ۷ روزه."
+    },
+    {
+      "code": "intro_second_semester_registration",
+      "name_fa": "ثبت‌نام دانشجو برای ترم دوم دوره آشنایی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/intro_second_semester_registration",
+      "metadata_path": "metadata/processes/intro_second_semester_registration.json",
+      "rules_used": [],
+      "roles_needed": ["student", "system"],
+      "sub_process_refs": ["start_therapy"],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۳۳. بررسی شرط درمان + تعلیق. منطق پیش‌نیاز/همنیاز (مردودی → همنیاز). تک‌درس فقط نقدی. اقساط ۴ قسطی."
+    },
+    {
+      "code": "introductory_course_completion",
+      "name_fa": "خاتمه دوره آشنایی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/introductory_course_completion",
+      "metadata_path": "metadata/processes/introductory_course_completion.json",
+      "rules_used": [],
+      "roles_needed": ["supervision_committee", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۳۴. خودکار پس از پاس ۱۰ درس. صدور گواهی. مهر و امضای الکترونیکی کمیته نظارت. دانلود PDF. اطلاع‌رسانی مهلت دوره جامع."
+    },
+    {
+      "code": "comprehensive_course_registration",
+      "name_fa": "ثبت‌نام در دوره جامع",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/comprehensive_course_registration",
+      "metadata_path": "metadata/processes/comprehensive_course_registration.json",
+      "rules_used": [],
+      "roles_needed": ["student", "supervision_committee", "progress_committee_executive", "progress_committee_scientific", "admissions_officer", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۳۵. غربالگری ۳ لایه (نظارت، اجرایی پیشرفت، علمی پیشرفت). گزارش تجربه شخصی. مصاحبه. ۳ نتیجه. درمان ۲×/هفته الزامی. تمام دروس ترم اجباری."
+    },
+    {
+      "code": "comprehensive_term_end",
+      "name_fa": "پایان ترم‌های دوره جامع",
+      "status": "draft",
+      "has_registry_entry": true,
+      "registry_path": "processes/comprehensive_term_end",
+      "metadata_path": "metadata/processes/comprehensive_term_end.json",
+      "rules_used": [],
+      "roles_needed": ["system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "notes": "مرحله ۳۶. DRAFT — احتمال تغییر بنیادین تا ۸ اسفند. کارنامه ترمی+کلی (قالب صالحی). بررسی فارغ‌التحصیلی. SMS فقط به دانشجویان با دروس باقیمانده."
+    },
+    {"code":"internship_readiness_consultation","name_fa":"مشورت و تعیین آمادگی برای آغاز انترنی","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/internship_readiness_consultation","metadata_path":"metadata/processes/internship_readiness_consultation.json","rules_used":[],"roles_needed":["student","progress_committee","system"],"sub_process_refs":["violation_registration"],"last_converted":"2026-02-14","notes":"مرحله ۳۷."},
+    {"code":"internship_12month_conditional_review","name_fa":"۱۲ ماه پس از قبولی مشروط در انترنی","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/internship_12month_conditional_review","metadata_path":"metadata/processes/internship_12month_conditional_review.json","rules_used":[],"roles_needed":["system","progress_committee"],"sub_process_refs":["violation_registration"],"last_converted":"2026-02-14","notes":"مرحله ۳۸. خودکار."},
+    {"code":"intern_hours_increase","name_fa":"اضافه شدن حداکثر ساعت‌های ارائه درمان انترن","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/intern_hours_increase","metadata_path":"metadata/processes/intern_hours_increase.json","rules_used":[],"roles_needed":["progress_committee","system"],"sub_process_refs":["violation_registration"],"last_converted":"2026-02-14","notes":"مرحله ۳۹."},
+    {"code":"comprehensive_term_start","name_fa":"آغاز ترم‌های دوره جامع","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/comprehensive_term_start","metadata_path":"metadata/processes/comprehensive_term_start.json","rules_used":[],"roles_needed":["course_committee_executive","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۰."},
+    {"code":"lesson_start_per_term","name_fa":"آغاز هر درس در هر ترم","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/lesson_start_per_term","metadata_path":"metadata/processes/lesson_start_per_term.json","rules_used":[],"roles_needed":["course_committee_executive","instructor","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۱."},
+    {"code":"student_non_registration","name_fa":"عدم ثبت‌نام دانشجو برای ترم بعد","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/student_non_registration","metadata_path":"metadata/processes/student_non_registration.json","rules_used":[],"roles_needed":["student","system"],"sub_process_refs":["violation_registration","educational_leave"],"last_converted":"2026-02-14","notes":"مرحله ۴۲."},
+    {"code":"ta_conceptual_questions","name_fa":"ثبت ۳ سوال تستی‌مفهومی (کمک‌مدرس)","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_conceptual_questions","metadata_path":"metadata/processes/ta_conceptual_questions.json","rules_used":[],"roles_needed":["teaching_assistant","system"],"sub_process_refs":["violation_registration"],"last_converted":"2026-02-14","notes":"مرحله ۴۳."},
+    {"code":"ta_student_consultation","name_fa":"شناسایی، تشویق و مشورت آموزشی (کمک‌مدرس)","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_student_consultation","metadata_path":"metadata/processes/ta_student_consultation.json","rules_used":[],"roles_needed":["teaching_assistant","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۴."},
+    {"code":"ta_essay_upload","name_fa":"آپلود جستار و دقایق منتخب فیلم (کمک‌مدرس)","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_essay_upload","metadata_path":"metadata/processes/ta_essay_upload.json","rules_used":[],"roles_needed":["teaching_assistant","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۵."},
+    {"code":"upgrade_to_ta","name_fa":"ارتقا به کمک‌مدرس","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/upgrade_to_ta","metadata_path":"metadata/processes/upgrade_to_ta.json","rules_used":[],"roles_needed":["student","supervision_committee","course_committee_scientific","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۶."},
+    {"code":"mentor_private_sessions","name_fa":"ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/mentor_private_sessions","metadata_path":"metadata/processes/mentor_private_sessions.json","rules_used":[],"roles_needed":["instructor","teaching_assistant","system"],"sub_process_refs":["violation_registration"],"last_converted":"2026-02-14","notes":"مرحله ۴۸."},
+    {"code":"ta_to_assistant_faculty","name_fa":"ارتقا رتبه از کمک‌مدرس به دستیار هیئت علمی","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_to_assistant_faculty","metadata_path":"metadata/processes/ta_to_assistant_faculty.json","rules_used":[],"roles_needed":["teaching_assistant","supervision_committee","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۹."},
+    {"code":"ta_to_instructor_auto","name_fa":"تبدیل خودکار کمک‌مدرس به مدرس در هر درس","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_to_instructor_auto","metadata_path":"metadata/processes/ta_to_instructor_auto.json","rules_used":[],"roles_needed":["system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۵۰. خودکار."},
+    {"code":"ta_track_change","name_fa":"تغییر یا اضافه کردن رسته کمک‌مدرس","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_track_change","metadata_path":"metadata/processes/ta_track_change.json","rules_used":[],"roles_needed":["teaching_assistant","course_committee_scientific","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۵۱."},
+    {"code":"ta_track_completion","name_fa":"خاتمه کمک‌مدرس برای هر رسته","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_track_completion","metadata_path":"metadata/processes/ta_track_completion.json","rules_used":[],"roles_needed":["system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۵۲. خودکار."},
+    {"code":"ta_instructor_leave","name_fa":"مرخصی کمک‌مدرس و مدرسین","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_instructor_leave","metadata_path":"metadata/processes/ta_instructor_leave.json","rules_used":[],"roles_needed":["teaching_assistant","instructor","course_committee_scientific","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۵۳."}
+  ],
+  "all_processes_in_metadata": [
+    "attendance_tracking",
+    "educational_leave",
+    "extra_session",
+    "fee_determination",
+    "session_payment",
+    "start_therapy",
+    "therapy_changes",
+    "therapy_completion",
+    "therapy_session_increase",
+    "therapy_session_reduction",
+    "therapy_early_termination",
+    "specialized_commission_review",
+    "committees_review",
+    "therapist_session_cancellation",
+    "unannounced_absence_reaction",
+    "therapy_interruption",
+    "student_session_cancellation",
+    "supervision_block_transition",
+    "supervision_50h_completion",
+    "supervision_session_increase",
+    "extra_supervision_session",
+    "supervision_session_reduction",
+    "supervisor_session_cancellation",
+    "supervision_interruption",
+    "fall_semester_preparation",
+    "winter_semester_preparation",
+    "introductory_course_registration",
+    "introductory_term_end",
+    "intro_second_semester_registration",
+    "introductory_course_completion",
+    "comprehensive_course_registration",
+    "comprehensive_term_end",
+    "internship_readiness_consultation",
+    "internship_12month_conditional_review",
+    "intern_hours_increase",
+    "comprehensive_term_start",
+    "lesson_start_per_term",
+    "student_non_registration",
+    "ta_conceptual_questions",
+    "ta_student_consultation",
+    "ta_essay_upload",
+    "upgrade_to_ta",
+    "mentor_private_sessions",
+    "ta_to_assistant_faculty",
+    "ta_to_instructor_auto",
+    "ta_track_change",
+    "ta_track_completion",
+    "ta_instructor_leave"
+  ],
+  "stats": {
+    "total_in_registry": 51,
+    "total_in_metadata": 51,
+    "with_gaps": 5
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "process": {
+    "code": "ta_conceptual_questions",
+    "name_fa": "ثبت ۳ سوال تستی‌مفهومی بعد از هر جلسه کلاس (کمک‌مدرس)",
+    "name_en": "TA Conceptual Test Questions",
+    "number": 43,
+    "description": "دروس تئوری و تکنیک تمرین مهارت‌ها. کمک‌مدرس ۳ سوال PDF آپلود می‌کند. مهلت ۲۴ ساعت. تاخیر → violation_registration + هشدار معاون. مدرس ۴ روز بررسی. رد → اصلاح ۲۴ ساعته. تایید → بانک سوال + ۲ نمره. حداکثر ۳۴ نمره (۱۷ جلسه).",
+    "initial_state": "session_ended",
+    "trigger": "class_session_ended"
+  },
+  "states": [
+    {"code": "session_ended", "name_fa": "جلسه کلاس پایان یافت", "type": "initial", "assigned_role": "system"},
+    {"code": "ta_upload", "name_fa": "آپلود ۳ سوال توسط کمک‌مدرس", "type": "intermediate", "assigned_role": "teaching_assistant", "sla_hours": 24},
+    {"code": "upload_late", "name_fa": "تاخیر آپلود — تخلف ثبت", "type": "intermediate", "assigned_role": "system"},
+    {"code": "instructor_review", "name_fa": "بررسی توسط مدرس", "type": "intermediate", "assigned_role": "instructor", "sla_days": 4},
+    {"code": "question_rejected", "name_fa": "سوال رد شد — اصلاح ۲۴ ساعته", "type": "intermediate", "assigned_role": "teaching_assistant"},
+    {"code": "questions_approved", "name_fa": "تایید — آرشیو و ۲ نمره", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "session_ended", "to": "ta_upload", "trigger": "process_started", "description_fa": "کمک‌مدرس قالب را دانلود و آپلود می‌کند"},
+    {"from": "ta_upload", "to": "upload_late", "trigger": "upload_after_24h", "description_fa": "تاخیر — violation_registration + هشدار معاون"},
+    {"from": "ta_upload", "to": "instructor_review", "trigger": "uploaded_on_time", "actions": [{"type": "notification", "notification_type": "sms", "template": "ta_questions_ready_for_review", "recipients": ["instructor"]}]},
+    {"from": "upload_late", "to": "instructor_review", "trigger": "uploaded_late", "description_fa": "آپلود دیرهنگام — همچنان قابل آپلود"},
+    {"from": "instructor_review", "to": "question_rejected", "trigger": "question_rejected", "required_role": "instructor", "description_fa": "غیر قابل قبول — توضیحات اجباری"},
+    {"from": "instructor_review", "to": "questions_approved", "trigger": "all_accepted", "required_role": "instructor", "description_fa": "هر ۳ سوال قابل قبول — آرشیو + ۲ نمره"},
+    {"from": "question_rejected", "to": "instructor_review", "trigger": "corrected_and_uploaded", "required_role": "teaching_assistant", "sla_hours": 24, "description_fa": "اصلاح و ارسال مجدد"}
+  ],
+  "forms": [
+    {"code": "conceptual_question_template", "name_fa": "قالب سوال تستی‌مفهومی", "used_in_state": "ta_upload", "fields": [{"name": "question_1", "label_fa": "سوال ۱", "type": "file_upload"}, {"name": "question_2", "label_fa": "سوال ۲", "type": "file_upload"}, {"name": "question_3", "label_fa": "سوال ۳", "type": "file_upload"}]}
+  ]
+}

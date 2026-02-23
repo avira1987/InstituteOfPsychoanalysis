@@ -1,0 +1,141 @@
+{
+  "process": {
+    "code": "supervision_interruption",
+    "name_fa": "فرایند وقفه در سوپرویژن فردی توسط دانشجو",
+    "name_en": "Individual Supervision Interruption by Student",
+    "number": 28,
+    "description": "دانشجو در هر زمان درخواست وقفه در جلسات سوپرویژن فردی می‌دهد. در دوره وقفه بدهی مالی ندارد. کمیته پیشرفت جلسه بررسی تعیین و تصمیم می‌گیرد. رد → violation. تایید: < ۲۱ روز حفظ سوپروایزر و مراجعان، بررسی بازگشت؛ ≥ ۲۱ روز آزادسازی فوری سوپروایزر و ارجاع مراجعان.",
+    "initial_state": "request_submitted",
+    "duration_threshold_days": 21
+  },
+  "states": [
+    {"code": "request_submitted", "name_fa": "ثبت درخواست وقفه در سوپرویژن", "type": "initial", "assigned_role": "student"},
+    {"code": "committee_scheduling", "name_fa": "تعیین جلسه بررسی توسط کمیته پیشرفت", "type": "intermediate", "assigned_role": "progress_committee"},
+    {"code": "meeting_held", "name_fa": "جلسه برگزار شد — تصمیم‌گیری کمیته", "type": "intermediate", "assigned_role": "progress_committee"},
+    {"code": "rejected", "name_fa": "رد درخواست وقفه", "type": "terminal", "assigned_role": "system"},
+    {"code": "approved_short_pause", "name_fa": "تایید وقفه کوتاه (< ۲۱ روز) — ثبت در LMS", "type": "intermediate", "assigned_role": "system"},
+    {"code": "approved_long_pause", "name_fa": "تایید وقفه بلند (≥ ۲۱ روز) — آزادسازی فوری", "type": "terminal", "assigned_role": "system"},
+    {"code": "monitoring_return", "name_fa": "پایش بازگشت دانشجو در تاریخ پایان وقفه", "type": "intermediate", "assigned_role": "system"},
+    {"code": "returned_successfully", "name_fa": "دانشجو بازگشت و جلسه اول را حضور یافت", "type": "terminal", "assigned_role": "system"},
+    {"code": "absent_resources_released", "name_fa": "عدم حضور — آزادسازی سوپروایزر و ارجاع مراجعان", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "request_submitted",
+      "to": "committee_scheduling",
+      "trigger": "pause_dates_entered",
+      "required_role": "student",
+      "description_fa": "دانشجو تاریخ شروع و پایان وقفه را وارد کرد"
+    },
+    {
+      "from": "committee_scheduling",
+      "to": "meeting_held",
+      "trigger": "meeting_scheduled",
+      "required_role": "progress_committee",
+      "description_fa": "کمیته پیشرفت جلسه بررسی تعیین کرد (تاریخ، ساعت، حضوری/آنلاین)",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "supervision_interruption_meeting_invite", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "sms", "template": "supervision_interruption_meeting_invite", "recipients": ["student"]},
+        {"type": "display_meeting_in_portal"}
+      ]
+    },
+    {
+      "from": "meeting_held",
+      "to": "rejected",
+      "trigger": "committee_rejected",
+      "required_role": "progress_committee",
+      "description_fa": "کمیته درخواست وقفه را رد کرد",
+      "actions": [
+        {"type": "display_rejection_explanations"},
+        {"type": "notification", "notification_type": "in_app", "template": "supervision_interruption_rejected", "recipients": ["student"]},
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "supervision_interruption_rejected"}},
+        {"type": "notification", "notification_type": "in_app", "template": "supervision_interruption_violation_report", "recipients": ["monitoring_committee_officer"]}
+      ]
+    },
+    {
+      "from": "meeting_held",
+      "to": "approved_short_pause",
+      "trigger": "committee_approved",
+      "required_role": "progress_committee",
+      "conditions": ["pause_less_than_21_days"],
+      "description_fa": "تایید — وقفه کمتر از ۲۱ روز، سوپروایزر حفظ و مراجعان نزد دانشجو می‌مانند",
+      "actions": [
+        {"type": "record_pause_dates_in_lms"},
+        {"type": "retain_supervisor"},
+        {"type": "retain_patients"}
+      ]
+    },
+    {
+      "from": "meeting_held",
+      "to": "approved_long_pause",
+      "trigger": "committee_approved",
+      "required_role": "progress_committee",
+      "conditions": ["pause_21_days_or_more"],
+      "description_fa": "تایید — وقفه ۲۱ روز یا بیشتر، آزادسازی فوری سوپروایزر",
+      "actions": [
+        {"type": "record_pause_dates_in_lms"},
+        {"type": "release_supervisor_slot"},
+        {"type": "move_supervisor_to_past_list"},
+        {"type": "start_process", "process_code": "patient_referral", "payload": {"reason": "supervision_interruption_long"}}
+      ]
+    },
+    {
+      "from": "approved_short_pause",
+      "to": "monitoring_return",
+      "trigger": "pause_end_date_reached",
+      "description_fa": "تاریخ پایان وقفه فرا رسید — بررسی حضور دانشجو در اولین جلسه"
+    },
+    {
+      "from": "monitoring_return",
+      "to": "returned_successfully",
+      "trigger": "student_attended_first_session",
+      "description_fa": "دانشجو در اولین جلسه پس از وقفه حاضر شد"
+    },
+    {
+      "from": "monitoring_return",
+      "to": "absent_resources_released",
+      "trigger": "student_absent_first_session",
+      "description_fa": "دانشجو در اولین جلسه پس از وقفه غایب بود — آزادسازی منابع",
+      "actions": [
+        {"type": "release_supervisor_slot"},
+        {"type": "move_supervisor_to_past_list"},
+        {"type": "start_process", "process_code": "patient_referral", "payload": {"reason": "supervision_interruption_no_return"}}
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "code": "student_pause_request_form",
+      "name_fa": "فرم درخواست وقفه سوپرویژن",
+      "used_in_state": "request_submitted",
+      "fields": [
+        {"name": "pause_start_date", "label_fa": "تاریخ شروع وقفه", "type": "date", "required": true},
+        {"name": "pause_end_date", "label_fa": "تاریخ پایان وقفه", "type": "date", "required": true},
+        {"name": "no_charge_notice", "label_fa": "در طول دوره وقفه هزینه‌ای محاسبه نمی‌شود", "type": "info_text", "required": false}
+      ]
+    },
+    {
+      "code": "committee_meeting_scheduling_form",
+      "name_fa": "فرم تعیین جلسه بررسی کمیته پیشرفت",
+      "used_in_state": "committee_scheduling",
+      "fields": [
+        {"name": "student_name", "label_fa": "نام دانشجو", "type": "text", "required": true, "auto_fill": true},
+        {"name": "requested_pause_range", "label_fa": "بازه زمانی وقفه درخواستی", "type": "text", "required": true, "auto_fill": true},
+        {"name": "meeting_date", "label_fa": "تاریخ جلسه بررسی", "type": "date", "required": true},
+        {"name": "meeting_time", "label_fa": "ساعت جلسه", "type": "time", "required": true},
+        {"name": "meeting_type", "label_fa": "نوع جلسه", "type": "select", "options": ["حضوری", "آنلاین"], "required": true},
+        {"name": "meeting_link", "label_fa": "لینک جلسه آنلاین", "type": "url", "required": false, "visible_if": {"meeting_type": "آنلاین"}}
+      ]
+    },
+    {
+      "code": "committee_decision_form",
+      "name_fa": "فرم تصمیم کمیته پیشرفت",
+      "used_in_state": "meeting_held",
+      "fields": [
+        {"name": "decision", "label_fa": "تصمیم کمیته", "type": "radio", "options": ["رد درخواست", "تایید وقفه"], "required": true},
+        {"name": "rejection_explanation", "label_fa": "توضیحات رد درخواست", "type": "textarea", "required": true, "visible_if": {"decision": "رد درخواست"}},
+        {"name": "committee_notes", "label_fa": "یادداشت‌های کمیته", "type": "textarea", "required": false}
+      ]
+    }
+  ]
+}

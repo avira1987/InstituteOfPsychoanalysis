@@ -1,0 +1,365 @@
+{
+  "process": {
+    "code": "introductory_course_registration",
+    "name_fa": "فرایند ثبت‌نام دوره آشنایی",
+    "name_en": "Introductory Course Registration",
+    "number": 31,
+    "description": "ثبت‌نام متقاضی در دوره آشنایی. شامل: پر کردن فرم پذیرش در سایت، انتخاب وقت مصاحبه، پرداخت هزینه مصاحبه، اجرای مصاحبه (۴ نتیجه: مشروط به درمان، تک‌درس، پذیرش کامل، رد)، آپلود مدارک، بررسی مدارک توسط مسئول پذیرش، ایجاد حساب کاربری، انتخاب دروس مجاز، پرداخت (نقدی یا اقساط حداکثر ۴ قسط)، ثبت‌نام نهایی و ایجاد لینک کلاس آنلاین. بلاک حضور و غیاب در صورت عدم تسویه قسط.",
+    "initial_state": "application_submitted"
+  },
+  "states": [
+    {"code": "application_submitted", "name_fa": "فرم پذیرش تکمیل شده", "type": "initial", "assigned_role": "applicant"},
+    {"code": "interview_scheduled", "name_fa": "وقت مصاحبه انتخاب شده", "type": "intermediate", "assigned_role": "applicant"},
+    {"code": "interview_payment", "name_fa": "در انتظار پرداخت هزینه مصاحبه", "type": "intermediate", "assigned_role": "applicant"},
+    {"code": "interview_payment_confirmed", "name_fa": "پرداخت مصاحبه تایید شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "interview_completed", "name_fa": "مصاحبه انجام شد — در انتظار ثبت نتیجه", "type": "intermediate", "assigned_role": "interviewer"},
+    {"code": "result_conditional_therapy", "name_fa": "نتیجه: پذیرش مشروط به درمان", "type": "intermediate", "assigned_role": "system", "metadata": {"admission_type": "conditional_therapy", "allowed_courses": "1-5"}},
+    {"code": "result_single_course", "name_fa": "نتیجه: پذیرش تک‌درس", "type": "intermediate", "assigned_role": "system", "metadata": {"admission_type": "single_course", "allowed_courses": ["تئوری روانکاوی ۱"], "payment_restriction": "cash_only"}},
+    {"code": "result_full_admission", "name_fa": "نتیجه: پذیرش کامل (بدون شرط)", "type": "intermediate", "assigned_role": "system", "metadata": {"admission_type": "full", "allowed_courses": "1-5"}},
+    {"code": "rejected", "name_fa": "رد شده — مسدودیت ثبت‌نام آینده", "type": "terminal", "assigned_role": "system"},
+    {"code": "documents_upload", "name_fa": "در انتظار آپلود مدارک و تعهدنامه", "type": "intermediate", "assigned_role": "applicant", "sla_hours": 48},
+    {"code": "documents_review", "name_fa": "بررسی مدارک توسط مسئول پذیرش", "type": "intermediate", "assigned_role": "admissions_officer"},
+    {"code": "documents_incomplete", "name_fa": "مدارک ناقص — در انتظار تکمیل", "type": "intermediate", "assigned_role": "applicant", "sla_hours": 48},
+    {"code": "credentials_created", "name_fa": "حساب کاربری ایجاد شد — ارسال اطلاعات ورود", "type": "intermediate", "assigned_role": "system"},
+    {"code": "course_selection", "name_fa": "انتخاب دروس مجاز در LMS", "type": "intermediate", "assigned_role": "student"},
+    {"code": "payment", "name_fa": "پرداخت شهریه (نقدی یا اقساط)", "type": "intermediate", "assigned_role": "student"},
+    {"code": "registration_complete", "name_fa": "ثبت‌نام نهایی — دروس ثبت و لینک کلاس فعال", "type": "terminal", "assigned_role": "system"},
+    {"code": "installment_overdue", "name_fa": "قسط معوق — بلاک حضور و غیاب", "type": "intermediate", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "application_submitted",
+      "to": "interview_scheduled",
+      "trigger": "timeslot_selected",
+      "required_role": "applicant",
+      "description_fa": "متقاضی وقت مصاحبه را از سایت انتخاب کرد"
+    },
+    {
+      "from": "interview_scheduled",
+      "to": "interview_payment",
+      "trigger": "proceed_to_payment",
+      "required_role": "applicant",
+      "description_fa": "هدایت به درگاه پرداخت هزینه مصاحبه"
+    },
+    {
+      "from": "interview_payment",
+      "to": "interview_payment_confirmed",
+      "trigger": "payment_success",
+      "description_fa": "پرداخت هزینه مصاحبه موفق — نمایش تاییدیه",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "interview_details_applicant", "recipients": ["applicant"], "description_fa": "ارسال جزئیات مصاحبه و لینک به متقاضی"},
+        {"type": "notification", "notification_type": "sms", "template": "interview_details_interviewer", "recipients": ["interviewer"], "description_fa": "ارسال اطلاعات متقاضی و زمان مصاحبه به مصاحبه‌کننده"}
+      ]
+    },
+    {
+      "from": "interview_payment",
+      "to": "interview_payment",
+      "trigger": "payment_failed",
+      "description_fa": "پرداخت ناموفق — بازگشت برای تلاش مجدد"
+    },
+    {
+      "from": "interview_payment_confirmed",
+      "to": "interview_completed",
+      "trigger": "interview_time_reached",
+      "description_fa": "زمان مصاحبه فرا رسید",
+      "actions": [
+        {"type": "scheduled_notification", "notification_type": "sms", "template": "interview_reminder_applicant_online", "recipients": ["applicant"], "schedule": "2_hours_before_interview", "condition": "interview_type == 'online'", "description_fa": "یادآوری ۲ ساعت قبل به متقاضی — مصاحبه آنلاین"},
+        {"type": "scheduled_notification", "notification_type": "sms", "template": "interview_reminder_applicant_inperson", "recipients": ["applicant"], "schedule": "2_hours_before_interview", "condition": "interview_type == 'in_person'", "description_fa": "یادآوری ۲ ساعت قبل به متقاضی — مصاحبه حضوری"},
+        {"type": "scheduled_notification", "notification_type": "sms", "template": "interview_reminder_interviewer_online", "recipients": ["interviewer"], "schedule": "2_hours_before_interview", "condition": "interview_type == 'online'", "description_fa": "یادآوری ۲ ساعت قبل به مصاحبه‌کننده — آنلاین"},
+        {"type": "scheduled_notification", "notification_type": "sms", "template": "interview_reminder_interviewer_inperson", "recipients": ["interviewer"], "schedule": "2_hours_before_interview", "condition": "interview_type == 'in_person'", "description_fa": "یادآوری ۲ ساعت قبل به مصاحبه‌کننده — حضوری"}
+      ]
+    },
+    {
+      "from": "interview_completed",
+      "to": "result_conditional_therapy",
+      "trigger": "interview_result_submitted",
+      "required_role": "interviewer",
+      "conditions": ["result == 'conditional_therapy'"],
+      "description_fa": "نتیجه مصاحبه: پذیرش مشروط به شروع درمان شخصی (۱ تا ۵ درس)",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "result_conditional_therapy", "recipients": ["applicant"], "description_fa": "اطلاع‌رسانی شرط شروع درمان شخصی"}
+      ]
+    },
+    {
+      "from": "interview_completed",
+      "to": "result_single_course",
+      "trigger": "interview_result_submitted",
+      "required_role": "interviewer",
+      "conditions": ["result == 'single_course'"],
+      "description_fa": "نتیجه مصاحبه: فقط مجاز به اخذ تئوری روانکاوی ۱",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "result_single_course", "recipients": ["applicant"], "description_fa": "اطلاع‌رسانی محدودیت تک‌درس"}
+      ]
+    },
+    {
+      "from": "interview_completed",
+      "to": "result_full_admission",
+      "trigger": "interview_result_submitted",
+      "required_role": "interviewer",
+      "conditions": ["result == 'full_admission'"],
+      "description_fa": "نتیجه مصاحبه: پذیرش کامل بدون شرط (۱ تا ۵ درس)",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "result_full_admission", "recipients": ["applicant"], "description_fa": "اطلاع‌رسانی پذیرش کامل"}
+      ]
+    },
+    {
+      "from": "interview_completed",
+      "to": "rejected",
+      "trigger": "interview_result_submitted",
+      "required_role": "interviewer",
+      "conditions": ["result == 'rejected'"],
+      "description_fa": "نتیجه مصاحبه: رد — مسدودیت دسترسی به فرم ثبت‌نام",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "result_rejected", "recipients": ["applicant"], "description_fa": "اطلاع‌رسانی رد درخواست"},
+        {"type": "block_future_applications", "description_fa": "مسدود کردن دسترسی متقاضی به فرم ثبت‌نام آینده"}
+      ]
+    },
+    {
+      "from": "result_conditional_therapy",
+      "to": "documents_upload",
+      "trigger": "proceed_to_documents",
+      "description_fa": "ارسال پیامک لیست مدارک مورد نیاز — مهلت ۲ روز",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "required_documents_list", "recipients": ["applicant"], "description_fa": "لیست مدارک: عکس، کارت ملی، شناسنامه، مدرک کارشناسی/پزشکی، مدرک کارشناسی ارشد، آخرین مدرک تحصیلی"}
+      ]
+    },
+    {
+      "from": "result_single_course",
+      "to": "documents_upload",
+      "trigger": "proceed_to_documents",
+      "description_fa": "ارسال پیامک لیست مدارک مورد نیاز — مهلت ۲ روز",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "required_documents_list", "recipients": ["applicant"]}
+      ]
+    },
+    {
+      "from": "result_full_admission",
+      "to": "documents_upload",
+      "trigger": "proceed_to_documents",
+      "description_fa": "ارسال پیامک لیست مدارک مورد نیاز — مهلت ۲ روز",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "required_documents_list", "recipients": ["applicant"]}
+      ]
+    },
+    {
+      "from": "documents_upload",
+      "to": "documents_review",
+      "trigger": "documents_submitted",
+      "required_role": "applicant",
+      "description_fa": "متقاضی مدارک و تعهدنامه دیجیتال (تایید با کد پیامکی) را آپلود کرد"
+    },
+    {
+      "from": "documents_review",
+      "to": "documents_incomplete",
+      "trigger": "documents_rejected",
+      "required_role": "admissions_officer",
+      "description_fa": "مدارک ناقص — ارسال لیست نواقص با مهلت ۲ روز",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "documents_deficiency_list", "recipients": ["applicant"], "description_fa": "ارسال لیست نواقص مدارک"}
+      ]
+    },
+    {
+      "from": "documents_incomplete",
+      "to": "documents_review",
+      "trigger": "documents_resubmitted",
+      "required_role": "applicant",
+      "description_fa": "متقاضی مدارک تکمیلی را آپلود کرد"
+    },
+    {
+      "from": "documents_review",
+      "to": "credentials_created",
+      "trigger": "documents_approved",
+      "required_role": "admissions_officer",
+      "description_fa": "مدارک تایید شد — ایجاد نام کاربری و رمز عبور",
+      "actions": [
+        {"type": "create_user_account", "description_fa": "ایجاد حساب کاربری دانشجو در LMS"},
+        {"type": "notification", "notification_type": "sms", "template": "lms_credentials", "recipients": ["applicant"], "description_fa": "ارسال نام کاربری و رمز عبور LMS"}
+      ]
+    },
+    {
+      "from": "credentials_created",
+      "to": "course_selection",
+      "trigger": "student_logged_in",
+      "required_role": "student",
+      "description_fa": "دانشجو وارد LMS شد — نمایش دروس مجاز بر اساس نتیجه مصاحبه"
+    },
+    {
+      "from": "course_selection",
+      "to": "payment",
+      "trigger": "courses_selected",
+      "required_role": "student",
+      "description_fa": "دانشجو دروس را انتخاب و تایید کرد — هدایت به پرداخت",
+      "constraints": ["courses_within_admission_type_limit"]
+    },
+    {
+      "from": "payment",
+      "to": "registration_complete",
+      "trigger": "payment_completed",
+      "description_fa": "پرداخت کامل (نقدی یا قسط اول) — ثبت‌نام نهایی",
+      "actions": [
+        {"type": "register_courses_in_portal"},
+        {"type": "create_online_class_links", "description_fa": "ایجاد لینک کلاس آنلاین"},
+        {"type": "schedule_installment_reminders", "condition": "payment_method == 'installment'", "description_fa": "برنامه‌ریزی یادآوری اقساط: ۱ هفته قبل از سررسید هر قسط"}
+      ]
+    },
+    {
+      "from": "payment",
+      "to": "payment",
+      "trigger": "payment_failed",
+      "description_fa": "پرداخت ناموفق — بازگشت برای تلاش مجدد"
+    },
+    {
+      "from": "registration_complete",
+      "to": "installment_overdue",
+      "trigger": "installment_due_date_passed",
+      "conditions": ["installment_not_paid"],
+      "description_fa": "قسط معوق — بلاک ثبت حضور و غیاب",
+      "actions": [
+        {"type": "block_attendance_registration"},
+        {"type": "notify_instructor", "message_fa": "امکان ثبت حضور برای این دانشجو به دلیل عدم تسویه بدهی شهریه وجود ندارد"}
+      ]
+    },
+    {
+      "from": "installment_overdue",
+      "to": "registration_complete",
+      "trigger": "overdue_installment_paid",
+      "description_fa": "قسط معوق پرداخت شد — رفع بلاک حضور و غیاب",
+      "actions": [
+        {"type": "unblock_attendance_registration"}
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "code": "admission_form",
+      "name_fa": "فرم پذیرش (وب‌سایت)",
+      "used_in_state": "application_submitted",
+      "note_fa": "فرم عمومی در وب‌سایت مؤسسه — قبل از ایجاد حساب کاربری",
+      "fields": [
+        {"name": "full_name", "label_fa": "نام و نام خانوادگی", "type": "text", "required": true},
+        {"name": "national_code", "label_fa": "کد ملی", "type": "text", "required": true},
+        {"name": "phone", "label_fa": "شماره تماس", "type": "tel", "required": true},
+        {"name": "email", "label_fa": "ایمیل", "type": "email", "required": true},
+        {"name": "education_level", "label_fa": "مقطع تحصیلی", "type": "select", "options": ["کارشناسی", "کارشناسی ارشد", "دکتری", "پزشکی عمومی", "تخصص/فوق تخصص"], "required": true},
+        {"name": "field_of_study", "label_fa": "رشته تحصیلی", "type": "text", "required": true},
+        {"name": "motivation", "label_fa": "انگیزه شرکت در دوره", "type": "textarea", "required": false}
+      ]
+    },
+    {
+      "code": "interview_timeslot_form",
+      "name_fa": "فرم انتخاب وقت مصاحبه",
+      "used_in_state": "interview_scheduled",
+      "fields": [
+        {"name": "selected_timeslot", "label_fa": "انتخاب وقت مصاحبه", "type": "radio_list", "source": "available_interview_slots", "format": "{date} ساعت {time} — {interview_type}", "required": true}
+      ]
+    },
+    {
+      "code": "interview_result_form",
+      "name_fa": "فرم ثبت نتیجه مصاحبه (محرمانه)",
+      "used_in_state": "interview_completed",
+      "confidential": true,
+      "visible_to": ["interviewer", "admissions_officer", "admin"],
+      "note_fa": "این فرم محرمانه است و برای دانشجو قابل مشاهده نیست",
+      "fields": [
+        {
+          "name": "interview_result",
+          "label_fa": "نتیجه مصاحبه",
+          "type": "radio",
+          "options": [
+            {"value": "conditional_therapy", "label_fa": "پذیرش مشروط به شروع درمان شخصی"},
+            {"value": "single_course", "label_fa": "فقط مجاز به اخذ درس تئوری روانکاوی ۱"},
+            {"value": "full_admission", "label_fa": "پذیرش کامل (بدون شرط)"},
+            {"value": "rejected", "label_fa": "رد درخواست"}
+          ],
+          "required": true
+        },
+        {
+          "name": "allowed_course_count",
+          "label_fa": "تعداد دروس مجاز",
+          "type": "number",
+          "min": 1,
+          "max": 5,
+          "visible_when": "interview_result in ['conditional_therapy', 'full_admission']",
+          "required_when": "interview_result in ['conditional_therapy', 'full_admission']"
+        },
+        {
+          "name": "interviewer_notes",
+          "label_fa": "یادداشت‌های مصاحبه‌کننده",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "submit_label_fa": "ثبت نتیجه"
+    },
+    {
+      "code": "documents_upload_form",
+      "name_fa": "فرم آپلود مدارک و تعهدنامه",
+      "used_in_state": "documents_upload",
+      "fields": [
+        {"name": "photo", "label_fa": "عکس پرسنلی", "type": "file_upload", "accept": "image/*", "required": true},
+        {"name": "id_card", "label_fa": "تصویر شناسنامه", "type": "file_upload", "accept": "image/*,application/pdf", "required": true},
+        {"name": "national_card", "label_fa": "تصویر کارت ملی", "type": "file_upload", "accept": "image/*,application/pdf", "required": true},
+        {"name": "bachelor_degree", "label_fa": "مدرک کارشناسی یا پزشکی عمومی", "type": "file_upload", "accept": "image/*,application/pdf", "required": true},
+        {"name": "master_degree", "label_fa": "مدرک کارشناسی ارشد", "type": "file_upload", "accept": "image/*,application/pdf", "required": false},
+        {"name": "latest_certificate", "label_fa": "آخرین مدرک تحصیلی", "type": "file_upload", "accept": "image/*,application/pdf", "required": true},
+        {"name": "digital_commitment", "label_fa": "تعهدنامه دیجیتال", "type": "sms_verification", "description_fa": "امضای تعهدنامه با کد تایید پیامکی", "required": true}
+      ],
+      "submit_label_fa": "ارسال مدارک"
+    },
+    {
+      "code": "course_selection_form",
+      "name_fa": "فرم انتخاب دروس ترم اول",
+      "used_in_state": "course_selection",
+      "note_fa": "دروس نمایش داده شده بر اساس نتیجه مصاحبه فیلتر می‌شوند",
+      "fields": [
+        {
+          "name": "selected_courses",
+          "label_fa": "انتخاب دروس",
+          "type": "checkbox_list",
+          "source": "available_courses_by_admission_type",
+          "max_selection_source": "admission.allowed_course_count",
+          "required": true
+        }
+      ],
+      "submit_label_fa": "تایید و ادامه به پرداخت"
+    },
+    {
+      "code": "payment_form",
+      "name_fa": "فرم پرداخت شهریه",
+      "used_in_state": "payment",
+      "fields": [
+        {
+          "name": "payment_method",
+          "label_fa": "روش پرداخت",
+          "type": "radio",
+          "options": [
+            {"value": "cash", "label_fa": "پرداخت نقدی (یکجا)"},
+            {"value": "installment", "label_fa": "پرداخت اقساطی"}
+          ],
+          "required": true,
+          "note_fa": "دانشجویان تک‌درس فقط مجاز به پرداخت نقدی هستند",
+          "restricted_when": {"admission_type": "single_course", "allowed_values": ["cash"]}
+        },
+        {
+          "name": "installment_count",
+          "label_fa": "تعداد اقساط",
+          "type": "select",
+          "options": [
+            {"value": 2, "label_fa": "۲ قسط"},
+            {"value": 3, "label_fa": "۳ قسط"},
+            {"value": 4, "label_fa": "۴ قسط"}
+          ],
+          "visible_when": "payment_method == 'installment'",
+          "required_when": "payment_method == 'installment'"
+        }
+      ],
+      "installment_schedule": {
+        "installment_1": "هنگام ثبت‌نام",
+        "installment_2": "۲۵ روز پس از شروع کلاس‌ها",
+        "subsequent": "هر ۲۵ روز پس از قسط قبلی",
+        "reminder": "۱ هفته قبل از سررسید هر قسط — پیامک یادآوری"
+      },
+      "submit_label_fa": "پرداخت"
+    }
+  ]
+}
