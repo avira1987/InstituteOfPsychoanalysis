@@ -699,6 +699,14 @@ async def update_user(
     for key, value in data.items():
         if key in allowed_fields:
             setattr(user, key, value)
+    # سوال امنیتی: admin می‌تواند question و answer را تنظیم کند (answer هش می‌شود)
+    if "security_question" in data:
+        user.security_question = (data["security_question"] or "").strip() or None
+    if "security_answer" in data and data["security_answer"]:
+        from app.api.auth import get_password_hash
+        user.security_answer_hash = get_password_hash(data["security_answer"].strip())
+    elif "security_question" in data and not (data.get("security_question") or "").strip():
+        user.security_answer_hash = None
     await db.flush()
     return {
         "id": str(user.id),

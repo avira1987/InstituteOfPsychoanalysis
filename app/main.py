@@ -133,12 +133,16 @@ from app.api.student.routes import router as student_router
 from app.api.admin.routes import router as admin_router
 from app.api.auth_routes import router as auth_router
 from app.api.payment_routes import router as payment_router
+from app.api.blog_routes import router as blog_router
+from app.api.public_routes import router as public_router
 
 app.include_router(auth_router)
 app.include_router(process_router)
 app.include_router(student_router)
 app.include_router(admin_router)
 app.include_router(payment_router)
+app.include_router(blog_router)
+app.include_router(public_router)
 
 
 @app.get("/health")

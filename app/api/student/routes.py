@@ -87,9 +87,9 @@ async def create_student(
 @router.get("", response_model=list[StudentResponse])
 async def list_students(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "staff")),
+    current_user: User = Depends(require_role("admin", "staff", "therapist", "supervisor", "site_manager", "progress_committee", "education_committee", "supervision_committee", "specialized_commission", "therapy_committee_chair", "therapy_committee_executor", "deputy_education", "monitoring_committee_officer")),
 ):
-    """List all students."""
+    """List all students (admin/staff/committee/therapist/supervisor)."""
     stmt = select(Student)
     result = await db.execute(stmt)
     students = result.scalars().all()
@@ -107,6 +107,31 @@ async def list_students(
         )
         for s in students
     ]
+
+
+@router.get("/me", response_model=StudentResponse)
+async def get_my_student_profile(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get current user's student profile (for students)."""
+    stmt = select(Student).where(Student.user_id == current_user.id)
+    result = await db.execute(stmt)
+    student = result.scalars().first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student profile not found")
+
+    return StudentResponse(
+        id=str(student.id),
+        user_id=str(student.user_id),
+        student_code=student.student_code,
+        course_type=student.course_type,
+        is_intern=student.is_intern,
+        term_count=student.term_count,
+        current_term=student.current_term,
+        therapy_started=student.therapy_started,
+        weekly_sessions=student.weekly_sessions,
+    )
 
 
 @router.get("/{student_id}", response_model=StudentResponse)

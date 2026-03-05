@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Tehran Institute of Psychoanalysis - انیستیتو روانکاوری تهران"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
-    APP_BASE_URL: str = "https://lms.psychoanalysis.ir/anistito"  # for payment callback, SMS links, etc.
+    APP_BASE_URL: str = "https://bpms.psychoanalysis.ir/anistito"  # for payment callback, SMS links, etc.
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./anistito.db"
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # SMS
     SMS_PROVIDER: str = "log"  # "log" | "mellipayamak" | "kavenegar"
     SMS_API_KEY: str = ""
-    SMS_API_URL: str = ""
+    SMS_LINE_NUMBER: str = ""  # شماره خط برای mellipayamak (مثال: 3000xxxx)
 
     # Email
     EMAIL_SMTP_HOST: str = ""

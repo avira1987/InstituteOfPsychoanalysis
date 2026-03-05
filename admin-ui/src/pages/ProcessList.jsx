@@ -52,7 +52,7 @@ export default function ProcessList() {
       setForm({ code: '', name_fa: '', name_en: '', initial_state_code: '', description: '' })
       loadProcesses()
       // Navigate to editor
-      navigate(`/processes/${res.data.id}`)
+      navigate(`/panel/processes/${res.data.id}`)
     } catch (err) {
       const isNetworkErr = err.code === 'ERR_NETWORK' || !err.response
       let msg = 'خطای نامشخص'
@@ -190,7 +190,7 @@ export default function ProcessList() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-outline btn-sm" onClick={() => navigate(`/processes/${p.id}`)}>
+                        <button className="btn btn-outline btn-sm" onClick={() => navigate(`/panel/processes/${p.id}`)}>
                           ویرایش
                         </button>
                         <button

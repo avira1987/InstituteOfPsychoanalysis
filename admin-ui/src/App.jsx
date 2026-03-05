@@ -1,7 +1,10 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
+
 import Layout from './components/Layout'
+import PublicLayout from './components/PublicLayout'
+
 import Dashboard from './pages/Dashboard'
 import ProcessList from './pages/ProcessList'
 import ProcessEditor from './pages/ProcessEditor'
@@ -12,9 +15,19 @@ import GuidePage from './pages/GuidePage'
 import LoginPage from './pages/LoginPage'
 import UserManagement from './pages/UserManagement'
 import StudentPortal from './pages/StudentPortal'
+import TherapistPortal from './pages/TherapistPortal'
 import SupervisorPortal from './pages/SupervisorPortal'
+import StaffPortal from './pages/StaffPortal'
+import SiteManagerPortal from './pages/SiteManagerPortal'
+import CommitteePortal from './pages/CommitteePortal'
 
-// Error Boundary to catch rendering errors and show them instead of white screen
+import HomePage from './pages/public/HomePage'
+import BlogList from './pages/public/BlogList'
+import BlogPost from './pages/public/BlogPost'
+import StudentGuide from './pages/public/StudentGuide'
+import ProcessesInfo from './pages/public/ProcessesInfo'
+import StudentRegistration from './pages/public/StudentRegistration'
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -33,7 +46,7 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '2rem', direction: 'rtl', fontFamily: 'Tahoma, sans-serif' }}>
+        <div style={{ padding: '2rem', direction: 'rtl', fontFamily: 'Vazirmatn, Tahoma, sans-serif' }}>
           <div style={{
             background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '12px',
             padding: '2rem', maxWidth: '700px', margin: '2rem auto'
@@ -56,7 +69,7 @@ class ErrorBoundary extends React.Component {
                 border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem'
               }}
             >
-              بازگشت به داشبورد
+              بازگشت به صفحه اصلی
             </button>
           </div>
         </div>
@@ -83,9 +96,22 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Routes>
+        {/* ─── Public Pages ─── */}
+        <Route element={<PublicLayout />}>
+          <Route index element={<HomePage />} />
+          <Route path="blog" element={<BlogList />} />
+          <Route path="blog/:slug" element={<BlogPost />} />
+          <Route path="guide" element={<StudentGuide />} />
+          <Route path="processes-info" element={<ProcessesInfo />} />
+          <Route path="register" element={<StudentRegistration />} />
+        </Route>
+
+        {/* ─── Login ─── */}
         <Route path="/login" element={<LoginPage />} />
+
+        {/* ─── Admin Panel (Protected) ─── */}
         <Route
-          path="/"
+          path="/panel"
           element={
             <ProtectedRoute>
               <Layout />
@@ -100,9 +126,15 @@ export default function App() {
           <Route path="users" element={<UserManagement />} />
           <Route path="audit" element={<AuditViewer />} />
           <Route path="portal/student" element={<StudentPortal />} />
+          <Route path="portal/therapist" element={<TherapistPortal />} />
           <Route path="portal/supervisor" element={<SupervisorPortal />} />
+          <Route path="portal/staff" element={<StaffPortal />} />
+          <Route path="portal/site-manager" element={<SiteManagerPortal />} />
+          <Route path="portal/committee" element={<CommitteePortal />} />
           <Route path="guide" element={<GuidePage />} />
         </Route>
+
+        {/* ─── Fallback ─── */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ErrorBoundary>

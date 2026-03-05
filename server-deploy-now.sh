@@ -30,4 +30,4 @@ sleep 15
 curl -s http://localhost:8000/health && echo " OK" || docker logs anistito-api --tail 20
 
 echo ""
-echo "Done. URL: https://lms.psychoanalysis.ir/anistito/"
+echo "Done. URL: https://bpms.psychoanalysis.ir/anistito/"

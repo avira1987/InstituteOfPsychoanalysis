@@ -54,10 +54,23 @@ export function getAppBasePath() {
 
 // ─── Auth ──────────────────────────────────────────────────────
 export const authApi = {
-  login: (username, password) =>
-    api.post('auth/login-json', { username, password }),
+  login: (username, password, securityAnswer, challengeId, challengeAnswer) =>
+    api.post('auth/login-json', {
+      username,
+      password,
+      security_answer: securityAnswer || undefined,
+      challenge_id: challengeId,
+      challenge_answer: challengeAnswer,
+    }),
   me: () => api.get('auth/me'),
   register: (data) => api.post('auth/register', data),
+  otpRequest: (phone) => api.post('auth/otp/request', { phone }),
+  otpVerify: (phone, code) => api.post('auth/otp/verify', { phone, code }),
+  setSecurityQuestion: (question, answer) =>
+    api.post('auth/set-security-question', { question, answer }),
+  getSecurityQuestion: (username) =>
+    api.post('auth/security-question-preview', { username }),
+  getLoginChallenge: () => api.post('auth/login-challenge'),
 }
 
 // ─── Processes ─────────────────────────────────────────────────
@@ -108,6 +121,7 @@ export const dashboardApi = {
 // ─── Students ──────────────────────────────────────────────────
 export const studentApi = {
   list: () => api.get('students'),
+  me: () => api.get('students/me'),
   get: (id) => api.get(`students/${id}`),
   create: (data) => api.post('students', data),
   update: (id, data) => api.patch(`students/${id}`, data),
@@ -131,6 +145,23 @@ export const userApi = {
   create: (data) => api.post('auth/register', data),
   update: (id, data) => api.patch(`admin/users/${id}`, data),
   delete: (id) => api.delete(`admin/users/${id}`),
+}
+
+// ─── Blog (Public) ──────────────────────────────────────────────
+export const blogApi = {
+  list: (params) => api.get('blog/posts', { params }),
+  get: (slug) => api.get(`blog/posts/${slug}`),
+  adminList: (params) => api.get('blog/admin/posts', { params }),
+  adminCreate: (data) => api.post('blog/admin/posts', data),
+  adminUpdate: (id, data) => api.patch(`blog/admin/posts/${id}`, data),
+  adminDelete: (id) => api.delete(`blog/admin/posts/${id}`),
+}
+
+// ─── Public ─────────────────────────────────────────────────────
+export const publicApi = {
+  stats: () => api.get('public/stats'),
+  processes: () => api.get('public/processes'),
+  register: (data) => api.post('public/register', data),
 }
 
 export default api

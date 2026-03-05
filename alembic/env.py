@@ -13,7 +13,18 @@ from alembic import context
 # Import all models so Alembic can detect them
 from app.database import Base
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
-from app.models.operational_models import User, Student, ProcessInstance, StateHistory, TherapySession, FinancialRecord, AttendanceRecord
+from app.models.operational_models import (
+    User,
+    Student,
+    ProcessInstance,
+    StateHistory,
+    TherapySession,
+    FinancialRecord,
+    AttendanceRecord,
+    OTPCode,
+    LoginChallenge,
+    BlogPost,
+)
 from app.models.audit_models import AuditLog
 
 # this is the Alembic Config object

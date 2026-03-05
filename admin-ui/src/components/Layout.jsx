@@ -3,15 +3,23 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 const navItems = [
-  { path: '/', label: 'داشبورد', icon: '📊' },
-  { path: '/portal/student', label: 'پورتال دانشجو', icon: '🎓', roles: ['student', 'admin'] },
-  { path: '/portal/supervisor', label: 'پورتال سوپروایزر', icon: '👁️', roles: ['supervisor', 'therapist', 'admin'] },
-  { path: '/processes', label: 'مدیریت فرایندها', icon: '⚙️' },
-  { path: '/rules', label: 'مدیریت قوانین', icon: '📋' },
-  { path: '/students', label: 'ردیابی دانشجو', icon: '👨‍🎓' },
-  { path: '/users', label: 'مدیریت کاربران', icon: '👥', adminOnly: true },
-  { path: '/audit', label: 'گزارش حسابرسی', icon: '📝' },
-  { path: '/guide', label: 'راهنمای جامع', icon: '📖' },
+  { path: '/panel', label: 'داشبورد', icon: '📊' },
+  { path: '/panel/portal/student', label: 'پنل دانشجو', icon: '🎓', roles: ['student', 'admin'] },
+  { path: '/panel/portal/therapist', label: 'پنل درمانگر', icon: '💊', roles: ['therapist', 'admin'] },
+  { path: '/panel/portal/supervisor', label: 'پنل سوپروایزر', icon: '👁️', roles: ['supervisor', 'admin'] },
+  { path: '/panel/portal/staff', label: 'پنل کارمند', icon: '🏢', roles: ['staff', 'admin'] },
+  { path: '/panel/portal/site-manager', label: 'پنل مسئول سایت', icon: '🏗️', roles: ['site_manager', 'admin'] },
+  { path: '/panel/portal/committee', label: 'پنل کمیته', icon: '📋', roles: [
+    'progress_committee', 'education_committee', 'supervision_committee',
+    'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor',
+    'deputy_education', 'monitoring_committee_officer', 'admin',
+  ]},
+  { path: '/panel/processes', label: 'مدیریت فرایندها', icon: '⚙️', roles: ['admin', 'staff'] },
+  { path: '/panel/rules', label: 'مدیریت قوانین', icon: '📋', roles: ['admin'] },
+  { path: '/panel/students', label: 'ردیابی دانشجو', icon: '👨‍🎓', roles: ['admin', 'staff', 'supervisor', 'therapist'] },
+  { path: '/panel/users', label: 'مدیریت کاربران', icon: '👥', adminOnly: true },
+  { path: '/panel/audit', label: 'گزارش حسابرسی', icon: '📝', roles: ['admin', 'staff'] },
+  { path: '/panel/guide', label: 'راهنمای جامع', icon: '📖' },
 ]
 
 const roleLabels = {
@@ -20,7 +28,15 @@ const roleLabels = {
   therapist: 'درمانگر',
   student: 'دانشجو',
   supervisor: 'سوپروایزر',
+  site_manager: 'مسئول سایت',
   progress_committee: 'کمیته پیشرفت',
+  education_committee: 'کمیته آموزش',
+  supervision_committee: 'کمیته نظارت',
+  specialized_commission: 'کمیسیون تخصصی',
+  therapy_committee_chair: 'مسئول کمیته درمان',
+  therapy_committee_executor: 'مجری کمیته درمان',
+  deputy_education: 'معاون آموزش',
+  monitoring_committee_officer: 'مسئول کمیته نظارت',
 }
 
 export default function Layout() {
@@ -30,7 +46,7 @@ export default function Layout() {
 
   const handleLogout = () => {
     logout()
-    navigate('/login')
+    navigate('/')
   }
 
   const visibleNav = navItems.filter((item) => {
@@ -56,7 +72,7 @@ export default function Layout() {
             <NavLink
               key={item.path}
               to={item.path}
-              end={item.path === '/'}
+              end={item.path === '/panel'}
               className={({ isActive }) =>
                 `sidebar-link ${isActive ? 'active' : ''}`
               }

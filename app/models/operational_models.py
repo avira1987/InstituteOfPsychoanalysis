@@ -31,6 +31,8 @@ class User(Base):
     role = Column(String(50), nullable=False, default="student")  # admin, staff, therapist, student, committee
     is_active = Column(Boolean, default=True, nullable=False)
     phone = Column(String(20), nullable=True)
+    security_question = Column(String(255), nullable=True)  # سوال امنیتی
+    security_answer_hash = Column(String(255), nullable=True)  # پاسخ هش‌شده
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     # Relationships
@@ -155,3 +157,56 @@ class AttendanceRecord(Base):
     shamsi_year = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class OTPCode(Base):
+    """One-time password codes for SMS-based authentication."""
+    __tablename__ = "otp_codes"
+    __table_args__ = (
+        Index("ix_otp_phone", "phone"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    phone = Column(String(15), nullable=False)
+    code = Column(String(6), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    is_used = Column(Boolean, default=False, nullable=False)
+    attempts = Column(Integer, default=0, nullable=False)
+
+
+class LoginChallenge(Base):
+    """Simple math challenge for password login anti-bot."""
+    __tablename__ = "login_challenges"
+    __table_args__ = (
+        Index("ix_login_challenge_created_at", "created_at"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    question = Column(String(255), nullable=False)
+    answer_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    is_used = Column(Boolean, default=False, nullable=False)
+
+
+class BlogPost(Base):
+    """Blog/article content for the public website."""
+    __tablename__ = "blog_posts"
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    title = Column(String(500), nullable=False)
+    slug = Column(String(500), unique=True, nullable=False, index=True)
+    summary = Column(Text, nullable=True)
+    content = Column(Text, nullable=False)
+    author_id = Column(UUID, ForeignKey("users.id"), nullable=True)
+    category = Column(String(100), nullable=True)  # "news", "article", "tutorial", "announcement"
+    tags = Column(String(500), nullable=True)
+    featured_image = Column(String(500), nullable=True)
+    is_published = Column(Boolean, default=False, nullable=False)
+    views = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+    published_at = Column(DateTime(timezone=True), nullable=True)
+
+    author = relationship("User", foreign_keys=[author_id])

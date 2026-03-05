@@ -43,10 +43,11 @@ async def main():
     engine = create_async_engine(DATABASE_URL)
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    # Truncate meta tables (keep users - admin may differ)
+    # Truncate all tables for full sync (including users)
     truncate_order = [
         "state_history", "process_instances", "therapy_sessions", "financial_records", "attendance_records",
-        "state_definitions", "transition_definitions", "students", "process_definitions", "rule_definitions", "audit_logs"
+        "state_definitions", "transition_definitions", "students", "process_definitions", "rule_definitions",
+        "audit_logs", "users"
     ]
     async with engine.begin() as conn:
         for t in truncate_order:

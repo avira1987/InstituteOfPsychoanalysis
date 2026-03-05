@@ -229,7 +229,7 @@ export default function ProcessEditor() {
           <button className="btn btn-outline" onClick={() => setEditingProcess(!editingProcess)}>
             {editingProcess ? 'لغو' : 'ویرایش فرایند'}
           </button>
-          <button className="btn btn-outline" onClick={() => navigate('/processes')}>
+          <button className="btn btn-outline" onClick={() => navigate('/panel/processes')}>
             بازگشت به لیست
           </button>
         </div>

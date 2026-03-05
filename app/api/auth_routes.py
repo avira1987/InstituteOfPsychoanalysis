@@ -2,6 +2,8 @@
 
 import logging
 import uuid
+from datetime import datetime, timedelta, timezone
+import random
 from fastapi import APIRouter, Depends, HTTPException, status
 
 logger = logging.getLogger(__name__)
@@ -12,13 +14,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.api.auth import (
-    Token, UserCreate, UserResponse,
-    authenticate_user, create_user, create_access_token,
+    Token,
+    UserCreate,
+    UserResponse,
+    authenticate_user,
+    create_user,
+    create_access_token,
     get_password_hash,
-    get_current_user, require_role,
+    get_current_user,
+    require_role,
+    verify_password,
 )
 from pydantic import BaseModel
-from app.models.operational_models import User
+from app.models.operational_models import User, LoginChallenge
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -26,6 +34,23 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 class LoginRequest(BaseModel):
     username: str
     password: str
+    security_answer: str | None = None  # پاسخ سوال امنیتی (در صورت تنظیم)
+    challenge_id: str | None = None
+    challenge_answer: str | None = None
+
+
+class SecurityQuestionPreviewRequest(BaseModel):
+    username: str
+
+
+class SecurityQuestionPreviewResponse(BaseModel):
+    has_security_question: bool
+    question: str | None = None
+
+
+class LoginChallengeResponse(BaseModel):
+    challenge_id: str
+    question: str
 
 
 @router.post("/login", response_model=Token)
@@ -59,13 +84,89 @@ async def login(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/login-challenge", response_model=LoginChallengeResponse)
+async def login_challenge(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    تولید یک سوال ساده برای جلوگیری از ربات در ورود با رمز عبور.
+    مثال: «حاصل ۷ + ۴ چند می‌شود؟»
+    """
+    a = random.randint(1, 9)
+    b = random.randint(1, 9)
+    question = f"حاصل {a} + {b} چند می‌شود؟"
+    answer = str(a + b)
+
+    challenge = LoginChallenge(
+        question=question,
+        answer_hash=get_password_hash(answer),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+    )
+    db.add(challenge)
+    await db.flush()
+    await db.commit()
+
+    return LoginChallengeResponse(
+        challenge_id=str(challenge.id),
+        question=question,
+    )
+
+
+@router.post("/security-question-preview", response_model=SecurityQuestionPreviewResponse)
+async def security_question_preview(
+    body: SecurityQuestionPreviewRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    برگرداندن سوال امنیتی (بدون پاسخ) برای فرم ورود.
+
+    برای جلوگیری از نشت اطلاعات، اگر کاربر وجود نداشته باشد یا سوالی تنظیم نشده باشد،
+    همیشه پاسخ «has_security_question = False» برگردانده می‌شود.
+    """
+    stmt = select(User).where(User.username == body.username)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    if not user or not user.security_question:
+        return SecurityQuestionPreviewResponse(has_security_question=False, question=None)
+    return SecurityQuestionPreviewResponse(
+        has_security_question=True,
+        question=user.security_question,
+    )
+
+
 @router.post("/login-json", response_model=Token)
 async def login_json(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     """Login with JSON body (alternative to form for debugging)."""
     if not body.username or not body.password:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     try:
-        user = await authenticate_user(db, body.username, body.password)
+        # اول چالش ضدربات را بررسی کن
+        if not body.challenge_id or not body.challenge_answer:
+            raise HTTPException(status_code=400, detail="کد امنیتی الزامی است")
+
+        try:
+            challenge_uuid = uuid.UUID(body.challenge_id)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="کد امنیتی نامعتبر است")
+
+        stmt = select(LoginChallenge).where(LoginChallenge.id == challenge_uuid)
+        result = await db.execute(stmt)
+        challenge = result.scalars().first()
+        now = datetime.now(timezone.utc)
+
+        if (
+            not challenge
+            or challenge.is_used
+            or challenge.expires_at < now
+            or not verify_password(body.challenge_answer.strip(), challenge.answer_hash)
+        ):
+            raise HTTPException(status_code=400, detail="کد امنیتی نامعتبر است")
+
+        challenge.is_used = True
+        await db.commit()
+
+        # سپس اعتبارسنجی نام کاربری/رمز عبور (و در صورت وجود، سوال امنیتی کاربر)
+        user = await authenticate_user(db, body.username, body.password, body.security_answer)
         if not user:
             raise HTTPException(status_code=401, detail="Incorrect username or password")
         access_token = create_access_token(
@@ -107,6 +208,54 @@ async def get_me(current_user: User = Depends(get_current_user)):
         role=current_user.role,
         is_active=current_user.is_active,
     )
+
+
+class SetSecurityQuestionBody(BaseModel):
+    question: str
+    answer: str
+
+
+@router.post("/set-security-question")
+async def set_security_question(
+    body: SetSecurityQuestionBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """تنظیم سوال و پاسخ امنیتی برای ورود با رمز عبور."""
+    if not body.question.strip() or not body.answer.strip():
+        raise HTTPException(status_code=400, detail="سوال و پاسخ امنیتی الزامی است")
+    current_user.security_question = body.question.strip()
+    current_user.security_answer_hash = get_password_hash(body.answer.strip())
+    await db.commit()
+    return {"success": True, "message": "سوال امنیتی ذخیره شد."}
+
+
+class OTPRequestBody(BaseModel):
+    phone: str
+
+class OTPVerifyBody(BaseModel):
+    phone: str
+    code: str
+
+
+@router.post("/otp/request")
+async def otp_request(body: OTPRequestBody, db: AsyncSession = Depends(get_db)):
+    """Send a one-time password to the given phone number."""
+    from app.services.otp_service import request_otp as do_request
+    result = await do_request(db, body.phone)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.post("/otp/verify")
+async def otp_verify(body: OTPVerifyBody, db: AsyncSession = Depends(get_db)):
+    """Verify OTP code and return JWT token."""
+    from app.services.otp_service import verify_otp as do_verify
+    result = await do_verify(db, body.phone, body.code)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
 
 
 @router.post("/create-admin")

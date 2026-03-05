@@ -29,5 +29,5 @@
   sleep 15
   curl -s http://localhost:8000/health
 
-آدرس نهایی: https://lms.psychoanalysis.ir/anistito/
+آدرس نهایی: https://bpms.psychoanalysis.ir/anistito/
 ورود: admin / admin123

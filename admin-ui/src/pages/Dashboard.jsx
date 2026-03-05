@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { dashboardApi, processApi, auditApi } from '../services/api'
+import { dashboardApi, processApi, auditApi, authApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
+
+const SECURITY_QUESTIONS = [
+  'نام اولین معلم شما چه بود؟',
+  'نام اولین حیوان خانگی شما چه بود؟',
+  'در چه شهری به دنیا آمدید؟',
+  'نام خانوادگی مادر شما چیست؟',
+  'نام بهترین دوست دوران کودکی شما چه بود؟',
+]
 
 export default function Dashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [stats, setStats] = useState(null)
+  const [showSecurityForm, setShowSecurityForm] = useState(false)
+  const [secQuestion, setSecQuestion] = useState('')
+  const [secAnswer, setSecAnswer] = useState('')
+  const [secSaving, setSecSaving] = useState(false)
   const [processes, setProcesses] = useState([])
   const [recentLogs, setRecentLogs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -87,6 +99,50 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* تنظیم سوال امنیتی */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div className="card-header" style={{ cursor: 'pointer' }} onClick={() => setShowSecurityForm(!showSecurityForm)}>
+          <h3 className="card-title">🔐 سوال امنیتی برای ورود با رمز عبور</h3>
+          <span>{showSecurityForm ? '▼' : '▶'}</span>
+        </div>
+        {showSecurityForm && (
+          <div style={{ padding: '1rem' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              با تنظیم سوال امنیتی، هنگام ورود با نام کاربری و رمز عبور باید پاسخ آن را هم وارد کنید.
+            </p>
+            <div className="form-group">
+              <label className="form-label">سوال امنیتی</label>
+              <select className="form-input" value={secQuestion} onChange={(e) => setSecQuestion(e.target.value)}>
+                <option value="">انتخاب کنید...</option>
+                {SECURITY_QUESTIONS.map((q, i) => (
+                  <option key={i} value={q}>{q}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">پاسخ</label>
+              <input className="form-input" type="password" value={secAnswer} onChange={(e) => setSecAnswer(e.target.value)} placeholder="پاسخ سوال امنیتی" />
+            </div>
+            <button className="btn btn-primary" disabled={!secQuestion || !secAnswer || secSaving} onClick={async () => {
+              setSecSaving(true)
+              try {
+                await authApi.setSecurityQuestion(secQuestion, secAnswer)
+                alert('سوال امنیتی ذخیره شد.')
+                setSecQuestion('')
+                setSecAnswer('')
+                setShowSecurityForm(false)
+              } catch (e) {
+                alert(e.response?.data?.detail || 'خطا در ذخیره')
+              } finally {
+                setSecSaving(false)
+              }
+            }}>
+              {secSaving ? 'در حال ذخیره...' : 'ذخیره'}
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon primary">⚙️</div>
@@ -130,7 +186,7 @@ export default function Dashboard() {
               <button className="btn btn-outline btn-sm" onClick={handleSyncMetadata} disabled={syncing}>
                 {syncing ? '...' : 'همگام‌سازی از JSON'}
               </button>
-              <button className="btn btn-outline btn-sm" onClick={() => navigate('/processes')}>
+              <button className="btn btn-outline btn-sm" onClick={() => navigate('/panel/processes')}>
                 مدیریت
               </button>
             </div>
@@ -142,7 +198,7 @@ export default function Dashboard() {
               <div className="empty-state" style={{ padding: '2rem' }}>فرایندی تعریف نشده</div>
             ) : (
               processes.map((p) => (
-                <div key={p.id} className="dashboard-process-item" onClick={() => navigate(`/processes/${p.id}`)}>
+                <div key={p.id} className="dashboard-process-item" onClick={() => navigate(`/panel/processes/${p.id}`)}>
                   <div>
                     <span style={{ fontWeight: 600 }}>{p.name_fa}</span>
                     {p.name_en && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginRight: '0.5rem' }}>({p.name_en})</span>}
@@ -164,7 +220,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">فعالیت‌های اخیر</h3>
-            <button className="btn btn-outline btn-sm" onClick={() => navigate('/audit')}>
+            <button className="btn btn-outline btn-sm" onClick={() => navigate('/panel/audit')}>
               مشاهده همه
             </button>
           </div>
@@ -209,29 +265,59 @@ export default function Dashboard() {
           <h3 className="card-title">دسترسی سریع</h3>
         </div>
         <div className="quick-actions-grid">
-          <button className="quick-action-btn" onClick={() => navigate('/processes')}>
+          {(user?.role === 'student' || user?.role === 'admin') && (
+            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/student')}>
+              <span className="quick-action-icon">🎓</span>
+              <span>پنل دانشجو</span>
+            </button>
+          )}
+          {(user?.role === 'therapist' || user?.role === 'admin') && (
+            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/therapist')}>
+              <span className="quick-action-icon">💊</span>
+              <span>پنل درمانگر</span>
+            </button>
+          )}
+          {(user?.role === 'supervisor' || user?.role === 'admin') && (
+            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/supervisor')}>
+              <span className="quick-action-icon">👁️</span>
+              <span>پنل سوپروایزر</span>
+            </button>
+          )}
+          {(user?.role === 'staff' || user?.role === 'admin') && (
+            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/staff')}>
+              <span className="quick-action-icon">🏢</span>
+              <span>پنل کارمند</span>
+            </button>
+          )}
+          {(user?.role === 'site_manager' || user?.role === 'admin') && (
+            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/site-manager')}>
+              <span className="quick-action-icon">🏗️</span>
+              <span>پنل مسئول سایت</span>
+            </button>
+          )}
+          {(['progress_committee', 'education_committee', 'supervision_committee',
+            'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor',
+            'deputy_education', 'monitoring_committee_officer', 'admin'].includes(user?.role)) && (
+            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/committee')}>
+              <span className="quick-action-icon">📋</span>
+              <span>پنل کمیته</span>
+            </button>
+          )}
+          <button className="quick-action-btn" onClick={() => navigate('/panel/processes')}>
             <span className="quick-action-icon">⚙️</span>
             <span>مدیریت فرایندها</span>
           </button>
-          <button className="quick-action-btn" onClick={() => navigate('/rules')}>
-            <span className="quick-action-icon">📋</span>
-            <span>مدیریت قوانین</span>
-          </button>
-          <button className="quick-action-btn" onClick={() => navigate('/students')}>
+          <button className="quick-action-btn" onClick={() => navigate('/panel/students')}>
             <span className="quick-action-icon">👨‍🎓</span>
             <span>ردیابی دانشجو</span>
           </button>
-          <button className="quick-action-btn" onClick={() => navigate('/audit')}>
-            <span className="quick-action-icon">📝</span>
-            <span>گزارش حسابرسی</span>
-          </button>
           {user?.role === 'admin' && (
-            <button className="quick-action-btn" onClick={() => navigate('/users')}>
+            <button className="quick-action-btn" onClick={() => navigate('/panel/users')}>
               <span className="quick-action-icon">👥</span>
               <span>مدیریت کاربران</span>
             </button>
           )}
-          <button className="quick-action-btn" onClick={() => navigate('/guide')}>
+          <button className="quick-action-btn" onClick={() => navigate('/panel/guide')}>
             <span className="quick-action-icon">📖</span>
             <span>راهنمای جامع</span>
           </button>

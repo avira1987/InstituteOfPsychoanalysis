@@ -49,9 +49,10 @@ async def _send_mellipayamak(phone: str, message: str) -> dict:
         import httpx
         url = "https://console.melipayamak.com/api/send/simple"
 
+        line = (settings.SMS_LINE_NUMBER or "").strip()
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(url, json={
-                "from": "",
+                "from": line,
                 "to": phone,
                 "text": message,
             }, headers={
