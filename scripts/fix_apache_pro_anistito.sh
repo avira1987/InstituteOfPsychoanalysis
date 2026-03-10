@@ -17,7 +17,7 @@ cp "$CONF" "$BACKUP"
 echo "Backup: $BACKUP"
 
 # Insert /anistito/api/ rules BEFORE the general /anistito/ (order matters)
-sed -i '/ProxyPass \/anistito\//i\    # Anistito API (more specific - before /anistito/)\n    ProxyPass /anistito/api/ http://127.0.0.1:8000/api/\n    ProxyPassReverse /anistito/api/ http://127.0.0.1:8000/api/\n    ProxyPassReverse /anistito/api/ http://localhost:8000/api/' "$CONF"
+sed -i '/ProxyPass \/anistito\//i\    # Anistito API (more specific - before /anistito/)\n    ProxyPass /anistito/api/ http://127.0.0.1:3000/api/\n    ProxyPassReverse /anistito/api/ http://127.0.0.1:3000/api/\n    ProxyPassReverse /anistito/api/ http://localhost:3000/api/' "$CONF"
 
 apache2ctl configtest 2>/dev/null || true
 systemctl reload apache2 2>/dev/null || systemctl reload httpd 2>/dev/null || true

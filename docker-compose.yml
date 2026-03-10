@@ -48,7 +48,7 @@ services:
       DEBUG: "true"
       SECRET_KEY: change-me-in-production-use-a-real-secret-key
     ports:
-      - "8000:8000"
+      - "3000:3000"
     depends_on:
       db:
         condition: service_healthy
@@ -61,25 +61,25 @@ services:
       - ./admin-ui/dist:/app/admin-ui/dist
     restart: unless-stopped
     command: >
-      sh -c "alembic upgrade head &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+      sh -c "alembic upgrade head || true &&
+             uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload"
 
-  # ─── Admin UI (React) ────────────────────────────────────────
+  # ─── Admin UI (React): فقط برای dev؛ دسترسی اصلی فرانت از پورت 3000 (همان API) ───
   admin-ui:
     build:
       context: ./admin-ui
       dockerfile: Dockerfile
     container_name: anistito-admin-ui
     ports:
-      - "3000:3000"
+      - "5173:3000"
     depends_on:
       - api
     volumes:
       - ./admin-ui/src:/app/src
       - ./admin-ui/public:/app/public
     environment:
-      VITE_API_URL: http://localhost:8000
-      VITE_PROXY_TARGET: http://api:8000
+      VITE_API_URL: http://localhost:3000
+      VITE_PROXY_TARGET: http://api:3000
     restart: unless-stopped
 
 volumes:

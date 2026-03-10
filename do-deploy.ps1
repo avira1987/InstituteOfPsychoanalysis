@@ -35,5 +35,5 @@ $hk = "SHA256:F459aXR14g147aSBxWlTypGEKisuxzYnrYl4kcDyPdA"
 & $pscp -batch -hostkey $hk -P 2022 -pw parsbpms.com $zipPath root@80.191.11.129:/opt/anistito/deploy-anistito.zip
 
 # 3. Run on server
-$cmd = 'cd /opt/anistito && unzip -o deploy-anistito.zip -d . && rm -f deploy-anistito.zip && docker rm -f anistito-api; docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 8000:8000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest && sleep 12 && curl -s http://localhost:8000/health'
+$cmd = 'cd /opt/anistito && unzip -o deploy-anistito.zip -d . && rm -f deploy-anistito.zip && docker rm -f anistito-api; docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 3000:3000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest && sleep 12 && curl -s http://localhost:3000/health'
 & $plink -batch -hostkey $hk -P 2022 -pw parsbpms.com root@80.191.11.129 $cmd

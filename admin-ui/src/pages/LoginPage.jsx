@@ -1,35 +1,84 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useNavigate, Navigate, Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { authApi } from '../services/api'
+
+const LOGIN_TAB_KEY = 'login_tab'
+const LOGIN_ERROR_KEY = 'login_error'
+const LOGIN_ERROR_FROM_PASSWORD_KEY = 'login_error_from_password'
+
+function getInitialTab() {
+  try {
+    const saved = sessionStorage.getItem(LOGIN_TAB_KEY)
+    if (saved === 'otp' || saved === 'password') return saved
+  } catch (_) {}
+  return 'otp'
+}
+
+function getInitialError() {
+  try {
+    return sessionStorage.getItem(LOGIN_ERROR_KEY) || ''
+  } catch (_) {}
+  return ''
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const { user, login, loginWithToken } = useAuth()
-  const [tab, setTab] = useState('otp') // 'otp' | 'password'
+  const [tab, setTab] = useState(getInitialTab)
   const [phone, setPhone] = useState('')
   const [otpSent, setOtpSent] = useState(false)
   const [otpCode, setOtpCode] = useState(['', '', '', '', '', ''])
   const [timer, setTimer] = useState(0)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [securityAnswer, setSecurityAnswer] = useState('')
   const [challengeQuestion, setChallengeQuestion] = useState('')
   const [challengeAnswer, setChallengeAnswer] = useState('')
   const [challengeId, setChallengeId] = useState('')
   const [challengeLoading, setChallengeLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(getInitialError)
   const [loading, setLoading] = useState(false)
   const [devCode, setDevCode] = useState('')
   const otpRefs = useRef([])
-
-  if (user) return <Navigate to="/panel" replace />
 
   useEffect(() => {
     if (timer <= 0) return
     const interval = setInterval(() => setTimer(t => t - 1), 1000)
     return () => clearInterval(interval)
   }, [timer])
+
+  // وقتی تب ورود با رمز عبور از sessionStorage بازیابی شده، چالش را بگیر
+  useEffect(() => {
+    if (tab === 'password' && !challengeQuestion && !challengeLoading) {
+      fetchLoginChallenge()
+    }
+  }, [tab])
+
+  // اگر خطا از فرم ورود با رمز عبور بود و تب به پیامک رفته، همیشه تب را به ورود با رمز عبور برگردان
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(LOGIN_ERROR_FROM_PASSWORD_KEY) && tab === 'otp') {
+        setTab('password')
+        sessionStorage.setItem(LOGIN_TAB_KEY, 'password')
+      }
+    } catch (_) {}
+  }, [tab, error])
+
+  // ریدایرکت به پنل بعد از ورود؛ دانشجو مستقیم به پنل دانشجو، بقیه به داشبرد
+  useEffect(() => {
+    if (!user) return
+    const target = user.role === 'student' ? '/panel/portal/student' : '/panel'
+    navigate(target, { replace: true })
+  }, [user, navigate])
+
+  if (user) {
+    return (
+      <div className="login-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div className="loading-spinner" style={{ width: 40, height: 40 }} />
+        <span style={{ marginRight: '0.75rem' }}>در حال انتقال به پنل...</span>
+      </div>
+    )
+  }
 
   const handleRequestOTP = async (e) => {
     e.preventDefault()
@@ -51,7 +100,7 @@ export default function LoginPage() {
     }
   }
 
-  const fetchLoginChallenge = async () => {
+  const fetchLoginChallenge = async (keepExistingError = false) => {
     setChallengeLoading(true)
     try {
       const res = await authApi.getLoginChallenge()
@@ -61,7 +110,9 @@ export default function LoginPage() {
     } catch (err) {
       setChallengeQuestion('')
       setChallengeId('')
-      setError(err.response?.data?.detail || 'خطا در دریافت کد امنیتی. لطفاً صفحه را مجدداً بارگذاری کنید.')
+      if (!keepExistingError) {
+        setError(err.response?.data?.detail || 'خطا در دریافت کد امنیتی. لطفاً صفحه را مجدداً بارگذاری کنید.')
+      }
     } finally {
       setChallengeLoading(false)
     }
@@ -107,8 +158,8 @@ export default function LoginPage() {
     try {
       const res = await authApi.otpVerify(phone, code)
       if (res.data.access_token) {
-        loginWithToken(res.data.access_token)
-        navigate('/panel')
+        await loginWithToken(res.data.access_token)
+        // ریدایرکت در useEffect بر اساس user.role انجام می‌شود (دانشجو → پنل دانشجو)
       }
     } catch (err) {
       setError(err.response?.data?.detail || 'کد وارد شده صحیح نیست.')
@@ -121,21 +172,37 @@ export default function LoginPage() {
 
   const handlePasswordLogin = async (e) => {
     e.preventDefault()
+    // قبل از هر درخواست تب را قفل کن تا در صورت ریلود همان تب و خطا نمایش داده شود
+    setTab('password')
+    try { sessionStorage.setItem(LOGIN_TAB_KEY, 'password') } catch (_) {}
     setLoading(true)
     setError('')
     try {
-      await login(username, password, securityAnswer || undefined, challengeId, challengeAnswer)
-      navigate('/panel')
+      sessionStorage.removeItem(LOGIN_ERROR_KEY)
+      await login(username, password, challengeId, challengeAnswer)
+      sessionStorage.removeItem(LOGIN_TAB_KEY)
+      // ریدایرکت در useEffect بر اساس user.role انجام می‌شود (دانشجو → پنل دانشجو)
     } catch (err) {
+      // حتماً روی تب ورود با رمز عبور بمان؛ هرگز به تب پیامک نرو
+      setTab('password')
       const detail = err.response?.data?.detail
       const status = err.response?.status
+      let errMsg = 'خطا در ورود'
       if (status === 401) {
-        setError('نام کاربری یا رمز عبور اشتباه است')
+        errMsg = 'نام کاربری یا رمز عبور اشتباه است'
       } else if (!err.response) {
-        setError('خطا در اتصال به سرور')
-      } else {
-        setError(detail || 'خطا در ورود')
+        errMsg = 'خطا در اتصال به سرور'
+      } else if (detail) {
+        errMsg = typeof detail === 'string' ? detail : (detail.msg || detail.message || JSON.stringify(detail))
       }
+      setError(errMsg)
+      try {
+        sessionStorage.setItem(LOGIN_TAB_KEY, 'password')
+        sessionStorage.setItem(LOGIN_ERROR_KEY, errMsg)
+        sessionStorage.setItem(LOGIN_ERROR_FROM_PASSWORD_KEY, '1')
+      } catch (_) {}
+      // هربار ورود ناموفق: حتماً چالش جدید بگیر و منتظر بمان تا در تلاش بعدی کد امنیتی معتبر باشد
+      await fetchLoginChallenge(true)
     } finally {
       setLoading(false)
     }
@@ -158,13 +225,26 @@ export default function LoginPage() {
         <div className="otp-tabs">
           <button
             className={`otp-tab ${tab === 'otp' ? 'active' : ''}`}
-            onClick={() => { setTab('otp'); setError('') }}
+            onClick={() => {
+              setTab('otp')
+              setError('')
+              try {
+                sessionStorage.setItem(LOGIN_TAB_KEY, 'otp')
+                sessionStorage.removeItem(LOGIN_ERROR_KEY)
+                sessionStorage.removeItem(LOGIN_ERROR_FROM_PASSWORD_KEY)
+              } catch (_) {}
+            }}
           >
             ورود با پیامک
           </button>
           <button
             className={`otp-tab ${tab === 'password' ? 'active' : ''}`}
-            onClick={() => { setTab('password'); setError(''); fetchLoginChallenge() }}
+            onClick={() => {
+              setTab('password')
+              setError('')
+              try { sessionStorage.setItem(LOGIN_TAB_KEY, 'password') } catch (_) {}
+              fetchLoginChallenge()
+            }}
           >
             ورود با رمز عبور
           </button>
@@ -317,17 +397,6 @@ export default function LoginPage() {
                 />
               </div>
             )}
-            <div className="form-group">
-              <label className="form-label">پاسخ سوال امنیتی</label>
-              <input
-                className="form-input"
-                type="password"
-                value={securityAnswer}
-                onChange={(e) => setSecurityAnswer(e.target.value)}
-                placeholder="در صورت تنظیم سوال امنیتی، پاسخ را وارد کنید"
-                autoComplete="off"
-              />
-            </div>
             {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
             <button
               className="btn btn-primary"

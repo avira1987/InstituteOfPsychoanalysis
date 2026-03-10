@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     # Payment
     PAYMENT_PROVIDER: str = "mock"  # "mock" | "saman" | "zibal"
-    PAYMENT_CALLBACK_URL: str = "http://localhost:8000/api/payment/callback"
+    PAYMENT_CALLBACK_URL: str = "http://localhost:3000/api/payment/callback"
 
     # Saman (SEP) Payment Gateway
     SEP_TERMINAL_ID: str = ""
@@ -48,6 +48,9 @@ class Settings(BaseSettings):
 
     # SLA Monitoring
     SLA_CHECK_INTERVAL_SECONDS: int = 300
+
+    # Uploads (avatars, etc.)
+    UPLOAD_DIR: str = "uploads"  # مسیر نسبی از روت پروژه
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

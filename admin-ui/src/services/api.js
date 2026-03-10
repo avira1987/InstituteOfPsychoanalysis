@@ -1,32 +1,45 @@
 import axios from 'axios'
 
-// API base: same pattern as login - relative URL in production (prevents Mixed Content)
-// Override via VITE_API_BASE in .env when frontend/backend are on different origins
+// API base. Override با VITE_API_BASE در .env در صورت نیاز.
 export function getApiBase() {
+  // فرانت فقط روی پورت 3000؛ آدرس API هم روی 3000 (یک پورت واحد).
+  if (typeof window !== 'undefined') {
+    const port = window.location.port
+    const host = window.location.hostname
+    if (port === '3000' && (host === 'localhost' || host === '127.0.0.1')) {
+      const base = import.meta.env.VITE_API_BASE
+        ? import.meta.env.VITE_API_BASE.replace(/\/?$/, '/')
+        : 'http://localhost:3000/api/'
+      return base
+    }
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return '/api/'
+    }
+  }
   if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE.replace(/\/?$/, '/')
   if (typeof window === 'undefined') {
     const base = (import.meta.env.BASE_URL || '/anistito/').replace(/\/$/, '') || ''
     return (base ? base + '/' : '/') + 'api/'
   }
-  const h = window.location.hostname
-  const p = window.location.port
-  if (h === 'localhost' || h === '127.0.0.1') {
-    if (p === '8000' || p === '') return '/api/'
-    return 'http://localhost:8000/api/'
-  }
-  // Production: use same base path as app (from Vite base config)
   const base = (import.meta.env.BASE_URL || '/anistito/').replace(/\/$/, '') || ''
   return (base ? base + '/' : '/') + 'api/'
 }
-const API_BASE = getApiBase()
 
 const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: '/api/', // مقدار پیش‌فرض؛ در اینترسپتور زیر همیشه با origin فعلی به‌روز می‌شود
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Add auth token to requests
+// Add auth token + همیشه baseURL را از آدرس فعلی صفحه بگیر
 api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const base = getApiBase()
+    config.baseURL = base
+    if (import.meta.env.DEV && !window.__anistito_api_base_logged) {
+      window.__anistito_api_base_logged = true
+      console.log('[anistito] API baseURL:', base, '| صفحه:', window.location.href)
+    }
+  }
   const token = localStorage.getItem('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
@@ -34,13 +47,31 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 responses
+// Handle 401: ریدایرکت فقط برای درخواست‌های احراز‌شده. درخواست‌های صفحهٔ لاگین هرگز ریدایرکت نکن تا خطا همان‌جا بماند.
+// اگر config نبود (خطای شبکه و...) ریدایرکت نکن تا خطا در همان صفحه نمایش داده شود.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = (import.meta.env.BASE_URL || '') + 'login'
+      const config = error.config
+      const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+      const isLoginPage = pathname.includes('/login')
+      const isAuthMe = config?.url && /auth\/me$/i.test(String(config.url).replace(/^\//, ''))
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      const isDevFrontend =
+        origin === 'http://localhost:3000' || origin === 'http://127.0.0.1:3000'
+      const skipRedirect =
+        !config ||
+        config._skipAuthRedirect === true ||
+        isLoginPage ||
+        isAuthMe ||
+        isDevFrontend ||
+        /login-json|login-challenge|otp\/(request|verify)/i.test((config.baseURL || '') + (config.url || '')) ||
+        /login-json|login-challenge|otp\/request|otp\/verify/.test(config.url || '')
+      if (!skipRedirect) {
+        localStorage.removeItem('token')
+        window.location.href = (import.meta.env.BASE_URL || '') + 'login'
+      }
     }
     return Promise.reject(error)
   }
@@ -53,24 +84,42 @@ export function getAppBasePath() {
 }
 
 // ─── Auth ──────────────────────────────────────────────────────
+// درخواست‌های لاگین با _skipAuthRedirect تا در صورت 401 ریدایرکت نشود و خطا همان‌جا نمایش داده شود
+/** Base URL for uploads (avatars). Same origin as API but without /api path. */
+export function getUploadsBase() {
+  const base = getApiBase()
+  return base.replace(/\/api\/?$/, '') || (typeof window !== 'undefined' ? window.location.origin + '/' : '')
+}
+
+/** Full URL for avatar path (e.g. /uploads/avatars/xxx.jpg). */
+export function getAvatarUrl(avatarPath) {
+  if (!avatarPath) return null
+  if (avatarPath.startsWith('http')) return avatarPath
+  const origin = getUploadsBase().replace(/\/$/, '')
+  return `${origin}${avatarPath.startsWith('/') ? '' : '/'}${avatarPath}`
+}
+
 export const authApi = {
-  login: (username, password, securityAnswer, challengeId, challengeAnswer) =>
+  login: (username, password, challengeId, challengeAnswer) =>
     api.post('auth/login-json', {
       username,
       password,
-      security_answer: securityAnswer || undefined,
       challenge_id: challengeId,
       challenge_answer: challengeAnswer,
-    }),
+    }, { _skipAuthRedirect: true }),
   me: () => api.get('auth/me'),
+  updateMe: (data) => api.patch('auth/me', data),
+  uploadAvatar: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post('auth/me/avatar', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
   register: (data) => api.post('auth/register', data),
-  otpRequest: (phone) => api.post('auth/otp/request', { phone }),
-  otpVerify: (phone, code) => api.post('auth/otp/verify', { phone, code }),
-  setSecurityQuestion: (question, answer) =>
-    api.post('auth/set-security-question', { question, answer }),
-  getSecurityQuestion: (username) =>
-    api.post('auth/security-question-preview', { username }),
-  getLoginChallenge: () => api.post('auth/login-challenge'),
+  otpRequest: (phone) => api.post('auth/otp/request', { phone }, { _skipAuthRedirect: true }),
+  otpVerify: (phone, code) => api.post('auth/otp/verify', { phone, code }, { _skipAuthRedirect: true }),
+  getLoginChallenge: () => api.post('auth/login-challenge', {}, { _skipAuthRedirect: true }),
 }
 
 // ─── Processes ─────────────────────────────────────────────────

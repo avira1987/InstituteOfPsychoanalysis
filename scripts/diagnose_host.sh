@@ -10,12 +10,12 @@ echo "=== 2. لاگ‌های آخر کانتینر (اگر وجود دارد) ==
 docker logs anistito-api --tail 50 2>&1 || echo "(کانتینر وجود ندارد یا خطا)"
 
 echo ""
-echo "=== 3. پورت 8000 در حال گوش دادن؟ ==="
-ss -tlnp | grep 8000 || netstat -tlnp 2>/dev/null | grep 8000 || echo "پورت 8000 باز نیست"
+echo "=== 3. پورت 3000 در حال گوش دادن؟ ==="
+ss -tlnp | grep 3000 || netstat -tlnp 2>/dev/null | grep 3000 || echo "پورت 3000 باز نیست"
 
 echo ""
 echo "=== 4. تست مستقیم health ==="
-curl -s -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:8000/health 2>&1 || echo "curl failed"
+curl -s -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:3000/health 2>&1 || echo "curl failed"
 
 echo ""
 echo "=== 5. وضعیت شبکه Docker ==="

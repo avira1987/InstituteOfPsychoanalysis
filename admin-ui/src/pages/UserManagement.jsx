@@ -31,6 +31,11 @@ export default function UserManagement() {
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({})
 
+  // Set password (for students / any user)
+  const [setPasswordUser, setSetPasswordUser] = useState(null)
+  const [setPasswordValue, setSetPasswordValue] = useState('')
+  const [setPasswordConfirm, setSetPasswordConfirm] = useState('')
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 3000)
@@ -87,6 +92,28 @@ export default function UserManagement() {
     }
   }
 
+  const handleSetPassword = async (e) => {
+    e.preventDefault()
+    if (!setPasswordUser) return
+    if (setPasswordValue.length < 4) {
+      showToast('رمز عبور باید حداقل ۴ کاراکتر باشد', 'error')
+      return
+    }
+    if (setPasswordValue !== setPasswordConfirm) {
+      showToast('رمز عبور و تکرار آن یکسان نیستند', 'error')
+      return
+    }
+    try {
+      await userApi.update(setPasswordUser.id, { password: setPasswordValue })
+      showToast(`رمز عبور برای «${setPasswordUser.full_name_fa || setPasswordUser.username}» تنظیم شد`)
+      setSetPasswordUser(null)
+      setSetPasswordValue('')
+      setSetPasswordConfirm('')
+    } catch (err) {
+      showToast('خطا: ' + (err.response?.data?.detail || err.message), 'error')
+    }
+  }
+
   const handleToggleActive = async (u) => {
     if (u.id === currentUser?.id) {
       showToast('نمی‌توانید حساب خودتان را غیرفعال کنید', 'error')
@@ -128,13 +155,15 @@ export default function UserManagement() {
           <h1 className="page-title">مدیریت کاربران</h1>
           <p className="page-subtitle">ایجاد و مدیریت حساب‌های کاربری | مجموع: {users.length} کاربر</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
-          {showCreate ? 'لغو' : '+ کاربر جدید'}
-        </button>
+        {currentUser?.role === 'admin' && (
+          <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
+            {showCreate ? 'لغو' : '+ کاربر جدید'}
+          </button>
+        )}
       </div>
 
-      {/* Create User Form */}
-      {showCreate && (
+      {/* Create User Form (admin only) */}
+      {showCreate && currentUser?.role === 'admin' && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
           <h3 className="card-title" style={{ marginBottom: '1rem' }}>ایجاد کاربر جدید</h3>
           <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
@@ -190,6 +219,47 @@ export default function UserManagement() {
         </div>
       </div>
 
+      {/* Set Password Modal */}
+      {setPasswordUser && (
+        <div className="card" style={{ marginBottom: '1.5rem', maxWidth: '420px' }}>
+          <h3 className="card-title" style={{ marginBottom: '0.5rem' }}>تنظیم رمز عبور</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+            برای <strong>{setPasswordUser.full_name_fa || setPasswordUser.username}</strong> (نام کاربری: {setPasswordUser.username})
+          </p>
+          <form onSubmit={handleSetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">رمز عبور جدید *</label>
+              <input
+                className="form-input"
+                type="password"
+                value={setPasswordValue}
+                onChange={(e) => setSetPasswordValue(e.target.value)}
+                placeholder="حداقل ۴ کاراکتر"
+                minLength={4}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">تکرار رمز عبور *</label>
+              <input
+                className="form-input"
+                type="password"
+                value={setPasswordConfirm}
+                onChange={(e) => setSetPasswordConfirm(e.target.value)}
+                placeholder="همان رمز را دوباره وارد کنید"
+                autoComplete="new-password"
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn btn-primary" type="submit">ذخیره رمز</button>
+              <button className="btn btn-outline" type="button" onClick={() => { setSetPasswordUser(null); setSetPasswordValue(''); setSetPasswordConfirm(''); }}>
+                انصراف
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Users Table */}
       <div className="card">
         <div className="table-container">
@@ -229,17 +299,26 @@ export default function UserManagement() {
                         {u.created_at ? new Date(u.created_at).toLocaleDateString('fa-IR') : '-'}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button className="btn btn-outline btn-sm" onClick={() => editingId === u.id ? setEditingId(null) : startEdit(u)}>
                             {editingId === u.id ? 'لغو' : 'ویرایش'}
                           </button>
                           <button
-                            className={`btn btn-sm ${u.is_active ? 'btn-danger' : 'btn-success'}`}
-                            onClick={() => handleToggleActive(u)}
-                            disabled={u.id === currentUser?.id}
+                            className="btn btn-outline btn-sm"
+                            onClick={() => { setSetPasswordUser(u); setSetPasswordValue(''); setSetPasswordConfirm(''); }}
+                            title="تنظیم رمز عبور برای ورود با نام کاربری"
                           >
-                            {u.is_active ? 'غیرفعال' : 'فعال'}
+                            🔑 تنظیم رمز
                           </button>
+                          {currentUser?.role === 'admin' && (
+                            <button
+                              className={`btn btn-sm ${u.is_active ? 'btn-danger' : 'btn-success'}`}
+                              onClick={() => handleToggleActive(u)}
+                              disabled={u.id === currentUser?.id}
+                            >
+                              {u.is_active ? 'غیرفعال' : 'فعال'}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

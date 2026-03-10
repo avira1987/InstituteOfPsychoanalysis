@@ -45,6 +45,10 @@ class UserResponse(BaseModel):
     id: str
     username: str
     full_name_fa: Optional[str] = None
+    full_name_en: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    avatar_url: Optional[str] = None
     role: str
     is_active: bool
 
@@ -134,20 +138,14 @@ def require_role(*roles: str):
 # ─── Auth Service ───────────────────────────────────────────────
 
 async def authenticate_user(
-    db: AsyncSession, username: str, password: str, security_answer: str | None = None
+    db: AsyncSession, username: str, password: str
 ) -> Optional[User]:
-    """Authenticate a user by username, password, and optional security question."""
+    """Authenticate a user by username and password."""
     stmt = select(User).where(User.username == username)
     result = await db.execute(stmt)
     user = result.scalars().first()
     if not user or not verify_password(password, user.hashed_password):
         return None
-    # اگر کاربر سوال امنیتی تنظیم کرده، پاسخ را بررسی کن
-    if user.security_question and user.security_answer_hash:
-        if not security_answer or not security_answer.strip():
-            return None
-        if not verify_password(security_answer.strip(), user.security_answer_hash):
-            return None
     return user
 
 

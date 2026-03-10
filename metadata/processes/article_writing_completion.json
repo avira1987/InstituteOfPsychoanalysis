@@ -1,0 +1,33 @@
+{
+  "process": {
+    "code": "article_writing_completion",
+    "name_fa": "خاتمه درس مقاله\u200cنویسی جهت گزارش موردی",
+    "name_en": "Article Writing for Case Report - Course Completion",
+    "number": 69,
+    "description": "ساختار آموزشی شناور و قانون\u200cمند. کلاس حداکثر ۲ ترم (یک سال)؛ ترم دوم مجاز اگر در ترم اول تیک تکمیل نخورده باشد. اخذ در ترم سوم و بعد برابر تخلف آموزشی، گزارش به کمیته نظارت. ماشه: تیک تکمیل توسط مدرس؛ بستن کلاس برای دانشجو؛ مهلت ۸ روزه درخواست دفاع و ۴ روزه فرم ارزیابی مدرس. پاسخ سوال ۷ و ۸ فرم در جدول گزارش عملکرد دانشجو ثبت می\u200cشود.",
+    "initial_state": "course_active",
+    "initial_role": "instructor",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "course_active", "name_fa": "کلاس مقاله\u200cنویسی فعال", "type": "initial", "assigned_role": "instructor"},
+    {"code": "class_closed_student", "name_fa": "کلاس بسته شد - مهلت ۸ روزه درخواست دفاع", "type": "intermediate", "assigned_role": "student"},
+    {"code": "instructor_eval_pending", "name_fa": "منتظر فرم ارزیابی مدرس (۴ روز)", "type": "intermediate", "assigned_role": "instructor"},
+    {"code": "completed_to_defense", "name_fa": "خاتمه کلاس - انتقال به فاز دفاع", "type": "terminal", "assigned_role": "system"},
+    {"code": "student_delay_violation", "name_fa": "تاخیر دانشجو - گزارش تخلف", "type": "terminal", "assigned_role": "system"},
+    {"code": "instructor_delay_violation", "name_fa": "تاخیر مدرس - گزارش تخلف", "type": "terminal", "assigned_role": "system"},
+    {"code": "term3_violation", "name_fa": "اخذ در ترم سوم - گزارش تخلف", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "course_active", "to": "class_closed_student", "trigger": "completion_ticked", "required_role": "instructor", "description_fa": "تیک تکمیل - کلاس بسته شد"},
+    {"from": "class_closed_student", "to": "instructor_eval_pending", "trigger": "defense_requested", "required_role": "student", "description_fa": "درخواست دفاع ثبت شد"},
+    {"from": "class_closed_student", "to": "student_delay_violation", "trigger": "sla_8days_breach", "conditions": ["article_student_8day_sla_breach"], "description_fa": "تاخیر ۸ روزه - گزارش به کمیته نظارت"},
+    {"from": "instructor_eval_pending", "to": "completed_to_defense", "trigger": "evaluation_submitted", "required_role": "instructor", "description_fa": "فرم ارزیابی تکمیل شد"},
+    {"from": "instructor_eval_pending", "to": "instructor_delay_violation", "trigger": "sla_4days_breach", "conditions": ["article_instructor_4day_sla_breach"], "description_fa": "تاخیر ۴ روزه مدرس - گزارش تخلف"},
+    {"from": "course_active", "to": "term3_violation", "trigger": "enrollment_term3_plus", "conditions": ["article_enrollment_term3_plus"], "description_fa": "اخذ ترم سوم - گزارش تخلف آموزشی"}
+  ],
+  "forms": [
+    {"code": "article_completion_tick_dashboard", "name_fa": "داشبورد ثبت تیک تکمیل", "used_in_state": "course_active", "fields": [{"name": "students", "label_fa": "لیست دانشجویان و تیک تکمیل", "type": "dynamic_list"}]},
+    {"code": "article_student_evaluation_form", "name_fa": "فرم ارزیابی کیفی دانشجو", "used_in_state": "instructor_eval_pending", "fields": [{"name": "student_id", "label_fa": "نام دانشجو", "type": "readonly"}, {"name": "q7_positive", "label_fa": "سوال ۷ - ویژگی\u200cهای مثبت", "type": "textarea"}, {"name": "q8_negative", "label_fa": "سوال ۸ - ویژگی\u200cهای منفی", "type": "textarea"}]}
+  ]
+}

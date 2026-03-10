@@ -1,0 +1,27 @@
+{
+  "process": {
+    "code": "live_therapy_observation_session_prep",
+    "name_fa": "مقدمات برگزاری جلسات مشاهده زنده درمان",
+    "name_en": "Live Therapy Observation Session Preparation",
+    "number": 66,
+    "description": "گام پیش‌نیاز برای برگزاری جلسات مشاهده زنده درمان. ارجاع بیمار متقاضی؛ هماهنگی زمان؛ ثبت زمان در LMS؛ پیامک به مدرس، کمک‌مدرس و دانشجویان. در صورت عدم هماهنگی، ختم پرونده.",
+    "initial_state": "patient_referral",
+    "initial_role": "admission_officer",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "patient_referral", "name_fa": "ثبت و ارجاع پرونده بیمار", "type": "initial", "assigned_role": "admission_officer"},
+    {"code": "coordination_pending", "name_fa": "هماهنگی زمان جلسه", "type": "intermediate", "assigned_role": "therapy_education_coordinator"},
+    {"code": "session_scheduled", "name_fa": "زمان در LMS ثبت و پیامک ارسال شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "coordination_closed", "name_fa": "وقت هماهنگ نشد — پرونده مختومه", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "patient_referral", "to": "coordination_pending", "trigger": "referral_submitted", "required_role": "admission_officer", "description_fa": "ارجاع به مسئول هماهنگی"},
+    {"from": "coordination_pending", "to": "session_scheduled", "trigger": "time_registered", "required_role": "therapy_education_coordinator", "conditions": ["live_session_time_agreed"], "description_fa": "ثبت زمان در LMS — پیامک به مدرس، کمک‌مدرس و دانشجویان"},
+    {"from": "coordination_pending", "to": "coordination_closed", "trigger": "no_time_agreed", "required_role": "therapy_education_coordinator", "conditions": ["live_session_time_not_agreed"], "description_fa": "وقت هماهنگ نشد — ختم پرونده"}
+  ],
+  "forms": [
+    {"code": "observation_patient_referral", "name_fa": "فرم ارجاع بیمار متقاضی مشاهده زنده درمان", "used_in_state": "patient_referral", "fields": [{"name": "patient_first_name", "label_fa": "نام بیمار", "type": "text"}, {"name": "patient_last_name", "label_fa": "نام خانوادگی", "type": "text"}, {"name": "patient_phone", "label_fa": "شماره تماس", "type": "text"}, {"name": "notes", "label_fa": "توضیحات", "type": "textarea"}]},
+    {"code": "observation_schedule_form", "name_fa": "ثبت زمان جلسه مشاهده زنده در LMS", "used_in_state": "coordination_pending", "fields": [{"name": "session_date", "label_fa": "تاریخ", "type": "date_picker"}, {"name": "session_time", "label_fa": "ساعت شروع", "type": "time_picker"}, {"name": "instructor_id", "label_fa": "مدرس", "type": "user_select"}]}
+  ]
+}

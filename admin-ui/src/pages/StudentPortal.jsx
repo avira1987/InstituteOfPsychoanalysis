@@ -210,28 +210,56 @@ export default function StudentPortal() {
       {activeTab === 'dashboard' && (
         <>
           <div className="stats-grid">
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('processes')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('processes') } }}
+              title="مشاهده فرایندهای فعال"
+            >
               <div className="stat-icon primary">🔄</div>
               <div>
                 <div className="stat-value">{activeProcesses.length}</div>
                 <div className="stat-label">فرایند فعال</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('processes')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('processes') } }}
+              title="مشاهده فرایندهای تکمیل‌شده"
+            >
               <div className="stat-icon success">✅</div>
               <div>
                 <div className="stat-value">{completedProcesses.length}</div>
                 <div className="stat-label">تکمیل‌شده</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('profile')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('profile') } }}
+              title="مشاهده پروفایل و ترم فعلی"
+            >
               <div className="stat-icon info">📅</div>
               <div>
                 <div className="stat-value">{studentProfile?.current_term || '-'}</div>
                 <div className="stat-label">ترم فعلی</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('profile')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('profile') } }}
+              title="مشاهده پروفایل و جلسات هفتگی"
+            >
               <div className="stat-icon warning">🗓️</div>
               <div>
                 <div className="stat-value">{studentProfile?.weekly_sessions || '-'}</div>

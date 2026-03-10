@@ -17,9 +17,8 @@ Meta-Driven Educational Automation System for Tehran Institute of Psychoanalysis
 docker-compose up --build
 ```
 
-- API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
-- Admin UI: http://localhost:3000
+- API و Admin UI: http://localhost:3000 (یک پورت واحد)
+- API Docs: http://localhost:3000/docs
 
 ### Without Docker
 
@@ -37,8 +36,8 @@ alembic upgrade head
 # 4. Seed metadata
 python -m app.meta.seed
 
-# 5. Start server
-uvicorn app.main:app --reload
+# 5. Start server (پورت 3000 — یک پورت برای API و فرانت)
+uvicorn app.main:app --reload --port 3000
 ```
 
 ## Project Structure

@@ -1,0 +1,22 @@
+{
+  "process": {
+    "code": "class_session_cancellation",
+    "name_fa": "کنسل کردن جلسات کالس\u200cهای درسی",
+    "name_en": "Class Session Cancellation",
+    "number": 56,
+    "description": "مدیریت عدم برگزاری کالس. قانون نظارت ۲ ساعته: عدم ثبت حضور تا ۲ ساعت پس از زمان کالس ثبت تخلف و ارسال به کمیته. تایید همزمان کنسلی و زمان جبرانی اجباری؛ محاسبه جمعه\u200cهای هفته ۱۵ و ۱۶؛ پیامک به دانشجویان و مدرس.",
+    "initial_state": "cancellation_request",
+    "initial_role": "instructor",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "cancellation_request", "name_fa": "انتخاب درس و جلسه جهت کنسلی", "type": "initial", "assigned_role": "instructor"},
+    {"code": "makeup_scheduled", "name_fa": "زمان جبرانی محاسبه و تایید شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "cancellation_request", "to": "makeup_scheduled", "trigger": "cancellation_confirmed", "required_role": "instructor", "description_fa": "تایید کنسلی و جبرانی — قفل جلسه، ثبت جبرانی، پیامک"}
+  ],
+  "forms": [
+    {"code": "cancellation_and_makeup_form", "name_fa": "فرم ثبت کنسلی و تایید کالس جبرانی", "used_in_state": "cancellation_request", "fields": [{"name": "lesson_id", "label_fa": "نام درس", "type": "select"}, {"name": "session_to_cancel", "label_fa": "جلسه جهت کنسلی", "type": "select"}, {"name": "makeup_date", "label_fa": "تاریخ جلسه جبرانی", "type": "readonly"}, {"name": "makeup_time", "label_fa": "ساعت جبرانی", "type": "readonly"}]}
+  ]
+}

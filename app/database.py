@@ -1,5 +1,6 @@
 """Database session management and Base model."""
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.config import get_settings
@@ -48,3 +49,7 @@ async def init_db():
     """Create all tables (for development only; use Alembic in production)."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # Ensure avatar_url exists if migrations (e.g. 005) did not run (e.g. when 001 fails with DuplicateTable)
+    if "postgresql" in settings.DATABASE_URL:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512)"))

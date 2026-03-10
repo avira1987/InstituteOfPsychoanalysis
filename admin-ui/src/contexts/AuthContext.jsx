@@ -29,8 +29,8 @@ export function AuthProvider({ children }) {
     fetchUser()
   }, [fetchUser])
 
-  const login = async (username, password, securityAnswer, challengeId, challengeAnswer) => {
-    const res = await authApi.login(username, password, securityAnswer, challengeId, challengeAnswer)
+  const login = async (username, password, challengeId, challengeAnswer) => {
+    const res = await authApi.login(username, password, challengeId, challengeAnswer)
     localStorage.setItem('token', res.data.access_token)
     await fetchUser()
     return res

@@ -245,28 +245,56 @@ export default function CommitteePortal() {
       {activeTab === 'dashboard' && (
         <>
           <div className="stats-grid">
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('reviews')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('reviews') } }}
+              title="مشاهده درخواست‌های منتظر بررسی"
+            >
               <div className="stat-icon warning">📥</div>
               <div>
                 <div className="stat-value">{pendingReviews.length}</div>
                 <div className="stat-label">منتظر بررسی</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('all')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('all') } }}
+              title="مشاهده همه فرایندها"
+            >
               <div className="stat-icon primary">🔄</div>
               <div>
                 <div className="stat-value">{allActiveInstances.length}</div>
                 <div className="stat-label">فرایند فعال</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('students')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('students') } }}
+              title="مشاهده لیست دانشجویان"
+            >
               <div className="stat-icon info">👨‍🎓</div>
               <div>
                 <div className="stat-value">{allStudents.length}</div>
                 <div className="stat-label">دانشجویان</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('all')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('all') } }}
+              title="مشاهده فرایندهای بررسی‌شده"
+            >
               <div className="stat-icon success">✅</div>
               <div>
                 <div className="stat-value">{allActiveInstances.length - pendingReviews.length}</div>

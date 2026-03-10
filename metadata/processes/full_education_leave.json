@@ -1,0 +1,27 @@
+{
+  "process": {
+    "code": "full_education_leave",
+    "name_fa": "مرخصی موقت از کل آموزش",
+    "name_en": "Temporary Leave from Full Education",
+    "number": 59,
+    "description": "درخواست مرخصی موقت از کل دوره آموزش. تعیین تکلیف درمانگر آموزشی و پرونده‌های بالینی.",
+    "initial_state": "leave_request",
+    "initial_role": "student",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "leave_request", "name_fa": "درخواست مرخصی از کل آموزش", "type": "initial", "assigned_role": "student"},
+    {"code": "therapist_assignment", "name_fa": "تعیین تکلیف درمانگر آموزشی", "type": "intermediate", "assigned_role": "education_committee"},
+    {"code": "leave_approved", "name_fa": "مرخصی تایید شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "leave_rejected", "name_fa": "مرخصی رد شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "leave_request", "to": "therapist_assignment", "trigger": "request_submitted", "required_role": "student", "description_fa": "ارسال درخواست"},
+    {"from": "therapist_assignment", "to": "leave_approved", "trigger": "approved", "required_role": "education_committee", "description_fa": "تایید مرخصی"},
+    {"from": "therapist_assignment", "to": "leave_rejected", "trigger": "rejected", "required_role": "education_committee", "description_fa": "رد درخواست"}
+  ],
+  "forms": [
+    {"code": "full_leave_request_form", "name_fa": "درخواست مرخصی از کل آموزش", "used_in_state": "leave_request", "fields": [{"name": "start_date", "label_fa": "تاریخ شروع", "type": "date_picker"}, {"name": "end_date", "label_fa": "تاریخ پایان", "type": "date_picker"}, {"name": "reason", "label_fa": "دلیل", "type": "textarea"}]},
+    {"code": "therapist_assignment_form", "name_fa": "تعیین تکلیف درمانگر آموزشی", "used_in_state": "therapist_assignment", "fields": [{"name": "decision", "label_fa": "تایید یا رد", "type": "radio"}, {"name": "therapist_notes", "label_fa": "توضیحات", "type": "textarea"}]}
+  ]
+}

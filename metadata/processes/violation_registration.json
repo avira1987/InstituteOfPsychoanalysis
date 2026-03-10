@@ -1,0 +1,28 @@
+{
+  "process": {
+    "code": "violation_registration",
+    "name_fa": "ثبت تخلفات",
+    "name_en": "Violation Registration",
+    "number": 55,
+    "description": "ستون فقرات سیستم انضباطی. ثبت، بررسی و صدور حکم تخلفات (حرفه\u200cای، آموزشی، انضباطی). ضرب\u200cالاجل ۳ روزه برای اقدام اولیه؛ تذکر و اخطارهای ۱ تا ۳؛ تعلیق موقت (آنی یا از ترم بعد)؛ ارجاع به کمیته آموزش و حکم اخراج. جدول گزارش عملکرد دانشجو در پورتال کمیته نظارت و دانشجو.",
+    "initial_state": "violation_reported",
+    "initial_role": "reporter",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "violation_reported", "name_fa": "تخلف ثبت و ارجاع به کمیته نظارت", "type": "initial", "assigned_role": "monitoring_committee_officer"},
+    {"code": "review_status_set", "name_fa": "قابل بررسی نیست / قابل بررسی است", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "meeting_scheduled", "name_fa": "جلسه تنظیم و دعوت\u200cنامه ارسال شد", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "verdict_issued", "name_fa": "حکم صادر شد (تذکر/اخطار ۱-۳)", "type": "intermediate", "assigned_role": "system"},
+    {"code": "suspension_next_term", "name_fa": "تعلیق از ترم بعد", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "suspension_immediate", "name_fa": "تعلیق آنی", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "referred_to_education_committee", "name_fa": "ارجاع به کمیته آموزش", "type": "intermediate", "assigned_role": "education_committee"},
+    {"code": "closed", "name_fa": "مختومه (مبرا / رد)", "type": "terminal", "assigned_role": "system"},
+    {"code": "expelled", "name_fa": "اخراج — پورتال مسدود", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [],
+  "forms": [
+    {"code": "violation_report_form", "name_fa": "ثبت اولیه تخلف", "used_in_state": "violation_reported", "fields": [{"name": "description", "label_fa": "شرح تخلف", "type": "textarea"}, {"name": "occurrence_date", "label_fa": "تاریخ وقوع", "type": "date_picker"}]},
+    {"code": "committee_verdict_form", "name_fa": "جدول گزارش عملکرد دانشجو (کمیته نظارت)", "used_in_state": "verdict_issued", "description_fa": "ثبت اقدام/حکم، نوع تخلف، شروط جبرانی، وضعیت نهایی کمیته آموزش"}
+  ]
+}

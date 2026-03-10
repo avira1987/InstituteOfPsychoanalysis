@@ -1,7 +1,7 @@
 # رفع خطای Service Unavailable (503)
 
 ## علت
-Apache به بک‌اند (کانتینر FastAPI روی پورت 8000) وصل نمی‌شود. معمولاً یکی از این موارد:
+Apache به بک‌اند (کانتینر FastAPI روی پورت 3000) وصل نمی‌شود. معمولاً یکی از این موارد:
 
 1. **کانتینر Docker متوقف شده** – خطای migration یا crash هنگام استارت
 2. **ProxyPass در Apache تنظیم نشده** – vhost مربوط به bpms.psychoanalysis.ir
@@ -45,10 +45,10 @@ grep -r "anistito\|ProxyPass" /etc/apache2/sites-enabled/
 باید چیزی شبیه این باشد:
 
 ```apache
-ProxyPass /anistito/api/ http://127.0.0.1:8000/api/
-ProxyPassReverse /anistito/api/ http://127.0.0.1:8000/api/
-ProxyPass /anistito/ http://127.0.0.1:8000/
-ProxyPassReverse /anistito/ http://127.0.0.1:8000/
+ProxyPass /anistito/api/ http://127.0.0.1:3000/api/
+ProxyPassReverse /anistito/api/ http://127.0.0.1:3000/api/
+ProxyPass /anistito/ http://127.0.0.1:3000/
+ProxyPassReverse /anistito/ http://127.0.0.1:3000/
 ```
 
 اگر نیست، فایل vhost مربوط به `bpms.psychoanalysis.ir` را پیدا کنید و این بلوک را قبل از `</VirtualHost>` اضافه کنید:
@@ -84,13 +84,13 @@ docker start anistito-api
 cd /opt/anistito
 docker rm -f anistito-api 2>/dev/null
 docker build -t anistito-api .
-docker run -d --name anistito-api --network anistito-net -p 8000:8000 \
+docker run -d --name anistito-api --network anistito-net -p 3000:3000 \
   -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito \
   -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito \
   -e REDIS_URL=redis://anistito-redis:6379/0 \
   -e DEBUG=false \
   -e SECRET_KEY=anistito-prod-secret \
-  anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000'
+  anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 3000'
 ```
 
 ---
@@ -98,7 +98,7 @@ docker run -d --name anistito-api --network anistito-net -p 8000:8000 \
 ## مرحله ۵: تست
 
 ```bash
-curl -s http://127.0.0.1:8000/health
+curl -s http://127.0.0.1:3000/health
 ```
 
 باید `{"status":"healthy"}` برگردد.

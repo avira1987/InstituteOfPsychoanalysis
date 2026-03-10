@@ -2,6 +2,36 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { publicApi } from '../../services/api'
 
+/** Map API error (string or 422 validation array) to a single Persian message. */
+function getRegistrationErrorMessage(err) {
+  const detail = err.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail) && detail.length > 0) {
+    const fieldNames = {
+      full_name_fa: 'نام و نام خانوادگی',
+      phone: 'شماره موبایل',
+      email: 'ایمیل',
+      course_type: 'نوع دوره',
+      education_level: 'مقطع تحصیلی',
+      field_of_study: 'رشته تحصیلی',
+      motivation: 'انگیزه شرکت در دوره',
+    }
+    const first = detail[0]
+    const field = first.loc?.[first.loc.length - 1]
+    const label = fieldNames[field] || field || 'فیلد'
+    const msg = first.msg
+    if (msg && (msg.includes('required') || msg.includes('missing'))) return `${label} را وارد کنید.`
+    if (msg && msg.includes('type')) return `مقدار ${label} نامعتبر است.`
+    if (first.msg) return `${label}: ${first.msg}`
+    return `${label} نامعتبر است.`
+  }
+  const status = err.response?.status
+  if (status === 500) return 'خطایی در سرور رخ داد. لطفاً چند دقیقه دیگر تلاش کنید.'
+  if (status === 404) return 'سرویس ثبت‌نام در دسترس نیست. لطفاً بعداً تلاش کنید.'
+  if (!err.response) return 'خطا در ارتباط با سرور. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.'
+  return 'خطا در ثبت‌نام. لطفاً اطلاعات را بررسی کرده و دوباره تلاش کنید.'
+}
+
 export default function StudentRegistration() {
   const [form, setForm] = useState({
     full_name_fa: '',
@@ -30,7 +60,7 @@ export default function StudentRegistration() {
       const res = await publicApi.register(form)
       setResult(res.data)
     } catch (err) {
-      setError(err.response?.data?.detail || 'خطا در ثبت‌نام. لطفاً دوباره تلاش کنید.')
+      setError(getRegistrationErrorMessage(err))
     } finally {
       setLoading(false)
     }

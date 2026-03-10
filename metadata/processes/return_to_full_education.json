@@ -1,0 +1,27 @@
+{
+  "process": {
+    "code": "return_to_full_education",
+    "name_fa": "بازگشت دوباره به کل آموزش پس از مرخصی",
+    "name_en": "Return to Full Education After Leave",
+    "number": 60,
+    "description": "بازگشت دانشجو به دوره پس از مرخصی. انتخاب ارکان بالینی و فعال‌سازی مجدد مسیر آموزشی.",
+    "initial_state": "return_request",
+    "initial_role": "student",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "return_request", "name_fa": "درخواست بازگشت", "type": "initial", "assigned_role": "student"},
+    {"code": "clinical_roles_selection", "name_fa": "انتخاب ارکان بالینی", "type": "intermediate", "assigned_role": "education_committee"},
+    {"code": "return_approved", "name_fa": "بازگشت تایید شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "return_rejected", "name_fa": "بازگشت رد شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "return_request", "to": "clinical_roles_selection", "trigger": "request_submitted", "required_role": "student", "description_fa": "ارسال درخواست"},
+    {"from": "clinical_roles_selection", "to": "return_approved", "trigger": "roles_assigned", "required_role": "education_committee", "description_fa": "انتخاب درمانگر و سوپروایزر و تایید"},
+    {"from": "clinical_roles_selection", "to": "return_rejected", "trigger": "rejected", "required_role": "education_committee", "description_fa": "رد درخواست"}
+  ],
+  "forms": [
+    {"code": "return_request_form", "name_fa": "درخواست بازگشت به کل آموزش", "used_in_state": "return_request", "fields": [{"name": "return_date", "label_fa": "تاریخ بازگشت", "type": "date_picker"}, {"name": "notes", "label_fa": "توضیحات", "type": "textarea"}]},
+    {"code": "clinical_roles_form", "name_fa": "انتخاب ارکان بالینی", "used_in_state": "clinical_roles_selection", "fields": [{"name": "therapist_id", "label_fa": "درمانگر آموزشی", "type": "user_select"}, {"name": "supervisor_id", "label_fa": "سوپروایزر", "type": "user_select"}, {"name": "decision", "label_fa": "تایید یا رد", "type": "radio"}]}
+  ]
+}

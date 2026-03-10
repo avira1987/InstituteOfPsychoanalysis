@@ -216,28 +216,56 @@ export default function StaffPortal() {
       {activeTab === 'dashboard' && (
         <>
           <div className="stats-grid">
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('pending')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('pending') } }}
+              title="مشاهده وظایف منتظر"
+            >
               <div className="stat-icon warning">📥</div>
               <div>
                 <div className="stat-value">{pendingActions.length}</div>
                 <div className="stat-label">وظایف منتظر</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('students')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('students') } }}
+              title="مشاهده لیست دانشجویان"
+            >
               <div className="stat-icon info">👨‍🎓</div>
               <div>
                 <div className="stat-value">{allStudents.length}</div>
                 <div className="stat-label">تعداد دانشجویان</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('processes')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('processes') } }}
+              title="مشاهده فرایندهای فعال"
+            >
               <div className="stat-icon primary">🔄</div>
               <div>
                 <div className="stat-value">{allActiveInstances.length}</div>
                 <div className="stat-label">فرایند فعال</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('activity')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('activity') } }}
+              title="مشاهده فعالیت‌های اخیر"
+            >
               <div className="stat-icon success">👥</div>
               <div>
                 <div className="stat-value">{allUsers.length}</div>

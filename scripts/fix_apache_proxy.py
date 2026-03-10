@@ -6,10 +6,10 @@ from pathlib import Path
 BLOCK = """
 	# Anistito BPM - Proxy to FastAPI
 	ProxyPreserveHost On
-	ProxyPass /anistito/api/ http://127.0.0.1:8000/api/
-	ProxyPassReverse /anistito/api/ http://127.0.0.1:8000/api/
-	ProxyPass /anistito/ http://127.0.0.1:8000/
-	ProxyPassReverse /anistito/ http://127.0.0.1:8000/
+	ProxyPass /anistito/api/ http://127.0.0.1:3000/api/
+	ProxyPassReverse /anistito/api/ http://127.0.0.1:3000/api/
+	ProxyPass /anistito/ http://127.0.0.1:3000/
+	ProxyPassReverse /anistito/ http://127.0.0.1:3000/
 
 """
 

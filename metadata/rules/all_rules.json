@@ -666,5 +666,146 @@
     "name_fa": "در ۴ هفته اول شروع ترم",
     "rule_type": "condition",
     "expression": {"field": "instance.weeks_since_term_start", "operator": "lte", "value": 4}
+  },
+  {
+    "code": "attendance_absence_count_5",
+    "name_fa": "تعداد غیبت به ۵ رسیده (حضور و غیاب)",
+    "rule_type": "condition",
+    "expression": {"field": "instance.student_absence_count", "operator": "gte", "value": 5}
+  },
+  {
+    "code": "attendance_course_is_article_writing",
+    "name_fa": "درس مقاله‌نویسی — گزارش به کمیته نظارت",
+    "rule_type": "condition",
+    "expression": {"field": "instance.course_type", "operator": "eq", "value": "article_writing"}
+  },
+  {
+    "code": "attendance_course_is_live_supervision",
+    "name_fa": "درس سوپرویژن زنده — فقط ثبت در سوابق",
+    "rule_type": "condition",
+    "expression": {"field": "instance.course_type", "operator": "eq", "value": "live_supervision"}
+  },
+  {
+    "code": "cancellation_2h_sla_breach",
+    "name_fa": "قانون نظارت ۲ ساعته — عدم ثبت حضور تا ۲ ساعت پس از کالس",
+    "rule_type": "condition",
+    "expression": {"field": "instance.hours_since_class_time", "operator": "gte", "value": 2},
+    "error_message_fa": "ثبت حضور تا ۲ ساعت پس از زمان کالس الزامی است؛ در غیر این صورت تخلف ثبت و ارسال به کمیته."
+  },
+  {
+    "code": "violation_3day_initial_sla",
+    "name_fa": "ضرب‌الاجل ۳ روزه اقدام اولیه تخلف",
+    "rule_type": "condition",
+    "expression": {"field": "instance.days_since_violation_reported", "operator": "lte", "value": 3}
+  },
+  {
+    "code": "violation_verdict_warning",
+    "name_fa": "حکم تخلف: تذکر یا اخطار ۱ تا ۳",
+    "rule_type": "condition",
+    "expression": {"field": "instance.verdict_type", "operator": "eq", "value": "warning"}
+  },
+  {
+    "code": "violation_verdict_suspension_next_term",
+    "name_fa": "حکم تخلف: تعلیق از ترم بعد",
+    "rule_type": "condition",
+    "expression": {"field": "instance.verdict_type", "operator": "eq", "value": "suspension_next_term"}
+  },
+  {
+    "code": "violation_verdict_suspension_immediate",
+    "name_fa": "حکم تخلف: تعلیق آنی",
+    "rule_type": "condition",
+    "expression": {"field": "instance.verdict_type", "operator": "eq", "value": "suspension_immediate"}
+  },
+  {
+    "code": "violation_referred_to_education_committee",
+    "name_fa": "تخلف به کمیته آموزش ارجاع شده",
+    "rule_type": "condition",
+    "expression": {"field": "instance.referred_to_education_committee", "operator": "eq", "value": true}
+  },
+  {
+    "code": "evaluation_open_two_weeks_before_term_end",
+    "name_fa": "مهلت ارزیابی دانشجو از مدرس — دو هفته قبل از پایان ترم",
+    "rule_type": "condition",
+    "expression": {"field": "instance.weeks_until_term_end", "operator": "lte", "value": 2}
+  },
+  {
+    "code": "article_enrollment_term3_plus",
+    "name_fa": "اخذ درس مقاله‌نویسی در ترم سوم یا بعد — تخلف آموزشی",
+    "rule_type": "condition",
+    "expression": {"field": "instance.article_enrollment_term", "operator": "gte", "value": 3}
+  },
+  {
+    "code": "article_student_8day_sla_breach",
+    "name_fa": "تاخیر دانشجو در درخواست دفاع — مهلت ۸ روز",
+    "rule_type": "condition",
+    "expression": {"field": "instance.days_since_class_closed", "operator": "gt", "value": 8}
+  },
+  {
+    "code": "article_instructor_4day_sla_breach",
+    "name_fa": "تاخیر مدرس در ارسال فرم ارزیابی — مهلت ۴ روز",
+    "rule_type": "condition",
+    "expression": {"field": "instance.days_since_defense_requested", "operator": "gt", "value": 4}
+  },
+  {
+    "code": "live_supervision_ta_score_gte_74",
+    "name_fa": "نمره ارزیابی کمک‌مدرس سوپرویژن زنده ≥ ۷۴ — PASS",
+    "rule_type": "condition",
+    "expression": {"field": "instance.ta_final_score", "operator": "gte", "value": 74}
+  },
+  {
+    "code": "live_supervision_ta_score_lt_74",
+    "name_fa": "نمره ارزیابی کمک‌مدرس سوپرویژن زنده < ۷۴ — FAIL",
+    "rule_type": "condition",
+    "expression": {"field": "instance.ta_final_score", "operator": "lt", "value": 74}
+  },
+  {
+    "code": "thesis_defense_eligibility_met",
+    "name_fa": "احراز شروط چهارگانه دفاع پایان‌نامه",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "and",
+      "conditions": [
+        {"field": "instance.units_67_b_met", "operator": "eq", "value": true},
+        {"field": "instance.clinical_750_met", "operator": "eq", "value": true},
+        {"field": "instance.supervision_150_met", "operator": "eq", "value": true},
+        {"field": "instance.therapy_250_met", "operator": "eq", "value": true}
+      ]
+    }
+  },
+  {
+    "code": "live_session_time_agreed",
+    "name_fa": "زمان جلسه سوپرویژن/مشاهده زنده هماهنگ شد",
+    "rule_type": "condition",
+    "expression": {"field": "instance.session_time_registered", "operator": "eq", "value": true}
+  },
+  {
+    "code": "live_session_time_not_agreed",
+    "name_fa": "وقت خاصی برای جلسه هماهنگ نشد",
+    "rule_type": "condition",
+    "expression": {"field": "instance.session_time_registered", "operator": "eq", "value": false}
+  },
+  {
+    "code": "course_grades_submitted_in_time",
+    "name_fa": "ثبت نمرات درس در مهلت مقرر",
+    "rule_type": "condition",
+    "expression": {"field": "instance.grades_submitted_before_sla", "operator": "eq", "value": true}
+  },
+  {
+    "code": "course_grades_sla_breach",
+    "name_fa": "تاخیر در ثبت نمرات — گزارش به کمیته",
+    "rule_type": "condition",
+    "expression": {"field": "instance.grades_submitted_before_sla", "operator": "eq", "value": false}
+  },
+  {
+    "code": "student_on_full_education_leave",
+    "name_fa": "دانشجو در مرخصی از کل آموزش",
+    "rule_type": "condition",
+    "expression": {"field": "student.on_full_education_leave", "operator": "eq", "value": true}
+  },
+  {
+    "code": "student_returned_from_full_leave",
+    "name_fa": "بازگشت دانشجو از مرخصی کل آموزش",
+    "rule_type": "condition",
+    "expression": {"field": "instance.return_approved", "operator": "eq", "value": true}
   }
 ]

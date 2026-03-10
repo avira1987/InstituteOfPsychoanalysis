@@ -7,10 +7,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.database import init_db, async_session_factory
@@ -144,6 +142,12 @@ app.include_router(payment_router)
 app.include_router(blog_router)
 app.include_router(public_router)
 
+# ─── Serve uploaded files (avatars) ─────────────────────────────
+UPLOAD_DIR = Path(__file__).resolve().parent.parent / settings.UPLOAD_DIR
+if UPLOAD_DIR.exists() or True:  # mount anyway so uploads can be created at runtime
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
 
 @app.get("/health")
 async def health_check():
@@ -162,36 +166,38 @@ async def debug_process_count():
     return {"process_count": count}
 
 
-# ─── Serve Admin UI Static Files ────────────────────────────────
+# ─── Serve Admin UI Static Files روی همان پورت 8000 ─────────────
 ADMIN_UI_DIR = Path(__file__).parent.parent / "admin-ui" / "dist"
 
 if ADMIN_UI_DIR.exists():
-    # Serve static assets (JS, CSS, etc.) - /anistito/assets/* becomes /assets/* after middleware
+    # Static assets (JS, CSS و غیره)
     app.mount("/assets", StaticFiles(directory=str(ADMIN_UI_DIR / "assets")), name="static-assets")
 
-    # SPA root - when path is / (e.g. after /anistito/ stripped) or /
+    # روت SPA
     @app.get("/")
     async def serve_spa_root():
         return FileResponse(str(ADMIN_UI_DIR / "index.html"))
 
-    # Serve known static files from dist (e.g. vite.svg, favicon)
+    # فایل‌های استاتیک و مسیرهای SPA
     @app.get("/{filename}")
     async def serve_static_file(filename: str):
+        # برای /api، اجازه بده خود FastAPI 404 JSON بدهد
+        if filename == "api":
+            raise StarletteHTTPException(status_code=404, detail="Not Found")
         file_path = ADMIN_UI_DIR / filename
         if file_path.exists() and file_path.is_file():
             return FileResponse(str(file_path))
-        # For SPA client-side routes (login, processes, etc.), serve index.html
+        # برای مسیرهای SPA (login و ...)، index.html را برگردان
         return FileResponse(str(ADMIN_UI_DIR / "index.html"))
 
-    # SPA fallback for nested client-side routes (e.g. /processes/123)
+    # fallback برای 404ها (به جز API)
     @app.exception_handler(404)
     async def spa_fallback(request, exc):
-        # API routes should return proper 404 JSON
-        if request.url.path.startswith("/api/"):
+        if request.url.path.startswith("/api"):
             return JSONResponse(status_code=404, content={"detail": "Not Found"})
-        # Non-API 404s serve SPA index.html for client-side routing
         return FileResponse(str(ADMIN_UI_DIR / "index.html"))
 else:
+    # اگر build فرانت موجود نباشد
     @app.get("/")
     async def root():
         return {
@@ -199,5 +205,5 @@ else:
             "version": settings.APP_VERSION,
             "status": "running",
             "docs": "/docs",
-            "note": "Admin UI not built. Run 'npm run build' in admin-ui/ folder.",
+            "note": "Admin UI build نشده است. در پوشه admin-ui دستور 'npm run build' را اجرا کنید.",
         }

@@ -4,26 +4,80 @@
     "name_fa": "تغییر یا اضافه کردن رسته کمک‌مدرس",
     "name_en": "TA Track Change or Add",
     "number": 51,
-    "description": "پیش‌شرط: فرایند ارتقا به کمک‌مدرس با موفقیت. دو گزینه: اضافه کردن رسته (حفظ فعلی + جدید) یا تغییر رسته (حذف فعلی + جایگزین). هماهنگی خارج از سیستم. جلسه با کمیته دروس. موافقت/عدم موافقت. در صورت موافقت: اعمال تغییر یا اضافه در LMS.",
+    "description": "فلسفه و هدف: انعطاف‌پذیری در مسیر توسعه آموزشی کمک‌مدرسین. پس از ورود به کمک‌مدرسی، امکان تدریس در رسته‌های جدید بر اساس علاقه یا نیاز انستیتو. دو شاخه: «جایگزینی رسته فعلی (تغییر)» و «حفظ رسته فعلی + رسته جدید (اضافه کردن)». تغییرات به‌صورت خودکار انجام نمی‌شود؛ هماهنگی خارج از سیستم، جلسه با کمیته دروس و اعمال دسترسی توسط مسئول علمی. پیش‌شرط سیستمی: دانشجو تنها در صورت طی موفق «فرایند ارتقا به کمک‌مدرس» و شناخته‌شدن به‌عنوان کمک‌مدرس می‌تواند این فرایند را اجرا کند. (تبصره: کمک‌مدرسی که برای یکی از دروس به رتبه دستیار هیئت علمی رسیده، در مابقی دروس همچنان نقش کمک‌مدرس را دارد و می‌تواند این فرایند را اجرا کند.)",
     "initial_state": "ta_click",
-    "initial_role": "teaching_assistant"
+    "initial_role": "teaching_assistant",
+    "preconditions": [
+      {"type": "process_completed", "process_code": "upgrade_to_ta", "description_fa": "فرایند ارتقا به کمک‌مدرس با موفقیت تکمیل شده باشد"}
+    ]
   },
   "states": [
-    {"code": "ta_click", "name_fa": "کلیک کمک‌مدرس", "type": "initial", "assigned_role": "teaching_assistant"},
-    {"code": "path_selected", "name_fa": "انتخاب مسیر (تغییر/اضافه)", "type": "intermediate", "assigned_role": "teaching_assistant"},
-    {"code": "course_committee_review", "name_fa": "هماهنگی و جلسه کمیته دروس", "type": "intermediate", "assigned_role": "course_committee_scientific"},
-    {"code": "rejected", "name_fa": "عدم موافقت", "type": "terminal", "assigned_role": "system"},
+    {"code": "ta_click", "name_fa": "کلیک کمک‌مدرس و انتخاب مسیر", "type": "initial", "assigned_role": "teaching_assistant"},
+    {"code": "path_selected", "name_fa": "درخواست به پورتال کمیته دروس ارسال شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "course_committee_review", "name_fa": "هماهنگی و ثبت زمان جلسه توسط کمیته دروس", "type": "intermediate", "assigned_role": "course_committee_scientific"},
+    {"code": "meeting_scheduled", "name_fa": "جلسه زمان‌گذاری شده — منتظر برگزاری و ثبت نتیجه", "type": "intermediate", "assigned_role": "course_committee_scientific"},
+    {"code": "rejected", "name_fa": "عدم موافقت — فرایند پایان یافت", "type": "terminal", "assigned_role": "system"},
     {"code": "track_applied", "name_fa": "رسته اعمال شد", "type": "terminal", "assigned_role": "system"}
   ],
   "transitions": [
-    {"from": "ta_click", "to": "path_selected", "trigger": "path_chosen", "required_role": "teaching_assistant", "description_fa": "تغییر رسته یا اضافه کردن رسته — Radio"},
-    {"from": "path_selected", "to": "course_committee_review", "trigger": "request_sent", "description_fa": "درخواست به پورتال کمیته دروس"},
-    {"from": "course_committee_review", "to": "rejected", "trigger": "rejected", "required_role": "course_committee_scientific", "description_fa": "عدم موافقت — پایان"},
-    {"from": "course_committee_review", "to": "track_applied", "trigger": "approved", "required_role": "course_committee_scientific", "description_fa": "موافقت — انتخاب رسته جدید، اعمال تغییر یا اضافه", "actions": [{"type": "notification", "notification_type": "sms", "template": "ta_track_meeting_scheduled", "recipients": ["student", "course_committee_scientific"]}]}
+    {"from": "ta_click", "to": "path_selected", "trigger": "path_chosen", "required_role": "teaching_assistant", "description_fa": "انتخاب یکی از دو گزینه (اضافه یا تغییر رسته) و ثبت — ارسال به پورتال کمیته دروس"},
+    {"from": "path_selected", "to": "course_committee_review", "trigger": "request_sent", "description_fa": "درخواست در پورتال کمیته دروس نمایش داده می‌شود"},
+    {"from": "course_committee_review", "to": "meeting_scheduled", "trigger": "meeting_registered", "required_role": "course_committee_scientific", "description_fa": "ثبت زمان و نوع جلسه (حضوری/آنلاین) — ابلاغ پیامکی به دانشجو و مسئول علمی. اگر جلسه آنلاین باشد لینک در پیامک قرار می‌گیرد؛ اگر حضوری باشد قید «جلسه در مکان انستیتو» درج می‌شود. متن مصوب SMS باید در قالب ta_track_meeting_scheduled در سیستم قرار گیرد.", "actions": [{"type": "notification", "notification_type": "sms", "template": "ta_track_meeting_scheduled", "recipients": ["student", "course_committee_scientific"]}]},
+    {"from": "meeting_scheduled", "to": "rejected", "trigger": "rejected", "required_role": "course_committee_scientific", "description_fa": "ثبت عدم موافقت — فرایند بدون پیامک اضافه پایان می‌یابد"},
+    {"from": "meeting_scheduled", "to": "track_applied", "trigger": "approved", "required_role": "course_committee_scientific", "description_fa": "موافقت — انتخاب رسته(های) جدید و اعمال در LMS"}
   ],
   "forms": [
-    {"code": "ta_track_path", "name_fa": "انتخاب مسیر", "used_in_state": "ta_click", "fields": [{"name": "path", "type": "radio", "options": [{"value": "add", "label_fa": "اضافه کردن رسته (حفظ فعلی)"}, {"value": "change", "label_fa": "تغییر رسته (حذف فعلی)"}]}]},
-    {"code": "ta_track_meeting", "name_fa": "ثبت زمان جلسه", "used_in_state": "course_committee_review", "fields": [{"name": "meeting_date", "type": "date_picker"}, {"name": "meeting_time", "type": "time_picker"}, {"name": "meeting_type", "type": "radio", "options": [{"value": "in_person", "label_fa": "حضوری"}, {"value": "online", "label_fa": "آنلاین"}]}]},
-    {"code": "ta_track_result", "name_fa": "نتیجه و انتخاب رسته", "used_in_state": "course_committee_review", "fields": [{"name": "result", "type": "radio", "options": [{"value": "approve", "label_fa": "موافقت"}, {"value": "reject", "label_fa": "عدم موافقت"}]}, {"name": "new_tracks", "label_fa": "رسته(های) جدید", "type": "multi_select", "visible_when": "result == 'approve'"}]}
+    {
+      "code": "ta_track_path",
+      "name_fa": "انتخاب مسیر",
+      "used_in_state": "ta_click",
+      "description_fa": "فقط یکی از دو گزینه قابل انتخاب است (Radio Button)",
+      "fields": [
+        {"name": "path", "type": "radio", "label_fa": "مسیر درخواست", "required": true, "options": [
+          {"value": "add", "label_fa": "اضافه کردن رسته (حفظ رسته فعلی و گرفتن رسته جدید)"},
+          {"value": "change", "label_fa": "تغییر رسته (حذف رسته فعلی و جایگزینی با رسته جدید)"}
+        ]}
+      ]
+    },
+    {
+      "code": "ta_track_meeting",
+      "name_fa": "ثبت زمان و مشخصات جلسه",
+      "used_in_state": "course_committee_review",
+      "description_fa": "پس از هماهنگی آفلاین با درخواست‌دهنده، وقت توافق‌شده را ثبت کنید. پس از ثبت، پیامک به دانشجو و مسئول علمی ارسال می‌شود؛ در صورت آنلاین لینک جلسه در پیامک قرار می‌گیرد و در صورت حضوری قید مکان انستیتو درج می‌شود.",
+      "fields": [
+        {"name": "meeting_date", "type": "date_picker", "label_fa": "تاریخ جلسه", "required": true},
+        {"name": "meeting_time", "type": "time_picker", "label_fa": "ساعت جلسه", "required": true},
+        {"name": "meeting_type", "type": "radio", "label_fa": "نحوه برگزاری", "required": true, "options": [
+          {"value": "in_person", "label_fa": "حضوری (مکان انستیتو)"},
+          {"value": "online", "label_fa": "آنلاین (لینک توسط سیستم ساخته و در پیامک ارسال می‌شود)"}
+        ]}
+      ]
+    },
+    {
+      "code": "ta_track_result",
+      "name_fa": "نتیجه جلسه و تخصیص رسته‌ها",
+      "used_in_state": "meeting_scheduled",
+      "description_fa": "پس از برگزاری جلسه، نتیجه را انتخاب کنید. در صورت موافقت، رسته(های) جدید را از لیست انتخاب کنید؛ در صورت تکراری بودن، سیستم اجازه ثبت تکراری نمی‌دهد.",
+      "fields": [
+        {"name": "result", "type": "radio", "label_fa": "تصمیم کمیته دروس", "required": true, "options": [
+          {"value": "approve", "label_fa": "موافقت"},
+          {"value": "reject", "label_fa": "عدم موافقت"}
+        ]},
+        {"name": "new_tracks", "label_fa": "رسته(های) جدید کمک‌مدرس", "type": "multi_select", "visible_when": "result == 'approve'", "required_when": "result == 'approve'", "options": [
+          {"value": "psychoanalysis_theory_1_5", "label_fa": "تئوری روانکاوی ۱ تا ۵"},
+          {"value": "film_observation_1_3_continuous", "label_fa": "مشاهده فیلم‌های درمانی ۱ تا ۳ و مشاهده مستمر یک درمان تحلیلی"},
+          {"value": "technique_theory_1_3", "label_fa": "تئوری تکنیک‌ها ۱ تا ۳"},
+          {"value": "technique_skills_1_4", "label_fa": "تکنیک: تمرین مهارت‌ها ۱ تا ۴"},
+          {"value": "group_supervision_1_3", "label_fa": "دروس پیشرفته: سوپرویژن گروهی ۱ تا ۳"},
+          {"value": "clinical_case_conference", "label_fa": "دروس پیشرفته: کنفرانس کیس بالینی"},
+          {"value": "early_termination", "label_fa": "دروس پیشرفته: خاتمه زودرس"},
+          {"value": "counter_transference", "label_fa": "دروس پیشرفته: انتقال متقابل"},
+          {"value": "article_writing", "label_fa": "دروس پیشرفته: مقاله‌نویسی"},
+          {"value": "live_therapy_observation", "label_fa": "دروس پیشرفته: مشاهده زنده درمان"},
+          {"value": "live_supervision", "label_fa": "دروس پیشرفته: سوپرویژن زنده"},
+          {"value": "ethics_professional_law_hill", "label_fa": "دروس پیشرفته: کلاس اخلاق و قوانین حرفه‌ای و هیل"}
+        ], "validation_note_fa": "در صورت انتخاب رسته تکراری، سیستم اجازه ثبت نمی‌دهد و پیام تکراری بودن نمایش داده می‌شود"}
+      ]
+    }
   ]
 }

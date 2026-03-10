@@ -2,9 +2,10 @@
 
 import logging
 import uuid
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 import random
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 logger = logging.getLogger(__name__)
 from fastapi.security import OAuth2PasswordRequestForm
@@ -34,18 +35,8 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 class LoginRequest(BaseModel):
     username: str
     password: str
-    security_answer: str | None = None  # پاسخ سوال امنیتی (در صورت تنظیم)
     challenge_id: str | None = None
     challenge_answer: str | None = None
-
-
-class SecurityQuestionPreviewRequest(BaseModel):
-    username: str
-
-
-class SecurityQuestionPreviewResponse(BaseModel):
-    has_security_question: bool
-    question: str | None = None
 
 
 class LoginChallengeResponse(BaseModel):
@@ -112,28 +103,6 @@ async def login_challenge(
     )
 
 
-@router.post("/security-question-preview", response_model=SecurityQuestionPreviewResponse)
-async def security_question_preview(
-    body: SecurityQuestionPreviewRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    برگرداندن سوال امنیتی (بدون پاسخ) برای فرم ورود.
-
-    برای جلوگیری از نشت اطلاعات، اگر کاربر وجود نداشته باشد یا سوالی تنظیم نشده باشد،
-    همیشه پاسخ «has_security_question = False» برگردانده می‌شود.
-    """
-    stmt = select(User).where(User.username == body.username)
-    result = await db.execute(stmt)
-    user = result.scalars().first()
-    if not user or not user.security_question:
-        return SecurityQuestionPreviewResponse(has_security_question=False, question=None)
-    return SecurityQuestionPreviewResponse(
-        has_security_question=True,
-        question=user.security_question,
-    )
-
-
 @router.post("/login-json", response_model=Token)
 async def login_json(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     """Login with JSON body (alternative to form for debugging)."""
@@ -154,10 +123,19 @@ async def login_json(body: LoginRequest, db: AsyncSession = Depends(get_db)):
         challenge = result.scalars().first()
         now = datetime.now(timezone.utc)
 
+        # نرمال‌سازی timezone برای جلوگیری از خطای naive/aware
+        if challenge and challenge.expires_at is not None:
+            expires_at = challenge.expires_at
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+        else:
+            expires_at = None
+
         if (
             not challenge
             or challenge.is_used
-            or challenge.expires_at < now
+            or not expires_at
+            or expires_at < now
             or not verify_password(body.challenge_answer.strip(), challenge.answer_hash)
         ):
             raise HTTPException(status_code=400, detail="کد امنیتی نامعتبر است")
@@ -165,8 +143,8 @@ async def login_json(body: LoginRequest, db: AsyncSession = Depends(get_db)):
         challenge.is_used = True
         await db.commit()
 
-        # سپس اعتبارسنجی نام کاربری/رمز عبور (و در صورت وجود، سوال امنیتی کاربر)
-        user = await authenticate_user(db, body.username, body.password, body.security_answer)
+        # سپس اعتبارسنجی نام کاربری/رمز عبور
+        user = await authenticate_user(db, body.username, body.password)
         if not user:
             raise HTTPException(status_code=401, detail="Incorrect username or password")
         access_token = create_access_token(
@@ -205,29 +183,106 @@ async def get_me(current_user: User = Depends(get_current_user)):
         id=str(current_user.id),
         username=current_user.username,
         full_name_fa=current_user.full_name_fa,
+        full_name_en=current_user.full_name_en,
+        email=current_user.email,
+        phone=current_user.phone,
+        avatar_url=current_user.avatar_url,
         role=current_user.role,
         is_active=current_user.is_active,
     )
 
 
-class SetSecurityQuestionBody(BaseModel):
-    question: str
-    answer: str
+class UpdateProfileRequest(BaseModel):
+    full_name_fa: str | None = None
+    full_name_en: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    password: str | None = None  # رمز جدید؛ در صورت ارسال باید با current_password تأیید شود
+    current_password: str | None = None  # برای تغییر رمز الزامی است
 
 
-@router.post("/set-security-question")
-async def set_security_question(
-    body: SetSecurityQuestionBody,
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    data: UpdateProfileRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """تنظیم سوال و پاسخ امنیتی برای ورود با رمز عبور."""
-    if not body.question.strip() or not body.answer.strip():
-        raise HTTPException(status_code=400, detail="سوال و پاسخ امنیتی الزامی است")
-    current_user.security_question = body.question.strip()
-    current_user.security_answer_hash = get_password_hash(body.answer.strip())
+    """Update current user's profile (name, email, phone, password)."""
+    if data.full_name_fa is not None:
+        current_user.full_name_fa = data.full_name_fa
+    if data.full_name_en is not None:
+        current_user.full_name_en = data.full_name_en
+    if data.email is not None:
+        current_user.email = data.email
+    if data.phone is not None:
+        current_user.phone = data.phone
+    if data.password:
+        if not data.current_password or not verify_password(data.current_password, current_user.hashed_password):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رمز عبور فعلی نادرست است")
+        current_user.hashed_password = get_password_hash(data.password)
     await db.commit()
-    return {"success": True, "message": "سوال امنیتی ذخیره شد."}
+    return UserResponse(
+        id=str(current_user.id),
+        username=current_user.username,
+        full_name_fa=current_user.full_name_fa,
+        full_name_en=current_user.full_name_en,
+        email=current_user.email,
+        phone=current_user.phone,
+        avatar_url=current_user.avatar_url,
+        role=current_user.role,
+        is_active=current_user.is_active,
+    )
+
+
+ALLOWED_AVATAR_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+@router.post("/me/avatar", response_model=UserResponse)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload profile picture for current user."""
+    if file.content_type not in ALLOWED_AVATAR_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="فرمت مجاز: JPG، PNG، WebP یا GIF",
+        )
+    content = await file.read()
+    if len(content) > MAX_AVATAR_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="حداکثر حجم فایل ۵ مگابایت است",
+        )
+    settings = get_settings()
+    upload_root = Path(settings.UPLOAD_DIR).resolve()
+    avatars_dir = upload_root / "avatars"
+    avatars_dir.mkdir(parents=True, exist_ok=True)
+    ext = ".jpg"
+    if file.content_type == "image/png":
+        ext = ".png"
+    elif file.content_type == "image/webp":
+        ext = ".webp"
+    elif file.content_type == "image/gif":
+        ext = ".gif"
+    filename = f"{current_user.id}{ext}"
+    path = avatars_dir / filename
+    path.write_bytes(content)
+    current_user.avatar_url = f"/uploads/avatars/{filename}"
+    await db.commit()
+    return UserResponse(
+        id=str(current_user.id),
+        username=current_user.username,
+        full_name_fa=current_user.full_name_fa,
+        full_name_en=current_user.full_name_en,
+        email=current_user.email,
+        phone=current_user.phone,
+        avatar_url=current_user.avatar_url,
+        role=current_user.role,
+        is_active=current_user.is_active,
+    )
 
 
 class OTPRequestBody(BaseModel):

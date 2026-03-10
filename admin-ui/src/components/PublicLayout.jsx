@@ -9,6 +9,23 @@ const NAV_ITEMS = [
   { path: '/processes-info', label: 'فرآیندها' },
 ]
 
+const roleLabels = {
+  admin: 'مدیر سیستم',
+  staff: 'کارمند دفتر',
+  therapist: 'درمانگر',
+  student: 'دانشجو',
+  supervisor: 'سوپروایزر',
+  site_manager: 'مسئول سایت',
+  progress_committee: 'کمیته پیشرفت',
+  education_committee: 'کمیته آموزش',
+  supervision_committee: 'کمیته نظارت',
+  specialized_commission: 'کمیسیون تخصصی',
+  therapy_committee_chair: 'مسئول کمیته درمان',
+  therapy_committee_executor: 'مجری کمیته درمان',
+  deputy_education: 'معاون آموزش',
+  monitoring_committee_officer: 'مسئول کمیته نظارت',
+}
+
 export default function PublicLayout() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -54,7 +71,7 @@ export default function PublicLayout() {
                 className="pub-navbar-cta"
                 onClick={() => navigate('/panel')}
               >
-                پنل مدیریت
+                پنل {roleLabels[user.role] || user.role}
               </button>
             ) : (
               <>

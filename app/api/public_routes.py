@@ -2,10 +2,11 @@
 
 import uuid
 import logging
-from typing import Optional
+import re
+from typing import Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,12 +20,12 @@ router = APIRouter(prefix="/api/public", tags=["Public"])
 
 
 class StudentRegistrationRequest(BaseModel):
-    full_name_fa: str
-    phone: str
+    full_name_fa: str = Field(..., min_length=1, description="نام و نام خانوادگی")
+    phone: str = Field(..., min_length=1, description="شماره موبایل")
     email: Optional[str] = None
     education_level: Optional[str] = None
     field_of_study: Optional[str] = None
-    course_type: str = "introductory"  # introductory | comprehensive
+    course_type: Literal["introductory", "comprehensive"] = "introductory"
     motivation: Optional[str] = None
 
 
@@ -77,27 +78,55 @@ async def public_processes(db: AsyncSession = Depends(get_db)):
     return {"processes": items}
 
 
+def _normalize_phone(phone: str) -> str:
+    return phone.strip().replace(" ", "").replace("-", "")
+
+def _validate_registration_data(data: StudentRegistrationRequest) -> None:
+    """Validate and raise HTTPException with Persian message if invalid."""
+    name = (data.full_name_fa or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="نام و نام خانوادگی را وارد کنید.")
+    if len(name) < 2:
+        raise HTTPException(status_code=400, detail="نام و نام خانوادگی باید حداقل ۲ کاراکتر باشد.")
+
+    phone = _normalize_phone(data.phone or "")
+    if not phone:
+        raise HTTPException(status_code=400, detail="شماره موبایل را وارد کنید.")
+    if not re.match(r"^09\d{9}$", phone):
+        raise HTTPException(
+            status_code=400,
+            detail="شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد (مثال: ۰۹۱۲۳۴۵۶۷۸۹).",
+        )
+
+    if data.email and (data.email or "").strip():
+        email = data.email.strip()
+        if "@" not in email or "." not in email.split("@")[-1]:
+            raise HTTPException(status_code=400, detail="فرمت ایمیل نامعتبر است.")
+    if data.course_type not in ("introductory", "comprehensive"):
+        raise HTTPException(status_code=400, detail="نوع دوره نامعتبر است.")
+
+
 @router.post("/register")
 async def register_student(data: StudentRegistrationRequest, db: AsyncSession = Depends(get_db)):
     """Public student registration (creates user + student profile)."""
-    phone = data.phone.strip().replace(" ", "")
-    if not phone.startswith("09") or len(phone) != 11:
-        raise HTTPException(status_code=400, detail="شماره موبایل نامعتبر است")
+    _validate_registration_data(data)
 
+    phone = _normalize_phone(data.phone)
     existing = await db.execute(select(User).where(User.phone == phone))
     if existing.scalars().first():
-        raise HTTPException(status_code=400, detail="این شماره موبایل قبلاً ثبت شده است")
+        raise HTTPException(status_code=400, detail="این شماره موبایل قبلاً ثبت شده است.")
 
-    if data.email:
-        existing_email = await db.execute(select(User).where(User.email == data.email))
+    email_value = (data.email or "").strip() or None  # avoid storing "" (breaks unique constraint)
+    if email_value:
+        existing_email = await db.execute(select(User).where(User.email == email_value))
         if existing_email.scalars().first():
-            raise HTTPException(status_code=400, detail="این ایمیل قبلاً ثبت شده است")
+            raise HTTPException(status_code=400, detail="این ایمیل قبلاً ثبت شده است.")
 
     user = User(
         id=uuid.uuid4(),
         username=f"student_{phone}",
         phone=phone,
-        email=data.email,
+        email=email_value,
         hashed_password=get_password_hash(str(uuid.uuid4())),
         full_name_fa=data.full_name_fa,
         role="student",
@@ -122,7 +151,15 @@ async def register_student(data: StudentRegistrationRequest, db: AsyncSession = 
         },
     )
     db.add(student)
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logger.exception("Student registration commit failed")
+        raise HTTPException(
+            status_code=500,
+            detail="در ذخیره اطلاعات خطایی رخ داد. لطفاً چند دقیقه دیگر تلاش کنید یا با پشتیبانی تماس بگیرید.",
+        ) from e
 
     return {
         "success": True,

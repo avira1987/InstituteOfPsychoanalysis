@@ -22,11 +22,11 @@ ls -la /etc/httpd/conf.d/
     # Anistito BPM - Proxy to FastAPI
     ProxyPreserveHost On
     # API first (more specific) - prevents main site /api/ from catching
-    ProxyPass /anistito/api/ http://127.0.0.1:8000/api/
-    ProxyPassReverse /anistito/api/ http://127.0.0.1:8000/api/
+    ProxyPass /anistito/api/ http://127.0.0.1:3000/api/
+    ProxyPassReverse /anistito/api/ http://127.0.0.1:3000/api/
     # Then static and other paths
-    ProxyPass /anistito/ http://127.0.0.1:8000/
-    ProxyPassReverse /anistito/ http://127.0.0.1:8000/
+    ProxyPass /anistito/ http://127.0.0.1:3000/
+    ProxyPassReverse /anistito/ http://127.0.0.1:3000/
 ```
 
 ### ۳. فایل‌های معمول

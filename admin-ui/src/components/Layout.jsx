@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { getAvatarUrl } from '../services/api'
 
 const navItems = [
   { path: '/panel', label: 'داشبورد', icon: '📊' },
+  { path: '/panel/profile', label: 'پروفایل من', icon: '👤' },
   { path: '/panel/portal/student', label: 'پنل دانشجو', icon: '🎓', roles: ['student', 'admin'] },
   { path: '/panel/portal/therapist', label: 'پنل درمانگر', icon: '💊', roles: ['therapist', 'admin'] },
   { path: '/panel/portal/supervisor', label: 'پنل سوپروایزر', icon: '👁️', roles: ['supervisor', 'admin'] },
@@ -17,7 +19,7 @@ const navItems = [
   { path: '/panel/processes', label: 'مدیریت فرایندها', icon: '⚙️', roles: ['admin', 'staff'] },
   { path: '/panel/rules', label: 'مدیریت قوانین', icon: '📋', roles: ['admin'] },
   { path: '/panel/students', label: 'ردیابی دانشجو', icon: '👨‍🎓', roles: ['admin', 'staff', 'supervisor', 'therapist'] },
-  { path: '/panel/users', label: 'مدیریت کاربران', icon: '👥', adminOnly: true },
+  { path: '/panel/users', label: 'مدیریت کاربران', icon: '👥', roles: ['admin', 'staff'] },
   { path: '/panel/audit', label: 'گزارش حسابرسی', icon: '📝', roles: ['admin', 'staff'] },
   { path: '/panel/guide', label: 'راهنمای جامع', icon: '📖' },
 ]
@@ -88,8 +90,12 @@ export default function Layout() {
         <div className="sidebar-footer">
           {user && (
             <div className="sidebar-user">
-              <div className="sidebar-user-avatar">
-                {(user.full_name_fa || user.username || '?')[0]}
+              <div className="sidebar-user-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {getAvatarUrl(user.avatar_url) ? (
+                  <img src={getAvatarUrl(user.avatar_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  (user.full_name_fa || user.username || '?')[0]
+                )}
               </div>
               <div className="sidebar-user-info">
                 <div className="sidebar-user-name">{user.full_name_fa || user.username}</div>

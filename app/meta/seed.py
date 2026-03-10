@@ -5,6 +5,8 @@ import uuid
 import asyncio
 import logging
 from pathlib import Path
+from typing import Dict, List, Set, Tuple
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_factory, engine, Base
@@ -13,6 +15,58 @@ from app.models.meta_models import ProcessDefinition, StateDefinition, Transitio
 logger = logging.getLogger(__name__)
 
 METADATA_DIR = Path(__file__).parent.parent.parent / "metadata"
+
+
+def get_rule_codes_from_rules_file() -> Set[str]:
+    """Return set of rule codes defined in metadata/rules/all_rules.json."""
+    rules_file = METADATA_DIR / "rules" / "all_rules.json"
+    if not rules_file.exists():
+        return set()
+    with open(rules_file, "r", encoding="utf-8") as f:
+        rules_data = json.load(f)
+    return {r.get("code") for r in rules_data if r.get("code")}
+
+
+def get_condition_codes_from_processes(processes_dir: Path) -> Dict[str, List[str]]:
+    """
+    Scan all process JSONs and return dict: process_code -> list of condition codes
+    used in transitions (transition['conditions']).
+    """
+    process_conditions: Dict[str, List[str]] = {}
+    if not processes_dir.exists():
+        return process_conditions
+    for process_file in processes_dir.glob("*.json"):
+        try:
+            with open(process_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Skip %s: %s", process_file.name, e)
+            continue
+        proc_code = data.get("process", {}).get("code")
+        if not proc_code:
+            continue
+        codes: List[str] = []
+        for trans in data.get("transitions", []):
+            for c in trans.get("conditions") or []:
+                if isinstance(c, str):
+                    codes.append(c)
+        if codes:
+            process_conditions[proc_code] = codes
+    return process_conditions
+
+
+def validate_process_rules(processes_dir: Path, rule_codes: Set[str]) -> Tuple[List[str], Dict[str, List[str]]]:
+    """
+    Ensure every condition referenced in any process exists in rule_codes.
+    Returns (list of "process_code: missing_rule_code", process_conditions dict).
+    """
+    process_conditions = get_condition_codes_from_processes(processes_dir)
+    missing: List[str] = []
+    for proc_code, codes in process_conditions.items():
+        for c in codes:
+            if c not in rule_codes:
+                missing.append(f"{proc_code}: {c}")
+    return missing, process_conditions
 
 
 async def load_rules(db: AsyncSession):
@@ -152,6 +206,17 @@ async def load_process(db: AsyncSession, process_file: Path):
 
 async def seed_all():
     """Seed all metadata into the database."""
+    processes_dir = METADATA_DIR / "processes"
+    rule_codes = get_rule_codes_from_rules_file()
+    missing, _ = validate_process_rules(processes_dir, rule_codes)
+    if missing:
+        msg = (
+            "فرایند و قوانین همگام نیستند. هر condition در transitionها باید در metadata/rules/all_rules.json تعریف شود. "
+            "قوانین گم‌شده: " + ", ".join(missing)
+        )
+        logger.error(msg)
+        raise ValueError(msg)
+
     # Create tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -162,7 +227,6 @@ async def seed_all():
             await load_rules(db)
 
             # Load all process files
-            processes_dir = METADATA_DIR / "processes"
             if processes_dir.exists():
                 for process_file in sorted(processes_dir.glob("*.json")):
                     await load_process(db, process_file)
@@ -172,7 +236,7 @@ async def seed_all():
 
         except Exception as e:
             await db.rollback()
-            logger.error(f"Seed failed: {e}", exc_info=True)
+            logger.error("Seed failed: %s", e, exc_info=True)
             raise
 
 

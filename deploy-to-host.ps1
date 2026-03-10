@@ -71,14 +71,14 @@ if ($pscpPath -and $plinkPath) {
     & $pscpPath -P $HostPort -pw $HostPass -hostkey $HostKey $archivePath "${HostUser}@${HostIP}:${RemotePath}/deploy-anistito.zip"
     if ($LASTEXITCODE -ne 0) { throw "Upload failed" }
     Write-Host "`n=== Step 4: Run commands on server ===" -ForegroundColor Cyan
-    $cmds = "docker rm -f anistito-api 2>/dev/null; cd $RemotePath && unzip -o deploy-anistito.zip -d . && rm -f deploy-anistito.zip && docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 8000:8000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret$smsEnv anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000'"
+    $cmds = "docker rm -f anistito-api 2>/dev/null; cd $RemotePath && unzip -o deploy-anistito.zip -d . && rm -f deploy-anistito.zip && docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 3000:3000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret$smsEnv anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 3000'"
     $ErrorActionPreferenceBak = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
     $plinkOut = & $plinkPath -P $HostPort -pw $HostPass -hostkey $HostKey -batch "${HostUser}@${HostIP}" $cmds 2>&1
     $ErrorActionPreference = $ErrorActionPreferenceBak
     Write-Host $plinkOut
     Start-Sleep -Seconds 12
-    $health = & $plinkPath -P $HostPort -pw $HostPass -hostkey $HostKey -batch "${HostUser}@${HostIP}" "curl -s http://localhost:8000/health" 2>&1
+    $health = & $plinkPath -P $HostPort -pw $HostPass -hostkey $HostKey -batch "${HostUser}@${HostIP}" "curl -s http://localhost:3000/health" 2>&1
     Write-Host "Health: $health"
 } else {
     if (-not (Get-Module Posh-SSH -ErrorAction SilentlyContinue)) {
@@ -93,7 +93,7 @@ if ($pscpPath -and $plinkPath) {
     try {
         Set-SCPItem -ComputerName $HostIP -Port $HostPort -Credential $cred -Path $archivePath -Destination "$RemotePath/deploy-anistito.zip" -AcceptKey
         Write-Host "`n=== Step 4: Run commands on server ===" -ForegroundColor Cyan
-        $cmds = "cd $RemotePath; unzip -o deploy-anistito.zip -d .; rm -f deploy-anistito.zip; docker rm -f anistito-api 2>/dev/null || true; docker build -t anistito-api .; docker run -d --name anistito-api --network anistito-net -p 8000:8000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret$smsEnv anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000'; sleep 15; curl -s http://localhost:8000/health || docker logs anistito-api --tail 15"
+        $cmds = "cd $RemotePath; unzip -o deploy-anistito.zip -d .; rm -f deploy-anistito.zip; docker rm -f anistito-api 2>/dev/null || true; docker build -t anistito-api .; docker run -d --name anistito-api --network anistito-net -p 3000:3000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret$smsEnv anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 3000'; sleep 15; curl -s http://localhost:3000/health || docker logs anistito-api --tail 15"
         $result = Invoke-SSHCommand -SessionId $session.SessionId -Command $cmds -TimeOut 600
         Write-Host $result.Output
         if ($result.Error) { Write-Host $result.Error -ForegroundColor Red }

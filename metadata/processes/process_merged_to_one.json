@@ -1,0 +1,17 @@
+{
+  "process": {
+    "code": "process_merged_to_one",
+    "name_fa": "منتقل‌شده به فرایند شماره ۱",
+    "name_en": "Merged into Process 1",
+    "number": 58,
+    "description": "این فرایند به فرایند شماره یک منتقل شد.",
+    "initial_state": "merged",
+    "initial_role": "system",
+    "requires_form": false
+  },
+  "states": [
+    {"code": "merged", "name_fa": "منتقل به فرایند ۱", "type": "initial", "assigned_role": "system"}
+  ],
+  "transitions": [],
+  "forms": []
+}

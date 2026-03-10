@@ -44,14 +44,14 @@ services:
       DEBUG: "false"
       SECRET_KEY: anistito-prod-secret-change-me
     ports:
-      - "8000:8000"
+      - "3000:3000"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 3000"
 volumes:
   postgres_data:
   redis_data:

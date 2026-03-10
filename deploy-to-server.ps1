@@ -19,7 +19,7 @@ scp -r -P $PORT app admin-ui metadata alembic scripts requirements.txt Dockerfil
 if ($LASTEXITCODE -ne 0) { Write-Host "Upload failed." -ForegroundColor Red; exit 1 }
 
 Write-Host "`n=== 3. Rebuilding on server ===" -ForegroundColor Cyan
-$cmd = "cd $REMOTE_PATH && docker rm -f anistito-api 2>/dev/null || true && docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 8000:8000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000' && sleep 12 && echo '=== Test process count ===' && curl -s http://localhost:8000/debug/process-count"
+$cmd = "cd $REMOTE_PATH && docker rm -f anistito-api 2>/dev/null || true && docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 3000:3000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 3000' && sleep 12 && echo '=== Test process count ===' && curl -s http://localhost:3000/debug/process-count"
 ssh -p $PORT ${USER}@${SERVER} $cmd
 
 Write-Host "`n=== Done. Check https://bpms.psychoanalysis.ir/anistito/ ===" -ForegroundColor Green

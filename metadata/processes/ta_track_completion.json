@@ -4,16 +4,47 @@
     "name_fa": "خاتمه کمک‌مدرس برای هر رسته",
     "name_en": "TA Track Completion",
     "number": 52,
-    "description": "۱۰۰٪ خودکار. شرط: کمک‌مدرس مدرس شد در آخرین درس رسته. حذف از لیست کمک‌مدرسین برای آن رسته. SMS تبریک. Unlock درس بعدی در رسته.",
+    "description": "فلسفه و هدف: نقطه اوج و پایان موفقیت‌آمیز مسیر کمک‌مدرس در یک رسته (Track) مشخص. هر رسته شامل چندین درس اولویت‌بندی‌شده است؛ زمانی که فرد تمام دروس آن رسته را هر کدام دقیقاً دو بار با موفقیت به‌عنوان کمک‌مدرس پشت سر بگذارد، فرایند به‌صورت کاملاً خودکار فعال می‌شود. هدف: تقدیر سیستمی، اطلاع‌رسانی به مدیریت آموزش برای برنامه‌ریزی (مثل تخصیص رسته‌های جدید)، به‌روزرسانی آنی تابلوی سوابق در پرونده دانشجو. هیچ دخالت انسانی برای تایید لازم نیست. شرط آغازگر (Trigger): در پایان هر ترم با ثبت نمرات نهایی ارزیابی کمک‌مدرسین، سیستم بررسی می‌کند آیا این دانشجو برای تمامی دروس یک رسته خاص نمره قبولی را برای دومین بار کسب کرده است؛ به‌محض ثبت موفقیت‌آمیز آخرین درس آن رسته (برای بار دوم)، فرایند ۱۰۰٪ خودکار آغاز می‌شود.",
     "initial_state": "end_of_track_check",
-    "trigger": "ta_became_instructor_in_last_course_of_track",
-    "automated": true
+    "initial_role": "system",
+    "trigger": "ta_passed_all_courses_in_track_second_time",
+    "automated": true,
+    "requires_form": false
   },
   "states": [
-    {"code": "end_of_track_check", "name_fa": "بررسی پایان رسته", "type": "initial", "assigned_role": "system"},
-    {"code": "track_completed", "name_fa": "رسته خاتمه یافت", "type": "terminal", "assigned_role": "system"}
+    {"code": "end_of_track_check", "name_fa": "پایش سیستمی و احراز شرایط (خودکار)", "type": "initial", "assigned_role": "system"},
+    {"code": "track_completed", "name_fa": "رسته خاتمه یافت — پرونده و اطلاع‌رسانی به‌روز شد", "type": "terminal", "assigned_role": "system"}
   ],
   "transitions": [
-    {"from": "end_of_track_check", "to": "track_completed", "trigger": "conditions_met", "description_fa": "حذف از کمک‌مدرسین رسته، Unlock درس بعدی، SMS تبریک", "actions": [{"type": "remove_ta_from_track"}, {"type": "unlock_next_course_in_track"}, {"type": "notification", "notification_type": "sms", "template": "ta_track_completion_congrats", "recipients": ["student"]}]}
-  ]
+    {
+      "from": "end_of_track_check",
+      "to": "track_completed",
+      "trigger": "conditions_met",
+      "description_fa": "به‌روزرسانی وضعیت رسته در پرونده به «خاتمه یافته»، ارسال پیامک تبریک به دانشجو و پیامک اطلاع به کمیته دروس",
+      "actions": [
+        {"type": "update_record", "description_fa": "وضعیت رسته در پرونده دانشجو به خاتمه‌یافته تغییر یابد"},
+        {"type": "notification", "notification_type": "sms", "template": "ta_track_completion_congrats", "recipients": ["student"], "template_text_fa": "سرکار خانم/ جناب آقای [نام] بسیار خرسندیم که شما تمام دروس رسته [نام رسته] را به عنوان کمک مدرس با موفقیت طی کرده‌اید. تلاش و استمرار شما در یادگیری و ارتقا خودتان قابل تقدیر است. با احترام انستیتو روانکاوی تهران"},
+        {"type": "notification", "notification_type": "sms", "template": "ta_track_completion_committee_notify", "recipients": ["course_committee_scientific"], "template_text_fa": "مسئول محترم کمیته دروس به اطلاع می‌رساند خانم یا آقای [نام] رسته کمک مدرسی خود را به اتمام رسانده‌اند. پیگیری‌های لازم را اعمال فرمایید."}
+      ]
+    }
+  ],
+  "ui_requirements": {
+    "dashboard": {
+      "name_fa": "داشبورد جامع سوابق کمک‌مدرسی (نمای پورتال دانشجو)",
+      "description_fa": "در پورتال شخصی دانشجو (بخش پرونده کمک‌مدرسی) داشبوردی جامع با اطلاعات تفکیک‌شده زیر نمایش داده شود. این فرایند نیاز به فرم ورود اطلاعات ندارد؛ نمای زیر صرفاً نمایشی است.",
+      "sections": [
+        {"key": "header", "label_fa": "پرونده و سوابق آموزشی کمک‌مدرس", "fields": ["نام و نام خانوادگی", "رتبه تحلیلی فعلی (دستیار هیئت علمی / کمک مدرس)"]},
+        {"key": "track_summary", "label_fa": "وضعیت کلان رسته‌های آموزشی", "items": [
+          {"key": "active_tracks", "label_fa": "رسته‌های فعال (در حال گذراندن)", "example_fa": "نام رسته، مثلاً: تئوری روانکاوی"},
+          {"key": "completed_tracks", "label_fa": "رسته‌های خاتمه یافته (تکمیل شده)", "example_fa": "نام رسته، مثلاً: مشاهده فیلم‌های درمانی — تاریخ اتمام: --/--/----"}
+        ]},
+        {"key": "course_detail", "label_fa": "جزئیات وضعیت دروس (به تفکیک)", "columns": ["نام درس", "رسته مربوطه", "وضعیت پیشرفت (تعداد دفعات تدریس موفق)", "نقش فعلی در این درس"], "examples": [
+          {"progress_fa": "۲ از ۲ (تکمیل شده)", "role_fa": "مدرس"},
+          {"progress_fa": "۱ از ۲ (در حال انتظار برای بار دوم)", "role_fa": "کمک مدرس"},
+          {"progress_fa": "۰ از ۲ (ثبت‌نام شده، در حال تدریس)", "role_fa": "کمک مدرس"}
+        ]}
+      ]
+    }
+  },
+  "forms": []
 }

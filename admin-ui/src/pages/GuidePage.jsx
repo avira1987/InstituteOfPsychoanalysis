@@ -1,28 +1,57 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 
-const sections = [
-  { id: 'intro', title: 'مقدمه و معرفی سامانه' },
-  { id: 'concepts', title: 'مفاهیم کلیدی' },
-  { id: 'step1', title: 'گام ۱: ورود به سیستم' },
-  { id: 'step2', title: 'گام ۲: ساخت فرایند جدید' },
-  { id: 'step3', title: 'گام ۳: تعریف وضعیت‌ها (States)' },
-  { id: 'step4', title: 'گام ۴: تعریف انتقال‌ها (Transitions)' },
-  { id: 'step5', title: 'گام ۵: تعریف قوانین (Rules)' },
-  { id: 'step6', title: 'گام ۶: آزمایش و اجرای فرایند' },
-  { id: 'step7', title: 'گام ۷: ردیابی و گزارش‌گیری' },
-  { id: 'example', title: 'مثال کامل: ثبت یک فرایند واقعی' },
-  { id: 'glossary', title: 'واژه‌نامه' },
-  { id: 'faq', title: 'سوالات متداول' },
+const ALL_SECTIONS = [
+  { id: 'intro', title: 'مقدمه و معرفی سامانه', roles: null },
+  { id: 'concepts', title: 'مفاهیم کلیدی', roles: null },
+  { id: 'step1', title: 'گام ۱: ورود به سیستم', roles: null },
+  { id: 'role_student', title: 'راهنمای دانشجو', roles: ['student'] },
+  { id: 'role_therapist', title: 'راهنمای درمانگر', roles: ['therapist'] },
+  { id: 'role_supervisor', title: 'راهنمای سوپروایزر', roles: ['supervisor'] },
+  { id: 'role_staff', title: 'راهنمای کارمند دفتر', roles: ['staff'] },
+  { id: 'role_site_manager', title: 'راهنمای مسئول سایت', roles: ['site_manager'] },
+  { id: 'role_committee', title: 'راهنمای کمیته‌ها', roles: ['progress_committee', 'education_committee', 'supervision_committee', 'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor', 'deputy_education', 'monitoring_committee_officer'] },
+  { id: 'step2', title: 'گام ۲: ساخت فرایند جدید', roles: ['admin', 'staff'] },
+  { id: 'step3', title: 'گام ۳: تعریف وضعیت‌ها (States)', roles: ['admin', 'staff'] },
+  { id: 'step4', title: 'گام ۴: تعریف انتقال‌ها (Transitions)', roles: ['admin', 'staff'] },
+  { id: 'step5', title: 'گام ۵: تعریف قوانین (Rules)', roles: ['admin'] },
+  { id: 'step6', title: 'گام ۶: آزمایش و اجرای فرایند', roles: ['admin', 'staff'] },
+  { id: 'step7', title: 'گام ۷: ردیابی و گزارش‌گیری', roles: ['admin', 'staff'] },
+  { id: 'example', title: 'مثال کامل: ثبت یک فرایند واقعی', roles: ['admin', 'staff'] },
+  { id: 'glossary', title: 'واژه‌نامه', roles: null },
+  { id: 'faq', title: 'سوالات متداول', roles: null },
 ]
 
+function getSectionsForRole(userRole) {
+  if (!userRole) return ALL_SECTIONS.filter((s) => !s.roles || s.roles.length === 0)
+  return ALL_SECTIONS.filter((s) => {
+    if (!s.roles || s.roles.length === 0) return true
+    if (userRole === 'admin') return true
+    return s.roles.includes(userRole)
+  })
+}
+
 export default function GuidePage() {
-  const [activeSection, setActiveSection] = useState('intro')
+  const { user } = useAuth()
+  const userRole = user?.role
+  const sections = useMemo(() => getSectionsForRole(userRole), [userRole])
+  const defaultSection = sections[0]?.id || 'intro'
+  const [activeSection, setActiveSection] = useState(defaultSection)
+
+  useEffect(() => {
+    if (!sections.some((s) => s.id === activeSection)) {
+      setActiveSection(defaultSection)
+    }
+  }, [sections, defaultSection, activeSection])
 
   const scrollToSection = (id) => {
     setActiveSection(id)
     const el = document.getElementById(id)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  // اگر بخش فعال در فهرست نقش فعلی نیست، اولین بخش را فعال کن
+  const effectiveSection = sections.some((s) => s.id === activeSection) ? activeSection : defaultSection
 
   return (
     <div>
@@ -31,6 +60,11 @@ export default function GuidePage() {
           <h1 className="page-title">راهنمای جامع استفاده از سامانه</h1>
           <p className="page-subtitle">
             آموزش گام‌به‌گام ثبت و تعریف فرایندهای آموزشی در سیستم اتوماسیون
+            {userRole && userRole !== 'admin' && (
+              <span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.9rem', opacity: 0.9 }}>
+                نمایش مطالب مرتبط با نقش شما
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -42,7 +76,7 @@ export default function GuidePage() {
           {sections.map((s) => (
             <button
               key={s.id}
-              className={`guide-toc-item ${activeSection === s.id ? 'active' : ''}`}
+              className={`guide-toc-item ${effectiveSection === s.id ? 'active' : ''}`}
               onClick={() => scrollToSection(s.id)}
             >
               {s.title}
@@ -287,7 +321,161 @@ export default function GuidePage() {
             </div>
           </section>
 
+          {/* ────────────── راهنمای دانشجو ────────────── */}
+          {sections.some((s) => s.id === 'role_student') && (
+            <section id="role_student" className="guide-section">
+              <div className="guide-section-header">
+                <span className="guide-section-icon">🎓</span>
+                <h2>راهنمای دانشجو</h2>
+              </div>
+              <div className="guide-card">
+                <p>این بخش مخصوص کاربران با نقش <strong>دانشجو</strong> است. با استفاده از پنل دانشجو می‌توانید:</p>
+                <ul>
+                  <li>پرونده تحصیلی و وضعیت فرایندهای خود را مشاهده کنید</li>
+                  <li>درخواست‌های مرخصی آموزشی، آغاز درمان آموزشی، جلسه اضافی و تغییرات درمان را ثبت کنید</li>
+                  <li>کارتابل اقدامات مورد نیاز (در انتظار تایید، پر کردن فرم و غیره) را پیگیری کنید</li>
+                  <li>پرداخت‌ها و وضعیت مالی خود را مشاهده کنید</li>
+                  <li>در صورت واجد شرایط بودن، درخواست ارتقا به دستیار آموزشی ثبت کنید</li>
+                </ul>
+                <div className="guide-callout info">
+                  <div className="guide-callout-icon">💡</div>
+                  <div>
+                    <strong>نکته:</strong> از منوی سمت راست «پنل دانشجو» را انتخاب کنید تا به کارتابل و فرایندهای مرتبط با نقش خود دسترسی داشته باشید.
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ────────────── راهنمای درمانگر ────────────── */}
+          {sections.some((s) => s.id === 'role_therapist') && (
+            <section id="role_therapist" className="guide-section">
+              <div className="guide-section-header">
+                <span className="guide-section-icon">💊</span>
+                <h2>راهنمای درمانگر</h2>
+              </div>
+              <div className="guide-card">
+                <p>این بخش مخصوص کاربران با نقش <strong>درمانگر آموزشی</strong> است. در پنل درمانگر:</p>
+                <ul>
+                  <li>لیست دانشجویان تحت نظر خود را مشاهده کنید</li>
+                  <li>درخواست‌های آغاز درمان، جلسه اضافی و تغییرات درمان را تایید یا رد کنید</li>
+                  <li>حضور و غیاب جلسات درمان آموزشی را ثبت کنید</li>
+                  <li>برنامه جلسات و زمان‌بندی را مدیریت کنید</li>
+                  <li>وضعیت مرخصی و وقفه در درمان دانشجویان را پیگیری کنید</li>
+                </ul>
+                <div className="guide-callout info">
+                  <div className="guide-callout-icon">💡</div>
+                  <div>
+                    <strong>نکته:</strong> از منو «پنل درمانگر» را انتخاب کنید. کارتابل اقدامات در انتظار، در همان پنل نمایش داده می‌شود.
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ────────────── راهنمای سوپروایزر ────────────── */}
+          {sections.some((s) => s.id === 'role_supervisor') && (
+            <section id="role_supervisor" className="guide-section">
+              <div className="guide-section-header">
+                <span className="guide-section-icon">👁️</span>
+                <h2>راهنمای سوپروایزر</h2>
+              </div>
+              <div className="guide-card">
+                <p>این بخش مخصوص کاربران با نقش <strong>سوپروایزر</strong> است. در پنل سوپروایزر:</p>
+                <ul>
+                  <li>دانشجویان تحت سوپرویژن خود را مشاهده کنید</li>
+                  <li>گزارش جلسات و طرح‌های درمانی را بررسی و تایید کنید</li>
+                  <li>درخواست‌های مرتبط با سوپرویژن (جلسه اضافی و غیره) را پیگیری کنید</li>
+                  <li>وضعیت کلی دانشجویان تحت نظر خود را رصد کنید</li>
+                </ul>
+                <div className="guide-callout info">
+                  <div className="guide-callout-icon">💡</div>
+                  <div>
+                    <strong>نکته:</strong> از منو «پنل سوپروایزر» را انتخاب کنید تا به کارتابل و خلاصه دانشجویان دسترسی داشته باشید.
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ────────────── راهنمای کارمند دفتر ────────────── */}
+          {sections.some((s) => s.id === 'role_staff') && (
+            <section id="role_staff" className="guide-section">
+              <div className="guide-section-header">
+                <span className="guide-section-icon">🏢</span>
+                <h2>راهنمای کارمند دفتر</h2>
+              </div>
+              <div className="guide-card">
+                <p>این بخش مخصوص کاربران با نقش <strong>کارمند دفتر</strong> است. شما می‌توانید:</p>
+                <ul>
+                  <li>لیست دانشجویان و جستجوی پرونده را در «ردیابی دانشجو» انجام دهید</li>
+                  <li>پرداخت‌ها را مدیریت و تایید کنید</li>
+                  <li>حضور و غیاب را ثبت و مدیریت کنید</li>
+                  <li>فرایندها و نمونه‌های در حال اجرا را مشاهده کنید</li>
+                  <li>در صورت دسترسی، فرایندهای جدید در سیستم تعریف کنید (گام‌های ۲ تا ۷ این راهنما)</li>
+                </ul>
+                <div className="guide-callout info">
+                  <div className="guide-callout-icon">💡</div>
+                  <div>
+                    <strong>نکته:</strong> از منو به «مدیریت فرایندها»، «ردیابی دانشجو» و «گزارش حسابرسی» دسترسی دارید.
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ────────────── راهنمای مسئول سایت ────────────── */}
+          {sections.some((s) => s.id === 'role_site_manager') && (
+            <section id="role_site_manager" className="guide-section">
+              <div className="guide-section-header">
+                <span className="guide-section-icon">🏗️</span>
+                <h2>راهنمای مسئول سایت</h2>
+              </div>
+              <div className="guide-card">
+                <p>این بخش مخصوص کاربران با نقش <strong>مسئول سایت</strong> است. در پنل خود:</p>
+                <ul>
+                  <li>هشدارهای مربوط به حضور و غیاب را مشاهده کنید</li>
+                  <li>پیگیری حضور درمانگران را انجام و ثبت کنید</li>
+                  <li>وضعیت پیگیری را به‌روز کنید (انجام شد / در انتظار)</li>
+                </ul>
+                <div className="guide-callout info">
+                  <div className="guide-callout-icon">💡</div>
+                  <div>
+                    <strong>نکته:</strong> از منوی سمت راست به پنل مسئول سایت دسترسی دارید.
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ────────────── راهنمای کمیته‌ها ────────────── */}
+          {sections.some((s) => s.id === 'role_committee') && (
+            <section id="role_committee" className="guide-section">
+              <div className="guide-section-header">
+                <span className="guide-section-icon">📋</span>
+                <h2>راهنمای کمیته‌ها</h2>
+              </div>
+              <div className="guide-card">
+                <p>این بخش مخصوص اعضای <strong>کمیته‌های آموزش، پیشرفت، نظارت و نقش‌های مرتبط</strong> است. بسته به نوع کمیته:</p>
+                <ul>
+                  <li><strong>کمیته پیشرفت:</strong> بررسی درخواست مرخصی، تایید/رد، تنظیم جلسه، بررسی تغییرات درمان و بازگشت به درمان</li>
+                  <li><strong>کمیته آموزش:</strong> بررسی احکام نهایی، صدور حکم ادامه یا ختم آموزش</li>
+                  <li><strong>کمیته نظارت:</strong> بررسی پرونده‌های انضباطی، تعیین زمان جلسه، ارجاع به کمیته آموزش</li>
+                  <li><strong>معاون آموزش:</strong> دریافت هشدارهای SLA، مشاهده درخواست مرخصی، پیگیری تاخیر کمیته‌ها</li>
+                  <li><strong>کمیته درمان (مسئول/مجری):</strong> پیگیری دانشجویان، ثبت گزارش مجری، تعیین توقف قطعی یا بازگشت</li>
+                </ul>
+                <div className="guide-callout info">
+                  <div className="guide-callout-icon">💡</div>
+                  <div>
+                    <strong>نکته:</strong> از منو «پنل کمیته» را انتخاب کنید. کارتابل اقدامات در انتظار و خلاصه دانشجویان در همان پنل نمایش داده می‌شود.
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* ────────────── گام ۲ ────────────── */}
+          {sections.some((s) => s.id === 'step2') && (
           <section id="step2" className="guide-section">
             <div className="guide-section-header">
               <span className="guide-section-icon">🏗️</span>
@@ -406,8 +594,10 @@ export default function GuidePage() {
               </div>
             </div>
           </section>
+          )}
 
           {/* ────────────── گام ۳ ────────────── */}
+          {sections.some((s) => s.id === 'step3') && (
           <section id="step3" className="guide-section">
             <div className="guide-section-header">
               <span className="guide-section-icon">📍</span>
@@ -524,8 +714,10 @@ export default function GuidePage() {
               </div>
             </div>
           </section>
+          )}
 
           {/* ────────────── گام ۴ ────────────── */}
+          {sections.some((s) => s.id === 'step4') && (
           <section id="step4" className="guide-section">
             <div className="guide-section-header">
               <span className="guide-section-icon">🔄</span>
@@ -650,8 +842,10 @@ export default function GuidePage() {
               </div>
             </div>
           </section>
+          )}
 
           {/* ────────────── گام ۵ ────────────── */}
+          {sections.some((s) => s.id === 'step5') && (
           <section id="step5" className="guide-section">
             <div className="guide-section-header">
               <span className="guide-section-icon">📋</span>
@@ -757,8 +951,10 @@ export default function GuidePage() {
               </div>
             </div>
           </section>
+          )}
 
           {/* ────────────── گام ۶ ────────────── */}
+          {sections.some((s) => s.id === 'step6') && (
           <section id="step6" className="guide-section">
             <div className="guide-section-header">
               <span className="guide-section-icon">🚀</span>
@@ -825,8 +1021,10 @@ export default function GuidePage() {
               </div>
             </div>
           </section>
+          )}
 
           {/* ────────────── گام ۷ ────────────── */}
+          {sections.some((s) => s.id === 'step7') && (
           <section id="step7" className="guide-section">
             <div className="guide-section-header">
               <span className="guide-section-icon">📊</span>
@@ -892,8 +1090,10 @@ export default function GuidePage() {
               </div>
             </div>
           </section>
+          )}
 
           {/* ────────────── مثال کامل ────────────── */}
+          {sections.some((s) => s.id === 'example') && (
           <section id="example" className="guide-section">
             <div className="guide-section-header">
               <span className="guide-section-icon">🎯</span>
@@ -1091,6 +1291,7 @@ export default function GuidePage() {
               </div>
             </div>
           </section>
+          )}
 
           {/* ────────────── واژه‌نامه ────────────── */}
           <section id="glossary" className="guide-section">

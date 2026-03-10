@@ -31,6 +31,7 @@ class User(Base):
     role = Column(String(50), nullable=False, default="student")  # admin, staff, therapist, student, committee
     is_active = Column(Boolean, default=True, nullable=False)
     phone = Column(String(20), nullable=True)
+    avatar_url = Column(String(512), nullable=True)  # مسیر نسبی عکس پروفایل، مثلاً /uploads/avatars/xxx.jpg
     security_question = Column(String(255), nullable=True)  # سوال امنیتی
     security_answer_hash = Column(String(255), nullable=True)  # پاسخ هش‌شده
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)

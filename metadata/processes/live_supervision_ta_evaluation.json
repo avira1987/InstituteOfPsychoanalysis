@@ -1,0 +1,41 @@
+{
+  "process": {
+    "code": "live_supervision_ta_evaluation",
+    "name_fa": "ارزیابی کمک‌مدرس درس سوپرویژن زنده",
+    "name_en": "Live Supervision TA Evaluation",
+    "number": 67,
+    "description": "ارزیابی نهایی کمک‌مدرس در درس سوپرویژن زنده پس از پایان ۱۸ جلسه. بخش الف: حضور و غیاب (سقف ۸ نمره، کسر ۲ نمره به ازای هر غیبت). بخش ب: انجام وظایف سه‌گانه (سقف ۹۲ نمره): شناسایی و مشورت آموزشی، آپلود جستار و دقایق فیلم، ثبت محتوای وبلاگ. بخش ج: نمره کل از ۱۰۰. حالت الف (قبولی): نمره ≥ ۷۴ → PASS در پورتال. حالت ب (مردودی): نمره < ۷۴ → FAIL در پورتال. داشبورد در پورتال کمیته دروس و کمک‌مدرس قابل مشاهده است.",
+    "initial_state": "session_18_completed",
+    "initial_role": "system",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "session_18_completed", "name_fa": "اتمام جلسه ۱۸ — تجمیع نمرات", "type": "initial", "assigned_role": "system"},
+    {"code": "evaluation_computed", "name_fa": "محاسبه نمره و تعیین PASS/FAIL", "type": "intermediate", "assigned_role": "system"},
+    {"code": "passed", "name_fa": "قبولی (نمره ≥ ۷۴) — ثبت در پرونده", "type": "terminal", "assigned_role": "system"},
+    {"code": "failed", "name_fa": "مردودی (نمره < ۷۴) — ثبت در پرونده", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "session_18_completed", "to": "evaluation_computed", "trigger": "grades_aggregated", "description_fa": "تجمیع نمره حضور (۸) و وظایف سه‌گانه (۹۲)، محاسبه نمره کل"},
+    {"from": "evaluation_computed", "to": "passed", "trigger": "result_pass", "conditions": ["live_supervision_ta_score_gte_74"], "description_fa": "نمره کل ≥ ۷۴ — وضعیت PASS در پورتال ثبت می‌شود", "actions": [{"type": "update_record", "description_fa": "ثبت نمره و وضعیت PASS در پرونده کمک‌مدرس"}]},
+    {"from": "evaluation_computed", "to": "failed", "trigger": "result_fail", "conditions": ["live_supervision_ta_score_lt_74"], "description_fa": "نمره کل < ۷۴ — وضعیت FAIL در پورتال ثبت می‌شود", "actions": [{"type": "update_record", "description_fa": "ثبت نمره و وضعیت FAIL در پرونده کمک‌مدرس"}]}
+  ],
+  "rules": [
+    {"code": "live_supervision_pass_threshold", "description_fa": "حد نصاب قبولی ۷۴؛ نمره کل بالاتر یا مساوی ۷۴ = PASS، زیر ۷۴ = FAIL"}
+  ],
+  "ui_requirements": {
+    "dashboard": {
+      "name_fa": "داشبورد ارزیابی نهایی کمک‌مدرس (درس سوپرویژن زنده)",
+      "description_fa": "نمای سیستمی که نمرات را پس از پایان جلسه ۱۸ تجمیع کرده و وضعیت نهایی را مشخص می‌کند. در پورتال کمیته دروس و کمک‌مدرس قابل مشاهده است.",
+      "sections": [
+        {"key": "header", "label_fa": "کارنامه و گزارش ارزیابی کمک‌مدرس (درس سوپرویژن زنده)", "fields": ["نام کمک‌مدرس", "وضعیت پایان دوره: اتمام ۱۸ جلسه"]},
+        {"key": "attendance", "label_fa": "بخش الف: ارزیابی حضور و غیاب (سقف: ۸ نمره)", "items": ["تعداد کل جلسات موظف: ۱۸ جلسه", "تعداد جلسات غیبت", "نمره محاسبه‌شده سیستم (کسر ۲ نمره به ازای هر غیبت)"]},
+        {"key": "tasks", "label_fa": "بخش ب: ارزیابی انجام وظایف سه‌گانه (سقف: ۹۲ نمره)", "columns": ["ردیف", "عنوان وظیفه محوله", "وضعیت انجام در طول ۱۸ جلسه", "نمره کسب شده"], "tasks": ["فرایند شناسایی، تشویق و مشورت آموزشی به دانشجویان", "فرایند آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس", "فرایند ثبت محتوای وبلاگ از محتوای درسی"]},
+        {"key": "result", "label_fa": "بخش ج: نتیجه نهایی (حد نصاب قبولی: ۷۴)", "fields": ["نمره کل تجمیع‌شده از ۱۰۰", "وضعیت قطعی: PASS یا FAIL"]}
+      ]
+    }
+  },
+  "forms": [
+    {"code": "ta_evaluation_dashboard", "name_fa": "داشبورد ارزیابی نهایی کمک‌مدرس درس سوپرویژن زنده", "used_in_state": "evaluation_computed", "description_fa": "نمره کل از ۱۰۰، حد نصاب ۷۴؛ PASS/FAIL"}
+  ]
+}

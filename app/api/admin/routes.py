@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.api.auth import get_current_user, require_role
+from app.api.auth import get_current_user, require_role, get_password_hash
 from app.models.operational_models import User
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
 from app.models.audit_models import AuditLog
@@ -654,9 +654,9 @@ async def list_users(
     role: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_role("admin", "staff")),
 ):
-    """List all users."""
+    """List all users (admin and staff; staff use this to set passwords for students)."""
     stmt = select(User)
     if role:
         stmt = stmt.where(User.role == role)
@@ -686,9 +686,9 @@ async def update_user(
     user_id: str,
     data: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_role("admin", "staff")),
 ):
-    """Update a user."""
+    """Update a user. Admin can change any field; staff can only set password and edit name/email/phone."""
     stmt = select(User).where(User.id == uuid.UUID(user_id))
     result = await db.execute(stmt)
     user = result.scalars().first()
@@ -696,17 +696,13 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     allowed_fields = {"full_name_fa", "full_name_en", "role", "phone", "email", "is_active"}
+    if current_user.role == "staff":
+        allowed_fields = {"full_name_fa", "full_name_en", "phone", "email"}
     for key, value in data.items():
         if key in allowed_fields:
             setattr(user, key, value)
-    # سوال امنیتی: admin می‌تواند question و answer را تنظیم کند (answer هش می‌شود)
-    if "security_question" in data:
-        user.security_question = (data["security_question"] or "").strip() or None
-    if "security_answer" in data and data["security_answer"]:
-        from app.api.auth import get_password_hash
-        user.security_answer_hash = get_password_hash(data["security_answer"].strip())
-    elif "security_question" in data and not (data.get("security_question") or "").strip():
-        user.security_answer_hash = None
+    if "password" in data and data.get("password"):
+        user.hashed_password = get_password_hash(data["password"])
     await db.flush()
     return {
         "id": str(user.id),

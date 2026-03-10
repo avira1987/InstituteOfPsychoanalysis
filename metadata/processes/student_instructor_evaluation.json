@@ -1,0 +1,23 @@
+{
+  "process": {
+    "code": "student_instructor_evaluation",
+    "name_fa": "ارزیابی دانشجو از مدرسین",
+    "name_en": "Student Evaluation of Instructors",
+    "number": 57,
+    "description": "ارزیابی مستمر اساتید با حفظ گمنامی دانشجویان. Trigger: دقیقاً دو هفته قبل از پایان ترم، ارسال پیامک با لینک فرم. پر کردن فرم اختیاری. جداسازی هویت و ذخیره پاسخ\u200cها به\u200cصورت ناشناس. داشبورد مدیریتی با نمودار دایره\u200cای و میانگین در پورتال مدرس، کمیته دروس و کمیته پژوهش.",
+    "initial_state": "evaluation_open",
+    "initial_role": "student",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "evaluation_open", "name_fa": "مهلت ارزیابی — دانشجو فرم را تکمیل می\u200cکند", "type": "initial", "assigned_role": "student"},
+    {"code": "evaluation_closed", "name_fa": "پایان مهلت — محاسبات و توزیع نتایج", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "evaluation_open", "to": "evaluation_closed", "trigger": "deadline_reached", "description_fa": "پایان مهلت ارزیابی — محاسبه میانگین، نمودار دایره\u200cای، توزیع در پورتال مدرس و کمیته\u200cها"}
+  ],
+  "forms": [
+    {"code": "instructor_evaluation_form", "name_fa": "فرم ارزیابی کیفیت تدریس اساتید", "used_in_state": "evaluation_open", "fields": [{"name": "course_name", "label_fa": "نام درس", "type": "readonly"}, {"name": "instructor_name", "label_fa": "نام مدرس", "type": "readonly"}, {"name": "responses", "label_fa": "پاسخ به سوالات (پیوست)", "type": "form_reference"}]},
+    {"code": "evaluation_dashboard", "name_fa": "داشبورد گزارش ارزیابی مدرس", "used_in_state": "evaluation_closed", "description_fa": "نمای مدرس / کمیته دروس و پژوهش — نرخ مشارکت، نمره میانگین، نمودار دایره\u200cای"}
+  ]
+}

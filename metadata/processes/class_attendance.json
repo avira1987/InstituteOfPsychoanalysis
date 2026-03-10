@@ -1,0 +1,26 @@
+{
+  "process": {
+    "code": "class_attendance",
+    "name_fa": "حضور و غیاب در تمامی کالس‌ها",
+    "name_en": "Class Attendance Tracking",
+    "number": 54,
+    "description": "نظارت بر حضور فیزیکی و آنلاین دانشجویان و کمک‌مدرسین. شمارنده غیبت؛ ۵ غیبت منجر به Incomplete و قفل نمره. استثنا: درس مقاله‌نویسی گزارش به کمیته؛ درس سوپرویژن زنده فقط ثبت.",
+    "initial_state": "attendance_list_ready",
+    "initial_role": "instructor",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "attendance_list_ready", "name_fa": "لیست حضور و غیاب در پورتال مدرس", "type": "initial", "assigned_role": "instructor"},
+    {"code": "session_recorded", "name_fa": "وضعیت جلسه ثبت شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "incomplete_triggered", "name_fa": "۵ غیبت — وضعیت I و قفل نمره", "type": "terminal", "assigned_role": "system"},
+    {"code": "article_violation_reported", "name_fa": "غیبت درس مقاله‌نویسی — گزارش به کمیته نظارت", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "attendance_list_ready", "to": "session_recorded", "trigger": "attendance_submitted", "required_role": "instructor", "description_fa": "ثبت حاضر و غایب"},
+    {"from": "session_recorded", "to": "incomplete_triggered", "trigger": "absence_count_5", "conditions": ["attendance_absence_count_5"], "description_fa": "۵ غیبت — Incomplete و قفل نمره"},
+    {"from": "session_recorded", "to": "article_violation_reported", "trigger": "absence_5_article_course", "conditions": ["attendance_absence_count_5", "attendance_course_is_article_writing"], "description_fa": "۵ غیبت درس مقاله‌نویسی — ارسال به کمیته نظارت"}
+  ],
+  "forms": [
+    {"code": "session_attendance_form", "name_fa": "فرم ثبت حضور و غیاب جلسه‌ای", "used_in_state": "attendance_list_ready", "fields": [{"name": "lesson_name", "label_fa": "نام درس", "type": "readonly"}, {"name": "session_date", "label_fa": "تاریخ جلسه", "type": "readonly"}, {"name": "attendees", "label_fa": "لیست کمک‌مدرسین و دانشجویان با وضعیت حاضر و غایب", "type": "dynamic_list"}]}
+  ]
+}

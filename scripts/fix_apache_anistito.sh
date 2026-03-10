@@ -25,10 +25,10 @@ awk '
 /^<\/VirtualHost>/ && !done {
   print "	# Anistito BPM - Proxy to FastAPI"
   print "	ProxyPreserveHost On"
-  print "	ProxyPass /anistito/api/ http://127.0.0.1:8000/api/"
-  print "	ProxyPassReverse /anistito/api/ http://127.0.0.1:8000/api/"
-  print "	ProxyPass /anistito/ http://127.0.0.1:8000/"
-  print "	ProxyPassReverse /anistito/ http://127.0.0.1:8000/"
+  print "	ProxyPass /anistito/api/ http://127.0.0.1:3000/api/"
+  print "	ProxyPassReverse /anistito/api/ http://127.0.0.1:3000/api/"
+  print "	ProxyPass /anistito/ http://127.0.0.1:3000/"
+  print "	ProxyPassReverse /anistito/ http://127.0.0.1:3000/"
   print ""
   done=1
 }

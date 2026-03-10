@@ -181,28 +181,56 @@ export default function SiteManagerPortal() {
       {activeTab === 'dashboard' && (
         <>
           <div className="stats-grid">
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('alerts')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('alerts') } }}
+              title="مشاهده هشدارهای حضور و غیاب"
+            >
               <div className="stat-icon danger">🔔</div>
               <div>
                 <div className="stat-value">{attendanceAlerts.length}</div>
                 <div className="stat-label">هشدار حضور و غیاب</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('pending')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('pending') } }}
+              title="مشاهده پیگیری‌های منتظر"
+            >
               <div className="stat-icon warning">📋</div>
               <div>
                 <div className="stat-value">{pendingActions.length}</div>
                 <div className="stat-label">پیگیری منتظر</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('overview')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('overview') } }}
+              title="مشاهده نمای کلی و دانشجویان"
+            >
               <div className="stat-icon info">👨‍🎓</div>
               <div>
                 <div className="stat-value">{allStudents.length}</div>
                 <div className="stat-label">دانشجویان</div>
               </div>
             </div>
-            <div className="stat-card">
+            <div
+              className="stat-card stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab('overview')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('overview') } }}
+              title="مشاهده فرایندهای فعال"
+            >
               <div className="stat-icon primary">🔄</div>
               <div>
                 <div className="stat-value">{allActiveInstances.length}</div>

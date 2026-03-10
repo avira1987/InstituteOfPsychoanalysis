@@ -50,11 +50,11 @@ docker ps --filter name=anistito --format 'table {{.Names}}\t{{.Status}}\t{{.Por
 
 echo ''
 echo '=== 8. Health check (API) ==='
-curl -s -w '\nHTTP:%{http_code}' http://127.0.0.1:8000/health 2>&1 || echo 'FAIL'
+curl -s -w '\nHTTP:%{http_code}' http://127.0.0.1:3000/health 2>&1 || echo 'FAIL'
 
 echo ''
 echo '=== 9. API process count ==='
-curl -s http://127.0.0.1:8000/debug/process-count 2>&1 || echo 'N/A'
+curl -s http://127.0.0.1:3000/debug/process-count 2>&1 || echo 'N/A'
 
 echo ''
 echo '=== 10. Website via proxy (curl) ==='

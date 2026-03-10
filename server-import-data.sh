@@ -21,6 +21,6 @@ docker restart anistito-api
 sleep 5
 
 echo "=== Test ==="
-curl -s http://localhost:8000/debug/process-count
+curl -s http://localhost:3000/debug/process-count
 echo ""
 echo "Done."

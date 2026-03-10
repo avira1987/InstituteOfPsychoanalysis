@@ -29,7 +29,7 @@ def test_db_has_processes():
 
 def test_api_process_count():
     """بررسی endpoint debug/process-count روی سرور."""
-    out, code = run_ssh("curl -s http://localhost:8000/debug/process-count")
+    out, code = run_ssh("curl -s http://localhost:3000/debug/process-count")
     assert code == 0, f"curl failed: {out}"
     assert "process_count" in out, f"Invalid response: {out}"
     return out
@@ -37,7 +37,7 @@ def test_api_process_count():
 
 def test_api_processes_list_needs_auth():
     """بررسی اینکه /api/admin/processes نیاز به احراز هویت دارد."""
-    out, code = run_ssh("curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/admin/processes/")
+    out, code = run_ssh("curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/admin/processes/")
     assert code == 0
     # 401 = needs auth, 200 = ok, 307 = redirect
     assert out.strip() in ("401", "200", "307"), f"Unexpected status: {out}"

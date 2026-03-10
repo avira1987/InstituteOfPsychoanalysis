@@ -1,0 +1,49 @@
+{
+  "process": {
+    "code": "live_supervision_session_prep",
+    "name_fa": "مقدمات برگزاری جلسات سوپرویژن زنده",
+    "name_en": "Live Supervision Session Preparation",
+    "number": 68,
+    "description": "گام پیش‌نیاز برای برگزاری کلاس‌های بالینی سوپرویژن زنده (پشت آینه). پل ارتباطی بین بخش پذیرش کلینیک (بیمار متقاضی درمان پشت آینه) و تیم آموزش (مدرس، درمانگر، دانشجویان کلاس). فرم‌های ارجاع درون‌سازمانی، ثبت زمان توافق‌شده در LMS، پیامک خودکار به مدرس، کمک‌مدرس و دانشجویان (بدون پیامک به بیمار). در صورت عدم هماهنگی، ختم پرونده و خروج از کارتابل.",
+    "initial_state": "patient_referral",
+    "initial_role": "admission_officer",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "patient_referral", "name_fa": "ثبت و ارجاع پرونده بیمار", "type": "initial", "assigned_role": "admission_officer"},
+    {"code": "coordination_pending", "name_fa": "هماهنگی چندجانبه — جستجوی زمان مشترک", "type": "intermediate", "assigned_role": "therapy_education_coordinator"},
+    {"code": "session_scheduled", "name_fa": "زمان در LMS ثبت و پیامک ارسال شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "coordination_closed", "name_fa": "وقت خاصی هماهنگ نشد — پرونده مختومه", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "patient_referral", "to": "coordination_pending", "trigger": "referral_submitted", "required_role": "admission_officer", "description_fa": "ثبت اطلاعات بیمار و ارجاع به کارتابل مسئول هماهنگی‌های درمان و آموزش"},
+    {"from": "coordination_pending", "to": "session_scheduled", "trigger": "time_registered", "required_role": "therapy_education_coordinator", "conditions": ["live_session_time_agreed"], "description_fa": "ثبت روز و ساعت توافق‌شده به همراه مدرس و درمانگر — ارسال پیامک به مدرس، کمک‌مدرس و دانشجویان کلاس", "actions": [{"type": "notification", "notification_type": "sms", "template": "live_supervision_session_confirmed", "recipients": ["instructor", "teaching_assistant", "class_students"], "template_text_fa": "دانشجوی گرامی / استاد محترم، به اطلاع می‌رساند جلسه \"سوپرویژن زنده\" (پشت آینه) در تاریخ [تاریخ ثبت شده] رأس ساعت [ساعت ثبت شده] با حضور درمانگر در سیستم ثبت و قطعی گردید. لطفاً جهت برگزاری کلاس، در زمان مقرر حضور به‌هم رسانید. انستیتو روانکاوی تهران"}]},
+    {"from": "coordination_pending", "to": "coordination_closed", "trigger": "no_time_agreed", "required_role": "therapy_education_coordinator", "conditions": ["live_session_time_not_agreed"], "description_fa": "وقت خاصی نشد که هماهنگ شود — ختم پرونده و خروج از کارتابل"}
+  ],
+  "forms": [
+    {
+      "code": "live_supervision_patient_referral",
+      "name_fa": "فرم ارجاع بیمار متقاضی درمان پشت آینه",
+      "used_in_state": "patient_referral",
+      "description_fa": "ثبت‌کننده: پذیرش یا مشورت‌دهنده. پس از ثبت، پرونده به مسئول هماهنگی‌های درمان و آموزش ارجاع می‌شود.",
+      "fields": [
+        {"name": "patient_first_name", "label_fa": "نام بیمار", "type": "text", "required": true},
+        {"name": "patient_last_name", "label_fa": "نام خانوادگی بیمار", "type": "text", "required": true},
+        {"name": "patient_phone", "label_fa": "شماره تماس بیمار", "type": "text", "required": true},
+        {"name": "referral_notes", "label_fa": "توضیحات تکمیلی مسئول پذیرش", "type": "textarea"}
+      ]
+    },
+    {
+      "code": "live_supervision_schedule_form",
+      "name_fa": "تعیین تکلیف زمان جلسه سوپرویژن زنده",
+      "used_in_state": "coordination_pending",
+      "description_fa": "پس از هماهنگی بین بیمار، درمانگر، مدرس و دانشجویان کلاس، زمان قطعی را ثبت کنید. با ثبت، پیامک به ارکان کلاسی ارسال می‌شود. در صورت عدم توافق، از دکمه «وقت خاصی هماهنگ نشد» استفاده کنید.",
+      "fields": [
+        {"name": "instructor_id", "label_fa": "انتخاب مدرس کلاس", "type": "user_select", "required": true},
+        {"name": "therapist_id", "label_fa": "انتخاب درمانگر", "type": "user_select", "required": true},
+        {"name": "session_date", "label_fa": "تاریخ قطعی برگزاری", "type": "date_picker", "required": true},
+        {"name": "session_time", "label_fa": "ساعت شروع", "type": "time_picker", "required": true}
+      ]
+    }
+  ]
+}

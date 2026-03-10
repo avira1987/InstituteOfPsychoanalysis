@@ -6,7 +6,8 @@
     "number": 53,
     "description": "کمک‌مدرس یا مدرس درخواست مرخصی می‌دهد. کمیته دروس تایید/رد. در صورت تایید: جایگزین موقت (کمک‌مدرس/مدرس) یا لغو کلاس‌ها. اطلاع‌رسانی به دانشجویان.",
     "initial_state": "leave_request",
-    "initial_role": "teaching_assistant_or_instructor"
+    "initial_role": "teaching_assistant_or_instructor",
+    "requires_form": true
   },
   "states": [
     {"code": "leave_request", "name_fa": "درخواست مرخصی", "type": "initial", "assigned_role": "teaching_assistant_or_instructor"},

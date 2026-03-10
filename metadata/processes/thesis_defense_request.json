@@ -1,0 +1,98 @@
+{
+  "process": {
+    "code": "thesis_defense_request",
+    "name_fa": "درخواست ثبت دفاع پایان‌نامه",
+    "name_en": "Thesis Defense Registration Request",
+    "number": 70,
+    "description": "فاز نهایی مسیر تحصیلی. دروازه‌بان با ۴ شرط: ۶۷ واحد با معدل B، ۷۵۰ ساعت تجربه بالینی، ۱۵۰ ساعت سوپرویژن فردی، ۲۵۰ ساعت درمان آموزشی. پیش‌نیاز: تیک تکمیل پایان‌نامه توسط مدرس درس مقاله‌نویسی. غربالگری: کمیته پیشرفت (تایید/نیاز به اصلاح/رد گزارش سایکوتیک)، کمیته نظارت (مجوز دفاع)، کمیته آموزش (انتخاب داوران و زمان، محرمانگی نام داوران تا روز دفاع). A/B = PASS؛ C/D/F = نیاز به اصلاح و دفاع مجدد. مهلت اصلاحات ۲ هفته؛ دفاع مجدد با همان داوران. نمره نهایی A/B = PASS، C/D/F = FAIL.",
+    "initial_state": "eligibility_check",
+    "initial_role": "student",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "eligibility_check", "name_fa": "بررسی شروط چهارگانه و بارگذاری گزارش سایکوتیک", "type": "initial", "assigned_role": "student"},
+    {"code": "conditions_not_met", "name_fa": "عدم احراز شروط — مسیر مسدود", "type": "terminal", "assigned_role": "system"},
+    {"code": "progress_committee_review", "name_fa": "بررسی گزارش توسط کمیته پیشرفت", "type": "intermediate", "assigned_role": "progress_committee"},
+    {"code": "report_rejected", "name_fa": "رد گزارش — خاتمه فرایند", "type": "terminal", "assigned_role": "system"},
+    {"code": "report_revision", "name_fa": "نیاز به اصلاح گزارش — بازگشت به دانشجو", "type": "intermediate", "assigned_role": "student"},
+    {"code": "supervision_committee_review", "name_fa": "بررسی و صدور مجوز توسط کمیته نظارت", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "defense_permit_denied", "name_fa": "عدم صدور مجوز دفاع", "type": "terminal", "assigned_role": "system"},
+    {"code": "thesis_upload", "name_fa": "بارگذاری پایان‌نامه توسط دانشجو", "type": "intermediate", "assigned_role": "student"},
+    {"code": "education_committee_scheduling", "name_fa": "تعیین داوران و زمان توسط کمیته آموزش", "type": "intermediate", "assigned_role": "education_committee"},
+    {"code": "first_defense_held", "name_fa": "برگزاری دفاع اول و ثبت نمرات داوران", "type": "intermediate", "assigned_role": "system"},
+    {"code": "defense_passed", "name_fa": "قبول — پایان فرایند", "type": "terminal", "assigned_role": "system"},
+    {"code": "revision_required", "name_fa": "نیاز به اصلاح — مهلت ۲ هفته", "type": "intermediate", "assigned_role": "student"},
+    {"code": "revision_upload", "name_fa": "آپلود پایان‌نامه اصلاح‌شده", "type": "intermediate", "assigned_role": "student"},
+    {"code": "revision_delay_violation", "name_fa": "تاخیر در آپلود اصلاحات — گزارش تخلف", "type": "terminal", "assigned_role": "system"},
+    {"code": "second_defense_held", "name_fa": "برگزاری دفاع مجدد — داوری نهایی", "type": "intermediate", "assigned_role": "system"},
+    {"code": "defense_failed", "name_fa": "مردود (FAIL) — پایان فرایند", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "eligibility_check", "to": "conditions_not_met", "trigger": "conditions_failed", "description_fa": "عدم احراز یک یا چند شرط — نمایش پیغام خطا، عدم امکان آپلود"},
+    {"from": "eligibility_check", "to": "progress_committee_review", "trigger": "psychotic_report_uploaded", "required_role": "student", "conditions": ["thesis_defense_eligibility_met"], "description_fa": "احراز ۴ شرط و آپلود گزارش ۱۵۰ ساعت بیماران سایکوتیک"},
+    {"from": "progress_committee_review", "to": "report_rejected", "trigger": "report_rejected", "required_role": "progress_committee", "description_fa": "رد گزارش — پیغام در پورتال دانشجو"},
+    {"from": "progress_committee_review", "to": "report_revision", "trigger": "revision_requested", "required_role": "progress_committee", "description_fa": "نیاز به اصلاح — بازگشت پرونده به دانشجو با توضیحات"},
+    {"from": "progress_committee_review", "to": "supervision_committee_review", "trigger": "report_approved", "required_role": "progress_committee", "description_fa": "تایید گزارش — ارجاع به کمیته نظارت"},
+    {"from": "report_revision", "to": "progress_committee_review", "trigger": "revision_uploaded", "required_role": "student", "description_fa": "دانشجو گزارش اصلاح‌شده را مجدد آپلود کرد"},
+    {"from": "supervision_committee_review", "to": "defense_permit_denied", "trigger": "permit_denied", "required_role": "supervision_committee", "description_fa": "عدم صدور مجوز — توضیحات در پورتال دانشجو"},
+    {"from": "supervision_committee_review", "to": "thesis_upload", "trigger": "permit_issued", "required_role": "supervision_committee", "description_fa": "صدور مجوز — باز شدن دسترسی بارگذاری پایان‌نامه"},
+    {"from": "thesis_upload", "to": "education_committee_scheduling", "trigger": "thesis_uploaded", "required_role": "student", "description_fa": "دانشجو پایان‌نامه را آپلود کرد"},
+    {"from": "education_committee_scheduling", "to": "first_defense_held", "trigger": "schedule_registered", "required_role": "education_committee", "description_fa": "ثبت داوران و زمان — ارسال SMS به دانشجو (بدون نام داور) و به داوران (با لینک)"},
+    {"from": "first_defense_held", "to": "defense_passed", "trigger": "all_grades_ab", "description_fa": "همه داوران A یا B — PASS"},
+    {"from": "first_defense_held", "to": "revision_required", "trigger": "any_grade_cdf", "description_fa": "حداقل یک داور C/D/F — ارسال SMS مهلت ۲ هفته اصلاحات"},
+    {"from": "revision_required", "to": "revision_upload", "trigger": "revision_uploaded", "required_role": "student", "description_fa": "دانشجو فایل اصلاح‌شده را آپلود کرد"},
+    {"from": "revision_required", "to": "revision_delay_violation", "trigger": "revision_sla_breach", "description_fa": "عدم آپلود در مهلت ۲ هفته — گزارش تخلف به کمیته نظارت"},
+    {"from": "revision_upload", "to": "second_defense_held", "trigger": "second_defense_scheduled", "required_role": "education_committee", "description_fa": "ثبت زمان دفاع مجدد (همان داوران) — ارسال SMS"},
+    {"from": "second_defense_held", "to": "defense_passed", "trigger": "final_grades_ab", "description_fa": "نمره نهایی A یا B — PASS"},
+    {"from": "second_defense_held", "to": "defense_failed", "trigger": "final_grades_cdf", "description_fa": "نمره نهایی C/D/F — FAIL (مردود)"}
+  ],
+  "preconditions": [
+    {"type": "process_completed", "process_code": "article_writing_completion", "step": "completion_ticked", "description_fa": "تیک تکمیل پایان‌نامه توسط مدرس درس مقاله‌نویسی ثبت شده باشد"}
+  ],
+  "forms": [
+    {
+      "code": "defense_eligibility_form",
+      "name_fa": "غربالگری اولیه و بارگذاری گزارش سایکوتیک",
+      "used_in_state": "eligibility_check",
+      "description_fa": "سیستم وضعیت آموزشی و بالینی را بررسی می‌کند. در صورت تیک هر ۴ شرط، بخش بارگذاری گزارش ۱۵۰ ساعت بیماران سایکوتیک باز می‌شود.",
+      "fields": [
+        {"name": "check_67_units_b", "label_fa": "۶۷ واحد درسی با حداقل معدل B", "type": "readonly"},
+        {"name": "check_750_clinical", "label_fa": "۷۵۰ ساعت تجربه بالینی", "type": "readonly"},
+        {"name": "check_150_supervision", "label_fa": "۱۵۰ ساعت سوپرویژن فردی", "type": "readonly"},
+        {"name": "check_250_therapy", "label_fa": "۲۵۰ ساعت درمان آموزشی", "type": "readonly"},
+        {"name": "psychotic_report_file", "label_fa": "فایل گزارش تکمیل ۱۵۰ ساعت تجربه کاری با بیماران سایکوتیک (PDF)", "type": "file_upload", "visible_when": "all_conditions_met"}
+      ]
+    },
+    {
+      "code": "progress_committee_report_decision",
+      "name_fa": "تعیین تکلیف گزارش توسط کمیته پیشرفت",
+      "used_in_state": "progress_committee_review",
+      "fields": [
+        {"name": "decision", "type": "radio", "options": [{"value": "approve", "label_fa": "تایید گزارش"}, {"value": "revision", "label_fa": "نیاز به اصلاح گزارش"}, {"value": "reject", "label_fa": "رد گزارش و خاتمه فرایند"}]},
+        {"name": "revision_notes", "label_fa": "توضیحات اصلاحی", "type": "textarea", "visible_when": "decision == 'revision'"}
+      ]
+    },
+    {
+      "code": "education_committee_schedule",
+      "name_fa": "تعیین داوران و زمان (کمیته آموزش)",
+      "used_in_state": "education_committee_scheduling",
+      "description_fa": "نام داوران تا روز دفاع به دانشجو نمایش داده نمی‌شود. با ثبت، پیامک به دانشجو و داوران ارسال می‌شود.",
+      "fields": [
+        {"name": "reviewer_1_id", "label_fa": "تعیین داور اول", "type": "user_select"},
+        {"name": "reviewer_2_id", "label_fa": "تعیین داور دوم", "type": "user_select"},
+        {"name": "defense_date", "label_fa": "تاریخ برگزاری جلسه دفاع", "type": "date_picker"},
+        {"name": "defense_time", "label_fa": "ساعت شروع جلسه", "type": "time_picker"}
+      ]
+    },
+    {
+      "code": "defense_grade_form",
+      "name_fa": "فرم ثبت نظرات و نمره داور",
+      "used_in_state": "first_defense_held",
+      "description_fa": "نمرات C/D/F در دفاع اول = اصلاح و دفاع مجدد؛ در دفاع مجدد = FAIL.",
+      "fields": [
+        {"name": "defense_type", "label_fa": "نوع جلسه", "type": "readonly", "options": ["دفاع اول", "دفاع مجدد"]},
+        {"name": "grade", "label_fa": "ثبت نمره نهایی (حروفی)", "type": "radio", "options": [{"value": "A", "label_fa": "نمره A"}, {"value": "B", "label_fa": "نمره B"}, {"value": "C", "label_fa": "نمره C"}, {"value": "D", "label_fa": "نمره D"}, {"value": "F", "label_fa": "نمره F"}]}
+      ]
+    }
+  ]
+}

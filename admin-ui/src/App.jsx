@@ -20,6 +20,7 @@ import SupervisorPortal from './pages/SupervisorPortal'
 import StaffPortal from './pages/StaffPortal'
 import SiteManagerPortal from './pages/SiteManagerPortal'
 import CommitteePortal from './pages/CommitteePortal'
+import ProfilePage from './pages/ProfilePage'
 
 import HomePage from './pages/public/HomePage'
 import BlogList from './pages/public/BlogList'
@@ -92,6 +93,13 @@ function ProtectedRoute({ children }) {
   return children
 }
 
+/** برای دانشجو صفحهٔ اول پنل = پنل دانشجو؛ برای بقیه = داشبرد */
+function PanelIndex() {
+  const { user } = useAuth()
+  if (user?.role === 'student') return <Navigate to="/panel/portal/student" replace />
+  return <Dashboard />
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -118,7 +126,7 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Dashboard />} />
+          <Route index element={<PanelIndex />} />
           <Route path="processes" element={<ProcessList />} />
           <Route path="processes/:processId" element={<ProcessEditor />} />
           <Route path="rules" element={<RuleManager />} />
@@ -131,6 +139,7 @@ export default function App() {
           <Route path="portal/staff" element={<StaffPortal />} />
           <Route path="portal/site-manager" element={<SiteManagerPortal />} />
           <Route path="portal/committee" element={<CommitteePortal />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="guide" element={<GuidePage />} />
         </Route>
 

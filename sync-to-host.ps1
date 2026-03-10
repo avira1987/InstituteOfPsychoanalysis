@@ -91,14 +91,14 @@ if (-not $pscpPath -or -not $plinkPath) {
     try {
         $unzipCmd = "cd $RemotePath && unzip -o deploy-anistito.zip -d . && rm -f deploy-anistito.zip"
         $importCmd = "docker run --rm --network anistito-net -v /opt/anistito:/app -v /tmp:/tmp -w /app -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito python:3.12-slim sh -c 'pip install sqlalchemy asyncpg -q && python scripts/truncate_and_import.py /tmp/anistito_export.json'"
-        $deployCmd = "cd $RemotePath && docker rm -f anistito-api 2>/dev/null || true && docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 8000:8000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000'"
+        $deployCmd = "cd $RemotePath && docker rm -f anistito-api 2>/dev/null || true && docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 3000:3000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 3000'"
         Invoke-SSHCommand -SessionId $session.SessionId -Command $unzipCmd -TimeOut 60 | Out-Null
         $result = Invoke-SSHCommand -SessionId $session.SessionId -Command $importCmd -TimeOut 120
         Write-Host $result.Output
         $result2 = Invoke-SSHCommand -SessionId $session.SessionId -Command $deployCmd -TimeOut 600
         Write-Host $result2.Output
         Start-Sleep -Seconds 15
-        $health = Invoke-SSHCommand -SessionId $session.SessionId -Command "curl -s http://localhost:8000/health" -TimeOut 10
+        $health = Invoke-SSHCommand -SessionId $session.SessionId -Command "curl -s http://localhost:3000/health" -TimeOut 10
         Write-Host "Health: $($health.Output)"
     }
     finally {
@@ -123,13 +123,13 @@ if (-not $pscpPath -or -not $plinkPath) {
     Write-Host $importOut
 
     Write-Host "`n=== Step 6: Deploy code on server ===" -ForegroundColor Cyan
-    $deployCmd = "cd $RemotePath && docker rm -f anistito-api 2>/dev/null || true && docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 8000:8000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000'"
+    $deployCmd = "cd $RemotePath && docker rm -f anistito-api 2>/dev/null || true && docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 3000:3000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 3000'"
     $ErrorActionPreference = "SilentlyContinue"
     $deployOut = & $plinkPath -P $HostPort -pw $HostPass -hostkey $HostKey -batch "${HostUser}@${HostIP}" $deployCmd 2>&1
     $ErrorActionPreference = $ErrorActionPreferenceBak
     Write-Host $deployOut
     Start-Sleep -Seconds 12
-    $health = & $plinkPath -P $HostPort -pw $HostPass -hostkey $HostKey -batch "${HostUser}@${HostIP}" "curl -s http://localhost:8000/health" 2>&1
+    $health = & $plinkPath -P $HostPort -pw $HostPass -hostkey $HostKey -batch "${HostUser}@${HostIP}" "curl -s http://localhost:3000/health" 2>&1
     Write-Host "Health: $health"
 }
 
