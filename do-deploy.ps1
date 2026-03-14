@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$base = "C:\Users\Administrator\Desktop\anistito"
+$base = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 $tempDir = "$env:TEMP\anistito-pkg"
 
 # 0. Build admin-ui
