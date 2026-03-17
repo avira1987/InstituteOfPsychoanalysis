@@ -263,3 +263,50 @@ class TestStateMachineEngine:
         engine = StateMachineEngine(db_session)
         with pytest.raises(InstanceNotFoundError):
             await engine.get_instance_status(uuid.uuid4())
+
+    async def test_build_context_enriches_instance_for_rules(self, db_session, sample_process, sample_student):
+        """Test that _build_context enriches instance with absence_quota, absences_this_year, completed_hours, required_hours."""
+        engine = StateMachineEngine(db_session)
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code=sample_process.code,
+            student_id=sample_student.id,
+            current_state_code="initial",
+        )
+        db_session.add(instance)
+        await db_session.commit()
+
+        context = await engine._build_context(instance, {})
+
+        assert "instance" in context
+        assert context["instance"]["absence_quota"] == 6  # ceil(weekly_sessions * 3) for weekly_sessions=2
+        assert context["instance"]["absences_this_year"] == 0  # no attendance records
+        assert context["instance"]["completed_hours"] == 0  # no completed therapy sessions
+        assert context["instance"]["required_hours"] == 250  # default when extra_data has no required_hours
+        # BUILD_TODO § د: current_week and hours_until_first_slot for week_9_deadline and 24_hour_rule
+        assert "current_week" in context["instance"]
+        assert isinstance(context["instance"]["current_week"], int)
+        assert context["instance"]["current_week"] >= 1
+        assert "hours_until_first_slot" in context["instance"]
+        assert isinstance(context["instance"]["hours_until_first_slot"], (int, float))
+        assert context["instance"]["hours_until_first_slot"] >= 0
+        assert context["student"]["weekly_sessions"] == 2
+        assert context["student"]["course_type"] == "comprehensive"
+
+    async def test_context_enriched_rules_absence_quota_not_exceeded(self, db_session, sample_process, sample_student):
+        """با context غنی‌شده قانون absence_quota_not_exceeded (مقایسه با instance.absence_quota) درست ارزیابی می‌شود — بخش ۳."""
+        from app.core.rule_engine import RuleEvaluator
+        engine = StateMachineEngine(db_session)
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code=sample_process.code,
+            student_id=sample_student.id,
+            current_state_code="initial",
+        )
+        db_session.add(instance)
+        await db_session.commit()
+        context = await engine._build_context(instance, {})
+        evaluator = RuleEvaluator()
+        expr = {"field": "instance.absences_this_year", "operator": "lt", "value": "instance.absence_quota"}
+        result = evaluator.evaluate_expression(expr, context)
+        assert result is True

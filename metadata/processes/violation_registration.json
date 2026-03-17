@@ -20,7 +20,74 @@
     {"code": "closed", "name_fa": "مختومه (مبرا / رد)", "type": "terminal", "assigned_role": "system"},
     {"code": "expelled", "name_fa": "اخراج — پورتال مسدود", "type": "terminal", "assigned_role": "system"}
   ],
-  "transitions": [],
+  "transitions": [
+    {
+      "from": "violation_reported",
+      "to": "review_status_set",
+      "trigger": "committee_reviewing",
+      "required_role": "monitoring_committee_officer",
+      "description_fa": "کمیته نظارت در حال بررسی"
+    },
+    {
+      "from": "violation_reported",
+      "to": "closed",
+      "trigger": "recorded_and_closed",
+      "required_role": "monitoring_committee_officer",
+      "description_fa": "ثبت و مختومه (مبرا یا رد)",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "violation_recorded", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "review_status_set",
+      "to": "meeting_scheduled",
+      "trigger": "meeting_set",
+      "required_role": "supervision_committee",
+      "description_fa": "جلسه تنظیم شد"
+    },
+    {
+      "from": "review_status_set",
+      "to": "closed",
+      "trigger": "dismissed",
+      "required_role": "supervision_committee",
+      "description_fa": "قابل بررسی نیست — مختومه"
+    },
+    {
+      "from": "meeting_scheduled",
+      "to": "verdict_issued",
+      "trigger": "verdict_issued",
+      "required_role": "supervision_committee",
+      "description_fa": "حکم صادر شد"
+    },
+    {
+      "from": "verdict_issued",
+      "to": "closed",
+      "trigger": "closed",
+      "required_role": "system",
+      "description_fa": "پرونده مختومه"
+    },
+    {
+      "from": "verdict_issued",
+      "to": "referred_to_education_committee",
+      "trigger": "referred_to_education",
+      "required_role": "supervision_committee",
+      "description_fa": "ارجاع به کمیته آموزش"
+    },
+    {
+      "from": "referred_to_education_committee",
+      "to": "expelled",
+      "trigger": "expulsion_issued",
+      "required_role": "education_committee",
+      "description_fa": "حکم اخراج"
+    },
+    {
+      "from": "referred_to_education_committee",
+      "to": "closed",
+      "trigger": "closed",
+      "required_role": "education_committee",
+      "description_fa": "مختومه بدون اخراج"
+    }
+  ],
   "forms": [
     {"code": "violation_report_form", "name_fa": "ثبت اولیه تخلف", "used_in_state": "violation_reported", "fields": [{"name": "description", "label_fa": "شرح تخلف", "type": "textarea"}, {"name": "occurrence_date", "label_fa": "تاریخ وقوع", "type": "date_picker"}]},
     {"code": "committee_verdict_form", "name_fa": "جدول گزارش عملکرد دانشجو (کمیته نظارت)", "used_in_state": "verdict_issued", "description_fa": "ثبت اقدام/حکم، نوع تخلف، شروط جبرانی، وضعیت نهایی کمیته آموزش"}

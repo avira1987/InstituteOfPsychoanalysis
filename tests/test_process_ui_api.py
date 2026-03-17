@@ -1,0 +1,172 @@
+"""Test process UI/API: forms and dashboard (BUILD_TODO § ز — بخش ۷)."""
+
+import pytest
+import pytest_asyncio
+from pathlib import Path
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.main import app
+from app.database import get_db
+from app.api.auth import get_current_user
+from app.core.engine import StateMachineEngine
+from app.meta.process_forms import get_process_forms
+from app.meta.seed import load_process
+
+
+def test_get_process_forms_returns_list():
+    """get_process_forms returns a list (empty if process has no forms or missing)."""
+    assert get_process_forms("nonexistent_process") == []
+    assert isinstance(get_process_forms("session_payment"), list)
+
+
+def test_get_process_forms_filter_by_state():
+    """get_process_forms(process_code, state_code) returns only forms for that state."""
+    forms = get_process_forms("fall_semester_preparation", state_code="calendar_entry")
+    assert isinstance(forms, list)
+    if forms:
+        assert all(f.get("used_in_state") == "calendar_entry" for f in forms)
+
+
+def test_get_process_forms_fallback_semester_has_forms():
+    """fall_semester_preparation has forms in JSON."""
+    all_forms = get_process_forms("fall_semester_preparation")
+    assert len(all_forms) >= 1
+    assert any("form" in str(f).lower() or "code" in f for f in all_forms)
+
+
+@pytest.mark.asyncio
+async def test_dashboard_structure_status_transitions_forms(
+    db_session: AsyncSession, sample_student, sample_user
+):
+    """Dashboard combines status + transitions + forms for current state."""
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "session_payment.json")
+    await db_session.commit()
+
+    engine = StateMachineEngine(db_session)
+    instance = await engine.start_process(
+        process_code="session_payment",
+        student_id=sample_student.id,
+        actor_id=sample_user.id,
+        actor_role="student",
+    )
+    await db_session.commit()
+
+    status = await engine.get_instance_status(instance.id)
+    transitions = await engine.get_available_transitions(instance.id, sample_user.role)
+    forms = get_process_forms(status.get("process_code", ""), state_code=status.get("current_state"))
+
+    dashboard = {"status": status, "transitions": transitions, "forms": forms}
+    assert "status" in dashboard
+    assert "transitions" in dashboard
+    assert "forms" in dashboard
+    assert dashboard["status"]["current_state"] == "payment_due"
+    assert isinstance(dashboard["transitions"], list)
+    assert isinstance(dashboard["forms"], list)
+
+
+# ─── API (HTTP) tests for دسته ز ───────────────────────────────────
+
+@pytest_asyncio.fixture
+async def process_api_client(db_session: AsyncSession, sample_user):
+    """Authenticated client with get_db and get_current_user overridden for process API tests."""
+    async def override_get_db():
+        yield db_session
+
+    async def override_get_current_user():
+        return sample_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest_asyncio.fixture
+async def session_payment_instance_for_api(db_session, sample_student, sample_user):
+    """Load session_payment process and create one instance for API tests."""
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "session_payment.json")
+    await db_session.commit()
+    engine = StateMachineEngine(db_session)
+    instance = await engine.start_process(
+        process_code="session_payment",
+        student_id=sample_student.id,
+        actor_id=sample_user.id,
+        actor_role="student",
+    )
+    await db_session.commit()
+    return instance
+
+
+@pytest.mark.asyncio
+async def test_api_get_definitions_forms(process_api_client):
+    """دسته ز: GET /api/process/definitions/{code}/forms returns form metadata for UI."""
+    r = await process_api_client.get(
+        "/api/process/definitions/session_payment/forms"
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["process_code"] == "session_payment"
+    assert "forms" in data
+    assert isinstance(data["forms"], list)
+
+
+@pytest.mark.asyncio
+async def test_api_get_definitions_forms_with_state_filter(process_api_client):
+    """دسته ز: GET .../forms?state=... returns only forms for that state."""
+    r = await process_api_client.get(
+        "/api/process/definitions/fall_semester_preparation/forms",
+        params={"state": "calendar_entry"},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["process_code"] == "fall_semester_preparation"
+    assert data["state"] == "calendar_entry"
+    assert isinstance(data["forms"], list)
+    for f in data["forms"]:
+        assert f.get("used_in_state") == "calendar_entry"
+
+
+@pytest.mark.asyncio
+async def test_api_get_instance_dashboard(
+    process_api_client, session_payment_instance_for_api
+):
+    """دسته ز: GET /api/process/{id}/dashboard returns status + transitions + forms."""
+    instance = session_payment_instance_for_api
+    r = await process_api_client.get(
+        f"/api/process/{instance.id}/dashboard"
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert "status" in data
+    assert "transitions" in data
+    assert "forms" in data
+    assert data["status"]["process_code"] == "session_payment"
+    assert data["status"]["current_state"] == "payment_due"
+    assert isinstance(data["transitions"], list)
+    assert isinstance(data["forms"], list)
+
+
+@pytest.mark.asyncio
+async def test_api_trigger_transition_with_payload(
+    process_api_client, session_payment_instance_for_api
+):
+    """دسته ز: ارسال payload با trigger (رندر فرم و ارسال به trigger)."""
+    instance = session_payment_instance_for_api
+    r = await process_api_client.post(
+        f"/api/process/{instance.id}/trigger",
+        json={"trigger_event": "student_initiated_payment", "payload": {"amount": 1000}},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data.get("success") is True
+    assert data.get("from_state") == "payment_due"
+    assert data.get("to_state") == "payment_selection"

@@ -14,6 +14,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.operational_models import (
     Student, User, ProcessInstance, TherapySession, FinancialRecord, AttendanceRecord,
@@ -222,9 +223,68 @@ class ActionHandler:
     async def _handle_increment_absence(self, action: dict, instance: ProcessInstance, context: dict):
         return "absence_counter_incremented"
 
+    # ─── Session payment (BUILD_TODO § ب — استاب تا پیاده‌سازی واقعی) ─────
+
+    async def _handle_generate_payment_invoice(self, action: dict, instance: ProcessInstance, context: dict):
+        """Stub: درگاه پرداخت — تا اتصال واقعی."""
+        return "payment_invoice_generated_stub"
+
+    async def _handle_zero_debt_if_paid(self, action: dict, instance: ProcessInstance, context: dict):
+        """Stub: صفر کردن بدهی پس از پرداخت."""
+        return "zero_debt_if_paid_stub"
+
+    async def _handle_allocate_credit_to_sessions(self, action: dict, instance: ProcessInstance, context: dict):
+        """Stub: تخصیص اعتبار به جلسات."""
+        return "allocate_credit_to_sessions_stub"
+
+    async def _handle_unlock_session_links(self, action: dict, instance: ProcessInstance, context: dict):
+        """Stub: باز کردن لینک جلسات."""
+        return "unlock_session_links_stub"
+
+    async def _handle_unlock_attendance_registration(self, action: dict, instance: ProcessInstance, context: dict):
+        """Stub: باز کردن ثبت حضور."""
+        return "unlock_attendance_registration_stub"
+
+    async def _handle_suspend_sessions(self, action: dict, instance: ProcessInstance, context: dict):
+        """Stub: تعلیق جلسات (مثلاً عدم پرداخت)."""
+        return "suspend_sessions_stub"
+
     # ─── Therapy Lifecycle ───────────────────────────────────────
 
+    async def _handle_activate_therapy(self, action: dict, instance: ProcessInstance, context: dict):
+        """Set student.therapy_started = True and optionally therapist_id from context (BUILD_TODO § ب)."""
+        student = await self._get_student(instance.student_id)
+        if not student:
+            return "student_not_found"
+        student.therapy_started = True
+        ctx = instance.context_data or {}
+        ctx.update(context or {})
+        if ctx.get("therapist_id"):
+            student.therapist_id = uuid.UUID(ctx["therapist_id"]) if isinstance(ctx["therapist_id"], str) else ctx["therapist_id"]
+        if ctx.get("weekly_sessions") is not None:
+            student.weekly_sessions = int(ctx["weekly_sessions"])
+        return "therapy_activated"
+
+    async def _handle_block_class_access(self, action: dict, instance: ProcessInstance, context: dict):
+        """Block student access to class/attendance (e.g. week 9 deadline). Stored in extra_data (BUILD_TODO § ب)."""
+        student = await self._get_student(instance.student_id)
+        if not student:
+            return "student_not_found"
+        extra = dict(student.extra_data or {})
+        extra["class_access_blocked"] = True
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+        return "class_access_blocked"
+
     async def _handle_resolve_access(self, action: dict, instance: ProcessInstance, context: dict):
+        """Clear class/attendance block (inverse of block_class_access)."""
+        student = await self._get_student(instance.student_id)
+        if not student:
+            return "student_not_found"
+        extra = dict(student.extra_data or {})
+        extra["class_access_blocked"] = False
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
         return "access_restrictions_resolved"
 
     async def _handle_create_session_link(self, action: dict, instance: ProcessInstance, context: dict):
@@ -371,6 +431,15 @@ class ActionHandler:
         "create_debt_or_deduct_credit": _handle_create_debt,
         "increment_absence_counter": _handle_increment_absence,
 
+        "generate_payment_invoice": _handle_generate_payment_invoice,
+        "zero_debt_if_paid": _handle_zero_debt_if_paid,
+        "allocate_credit_to_sessions": _handle_allocate_credit_to_sessions,
+        "unlock_session_links": _handle_unlock_session_links,
+        "unlock_attendance_registration": _handle_unlock_attendance_registration,
+        "suspend_sessions": _handle_suspend_sessions,
+
+        "activate_therapy": _handle_activate_therapy,
+        "block_class_access": _handle_block_class_access,
         "resolve_access_restrictions": _handle_resolve_access,
         "create_session_link": _handle_create_session_link,
         "delete_future_therapy_appointments": _handle_delete_future_appointments,

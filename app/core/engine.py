@@ -6,7 +6,7 @@ are read from the metadata database at runtime.
 
 import uuid
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +17,8 @@ from app.core.rule_engine import RuleEvaluator
 from app.core.transition import TransitionManager, TransitionResult, TransitionError
 from app.core.event_bus import event_bus, Event
 from app.core.audit import AuditLogger
+from app.services.attendance_service import AttendanceService
+from app.utils.date_utils import get_current_shamsi_year, get_current_term_week
 
 logger = logging.getLogger(__name__)
 
@@ -356,7 +358,11 @@ class StateMachineEngine:
     # ─── Internal Helpers ───────────────────────────────────────────
 
     async def _build_context(self, instance: ProcessInstance, payload: Optional[dict] = None) -> dict:
-        """Build the evaluation context for rule evaluation."""
+        """Build the evaluation context for rule evaluation.
+
+        Enriches instance with: absence_quota, absences_this_year (current Shamsi year),
+        completed_hours, required_hours for rule evaluation (see BUILD_TODO § د).
+        """
         # Load student data
         stmt = select(Student).where(Student.id == instance.student_id)
         result = await self.db.execute(stmt)
@@ -385,5 +391,30 @@ class StateMachineEngine:
                 "weekly_sessions": student.weekly_sessions,
                 **(student.extra_data or {}),
             }
+
+            # Enrich instance for rules: absence quota, absences this year, completed/required hours,
+            # current_week (week_9_deadline), hours_until_first_slot (24_hour_rule) — BUILD_TODO § د
+            attendance = AttendanceService(self.db)
+            shamsi_year = get_current_shamsi_year()
+            context["instance"]["absence_quota"] = await attendance.calculate_absence_quota(student.id)
+            context["instance"]["absences_this_year"] = await attendance.get_absence_count(
+                student.id, shamsi_year=shamsi_year, status_filter="absent_unexcused"
+            )
+            hours_info = await attendance.get_completed_hours(student.id)
+            context["instance"]["completed_hours"] = hours_info["total_hours"]
+            extra = student.extra_data or {}
+            context["instance"]["required_hours"] = extra.get("required_hours", 250)
+
+            # current_week: from term_start in extra_data (ISO date) or default fall term
+            term_start = None
+            if extra.get("term_start_date"):
+                try:
+                    term_start = date.fromisoformat(extra["term_start_date"])
+                except (TypeError, ValueError):
+                    pass
+            context["instance"]["current_week"] = get_current_term_week(term_start=term_start)
+
+            # hours_until_first_slot: for 24_hour_rule (use_first_slot vs use_next_slot)
+            context["instance"]["hours_until_first_slot"] = await attendance.get_hours_until_first_slot(student.id)
 
         return context

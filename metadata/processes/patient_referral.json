@@ -1,0 +1,49 @@
+{
+  "process": {
+    "code": "patient_referral",
+    "name_fa": "ارجاع بیماران انترن به درمانگران دیگر",
+    "name_en": "Patient Referral (Intern)",
+    "description": "وقتی انترن در وقفه بلند (≥۴۲ روز) یا وقفه ۲ ترمی تایید شده یا قطع در committees_review؛ بیماران وی به درمانگران دیگر ارجاع می‌شوند.",
+    "initial_state": "referral_triggered"
+  },
+  "states": [
+    {"code": "referral_triggered", "name_fa": "ارجاع راه‌اندازی شد", "type": "initial", "assigned_role": "system"},
+    {"code": "patients_listed", "name_fa": "لیست بیماران انترن ثبت شد", "type": "intermediate", "assigned_role": "monitoring_committee_officer"},
+    {"code": "therapists_assigned", "name_fa": "درمانگران جایگزین تخصیص یافتند", "type": "intermediate", "assigned_role": "monitoring_committee_officer"},
+    {"code": "notifications_sent", "name_fa": "اطلاع‌رسانی به بیماران و درمانگران انجام شد", "type": "intermediate", "assigned_role": "system"},
+    {"code": "closed", "name_fa": "ارجاع مختومه", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "referral_triggered",
+      "to": "patients_listed",
+      "trigger": "list_submitted",
+      "required_role": "monitoring_committee_officer",
+      "description_fa": "ثبت لیست بیماران انترن"
+    },
+    {
+      "from": "patients_listed",
+      "to": "therapists_assigned",
+      "trigger": "assignments_done",
+      "required_role": "monitoring_committee_officer",
+      "description_fa": "تخصیص درمانگر جایگزین به هر بیمار"
+    },
+    {
+      "from": "therapists_assigned",
+      "to": "notifications_sent",
+      "trigger": "notifications_done",
+      "required_role": "monitoring_committee_officer",
+      "description_fa": "ارسال اطلاع به بیماران و درمانگران",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "patient_referral_notice", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "notifications_sent",
+      "to": "closed",
+      "trigger": "closed",
+      "required_role": "system",
+      "description_fa": "پرونده ارجاع بسته شد"
+    }
+  ]
+}

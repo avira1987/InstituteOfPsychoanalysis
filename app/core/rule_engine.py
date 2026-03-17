@@ -125,6 +125,11 @@ class RuleEvaluator:
         if "field" in expression and op:
             field_value = self.resolve_field(expression["field"], context)
             expected_value = expression.get("value")
+            # Resolve value when it references another context field (e.g. "instance.absence_quota")
+            if isinstance(expected_value, str) and "." in expected_value and expected_value.startswith(("instance.", "student.", "payload.")):
+                resolved = self.resolve_field(expected_value, context)
+                if resolved is not None:
+                    expected_value = resolved
 
             # Handle special operators
             if op in ("is_null", "is_not_null"):

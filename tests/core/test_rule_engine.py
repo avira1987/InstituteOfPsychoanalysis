@@ -76,6 +76,18 @@ class TestSimpleComparisons:
         expr = {"field": "student.course_type", "operator": "is_not_null", "value": None}
         assert evaluator.evaluate_expression(expr, sample_context) is True
 
+    def test_value_resolved_as_field_path(self, evaluator, sample_context):
+        """When value is a context path (e.g. instance.absence_quota), it is resolved — BUILD_TODO § د بخش ۳."""
+        # absence_quota_not_exceeded: absences_this_year < absence_quota (2 < 6)
+        expr = {"field": "instance.absences_this_year", "operator": "lt", "value": "instance.absence_quota"}
+        assert evaluator.evaluate_expression(expr, sample_context) is True
+
+    def test_value_resolved_as_field_path_exceeded(self, evaluator):
+        """When absences >= quota, absence_quota_not_exceeded fails."""
+        context = {"instance": {"absences_this_year": 6, "absence_quota": 6}}
+        expr = {"field": "instance.absences_this_year", "operator": "lt", "value": "instance.absence_quota"}
+        assert evaluator.evaluate_expression(expr, context) is False
+
 
 # ─── Logical Operators ──────────────────────────────────────────
 

@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import asyncio
 import uuid
 import logging
 from contextlib import asynccontextmanager
@@ -12,6 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import get_settings
 from app.database import init_db, async_session_factory
+from app.services.sla_monitor import sla_monitor
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -89,8 +91,26 @@ async def lifespan(app: FastAPI):
     # Startup
     await init_db()
     await _seed_if_empty()
+
+    # BUILD_TODO § ج-۲ (بخش ۴): Start SLA monitoring loop in background
+    interval = settings.SLA_CHECK_INTERVAL_SECONDS
+    sla_task = asyncio.create_task(
+        sla_monitor.start_monitoring_loop(async_session_factory, interval_seconds=interval)
+    )
+    app.state.sla_monitor_task = sla_task
+    logger.info("SLA monitoring loop started (background)")
+
     yield
-    # Shutdown
+
+    # Shutdown: stop SLA loop and wait for task to exit
+    sla_monitor.stop_monitoring()
+    if getattr(app.state, "sla_monitor_task", None):
+        try:
+            await asyncio.wait_for(app.state.sla_monitor_task, timeout=15.0)
+        except asyncio.TimeoutError:
+            logger.warning("SLA monitor task did not stop within 15s")
+        except Exception as e:
+            logger.debug("SLA monitor task exit: %s", e)
 
 
 app = FastAPI(

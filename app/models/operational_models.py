@@ -130,6 +130,19 @@ class TherapySession(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
+class PaymentPending(Base):
+    """Links gateway authority to a process instance for callback (BUILD_TODO § و — بخش ۶)."""
+    __tablename__ = "payment_pending"
+    __table_args__ = (Index("ix_payment_pending_authority", "authority"),)
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    authority = Column(String(255), nullable=False)  # gateway token/trackId
+    instance_id = Column(UUID, ForeignKey("process_instances.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(UUID, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    amount = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
 class FinancialRecord(Base):
     """Financial record for billing and payments."""
     __tablename__ = "financial_records"

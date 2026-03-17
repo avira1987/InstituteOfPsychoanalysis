@@ -12,6 +12,9 @@ from app.models.operational_models import AttendanceRecord, TherapySession, Stud
 
 logger = logging.getLogger(__name__)
 
+# When no upcoming session exists, use a large value so 24_hour_rule does not block (use_first_slot).
+NO_UPCOMING_SESSION_HOURS = 999.0
+
 
 class AttendanceService:
     """Service for tracking attendance, absences, and quota management."""
@@ -107,6 +110,36 @@ class AttendanceService:
             "exceeded": absences >= quota,
             "shamsi_year": shamsi_year,
         }
+
+    # ─── First upcoming slot (for 24_hour_rule) ───────────────────
+
+    async def get_hours_until_first_slot(self, student_id: uuid.UUID, today: Optional[date] = None) -> float:
+        """Hours from now until the first upcoming scheduled therapy session.
+
+        Used by rule 24_hour_rule. Sessions have only session_date (no time); we use
+        (session_date - today).days * 24. If session is today, return 0 so rule treats as < 24h.
+        If no upcoming session, return NO_UPCOMING_SESSION_HOURS so rule does not block.
+        """
+        if today is None:
+            today = datetime.now(timezone.utc).date()
+        stmt = (
+            select(TherapySession.session_date)
+            .where(
+                TherapySession.student_id == student_id,
+                TherapySession.session_date >= today,
+                TherapySession.status == "scheduled",
+            )
+            .order_by(TherapySession.session_date.asc())
+            .limit(1)
+        )
+        result = await self.db.execute(stmt)
+        session_date = result.scalars().first()
+        if not session_date:
+            return NO_UPCOMING_SESSION_HOURS
+        delta_days = (session_date - today).days
+        if delta_days <= 0:
+            return 0.0  # today → treat as less than 24h
+        return float(delta_days * 24)
 
     # ─── Session Hour Tracking ──────────────────────────────────
 

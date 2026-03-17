@@ -1,14 +1,19 @@
-"""SLA Monitoring Service - Monitors process instances for SLA breaches."""
+"""SLA Monitoring Service - Monitors process instances for SLA breaches.
+
+BUILD_TODO § ج-۲: Notify deputy_education for educational_leave (committee_sla_breach),
+and execute transition when on_sla_breach_event is set.
+"""
 
 import logging
 import asyncio
+import uuid as uuid_lib
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.meta_models import StateDefinition, ProcessDefinition
-from app.models.operational_models import ProcessInstance
+from app.models.operational_models import ProcessInstance, User
 from app.services.notification_service import notification_service
 from app.core.audit import AuditLogger
 
@@ -105,20 +110,36 @@ class SLAMonitor:
         self._breaches = breaches
         return breaches
 
+    async def _resolve_contact_for_role(self, db: AsyncSession, role: str) -> str:
+        """Resolve first active user's phone or email for role (for SLA notifications)."""
+        stmt = select(User).where(User.role == role, User.is_active == True).limit(1)
+        result = await db.execute(stmt)
+        user = result.scalars().first()
+        if not user:
+            return "admin"  # fallback placeholder
+        return user.phone or user.email or "admin"
+
     async def _handle_breach(self, breach: SLABreachInfo, db: AsyncSession):
-        """Handle an SLA breach by sending notifications and logging."""
-        # Send SLA breach notification
+        """Handle an SLA breach: notify by role (deputy_education for educational_leave), optionally trigger transition."""
+        ctx = {
+            "instance_id": breach.instance_id,
+            "process_code": breach.process_code,
+            "state_code": breach.state_code,
+            "sla_hours": str(breach.sla_hours),
+            "elapsed_hours": str(round(breach.elapsed_hours, 1)),
+        }
+        # BUILD_TODO § ج-۲: educational_leave → deputy_education with committee_sla_breach
+        if breach.process_code == "educational_leave":
+            template = "committee_sla_breach"
+            recipient = await self._resolve_contact_for_role(db, "deputy_education")
+        else:
+            template = "sla_breach"
+            recipient = await self._resolve_contact_for_role(db, "admin")
         await notification_service.send_notification(
             notification_type="sms",
-            template_name="sla_breach",
-            recipient_contact="admin",
-            context={
-                "instance_id": breach.instance_id,
-                "process_code": breach.process_code,
-                "state_code": breach.state_code,
-                "sla_hours": str(breach.sla_hours),
-                "elapsed_hours": str(round(breach.elapsed_hours, 1)),
-            },
+            template_name=template,
+            recipient_contact=recipient,
+            context=ctx,
         )
 
         # Log audit entry
@@ -128,6 +149,22 @@ class SLAMonitor:
             process_code=breach.process_code,
             details=breach.to_dict(),
         )
+
+        # If state defines on_sla_breach_event, fire transition (e.g. committee_review → deputy_alerted)
+        if breach.breach_event:
+            try:
+                from app.core.engine import StateMachineEngine
+                engine = StateMachineEngine(db)
+                system_actor = uuid_lib.UUID("00000000-0000-0000-0000-000000000001")
+                await engine.execute_transition(
+                    instance_id=uuid_lib.UUID(breach.instance_id),
+                    trigger_event=breach.breach_event,
+                    actor_id=system_actor,
+                    actor_role="system",
+                )
+                logger.info(f"SLA breach triggered transition: {breach.breach_event} on instance {breach.instance_id}")
+            except Exception as e:
+                logger.warning(f"Could not execute SLA breach transition {breach.breach_event}: {e}")
 
     async def check_approaching_sla(self, db: AsyncSession, warning_threshold: float = 0.8) -> list[dict]:
         """Check for instances approaching their SLA deadline (warning)."""

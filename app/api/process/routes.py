@@ -2,7 +2,7 @@
 
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +15,7 @@ from app.core.engine import (
     InstanceNotFoundError, InvalidTransitionError, UnauthorizedError,
 )
 from app.meta.loader import MetadataLoader
+from app.meta.process_forms import get_process_forms
 
 router = APIRouter(prefix="/api/process", tags=["Process"])
 
@@ -80,6 +81,17 @@ async def get_process_definition(
     if not process:
         raise HTTPException(status_code=404, detail=f"Process '{process_code}' not found")
     return process
+
+
+@router.get("/definitions/{process_code}/forms")
+async def get_process_forms_for_state(
+    process_code: str,
+    state: Optional[str] = Query(None, description="Filter forms by used_in_state (e.g. current state)"),
+    current_user: User = Depends(get_current_user),
+):
+    """Get form metadata for a process (for rendering in UI). Optional state filter for current state forms (BUILD_TODO § ز)."""
+    forms = get_process_forms(process_code, state_code=state)
+    return {"process_code": process_code, "state": state, "forms": forms}
 
 
 @router.post("/start", response_model=ProcessInstanceResponse)
@@ -161,6 +173,33 @@ async def get_instance_status(
     try:
         status = await engine.get_instance_status(uuid.UUID(instance_id))
         return status
+    except InstanceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/{instance_id}/dashboard")
+async def get_instance_dashboard(
+    instance_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get instance status + available transitions in one call for dashboard UI (BUILD_TODO § ز)."""
+    engine = StateMachineEngine(db)
+    try:
+        status = await engine.get_instance_status(uuid.UUID(instance_id))
+        transitions = await engine.get_available_transitions(
+            instance_id=uuid.UUID(instance_id),
+            actor_role=current_user.role,
+        )
+        forms = get_process_forms(
+            status.get("process_code", ""),
+            state_code=status.get("current_state"),
+        )
+        return {
+            "status": status,
+            "transitions": transitions,
+            "forms": forms,
+        }
     except InstanceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
