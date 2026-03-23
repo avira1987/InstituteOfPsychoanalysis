@@ -64,11 +64,24 @@ export default function LoginPage() {
     } catch (_) {}
   }, [tab, error])
 
-  // ریدایرکت به پنل بعد از ورود؛ دانشجو مستقیم به پنل دانشجو، بقیه به داشبرد
+  // ریدایرکت به پنل بعد از ورود؛ ترجیحاً بر اساس /api/auth/home (خانه نقش)،
+  // و در صورت عدم دسترسی، به‌صورت پیش‌فرض بر اساس نقش کاربر.
   useEffect(() => {
     if (!user) return
-    const target = user.role === 'student' ? '/panel/portal/student' : '/panel'
-    navigate(target, { replace: true })
+
+    const doRedirect = async () => {
+      try {
+        const res = await authApi.home()
+        const target = res.data?.redirect_url
+          || (user.role === 'student' ? '/panel/portal/student' : '/panel')
+        navigate(target, { replace: true })
+      } catch {
+        const fallback = user.role === 'student' ? '/panel/portal/student' : '/panel'
+        navigate(fallback, { replace: true })
+      }
+    }
+
+    doRedirect()
   }, [user, navigate])
 
   if (user) {
@@ -159,7 +172,7 @@ export default function LoginPage() {
       const res = await authApi.otpVerify(phone, code)
       if (res.data.access_token) {
         await loginWithToken(res.data.access_token)
-        // ریدایرکت در useEffect بر اساس user.role انجام می‌شود (دانشجو → پنل دانشجو)
+        // ریدایرکت بعد از ورود در useEffect بر اساس /api/auth/home انجام می‌شود.
       }
     } catch (err) {
       setError(err.response?.data?.detail || 'کد وارد شده صحیح نیست.')
@@ -181,7 +194,7 @@ export default function LoginPage() {
       sessionStorage.removeItem(LOGIN_ERROR_KEY)
       await login(username, password, challengeId, challengeAnswer)
       sessionStorage.removeItem(LOGIN_TAB_KEY)
-      // ریدایرکت در useEffect بر اساس user.role انجام می‌شود (دانشجو → پنل دانشجو)
+      // ریدایرکت بعد از ورود در useEffect بر اساس /api/auth/home انجام می‌شود.
     } catch (err) {
       // حتماً روی تب ورود با رمز عبور بمان؛ هرگز به تب پیامک نرو
       setTab('password')

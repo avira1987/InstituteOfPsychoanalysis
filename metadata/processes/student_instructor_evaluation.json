@@ -17,7 +17,26 @@
     {"from": "evaluation_open", "to": "evaluation_closed", "trigger": "deadline_reached", "description_fa": "پایان مهلت ارزیابی — محاسبه میانگین، نمودار دایره\u200cای، توزیع در پورتال مدرس و کمیته\u200cها"}
   ],
   "forms": [
-    {"code": "instructor_evaluation_form", "name_fa": "فرم ارزیابی کیفیت تدریس اساتید", "used_in_state": "evaluation_open", "fields": [{"name": "course_name", "label_fa": "نام درس", "type": "readonly"}, {"name": "instructor_name", "label_fa": "نام مدرس", "type": "readonly"}, {"name": "responses", "label_fa": "پاسخ به سوالات (پیوست)", "type": "form_reference"}]},
-    {"code": "evaluation_dashboard", "name_fa": "داشبورد گزارش ارزیابی مدرس", "used_in_state": "evaluation_closed", "description_fa": "نمای مدرس / کمیته دروس و پژوهش — نرخ مشارکت، نمره میانگین، نمودار دایره\u200cای"}
+    {
+      "code": "instructor_evaluation_form",
+      "name_fa": "فرم ارزیابی کیفیت تدریس اساتید",
+      "used_in_state": "evaluation_open",
+      "fields": [
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {"name": "instructor_name", "label_fa": "نام مدرس", "type": "readonly"},
+        {"name": "responses", "label_fa": "پاسخ به سوالات (پیوست)", "type": "form_reference"}
+      ]
+    },
+    {
+      "code": "evaluation_dashboard",
+      "name_fa": "داشبورد گزارش ارزیابی مدرس",
+      "used_in_state": "evaluation_closed",
+      "description_fa": "نمای مدرس / کمیته دروس و پژوهش — نرخ مشارکت، نمره میانگین، نمودار دایره\u200cای",
+      "fields": [
+        {"name": "participation_rate", "label_fa": "نرخ مشارکت دانشجویان", "type": "readonly"},
+        {"name": "average_score", "label_fa": "میانگین نمره ارزیابی", "type": "readonly"},
+        {"name": "chart_data", "label_fa": "داده‌های نمودار دایره‌ای", "type": "readonly"}
+      ]
+    }
   ]
 }

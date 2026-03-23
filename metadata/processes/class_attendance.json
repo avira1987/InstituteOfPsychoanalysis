@@ -21,6 +21,24 @@
     {"from": "session_recorded", "to": "article_violation_reported", "trigger": "absence_5_article_course", "conditions": ["attendance_absence_count_5", "attendance_course_is_article_writing"], "description_fa": "۵ غیبت درس مقاله‌نویسی — ارسال به کمیته نظارت"}
   ],
   "forms": [
-    {"code": "session_attendance_form", "name_fa": "فرم ثبت حضور و غیاب جلسه‌ای", "used_in_state": "attendance_list_ready", "fields": [{"name": "lesson_name", "label_fa": "نام درس", "type": "readonly"}, {"name": "session_date", "label_fa": "تاریخ جلسه", "type": "readonly"}, {"name": "attendees", "label_fa": "لیست کمک‌مدرسین و دانشجویان با وضعیت حاضر و غایب", "type": "dynamic_list"}]}
+    {
+      "code": "session_attendance_form",
+      "name_fa": "فرم ثبت حضور و غیاب جلسه‌ای",
+      "used_in_state": "attendance_list_ready",
+      "fields": [
+        {"name": "lesson_name", "label_fa": "نام درس", "type": "readonly"},
+        {"name": "session_date", "label_fa": "تاریخ جلسه", "type": "readonly"},
+        {
+          "name": "attendees",
+          "label_fa": "لیست کمک‌مدرسین و دانشجویان با وضعیت حاضر و غایب",
+          "type": "dynamic_list",
+          "fields": [
+            "person_name",
+            "role",
+            "status"
+          ]
+        }
+      ]
+    }
   ]
 }

@@ -86,6 +86,17 @@ export default function StudentPortal() {
         setActiveProcesses(instances.filter(i => !i.is_completed && !i.is_cancelled))
         setCompletedProcesses(instances.filter(i => i.is_completed))
         setCancelledProcesses(instances.filter(i => i.is_cancelled))
+
+        // اگر primary_instance_id روی پروفایل تنظیم شده، این اینستنس را به‌صورت خودکار باز کن
+        const primaryId = myProfile.extra_data?.primary_instance_id
+        if (primaryId) {
+          try {
+            await viewInstance(primaryId)
+            setActiveTab('processes')
+          } catch (err) {
+            console.error('Failed to auto-open primary instance:', err)
+          }
+        }
       }
 
       const allDefs = defsRes.data?.processes || []

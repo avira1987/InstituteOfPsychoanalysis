@@ -14,6 +14,7 @@ from app.database import get_db
 from app.models.operational_models import User, Student
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.api.auth import get_password_hash
+from app.services.student_service import StudentService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/public", tags=["Public"])
@@ -151,6 +152,14 @@ async def register_student(data: StudentRegistrationRequest, db: AsyncSession = 
         },
     )
     db.add(student)
+
+    # Auto-start initial registration process for the new student and mark it as primary.
+    # This should not block registration if it fails; errors are logged but not exposed to the user.
+    try:
+        service = StudentService(db)
+        await service.start_initial_process_for_student(student, user)
+    except Exception:
+        logger.exception("Failed to auto-start initial process for student %s", student.student_code)
     try:
         await db.commit()
     except Exception as e:

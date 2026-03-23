@@ -158,7 +158,10 @@ async def load_process(db: AsyncSession, process_file: Path):
         version=1,
         is_active=True,
         initial_state_code=proc_data["initial_state"],
-        config=proc_data.get("config"),
+        config={
+            **(proc_data.get("config") or {}),
+            **({"ui_requirements": data.get("ui_requirements")} if isinstance(data.get("ui_requirements"), dict) else {}),
+        } or None,
     )
     db.add(process_def)
 

@@ -19,6 +19,24 @@
     {"from": "grades_entry", "to": "delay_reported", "trigger": "sla_breach", "conditions": ["course_grades_sla_breach"], "description_fa": "گذشت مهلت — گزارش"}
   ],
   "forms": [
-    {"code": "theory_grades_form", "name_fa": "ثبت نمرات دروس تئوری", "used_in_state": "grades_entry", "fields": [{"name": "course_name", "label_fa": "نام درس", "type": "readonly"}, {"name": "students_grades", "label_fa": "لیست دانشجویان و نمرات", "type": "dynamic_list"}, {"name": "qualitative_eval", "label_fa": "ارزیابی کیفی", "type": "textarea"}]}
+    {
+      "code": "theory_grades_form",
+      "name_fa": "ثبت نمرات دروس تئوری",
+      "used_in_state": "grades_entry",
+      "fields": [
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {
+          "name": "students_grades",
+          "label_fa": "لیست دانشجویان و نمرات",
+          "type": "dynamic_list",
+          "fields": [
+            "student_name",
+            "student_id",
+            "grade"
+          ]
+        },
+        {"name": "qualitative_eval", "label_fa": "ارزیابی کیفی", "type": "textarea"}
+      ]
+    }
   ]
 }

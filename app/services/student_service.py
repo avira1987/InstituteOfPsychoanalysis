@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.operational_models import Student, User
+from app.services.process_service import ProcessService
 
 
 class StudentService:
@@ -25,6 +26,44 @@ class StudentService:
         stmt = select(Student).where(Student.user_id == user_id)
         result = await self.db.execute(stmt)
         return result.scalars().first()
+
+    async def set_primary_instance_for_student(self, student: Student, instance_id: uuid.UUID) -> None:
+        """
+        Store the primary process instance for a student.
+
+        To avoid schema migrations, this is stored in student.extra_data["primary_instance_id"].
+        """
+        extra = dict(student.extra_data or {})
+        extra["primary_instance_id"] = str(instance_id)
+        student.extra_data = extra
+
+    async def start_initial_process_for_student(self, student: Student, actor: User):
+        """
+        Start the initial registration process for a newly registered student and
+        mark it as the primary instance in the student's extra_data.
+
+        The process_code is chosen based on course_type:
+        - introductory -> introductory_course_registration
+        - comprehensive -> comprehensive_course_registration
+        """
+        if not student or not actor:
+            return None
+
+        if student.course_type == "introductory":
+            process_code = "introductory_course_registration"
+        else:
+            process_code = "comprehensive_course_registration"
+
+        service = ProcessService(self.db)
+        instance = await service.start_process_for_student(
+            process_code=process_code,
+            student_id=student.id,
+            actor_id=actor.id,
+            actor_role=actor.role or "student",
+            initial_context={"source": "auto_start_on_registration"},
+        )
+        await self.set_primary_instance_for_student(student, instance.id)
+        return instance
 
     async def update_therapy_status(self, student_id: uuid.UUID, started: bool):
         """Update the therapy_started status of a student."""

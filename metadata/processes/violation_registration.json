@@ -89,7 +89,26 @@
     }
   ],
   "forms": [
-    {"code": "violation_report_form", "name_fa": "ثبت اولیه تخلف", "used_in_state": "violation_reported", "fields": [{"name": "description", "label_fa": "شرح تخلف", "type": "textarea"}, {"name": "occurrence_date", "label_fa": "تاریخ وقوع", "type": "date_picker"}]},
-    {"code": "committee_verdict_form", "name_fa": "جدول گزارش عملکرد دانشجو (کمیته نظارت)", "used_in_state": "verdict_issued", "description_fa": "ثبت اقدام/حکم، نوع تخلف، شروط جبرانی، وضعیت نهایی کمیته آموزش"}
+    {
+      "code": "violation_report_form",
+      "name_fa": "ثبت اولیه تخلف",
+      "used_in_state": "violation_reported",
+      "fields": [
+        {"name": "description", "label_fa": "شرح تخلف", "type": "textarea"},
+        {"name": "occurrence_date", "label_fa": "تاریخ وقوع", "type": "date_picker"}
+      ]
+    },
+    {
+      "code": "committee_verdict_form",
+      "name_fa": "جدول گزارش عملکرد دانشجو (کمیته نظارت)",
+      "used_in_state": "verdict_issued",
+      "description_fa": "ثبت اقدام/حکم، نوع تخلف، شروط جبرانی، وضعیت نهایی کمیته آموزش",
+      "fields": [
+        {"name": "verdict_action", "label_fa": "اقدام / حکم صادر شده", "type": "readonly"},
+        {"name": "violation_type", "label_fa": "نوع تخلف", "type": "readonly"},
+        {"name": "compensatory_conditions", "label_fa": "شروط جبرانی", "type": "readonly"},
+        {"name": "final_status", "label_fa": "وضعیت نهایی در کمیته آموزش", "type": "readonly"}
+      ]
+    }
   ]
 }

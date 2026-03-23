@@ -19,6 +19,23 @@
     {"from": "grades_entry", "to": "delay_reported", "trigger": "sla_breach", "conditions": ["course_grades_sla_breach"], "description_fa": "گذشت مهلت و گزارش"}
   ],
   "forms": [
-    {"code": "film_observation_grades_form", "name_fa": "ثبت نمرات مشاهده فیلم و عملی کاربردی", "used_in_state": "grades_entry", "fields": [{"name": "course_name", "label_fa": "نام درس", "type": "readonly"}, {"name": "students_grades", "label_fa": "لیست دانشجویان و نمرات", "type": "dynamic_list"}]}
+    {
+      "code": "film_observation_grades_form",
+      "name_fa": "ثبت نمرات مشاهده فیلم و عملی کاربردی",
+      "used_in_state": "grades_entry",
+      "fields": [
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {
+          "name": "students_grades",
+          "label_fa": "لیست دانشجویان و نمرات",
+          "type": "dynamic_list",
+          "fields": [
+            "student_name",
+            "student_id",
+            "grade"
+          ]
+        }
+      ]
+    }
   ]
 }

@@ -36,6 +36,16 @@
     }
   },
   "forms": [
-    {"code": "ta_evaluation_dashboard", "name_fa": "داشبورد ارزیابی نهایی کمک‌مدرس درس سوپرویژن زنده", "used_in_state": "evaluation_computed", "description_fa": "نمره کل از ۱۰۰، حد نصاب ۷۴؛ PASS/FAIL"}
+    {
+      "code": "ta_evaluation_dashboard",
+      "name_fa": "داشبورد ارزیابی نهایی کمک‌مدرس درس سوپرویژن زنده",
+      "used_in_state": "evaluation_computed",
+      "description_fa": "نمره کل از ۱۰۰، حد نصاب ۷۴؛ PASS/FAIL",
+      "fields": [
+        {"name": "ta_name", "label_fa": "نام کمک‌مدرس", "type": "readonly"},
+        {"name": "total_score", "label_fa": "نمره کل از ۱۰۰", "type": "readonly"},
+        {"name": "result_status", "label_fa": "وضعیت نهایی (PASS/FAIL)", "type": "readonly"}
+      ]
+    }
   ]
 }

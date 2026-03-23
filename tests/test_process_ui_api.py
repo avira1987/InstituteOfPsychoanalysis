@@ -10,7 +10,7 @@ from app.main import app
 from app.database import get_db
 from app.api.auth import get_current_user
 from app.core.engine import StateMachineEngine
-from app.meta.process_forms import get_process_forms
+from app.meta.process_forms import get_process_forms, get_process_ui_requirements
 from app.meta.seed import load_process
 
 
@@ -28,11 +28,32 @@ def test_get_process_forms_filter_by_state():
         assert all(f.get("used_in_state") == "calendar_entry" for f in forms)
 
 
+def test_get_process_forms_normalizes_missing_labels():
+    """Missing label_fa values are normalized for UI rendering."""
+    forms = get_process_forms("upgrade_to_ta", state_code="interview_scheduling")
+    assert forms
+    assert all(field.get("label_fa") for field in forms[0].get("fields", []))
+
+
 def test_get_process_forms_fallback_semester_has_forms():
     """fall_semester_preparation has forms in JSON."""
     all_forms = get_process_forms("fall_semester_preparation")
     assert len(all_forms) >= 1
     assert any("form" in str(f).lower() or "code" in f for f in all_forms)
+
+
+def test_get_process_ui_requirements_returns_dashboard():
+    """ui_requirements is available for dashboard-style processes."""
+    ui = get_process_ui_requirements("ta_track_completion")
+    assert ui["dashboard"]["name_fa"]
+    assert ui["dashboard"]["sections"]
+
+
+def test_get_process_forms_marks_view_only_forms():
+    """View-only forms are marked as dashboard so UI can render them safely."""
+    forms = get_process_forms("live_supervision_ta_evaluation")
+    assert forms
+    assert forms[0]["kind"] == "dashboard"
 
 
 @pytest.mark.asyncio
@@ -120,6 +141,25 @@ async def test_api_get_definitions_forms(process_api_client):
 
 
 @pytest.mark.asyncio
+async def test_api_get_process_definition_includes_ui_requirements(
+    process_api_client, db_session: AsyncSession
+):
+    """Process definition response should include ui_requirements when present."""
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "live_supervision_ta_evaluation.json")
+    await db_session.commit()
+
+    r = await process_api_client.get(
+        "/api/process/definitions/live_supervision_ta_evaluation"
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["process"]["code"] == "live_supervision_ta_evaluation"
+    assert "ui_requirements" in data["process"]
+    assert data["process"]["ui_requirements"]["dashboard"]["name_fa"] == "داشبورد ارزیابی نهایی کمک‌مدرس (درس سوپرویژن زنده)"
+
+
+@pytest.mark.asyncio
 async def test_api_get_definitions_forms_with_state_filter(process_api_client):
     """دسته ز: GET .../forms?state=... returns only forms for that state."""
     r = await process_api_client.get(
@@ -153,6 +193,32 @@ async def test_api_get_instance_dashboard(
     assert data["status"]["current_state"] == "payment_due"
     assert isinstance(data["transitions"], list)
     assert isinstance(data["forms"], list)
+    assert "ui_requirements" in data
+
+
+@pytest.mark.asyncio
+async def test_api_get_instance_dashboard_includes_ui_requirements(
+    process_api_client, db_session: AsyncSession, sample_student, sample_user
+):
+    """Dashboard response should include UI requirements for display-only processes."""
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "live_supervision_ta_evaluation.json")
+    await db_session.commit()
+
+    engine = StateMachineEngine(db_session)
+    instance = await engine.start_process(
+        process_code="live_supervision_ta_evaluation",
+        student_id=sample_student.id,
+        actor_id=sample_user.id,
+        actor_role="system",
+    )
+    await db_session.commit()
+
+    r = await process_api_client.get(f"/api/process/{instance.id}/dashboard")
+    assert r.status_code == 200
+    data = r.json()
+    assert "ui_requirements" in data
+    assert data["ui_requirements"]["dashboard"]["name_fa"] == "داشبورد ارزیابی نهایی کمک‌مدرس (درس سوپرویژن زنده)"
 
 
 @pytest.mark.asyncio

@@ -27,7 +27,32 @@
     {"from": "course_active", "to": "term3_violation", "trigger": "enrollment_term3_plus", "conditions": ["article_enrollment_term3_plus"], "description_fa": "اخذ ترم سوم - گزارش تخلف آموزشی"}
   ],
   "forms": [
-    {"code": "article_completion_tick_dashboard", "name_fa": "داشبورد ثبت تیک تکمیل", "used_in_state": "course_active", "fields": [{"name": "students", "label_fa": "لیست دانشجویان و تیک تکمیل", "type": "dynamic_list"}]},
-    {"code": "article_student_evaluation_form", "name_fa": "فرم ارزیابی کیفی دانشجو", "used_in_state": "instructor_eval_pending", "fields": [{"name": "student_id", "label_fa": "نام دانشجو", "type": "readonly"}, {"name": "q7_positive", "label_fa": "سوال ۷ - ویژگی\u200cهای مثبت", "type": "textarea"}, {"name": "q8_negative", "label_fa": "سوال ۸ - ویژگی\u200cهای منفی", "type": "textarea"}]}
+    {
+      "code": "article_completion_tick_dashboard",
+      "name_fa": "داشبورد ثبت تیک تکمیل",
+      "used_in_state": "course_active",
+      "fields": [
+        {
+          "name": "students",
+          "label_fa": "لیست دانشجویان و تیک تکمیل",
+          "type": "dynamic_list",
+          "fields": [
+            "student_name",
+            "student_id",
+            "completed"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "article_student_evaluation_form",
+      "name_fa": "فرم ارزیابی کیفی دانشجو",
+      "used_in_state": "instructor_eval_pending",
+      "fields": [
+        {"name": "student_id", "label_fa": "نام دانشجو", "type": "readonly"},
+        {"name": "q7_positive", "label_fa": "سوال ۷ - ویژگی\u200cهای مثبت", "type": "textarea"},
+        {"name": "q8_negative", "label_fa": "سوال ۸ - ویژگی\u200cهای منفی", "type": "textarea"}
+      ]
+    }
   ]
 }

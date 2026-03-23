@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.auth import get_current_user, require_role
 from app.models.operational_models import User, Student
+from app.services.student_service import StudentService
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
 
@@ -45,6 +46,7 @@ class StudentResponse(BaseModel):
     current_term: int
     therapy_started: bool
     weekly_sessions: int
+    extra_data: Optional[dict] = None
 
     model_config = {"from_attributes": True}
 
@@ -69,6 +71,20 @@ async def create_student(
         weekly_sessions=student_data.weekly_sessions,
     )
     db.add(student)
+
+    # Auto-start initial registration process for the new student and mark it as primary,
+    # using the admin/staff user as actor.
+    try:
+        service = StudentService(db)
+        await service.start_initial_process_for_student(student, current_user)
+    except Exception:
+        # Do not fail the API if process auto-start fails; just log.
+        import logging
+        logging.getLogger(__name__).exception(
+            "Failed to auto-start initial process for student %s (admin-created)",
+            student.student_code,
+        )
+
     await db.flush()
 
     return StudentResponse(
@@ -81,6 +97,7 @@ async def create_student(
         current_term=student.current_term,
         therapy_started=student.therapy_started,
         weekly_sessions=student.weekly_sessions,
+        extra_data=student.extra_data,
     )
 
 
@@ -104,6 +121,7 @@ async def list_students(
             current_term=s.current_term,
             therapy_started=s.therapy_started,
             weekly_sessions=s.weekly_sessions,
+            extra_data=s.extra_data,
         )
         for s in students
     ]
@@ -131,6 +149,7 @@ async def get_my_student_profile(
         current_term=student.current_term,
         therapy_started=student.therapy_started,
         weekly_sessions=student.weekly_sessions,
+        extra_data=student.extra_data,
     )
 
 
@@ -157,6 +176,7 @@ async def get_student(
         current_term=student.current_term,
         therapy_started=student.therapy_started,
         weekly_sessions=student.weekly_sessions,
+        extra_data=student.extra_data,
     )
 
 
@@ -190,4 +210,5 @@ async def update_student(
         current_term=student.current_term,
         therapy_started=student.therapy_started,
         weekly_sessions=student.weekly_sessions,
+        extra_data=student.extra_data,
     )

@@ -15,7 +15,7 @@ from app.core.engine import (
     InstanceNotFoundError, InvalidTransitionError, UnauthorizedError,
 )
 from app.meta.loader import MetadataLoader
-from app.meta.process_forms import get_process_forms
+from app.meta.process_forms import get_process_forms, get_process_ui_requirements
 
 router = APIRouter(prefix="/api/process", tags=["Process"])
 
@@ -195,10 +195,12 @@ async def get_instance_dashboard(
             status.get("process_code", ""),
             state_code=status.get("current_state"),
         )
+        ui_requirements = get_process_ui_requirements(status.get("process_code", ""))
         return {
             "status": status,
             "transitions": transitions,
             "forms": forms,
+            "ui_requirements": ui_requirements,
         }
     except InstanceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

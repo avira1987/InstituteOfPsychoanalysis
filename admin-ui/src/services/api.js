@@ -120,6 +120,7 @@ export const authApi = {
   otpRequest: (phone) => api.post('auth/otp/request', { phone }, { _skipAuthRedirect: true }),
   otpVerify: (phone, code) => api.post('auth/otp/verify', { phone, code }, { _skipAuthRedirect: true }),
   getLoginChallenge: () => api.post('auth/login-challenge', {}, { _skipAuthRedirect: true }),
+  home: () => api.get('auth/home'),
 }
 
 // ─── Processes ─────────────────────────────────────────────────

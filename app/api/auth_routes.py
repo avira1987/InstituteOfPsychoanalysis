@@ -27,7 +27,7 @@ from app.api.auth import (
     verify_password,
 )
 from pydantic import BaseModel
-from app.models.operational_models import User, LoginChallenge
+from app.models.operational_models import User, LoginChallenge, Student
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -201,6 +201,11 @@ class UpdateProfileRequest(BaseModel):
     current_password: str | None = None  # برای تغییر رمز الزامی است
 
 
+class HomeResponse(BaseModel):
+  redirect_url: str
+  primary_instance_id: str | None = None
+
+
 @router.patch("/me", response_model=UserResponse)
 async def update_me(
     data: UpdateProfileRequest,
@@ -231,6 +236,56 @@ async def update_me(
         avatar_url=current_user.avatar_url,
         role=current_user.role,
         is_active=current_user.is_active,
+    )
+
+
+@router.get("/home", response_model=HomeResponse)
+async def get_home(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return the best panel entry point for the current user plus optional primary_instance_id.
+
+    This is used by the frontend to redirect users after login based on their role and state.
+    """
+    # Default redirect for non-student roles
+    redirect_url = "/panel"
+    primary_instance_id: str | None = None
+
+    # Resolve role-specific portal
+    role_portals = {
+        "student": "/panel/portal/student",
+        "therapist": "/panel/portal/therapist",
+        "supervisor": "/panel/portal/supervisor",
+        "staff": "/panel/portal/staff",
+        "site_manager": "/panel/portal/site-manager",
+        "progress_committee": "/panel/portal/committee",
+        "education_committee": "/panel/portal/committee",
+        "supervision_committee": "/panel/portal/committee",
+        "specialized_commission": "/panel/portal/committee",
+        "therapy_committee_chair": "/panel/portal/committee",
+        "therapy_committee_executor": "/panel/portal/committee",
+        "deputy_education": "/panel/portal/committee",
+        "monitoring_committee_officer": "/panel/portal/committee",
+    }
+
+    if current_user.role in role_portals:
+        redirect_url = role_portals[current_user.role]
+
+    # For students, try to load primary_instance_id from their profile extra_data
+    if current_user.role == "student":
+        stmt = select(Student).where(Student.user_id == current_user.id)
+        result = await db.execute(stmt)
+        student = result.scalars().first()
+        if student and student.extra_data:
+            value = student.extra_data.get("primary_instance_id")
+            if isinstance(value, str):
+                primary_instance_id = value
+
+    return HomeResponse(
+        redirect_url=redirect_url,
+        primary_instance_id=primary_instance_id,
     )
 
 

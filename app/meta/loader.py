@@ -40,6 +40,7 @@ class MetadataLoader:
                 "initial_state": process.initial_state_code,
                 "version": process.version,
                 "config": process.config,
+                "ui_requirements": (process.config or {}).get("ui_requirements", {}),
             },
             "states": [
                 {
