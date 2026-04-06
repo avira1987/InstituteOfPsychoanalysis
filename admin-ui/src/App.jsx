@@ -21,7 +21,9 @@ import StaffPortal from './pages/StaffPortal'
 import SiteManagerPortal from './pages/SiteManagerPortal'
 import CommitteePortal from './pages/CommitteePortal'
 import ProfilePage from './pages/ProfilePage'
+import FinancialDashboard from './pages/FinancialDashboard'
 
+import { getRouterBasename } from './utils/routerBasename'
 import HomePage from './pages/public/HomePage'
 import BlogList from './pages/public/BlogList'
 import BlogPost from './pages/public/BlogPost'
@@ -64,7 +66,11 @@ class ErrorBoundary extends React.Component {
               </pre>
             </details>
             <button
-              onClick={() => { this.setState({ hasError: false, error: null, errorInfo: null }); window.location.href = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/' }}
+              onClick={() => {
+                this.setState({ hasError: false, error: null, errorInfo: null })
+                const rb = getRouterBasename()
+                window.location.href = rb ? `${rb}/` : '/'
+              }}
               style={{
                 marginTop: '1rem', padding: '0.75rem 1.5rem', background: '#3b82f6', color: '#fff',
                 border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem'
@@ -80,24 +86,45 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+function panelLoading() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+      <div className="loading-spinner" />
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <div className="loading-spinner" />
-      </div>
-    )
-  }
+  if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
   return children
 }
 
-/** برای دانشجو صفحهٔ اول پنل = پنل دانشجو؛ برای بقیه = داشبرد */
+/** فقط کاربر با نقش دانشجو؛ بقیه به داشبورد هدایت می‌شوند */
+function RequireStudentRole({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'student') return <Navigate to="/panel" replace />
+  return children
+}
+
+/** برای دانشجو صفحهٔ اول پنل = پنل دانشجو؛ اپراتور مالی = داشبورد مالی؛ برای بقیه = داشبورد */
 function PanelIndex() {
   const { user } = useAuth()
   if (user?.role === 'student') return <Navigate to="/panel/portal/student" replace />
+  if (user?.role === 'finance') return <Navigate to="/panel/finance" replace />
   return <Dashboard />
+}
+
+/** فقط مدیر سیستم یا اپراتور مالی به داشبورد مالی دسترسی دارند */
+function RequireFinanceRole({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'admin' && user.role !== 'finance') return <Navigate to="/panel" replace />
+  return children
 }
 
 export default function App() {
@@ -133,7 +160,22 @@ export default function App() {
           <Route path="students" element={<StudentTracker />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="audit" element={<AuditViewer />} />
-          <Route path="portal/student" element={<StudentPortal />} />
+          <Route
+            path="finance"
+            element={
+              <RequireFinanceRole>
+                <FinancialDashboard />
+              </RequireFinanceRole>
+            }
+          />
+          <Route
+            path="portal/student"
+            element={
+              <RequireStudentRole>
+                <StudentPortal />
+              </RequireStudentRole>
+            }
+          />
           <Route path="portal/therapist" element={<TherapistPortal />} />
           <Route path="portal/supervisor" element={<SupervisorPortal />} />
           <Route path="portal/staff" element={<StaffPortal />} />

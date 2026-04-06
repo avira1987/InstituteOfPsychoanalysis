@@ -4,12 +4,14 @@ No business logic is hardcoded. All rules, states, and transitions
 are read from the metadata database at runtime.
 """
 
+import json
 import uuid
 import logging
 from datetime import date, datetime, timezone
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
 from app.models.operational_models import ProcessInstance, Student, StateHistory
@@ -18,6 +20,7 @@ from app.core.transition import TransitionManager, TransitionResult, TransitionE
 from app.core.event_bus import event_bus, Event
 from app.core.audit import AuditLogger
 from app.services.attendance_service import AttendanceService
+from app.core.gamification import merge_gamification_into_extra
 from app.utils.date_utils import get_current_shamsi_year, get_current_term_week
 
 logger = logging.getLogger(__name__)
@@ -188,32 +191,46 @@ class StateMachineEngine:
         process_def = await self.get_process_definition(instance.process_code)
         current_state = instance.current_state_code
 
-        # 2. Find matching transition
-        transition = await self.transition_manager.find_matching_transition(
-            process_id=process_def.id,
-            from_state_code=current_state,
-            trigger_event=trigger_event,
+        # 2–3. همهٔ ترنزیشن‌های هم‌نام با trigger (به‌ترتیب priority)، تا اولین شاخه‌ای که قوانینش pass شود
+        all_transitions = await self.transition_manager.find_transitions_for_state(
+            process_def.id, current_state
         )
-        if not transition:
+        candidates = [t for t in all_transitions if t.trigger_event == trigger_event]
+        if not candidates:
             raise InvalidTransitionError(
                 f"No transition found from '{current_state}' with trigger '{trigger_event}'"
             )
+        candidates.sort(key=lambda t: t.priority or 0, reverse=True)
 
-        # 3. Evaluate condition rules
+        # یک trigger چند شاخه: اگر UI مقصد را فرستاد، فقط همان ترنزیشن را بررسی کن
+        p = payload or {}
+        explicit_to = p.get("to_state") or p.get("target_to_state")
+        if explicit_to:
+            narrowed = [t for t in candidates if t.to_state_code == explicit_to]
+            if narrowed:
+                candidates = narrowed
+
         rules_map = await self.get_rules_map()
         context = await self._build_context(instance, payload)
-        rule_results = await self.transition_manager.evaluate_conditions(
-            transition, rules_map, context
-        )
-        if not self.rule_evaluator.all_passed(rule_results):
-            failed = [r for r in rule_results if not r.passed]
+        transition = None
+        rule_results = []
+        last_rule_results = []
+        for t in candidates:
+            rr = await self.transition_manager.evaluate_conditions(t, rules_map, context)
+            last_rule_results = rr
+            if self.rule_evaluator.all_passed(rr):
+                transition = t
+                rule_results = rr
+                break
+        if not transition:
+            failed = [r for r in last_rule_results if not r.passed]
             error_msgs = [r.error_message or f"Rule '{r.rule_code}' failed" for r in failed]
             return TransitionResult(
                 success=False,
                 from_state=current_state,
                 trigger_event=trigger_event,
-                rule_results=rule_results,
-                error="; ".join(error_msgs),
+                rule_results=last_rule_results,
+                error="; ".join(error_msgs) if error_msgs else "هیچ شاخه‌ای از قوانین عبور نکرد",
             )
 
         # 4. Check RBAC
@@ -283,6 +300,38 @@ class StateMachineEngine:
             f"[{transition.to_state_code}] (instance={instance.id})"
         )
 
+        await self._update_hidden_progress(instance, transition.to_state_code)
+
+        if (
+            transition.to_state_code == "registration_complete"
+            and instance.process_code == "introductory_course_registration"
+            and instance.is_completed
+        ):
+            try:
+                from app.services.student_service import StudentService
+
+                await StudentService(self.db).maybe_start_followup_after_intro_registration(instance)
+            except Exception:
+                logger.exception(
+                    "Follow-up after introductory registration_complete failed (instance=%s)",
+                    instance.id,
+                )
+
+        if (
+            transition.to_state_code == "therapy_active"
+            and instance.process_code == "start_therapy"
+            and instance.is_completed
+        ):
+            try:
+                from app.services.student_service import StudentService
+
+                await StudentService(self.db).maybe_start_session_payment_after_start_therapy(instance)
+            except Exception:
+                logger.exception(
+                    "Follow-up after start_therapy therapy_active failed (instance=%s)",
+                    instance.id,
+                )
+
         return TransitionResult(
             success=True,
             from_state=from_state,
@@ -291,6 +340,30 @@ class StateMachineEngine:
             actions=actions,
             rule_results=rule_results,
         )
+
+    async def _update_hidden_progress(self, instance: ProcessInstance, to_state: str) -> None:
+        """Store lightweight gamification metrics in student.extra_data (hidden from default UI)."""
+        stmt = select(Student).where(Student.id == instance.student_id)
+        result = await self.db.execute(stmt)
+        student = result.scalars().first()
+        if not student:
+            return
+        extra = dict(student.extra_data or {})
+        hp = dict(extra.get("hidden_progress") or {})
+        instances_map = dict(hp.get("instances") or {})
+        iid = str(instance.id)
+        cur = dict(instances_map.get(iid) or {})
+        cur["process_code"] = instance.process_code
+        cur["transition_count"] = int(cur.get("transition_count", 0)) + 1
+        cur["last_state"] = to_state
+        cur["xp"] = int(cur.get("xp", 0)) + 15
+        cur["updated_at"] = datetime.now(timezone.utc).isoformat()
+        instances_map[iid] = cur
+        hp["instances"] = instances_map
+        hp["total_xp"] = sum(int(v.get("xp", 0)) for v in instances_map.values())
+        extra["hidden_progress"] = hp
+        student.extra_data = merge_gamification_into_extra(extra)
+        flag_modified(student, "extra_data")
 
     # ─── Query Methods ──────────────────────────────────────────────
 
@@ -357,6 +430,21 @@ class StateMachineEngine:
 
     # ─── Internal Helpers ───────────────────────────────────────────
 
+    @staticmethod
+    def _as_mapping(val) -> dict:
+        """JSONB / context payloads must be dicts for **unpacking; tolerate legacy str or bad rows."""
+        if val is None:
+            return {}
+        if isinstance(val, dict):
+            return val
+        if isinstance(val, str):
+            try:
+                parsed = json.loads(val)
+                return parsed if isinstance(parsed, dict) else {}
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return {}
+
     async def _build_context(self, instance: ProcessInstance, payload: Optional[dict] = None) -> dict:
         """Build the evaluation context for rule evaluation.
 
@@ -373,13 +461,14 @@ class StateMachineEngine:
                 "id": str(instance.id),
                 "process_code": instance.process_code,
                 "current_state": instance.current_state_code,
-                **(instance.context_data or {}),
+                **self._as_mapping(instance.context_data),
             },
             "student": {},
             "payload": payload or {},
         }
 
         if student:
+            extra = self._as_mapping(student.extra_data)
             context["student"] = {
                 "id": str(student.id),
                 "student_code": student.student_code,
@@ -389,20 +478,20 @@ class StateMachineEngine:
                 "current_term": student.current_term,
                 "therapy_started": student.therapy_started,
                 "weekly_sessions": student.weekly_sessions,
-                **(student.extra_data or {}),
+                **extra,
             }
 
             # Enrich instance for rules: absence quota, absences this year, completed/required hours,
             # current_week (week_9_deadline), hours_until_first_slot (24_hour_rule) — BUILD_TODO § د
             attendance = AttendanceService(self.db)
             shamsi_year = get_current_shamsi_year()
+            context["instance"]["current_shamsi_year"] = shamsi_year
             context["instance"]["absence_quota"] = await attendance.calculate_absence_quota(student.id)
             context["instance"]["absences_this_year"] = await attendance.get_absence_count(
                 student.id, shamsi_year=shamsi_year, status_filter="absent_unexcused"
             )
             hours_info = await attendance.get_completed_hours(student.id)
             context["instance"]["completed_hours"] = hours_info["total_hours"]
-            extra = student.extra_data or {}
             context["instance"]["required_hours"] = extra.get("required_hours", 250)
 
             # current_week: from term_start in extra_data (ISO date) or default fall term
@@ -416,5 +505,39 @@ class StateMachineEngine:
 
             # hours_until_first_slot: for 24_hour_rule (use_first_slot vs use_next_slot)
             context["instance"]["hours_until_first_slot"] = await attendance.get_hours_until_first_slot(student.id)
+
+        # تاریخ امروز (UTC) برای قوانین مقایسهٔ سررسید اقساط و مشابه
+        context["instance"]["calendar_today"] = datetime.now(timezone.utc).date().isoformat()
+
+        # دادهٔ همین ترنزیشن (مثلاً interview_result) در payload است؛ قوانین با مسیر instance.* ارزیابی می‌شوند
+        # و context_data تا بعد از موفقیت ترنزیشن ذخیره نمی‌شود — بدون این ادغام، شرط‌های نتیجهٔ مصاحبه همیشه fail می‌شوند.
+        if payload:
+            context["instance"].update(payload)
+
+        # introductory_course_registration: چهار شاخه با یک trigger — اگر UI فقط to_state بفرستد
+        if (
+            instance.process_code == "introductory_course_registration"
+            and instance.current_state_code == "interview_completed"
+        ):
+            _branch_to_interview = {
+                "result_conditional_therapy": "conditional_therapy",
+                "result_single_course": "single_course",
+                "result_full_admission": "full_admission",
+                "rejected": "rejected",
+            }
+            ts = None
+            if payload:
+                ts = payload.get("to_state") or payload.get("target_to_state")
+            if not ts:
+                ts = context["instance"].get("to_state")
+            if ts and not context["instance"].get("interview_result"):
+                inferred = _branch_to_interview.get(ts)
+                if inferred:
+                    context["instance"]["interview_result"] = inferred
+
+        # قوانین مثل schedule_valid_for_course از instance.weekly_sessions استفاده می‌کنند؛
+        # مقدار پیش‌فرض روی student است نه context_data — بدون این، None >= int خطا می‌دهد.
+        if student and context["instance"].get("weekly_sessions") is None:
+            context["instance"]["weekly_sessions"] = student.weekly_sessions
 
         return context

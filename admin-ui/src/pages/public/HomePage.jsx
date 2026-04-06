@@ -23,7 +23,8 @@ export default function HomePage() {
             </h1>
             <p className="pub-hero-desc">
               سامانه جامع مدیریت آموزشی انیستیتو روانکاوی تهران. ثبت‌نام، پیگیری فرآیندها،
-              مدیریت جلسات درمانی و سوپرویژن به صورت آنلاین و یکپارچه.
+              مدیریت جلسات درمانی و سوپرویژن به صورت آنلاین و یکپارچه. ورود با کد یکبار مصرف پیامکی
+              و پنل نقش‌محور برای دانشجو، کادر و کمیته‌ها.
             </p>
             <div className="pub-hero-actions">
               <Link to="/register" className="pub-hero-btn primary">
@@ -31,6 +32,9 @@ export default function HomePage() {
               </Link>
               <Link to="/guide" className="pub-hero-btn outline">
                 راهنمای سامانه
+              </Link>
+              <Link to="/processes-info" className="pub-hero-btn outline">
+                فرآیندها
               </Link>
             </div>
           </div>
@@ -82,7 +86,7 @@ export default function HomePage() {
               🎓
             </div>
             <h3>پورتال دانشجو</h3>
-            <p>دسترسی دانشجویان به پرونده آموزشی، مشاهده وضعیت فرآیندها، ثبت درخواست و پیگیری آنلاین.</p>
+            <p>پرونده آموزشی، مسیر تحصیلی، فرم‌های مرحله‌ای فرایندها، جلسات و تکالیف، و پیگیری درخواست‌ها در یک پنل.</p>
           </div>
 
           <div className="pub-feature-card">

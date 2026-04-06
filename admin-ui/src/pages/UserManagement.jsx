@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { userApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 
 const roleLabels = {
   admin: 'مدیر سیستم',
   staff: 'کارمند دفتر',
+  finance: 'اپراتور مالی',
   therapist: 'درمانگر',
   student: 'دانشجو',
   supervisor: 'سوپروایزر',
@@ -12,6 +13,15 @@ const roleLabels = {
 }
 
 const roles = Object.keys(roleLabels)
+
+const emptyCreate = () => ({
+  username: '',
+  password: '',
+  full_name_fa: '',
+  role: 'student',
+  email: '',
+  phone: '',
+})
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth()
@@ -21,17 +31,12 @@ export default function UserManagement() {
   const [roleFilter, setRoleFilter] = useState('')
   const [toast, setToast] = useState(null)
 
-  // Create form
   const [showCreate, setShowCreate] = useState(false)
-  const [createForm, setCreateForm] = useState({
-    username: '', password: '', full_name_fa: '', role: 'student', email: '', phone: '',
-  })
+  const [createForm, setCreateForm] = useState(emptyCreate)
 
-  // Edit form
-  const [editingId, setEditingId] = useState(null)
+  const [editingUser, setEditingUser] = useState(null)
   const [editForm, setEditForm] = useState({})
 
-  // Set password (for students / any user)
   const [setPasswordUser, setSetPasswordUser] = useState(null)
   const [setPasswordValue, setSetPasswordValue] = useState('')
   const [setPasswordConfirm, setSetPasswordConfirm] = useState('')
@@ -41,9 +46,25 @@ export default function UserManagement() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  const closeAllModals = useCallback(() => {
+    setShowCreate(false)
+    setEditingUser(null)
+    setSetPasswordUser(null)
+    setSetPasswordValue('')
+    setSetPasswordConfirm('')
+  }, [])
+
   useEffect(() => {
     loadUsers()
   }, [])
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeAllModals()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [closeAllModals])
 
   const loadUsers = async () => {
     try {
@@ -62,14 +83,18 @@ export default function UserManagement() {
       await userApi.create(createForm)
       showToast('کاربر جدید با موفقیت ایجاد شد')
       setShowCreate(false)
-      setCreateForm({ username: '', password: '', full_name_fa: '', role: 'student', email: '', phone: '' })
+      setCreateForm(emptyCreate())
       loadUsers()
     } catch (err) {
       showToast('خطا: ' + (err.response?.data?.detail || err.message), 'error')
     }
   }
 
-  const startEdit = (u) => {
+  const openEditModal = (u) => {
+    setSetPasswordUser(null)
+    setSetPasswordValue('')
+    setSetPasswordConfirm('')
+    setEditingUser(u)
     setEditForm({
       full_name_fa: u.full_name_fa || '',
       full_name_en: u.full_name_en || '',
@@ -77,15 +102,15 @@ export default function UserManagement() {
       email: u.email || '',
       phone: u.phone || '',
     })
-    setEditingId(u.id)
   }
 
   const handleUpdate = async (e) => {
     e.preventDefault()
+    if (!editingUser) return
     try {
-      await userApi.update(editingId, editForm)
+      await userApi.update(editingUser.id, editForm)
       showToast('اطلاعات کاربر ویرایش شد')
-      setEditingId(null)
+      setEditingUser(null)
       loadUsers()
     } catch (err) {
       showToast('خطا: ' + (err.response?.data?.detail || err.message), 'error')
@@ -133,6 +158,13 @@ export default function UserManagement() {
     }
   }
 
+  const openSetPasswordModal = (u) => {
+    setEditingUser(null)
+    setSetPasswordUser(u)
+    setSetPasswordValue('')
+    setSetPasswordConfirm('')
+  }
+
   const filteredUsers = users.filter((u) => {
     if (roleFilter && u.role !== roleFilter) return false
     if (search) {
@@ -147,8 +179,143 @@ export default function UserManagement() {
   })
 
   return (
-    <div>
+    <div className="user-management-page">
       {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+
+      {/* مودال: ایجاد کاربر */}
+      {showCreate && currentUser?.role === 'admin' && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-create-title" onClick={() => { setShowCreate(false); setCreateForm(emptyCreate()) }}>
+          <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 id="modal-create-title">ایجاد کاربر جدید</h3>
+              <button type="button" className="modal-close" onClick={() => { setShowCreate(false); setCreateForm(emptyCreate()) }} aria-label="بستن">&times;</button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleCreate} className="user-mgmt-modal-form">
+                <div className="form-group">
+                  <label className="form-label">نام کاربری *</label>
+                  <input className="form-input" value={createForm.username} onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} required style={{ direction: 'ltr' }} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">رمز عبور *</label>
+                  <input className="form-input" type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">نام کامل (فارسی)</label>
+                  <input className="form-input" value={createForm.full_name_fa} onChange={(e) => setCreateForm({ ...createForm, full_name_fa: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">نقش *</label>
+                  <select className="form-input" value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}>
+                    {roles.map((r) => <option key={r} value={r}>{roleLabels[r]} ({r})</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">ایمیل</label>
+                  <input className="form-input" type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} style={{ direction: 'ltr' }} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">شماره تلفن</label>
+                  <input className="form-input" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} style={{ direction: 'ltr' }} />
+                </div>
+                <div className="user-mgmt-modal-actions">
+                  <button className="btn btn-primary" type="submit">ایجاد</button>
+                  <button className="btn btn-outline" type="button" onClick={() => { setShowCreate(false); setCreateForm(emptyCreate()) }}>انصراف</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* مودال: ویرایش کاربر */}
+      {editingUser && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-edit-title" onClick={() => setEditingUser(null)}>
+          <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 id="modal-edit-title">ویرایش کاربر</h3>
+              <button type="button" className="modal-close" onClick={() => setEditingUser(null)} aria-label="بستن">&times;</button>
+            </div>
+            <div className="modal-body">
+              <p className="user-mgmt-modal-lead">
+                <strong>{editingUser.full_name_fa || editingUser.username}</strong>
+                <span className="user-mgmt-modal-meta" dir="ltr">{editingUser.username}</span>
+              </p>
+              <form onSubmit={handleUpdate} className="user-mgmt-modal-form">
+                <div className="form-group">
+                  <label className="form-label">نام فارسی</label>
+                  <input className="form-input" value={editForm.full_name_fa} onChange={(e) => setEditForm({ ...editForm, full_name_fa: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">نقش</label>
+                  <select className="form-input" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
+                    {roles.map((r) => <option key={r} value={r}>{roleLabels[r]}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">ایمیل</label>
+                  <input className="form-input" type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} style={{ direction: 'ltr' }} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">تلفن</label>
+                  <input className="form-input" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={{ direction: 'ltr' }} />
+                </div>
+                <div className="user-mgmt-modal-actions">
+                  <button className="btn btn-primary" type="submit">ذخیره تغییرات</button>
+                  <button className="btn btn-outline" type="button" onClick={() => setEditingUser(null)}>انصراف</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* مودال: تنظیم رمز عبور */}
+      {setPasswordUser && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-pw-title" onClick={() => { setSetPasswordUser(null); setSetPasswordValue(''); setSetPasswordConfirm('') }}>
+          <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 id="modal-pw-title">تنظیم رمز عبور</h3>
+              <button type="button" className="modal-close" onClick={() => { setSetPasswordUser(null); setSetPasswordValue(''); setSetPasswordConfirm('') }} aria-label="بستن">&times;</button>
+            </div>
+            <div className="modal-body">
+              <p className="user-mgmt-modal-lead">
+                برای <strong>{setPasswordUser.full_name_fa || setPasswordUser.username}</strong>
+                <span className="user-mgmt-modal-meta" dir="ltr">({setPasswordUser.username})</span>
+              </p>
+              <form onSubmit={handleSetPassword}>
+                <div className="form-group">
+                  <label className="form-label">رمز عبور جدید *</label>
+                  <input
+                    className="form-input"
+                    type="password"
+                    value={setPasswordValue}
+                    onChange={(e) => setSetPasswordValue(e.target.value)}
+                    placeholder="حداقل ۴ کاراکتر"
+                    minLength={4}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">تکرار رمز عبور *</label>
+                  <input
+                    className="form-input"
+                    type="password"
+                    value={setPasswordConfirm}
+                    onChange={(e) => setSetPasswordConfirm(e.target.value)}
+                    placeholder="همان رمز را دوباره وارد کنید"
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="user-mgmt-modal-actions">
+                  <button className="btn btn-primary" type="submit">ذخیره رمز</button>
+                  <button className="btn btn-outline" type="button" onClick={() => { setSetPasswordUser(null); setSetPasswordValue(''); setSetPasswordConfirm('') }}>انصراف</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="page-header">
         <div>
@@ -156,62 +323,24 @@ export default function UserManagement() {
           <p className="page-subtitle">ایجاد و مدیریت حساب‌های کاربری | مجموع: {users.length} کاربر</p>
         </div>
         {currentUser?.role === 'admin' && (
-          <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
-            {showCreate ? 'لغو' : '+ کاربر جدید'}
+          <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            + کاربر جدید
           </button>
         )}
       </div>
 
-      {/* Create User Form (admin only) */}
-      {showCreate && currentUser?.role === 'admin' && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <h3 className="card-title" style={{ marginBottom: '1rem' }}>ایجاد کاربر جدید</h3>
-          <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">نام کاربری *</label>
-              <input className="form-input" value={createForm.username} onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} required style={{ direction: 'ltr' }} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">رمز عبور *</label>
-              <input className="form-input" type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} required />
-            </div>
-            <div className="form-group">
-              <label className="form-label">نام کامل (فارسی)</label>
-              <input className="form-input" value={createForm.full_name_fa} onChange={(e) => setCreateForm({ ...createForm, full_name_fa: e.target.value })} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">نقش *</label>
-              <select className="form-input" value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}>
-                {roles.map((r) => <option key={r} value={r}>{roleLabels[r]} ({r})</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">ایمیل</label>
-              <input className="form-input" type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} style={{ direction: 'ltr' }} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">شماره تلفن</label>
-              <input className="form-input" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} style={{ direction: 'ltr' }} />
-            </div>
-            <div><button className="btn btn-primary" type="submit">ایجاد</button></div>
-          </form>
-        </div>
-      )}
-
-      {/* Search and Filter */}
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem 1.5rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="card user-mgmt-toolbar">
+        <div className="user-mgmt-toolbar-inner">
           <input
-            className="form-input"
-            style={{ flex: 1, minWidth: '200px' }}
+            className="form-input user-mgmt-search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="جستجو بر اساس نام کاربری، نام یا ایمیل..."
+            placeholder="جستجو: نام کاربری، نام یا ایمیل..."
           />
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button className={`btn ${roleFilter === '' ? 'btn-primary' : 'btn-outline'} btn-sm`} onClick={() => setRoleFilter('')}>همه</button>
+          <div className="user-mgmt-role-chips">
+            <button type="button" className={`btn ${roleFilter === '' ? 'btn-primary' : 'btn-outline'} btn-sm`} onClick={() => setRoleFilter('')}>همه</button>
             {roles.map((r) => (
-              <button key={r} className={`btn ${roleFilter === r ? 'btn-primary' : 'btn-outline'} btn-sm`} onClick={() => setRoleFilter(r)}>
+              <button key={r} type="button" className={`btn ${roleFilter === r ? 'btn-primary' : 'btn-outline'} btn-sm`} onClick={() => setRoleFilter(r)}>
                 {roleLabels[r]}
               </button>
             ))}
@@ -219,137 +348,66 @@ export default function UserManagement() {
         </div>
       </div>
 
-      {/* Set Password Modal */}
-      {setPasswordUser && (
-        <div className="card" style={{ marginBottom: '1.5rem', maxWidth: '420px' }}>
-          <h3 className="card-title" style={{ marginBottom: '0.5rem' }}>تنظیم رمز عبور</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-            برای <strong>{setPasswordUser.full_name_fa || setPasswordUser.username}</strong> (نام کاربری: {setPasswordUser.username})
-          </p>
-          <form onSubmit={handleSetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">رمز عبور جدید *</label>
-              <input
-                className="form-input"
-                type="password"
-                value={setPasswordValue}
-                onChange={(e) => setSetPasswordValue(e.target.value)}
-                placeholder="حداقل ۴ کاراکتر"
-                minLength={4}
-                autoComplete="new-password"
-              />
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">تکرار رمز عبور *</label>
-              <input
-                className="form-input"
-                type="password"
-                value={setPasswordConfirm}
-                onChange={(e) => setSetPasswordConfirm(e.target.value)}
-                placeholder="همان رمز را دوباره وارد کنید"
-                autoComplete="new-password"
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-primary" type="submit">ذخیره رمز</button>
-              <button className="btn btn-outline" type="button" onClick={() => { setSetPasswordUser(null); setSetPasswordValue(''); setSetPasswordConfirm(''); }}>
-                انصراف
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Users Table */}
-      <div className="card">
-        <div className="table-container">
-          <table>
+      <div className="card user-management-card">
+        <div className="user-management-table-wrap">
+          <table className="table-users">
             <thead>
               <tr>
-                <th>نام کاربری</th>
+                <th>کاربری</th>
                 <th>نام</th>
                 <th>نقش</th>
                 <th>ایمیل</th>
                 <th>تلفن</th>
                 <th>وضعیت</th>
-                <th>تاریخ ایجاد</th>
+                <th>تاریخ</th>
                 <th>عملیات</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>در حال بارگذاری...</td></tr>
+                <tr><td colSpan="8" className="table-users-empty">در حال بارگذاری...</td></tr>
               ) : filteredUsers.length === 0 ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>کاربری یافت نشد</td></tr>
+                <tr><td colSpan="8" className="table-users-empty">کاربری یافت نشد</td></tr>
               ) : (
                 filteredUsers.map((u) => (
-                  <React.Fragment key={u.id}>
-                    <tr style={{ opacity: u.is_active ? 1 : 0.6 }}>
-                      <td><strong>{u.username}</strong></td>
-                      <td>{u.full_name_fa || '-'}</td>
-                      <td><span className="badge badge-primary">{roleLabels[u.role] || u.role}</span></td>
-                      <td style={{ direction: 'ltr', textAlign: 'right', fontSize: '0.85rem' }}>{u.email || '-'}</td>
-                      <td style={{ direction: 'ltr', textAlign: 'right', fontSize: '0.85rem' }}>{u.phone || '-'}</td>
-                      <td>
-                        <span className={`badge ${u.is_active ? 'badge-success' : 'badge-danger'}`}>
-                          {u.is_active ? 'فعال' : 'غیرفعال'}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: '0.8rem' }}>
-                        {u.created_at ? new Date(u.created_at).toLocaleDateString('fa-IR') : '-'}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button className="btn btn-outline btn-sm" onClick={() => editingId === u.id ? setEditingId(null) : startEdit(u)}>
-                            {editingId === u.id ? 'لغو' : 'ویرایش'}
-                          </button>
+                  <tr key={u.id} className="table-users-row" style={{ opacity: u.is_active ? 1 : 0.55 }}>
+                    <td className="table-users-cell table-users-cell-ellipsis" title={u.username}><strong>{u.username}</strong></td>
+                    <td className="table-users-cell table-users-cell-ellipsis" title={u.full_name_fa || ''}>{u.full_name_fa || '-'}</td>
+                    <td className="table-users-cell table-users-cell-role"><span className="badge badge-primary badge-tight">{roleLabels[u.role] || u.role}</span></td>
+                    <td className="table-users-cell table-users-cell-ltr table-users-cell-ellipsis" title={u.email || ''}>{u.email || '-'}</td>
+                    <td className="table-users-cell table-users-cell-ltr table-users-cell-ellipsis" title={u.phone || ''}>{u.phone || '-'}</td>
+                    <td className="table-users-cell">
+                      <span className={`badge ${u.is_active ? 'badge-success' : 'badge-danger'} badge-tight`}>
+                        {u.is_active ? 'فعال' : 'غیرفعال'}
+                      </span>
+                    </td>
+                    <td className="table-users-cell table-users-cell-date">
+                      {u.created_at ? new Date(u.created_at).toLocaleDateString('fa-IR') : '-'}
+                    </td>
+                    <td className="table-users-cell table-users-cell-actions">
+                      <div className="user-mgmt-actions">
+                        <button type="button" className="btn btn-outline btn-xs" onClick={() => openEditModal(u)}>ویرایش</button>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-xs"
+                          onClick={() => openSetPasswordModal(u)}
+                          title="تنظیم رمز عبور برای ورود با نام کاربری"
+                        >
+                          تنظیم رمز
+                        </button>
+                        {currentUser?.role === 'admin' && (
                           <button
-                            className="btn btn-outline btn-sm"
-                            onClick={() => { setSetPasswordUser(u); setSetPasswordValue(''); setSetPasswordConfirm(''); }}
-                            title="تنظیم رمز عبور برای ورود با نام کاربری"
+                            type="button"
+                            className={`btn btn-xs ${u.is_active ? 'btn-danger' : 'btn-success'}`}
+                            onClick={() => handleToggleActive(u)}
+                            disabled={u.id === currentUser?.id}
                           >
-                            🔑 تنظیم رمز
+                            {u.is_active ? 'غیرفعال' : 'فعال'}
                           </button>
-                          {currentUser?.role === 'admin' && (
-                            <button
-                              className={`btn btn-sm ${u.is_active ? 'btn-danger' : 'btn-success'}`}
-                              onClick={() => handleToggleActive(u)}
-                              disabled={u.id === currentUser?.id}
-                            >
-                              {u.is_active ? 'غیرفعال' : 'فعال'}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                    {editingId === u.id && (
-                      <tr>
-                        <td colSpan="8" style={{ background: 'var(--bg)', padding: '1rem' }}>
-                          <form onSubmit={handleUpdate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '0.75rem', alignItems: 'flex-end' }}>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label">نام فارسی</label>
-                              <input className="form-input" value={editForm.full_name_fa} onChange={(e) => setEditForm({ ...editForm, full_name_fa: e.target.value })} />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label">نقش</label>
-                              <select className="form-input" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
-                                {roles.map((r) => <option key={r} value={r}>{roleLabels[r]}</option>)}
-                              </select>
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label">ایمیل</label>
-                              <input className="form-input" type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} style={{ direction: 'ltr' }} />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label">تلفن</label>
-                              <input className="form-input" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={{ direction: 'ltr' }} />
-                            </div>
-                            <button className="btn btn-primary btn-sm" type="submit">ذخیره</button>
-                          </form>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 ))
               )}
             </tbody>

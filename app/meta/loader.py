@@ -37,6 +37,8 @@ class MetadataLoader:
                 "id": str(process.id),
                 "code": process.code,
                 "name_fa": process.name_fa,
+                "name_en": process.name_en,
+                "description": process.description,
                 "initial_state": process.initial_state_code,
                 "version": process.version,
                 "config": process.config,
@@ -46,10 +48,12 @@ class MetadataLoader:
                 {
                     "code": s.code,
                     "name_fa": s.name_fa,
+                    "name_en": s.name_en,
                     "type": s.state_type,
                     "assigned_role": s.assigned_role,
                     "sla_hours": s.sla_hours,
                     "on_sla_breach_event": s.on_sla_breach_event,
+                    "metadata": s.metadata_ or {},
                 }
                 for s in process.states
             ],
@@ -62,6 +66,7 @@ class MetadataLoader:
                     "conditions": t.condition_rules,
                     "actions": t.actions,
                     "priority": t.priority,
+                    "description_fa": t.description_fa,
                 }
                 for t in process.transitions
             ],

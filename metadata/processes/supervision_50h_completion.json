@@ -20,11 +20,11 @@
     {"code": "recording_closed", "name_fa": "ثبت بسته (وقفه یا کنسلی)", "type": "terminal", "assigned_role": "system"},
     {"code": "auto_absence_unpaid", "name_fa": "غیبت خودکار (پرداخت نشده)", "type": "terminal", "assigned_role": "system"},
     {"code": "supervisor_recording", "name_fa": "ثبت حضور/غیاب توسط سوپروایزر", "type": "intermediate", "assigned_role": "supervisor"},
-    {"code": "site_manager_pending", "name_fa": "در انتظار پیگیری مسئول سایت", "type": "intermediate", "assigned_role": "site_manager", "sla_days": 2},
+    {"code": "site_manager_pending", "name_fa": "در انتظار پیگیری مسئول سایت", "type": "intermediate", "assigned_role": "site_manager", "sla_days": 2, "on_sla_breach_event": "site_manager_sla_breach"},
     {"code": "deputy_escalated", "name_fa": "اسکیت به معاون مدیر آموزش", "type": "terminal", "assigned_role": "deputy_education"},
     {"code": "session_completed", "name_fa": "جلسه تکمیل (+۱ ساعت به بلوک فعلی)", "type": "terminal", "assigned_role": "system"},
     {"code": "absence_recorded", "name_fa": "غیبت ثبت شد", "type": "intermediate", "assigned_role": "system"},
-    {"code": "evaluation_pending", "name_fa": "در انتظار تکمیل فرم ارزیابی (۵۰ ساعت)", "type": "intermediate", "assigned_role": "supervisor", "sla_days": 3},
+    {"code": "evaluation_pending", "name_fa": "در انتظار تکمیل فرم ارزیابی (۵۰ ساعت)", "type": "intermediate", "assigned_role": "supervisor", "sla_days": 3, "on_sla_breach_event": "evaluation_sla_breach"},
     {"code": "evaluation_completed", "name_fa": "ارزیابی تکمیل شد", "type": "terminal", "assigned_role": "system"},
     {"code": "evaluation_sla_breach", "name_fa": "عدم تکمیل فرم در ۳ روز — تخلف", "type": "terminal", "assigned_role": "system"}
   ],

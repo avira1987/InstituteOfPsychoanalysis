@@ -6,7 +6,8 @@ Meta-Driven Educational Automation System for Tehran Institute of Psychoanalysis
 
 - **Backend**: FastAPI + SQLAlchemy (async) + PostgreSQL
 - **Core Engine**: Metadata-driven State Machine with Rule Engine
-- **Frontend**: React + Vite (Admin Dashboard)
+- **Frontend**: React + Vite — داشبورد ادمین + **پورتال‌ها** (دانشجو، کارمند، درمانگر، سوپروایزر، مدیر سایت، …) در `admin-ui/src/pages/`
+- **Background**: حلقهٔ **SLA** (`sla_monitor`) + حلقهٔ **تریگرهای تقویمی** (`calendar_triggers`) در `lifespan` اپ
 - **Infrastructure**: Docker Compose + Redis + Alembic migrations
 
 ## Quick Start
@@ -22,13 +23,15 @@ docker-compose up --build
 
 ### Without Docker
 
+نیاز به **PostgreSQL** روی localhost (مثلاً با `docker compose up -d db` و پورت `5432`).
+
 ```bash
 # 1. Install dependencies
 pip install -r requirements.txt
 
 # 2. Set up environment
 cp .env.example .env
-# Edit .env with your database credentials
+# DATABASE_URL باید به همان Postgres اشاره کند (پیش‌فرض در .env.example)
 
 # 3. Run migrations
 alembic upgrade head
@@ -71,6 +74,7 @@ anistito/
 │   └── services/               # Business services
 │       ├── notification_service.py
 │       ├── sla_monitor.py
+│       ├── calendar_triggers.py  # تریگرهای زمان‌محور (مکمل SLA)
 │       ├── payment_service.py
 │       ├── attendance_service.py
 │       ├── process_service.py

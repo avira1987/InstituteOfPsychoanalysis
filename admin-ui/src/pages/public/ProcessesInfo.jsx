@@ -51,7 +51,7 @@ export default function ProcessesInfo() {
     <>
       <div className="pub-page-header">
         <h1>فرآیندها و مراحل آموزشی</h1>
-        <p>آشنایی با مراحل پذیرش، شرایط و فرآیندهای آموزشی انیستیتو</p>
+        <p>آشنایی با مراحل پذیرش، شرایط و فرآیندهای تعریف‌شده در سامانه — همان فرآیندهایی که پس از پذیرش در پنل قابل پیگیری هستند</p>
       </div>
 
       {/* ─── Conditions ─── */}
@@ -133,10 +133,15 @@ export default function ProcessesInfo() {
       <section className="pub-section" style={{ paddingTop: 0 }}>
         <div className="pub-cta">
           <h2>شرایط لازم را دارید؟</h2>
-          <p>همین حالا ثبت‌نام کنید</p>
-          <Link to="/register" className="pub-cta-btn">
-            ثبت‌نام دانشجو
-          </Link>
+          <p>همین حالا ثبت‌نام کنید یا وارد پنل شوید تا فرایندهای خود را از بخش «فرایندها» مدیریت کنید.</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'center' }}>
+            <Link to="/register" className="pub-cta-btn">
+              ثبت‌نام دانشجو
+            </Link>
+            <Link to="/login" className="pub-cta-btn" style={{ background: 'transparent', border: '2px solid currentColor' }}>
+              ورود به پنل
+            </Link>
+          </div>
         </div>
       </section>
     </>

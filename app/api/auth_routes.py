@@ -268,6 +268,7 @@ async def get_home(
         "therapy_committee_executor": "/panel/portal/committee",
         "deputy_education": "/panel/portal/committee",
         "monitoring_committee_officer": "/panel/portal/committee",
+        "finance": "/panel/finance",
     }
 
     if current_user.role in role_portals:

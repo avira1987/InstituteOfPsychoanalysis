@@ -1,12 +1,17 @@
 """Shared test fixtures and configuration."""
 
+import os
+
+# قبل از هر import از app که get_settings() را صدا می‌زند — تست‌ها نباید به SMS واقعی بروند
+os.environ["SMS_PROVIDER"] = "log"
+os.environ["OTP_RESTRICT_TO_STUDENT_PHONES"] = "false"
+
 import uuid
 import asyncio
 import pytest
 import pytest_asyncio
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.database import Base
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
@@ -14,8 +19,13 @@ from app.models.operational_models import User, Student, ProcessInstance
 from app.models.audit_models import AuditLog
 
 
-# Use in-memory SQLite for tests
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# PostgreSQL — همان دیتابیس پروژه روی داکر (پورت 5432 روی میزبان). پیش‌فرض: anistito
+# TEST_DATABASE_URL را فقط در صورت نیاز به DB دیگر ست کنید.
+# پایان جلسهٔ pytest به‌طور پیش‌فرض drop_all می‌زند؛ برای حفظ دادهٔ محلی: PYTEST_SKIP_DROP_ALL=1
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://anistito:anistito@127.0.0.1:5432/anistito",
+)
 
 
 @pytest.fixture(scope="session")
@@ -29,16 +39,14 @@ def event_loop():
 @pytest_asyncio.fixture
 async def db_engine():
     """Create a test database engine."""
-    engine = create_async_engine(
-        TEST_DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    skip_drop = os.environ.get("PYTEST_SKIP_DROP_ALL", "").lower() in ("1", "true", "yes")
+    if not skip_drop:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
 
 

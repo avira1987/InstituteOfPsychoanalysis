@@ -11,7 +11,7 @@
     {"code": "recording_closed", "name_fa": "ثبت بسته شده", "type": "terminal", "assigned_role": "system", "metadata": {"reason": "وقفه یا کنسلی"}},
     {"code": "auto_absence_unpaid", "name_fa": "غیبت خودکار (پرداخت نشده)", "type": "terminal", "assigned_role": "system"},
     {"code": "therapist_recording", "name_fa": "ثبت حضور و غیاب توسط درمانگر", "type": "intermediate", "assigned_role": "therapist"},
-    {"code": "site_manager_pending", "name_fa": "در انتظار پیگیری مسئول سایت", "type": "intermediate", "assigned_role": "site_manager", "sla_hours": 48},
+    {"code": "site_manager_pending", "name_fa": "در انتظار پیگیری مسئول سایت", "type": "intermediate", "assigned_role": "site_manager", "sla_hours": 48, "on_sla_breach_event": "site_manager_sla_breach"},
     {"code": "deputy_escalated", "name_fa": "اسکیت به معاون مدیر آموزش", "type": "terminal", "assigned_role": "deputy_education"},
     {"code": "session_completed", "name_fa": "جلسه تکمیل شد (+۱ ساعت)", "type": "terminal", "assigned_role": "system"},
     {"code": "absence_recorded", "name_fa": "غیبت ثبت شد", "type": "intermediate", "assigned_role": "system"},

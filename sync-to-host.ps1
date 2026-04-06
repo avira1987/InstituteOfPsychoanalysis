@@ -10,20 +10,12 @@ $RemotePath = "/opt/anistito"
 $ErrorActionPreference = "Stop"
 $projectRoot = $PSScriptRoot
 
-Write-Host "=== Step 1: Export database (SQLite) ===" -ForegroundColor Cyan
-$dbPath = Join-Path $projectRoot "anistito.db"
+Write-Host "=== Step 1: Export database (PostgreSQL) ===" -ForegroundColor Cyan
 $exportPath = Join-Path $projectRoot "anistito_export.json"
-
-if (Test-Path $dbPath) {
-    Set-Location $projectRoot
-    python scripts/export_to_online.py
-    if ($LASTEXITCODE -ne 0) { throw "Export failed" }
-    Write-Host "Exported to anistito_export.json" -ForegroundColor Green
-} else {
-    Write-Host "SQLite DB not found. Trying PostgreSQL..." -ForegroundColor Yellow
-    python scripts/export_from_pg.py
-    if ($LASTEXITCODE -ne 0) { throw "Export failed" }
-}
+Set-Location $projectRoot
+python scripts/export_from_pg.py
+if ($LASTEXITCODE -ne 0) { throw "Export failed" }
+Write-Host "Exported to anistito_export.json" -ForegroundColor Green
 
 if (-not (Test-Path $exportPath)) {
     throw "Export file not created: anistito_export.json"

@@ -91,19 +91,55 @@ export default function StudentRegistration() {
               {result.student_code}
             </span>
           </div>
+          {result.initial_password && result.username && (
+            <div
+              className="alert"
+              style={{
+                background: 'var(--bg-card)',
+                border: '1px dashed var(--border)',
+                marginBottom: '1.25rem',
+                padding: '0.85rem 1rem',
+                textAlign: 'right',
+                lineHeight: 1.8,
+              }}
+            >
+              <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                اطلاعات ورود (فعلاً به‌جای پیامک؛ حتماً یادداشت کنید)
+              </div>
+              <div style={{ direction: 'ltr', textAlign: 'center', fontSize: '1.05rem' }}>
+                نام کاربری: <strong>{result.username}</strong>
+              </div>
+              <div style={{ direction: 'ltr', textAlign: 'center', fontSize: '1.1rem', letterSpacing: '1px', marginTop: '0.35rem' }}>
+                رمز عبور اولیه: <strong>{result.initial_password}</strong>
+              </div>
+              {result.login_hint_fa && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.65rem', textAlign: 'center' }}>
+                  {result.login_hint_fa}
+                </div>
+              )}
+            </div>
+          )}
           <p style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
-            لطفاً کد دانشجویی را یادداشت کنید. این کد برای پیگیری وضعیت ثبت‌نام استفاده خواهد شد.
+            می‌توانید با همان شماره موبایل از بخش «ورود با پیامک» وارد شوید، یا با نام کاربری و رمز عبور بالا از «ورود با رمز عبور» استفاده کنید.
           </p>
           <Link
-            to="/"
+            to="/login"
             style={{
-              display: 'inline-block', marginTop: '1.5rem',
+              display: 'inline-block', marginTop: '1rem',
               padding: '0.7rem 2rem', background: 'var(--primary)', color: '#fff',
               borderRadius: 'var(--radius-lg)', fontWeight: 600
             }}
           >
-            بازگشت به صفحه اصلی
+            ورود به پنل کاربری
           </Link>
+          <div style={{ marginTop: '0.75rem' }}>
+            <Link
+              to="/"
+              style={{ fontSize: '0.9rem', color: 'var(--text-light)' }}
+            >
+              بازگشت به صفحه اصلی
+            </Link>
+          </div>
         </div>
       ) : (
         <form className="pub-register-form" onSubmit={handleSubmit}>

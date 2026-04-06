@@ -2,15 +2,19 @@
 
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.database import get_db
+from app.core.engine import StateMachineEngine
+from app.core.gamification import GAMIFICATION_VERSION, merge_gamification_into_extra
 from app.api.auth import get_current_user, require_role
 from app.models.operational_models import User, Student
 from app.services.student_service import StudentService
+from app.services.student_tracker_summary import summarize_primary_path_for_student
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
 
@@ -47,8 +51,21 @@ class StudentResponse(BaseModel):
     therapy_started: bool
     weekly_sessions: int
     extra_data: Optional[dict] = None
+    # فقط وقتی list_students با tracker_summary=true (مسیر اصلی / اقدام معلق)
+    graduation_progress_pct: Optional[int] = None
+    pending_action_fa: Optional[str] = None
+    primary_process_name_fa: Optional[str] = None
+    primary_current_state: Optional[str] = None
+    primary_path_missing: Optional[bool] = None
 
     model_config = {"from_attributes": True}
+
+
+def _extra_for_response(raw) -> Optional[dict]:
+    """JSONB گاهی به‌صورت رشته (legacy) است؛ Pydantic فقط dict می‌پذیرد."""
+    if raw is None:
+        return None
+    return StateMachineEngine._as_mapping(raw)
 
 
 # ─── Endpoints ──────────────────────────────────────────────────
@@ -97,34 +114,45 @@ async def create_student(
         current_term=student.current_term,
         therapy_started=student.therapy_started,
         weekly_sessions=student.weekly_sessions,
-        extra_data=student.extra_data,
+        extra_data=_extra_for_response(student.extra_data),
     )
+
+
+def _student_to_response(s: Student, tracker: Optional[dict] = None) -> StudentResponse:
+    base = dict(
+        id=str(s.id),
+        user_id=str(s.user_id),
+        student_code=s.student_code,
+        course_type=s.course_type,
+        is_intern=s.is_intern,
+        term_count=s.term_count,
+        current_term=s.current_term,
+        therapy_started=s.therapy_started,
+        weekly_sessions=s.weekly_sessions,
+        extra_data=_extra_for_response(s.extra_data),
+    )
+    if tracker:
+        base.update(tracker)
+    return StudentResponse(**base)
 
 
 @router.get("", response_model=list[StudentResponse])
 async def list_students(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin", "staff", "therapist", "supervisor", "site_manager", "progress_committee", "education_committee", "supervision_committee", "specialized_commission", "therapy_committee_chair", "therapy_committee_executor", "deputy_education", "monitoring_committee_officer")),
+    tracker_summary: bool = Query(False, description="پیشرفت تقریبی مسیر اصلی و اقدام معلق (دید دانشجو)"),
 ):
     """List all students (admin/staff/committee/therapist/supervisor)."""
     stmt = select(Student)
     result = await db.execute(stmt)
     students = result.scalars().all()
-    return [
-        StudentResponse(
-            id=str(s.id),
-            user_id=str(s.user_id),
-            student_code=s.student_code,
-            course_type=s.course_type,
-            is_intern=s.is_intern,
-            term_count=s.term_count,
-            current_term=s.current_term,
-            therapy_started=s.therapy_started,
-            weekly_sessions=s.weekly_sessions,
-            extra_data=s.extra_data,
-        )
-        for s in students
-    ]
+    out: list[StudentResponse] = []
+    for s in students:
+        tr: Optional[dict] = None
+        if tracker_summary:
+            tr = await summarize_primary_path_for_student(db, s)
+        out.append(_student_to_response(s, tr))
+    return out
 
 
 @router.get("/me", response_model=StudentResponse)
@@ -139,6 +167,23 @@ async def get_my_student_profile(
     if not student:
         raise HTTPException(status_code=404, detail="Student profile not found")
 
+    service = StudentService(db)
+    profile_changed = await service.ensure_primary_registration_path(student, current_user)
+    if profile_changed:
+        flag_modified(student, "extra_data")
+
+    extra = StateMachineEngine._as_mapping(student.extra_data)
+    hp = extra.get("hidden_progress")
+    g = extra.get("gamification")
+    if hp and (not g or g.get("version") != GAMIFICATION_VERSION):
+        student.extra_data = merge_gamification_into_extra(extra)
+        flag_modified(student, "extra_data")
+        profile_changed = True
+
+    if profile_changed:
+        await db.commit()
+        await db.refresh(student)
+
     return StudentResponse(
         id=str(student.id),
         user_id=str(student.user_id),
@@ -149,7 +194,7 @@ async def get_my_student_profile(
         current_term=student.current_term,
         therapy_started=student.therapy_started,
         weekly_sessions=student.weekly_sessions,
-        extra_data=student.extra_data,
+        extra_data=_extra_for_response(student.extra_data),
     )
 
 
@@ -176,7 +221,7 @@ async def get_student(
         current_term=student.current_term,
         therapy_started=student.therapy_started,
         weekly_sessions=student.weekly_sessions,
-        extra_data=student.extra_data,
+        extra_data=_extra_for_response(student.extra_data),
     )
 
 
@@ -210,5 +255,5 @@ async def update_student(
         current_term=student.current_term,
         therapy_started=student.therapy_started,
         weekly_sessions=student.weekly_sessions,
-        extra_data=student.extra_data,
+        extra_data=_extra_for_response(student.extra_data),
     )

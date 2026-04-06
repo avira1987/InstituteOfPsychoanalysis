@@ -128,9 +128,18 @@ class SLAMonitor:
             "sla_hours": str(breach.sla_hours),
             "elapsed_hours": str(round(breach.elapsed_hours, 1)),
         }
-        # BUILD_TODO § ج-۲: educational_leave → deputy_education with committee_sla_breach
+        # BUILD_TODO § ج-۲: نقش و قالب بر اساس فرایند
         if breach.process_code == "educational_leave":
             template = "committee_sla_breach"
+            recipient = await self._resolve_contact_for_role(db, "deputy_education")
+        elif breach.process_code == "specialized_commission_review":
+            template = "committee_sla_breach"
+            recipient = await self._resolve_contact_for_role(db, "monitoring_committee_officer")
+        elif breach.process_code == "attendance_tracking":
+            template = "sla_breach"
+            recipient = await self._resolve_contact_for_role(db, "site_manager")
+        elif breach.process_code == "supervision_50h_completion":
+            template = "sla_breach"
             recipient = await self._resolve_contact_for_role(db, "deputy_education")
         else:
             template = "sla_breach"
@@ -222,17 +231,24 @@ class SLAMonitor:
         self._running = True
         logger.info(f"SLA Monitor started (interval: {interval_seconds}s)")
 
-        while self._running:
-            try:
-                async with db_factory() as db:
-                    breaches = await self.check_sla_breaches(db)
-                    if breaches:
-                        logger.warning(f"Found {len(breaches)} SLA breach(es)")
-                    await db.commit()
-            except Exception as e:
-                logger.error(f"SLA Monitor error: {e}", exc_info=True)
+        try:
+            while self._running:
+                try:
+                    async with db_factory() as db:
+                        breaches = await self.check_sla_breaches(db)
+                        if breaches:
+                            logger.warning(f"Found {len(breaches)} SLA breach(es)")
+                        await db.commit()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    logger.error(f"SLA Monitor error: {e}", exc_info=True)
 
-            await asyncio.sleep(interval_seconds)
+                await asyncio.sleep(interval_seconds)
+        except asyncio.CancelledError:
+            self._running = False
+            logger.info("SLA Monitor cancelled")
+            raise
 
     def stop_monitoring(self):
         """Stop the monitoring loop."""

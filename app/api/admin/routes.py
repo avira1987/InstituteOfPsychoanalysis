@@ -1,5 +1,7 @@
 """Admin CRUD API endpoints for managing processes, states, transitions, and rules."""
 
+import json
+import os
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -570,7 +572,7 @@ async def list_audit_logs(
                 "actor_role": log.actor_role,
                 "actor_name": log.actor_name,
                 "details": log.details,
-                "timestamp": log.timestamp.isoformat(),
+                "timestamp": log.timestamp.isoformat() if log.timestamp else None,
             }
             for log in logs
         ],
@@ -645,6 +647,54 @@ async def sync_metadata_from_json(
         "added_processes": processes_added,
         "message": f"اضافه شد: {', '.join(msg) or 'هیچ مورد جدیدی'}" if msg else "هیچ مورد جدیدی یافت نشد",
     }
+
+
+class SeedDemoMatrixRequest(BaseModel):
+    """همان منطق scripts/seed_demo_process_matrix.py — روی دیتابیس همین سرور (نه SQLite جدا روی میزبان)."""
+
+    matrix: bool = True
+    scenarios: bool = True
+    force: bool = False
+
+
+@router.post("/seed-demo-matrix")
+async def seed_demo_matrix(
+    body: SeedDemoMatrixRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    """
+    ایجاد کاربران/دانشجویان دمو (AUTO-DEMO-*, DEMO-SCEN-*) در **همین** دیتابیسی که API به آن وصل است.
+    اگر فقط اسکریپت را روی میزبان بدون DATABASE_URL مشابه Docker اجرا کرده‌اید، داده در SQLite محلی مانده و در پنل دیده نمی‌شود — از این endpoint یا docker exec استفاده کنید.
+    """
+    os.environ.setdefault("SMS_PROVIDER", "log")
+    os.environ.setdefault("OTP_RESTRICT_TO_STUDENT_PHONES", "false")
+    demo_pass = os.environ.get("DEMO_MATRIX_STUDENT_PASSWORD", "demo_student_123")
+
+    from app.demo_process_walker import (
+        delete_demo_seed_users,
+        seed_branch_scenarios,
+        seed_full_matrix,
+    )
+
+    out: dict = {"admin_login": {"username": "admin", "password": "admin123", "note": "password tab + math challenge"}}
+
+    if body.force:
+        if body.matrix and body.scenarios:
+            prefixes = ("AUTO-DEMO-", "DEMO-SCEN-")
+        elif body.matrix:
+            prefixes = ("AUTO-DEMO-",)
+        else:
+            prefixes = ("DEMO-SCEN-",)
+        out["deleted_demo_rows"] = await delete_demo_seed_users(db, prefixes=prefixes)
+
+    # سناریوها سبک‌ترند — اول تا در پنل سریع‌تر چیزی ببینید؛ ماتریس کامل بعداً (می‌تواند دقیقه‌ها طول بکشد)
+    if body.scenarios:
+        out["scenarios"] = await seed_branch_scenarios(db, None, None, demo_pass)
+    if body.matrix:
+        out["matrix"] = await seed_full_matrix(db, None, None, demo_pass)
+
+    return out
 
 
 # ─── User Management Endpoints ──────────────────────────────────
@@ -764,11 +814,26 @@ async def _get_process_or_404(db: AsyncSession, process_id: str) -> ProcessDefin
     return process
 
 
+def _normalize_process_config(val) -> Optional[dict]:
+    """ProcessDefinition.config is JSONB; legacy rows may store a JSON string — Pydantic expects dict."""
+    if val is None:
+        return None
+    if isinstance(val, dict):
+        return val
+    if isinstance(val, str):
+        try:
+            parsed = json.loads(val)
+            return parsed if isinstance(parsed, dict) else None
+        except (json.JSONDecodeError, TypeError):
+            return None
+    return None
+
+
 def _process_response(p: ProcessDefinition) -> ProcessResponse:
     return ProcessResponse(
         id=str(p.id), code=p.code, name_fa=p.name_fa, name_en=p.name_en,
         description=p.description, version=p.version, is_active=p.is_active,
-        initial_state_code=p.initial_state_code, config=p.config,
+        initial_state_code=p.initial_state_code, config=_normalize_process_config(p.config),
     )
 
 

@@ -615,9 +615,16 @@
   },
   {
     "code": "installment_not_paid",
-    "name_fa": "قسط پرداخت نشده",
+    "name_fa": "سررسید قسط رسیده و هنوز قسط باز مانده است",
     "rule_type": "condition",
-    "expression": {"field": "instance.installment_overdue", "operator": "eq", "value": true}
+    "expression": {
+      "operator": "and",
+      "conditions": [
+        {"field": "instance.pending_installments_remaining", "operator": "gt", "value": 0},
+        {"field": "instance.next_installment_due_at", "operator": "is_not_null", "value": null},
+        {"field": "instance.next_installment_due_at", "operator": "lte", "value": "instance.calendar_today"}
+      ]
+    }
   },
   {
     "code": "result == 'conditional_therapy'",
@@ -807,5 +814,23 @@
     "name_fa": "بازگشت دانشجو از مرخصی کل آموزش",
     "rule_type": "condition",
     "expression": {"field": "instance.return_approved", "operator": "eq", "value": true}
+  },
+  {
+    "code": "term2_cash_payment",
+    "name_fa": "پرداخت نقدی (ترم دوم دوره آشنایی)",
+    "rule_type": "condition",
+    "expression": {"field": "payload.payment_method", "operator": "eq", "value": "cash"}
+  },
+  {
+    "code": "term2_installment_payment",
+    "name_fa": "پرداخت اقساطی (ترم دوم دوره آشنایی)",
+    "rule_type": "condition",
+    "expression": {"field": "payload.payment_method", "operator": "eq", "value": "installment"}
+  },
+  {
+    "code": "term2_ready_for_close",
+    "name_fa": "بدون قسط معوق باقی‌مانده — آماده بستن فرایند ترم دوم",
+    "rule_type": "condition",
+    "expression": {"field": "instance.pending_installments_remaining", "operator": "eq", "value": 0}
   }
 ]

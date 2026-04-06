@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { studentApi, processExecApi, processApi, userApi } from '../services/api'
+import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
+import { notesPayload } from '../utils/decisionPayload'
+import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import InstanceContextSummary from '../components/InstanceContextSummary'
+import DecisionNotesBlock from '../components/DecisionNotesBlock'
 
 export default function StudentTracker() {
   const [students, setStudents] = useState([])
@@ -13,6 +18,7 @@ export default function StudentTracker() {
   const [instances, setInstances] = useState([])
   const [instanceStatus, setInstanceStatus] = useState(null)
   const [availableTransitions, setAvailableTransitions] = useState([])
+  const [decisionNotes, setDecisionNotes] = useState('')
 
   // Create student form
   const [showCreate, setShowCreate] = useState(false)
@@ -40,7 +46,7 @@ export default function StudentTracker() {
   const loadStudents = async () => {
     try {
       setError(null)
-      const res = await studentApi.list()
+      const res = await studentApi.list({ tracker_summary: true })
       setStudents(Array.isArray(res.data) ? res.data : [])
     } catch (err) {
       console.error('Failed to load students:', err)
@@ -71,16 +77,26 @@ export default function StudentTracker() {
       ])
       setInstanceStatus(statusRes.data)
       setAvailableTransitions(transRes.data.transitions || [])
+      setDecisionNotes('')
     } catch (err) {
       console.error('Failed to load status:', err)
     }
   }
 
-  const handleTrigger = async (instanceId, triggerEvent) => {
+  const handleTrigger = async (instanceId, transition) => {
+    const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
+    const toState = typeof transition === 'object' ? transition.to_state : undefined
     try {
-      const res = await processExecApi.trigger(instanceId, { trigger_event: triggerEvent })
+      let payload = notesPayload(decisionNotes)
+      payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
+      if (toState) payload.to_state = toState
+      const res = await processExecApi.trigger(instanceId, {
+        trigger_event: triggerEvent,
+        payload,
+        ...(toState ? { to_state: toState } : {}),
+      })
       if (res.data.success) {
-        showToast(`انتقال موفق: ${res.data.from_state} → ${res.data.to_state}`)
+        showToast(`انتقال موفق: ${labelState(res.data.from_state)} → ${labelState(res.data.to_state)}`)
         await loadInstanceStatus(instanceId)
         await loadStudentInstances(selectedStudent)
       } else {
@@ -108,7 +124,7 @@ export default function StudentTracker() {
     e.preventDefault()
     try {
       const res = await processExecApi.start(startForm)
-      showToast(`فرایند '${startForm.process_code}' شروع شد`)
+      showToast(`فرایند «${labelProcess(startForm.process_code)}» شروع شد`)
       setShowStartProcess(false)
       if (selectedStudent) {
         loadStudentInstances(selectedStudent)
@@ -137,6 +153,14 @@ export default function StudentTracker() {
       console.error(err)
     }
     setShowCreate(true)
+  }
+
+  const closeStudentDetail = () => {
+    setSelectedStudent(null)
+    setInstances([])
+    setInstanceStatus(null)
+    setAvailableTransitions([])
+    setDecisionNotes('')
   }
 
   const courseTypeLabel = (type) => {
@@ -261,7 +285,7 @@ export default function StudentTracker() {
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: selectedStudent ? '1fr 1.2fr' : '1fr', gap: '1.5rem' }}>
+      <div>
         {/* Students List */}
         <div className="card">
           <div className="card-header">
@@ -270,19 +294,67 @@ export default function StudentTracker() {
           <div className="table-container">
             <table>
               <thead>
-                <tr><th>کد</th><th>دوره</th><th>ترم</th><th>انترن</th><th>درمان</th><th>عملیات</th></tr>
+                <tr>
+                  <th>کد</th>
+                  <th>دوره</th>
+                  <th>ترم</th>
+                  <th>پیشرفت مسیر</th>
+                  <th>اقدام معلق (از دید دانشجو)</th>
+                  <th>انترن</th>
+                  <th>درمان</th>
+                  <th>عملیات</th>
+                </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>در حال بارگذاری...</td></tr>
+                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>در حال بارگذاری...</td></tr>
                 ) : filteredStudents.length === 0 ? (
-                  <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>دانشجویی یافت نشد</td></tr>
+                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>دانشجویی یافت نشد</td></tr>
                 ) : (
                   filteredStudents.map((s) => (
                     <tr key={s.id} style={{ background: selectedStudent === s.id ? 'var(--primary-light)' : '' }}>
-                      <td><strong>{s.student_code}</strong></td>
+                      <td><strong>{formatStudentCodeDisplay(s.student_code)}</strong></td>
                       <td>{courseTypeLabel(s.course_type)}</td>
                       <td>{s.current_term}/{s.term_count}</td>
+                      <td style={{ minWidth: '120px' }}>
+                        {s.graduation_progress_pct != null ? (
+                          <div>
+                            <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{s.graduation_progress_pct}%</div>
+                            <div
+                              style={{
+                                height: '6px',
+                                borderRadius: '4px',
+                                background: '#e5e7eb',
+                                overflow: 'hidden',
+                              }}
+                              title={s.primary_process_name_fa || ''}
+                            >
+                              <div
+                                style={{
+                                  height: '100%',
+                                  width: `${Math.min(100, s.graduation_progress_pct)}%`,
+                                  background: 'var(--primary)',
+                                  borderRadius: '4px',
+                                }}
+                              />
+                            </div>
+                            {s.primary_process_name_fa && (
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }} title={s.primary_current_state ? labelState(s.primary_current_state) : ''}>
+                                {s.primary_process_name_fa}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ maxWidth: '280px', fontSize: '0.85rem', lineHeight: 1.45 }}>
+                        {s.pending_action_fa ? (
+                          <span title={s.pending_action_fa}>{s.pending_action_fa}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-secondary)' }}>—</span>
+                        )}
+                      </td>
                       <td>
                         <span className={`badge ${s.is_intern ? 'badge-success' : 'badge-info'}`}>
                           {s.is_intern ? 'بله' : 'خیر'}
@@ -310,116 +382,112 @@ export default function StudentTracker() {
             </table>
           </div>
         </div>
+      </div>
 
-        {/* Student Process Instances */}
-        {selectedStudent && (
-          <div>
-            <div className="card" style={{ marginBottom: '1.5rem' }}>
-              <div className="card-header">
-                <h3 className="card-title">فرایندهای دانشجو</h3>
-                <button className="btn btn-outline btn-sm" onClick={() => { setSelectedStudent(null); setInstances([]); setInstanceStatus(null) }}>
-                  بستن
-                </button>
-              </div>
-              {instances.length === 0 ? (
-                <div className="empty-state" style={{ padding: '2rem' }}>
-                  <p>فرایندی برای این دانشجو یافت نشد</p>
-                </div>
-              ) : (
-                instances.map((inst) => (
-                  <div key={inst.instance_id} className="instance-card" onClick={() => loadInstanceStatus(inst.instance_id)}
-                    style={{
-                      cursor: 'pointer',
-                      border: `2px solid ${inst.is_completed ? 'var(--success)' : inst.is_cancelled ? 'var(--danger)' : 'var(--info)'}`,
-                      background: instanceStatus?.instance_id === inst.instance_id ? 'var(--primary-light)' : 'var(--bg)',
-                    }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <strong>{inst.process_code}</strong>
-                      <span className={`badge ${inst.is_completed ? 'badge-success' : inst.is_cancelled ? 'badge-danger' : 'badge-warning'}`}>
-                        {inst.is_completed ? 'تکمیل' : inst.is_cancelled ? 'لغو' : 'در جریان'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                      <div>وضعیت فعلی: <span className="badge badge-info">{inst.current_state}</span></div>
-                      <div>شروع: {inst.started_at ? new Date(inst.started_at).toLocaleDateString('fa-IR') : '-'}</div>
-                      {inst.completed_at && <div>پایان: {new Date(inst.completed_at).toLocaleDateString('fa-IR')}</div>}
-                    </div>
-                  </div>
-                ))
-              )}
+      {/* Student processes + detail — modal popup */}
+      {selectedStudent && (
+        <div className="modal-overlay" onClick={closeStudentDetail}>
+          <div
+            className="modal modal-wide"
+            style={{ maxWidth: 'min(92vw, 920px)', width: '100%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3>فرایندهای دانشجو</h3>
+              <button type="button" className="modal-close" onClick={closeStudentDetail} aria-label="بستن">&times;</button>
             </div>
-
-            {/* Instance Detail with Timeline */}
-            {instanceStatus && (
-              <div className="card">
-                <div className="card-header">
-                  <h3 className="card-title">جزئیات فرایند</h3>
+            <div className="modal-body" style={{ paddingTop: 0 }}>
+              <div className="card" style={{ marginBottom: '1.5rem', boxShadow: 'none', border: '1px solid var(--border)' }}>
+                <div className="card-header" style={{ paddingTop: '0.75rem' }}>
+                  <h3 className="card-title" style={{ fontSize: '1rem' }}>لیست فرایندها</h3>
                 </div>
-
-                {/* Status Summary */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                  <div className="detail-item">
-                    <span className="detail-label">فرایند:</span>
-                    <span>{instanceStatus.process_code}</span>
+                {instances.length === 0 ? (
+                  <div className="empty-state" style={{ padding: '2rem' }}>
+                    <p>فرایندی برای این دانشجو یافت نشد</p>
                   </div>
-                  <div className="detail-item">
-                    <span className="detail-label">وضعیت فعلی:</span>
-                    <span className="badge badge-info">{instanceStatus.current_state}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">وضعیت:</span>
-                    <span className={`badge ${instanceStatus.is_completed ? 'badge-success' : instanceStatus.is_cancelled ? 'badge-danger' : 'badge-warning'}`}>
-                      {instanceStatus.is_completed ? 'تکمیل شده' : instanceStatus.is_cancelled ? 'لغو شده' : 'در جریان'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Available Transitions */}
-                {availableTransitions.length > 0 && !instanceStatus.is_completed && !instanceStatus.is_cancelled && (
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <h4 style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>انتقال‌های قابل اجرا:</h4>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      {availableTransitions.map((t) => (
-                        <button
-                          key={t.trigger_event}
-                          className="btn btn-primary btn-sm"
-                          onClick={() => handleTrigger(instanceStatus.instance_id, t.trigger_event)}
-                          title={t.description || `${t.trigger_event} → ${t.to_state}`}
-                        >
-                          {t.description || t.trigger_event}
-                          <span style={{ fontSize: '0.7rem', opacity: 0.8, marginRight: '0.25rem' }}>→ {t.to_state}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Timeline */}
-                <h4 style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>تاریخچه:</h4>
-                <div className="timeline">
-                  {(instanceStatus.history || []).map((h, idx) => (
-                    <div key={idx} className="timeline-item">
-                      <div className="timeline-dot" />
-                      <div className="timeline-content">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          {h.from_state && <span className="badge badge-info">{h.from_state}</span>}
-                          {h.from_state && <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>→</span>}
-                          <span className="badge badge-success">{h.to_state}</span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({h.trigger_event})</span>
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-light)', marginTop: '0.25rem' }}>
-                          {h.actor_role && <span>نقش: {h.actor_role} | </span>}
-                          {h.entered_at && <span>{new Date(h.entered_at).toLocaleString('fa-IR')}</span>}
-                        </div>
+                ) : (
+                  instances.map((inst) => (
+                    <div key={inst.instance_id} className="instance-card" onClick={() => loadInstanceStatus(inst.instance_id)}
+                      style={{
+                        cursor: 'pointer',
+                        border: `2px solid ${inst.is_completed ? 'var(--success)' : inst.is_cancelled ? 'var(--danger)' : 'var(--info)'}`,
+                        background: instanceStatus?.instance_id === inst.instance_id ? 'var(--primary-light)' : 'var(--bg)',
+                      }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong>{labelProcess(inst.process_code)}</strong>
+                        <span className={`badge ${inst.is_completed ? 'badge-success' : inst.is_cancelled ? 'badge-danger' : 'badge-warning'}`}>
+                          {inst.is_completed ? 'تکمیل' : inst.is_cancelled ? 'لغو' : 'در جریان'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                        <div>وضعیت فعلی: <span className="badge badge-info">{labelState(inst.current_state)}</span></div>
+                        <div>شروع: {inst.started_at ? new Date(inst.started_at).toLocaleDateString('fa-IR') : '-'}</div>
+                        {inst.completed_at && <div>پایان: {new Date(inst.completed_at).toLocaleDateString('fa-IR')}</div>}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  ))
+                )}
               </div>
-            )}
+
+              {instanceStatus && (
+                <div className="card" style={{ boxShadow: 'none', border: '1px solid var(--border)' }}>
+                  <div className="card-header">
+                    <h3 className="card-title">جزئیات فرایند</h3>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                    <div className="detail-item">
+                      <span className="detail-label">فرایند:</span>
+                      <span>{labelProcess(instanceStatus.process_code)}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">وضعیت فعلی:</span>
+                      <span className="badge badge-info">{labelState(instanceStatus.current_state)}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">وضعیت:</span>
+                      <span className={`badge ${instanceStatus.is_completed ? 'badge-success' : instanceStatus.is_cancelled ? 'badge-danger' : 'badge-warning'}`}>
+                        {instanceStatus.is_completed ? 'تکمیل شده' : instanceStatus.is_cancelled ? 'لغو شده' : 'در جریان'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <InstanceContextSummary
+                    contextData={instanceStatus.context_data}
+                    history={instanceStatus.history}
+                    title="پرونده و سابقه (زمینهٔ تصمیم)"
+                  />
+
+                  {availableTransitions.length > 0 && !instanceStatus.is_completed && !instanceStatus.is_cancelled && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h4 style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>انتقال‌های قابل اجرا:</h4>
+                      <DecisionNotesBlock
+                        value={decisionNotes}
+                        onChange={setDecisionNotes}
+                        title="توضیح همراه انتقال (اختیاری)"
+                        hint="برای ثبت یادداشت همراه همان دکمهٔ انتقال."
+                      />
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {availableTransitions.map((t, idx) => (
+                          <button
+                            key={`${t.trigger_event}-${t.to_state || idx}`}
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleTrigger(instanceStatus.instance_id, t)}
+                            title={t.description || `${t.trigger_event} → ${labelState(t.to_state)}`}
+                          >
+                            {t.description || t.trigger_event}
+                            <span style={{ fontSize: '0.7rem', opacity: 0.8, marginRight: '0.25rem' }}>→ {labelState(t.to_state)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 # لیست یکپارچهٔ ادامهٔ ساخت اتوماسیون فرایندها
 
 **منابع:** `metadata/process_registry/GAPS.json` + تحلیل کد (موتور، ActionHandler، قوانین، SLA، فرایندهای JSON)  
-**آخرین به‌روزرسانی:** 2026-03-12
+**آخرین به‌روزرسانی:** 2026-04-02
 
 ---
 
@@ -12,85 +12,62 @@
 | 1 | **violation_registration** | ثبت تخلف | رد وقفه، عدم بازگشت از مرخصی، کاهش به ۱ جلسه بدون تکمیل، غیبت بدون اطلاع، کنسلی >۱۲٪، ... | educational_leave, therapy_session_reduction, therapy_early_termination, unannounced_absence_reaction, therapy_interruption, student_session_cancellation, supervision_50h_completion, internship_*, student_non_registration, ta_conceptual_questions, mentor_private_sessions |
 | 2 | **patient_referral** | ارجاع بیماران انترن | وقفه ≥۴۲ روز، تایید وقفه ۲ ترمی انترن، قطع در committees_review، عدم بازگشت در پایان وقفه کوتاه | educational_leave, committees_review, therapy_interruption, supervision_interruption |
 
-**کارهای لازم:** تعریف states/transitions در `metadata/processes/violation_registration.json` و `patient_referral.json`؛ اضافه به seed؛ پیاده‌سازی اکشن‌های مرتبط.
+**وضعیت:** فایل‌های JSON و seed برای این دو فرایند در مخزن وجود دارد.
 
 ---
 
-## ب) اکشن‌ها: بدون هندلر یا فقط استاب
+## ب) اکشن‌ها و یکپارچه‌سازی (وضعیت هم‌خوان با `app/services/action_handler.py`)
 
-### ب-۱) اکشن‌های بدون ثبت در ActionHandler._registry
+**سه لایه:**
 
-- `block_class_access`, `activate_therapy` (start_therapy)
-- `generate_payment_invoice`, `zero_debt_if_paid`, `allocate_credit_to_sessions`, `unlock_session_links`, `unlock_attendance_registration`, `suspend_sessions` (session_payment)
-- `record_absence_auto`, `record_attendance`, `add_hour_by_course_and_weekly_sessions`, `notify_committee` (attendance_tracking)
-- `redirect_to_process`, `display_available_supervisor_slots`, `display_mandatory_message`, `apply_24h_rule_for_start_date`, `display_calculated_start_date` (supervision_block_transition)
-- `register_new_supervision_block_in_lms`, `enable_attendance_for_new_supervisor`, `create_online_link_50th`, `enable_attendance_for_current_supervisor_50th`
-- `cancel_supervision_session`, `add_supervision_credit_if_paid`, `register_supervision_makeup_session`, `enable_attendance_registration` (supervisor_session_cancellation)
-- `move_therapist_to_past`, `record_result_in_student_portal`, `ensure_therapist_slots_freed` (unannounced_absence_reaction)
-- `move_ta_to_instructor`, `upgrade_rank_to_assistant_faculty`, `unlock_next_course_in_track` (ta_to_assistant_faculty)
-- `publish_courses_to_website`, `publish_academic_calendar_to_profiles` (fall_semester_preparation)
-- `show_popup`, `load_available_courses`, `register_courses_in_portal`, `create_online_class_links`, `schedule_installment_reminders`, `block_attendance_registration`, `notify_instructor`, `unblock_attendance_registration` (intro_second_semester_registration)
+| لایه | توضیح |
+|------|--------|
+| **دامنهٔ داخلی** | اکشن‌های مالی، حضور، تراپی، پورتال، پرداخت، `update_record`، `deduct_credit_session`، … — روی جداول/Extra یا `context_data` اثر می‌گذارند. |
+| **یکپارچه‌سازی اختیاری** | نام‌های `send_unlock_to_lms`، `publish_*`، … → `_handle_external_integration` + `integration_events` + وب‌هوک `LMS_INTEGRATION_WEBHOOK_URL`؛ بدون URL فقط لاگ. |
+| **نام‌های متفاوت در متادیتا** | `record_commission_result_in_student_portal`، `suspend_class_registration` (هم‌ارز مسدودسازی دسترسی کلاس)، `record_evaluation_completion` و … در `._registry` ثبت شده‌اند. |
 
-### ب-۲) اکشن‌های با هندلر استاب (باید با منطق واقعی پر شوند)
-
-| فرایند | اکشن‌ها |
-|--------|---------|
-| start_therapy | resolve_access_restrictions, create_session_link |
-| session_payment | zero_debt_if_paid, add_to_credit_balance, allocate_credit_to_sessions, unlock_session_links, unlock_attendance_registration |
-| fee_determination | add_to_credit_balance, forfeit_session_payment, create_debt_or_deduct_credit, increment_absence_counter |
-| attendance_tracking | add_hour_by_course_and_weekly_sessions |
-| therapy_completion | delete_future_therapy_appointments, release_therapist_slots_to_available_sheet, update_therapy_status |
-| therapy_session_increase | add_recurring_therapy_session |
-| therapy_session_reduction | remove_selected_therapy_sessions, release_therapist_slots_to_available_sheet, record_therapy_change_history |
-| therapy_early_termination | log_termination_request, mark_therapy_relationship_terminated, release_therapist_slots, set_student_status, call_bpms_subprocess |
-| specialized_commission_review | send_unlock_to_lms, unlock_student_therapist_selection, record_commission_result |
-| committees_review | store_nezarat_recommendation, deactivate_student_account, generate_termination_letter, patient_referral |
-| therapist_session_cancellation | cancel_session, add_credit_if_paid, deduct_credit_session, register_makeup_session, enable_online_session_link |
-| unannounced_absence_reaction | release_therapist_slots, move_therapist_to_past |
-| supervisor_session_cancellation | cancel_supervision_session, add_supervision_credit_if_paid, register_supervision_makeup_session, enable_attendance_registration, activate_online_session_link |
-| supervision_interruption | release_supervisor_slot, move_supervisor_to_past_list, record_interruption_dates, monitor_return_at_end_date, run_patient_referral |
-| supervision_block_transition | remove_slot_from_available, unlock_payment_for_50th_session, display_supervision_history |
-| supervision_50h_completion | send_45_48_reminder_if_applicable, unlock_payment_for_50th_session |
-| student_session_cancellation | mark_sessions_cancelled_by_student, block_attendance_for_cancelled_sessions |
+**فهرست قدیمی ب-۱/ب-۲ این سند دیگر معتبر نیست**؛ مرجع عملی: کلیدهای `ActionHandler._registry` در کد. برای جزئیات استفاده: `docs/ACTIONS_AND_INTEGRATION_FA.md`.
 
 ---
 
 ## ج) تریگرهای زمان‌محور و SLA
 
-### ج-۱) تریگرهای خودکار (نیاز به cron/job)
+### ج-۱) تقویم (`calendar_triggers`)
 
-- `session_time_reached` (attendance_tracking, supervision_50h_completion)
-- `therapist_did_not_record`, `site_manager_sla_breach` (attendance_tracking)
-- `sla_breach_7days` (educational_leave)
-- `sla_5days_breach` (specialized_commission_review)
-- `payment_timeout` (session_payment)
-- `conditional_intern_enters_month_12` / `alert_sent` (internship_12month_conditional_review)
-- `leave_activated`, `return_deadline_passed`, `send_return_reminder` (educational_leave)
-- `upload_after_24h`, `class_session_ended` (ta_conceptual_questions)
-- `evaluation_sla_breach`, `supervisor_did_not_record` (supervision_50h_completion)
-- `installment_due_date_passed` (intro_second_semester_registration)
+| تریگر | وضعیت |
+|--------|--------|
+| `payment_timeout` | ✅ `session_payment` / `awaiting_payment` بر اساس `sla_hours` state |
+| `send_return_reminder`، `return_deadline_passed` | ✅ با `return_reminder_at` / `return_deadline_at` در context |
+| `session_time_reached` | ✅ `attendance_tracking` و `supervision_50h_completion` با `session_date` (یا `supervision_session_date`) |
+| `installment_due_date_passed` | ✅ `intro_second_semester_registration` در `registration_complete` با `next_installment_due_at` و حلقهٔ `calendar_triggers` — `docs/CALENDAR_TRIGGERS_FA.md` |
+| ثبت خودکار عدم ثبت درمانگر پس از مهلت | ✅ `therapist_did_not_record` از `therapist_recording` پس از ۲۴ ساعت از روز جلسه |
+| TA/انترن/سایر تریگرهای خاص | ⏳ در صورت نیاز به سناریوهای جدا، context زمان‌دار یا توسعهٔ بعدی |
 
-### ج-۲) یکپارچه‌سازی SLA با موتور
+### ج-۲) SLA (`sla_monitor`)
 
-- SLA breach: ارسال به deputy_education با قالب committee_sla_breach (نه همیشه admin).
-- پس از breach: در صورت وجود `on_sla_breach_event` در state، فراخوانی `engine.execute_transition(..., trigger_event=on_sla_breach_event)`.
-- استارت `sla_monitor.start_monitoring_loop` در startup اپ یا worker.
+| مورد | وضعیت |
+|------|--------|
+| حلقه در `lifespan` | ✅ |
+| `on_sla_breach_event` در متادیتا | ✅ اجرای ترنزیشن system؛ نمونه: `specialized_commission_review` / `awaiting_student_restart` → `sla_5days_breach`؛ `supervision_50h` / `evaluation_pending` → `evaluation_sla_breach`؛ `attendance_tracking` / `site_manager_pending` → `site_manager_sla_breach` |
+| `sla_days` در JSON | ✅ تبدیل به `sla_hours` در `seed` |
+| اعلان نقش‌محور | ✅ `educational_leave` → معاون آموزش؛ `specialized_commission_review` → کمیته نظارت؛ `attendance_tracking` → مسئول سایت؛ `supervision_50h_completion` → معاون؛ سایر → admin |
 
 ---
 
 ## د) Context و قوانین (Rule Engine)
 
-فیلدهای مورد نیاز در context برای ارزیابی قوانین:
+فیلدهای پرشده در `engine._build_context` (علاوه بر `instance.*` و `context_data`):
 
 | فیلد | کاربرد |
 |------|--------|
+| instance.current_shamsi_year | سال شمسی جاری برای قوانین و سهمیه |
 | instance.current_week | week_9_deadline و مشابه |
 | instance.absences_this_year | absence_quota_not_exceeded / exceeded |
-| instance.absence_quota | همان (formula: ceil(weekly_sessions*3)، سال شمسی) |
+| instance.absence_quota | ceil(weekly_sessions×3)، سال شمسی |
 | instance.completed_hours, instance.required_hours | therapy_hours_completed و تکمیل درمان/سوپرویژن |
 | instance.hours_until_first_slot | 24_hour_rule |
 
-**کار:** گسترش `engine._build_context` (یا سرویس context enricher) برای پر کردن این فیلدها. در rule_engine مقدار `value` در مقایسه‌ها در صورت مسیر فیلد (مثل `instance.absence_quota`) از context حل می‌شود.
+قوانین پیچیده به دادهٔ واقعی پرونده (LMS، تقویم) وابسته‌اند؛ بخشی از `student.extra_data` در context پخش می‌شود.
 
 ---
 
@@ -134,6 +111,7 @@
 
 ## وضعیت پیاده‌سازی (برای تیک زدن)
 
+- [x] ب (بازنویسی ۲۰۲۶-۰۴): بخش «ب/ج/د» این سند + `GAPS.json` v2 هم‌خوان با `ActionHandler`، `calendar_triggers`، `seed` (`sla_days`) و متادیتای `on_sla_breach_event`
 - [x] الف-۱: violation_registration (JSON با transitions + لود توسط seed + تست)
 - [x] الف-۲: patient_referral (JSON + لود توسط seed + تست)
 - [x] ب (بخشی): اکشن‌های activate_therapy، block_class_access، resolve_access_restrictions (واقعی)؛ اکشن‌های session_payment (generate_payment_invoice، zero_debt_if_paid، allocate_credit_to_sessions، unlock_session_links، unlock_attendance_registration، suspend_sessions) با استاب در ActionHandler + تست

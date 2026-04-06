@@ -1,18 +1,16 @@
 import axios from 'axios'
+import { getRouterBasename } from '../utils/routerBasename'
 
 // API base. Override با VITE_API_BASE در .env در صورت نیاز.
 export function getApiBase() {
-  // فرانت فقط روی پورت 3000؛ آدرس API هم روی 3000 (یک پورت واحد).
+  // روی localhost همیشه نسبی /api/ تا در dev پروکسی Vite به uvicorn (مثلاً 3000) برود؛
+  // روی همان 3000 با Docker هم /api/ همان سرور FastAPI است (بدون حلقهٔ پروکسی به خود Vite).
   if (typeof window !== 'undefined') {
-    const port = window.location.port
     const host = window.location.hostname
-    if (port === '3000' && (host === 'localhost' || host === '127.0.0.1')) {
-      const base = import.meta.env.VITE_API_BASE
-        ? import.meta.env.VITE_API_BASE.replace(/\/?$/, '/')
-        : 'http://localhost:3000/api/'
-      return base
-    }
     if (host === 'localhost' || host === '127.0.0.1') {
+      if (import.meta.env.VITE_API_BASE) {
+        return import.meta.env.VITE_API_BASE.replace(/\/?$/, '/')
+      }
       return '/api/'
     }
   }
@@ -59,7 +57,10 @@ api.interceptors.response.use(
       const isAuthMe = config?.url && /auth\/me$/i.test(String(config.url).replace(/^\//, ''))
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
       const isDevFrontend =
-        origin === 'http://localhost:3000' || origin === 'http://127.0.0.1:3000'
+        origin === 'http://localhost:3000' ||
+        origin === 'http://127.0.0.1:3000' ||
+        origin === 'http://localhost:5173' ||
+        origin === 'http://127.0.0.1:5173'
       const skipRedirect =
         !config ||
         config._skipAuthRedirect === true ||
@@ -70,7 +71,8 @@ api.interceptors.response.use(
         /login-json|login-challenge|otp\/request|otp\/verify/.test(config.url || '')
       if (!skipRedirect) {
         localStorage.removeItem('token')
-        window.location.href = (import.meta.env.BASE_URL || '') + 'login'
+        const rb = getRouterBasename()
+        window.location.href = (rb ? `${rb}/` : '/') + 'login'
       }
     }
     return Promise.reject(error)
@@ -79,8 +81,8 @@ api.interceptors.response.use(
 
 // مسیر پایه اپ (بدون /api) برای endpointهای غیر-API مثل debug
 export function getAppBasePath() {
-  const base = (import.meta.env.BASE_URL || '/anistito/').replace(/\/$/, '') || ''
-  return (base ? base + '/' : '/')
+  const rb = getRouterBasename()
+  return rb ? `${rb}/` : '/'
 }
 
 // ─── Auth ──────────────────────────────────────────────────────
@@ -161,6 +163,9 @@ export const auditApi = {
 export const dashboardApi = {
   stats: () => api.get('admin/dashboard/stats'),
   syncMetadata: () => api.post('admin/sync-metadata'),
+  /** همان seed_demo_process_matrix — روی دیتابیس همین API (برای Docker/Postgres)؛ ممکن است چند دقیقه طول بکشد */
+  seedDemoMatrix: (body) =>
+    api.post('admin/seed-demo-matrix', body || {}, { timeout: 600000 }),
   // endpoint دیباگ بدون نیاز به توکن (همان الگوی لاگین - بدون auth)
   debugProcessCount: () =>
     fetch(`${window.location.origin}${getAppBasePath()}debug/process-count`).then((r) =>
@@ -170,7 +175,8 @@ export const dashboardApi = {
 
 // ─── Students ──────────────────────────────────────────────────
 export const studentApi = {
-  list: () => api.get('students'),
+  /** @param {{ tracker_summary?: boolean }} [params] */
+  list: (params) => api.get('students', { params }),
   me: () => api.get('students/me'),
   get: (id) => api.get(`students/${id}`),
   create: (data) => api.post('students', data),
@@ -185,8 +191,54 @@ export const processExecApi = {
   trigger: (instanceId, data) => api.post(`process/${instanceId}/trigger`, data),
   status: (instanceId) => api.get(`process/${instanceId}/status`),
   transitions: (instanceId) => api.get(`process/${instanceId}/transitions`),
+  /** وضعیت + انتقال‌ها + فرم‌های مرحلهٔ فعلی (مثل بارگذاری داشبورد فرایند در UI) */
+  dashboard: (instanceId) => api.get(`process/${instanceId}/dashboard`),
   studentInstances: (studentId, params) =>
     api.get(`process/instances/student/${studentId}`, { params }),
+  /** دانشجو: ثبت فرم مرحله (قفل تا باز شدن توسط کارمند) */
+  registerStudentStepForms: (instanceId, body) =>
+    api.post(`process/${instanceId}/student-step-forms/register`, body),
+  /** کارمند/اداری: اجازهٔ ویرایش مجدد فرم مرحله برای دانشجو */
+  unlockStudentStepFormsEdit: (instanceId, body) =>
+    api.post(`process/${instanceId}/student-step-forms/unlock-edit`, body || {}),
+}
+
+// ─── Therapy sessions (student / therapist) ───────────────────
+export const therapyApi = {
+  mySessions: () => api.get('therapy-sessions/me'),
+  forTherapist: () => api.get('therapy-sessions/for-therapist'),
+  patchSession: (sessionId, data) => api.patch(`therapy-sessions/${sessionId}`, data),
+}
+
+// ─── Finance (اپراتور مالی / مدیر) ─────────────────────────────
+export const financeApi = {
+  summary: () => api.get('finance/summary'),
+  context: () => api.get('finance/context'),
+  transactions: (params) => api.get('finance/transactions', { params }),
+  studentBalances: (params) => api.get('finance/student-balances', { params }),
+  async exportCsv() {
+    const token = localStorage.getItem('token')
+    const base = getApiBase()
+    const res = await fetch(`${base}finance/export.csv`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new Error('Export failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'financial_records.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+}
+
+// ─── Assignments ────────────────────────────────────────────────
+export const assignmentApi = {
+  create: (data) => api.post('assignments', data),
+  mine: () => api.get('assignments/me'),
+  getSubmission: (assignmentId) => api.get(`assignments/${assignmentId}/submission`),
+  submit: (assignmentId, body) => api.post(`assignments/${assignmentId}/submit`, body),
 }
 
 // ─── Users ─────────────────────────────────────────────────────

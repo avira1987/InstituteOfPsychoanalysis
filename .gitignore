@@ -41,3 +41,7 @@ Thumbs.db
 # Database
 *.db
 *.sqlite3
+
+# بسته‌های استقرار موقت — در git نگه ندارید
+*.tgz
+anistito-deploy.tgz

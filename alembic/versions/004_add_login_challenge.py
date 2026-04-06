@@ -22,7 +22,7 @@ def upgrade() -> None:
       sa.Column("answer_hash", sa.String(255), nullable=False),
       sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
       sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
-      sa.Column("is_used", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+      sa.Column("is_used", sa.Boolean(), nullable=False, server_default=sa.text("false")),
   )
   op.create_index("ix_login_challenge_created_at", "login_challenges", ["created_at"])
 

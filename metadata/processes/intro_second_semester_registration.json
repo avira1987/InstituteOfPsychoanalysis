@@ -14,8 +14,9 @@
     {"code": "course_selection", "name_fa": "انتخاب دروس ترم دوم", "type": "intermediate", "assigned_role": "student"},
     {"code": "payment_method", "name_fa": "انتخاب روش پرداخت", "type": "intermediate", "assigned_role": "student"},
     {"code": "payment_processing", "name_fa": "در حال پرداخت", "type": "intermediate", "assigned_role": "student"},
-    {"code": "registration_complete", "name_fa": "ثبت‌نام نهایی — دروس ثبت و لینک کلاس فعال", "type": "terminal", "assigned_role": "system"},
-    {"code": "installment_overdue", "name_fa": "قسط معوق — بلاک حضور و غیاب", "type": "intermediate", "assigned_role": "system"}
+    {"code": "registration_complete", "name_fa": "ثبت‌نام نهایی — دروس ثبت و لینک کلاس فعال (اقساط باز یا تسویهٔ در حال انجام)", "type": "intermediate", "assigned_role": "system"},
+    {"code": "installment_overdue", "name_fa": "قسط معوق — بلاک حضور و غیاب", "type": "intermediate", "assigned_role": "system"},
+    {"code": "term2_registration_closed", "name_fa": "پایان فرایند ثبت‌نام ترم دوم — تسویهٔ مالی تکمیل‌شده", "type": "terminal", "assigned_role": "system"}
   ],
   "transitions": [
     {
@@ -71,11 +72,27 @@
       "from": "payment_processing",
       "to": "registration_complete",
       "trigger": "payment_completed",
-      "description_fa": "پرداخت کامل (نقدی) یا قسط اول (اقساطی) موفق — ثبت‌نام نهایی",
+      "priority": 9,
+      "conditions": ["term2_installment_payment"],
+      "description_fa": "قسط اول (اقساطی) موفق — ثبت‌نام نهایی؛ نمونه تا تسویهٔ اقساط زنده می‌ماند",
       "actions": [
         {"type": "register_courses_in_portal"},
         {"type": "create_online_class_links", "description_fa": "ایجاد لینک کلاس آنلاین در LMS"},
         {"type": "schedule_installment_reminders", "condition": "payment_method == 'installment'", "description_fa": "برنامه‌ریزی یادآوری اقساط: پیامک ۱ هفته قبل از سررسید هر قسط"},
+        {"type": "notification", "notification_type": "sms", "template": "registration_confirmed_term2", "recipients": ["student"]},
+        {"type": "merge_instance_context", "mode": "initial_payment"}
+      ]
+    },
+    {
+      "from": "payment_processing",
+      "to": "term2_registration_closed",
+      "trigger": "payment_completed",
+      "priority": 10,
+      "conditions": ["term2_cash_payment"],
+      "description_fa": "پرداخت نقدی یکجا — ثبت‌نام نهایی و بستن فرایند",
+      "actions": [
+        {"type": "register_courses_in_portal"},
+        {"type": "create_online_class_links", "description_fa": "ایجاد لینک کلاس آنلاین در LMS"},
         {"type": "notification", "notification_type": "sms", "template": "registration_confirmed_term2", "recipients": ["student"]}
       ]
     },
@@ -100,10 +117,19 @@
       "from": "installment_overdue",
       "to": "registration_complete",
       "trigger": "overdue_installment_paid",
-      "description_fa": "قسط معوق پرداخت شد — رفع بلاک حضور و غیاب",
+      "description_fa": "قسط معوق پرداخت شد — رفع بلاک حضور و غیاب و به‌روزرسانی شمارندهٔ اقساط",
       "actions": [
-        {"type": "unblock_attendance_registration"}
+        {"type": "unblock_attendance_registration"},
+        {"type": "merge_instance_context", "mode": "installment_paid"}
       ]
+    },
+    {
+      "from": "registration_complete",
+      "to": "term2_registration_closed",
+      "trigger": "finalize_term2_registration",
+      "required_role": "system",
+      "conditions": ["term2_ready_for_close"],
+      "description_fa": "پس از تسویهٔ آخرین قسط (یا مسیر اقساطی با شمارندهٔ صفر)، بستن نمونهٔ فرایند"
     }
   ],
   "forms": [

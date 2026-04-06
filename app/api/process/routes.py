@@ -8,14 +8,22 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, require_role
 from app.models.operational_models import User, ProcessInstance, Student
 from app.core.engine import (
     StateMachineEngine, ProcessNotFoundError,
     InstanceNotFoundError, InvalidTransitionError, UnauthorizedError,
 )
+from sqlalchemy.orm.attributes import flag_modified
+
 from app.meta.loader import MetadataLoader
 from app.meta.process_forms import get_process_forms, get_process_ui_requirements
+from app.meta.student_step_forms import (
+    apply_register_to_context,
+    apply_unlock_to_context,
+    sanitize_form_values,
+    validate_student_step_forms,
+)
 
 router = APIRouter(prefix="/api/process", tags=["Process"])
 
@@ -31,6 +39,19 @@ class StartProcessRequest(BaseModel):
 class TriggerTransitionRequest(BaseModel):
     trigger_event: str
     payload: Optional[dict] = None
+    # شاخهٔ دقیق وقتی چند ترنزیشن trigger یکسان دارند (مثلاً نتیجهٔ مصاحبه)
+    to_state: Optional[str] = None
+    target_to_state: Optional[str] = None
+    interview_result: Optional[str] = None
+
+
+class StudentStepFormsRegisterRequest(BaseModel):
+    form_values: dict
+
+
+class StudentStepFormsUnlockRequest(BaseModel):
+    """اگر state خالی باشد، همان وضعیت فعلی نمونه."""
+    state_code: Optional[str] = None
 
 
 class ProcessInstanceResponse(BaseModel):
@@ -135,13 +156,20 @@ async def trigger_transition(
 ):
     """Execute a state transition for a process instance."""
     engine = StateMachineEngine(db)
+    merged_payload = dict(request.payload or {})
+    if request.to_state:
+        merged_payload.setdefault("to_state", request.to_state)
+    if request.target_to_state:
+        merged_payload.setdefault("target_to_state", request.target_to_state)
+    if request.interview_result is not None:
+        merged_payload.setdefault("interview_result", request.interview_result)
     try:
         result = await engine.execute_transition(
             instance_id=uuid.UUID(instance_id),
             trigger_event=request.trigger_event,
             actor_id=current_user.id,
             actor_role=current_user.role,
-            payload=request.payload,
+            payload=merged_payload if merged_payload else None,
         )
         return TransitionResultResponse(
             success=result.success,
@@ -175,6 +203,70 @@ async def get_instance_status(
         return status
     except InstanceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+async def _get_instance_or_404(db: AsyncSession, instance_id: str) -> ProcessInstance:
+    try:
+        iid = uuid.UUID(instance_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid instance id")
+    stmt = select(ProcessInstance).where(ProcessInstance.id == iid)
+    result = await db.execute(stmt)
+    inst = result.scalars().first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Instance not found")
+    return inst
+
+
+@router.post("/{instance_id}/student-step-forms/register")
+async def register_student_step_forms(
+    instance_id: str,
+    request: StudentStepFormsRegisterRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """دانشجو پس از پر کردن فرم مرحله؛ مقادیر در context_data ذخیره و فرم برای ویرایش قفل می‌شود تا مسئول باز کند."""
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Only students can register step forms")
+    instance = await _get_instance_or_404(db, instance_id)
+    stmt = select(Student).where(Student.id == instance.student_id)
+    res = await db.execute(stmt)
+    student = res.scalars().first()
+    if not student or student.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your process instance")
+
+    forms = get_process_forms(instance.process_code, state_code=instance.current_state_code)
+    ok, missing = validate_student_step_forms(forms, request.form_values or {})
+    if not ok:
+        raise HTTPException(status_code=400, detail={"error": "validation_failed", "missing": missing})
+
+    sanitized = sanitize_form_values(forms, request.form_values or {})
+    ctx = apply_register_to_context(
+        instance.context_data or {},
+        instance.current_state_code,
+        sanitized,
+    )
+    instance.context_data = ctx
+    flag_modified(instance, "context_data")
+    return {"success": True, "context_data": instance.context_data}
+
+
+@router.post("/{instance_id}/student-step-forms/unlock-edit")
+async def unlock_student_step_forms_edit(
+    instance_id: str,
+    request: StudentStepFormsUnlockRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("staff")),
+):
+    """اداری/کارمند: اجازهٔ ویرایش مجدد فرم مرحلهٔ فعلی (یا state مشخص) برای دانشجو."""
+    instance = await _get_instance_or_404(db, instance_id)
+    state = request.state_code or instance.current_state_code
+    if not state:
+        raise HTTPException(status_code=400, detail="No state code")
+    ctx = apply_unlock_to_context(instance.context_data or {}, state)
+    instance.context_data = ctx
+    flag_modified(instance, "context_data")
+    return {"success": True, "state_code": state, "context_data": instance.context_data}
 
 
 @router.get("/{instance_id}/dashboard")

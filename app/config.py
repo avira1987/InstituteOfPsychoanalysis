@@ -9,11 +9,11 @@ class Settings(BaseSettings):
     APP_NAME: str = "Tehran Institute of Psychoanalysis - انیستیتو روانکاوری تهران"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
-    APP_BASE_URL: str = "https://bpms.psychoanalysis.ir/anistito"  # for payment callback, SMS links, etc.
+    APP_BASE_URL: str = "https://lms.psychoanalysis.ir/anistito"  # for payment callback, SMS links, etc.
 
-    # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./anistito.db"
-    DATABASE_URL_SYNC: str = "sqlite:///./anistito.db"
+    # Database (PostgreSQL only — همان مقدار در Docker: سرویس db)
+    DATABASE_URL: str = "postgresql+asyncpg://anistito:anistito@localhost:5432/anistito"
+    DATABASE_URL_SYNC: str = "postgresql://anistito:anistito@localhost:5432/anistito"
     DATABASE_ECHO: bool = False
 
     # Redis
@@ -27,7 +27,16 @@ class Settings(BaseSettings):
     # SMS
     SMS_PROVIDER: str = "log"  # "log" | "mellipayamak" | "kavenegar"
     SMS_API_KEY: str = ""
+    # Melipayamak OTP (rest.payamak-panel.com SendOtp) — username/password از پنل وب‌سرویس؛ نه توکن Bearer کنسول
+    SMS_USERNAME: str = ""
+    SMS_PASSWORD: str = ""  # اگر خالی باشد برای SendOtp از SMS_API_KEY به‌عنوان رمز وب‌سرویس استفاده می‌شود
     SMS_LINE_NUMBER: str = ""  # شماره خط برای mellipayamak (مثال: 3000xxxx)
+
+    # ورود با پیامک (دانشجو) — کد OTP فقط برای مسیر /api/auth/otp/*
+    # اگر true باشد فقط شماره‌هایی که در DB به‌عنوان کاربر فعال با نقش student ثبت شده‌اند کد می‌گیرند (ثبت‌نام اولیه باید از قبل انجام شده باشد).
+    OTP_RESTRICT_TO_STUDENT_PHONES: bool = False
+    # اگر true باشد، پاسخ request OTP فیلد dev_code می‌گیرد تا روی UI تست شود — در production حتماً false بگذارید.
+    OTP_SHOW_CODE_IN_UI: bool = True
 
     # Email
     EMAIL_SMTP_HOST: str = ""
@@ -49,8 +58,21 @@ class Settings(BaseSettings):
     # SLA Monitoring
     SLA_CHECK_INTERVAL_SECONDS: int = 300
 
+    # Calendar / time-based triggers (payment_timeout, leave reminders, session_time_reached, …)
+    CALENDAR_TRIGGERS_ENABLED: bool = True
+    CALENDAR_TRIGGER_INTERVAL_SECONDS: int = 300
+
     # Uploads (avatars, etc.)
     UPLOAD_DIR: str = "uploads"  # مسیر نسبی از روت پروژه
+
+    # Optional outbound integration (LMS / سامانه بیرونی) — اکشن‌های «ثبت در LMS»
+    LMS_INTEGRATION_WEBHOOK_URL: str = ""  # اگر خالی باشد فقط روی context_data لاگ می‌شود
+    LMS_INTEGRATION_SECRET: str = ""  # اختیاری: هدر X-Integration-Secret
+
+    # دمو: اگر true و جدول students خالی باشد، همان دیتابیس API با دادهٔ دمو پر می‌شود (بدون نیاز به اسکریپت روی میزبان)
+    SEED_DEMO_ON_STARTUP: bool = False
+    # اگر true باشد پس از سناریوها، ماتریس کامل فرایندها هم در پس‌زمینه اجرا می‌شود (چند دقیقه)
+    SEED_DEMO_FULL_MATRIX: bool = False
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

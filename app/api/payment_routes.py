@@ -139,7 +139,13 @@ async def payment_callback(
                             actor_role="system",
                             payload={"amount": amount, "ref_id": result.ref_id},
                         )
-                        logger.info(f"[PAYMENT] session_payment transition payment_successful for instance {instance_id}")
+                        logger.info(
+                            "[PAYMENT] session_payment_ok instance_id=%s student_id=%s amount=%s ref=%s",
+                            instance_id,
+                            str(pending.student_id),
+                            amount,
+                            getattr(result, "ref_id", ""),
+                        )
                     except Exception as e:
                         logger.exception(f"[PAYMENT] Transition payment_successful failed: {e}")
                 await db.delete(pending)

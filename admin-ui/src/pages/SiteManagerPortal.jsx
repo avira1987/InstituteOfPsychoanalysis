@@ -1,22 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { processExecApi, studentApi } from '../services/api'
-
-const processLabels = {
-  attendance_tracking: 'حضور و غیاب',
-  unannounced_absence_reaction: 'واکنش به غیبت بدون اطلاع',
-  therapist_session_cancellation: 'کنسل جلسه درمانگر',
-  student_session_cancellation: 'کنسل جلسه دانشجو',
-  fee_determination: 'تعیین تکلیف هزینه جلسه',
-  start_therapy: 'آغاز درمان آموزشی',
-  therapy_changes: 'تغییرات درمان',
-  therapy_interruption: 'وقفه درمان',
-  therapy_completion: 'تکمیل درمان',
-  extra_session: 'جلسه اضافی',
-  session_payment: 'پرداخت جلسات',
-  educational_leave: 'مرخصی آموزشی',
-  supervisor_session_cancellation: 'کنسل جلسه سوپروایزر',
-}
+import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { notesPayload } from '../utils/decisionPayload'
+import InstanceContextSummary from '../components/InstanceContextSummary'
+import DecisionNotesBlock from '../components/DecisionNotesBlock'
 
 const siteManagerReviewStates = [
   'site_manager_review', 'site_manager_followup', 'pending_site_manager',
@@ -33,7 +21,7 @@ export default function SiteManagerPortal() {
   const [selectedInstance, setSelectedInstance] = useState(null)
   const [instanceDetail, setInstanceDetail] = useState(null)
   const [availableTransitions, setAvailableTransitions] = useState([])
-  const [triggerPayload, setTriggerPayload] = useState('{}')
+  const [decisionNotes, setDecisionNotes] = useState('')
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
 
@@ -108,13 +96,12 @@ export default function SiteManagerPortal() {
   const triggerTransition = async (triggerEvent) => {
     if (!selectedInstance) return
     try {
-      let payload = {}
-      try { payload = JSON.parse(triggerPayload) } catch { payload = {} }
+      const payload = notesPayload(decisionNotes)
       const res = await processExecApi.trigger(selectedInstance, {
         trigger_event: triggerEvent, payload,
       })
       if (res.data.success) {
-        showToast(`عملیات انجام شد: ${res.data.to_state}`)
+        showToast(`عملیات انجام شد: ${labelState(res.data.to_state)}`)
         viewInstance(selectedInstance)
         loadData()
       } else {
@@ -269,10 +256,10 @@ export default function SiteManagerPortal() {
                     >
                       <div>
                         <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>
-                          {processLabels[a.process_code] || a.process_code}
+                          {labelProcess(a.process_code)}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                          دانشجو: {a.student_code} | {a.current_state}
+                          دانشجو: {formatStudentCodeDisplay(a.student_code)} | {labelState(a.current_state)}
                         </div>
                       </div>
                       <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>هشدار</span>
@@ -306,10 +293,10 @@ export default function SiteManagerPortal() {
                     >
                       <div>
                         <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>
-                          {processLabels[p.process_code] || p.process_code}
+                          {labelProcess(p.process_code)}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                          دانشجو: {p.student_code}
+                          دانشجو: {formatStudentCodeDisplay(p.student_code)}
                         </div>
                       </div>
                       <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>منتظر</span>
@@ -349,9 +336,9 @@ export default function SiteManagerPortal() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 500 }}>{processLabels[a.process_code] || a.process_code}</div>
+                      <div style={{ fontWeight: 500 }}>{labelProcess(a.process_code)}</div>
                       <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                        دانشجو: {a.student_code} | {a.current_state}
+                        دانشجو: {formatStudentCodeDisplay(a.student_code)} | {labelState(a.current_state)}
                       </div>
                     </div>
                     <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>هشدار</span>
@@ -363,8 +350,8 @@ export default function SiteManagerPortal() {
           {instanceDetail && <ActionPanel
             instanceDetail={instanceDetail}
             availableTransitions={availableTransitions}
-            triggerPayload={triggerPayload}
-            setTriggerPayload={setTriggerPayload}
+            decisionNotes={decisionNotes}
+            setDecisionNotes={setDecisionNotes}
             triggerTransition={triggerTransition}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
           />}
@@ -398,9 +385,9 @@ export default function SiteManagerPortal() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 500 }}>{processLabels[p.process_code] || p.process_code}</div>
+                      <div style={{ fontWeight: 500 }}>{labelProcess(p.process_code)}</div>
                       <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                        دانشجو: {p.student_code} | {p.current_state}
+                        دانشجو: {formatStudentCodeDisplay(p.student_code)} | {labelState(p.current_state)}
                       </div>
                     </div>
                     <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>منتظر</span>
@@ -412,8 +399,8 @@ export default function SiteManagerPortal() {
           {instanceDetail && <ActionPanel
             instanceDetail={instanceDetail}
             availableTransitions={availableTransitions}
-            triggerPayload={triggerPayload}
-            setTriggerPayload={setTriggerPayload}
+            decisionNotes={decisionNotes}
+            setDecisionNotes={setDecisionNotes}
             triggerTransition={triggerTransition}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
           />}
@@ -445,11 +432,11 @@ export default function SiteManagerPortal() {
                 <tbody>
                   {allActiveInstances.map(p => (
                     <tr key={p.instance_id}>
-                      <td style={{ fontWeight: 500 }}>{processLabels[p.process_code] || p.process_code}</td>
-                      <td>{p.student_code}</td>
+                      <td style={{ fontWeight: 500 }}>{labelProcess(p.process_code)}</td>
+                      <td>{formatStudentCodeDisplay(p.student_code)}</td>
                       <td>
                         <span className={`badge ${isWaitingForSiteManager(p.current_state) ? 'badge-warning' : 'badge-info'}`}>
-                          {p.current_state}
+                          {labelState(p.current_state)}
                         </span>
                       </td>
                       <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>
@@ -472,8 +459,8 @@ export default function SiteManagerPortal() {
               <ActionPanel
                 instanceDetail={instanceDetail}
                 availableTransitions={availableTransitions}
-                triggerPayload={triggerPayload}
-                setTriggerPayload={setTriggerPayload}
+                decisionNotes={decisionNotes}
+                setDecisionNotes={setDecisionNotes}
                 triggerTransition={triggerTransition}
                 onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
               />
@@ -485,12 +472,12 @@ export default function SiteManagerPortal() {
   )
 }
 
-function ActionPanel({ instanceDetail, availableTransitions, triggerPayload, setTriggerPayload, triggerTransition, onClose }) {
+function ActionPanel({ instanceDetail, availableTransitions, decisionNotes, setDecisionNotes, triggerTransition, onClose }) {
   return (
     <div className="card">
       <div className="card-header">
         <h3 className="card-title">
-          {processLabels[instanceDetail.process_code] || instanceDetail.process_code}
+          {labelProcess(instanceDetail.process_code)}
         </h3>
         <button onClick={onClose} className="btn btn-outline btn-sm">بستن</button>
       </div>
@@ -498,7 +485,7 @@ function ActionPanel({ instanceDetail, availableTransitions, triggerPayload, set
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
         <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
           <label style={{ fontSize: '0.7rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>وضعیت</label>
-          <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{instanceDetail.current_state}</div>
+          <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{labelState(instanceDetail.current_state)}</div>
         </div>
         <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
           <label style={{ fontSize: '0.7rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>تاریخ</label>
@@ -506,21 +493,23 @@ function ActionPanel({ instanceDetail, availableTransitions, triggerPayload, set
         </div>
       </div>
 
+      <InstanceContextSummary
+        contextData={instanceDetail.context_data}
+        history={instanceDetail.history}
+        title="پرونده و سابقه (قبل از اقدام)"
+      />
+
       {availableTransitions.length > 0 && (
         <div style={{
           padding: '1.25rem', background: 'var(--warning-light)',
           borderRadius: '10px', marginBottom: '1.5rem', borderRight: '4px solid var(--warning)',
         }}>
           <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem' }}>اقدامات</h4>
-          <textarea
-            value={triggerPayload}
-            onChange={e => setTriggerPayload(e.target.value)}
-            placeholder='{"notes": "توضیحات..."}'
-            style={{
-              width: '100%', minHeight: '50px', padding: '0.5rem', borderRadius: '6px',
-              border: '1px solid #d1d5db', fontFamily: 'monospace', fontSize: '0.8rem',
-              direction: 'ltr', textAlign: 'left', marginBottom: '0.75rem', resize: 'vertical',
-            }}
+          <DecisionNotesBlock
+            value={decisionNotes}
+            onChange={setDecisionNotes}
+            title="توضیح یا نظر (اختیاری)"
+            hint="متن همراه همان دکمه‌ای که می‌زنید در پرونده ثبت می‌شود."
           />
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {availableTransitions.map((t, idx) => {
@@ -541,28 +530,6 @@ function ActionPanel({ instanceDetail, availableTransitions, triggerPayload, set
                 </button>
               )
             })}
-          </div>
-        </div>
-      )}
-
-      {instanceDetail.history && instanceDetail.history.length > 0 && (
-        <div>
-          <h4 style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>تاریخچه</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            {instanceDetail.history.map((h, idx) => (
-              <div key={idx} style={{
-                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.4rem 0.75rem', background: 'var(--bg)', borderRadius: '6px', fontSize: '0.8rem',
-              }}>
-                <span style={{ color: '#9ca3af', fontWeight: 600 }}>{idx + 1}.</span>
-                <span style={{ color: '#6b7280' }}>{h.from_state || 'شروع'}</span>
-                <span>→</span>
-                <span style={{ fontWeight: 500 }}>{h.to_state}</span>
-                <span style={{ color: '#9ca3af', marginRight: 'auto', fontSize: '0.7rem' }}>
-                  {h.trigger_event} | {h.actor_role}
-                </span>
-              </div>
-            ))}
           </div>
         </div>
       )}

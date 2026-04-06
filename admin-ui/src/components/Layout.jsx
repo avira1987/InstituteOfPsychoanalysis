@@ -6,7 +6,7 @@ import { getAvatarUrl } from '../services/api'
 const navItems = [
   { path: '/panel', label: 'داشبورد', icon: '📊' },
   { path: '/panel/profile', label: 'پروفایل من', icon: '👤' },
-  { path: '/panel/portal/student', label: 'پنل دانشجو', icon: '🎓', roles: ['student', 'admin'] },
+  { path: '/panel/portal/student', label: 'پنل دانشجو', icon: '🎓', roles: ['student'], strictRoles: true },
   { path: '/panel/portal/therapist', label: 'پنل درمانگر', icon: '💊', roles: ['therapist', 'admin'] },
   { path: '/panel/portal/supervisor', label: 'پنل سوپروایزر', icon: '👁️', roles: ['supervisor', 'admin'] },
   { path: '/panel/portal/staff', label: 'پنل کارمند', icon: '🏢', roles: ['staff', 'admin'] },
@@ -21,6 +21,7 @@ const navItems = [
   { path: '/panel/students', label: 'ردیابی دانشجو', icon: '👨‍🎓', roles: ['admin', 'staff', 'supervisor', 'therapist'] },
   { path: '/panel/users', label: 'مدیریت کاربران', icon: '👥', roles: ['admin', 'staff'] },
   { path: '/panel/audit', label: 'گزارش حسابرسی', icon: '📝', roles: ['admin', 'staff'] },
+  { path: '/panel/finance', label: 'داشبورد مالی', icon: '💵', roles: ['admin', 'finance'] },
   { path: '/panel/guide', label: 'راهنمای جامع', icon: '📖' },
 ]
 
@@ -39,6 +40,7 @@ const roleLabels = {
   therapy_committee_executor: 'مجری کمیته درمان',
   deputy_education: 'معاون آموزش',
   monitoring_committee_officer: 'مسئول کمیته نظارت',
+  finance: 'اپراتور مالی',
 }
 
 export default function Layout() {
@@ -53,7 +55,11 @@ export default function Layout() {
 
   const visibleNav = navItems.filter((item) => {
     if (item.adminOnly && user?.role !== 'admin') return false
-    if (item.roles && !item.roles.includes(user?.role) && user?.role !== 'admin') return false
+    if (item.roles) {
+      const inRole = item.roles.includes(user?.role)
+      if (item.strictRoles) return inRole
+      if (!inRole && user?.role !== 'admin') return false
+    }
     return true
   })
 
@@ -65,11 +71,14 @@ export default function Layout() {
       )}
 
       <aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-header">
-          <h1>انیستیتو روانکاوری تهران</h1>
-          <p>Tehran Institute of Psychoanalysis</p>
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-mark" aria-hidden="true">ا</div>
+          <div className="sidebar-brand-text">
+            <h1 className="sidebar-brand-title">انیستیتو روانکاوری تهران</h1>
+            <p className="sidebar-brand-sub">Tehran Institute of Psychoanalysis</p>
+          </div>
         </div>
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" aria-label="منوی اصلی">
           {visibleNav.map((item) => (
             <NavLink
               key={item.path}
@@ -80,19 +89,18 @@ export default function Layout() {
               }
               onClick={() => setMobileOpen(false)}
             >
-              <span style={{ fontSize: '1.2rem' }}>{item.icon}</span>
-              <span>{item.label}</span>
+              <span className="sidebar-link-icon" aria-hidden="true">{item.icon}</span>
+              <span className="sidebar-link-label">{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
-        {/* User info */}
         <div className="sidebar-footer">
           {user && (
-            <div className="sidebar-user">
-              <div className="sidebar-user-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="sidebar-user-card">
+              <div className="sidebar-user-avatar">
                 {getAvatarUrl(user.avatar_url) ? (
-                  <img src={getAvatarUrl(user.avatar_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={getAvatarUrl(user.avatar_url)} alt="" />
                 ) : (
                   (user.full_name_fa || user.username || '?')[0]
                 )}
@@ -103,9 +111,9 @@ export default function Layout() {
               </div>
             </div>
           )}
-          <button className="sidebar-link" onClick={handleLogout} style={{ width: '100%' }}>
-            <span style={{ fontSize: '1.2rem' }}>🚪</span>
-            <span>خروج</span>
+          <button type="button" className="sidebar-link sidebar-link-logout" onClick={handleLogout}>
+            <span className="sidebar-link-icon" aria-hidden="true">🚪</span>
+            <span className="sidebar-link-label">خروج از حساب</span>
           </button>
         </div>
       </aside>

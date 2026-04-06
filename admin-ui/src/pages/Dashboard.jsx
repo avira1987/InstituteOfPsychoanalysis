@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { dashboardApi, processApi, auditApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
+import { labelProcess, labelState } from '../utils/processDisplay'
 
 const portalByRole = {
   student: { path: '/panel/portal/student', label: 'پنل دانشجو', icon: '🎓' },
@@ -40,6 +41,7 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState(null)
   const [debugCount, setDebugCount] = useState(null)
   const [syncing, setSyncing] = useState(false)
+  const [seedingDemo, setSeedingDemo] = useState(false)
 
   const handleSyncMetadata = async () => {
     setSyncing(true)
@@ -55,6 +57,35 @@ export default function Dashboard() {
     }
   }
 
+  const handleSeedDemoMatrix = async () => {
+    if (
+      !window.confirm(
+        'بارگذاری دادهٔ دمو (حدود ۶۰+ دانشجو و کاربر تست) در همین دیتابیس سرور؟ ممکن است ۲ تا ۵ دقیقه طول بکشد. ادامه؟'
+      )
+    ) {
+      return
+    }
+    setSeedingDemo(true)
+    try {
+      const res = await dashboardApi.seedDemoMatrix({
+        matrix: true,
+        scenarios: true,
+        force: true,
+      })
+      const m = res.data?.matrix
+      const ok = m?.ok_count
+      const stuck = m?.stuck_count
+      alert(
+        `پایان.\nفرایندهای تکمیل‌شده در ماتریس: ${ok ?? '—'}\nگیرکرده: ${stuck ?? '—'}\nورود ادمین: admin / admin123 (تب رمز عبور + چالش)`
+      )
+      loadAll()
+    } catch (err) {
+      alert(err.response?.data?.detail || err.message || 'خطا در بارگذاری دمو')
+    } finally {
+      setSeedingDemo(false)
+    }
+  }
+
   useEffect(() => {
     loadAll()
   }, [user?.role])
@@ -66,19 +97,56 @@ export default function Dashboard() {
     const isAdminOrStaff = isAdmin || user?.role === 'staff'
     try {
       // فقط برای ادمین/کارمند: آمار و لاگ و فرایندها را بگیر؛ کاربر غیرادمین این APIها را ندارد
-      if (isAdminOrStaff) {
-        const [statsRes, auditRes, processRes] = await Promise.all([
-          dashboardApi.stats(),
-          isAdmin ? auditApi.list({ limit: 8, offset: 0 }) : Promise.resolve({ data: { logs: [] } }),
-          isAdmin ? processApi.list() : Promise.resolve({ data: [] }),
-        ])
-        setStats(statsRes.data)
-        setRecentLogs(auditRes.data?.logs || [])
-        setProcesses(Array.isArray(processRes?.data) ? processRes.data : [])
-      } else {
+      if (!isAdminOrStaff) {
         setStats(null)
         setRecentLogs([])
         setProcesses([])
+        return
+      }
+      // هر endpoint جدا: اگر یکی ۵۰۰ بدهد بقیهٔ داشبورد خالی نشود (قبلاً Promise.all همه را می‌انداخت)
+      const settled = await Promise.allSettled([
+        dashboardApi.stats(),
+        isAdmin ? auditApi.list({ limit: 8, offset: 0 }) : Promise.resolve({ data: { logs: [] } }),
+        isAdmin ? processApi.list() : Promise.resolve({ data: [] }),
+      ])
+      const failedLabels = []
+      if (settled[0].status === 'fulfilled') {
+        setStats(settled[0].value.data)
+      } else {
+        setStats(null)
+        failedLabels.push('آمار کلی')
+        console.error('dashboard stats failed:', settled[0].reason)
+      }
+      if (settled[1].status === 'fulfilled') {
+        setRecentLogs(settled[1].value.data?.logs || [])
+      } else {
+        setRecentLogs([])
+        if (isAdmin) failedLabels.push('فعالیت‌های اخیر')
+        console.error('audit list failed:', settled[1].reason)
+      }
+      if (settled[2].status === 'fulfilled') {
+        const d = settled[2].value.data
+        setProcesses(Array.isArray(d) ? d : [])
+      } else {
+        setProcesses([])
+        if (isAdmin) failedLabels.push('لیست فرایندها')
+        console.error('process list failed:', settled[2].reason)
+      }
+      if (failedLabels.length > 0) {
+        const first = settled.find((s) => s.status === 'rejected')?.reason
+        const status = first?.response?.status
+        const detail = first?.response?.data?.detail
+        const hint =
+          status === 401
+            ? 'لطفاً دوباره وارد شوید'
+            : detail
+              ? `${failedLabels.join('، ')}: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`
+              : `بارگذاری نشد: ${failedLabels.join('، ')}`
+        setLoadError(hint)
+        try {
+          const d = await dashboardApi.debugProcessCount()
+          setDebugCount(d.process_count)
+        } catch (_) {}
       }
     } catch (err) {
       console.error('Failed to load dashboard:', err)
@@ -120,6 +188,14 @@ export default function Dashboard() {
         <div className="toast toast-error" style={{ marginBottom: '1rem' }}>
           {loadError}
           {debugCount != null && ` | سرور ${debugCount} فرایند دارد — رفرش یا ورود مجدد`}
+        </div>
+      )}
+
+      {!loadError && user?.role === 'admin' && !loading && stats && stats.total_students === 0 && (
+        <div className="toast toast-error" style={{ marginBottom: '1rem' }}>
+          هنوز هیچ دانشجویی در دیتابیس سرور ثبت نیست. اگر با Docker کار می‌کنید، بعد از به‌روزرسانی کد،{' '}
+          <code style={{ direction: 'ltr', display: 'inline' }}>docker compose up -d --build api</code>
+          {' '}بزنید تا با استارت اولیهٔ خالی، دادهٔ دمو (در صورت فعال بودن در compose) پر شود؛ یا همین‌جا از دکمهٔ «بارگذاری دادهٔ دمو» استفاده کنید.
         </div>
       )}
 
@@ -166,9 +242,18 @@ export default function Dashboard() {
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">فرایندهای SOP تعریف‌شده</h3>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button className="btn btn-outline btn-sm" onClick={handleSyncMetadata} disabled={syncing}>
                   {syncing ? '...' : 'همگام‌سازی از JSON'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={handleSeedDemoMatrix}
+                  disabled={seedingDemo}
+                  title="پر کردن دیتابیس همین سرور (برای Docker حتماً از اینجا یا API استفاده کنید)"
+                >
+                  {seedingDemo ? '...' : 'بارگذاری دادهٔ دمو (ماتریس + سناریوها)'}
                 </button>
                 <button className="btn btn-outline btn-sm" onClick={() => navigate('/panel/processes')}>
                   مدیریت
@@ -237,12 +322,12 @@ export default function Dashboard() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                           <span className={`badge ${at.cls}`}>{at.label}</span>
                           {log.process_code && (
-                            <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>{log.process_code}</span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>{labelProcess(log.process_code)}</span>
                           )}
                         </div>
                         {log.from_state && log.to_state && (
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            {log.from_state} → {log.to_state}
+                            {labelState(log.from_state)} → {labelState(log.to_state)}
                           </div>
                         )}
                       </div>
@@ -264,7 +349,7 @@ export default function Dashboard() {
           <h3 className="card-title">دسترسی سریع</h3>
         </div>
         <div className="quick-actions-grid">
-          {(user?.role === 'student' || user?.role === 'admin') && (
+          {user?.role === 'student' && (
             <button className="quick-action-btn" onClick={() => navigate('/panel/portal/student')}>
               <span className="quick-action-icon">🎓</span>
               <span>پنل دانشجو</span>

@@ -36,6 +36,7 @@ class TestStartTherapyFlow:
     ):
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
         await load_process(db_session, processes_dir / "start_therapy.json")
+        await load_process(db_session, processes_dir / "session_payment.json")
         await db_session.commit()
         engine = StateMachineEngine(db_session)
         instance = await engine.start_process(
@@ -60,3 +61,16 @@ class TestStartTherapyFlow:
         instance = await engine.get_process_instance(instance.id)
         assert instance.current_state_code == "therapy_active"
         assert instance.is_completed is True
+
+        pay_rows = (
+            await db_session.execute(
+                select(ProcessInstance).where(
+                    ProcessInstance.student_id == sample_student.id,
+                    ProcessInstance.process_code == "session_payment",
+                )
+            )
+        ).scalars().all()
+        assert len(pay_rows) == 1
+        assert pay_rows[0].current_state_code == "payment_due"
+        await db_session.refresh(sample_student)
+        assert (sample_student.extra_data or {}).get("primary_instance_id") == str(pay_rows[0].id)

@@ -3,6 +3,8 @@
 import uuid
 import logging
 import re
+import secrets
+import string
 from typing import Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -123,12 +125,16 @@ async def register_student(data: StudentRegistrationRequest, db: AsyncSession = 
         if existing_email.scalars().first():
             raise HTTPException(status_code=400, detail="این ایمیل قبلاً ثبت شده است.")
 
+    # رمز اولیه برای ورود با نام کاربری؛ در محیط واقعی باید از طریق پیامک ارسال شود (اینجا یک‌بار در پاسخ برمی‌گردد)
+    alphabet = string.ascii_letters + string.digits
+    initial_password_plain = "".join(secrets.choice(alphabet) for _ in range(14))
+
     user = User(
         id=uuid.uuid4(),
         username=f"student_{phone}",
         phone=phone,
         email=email_value,
-        hashed_password=get_password_hash(str(uuid.uuid4())),
+        hashed_password=get_password_hash(initial_password_plain),
         full_name_fa=data.full_name_fa,
         role="student",
         is_active=True,
@@ -172,6 +178,10 @@ async def register_student(data: StudentRegistrationRequest, db: AsyncSession = 
 
     return {
         "success": True,
-        "message": "ثبت‌نام شما با موفقیت انجام شد. پس از بررسی، نتیجه از طریق پیامک اطلاع‌رسانی خواهد شد.",
+        "message": "ثبت‌نام شما با موفقیت انجام شد. همین حالا می‌توانید وارد پنل کاربری شوید؛ ورود با پیامک یا با نام کاربری و رمز عبور زیر ممکن است.",
         "student_code": student_code,
+        "username": user.username,
+        "phone": phone,
+        "initial_password": initial_password_plain,
+        "login_hint_fa": "در نسخهٔ عملیاتی، همین اطلاعات از طریق پیامک ارسال می‌شود. این صفحه فعلاً همان نقش را دارد.",
     }

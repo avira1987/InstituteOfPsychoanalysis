@@ -1,25 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { processExecApi, studentApi } from '../services/api'
-
-const processLabels = {
-  educational_leave: 'مرخصی آموزشی',
-  therapy_changes: 'تغییرات درمان',
-  therapy_early_termination: 'قطع زودرس درمان',
-  therapy_completion: 'تکمیل درمان',
-  therapy_interruption: 'وقفه درمان',
-  therapy_session_increase: 'افزایش جلسات',
-  therapy_session_reduction: 'کاهش جلسات',
-  committees_review: 'بررسی کمیته‌ها',
-  specialized_commission_review: 'بررسی کمیسیون تخصصی',
-  supervision_50h_completion: 'تکمیل ۵۰ ساعته سوپرویژن',
-  start_therapy: 'آغاز درمان',
-  upgrade_to_ta: 'ارتقا به دستیار آموزشی',
-  internship_readiness_consultation: 'مشاوره آمادگی کارآموزی',
-  unannounced_absence_reaction: 'غیبت بدون اطلاع',
-  student_non_registration: 'عدم ثبت‌نام',
-  attendance_tracking: 'حضور و غیاب',
-}
+import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { notesPayload } from '../utils/decisionPayload'
+import InstanceContextSummary from '../components/InstanceContextSummary'
+import DecisionNotesBlock from '../components/DecisionNotesBlock'
 
 const roleConfig = {
   progress_committee: {
@@ -98,7 +83,7 @@ export default function CommitteePortal() {
   const [selectedInstance, setSelectedInstance] = useState(null)
   const [instanceDetail, setInstanceDetail] = useState(null)
   const [availableTransitions, setAvailableTransitions] = useState([])
-  const [triggerPayload, setTriggerPayload] = useState('{}')
+  const [decisionNotes, setDecisionNotes] = useState('')
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
 
@@ -163,13 +148,12 @@ export default function CommitteePortal() {
   const triggerTransition = async (triggerEvent) => {
     if (!selectedInstance) return
     try {
-      let payload = {}
-      try { payload = JSON.parse(triggerPayload) } catch { payload = {} }
+      const payload = notesPayload(decisionNotes)
       const res = await processExecApi.trigger(selectedInstance, {
         trigger_event: triggerEvent, payload,
       })
       if (res.data.success) {
-        showToast(`تصمیم ثبت شد: ${res.data.to_state}`)
+        showToast(`تصمیم ثبت شد: ${labelState(res.data.to_state)}`)
         viewInstance(selectedInstance)
         loadData()
       } else {
@@ -332,10 +316,10 @@ export default function CommitteePortal() {
                     >
                       <div>
                         <div style={{ fontWeight: 500 }}>
-                          {processLabels[p.process_code] || p.process_code}
+                          {labelProcess(p.process_code)}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                          دانشجو: {p.student_code} | {p.current_state}
+                          دانشجو: {formatStudentCodeDisplay(p.student_code)} | {labelState(p.current_state)}
                         </div>
                       </div>
                       <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>منتظر</span>
@@ -407,9 +391,9 @@ export default function CommitteePortal() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 500 }}>{processLabels[p.process_code] || p.process_code}</div>
+                      <div style={{ fontWeight: 500 }}>{labelProcess(p.process_code)}</div>
                       <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                        دانشجو: {p.student_code} | {p.current_state}
+                        دانشجو: {formatStudentCodeDisplay(p.student_code)} | {labelState(p.current_state)}
                       </div>
                     </div>
                     <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>منتظر</span>
@@ -423,7 +407,7 @@ export default function CommitteePortal() {
             <div className="card">
               <div className="card-header">
                 <h3 className="card-title">
-                  {processLabels[instanceDetail.process_code] || instanceDetail.process_code}
+                  {labelProcess(instanceDetail.process_code)}
                 </h3>
                 <button onClick={() => { setSelectedInstance(null); setInstanceDetail(null) }}
                   className="btn btn-outline btn-sm">بستن</button>
@@ -432,7 +416,7 @@ export default function CommitteePortal() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
                   <label style={{ fontSize: '0.7rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>وضعیت</label>
-                  <div style={{ fontWeight: 700, color: config.accentColor }}>{instanceDetail.current_state}</div>
+                  <div style={{ fontWeight: 700, color: config.accentColor }}>{labelState(instanceDetail.current_state)}</div>
                 </div>
                 <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
                   <label style={{ fontSize: '0.7rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>تاریخ شروع</label>
@@ -447,19 +431,11 @@ export default function CommitteePortal() {
                 </div>
               </div>
 
-              {instanceDetail.context_data && Object.keys(instanceDetail.context_data).length > 0 && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
-                    اطلاعات درخواست
-                  </label>
-                  <pre style={{
-                    fontSize: '0.75rem', background: '#1e293b', color: '#e2e8f0', padding: '1rem',
-                    borderRadius: '8px', direction: 'ltr', textAlign: 'left', maxHeight: '120px', overflow: 'auto',
-                  }}>
-                    {JSON.stringify(instanceDetail.context_data, null, 2)}
-                  </pre>
-                </div>
-              )}
+              <InstanceContextSummary
+                contextData={instanceDetail.context_data}
+                history={instanceDetail.history}
+                title="پرونده و سابقه (قبل از تصمیم)"
+              />
 
               {availableTransitions.length > 0 && (
                 <div style={{
@@ -469,15 +445,11 @@ export default function CommitteePortal() {
                   <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--success)' }}>
                     تصمیم کمیته
                   </h4>
-                  <textarea
-                    value={triggerPayload}
-                    onChange={e => setTriggerPayload(e.target.value)}
-                    placeholder='{"decision": "تصمیم...", "notes": "توضیحات..."}'
-                    style={{
-                      width: '100%', minHeight: '70px', padding: '0.5rem', borderRadius: '6px',
-                      border: '1px solid #d1d5db', fontFamily: 'monospace', fontSize: '0.8rem',
-                      direction: 'ltr', textAlign: 'left', marginBottom: '0.75rem', resize: 'vertical',
-                    }}
+                  <DecisionNotesBlock
+                    value={decisionNotes}
+                    onChange={setDecisionNotes}
+                    title="توضیح یا مستندات تصمیم (اختیاری)"
+                    hint="متن همراه همان دکمه‌ای که می‌زنید در پرونده ثبت می‌شود."
                   />
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     {availableTransitions.map((t, idx) => {
@@ -498,32 +470,6 @@ export default function CommitteePortal() {
                         </button>
                       )
                     })}
-                  </div>
-                </div>
-              )}
-
-              {instanceDetail.history && instanceDetail.history.length > 0 && (
-                <div>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>تاریخچه</h4>
-                  <div className="timeline">
-                    {instanceDetail.history.map((h, idx) => (
-                      <div key={idx} className="timeline-item">
-                        <div className="timeline-dot" />
-                        <div className="timeline-content">
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                            <span>
-                              <span style={{ color: '#6b7280' }}>{h.from_state || 'شروع'}</span>
-                              {' → '}
-                              <span style={{ fontWeight: 600 }}>{h.to_state}</span>
-                            </span>
-                            <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{h.actor_role}</span>
-                          </div>
-                          <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.2rem' }}>
-                            {h.trigger_event}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
               )}
@@ -557,11 +503,11 @@ export default function CommitteePortal() {
                 <tbody>
                   {allActiveInstances.map(p => (
                     <tr key={p.instance_id}>
-                      <td style={{ fontWeight: 500 }}>{processLabels[p.process_code] || p.process_code}</td>
-                      <td>{p.student_code}</td>
+                      <td style={{ fontWeight: 500 }}>{labelProcess(p.process_code)}</td>
+                      <td>{formatStudentCodeDisplay(p.student_code)}</td>
                       <td>
                         <span className={`badge ${isWaitingForReview(p.current_state) ? 'badge-warning' : 'badge-info'}`}>
-                          {p.current_state}
+                          {labelState(p.current_state)}
                         </span>
                       </td>
                       <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>
@@ -602,7 +548,7 @@ export default function CommitteePortal() {
               <tbody>
                 {allStudents.map(s => (
                   <tr key={s.id}>
-                    <td style={{ fontWeight: 600 }}>{s.student_code}</td>
+                    <td style={{ fontWeight: 600 }}>{formatStudentCodeDisplay(s.student_code)}</td>
                     <td>
                       <span className={`badge ${s.course_type === 'comprehensive' ? 'badge-primary' : 'badge-info'}`}>
                         {s.course_type === 'comprehensive' ? 'جامع' : 'آشنایی'}

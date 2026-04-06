@@ -29,14 +29,13 @@ sys.path.insert(0, str(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
-# Use app config or env (supports sqlite and postgresql)
 try:
     from app.config import get_settings
     DATABASE_URL = get_settings().DATABASE_URL
 except Exception:
     DATABASE_URL = os.getenv(
         "DATABASE_URL",
-        "sqlite+aiosqlite:///./anistito.db"
+        "postgresql+asyncpg://anistito:anistito@localhost:5432/anistito",
     )
 
 

@@ -1,11 +1,13 @@
 """Tests for ActionHandler (BUILD_TODO § ب)."""
 
 import uuid
+from datetime import datetime, timezone, timedelta
+
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.operational_models import Student, ProcessInstance
+from app.models.operational_models import Student, ProcessInstance, TherapySession
 from app.services.action_handler import ActionHandler
 
 
@@ -143,3 +145,139 @@ class TestActionHandlerTherapyLifecycle:
         for r in results:
             assert r["success"] is True, r.get("error", r)
             assert "no_handler" not in str(r.get("detail", ""))
+
+    async def test_deduct_credit_session_reduces_context_balance(
+        self, db_session: AsyncSession, sample_student: Student
+    ):
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code="therapist_session_cancellation",
+            student_id=sample_student.id,
+            current_state_code="pending",
+            context_data={"session_credit_balance": 1_000_000.0},
+        )
+        db_session.add(instance)
+        await db_session.flush()
+
+        handler = ActionHandler(db_session)
+        results = await handler.handle_actions(
+            [{"type": "deduct_credit_session", "amount": 500_000}],
+            instance,
+            {},
+        )
+        await db_session.commit()
+
+        assert results[0]["success"] is True
+        await db_session.refresh(instance)
+        assert instance.context_data["session_credit_balance"] == 500_000.0
+
+    async def test_create_session_link_sets_meeting_url(
+        self, db_session: AsyncSession, sample_student: Student, sample_user
+    ):
+        today = datetime.now(timezone.utc).date()
+        ts = TherapySession(
+            id=uuid.uuid4(),
+            student_id=sample_student.id,
+            therapist_id=sample_user.id,
+            session_date=today + timedelta(days=3),
+            status="scheduled",
+            payment_status="paid",
+        )
+        db_session.add(ts)
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code="start_therapy",
+            student_id=sample_student.id,
+            current_state_code="active",
+        )
+        db_session.add(instance)
+        await db_session.flush()
+
+        handler = ActionHandler(db_session)
+        await handler.handle_actions(
+            [{"type": "create_session_link", "meeting_url": "https://meet.example/x"}],
+            instance,
+            {},
+        )
+        await db_session.commit()
+
+        await db_session.refresh(ts)
+        assert ts.meeting_url == "https://meet.example/x"
+        assert ts.links_unlocked is True
+
+    async def test_update_record_writes_gradebook(
+        self, db_session: AsyncSession, sample_student: Student
+    ):
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code="live_supervision_ta_evaluation",
+            student_id=sample_student.id,
+            current_state_code="evaluation_computed",
+            context_data={"total_score": 80, "result_status": "PASS"},
+        )
+        db_session.add(instance)
+        await db_session.flush()
+
+        handler = ActionHandler(db_session)
+        await handler.handle_actions([{"type": "update_record"}], instance, {})
+        await db_session.commit()
+
+        await db_session.refresh(sample_student)
+        gb = sample_student.extra_data.get("gradebook", {})
+        assert "live_supervision_ta_evaluation" in gb
+        assert gb["live_supervision_ta_evaluation"]["total_score"] == 80
+
+    async def test_external_integration_logs_events_without_webhook(
+        self, db_session: AsyncSession, sample_student: Student
+    ):
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code="specialized_commission_review",
+            student_id=sample_student.id,
+            current_state_code="x",
+        )
+        db_session.add(instance)
+        await db_session.flush()
+
+        handler = ActionHandler(db_session)
+        results = await handler.handle_actions(
+            [{"type": "send_unlock_to_lms", "foo": 1}],
+            instance,
+            {"k": "v"},
+        )
+        await db_session.commit()
+
+        assert results[0]["success"] is True
+        await db_session.refresh(instance)
+        ev = instance.context_data.get("integration_events") or []
+        assert len(ev) >= 1
+        assert ev[-1]["action"] == "send_unlock_to_lms"
+        assert "skipped" in str(results[0].get("detail", "")) or "integration=" in str(
+            results[0].get("detail", "")
+        )
+
+    async def test_merge_initial_payment_sets_next_installment_due_term2(
+        self, db_session: AsyncSession, sample_student: Student
+    ):
+        """merge_instance_context initial_payment برای اقساط: شمارنده و next_installment_due_at."""
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code="intro_second_semester_registration",
+            student_id=sample_student.id,
+            current_state_code="registration_complete",
+            context_data={"payment_method": "installment", "installment_count": 4},
+        )
+        db_session.add(instance)
+        await db_session.flush()
+
+        handler = ActionHandler(db_session)
+        await handler.handle_actions(
+            [{"type": "merge_instance_context", "mode": "initial_payment"}],
+            instance,
+            {},
+        )
+        await db_session.commit()
+        await db_session.refresh(instance)
+        assert instance.context_data.get("pending_installments_remaining") == 3
+        due = instance.context_data.get("next_installment_due_at")
+        assert due and len(str(due)) >= 10

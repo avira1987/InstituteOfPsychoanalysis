@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Text, Integer, Boolean, DateTime, Float, ForeignKey,
-    Index, Date
+    Index, Date, text,
 )
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -28,7 +28,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     full_name_fa = Column(String(255), nullable=True)
     full_name_en = Column(String(255), nullable=True)
-    role = Column(String(50), nullable=False, default="student")  # admin, staff, therapist, student, committee
+    role = Column(String(50), nullable=False, default="student")  # admin, staff, finance, therapist, student, …
     is_active = Column(Boolean, default=True, nullable=False)
     phone = Column(String(20), nullable=True)
     avatar_url = Column(String(512), nullable=True)  # مسیر نسبی عکس پروفایل، مثلاً /uploads/avatars/xxx.jpg
@@ -127,7 +127,39 @@ class TherapySession(Base):
     payment_status = Column(String(30), default="pending")  # pending, paid, waived
     amount = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
+    meeting_url = Column(Text, nullable=True)
+    meeting_provider = Column(String(50), nullable=True)  # manual, skyroom, voicoom
+    links_unlocked = Column(Boolean, default=False, nullable=False)
+    instructor_score = Column(Float, nullable=True)
+    instructor_comment = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class Assignment(Base):
+    """Minimal homework item for a student."""
+    __tablename__ = "assignments"
+    __table_args__ = (Index("ix_assignments_student", "student_id"),)
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    student_id = Column(UUID, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    title_fa = Column(String(500), nullable=False)
+    description = Column(Text, nullable=True)
+    due_at = Column(DateTime(timezone=True), nullable=True)
+    created_by = Column(UUID, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class AssignmentSubmission(Base):
+    __tablename__ = "assignment_submissions"
+    __table_args__ = (Index("ix_submission_assignment", "assignment_id"),)
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    assignment_id = Column(UUID, ForeignKey("assignments.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(UUID, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    body_text = Column(Text, nullable=True)
+    submitted_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    score = Column(Float, nullable=True)
+    feedback_fa = Column(Text, nullable=True)
 
 
 class PaymentPending(Base):
@@ -185,7 +217,9 @@ class OTPCode(Base):
     code = Column(String(6), nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
-    is_used = Column(Boolean, default=False, nullable=False)
+    is_used = Column(
+        Boolean, default=False, nullable=False, server_default=text("false")
+    )
     attempts = Column(Integer, default=0, nullable=False)
 
 
@@ -201,7 +235,9 @@ class LoginChallenge(Base):
     answer_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
-    is_used = Column(Boolean, default=False, nullable=False)
+    is_used = Column(
+        Boolean, default=False, nullable=False, server_default=text("false")
+    )
 
 
 class BlogPost(Base):

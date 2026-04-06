@@ -10,7 +10,7 @@
   },
   "states": [
     {"code": "commission_review", "name_fa": "بررسی کمیسیون تخصصی", "type": "initial", "assigned_role": "specialized_commission"},
-    {"code": "awaiting_student_restart", "name_fa": "در انتظار آغاز دوباره (مهلت ۵ روز)", "type": "intermediate", "assigned_role": "student", "sla_days": 5},
+    {"code": "awaiting_student_restart", "name_fa": "در انتظار آغاز دوباره (مهلت ۵ روز)", "type": "intermediate", "assigned_role": "student", "sla_days": 5, "on_sla_breach_event": "sla_5days_breach"},
     {"code": "restart_completed", "name_fa": "دانشجو درمان را از سر گرفت", "type": "terminal", "assigned_role": "system"},
     {"code": "violation_no_restart", "name_fa": "عدم آغاز در مهلت — ثبت تخلف", "type": "terminal", "assigned_role": "system"},
     {"code": "referred_to_committees", "name_fa": "ارجاع به کمیته‌ها (عدم صلاحیت تخصصی)", "type": "terminal", "assigned_role": "system"}

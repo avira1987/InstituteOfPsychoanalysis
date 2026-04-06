@@ -39,6 +39,7 @@ export default function LoginPage() {
   const [error, setError] = useState(getInitialError)
   const [loading, setLoading] = useState(false)
   const [devCode, setDevCode] = useState('')
+  const [devHint, setDevHint] = useState('')
   const otpRefs = useRef([])
 
   useEffect(() => {
@@ -95,17 +96,31 @@ export default function LoginPage() {
 
   const handleRequestOTP = async (e) => {
     e.preventDefault()
+    if (otpSent) return
     setLoading(true)
     setError('')
     setDevCode('')
+    setDevHint('')
     try {
       const res = await authApi.otpRequest(phone)
       setOtpSent(true)
       setTimer(120)
-      if (res.data?.dev_code) {
-        setDevCode(res.data.dev_code)
+      const rawCode = res.data?.dev_code != null ? String(res.data.dev_code).replace(/\D/g, '').slice(0, 6) : ''
+      if (rawCode.length === 6) {
+        setDevCode(rawCode)
+        setDevHint(res.data?.dev_hint || '')
+        setOtpCode(rawCode.split(''))
+        setTimeout(() => otpRefs.current[5]?.focus(), 100)
+        // وقتی سرور کد را در پاسخ برمی‌گرداند، همان کد در همین صفحه است؛ ورود را تکمیل می‌کنیم
+        setTimeout(() => {
+          submitOTP(rawCode)
+        }, 150)
+      } else {
+        setDevCode('')
+        setDevHint('')
+        setOtpCode(['', '', '', '', '', ''])
+        setTimeout(() => otpRefs.current[0]?.focus(), 100)
       }
-      setTimeout(() => otpRefs.current[0]?.focus(), 100)
     } catch (err) {
       setError(err.response?.data?.detail || 'خطا در ارسال کد. لطفاً دوباره تلاش کنید.')
     } finally {
@@ -225,6 +240,7 @@ export default function LoginPage() {
     setOtpCode(['', '', '', '', '', ''])
     setOtpSent(false)
     setDevCode('')
+    setDevHint('')
     setError('')
   }
 
@@ -266,39 +282,71 @@ export default function LoginPage() {
         {/* OTP Tab */}
         {tab === 'otp' && (
           <>
-            {!otpSent ? (
-              <form onSubmit={handleRequestOTP}>
-                <div className="form-group">
-                  <label className="form-label">شماره موبایل</label>
-                  <input
-                    className="form-input"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="09123456789"
-                    required
-                    autoFocus
-                    style={{ direction: 'ltr', textAlign: 'center', fontSize: '1.1rem', letterSpacing: '2px' }}
-                  />
-                </div>
-                {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
-                <button
-                  className="btn btn-primary"
-                  type="submit"
-                  disabled={loading}
-                  style={{ width: '100%', justifyContent: 'center', padding: '0.75rem' }}
-                >
-                  {loading ? 'در حال ارسال...' : 'ارسال کد تأیید'}
-                </button>
-              </form>
-            ) : (
+            <form onSubmit={handleRequestOTP}>
+              <div className="form-group">
+                <label className="form-label">شماره موبایل</label>
+                <input
+                  className="form-input"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="09123456789"
+                  required={!otpSent}
+                  readOnly={otpSent}
+                  disabled={otpSent}
+                  autoFocus={!otpSent}
+                  style={{
+                    direction: 'ltr',
+                    textAlign: 'center',
+                    fontSize: '1.1rem',
+                    letterSpacing: '2px',
+                    ...(otpSent ? { opacity: 0.92, cursor: 'default' } : {}),
+                  }}
+                />
+              </div>
+              {!otpSent && (
+                <>
+                  {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
+                  <button
+                    className="btn btn-primary"
+                    type="submit"
+                    disabled={loading}
+                    style={{ width: '100%', justifyContent: 'center', padding: '0.75rem' }}
+                  >
+                    {loading ? 'در حال ارسال...' : 'ارسال کد تأیید'}
+                  </button>
+                </>
+              )}
+            </form>
+
+            {otpSent && (
               <div>
-                <p style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                  کد ارسال شده به <strong style={{ direction: 'ltr', display: 'inline-block' }}>{phone}</strong> را وارد کنید
+                <p style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                  کد یکبارمصرف ارسال‌شده به <strong style={{ direction: 'ltr', display: 'inline-block' }}>{phone}</strong> را در همین صفحه وارد کنید
                 </p>
                 {devCode && (
-                  <div className="alert" style={{ background: 'var(--bg-card)', border: '1px dashed var(--border)', marginBottom: '1rem', padding: '0.75rem', textAlign: 'center', fontSize: '1.1rem', letterSpacing: '4px', direction: 'ltr' }}>
-                    کد تست: <strong>{devCode}</strong>
+                  <div
+                    className="alert"
+                    role="status"
+                    style={{
+                      background: 'linear-gradient(135deg, var(--bg-muted) 0%, var(--bg-card) 100%)',
+                      border: '2px solid var(--primary)',
+                      borderRadius: '0.75rem',
+                      marginBottom: '1rem',
+                      padding: '1rem',
+                      textAlign: 'center',
+                      direction: 'ltr',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', direction: 'rtl' }}>
+                      کد یکبارمصرف (نمایش در همین صفحه)
+                    </div>
+                    <strong style={{ fontSize: '1.75rem', letterSpacing: '0.45em', fontVariantNumeric: 'tabular-nums' }}>{devCode}</strong>
+                    {devHint && (
+                      <div style={{ marginTop: '0.6rem', fontSize: '0.78rem', letterSpacing: 'normal', direction: 'rtl', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                        {devHint}
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="otp-input-group" onPaste={handleOtpPaste}>

@@ -24,6 +24,7 @@ const roleLabels = {
   therapy_committee_executor: 'مجری کمیته درمان',
   deputy_education: 'معاون آموزش',
   monitoring_committee_officer: 'مسئول کمیته نظارت',
+  finance: 'اپراتور مالی',
 }
 
 export default function PublicLayout() {

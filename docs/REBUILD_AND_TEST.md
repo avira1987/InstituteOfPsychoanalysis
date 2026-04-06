@@ -41,11 +41,11 @@ curl -s http://localhost:3000/debug/process-count
 
 ## ۳. اگر process_count صفر بود – انتقال داده
 
-### روی ویندوز (خروجی از SQLite محلی):
+### روی ویندوز (خروجی از PostgreSQL محلی — همان `DATABASE_URL`):
 
 ```powershell
 cd C:\Users\Administrator\Desktop\anistito
-python scripts/export_to_online.py
+python scripts/export_from_pg.py
 # خروجی: anistito_export.json
 ```
 

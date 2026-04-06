@@ -5,12 +5,12 @@ import uuid
 import logging
 from datetime import datetime, timezone, timedelta
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.operational_models import OTPCode, User
-from app.services.sms_gateway import send_sms
+from app.services.sms_gateway import send_otp_sms
 from app.api.auth import create_access_token, get_password_hash
 
 logger = logging.getLogger(__name__)
@@ -26,10 +26,25 @@ def _generate_code() -> str:
 
 
 async def request_otp(db: AsyncSession, phone: str) -> dict:
-    """Generate and send an OTP code to the given phone number."""
+    """Generate and send an OTP code to the given phone number (ورود دانشجو با موبایل)."""
     phone = phone.strip().replace(" ", "")
     if not phone.startswith("09") or len(phone) != 11:
         return {"success": False, "error": "شماره موبایل نامعتبر است. فرمت صحیح: 09xxxxxxxxx"}
+
+    settings = get_settings()
+    if getattr(settings, "OTP_RESTRICT_TO_STUDENT_PHONES", False):
+        urow = await db.execute(
+            select(User).where(
+                User.phone == phone,
+                User.is_active == True,
+                User.role == "student",
+            )
+        )
+        if not urow.scalars().first():
+            return {
+                "success": False,
+                "error": "این شماره موبایل برای ورود دانشجویی ثبت نشده است. ابتدا ثبت‌نام کنید یا با آموزش تماس بگیرید.",
+            }
 
     now = datetime.now(timezone.utc)
     window_start = now - timedelta(seconds=OTP_RATE_LIMIT_WINDOW)
@@ -55,23 +70,50 @@ async def request_otp(db: AsyncSession, phone: str) -> dict:
     db.add(otp)
     await db.commit()
 
-    message = f"کد ورود شما به انیستیتو روانکاوی تهران: {code}\nاین کد تا ۲ دقیقه معتبر است."
-    sms_result = await send_sms(phone, message)
+    # ملی‌پیامک: ارسال OTP با متد SendOtp (فقط عدد کد؛ متن پیش‌فرض سامانه) — webservice-Otp.pdf
+    sms_result = await send_otp_sms(phone, code)
+    provider = (settings.SMS_PROVIDER or "log").lower()
 
-    if not sms_result.get("success", False) and sms_result.get("provider") != "log":
-        logger.error(f"SMS send failed for {phone}: {sms_result}")
+    if not sms_result.get("success", False) and provider != "log":
+        if settings.OTP_SHOW_CODE_IN_UI:
+            logger.warning(
+                "SMS send failed but OTP_SHOW_CODE_IN_UI: keeping OTP and returning dev_code (phone=%s)",
+                phone,
+            )
+            return {
+                "success": True,
+                "message": "پیامک ارسال نشد؛ کد فقط برای تست روی همین صفحه نمایش داده شد.",
+                "expires_in": OTP_EXPIRY_SECONDS,
+                "sms_failed": True,
+                "dev_code": code,
+                "dev_hint": (
+                    "ارسال پیامک ناموفق بود. کد برای تست روی همین صفحه نمایش داده شد. "
+                    "خط، نام کاربری/رمز وب‌سرویس و اتصال را بررسی کنید."
+                ),
+            }
+        logger.error("SMS send failed for %s: %s", phone, sms_result)
+        await db.execute(delete(OTPCode).where(OTPCode.id == otp.id))
+        await db.commit()
+        return {
+            "success": False,
+            "error": "ارسال پیامک ناموفق بود. شماره خط و اتصال سامانه را بررسی کنید یا بعداً تلاش کنید.",
+        }
 
     result = {"success": True, "message": "کد تأیید ارسال شد.", "expires_in": OTP_EXPIRY_SECONDS}
-    # در حالت توسعه (log): کد را در پاسخ برمی‌گردانیم تا تست شود
-    if get_settings().DEBUG and sms_result.get("provider") == "log":
+    # نمایش کد روی وب (dev / تا زمان تکمیل پیامک واقعی) — با OTP_SHOW_CODE_IN_UI=false در production خاموش کنید.
+    if settings.OTP_SHOW_CODE_IN_UI:
         result["dev_code"] = code
-        result["dev_hint"] = "SMS در حالت log ارسال نمی‌شود. برای ارسال واقعی، SMS_PROVIDER و SMS_API_KEY را در .env تنظیم کنید."
+        result["dev_hint"] = (
+            "کد برای تست روی همین صفحه نمایش داده شد. برای ارسال واقعی پیامک، "
+            "SMS_PROVIDER=mellipayamak و SMS_USERNAME، SMS_PASSWORD، SMS_LINE_NUMBER را تنظیم کنید."
+        )
     return result
 
 
 async def verify_otp(db: AsyncSession, phone: str, code: str) -> dict:
     """Verify an OTP code and return a JWT token if valid."""
     phone = phone.strip().replace(" ", "")
+    settings = get_settings()
     now = datetime.now(timezone.utc)
 
     result = await db.execute(
@@ -106,6 +148,11 @@ async def verify_otp(db: AsyncSession, phone: str, code: str) -> dict:
     user = user_result.scalars().first()
 
     if not user:
+        if getattr(settings, "OTP_RESTRICT_TO_STUDENT_PHONES", False):
+            return {
+                "success": False,
+                "error": "حساب دانشجویی با این شماره ثبت نشده است.",
+            }
         user = User(
             id=uuid.uuid4(),
             username=f"user_{phone}",

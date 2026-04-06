@@ -9,15 +9,10 @@ settings = get_settings()
 
 _engine_kwargs = {
     "echo": settings.DATABASE_ECHO,
+    "pool_pre_ping": True,
+    "pool_size": 10,
+    "max_overflow": 20,
 }
-
-# SQLite needs special handling (no pool_size/pool_pre_ping)
-if "sqlite" in settings.DATABASE_URL:
-    _engine_kwargs["connect_args"] = {"check_same_thread": False}
-else:
-    _engine_kwargs["pool_pre_ping"] = True
-    _engine_kwargs["pool_size"] = 10
-    _engine_kwargs["max_overflow"] = 20
 
 engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
@@ -47,9 +42,26 @@ async def get_db() -> AsyncSession:
 
 async def init_db():
     """Create all tables (for development only; use Alembic in production)."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    import asyncio
+    import logging
+
+    log = logging.getLogger(__name__)
+    attempts = 8
+    for attempt in range(attempts):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            break
+        except Exception as e:
+            if attempt >= attempts - 1:
+                raise
+            log.warning(
+                "init_db: database connection failed (%s/%s): %s — retrying…",
+                attempt + 1,
+                attempts,
+                e,
+            )
+            await asyncio.sleep(2)
     # Ensure avatar_url exists if migrations (e.g. 005) did not run (e.g. when 001 fails with DuplicateTable)
-    if "postgresql" in settings.DATABASE_URL:
-        async with engine.begin() as conn:
-            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512)"))
+    async with engine.begin() as conn:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512)"))

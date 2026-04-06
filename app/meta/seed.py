@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_factory, engine, Base
@@ -69,34 +70,57 @@ def validate_process_rules(processes_dir: Path, rule_codes: Set[str]) -> Tuple[L
     return missing, process_conditions
 
 
-async def load_rules(db: AsyncSession):
-    """Load all rule definitions from JSON file."""
+async def load_rules(db: AsyncSession) -> Tuple[int, int]:
+    """Upsert all rule definitions from ``all_rules.json`` (insert new, update existing by ``code``).
+
+    اجرای مجدد همان نسخهٔ JSON را بدون ردیف تکراری اعمال می‌کند؛ تغییر expression در فایل روی DB به‌روز می‌شود.
+    Returns (inserted_count, updated_count).
+    """
     rules_file = METADATA_DIR / "rules" / "all_rules.json"
     if not rules_file.exists():
         logger.warning(f"Rules file not found: {rules_file}")
-        return
+        return 0, 0
 
     with open(rules_file, "r", encoding="utf-8") as f:
         rules_data = json.load(f)
 
-    count = 0
+    inserted = 0
+    updated = 0
     for rule in rules_data:
-        rule_def = RuleDefinition(
-            id=uuid.uuid4(),
-            code=rule["code"],
-            name_fa=rule["name_fa"],
-            name_en=rule.get("name_en"),
-            rule_type=rule.get("rule_type", "condition"),
-            expression=rule["expression"],
-            parameters=rule.get("parameters"),
-            error_message_fa=rule.get("error_message_fa"),
-            is_active=True,
-            version=1,
-        )
-        db.add(rule_def)
-        count += 1
+        code = rule.get("code")
+        if not code:
+            continue
+        stmt = select(RuleDefinition).where(RuleDefinition.code == code)
+        result = await db.execute(stmt)
+        existing = result.scalars().first()
+        if existing:
+            existing.name_fa = rule["name_fa"]
+            existing.name_en = rule.get("name_en")
+            existing.rule_type = rule.get("rule_type", "condition")
+            existing.expression = rule["expression"]
+            existing.parameters = rule.get("parameters")
+            existing.error_message_fa = rule.get("error_message_fa")
+            existing.is_active = True
+            existing.version = (existing.version or 1) + 1
+            updated += 1
+        else:
+            rule_def = RuleDefinition(
+                id=uuid.uuid4(),
+                code=code,
+                name_fa=rule["name_fa"],
+                name_en=rule.get("name_en"),
+                rule_type=rule.get("rule_type", "condition"),
+                expression=rule["expression"],
+                parameters=rule.get("parameters"),
+                error_message_fa=rule.get("error_message_fa"),
+                is_active=True,
+                version=1,
+            )
+            db.add(rule_def)
+            inserted += 1
 
-    logger.info(f"Loaded {count} rule definitions")
+    logger.info(f"Rules synced: {inserted} inserted, {updated} updated")
+    return inserted, updated
 
 
 async def sync_rules(db: AsyncSession) -> int:
@@ -140,15 +164,11 @@ async def sync_rules(db: AsyncSession) -> int:
     return added
 
 
-async def load_process(db: AsyncSession, process_file: Path):
-    """Load a process definition from a JSON file."""
-    with open(process_file, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
+def _insert_process_from_data(db: AsyncSession, data: dict) -> uuid.UUID:
+    """Insert one process + states + transitions; returns new process_definition id."""
     proc_data = data["process"]
     process_id = uuid.uuid4()
 
-    # Create process definition
     process_def = ProcessDefinition(
         id=process_id,
         code=proc_data["code"],
@@ -165,8 +185,13 @@ async def load_process(db: AsyncSession, process_file: Path):
     )
     db.add(process_def)
 
-    # Create state definitions
     for state in data.get("states", []):
+        sla_hours = state.get("sla_hours")
+        if sla_hours is None and state.get("sla_days") is not None:
+            try:
+                sla_hours = int(state["sla_days"]) * 24
+            except (TypeError, ValueError):
+                sla_hours = None
         state_def = StateDefinition(
             id=uuid.uuid4(),
             process_id=process_id,
@@ -176,12 +201,11 @@ async def load_process(db: AsyncSession, process_file: Path):
             state_type=state.get("type", "intermediate"),
             metadata_=state.get("metadata"),
             assigned_role=state.get("assigned_role"),
-            sla_hours=state.get("sla_hours"),
+            sla_hours=sla_hours,
             on_sla_breach_event=state.get("on_sla_breach_event"),
         )
         db.add(state_def)
 
-    # Create transition definitions
     for trans in data.get("transitions", []):
         actions = None
         if trans.get("actions"):
@@ -204,7 +228,27 @@ async def load_process(db: AsyncSession, process_file: Path):
         )
         db.add(trans_def)
 
-    logger.info(f"Loaded process: {proc_data['code']} ({proc_data['name_fa']})")
+    return process_id
+
+
+async def sync_process(db: AsyncSession, process_file: Path) -> None:
+    """Replace process definition for this JSON's ``process.code`` if it exists, then insert from file.
+
+    CASCADE حذف state/transitionهای قبلی همان فرایند را می‌زند؛ دادهٔ عملیاتی (نمونه‌های فرایند) با ``process_code`` دست‌نخورده می‌ماند.
+    """
+    with open(process_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    proc_code = data["process"]["code"]
+    await db.execute(delete(ProcessDefinition).where(ProcessDefinition.code == proc_code))
+    await db.flush()
+    _insert_process_from_data(db, data)
+    logger.info(f"Synced process: {proc_code} ({data['process']['name_fa']})")
+
+
+async def load_process(db: AsyncSession, process_file: Path) -> None:
+    """هم‌نام با :func:`sync_process` — برای تست‌ها و importهای قدیمی."""
+    await sync_process(db, process_file)
 
 
 async def seed_all():
