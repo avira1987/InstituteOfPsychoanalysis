@@ -3,20 +3,30 @@
 import json
 import os
 import uuid
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Literal, Optional
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.auth import get_current_user, require_role, get_password_hash
-from app.models.operational_models import User
+from app.models.operational_models import User, ProcessInstance
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
 from app.models.audit_models import AuditLog
 from app.core.audit import AuditLogger
+from app.services.process_title import find_process_by_normalized_title
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
+
+# تصویر فلوچارت در دیتابیس (حداکثر ~۵ مگابایت)
+_MAX_FLOWCHART_BYTES = 5 * 1024 * 1024
+_ALLOWED_FLOWCHART_MEDIA = frozenset(
+    {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
+)
 
 
 # ─── Process CRUD Schemas ──────────────────────────────────────
@@ -28,6 +38,7 @@ class ProcessCreate(BaseModel):
     description: Optional[str] = None
     initial_state_code: str
     config: Optional[dict] = None
+    source_text: Optional[str] = None
 
 
 class ProcessUpdate(BaseModel):
@@ -37,6 +48,10 @@ class ProcessUpdate(BaseModel):
     initial_state_code: Optional[str] = None
     is_active: Optional[bool] = None
     config: Optional[dict] = None
+    source_text: Optional[str] = None
+    clear_flowchart: Optional[bool] = Field(
+        None, description="اگر true باشد تصویر فلوچارت ذخیره‌شده حذف می‌شود"
+    )
 
 
 class ProcessResponse(BaseModel):
@@ -49,6 +64,14 @@ class ProcessResponse(BaseModel):
     is_active: bool
     initial_state_code: str
     config: Optional[dict] = None
+    sop_order: Optional[int] = Field(None, description="شمارهٔ مرحله در سند SOP (INDEX / یادداشت‌ها)")
+    source_text: Optional[str] = None
+    has_flowchart: bool = False
+
+
+class SopDocUpsertResponse(BaseModel):
+    mode: Literal["updated", "created"]
+    process: ProcessResponse
 
 
 # ─── State CRUD Schemas ────────────────────────────────────────
@@ -173,11 +196,149 @@ async def create_process(
         description=data.description,
         initial_state_code=data.initial_state_code,
         config=data.config,
+        source_text=data.source_text,
         updated_by=current_user.id,
     )
     db.add(process)
     await db.flush()
     return _process_response(process)
+
+
+@router.post("/processes/sop-doc-upsert", response_model=SopDocUpsertResponse)
+async def upsert_process_sop_doc(
+    name_fa: str = Form(..., description="عنوان فرایند؛ تشخیص تکراری فقط با عنوان نرمال‌شده"),
+    source_text: Optional[str] = Form(None, description="اگر ارسال شود، متن خام SOP به‌روز می‌شود (رشتهٔ خالی = پاک کردن)"),
+    code: Optional[str] = Form(None, description="برای فرایند جدید الزامی است"),
+    initial_state_code: Optional[str] = Form(None, description="برای فرایند جدید الزامی است"),
+    name_en: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    sop_order: Optional[str] = Form(None, description="اعداد؛ در config ذخیره می‌شود"),
+    file: Optional[UploadFile] = File(None, description="تصویر فلوچارت (فقط در صورت ارسال جایگزین می‌شود)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    """
+    اگر فرایندی با عنوان فارسی یکسان (پس از نرمال‌سازی) وجود داشته باشد: فقط `source_text` و در صورت ارسال، تصویر فلوچارت به‌روز می‌شود
+    (state machine و کد فرایند تغییر نمی‌کند).
+
+    اگر وجود نداشته باشد: فرایند جدید با `code` و `initial_state_code` ایجاد می‌شود؛ `sop_order` در `config` ذخیره می‌شود.
+    """
+    existing = await find_process_by_normalized_title(db, name_fa)
+
+    if existing is not None:
+        changed = False
+        if source_text is not None:
+            existing.source_text = source_text
+            changed = True
+        if file is not None:
+            body = await file.read()
+            if len(body) > _MAX_FLOWCHART_BYTES:
+                raise HTTPException(
+                    status_code=413,
+                    detail="حجم فایل بیش از حد مجاز است (حداکثر ۵ مگابایت)",
+                )
+            ct = (file.content_type or "").split(";")[0].strip().lower()
+            if ct == "image/jpg":
+                ct = "image/jpeg"
+            if ct not in _ALLOWED_FLOWCHART_MEDIA:
+                raise HTTPException(
+                    status_code=400,
+                    detail="نوع فایل مجاز نیست. فقط PNG، JPEG، GIF یا WebP.",
+                )
+            existing.flowchart_image = body
+            existing.flowchart_content_type = ct
+            changed = True
+        if not changed:
+            raise HTTPException(
+                status_code=400,
+                detail="برای به‌روزرسانی سند موجود، حداقل یکی از source_text یا فایل تصویر را ارسال کنید.",
+            )
+        existing.version += 1
+        existing.updated_by = current_user.id
+        audit = AuditLogger(db)
+        await audit.log(
+            action_type="process_updated",
+            actor_id=current_user.id,
+            actor_role=current_user.role,
+            process_code=existing.code,
+            details={"sop_doc_upsert": "updated", "title_match": name_fa[:200]},
+        )
+        await db.flush()
+        return SopDocUpsertResponse(mode="updated", process=_process_response(existing))
+
+    if not code or not str(code).strip():
+        raise HTTPException(
+            status_code=400,
+            detail="برای فرایند جدید، فیلدهای code و initial_state_code الزامی است.",
+        )
+    if not initial_state_code or not str(initial_state_code).strip():
+        raise HTTPException(
+            status_code=400,
+            detail="برای فرایند جدید، فیلدهای code و initial_state_code الزامی است.",
+        )
+
+    code_s = str(code).strip()
+    initial_s = str(initial_state_code).strip()
+
+    so: Optional[int] = None
+    if sop_order is not None and str(sop_order).strip() != "":
+        try:
+            so = int(str(sop_order).strip().translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="sop_order باید عدد صحیح باشد")
+
+    cfg: Optional[dict] = None
+    if so is not None:
+        cfg = {"sop_order": so}
+
+    process = ProcessDefinition(
+        id=uuid.uuid4(),
+        code=code_s,
+        name_fa=name_fa.strip(),
+        name_en=name_en.strip() if name_en else None,
+        description=description.strip() if description else None,
+        initial_state_code=initial_s,
+        config=cfg,
+        source_text=source_text if source_text is not None else None,
+        updated_by=current_user.id,
+    )
+    if file is not None:
+        body = await file.read()
+        if len(body) > _MAX_FLOWCHART_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail="حجم فایل بیش از حد مجاز است (حداکثر ۵ مگابایت)",
+            )
+        ct = (file.content_type or "").split(";")[0].strip().lower()
+        if ct == "image/jpg":
+            ct = "image/jpeg"
+        if ct not in _ALLOWED_FLOWCHART_MEDIA:
+            raise HTTPException(
+                status_code=400,
+                detail="نوع فایل مجاز نیست. فقط PNG، JPEG، GIF یا WebP.",
+            )
+        process.flowchart_image = body
+        process.flowchart_content_type = ct
+
+    db.add(process)
+    try:
+        await db.flush()
+    except IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="کد فرایند تکراری است یا تضاد یکتایی رخ داده است.",
+        ) from None
+
+    audit = AuditLogger(db)
+    await audit.log(
+        action_type="process_created",
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        process_code=process.code,
+        details={"sop_doc_upsert": "created", "sop_order": so},
+    )
+    await db.flush()
+    return SopDocUpsertResponse(mode="created", process=_process_response(process))
 
 
 @router.get("/processes", response_model=list[ProcessResponse])
@@ -193,7 +354,13 @@ async def list_processes(
     stmt = stmt.order_by(ProcessDefinition.code)
     result = await db.execute(stmt)
     processes = result.scalars().all()
-    return [_process_response(p) for p in processes]
+    rows = [_process_response(p, include_source_text=False) for p in processes]
+
+    def _proc_sort_key(r: ProcessResponse) -> tuple:
+        s = r.sop_order
+        return (s is None, s if s is not None else 10**9, r.code or "")
+
+    return sorted(rows, key=_proc_sort_key)
 
 
 @router.get("/processes/{process_id}", response_model=ProcessResponse)
@@ -207,6 +374,82 @@ async def get_process(
     return _process_response(process)
 
 
+@router.get("/processes/{process_id}/flowchart")
+async def get_process_flowchart(
+    process_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff")),
+):
+    """دانلود تصویر فلوچارت ذخیره‌شده (PNG/JPEG/GIF/WebP)."""
+    process = await _get_process_or_404(db, process_id)
+    data = process.flowchart_image
+    if not data:
+        raise HTTPException(status_code=404, detail="فلوچارتی ثبت نشده است")
+    raw = bytes(data) if not isinstance(data, (bytes, bytearray)) else data
+    ct = process.flowchart_content_type or "application/octet-stream"
+    return Response(content=raw, media_type=ct)
+
+
+@router.post("/processes/{process_id}/flowchart", response_model=ProcessResponse)
+async def upload_process_flowchart(
+    process_id: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    """بارگذاری یا جایگزینی تصویر فلوچارت."""
+    process = await _get_process_or_404(db, process_id)
+    body = await file.read()
+    if len(body) > _MAX_FLOWCHART_BYTES:
+        raise HTTPException(status_code=413, detail="حجم فایل بیش از حد مجاز است (حداکثر ۵ مگابایت)")
+    ct = (file.content_type or "").split(";")[0].strip().lower()
+    if ct == "image/jpg":
+        ct = "image/jpeg"
+    if ct not in _ALLOWED_FLOWCHART_MEDIA:
+        raise HTTPException(
+            status_code=400,
+            detail="نوع فایل مجاز نیست. فقط PNG، JPEG، GIF یا WebP.",
+        )
+    process.flowchart_image = body
+    process.flowchart_content_type = ct
+    process.version += 1
+    process.updated_by = current_user.id
+    audit = AuditLogger(db)
+    await audit.log(
+        action_type="process_updated",
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        process_code=process.code,
+        details={"flowchart_uploaded": True, "bytes": len(body), "content_type": ct},
+    )
+    await db.flush()
+    return _process_response(process)
+
+
+@router.delete("/processes/{process_id}/flowchart", response_model=ProcessResponse)
+async def delete_process_flowchart(
+    process_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    """حذف تصویر فلوچارت ذخیره‌شده."""
+    process = await _get_process_or_404(db, process_id)
+    process.flowchart_image = None
+    process.flowchart_content_type = None
+    process.version += 1
+    process.updated_by = current_user.id
+    audit = AuditLogger(db)
+    await audit.log(
+        action_type="process_updated",
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        process_code=process.code,
+        details={"flowchart_deleted": True},
+    )
+    await db.flush()
+    return _process_response(process)
+
+
 @router.patch("/processes/{process_id}", response_model=ProcessResponse)
 async def update_process(
     process_id: str,
@@ -216,9 +459,19 @@ async def update_process(
 ):
     """Update a process definition."""
     process = await _get_process_or_404(db, process_id)
-    update_dict = data.model_dump(exclude_unset=True)
-    for key, value in update_dict.items():
-        setattr(process, key, value)
+    raw = data.model_dump(exclude_unset=True)
+    clear_fc = raw.pop("clear_flowchart", None)
+    if clear_fc:
+        process.flowchart_image = None
+        process.flowchart_content_type = None
+    audit_changes = dict(raw)
+    if "source_text" in audit_changes and audit_changes["source_text"] is not None:
+        st = audit_changes["source_text"]
+        if isinstance(st, str):
+            audit_changes["source_text"] = f"<{len(st)} chars>"
+    for key, value in raw.items():
+        if hasattr(process, key):
+            setattr(process, key, value)
     process.version += 1
     process.updated_by = current_user.id
 
@@ -229,7 +482,7 @@ async def update_process(
         actor_id=current_user.id,
         actor_role=current_user.role,
         process_code=process.code,
-        details={"changes": update_dict},
+        details={"changes": audit_changes, "cleared_flowchart": bool(clear_fc)},
     )
     await db.flush()
     return _process_response(process)
@@ -766,6 +1019,27 @@ async def update_user(
     }
 
 
+@router.post("/process-instances/{instance_id}/cancel")
+async def cancel_process_instance(
+    instance_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    """لغو نمونهٔ فرایند (مثلاً بستن ثبت‌نام اولیه برای ادامهٔ مسیر آزمایشی)."""
+    stmt = select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id))
+    result = await db.execute(stmt)
+    instance = result.scalars().first()
+    if not instance:
+        raise HTTPException(status_code=404, detail="Process instance not found")
+    if instance.is_completed:
+        raise HTTPException(status_code=400, detail="Instance already completed")
+    if instance.is_cancelled:
+        return {"ok": True, "instance_id": instance_id, "already_cancelled": True}
+    instance.is_cancelled = True
+    await db.flush()
+    return {"ok": True, "instance_id": instance_id}
+
+
 @router.delete("/users/{user_id}")
 async def deactivate_user(
     user_id: str,
@@ -829,11 +1103,52 @@ def _normalize_process_config(val) -> Optional[dict]:
     return None
 
 
-def _process_response(p: ProcessDefinition) -> ProcessResponse:
+def _normalize_rule_json_dict(val) -> dict:
+    """RuleDefinition.expression/parameters: JSONB may arrive as str — RuleResponse expects dict."""
+    if val is None:
+        return {}
+    if isinstance(val, dict):
+        return val
+    if isinstance(val, str):
+        try:
+            parsed = json.loads(val)
+            return parsed if isinstance(parsed, dict) else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return {}
+
+
+def _normalize_rule_json_optional_dict(val) -> Optional[dict]:
+    if val is None:
+        return None
+    if isinstance(val, dict):
+        return val
+    if isinstance(val, str):
+        try:
+            parsed = json.loads(val)
+            if parsed is None:
+                return None
+            return parsed if isinstance(parsed, dict) else None
+        except (json.JSONDecodeError, TypeError):
+            return None
+    return None
+
+
+def _process_response(p: ProcessDefinition, *, include_source_text: bool = True) -> ProcessResponse:
+    from app.meta.sop_registry import get_sop_order_for_process_code
+
+    cfg = _normalize_process_config(p.config)
+    co = cfg.get("sop_order") if isinstance(cfg, dict) else None
+    sop_order = int(co) if isinstance(co, int) else get_sop_order_for_process_code(p.code)
+    img = p.flowchart_image
+    has_fc = bool(img) and (len(img) > 0 if hasattr(img, "__len__") else True)
     return ProcessResponse(
         id=str(p.id), code=p.code, name_fa=p.name_fa, name_en=p.name_en,
         description=p.description, version=p.version, is_active=p.is_active,
-        initial_state_code=p.initial_state_code, config=_normalize_process_config(p.config),
+        initial_state_code=p.initial_state_code, config=cfg,
+        sop_order=sop_order,
+        source_text=(p.source_text if include_source_text else None),
+        has_flowchart=has_fc,
     )
 
 
@@ -858,6 +1173,7 @@ def _transition_response(t: TransitionDefinition) -> TransitionResponse:
 def _rule_response(r: RuleDefinition) -> RuleResponse:
     return RuleResponse(
         id=str(r.id), code=r.code, name_fa=r.name_fa, rule_type=r.rule_type,
-        expression=r.expression, parameters=r.parameters,
+        expression=_normalize_rule_json_dict(r.expression),
+        parameters=_normalize_rule_json_optional_dict(r.parameters),
         error_message_fa=r.error_message_fa, is_active=r.is_active, version=r.version,
     )

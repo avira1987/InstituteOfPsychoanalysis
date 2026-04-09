@@ -26,6 +26,8 @@ export function getApiBase() {
 const api = axios.create({
   baseURL: '/api/', // مقدار پیش‌فرض؛ در اینترسپتور زیر همیشه با origin فعلی به‌روز می‌شود
   headers: { 'Content-Type': 'application/json' },
+  // شبکه کند یا پاسخ ندادن: حداکثر ~۱ دقیقه؛ عملیات طولانی (مثلاً seed دمو) در همان endpoint timeout جدا دارد
+  timeout: 60000,
 })
 
 // Add auth token + همیشه baseURL را از آدرس فعلی صفحه بگیر
@@ -133,6 +135,23 @@ export const processApi = {
   create: (data) => api.post('admin/processes', data),
   update: (id, data) => api.patch(`admin/processes/${id}`, data),
   delete: (id) => api.delete(`admin/processes/${id}`),
+  /** بارگذاری تصویر فلوچارت (PNG/JPEG/GIF/WebP، حداکثر ~۵ مگابایت) */
+  uploadFlowchart: (processId, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`admin/processes/${processId}/flowchart`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  deleteFlowchart: (processId) => api.delete(`admin/processes/${processId}/flowchart`),
+  /**
+   * بارگذاری/به‌روزرسانی سند SOP بر اساس عنوان (تکراری = فقط متن و تصویر).
+   * FormData: name_fa (الزامی)، اختیاری: source_text، code، initial_state_code، name_en، description، sop_order، file
+   */
+  sopDocUpsert: (formData) =>
+    api.post('admin/processes/sop-doc-upsert', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   // States
   getStates: (processId) => api.get(`admin/processes/${processId}/states`),
   createState: (processId, data) => api.post(`admin/processes/${processId}/states`, data),
@@ -214,6 +233,8 @@ export const therapyApi = {
 export const financeApi = {
   summary: () => api.get('finance/summary'),
   context: () => api.get('finance/context'),
+  installmentSettings: () => api.get('finance/installment-settings'),
+  patchInstallmentSettings: (body) => api.patch('finance/installment-settings', body),
   transactions: (params) => api.get('finance/transactions', { params }),
   studentBalances: (params) => api.get('finance/student-balances', { params }),
   async exportCsv() {
@@ -241,6 +262,17 @@ export const assignmentApi = {
   submit: (assignmentId, body) => api.post(`assignments/${assignmentId}/submit`, body),
 }
 
+// ─── تیکتینگ داخلی (کارکنان) ──────────────────────────────────
+export const ticketApi = {
+  triage: () => api.get('tickets/triage'),
+  assignableUsers: () => api.get('tickets/assignable-users'),
+  list: (params) => api.get('tickets', { params }),
+  get: (id) => api.get(`tickets/${id}`),
+  create: (data) => api.post('tickets', data),
+  patch: (id, data) => api.patch(`tickets/${id}`, data),
+  addComment: (id, body) => api.post(`tickets/${id}/comments`, body),
+}
+
 // ─── Users ─────────────────────────────────────────────────────
 export const userApi = {
   list: (params) => api.get('admin/users', { params }),
@@ -264,6 +296,68 @@ export const publicApi = {
   stats: () => api.get('public/stats'),
   processes: () => api.get('public/processes'),
   register: (data) => api.post('public/register', data),
+}
+
+// ─── گزارشات مدیریتی (اکسل / CSV / PDF) — همان axios و baseURL پنل ─────────
+export const reportsApi = {
+  shamsiToday: () => api.get('reports/shamsi-today'),
+  /**
+   * @param {1|2|3|4|5} reportKey
+   * @param {number} shamsiYear
+   * @param {number} shamsiMonth
+   * @param {'xlsx'|'csv'|'pdf'} [exportFormat] پیش‌فرض: اکسل
+   * @param {boolean} [includeSampleData] پیش‌فرض: false — رکوردهای نمونه آموزشی در گزارش نیایند
+   */
+  async downloadMonthly(reportKey, shamsiYear, shamsiMonth, exportFormat = 'pdf', includeSampleData = false) {
+    const paths = {
+      1: 'reports/monthly/1-violations',
+      2: 'reports/monthly/2-debt',
+      3: 'reports/monthly/3-dropout',
+      4: 'reports/monthly/4-sla-delays',
+      5: 'reports/monthly/5-cancellations',
+    }
+    const path = paths[reportKey]
+    if (!path) throw new Error('گزارش نامعتبر است')
+    const fmt = ['csv', 'xlsx', 'pdf'].includes(exportFormat) ? exportFormat : 'xlsx'
+    try {
+      const res = await api.get(path, {
+        params: {
+          shamsi_year: shamsiYear,
+          shamsi_month: shamsiMonth,
+          format: fmt,
+          include_sample_data: includeSampleData === true,
+        },
+        responseType: 'blob',
+      })
+      const blob = res.data
+      const cd = res.headers['content-disposition'] || res.headers['Content-Disposition']
+      let filename = `report_${shamsiYear}_${String(shamsiMonth).padStart(2, '0')}.${fmt === 'pdf' ? 'pdf' : fmt === 'xlsx' ? 'xlsx' : 'csv'}`
+      if (cd && /filename=/i.test(cd)) {
+        const m = cd.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)["']?/i)
+        if (m) filename = decodeURIComponent(m[1].trim())
+      }
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      const res = err.response
+      if (res?.data instanceof Blob) {
+        const text = await res.data.text()
+        let msg = text
+        try {
+          const j = JSON.parse(text)
+          msg = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail)
+        } catch (_) {
+          /* متن خام خطا */
+        }
+        throw new Error(msg || err.message || 'خطا در دریافت گزارش')
+      }
+      throw err
+    }
+  },
 }
 
 export default api
