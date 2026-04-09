@@ -34,6 +34,11 @@ node_modules/
 admin-ui/node_modules/
 admin-ui/dist/
 
+# Playwright E2E
+playwright-report/
+test-results/
+blob-report/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -4,6 +4,8 @@
  */
 export const OPERATOR_HIDDEN_CONTEXT_KEYS = [
   'integration_events',
+  /** ارجاع داخلی به نمونهٔ start_therapy؛ برای کارمند کاربردی نیست */
+  'parent_start_therapy_instance_id',
 ]
 
 /**

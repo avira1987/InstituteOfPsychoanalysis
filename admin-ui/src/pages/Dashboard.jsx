@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { dashboardApi, processApi, auditApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { labelProcess, labelState } from '../utils/processDisplay'
+import { resolveProcessSopOrder } from '../utils/processSopOrder'
+
+function processCardInitial(nameFa) {
+  if (!nameFa || typeof nameFa !== 'string') return '؟'
+  const t = nameFa.trim()
+  return t.length ? t[0] : '؟'
+}
 
 const portalByRole = {
   student: { path: '/panel/portal/student', label: 'پنل دانشجو', icon: '🎓' },
@@ -173,6 +180,47 @@ export default function Dashboard() {
     }
   }
 
+  const quickActions = useMemo(() => {
+    const u = user?.role
+    const items = []
+    if (u === 'student') {
+      items.push({ key: 'student', icon: '🎓', label: 'پنل دانشجو', hint: 'پرونده، فرایندها و تکالیف', onClick: () => navigate('/panel/portal/student') })
+    }
+    if (u === 'therapist' || u === 'admin') {
+      items.push({ key: 'therapist', icon: '💊', label: 'پنل درمانگر', hint: 'جلسات و پرونده‌های درمانی', onClick: () => navigate('/panel/portal/therapist') })
+    }
+    if (u === 'supervisor' || u === 'admin') {
+      items.push({ key: 'supervisor', icon: '👁️', label: 'پنل سوپروایزر', hint: 'سوپرویژن و بازخورد', onClick: () => navigate('/panel/portal/supervisor') })
+    }
+    if (u === 'staff' || u === 'admin') {
+      items.push({ key: 'staff', icon: '🏢', label: 'پنل کارمند', hint: 'کارتابل و امور اداری', onClick: () => navigate('/panel/portal/staff') })
+    }
+    if (u === 'site_manager' || u === 'admin') {
+      items.push({ key: 'site', icon: '🏗️', label: 'پنل مسئول سایت', hint: 'هماهنگی و برنامه‌ریزی', onClick: () => navigate('/panel/portal/site-manager') })
+    }
+    if (['progress_committee', 'education_committee', 'supervision_committee', 'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor', 'deputy_education', 'monitoring_committee_officer', 'admin'].includes(u)) {
+      items.push({ key: 'committee', icon: '📋', label: 'پنل کمیته', hint: 'جلسات و تصمیمات کمیته', onClick: () => navigate('/panel/portal/committee') })
+    }
+    if (u === 'admin') {
+      items.push({ key: 'processes', icon: '⚙️', label: 'مدیریت فرایندها', hint: 'تعریف و ویرایش SOP', onClick: () => navigate('/panel/processes') })
+    }
+    if (u === 'admin' || u === 'staff') {
+      items.push({ key: 'students', icon: '👨‍🎓', label: 'ردیابی دانشجو', hint: 'جستجو و وضعیت دانشجویان', onClick: () => navigate('/panel/students') })
+      items.push({
+        key: 'reports-hub',
+        icon: '📈',
+        label: 'گزارشات',
+        hint: 'چارچوب گزارش‌ها و قواعد رسمی',
+        onClick: () => navigate('/panel/reports'),
+      })
+    }
+    if (u === 'admin') {
+      items.push({ key: 'users', icon: '👥', label: 'مدیریت کاربران', hint: 'نقش‌ها و دسترسی‌ها', onClick: () => navigate('/panel/users') })
+    }
+    items.push({ key: 'guide', icon: '📖', label: 'راهنمای جامع', hint: 'آموزش گام‌به‌گام سامانه', onClick: () => navigate('/panel/guide') })
+    return items
+  }, [user?.role, navigate])
+
   return (
     <div>
       <div className="page-header">
@@ -241,7 +289,10 @@ export default function Dashboard() {
         {user?.role === 'admin' ? (
           <div className="card">
             <div className="card-header">
-              <h3 className="card-title">فرایندهای SOP تعریف‌شده</h3>
+              <div>
+                <h3 className="card-title">فرایندهای SOP تعریف‌شده</h3>
+                <p className="card-subtitle">برای ویرایش یا جزئیات، روی کارت فرایند کلیک کنید.</p>
+              </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button className="btn btn-outline btn-sm" onClick={handleSyncMetadata} disabled={syncing}>
                   {syncing ? '...' : 'همگام‌سازی از JSON'}
@@ -266,21 +317,39 @@ export default function Dashboard() {
               ) : processes.length === 0 ? (
                 <div className="empty-state" style={{ padding: '2rem' }}>فرایندی تعریف نشده</div>
               ) : (
-                processes.map((p) => (
-                  <div key={p.id} className="dashboard-process-item" onClick={() => navigate(`/panel/processes/${p.id}`)}>
-                    <div>
-                      <span style={{ fontWeight: 600 }}>{p.name_fa}</span>
-                      {p.name_en && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginRight: '0.5rem' }}>({p.name_en})</span>}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span className="badge badge-primary">{p.code}</span>
-                      <span className={`badge ${p.is_active ? 'badge-success' : 'badge-danger'}`}>
-                        {p.is_active ? 'فعال' : 'غیرفعال'}
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>v{p.version}</span>
-                    </div>
-                  </div>
-                ))
+                <div className="dashboard-process-grid">
+                  {processes.map((p) => (
+                    <button
+                      type="button"
+                      key={p.id}
+                      className="dashboard-process-card"
+                      onClick={() => navigate(`/panel/processes/${p.id}`)}
+                    >
+                      <div className="dashboard-process-card-icon" aria-hidden>
+                        {processCardInitial(p.name_fa)}
+                      </div>
+                      <div className="dashboard-process-card-body">
+                        <div className="dashboard-process-card-title">{p.name_fa}</div>
+                        {p.name_en ? (
+                          <div className="dashboard-process-card-en">{p.name_en}</div>
+                        ) : null}
+                        <div className="dashboard-process-card-meta">
+                          {resolveProcessSopOrder(p) != null ? (
+                            <span className="badge" style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }} title="شماره مرحله در سند SOP">
+                              SOP {resolveProcessSopOrder(p)}
+                            </span>
+                          ) : null}
+                          <span className="badge badge-primary">{p.code}</span>
+                          <span className={`badge ${p.is_active ? 'badge-success' : 'badge-danger'}`}>
+                            {p.is_active ? 'فعال' : 'غیرفعال'}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-light)' }}>نسخه {p.version}</span>
+                        </div>
+                      </div>
+                      <span className="dashboard-process-card-arrow" aria-hidden>‹</span>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -313,30 +382,32 @@ export default function Dashboard() {
               ) : recentLogs.length === 0 ? (
                 <div className="empty-state" style={{ padding: '2rem' }}>هنوز فعالیتی ثبت نشده</div>
               ) : (
-                recentLogs.map((log) => {
-                  const at = actionTypeLabel(log.action_type)
-                  return (
-                    <div key={log.id} className="activity-item">
-                      <div className="activity-dot" />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                          <span className={`badge ${at.cls}`}>{at.label}</span>
-                          {log.process_code && (
-                            <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>{labelProcess(log.process_code)}</span>
-                          )}
-                        </div>
-                        {log.from_state && log.to_state && (
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            {labelState(log.from_state)} → {labelState(log.to_state)}
+                <div className="activity-feed">
+                  {recentLogs.map((log) => {
+                    const at = actionTypeLabel(log.action_type)
+                    return (
+                      <div key={log.id} className="activity-item">
+                        <div className="activity-dot" aria-hidden />
+                        <div className="activity-item-text">
+                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                            <span className={`badge ${at.cls}`}>{at.label}</span>
+                            {log.process_code && (
+                              <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>{labelProcess(log.process_code)}</span>
+                            )}
                           </div>
-                        )}
+                          {log.from_state && log.to_state && (
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                              {labelState(log.from_state)} → {labelState(log.to_state)}
+                            </div>
+                          )}
+                          <div className="activity-item-time">
+                            {new Date(log.timestamp).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' })}
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-light)', whiteSpace: 'nowrap' }}>
-                        {new Date(log.timestamp).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' })}
-                      </div>
-                    </div>
-                  )
-                })
+                    )
+                  })}
+                </div>
               )}
             </div>
           </div>
@@ -346,69 +417,19 @@ export default function Dashboard() {
       {/* دسترسی سریع: برای همه نمایش داده می‌شود؛ دکمه‌ها بر اساس نقش کاربر فیلتر می‌شوند */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
         <div className="card-header">
-          <h3 className="card-title">دسترسی سریع</h3>
+          <div>
+            <h3 className="card-title">دسترسی سریع</h3>
+            <p className="card-subtitle">میانبرهای پرکاربرد بر اساس نقش شما</p>
+          </div>
         </div>
         <div className="quick-actions-grid">
-          {user?.role === 'student' && (
-            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/student')}>
-              <span className="quick-action-icon">🎓</span>
-              <span>پنل دانشجو</span>
+          {quickActions.map((a) => (
+            <button key={a.key} type="button" className="quick-action-btn" onClick={a.onClick}>
+              <span className="quick-action-icon">{a.icon}</span>
+              <span className="quick-action-label">{a.label}</span>
+              <span className="quick-action-hint">{a.hint}</span>
             </button>
-          )}
-          {(user?.role === 'therapist' || user?.role === 'admin') && (
-            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/therapist')}>
-              <span className="quick-action-icon">💊</span>
-              <span>پنل درمانگر</span>
-            </button>
-          )}
-          {(user?.role === 'supervisor' || user?.role === 'admin') && (
-            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/supervisor')}>
-              <span className="quick-action-icon">👁️</span>
-              <span>پنل سوپروایزر</span>
-            </button>
-          )}
-          {(user?.role === 'staff' || user?.role === 'admin') && (
-            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/staff')}>
-              <span className="quick-action-icon">🏢</span>
-              <span>پنل کارمند</span>
-            </button>
-          )}
-          {(user?.role === 'site_manager' || user?.role === 'admin') && (
-            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/site-manager')}>
-              <span className="quick-action-icon">🏗️</span>
-              <span>پنل مسئول سایت</span>
-            </button>
-          )}
-          {(['progress_committee', 'education_committee', 'supervision_committee',
-            'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor',
-            'deputy_education', 'monitoring_committee_officer', 'admin'].includes(user?.role)) && (
-            <button className="quick-action-btn" onClick={() => navigate('/panel/portal/committee')}>
-              <span className="quick-action-icon">📋</span>
-              <span>پنل کمیته</span>
-            </button>
-          )}
-          {user?.role === 'admin' && (
-            <button className="quick-action-btn" onClick={() => navigate('/panel/processes')}>
-              <span className="quick-action-icon">⚙️</span>
-              <span>مدیریت فرایندها</span>
-            </button>
-          )}
-          {(user?.role === 'admin' || user?.role === 'staff') && (
-            <button className="quick-action-btn" onClick={() => navigate('/panel/students')}>
-              <span className="quick-action-icon">👨‍🎓</span>
-              <span>ردیابی دانشجو</span>
-            </button>
-          )}
-          {user?.role === 'admin' && (
-            <button className="quick-action-btn" onClick={() => navigate('/panel/users')}>
-              <span className="quick-action-icon">👥</span>
-              <span>مدیریت کاربران</span>
-            </button>
-          )}
-          <button className="quick-action-btn" onClick={() => navigate('/panel/guide')}>
-            <span className="quick-action-icon">📖</span>
-            <span>راهنمای جامع</span>
-          </button>
+          ))}
         </div>
       </div>
     </div>

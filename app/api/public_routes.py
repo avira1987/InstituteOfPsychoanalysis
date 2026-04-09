@@ -17,6 +17,7 @@ from app.models.operational_models import User, Student
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.api.auth import get_password_hash
 from app.services.student_service import StudentService
+from app.services.installment_settings_service import get_installment_policy
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/public", tags=["Public"])
@@ -30,6 +31,12 @@ class StudentRegistrationRequest(BaseModel):
     field_of_study: Optional[str] = None
     course_type: Literal["introductory", "comprehensive"] = "introductory"
     motivation: Optional[str] = None
+
+
+@router.get("/installment-policy")
+async def public_installment_policy(db: AsyncSession = Depends(get_db)):
+    """سیاست اقساط برای نمایش در وب‌سایت (بدون احراز هویت)."""
+    return await get_installment_policy(db)
 
 
 @router.get("/stats")

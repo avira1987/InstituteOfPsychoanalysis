@@ -22,6 +22,21 @@ function fmtDate(iso) {
   }
 }
 
+/** بخش جمع‌شونده؛ پیش‌فرض بسته — کاربر با کلیک عنوان باز می‌کند */
+function FinancePanel({ title, children }) {
+  return (
+    <details className="card finance-panel">
+      <summary>
+        <h3 className="finance-panel__summary-title card-title">{title}</h3>
+        <span className="finance-panel__chevron" aria-hidden>
+          ▼
+        </span>
+      </summary>
+      <div className="finance-panel__body">{children}</div>
+    </details>
+  )
+}
+
 export default function FinancialDashboard() {
   const [summary, setSummary] = useState(null)
   const [ctx, setCtx] = useState(null)
@@ -42,6 +57,12 @@ export default function FinancialDashboard() {
   const [txQDebounced, setTxQDebounced] = useState('')
   const [txLoading, setTxLoading] = useState(false)
 
+  const [gapDays, setGapDays] = useState('25')
+  const [countOptsStr, setCountOptsStr] = useState('2, 3, 4')
+  const [instSaving, setInstSaving] = useState(false)
+  const [instLoaded, setInstLoaded] = useState(false)
+  const [instUpdatedAt, setInstUpdatedAt] = useState(null)
+
   const loadCore = useCallback(() => {
     setErr(null)
     return Promise.all([
@@ -56,6 +77,53 @@ export default function FinancialDashboard() {
       .catch((e) => setErr(e.response?.data?.detail || e.message))
       .finally(() => setLoading(false))
   }, [loadCore])
+
+  useEffect(() => {
+    financeApi
+      .installmentSettings()
+      .then((r) => {
+        const d = r.data || {}
+        setGapDays(String(d.term2_installment_gap_days ?? 25))
+        setCountOptsStr((d.installment_count_options || [2, 3, 4]).join(', '))
+        setInstUpdatedAt(d.updated_at || null)
+        setInstLoaded(true)
+      })
+      .catch(() => {
+        setInstLoaded(true)
+      })
+  }, [])
+
+  const saveInstallmentSettings = async () => {
+    setErr(null)
+    setInstSaving(true)
+    try {
+      const parts = countOptsStr.split(/[,،\s]+/).map((s) => s.trim()).filter(Boolean)
+      const installment_count_options = parts
+        .map((s) => parseInt(s, 10))
+        .filter((n) => !Number.isNaN(n) && n >= 2 && n <= 24)
+      const g = parseInt(String(gapDays).replace(/[^\d]/g, ''), 10)
+      if (Number.isNaN(g) || g < 1 || g > 365) {
+        setErr('فاصلهٔ روزهای بین اقساط باید بین ۱ تا ۳۶۵ باشد.')
+        return
+      }
+      if (installment_count_options.length === 0) {
+        setErr('حداقل یک گزینه برای تعداد اقساط وارد کنید (مثلاً ۲، ۳، ۴).')
+        return
+      }
+      const r = await financeApi.patchInstallmentSettings({
+        term2_installment_gap_days: g,
+        installment_count_options,
+      })
+      const d = r.data || {}
+      setGapDays(String(d.term2_installment_gap_days ?? g))
+      setCountOptsStr((d.installment_count_options || installment_count_options).join(', '))
+      setInstUpdatedAt(d.updated_at || null)
+    } catch (e) {
+      setErr(e.response?.data?.detail || e.message)
+    } finally {
+      setInstSaving(false)
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setTxQDebounced(txQ.trim()), 400)
@@ -151,42 +219,94 @@ export default function FinancialDashboard() {
         </div>
       )}
 
-      <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
-        <div className="stat-card">
-          <div className="stat-icon success">💰</div>
-          <div>
-            <div className="stat-value">{summary ? fmtMoney(summary.total_payments) : '—'}</div>
-            <div className="stat-label">جمع پرداخت‌ها (تومان)</div>
+      {instLoaded && (
+        <FinancePanel title="تنظیمات اقساط وب‌سایت">
+          <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.7 }}>
+            فاصلهٔ روز بین سررسید هر قسط (ترم دوم آشنایی و فرایندهایی که از «ادغام زمینهٔ اقساط» استفاده می‌کنند) و گزینه‌های
+            مجاز تعداد اقساط برای نمایش در بخش عمومی (
+            <code style={{ fontSize: '0.85rem' }}>/api/public/installment-policy</code>
+            ). فرم‌های ثبت‌نام در متادیتا ممکن است جداگانه به‌روز شوند.
+          </p>
+          <div
+            style={{
+              display: 'grid',
+              gap: '1rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              alignItems: 'flex-end',
+            }}
+          >
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">فاصلهٔ سررسید اقساط (روز)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="numeric"
+                value={gapDays}
+                onChange={(e) => setGapDays(e.target.value)}
+                placeholder="مثلاً ۲۵"
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0, gridColumn: 'span 1' }}>
+              <label className="form-label">گزینه‌های تعداد اقساط (با ویرگول جدا کنید)</label>
+              <input
+                className="form-input"
+                type="text"
+                value={countOptsStr}
+                onChange={(e) => setCountOptsStr(e.target.value)}
+                placeholder="۲، ۳، ۴"
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+              <button type="button" className="btn btn-primary" disabled={instSaving} onClick={saveInstallmentSettings}>
+                {instSaving ? 'در حال ذخیره…' : 'ذخیرهٔ تنظیمات'}
+              </button>
+              {instUpdatedAt && (
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  آخرین به‌روزرسانی: {fmtDate(instUpdatedAt)}
+                </span>
+              )}
+            </div>
+          </div>
+        </FinancePanel>
+      )}
+
+      <FinancePanel title="خلاصهٔ آمار">
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon success">💰</div>
+            <div>
+              <div className="stat-value">{summary ? fmtMoney(summary.total_payments) : '—'}</div>
+              <div className="stat-label">جمع پرداخت‌ها (تومان)</div>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon info">↩️</div>
+            <div>
+              <div className="stat-value">{summary ? fmtMoney(summary.total_credits) : '—'}</div>
+              <div className="stat-label">بستانکاری / استرداد</div>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon warning">📉</div>
+            <div>
+              <div className="stat-value">{summary ? fmtMoney(summary.total_debts) : '—'}</div>
+              <div className="stat-label">بدهی و جریمه</div>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon primary">📄</div>
+            <div>
+              <div className="stat-value">{summary?.record_count ?? '—'}</div>
+              <div className="stat-label">تعداد رکورد مالی</div>
+            </div>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon info">↩️</div>
-          <div>
-            <div className="stat-value">{summary ? fmtMoney(summary.total_credits) : '—'}</div>
-            <div className="stat-label">بستانکاری / استرداد</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon warning">📉</div>
-          <div>
-            <div className="stat-value">{summary ? fmtMoney(summary.total_debts) : '—'}</div>
-            <div className="stat-label">بدهی و جریمه</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon primary">📄</div>
-          <div>
-            <div className="stat-value">{summary?.record_count ?? '—'}</div>
-            <div className="stat-label">تعداد رکورد مالی</div>
-          </div>
-        </div>
-      </div>
+      </FinancePanel>
 
       {ctx && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <div className="card-header">
-            <h3 className="card-title">{ctx.title}</h3>
-          </div>
+        <FinancePanel title={ctx.title}>
           <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.7 }}>{ctx.intro}</p>
           {(ctx.sections || []).map((sec) => (
             <div key={sec.heading} style={{ marginBottom: '1.25rem' }}>
@@ -198,14 +318,11 @@ export default function FinancialDashboard() {
               </ul>
             </div>
           ))}
-        </div>
+        </FinancePanel>
       )}
 
       {summary && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <div className="card-header">
-            <h3 className="card-title">معادلات و شاخص‌های مالی</h3>
-          </div>
+        <FinancePanel title="معادلات و شاخص‌های مالی">
           <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
             بر اساس رکوردهای ثبت‌شده؛ برای سند رسمی با حسابدار مرکز هماهنگ کنید.
           </p>
@@ -269,14 +386,11 @@ export default function FinancialDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </FinancePanel>
       )}
 
       {summary && breakdownRows.length > 0 && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <div className="card-header">
-            <h3 className="card-title">تفکیک بر اساس نوع رکورد</h3>
-          </div>
+        <FinancePanel title="تفکیک بر اساس نوع رکورد">
           <div className="table-container">
             <table>
               <thead>
@@ -297,13 +411,10 @@ export default function FinancialDashboard() {
               </tbody>
             </table>
           </div>
-        </div>
+        </FinancePanel>
       )}
 
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div className="card-header">
-          <h3 className="card-title">مانده مالی دانشجویان (بدهی / بستانکاری)</h3>
-        </div>
+      <FinancePanel title="مانده مالی دانشجویان (بدهی / بستانکاری)">
         <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           مانده = (پرداخت‌ها + بستانکاری) − (بدهی + جریمه). مانده منفی یعنی مطالبه بیش از وصول؛ مثبت یعنی پیش‌پرداخت یا طلب دانشجو.
         </p>
@@ -368,12 +479,9 @@ export default function FinancialDashboard() {
             {paginate(balData.page, balData.pages, setBalPage)}
           </>
         )}
-      </div>
+      </FinancePanel>
 
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div className="card-header">
-          <h3 className="card-title">فهرست تراکنش‌ها</h3>
-        </div>
+      <FinancePanel title="فهرست تراکنش‌ها">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
           <div className="form-group" style={{ marginBottom: 0, minWidth: '160px' }}>
             <label className="form-label">نوع رکورد</label>
@@ -444,19 +552,16 @@ export default function FinancialDashboard() {
             </p>
           </>
         )}
-      </div>
+      </FinancePanel>
 
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title">خروجی برای حسابداری</h3>
-        </div>
+      <FinancePanel title="خروجی برای حسابداری">
         <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           فایل CSV حداکثر ۵۰۰۰ رکورد اخیر برای Excel، هلو، سپیدار یا هر نرم‌افزار حسابداری سازگار با جدول.
         </p>
         <button type="button" className="btn btn-primary" disabled={exporting} onClick={handleExport}>
           {exporting ? 'در حال آماده‌سازی…' : 'دانلود CSV'}
         </button>
-      </div>
+      </FinancePanel>
     </div>
   )
 }

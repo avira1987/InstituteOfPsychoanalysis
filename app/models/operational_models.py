@@ -57,6 +57,8 @@ class Student(Base):
     therapist_id = Column(UUID, ForeignKey("users.id"), nullable=True)
     enrollment_date = Column(Date, nullable=True)
     extra_data = Column(JSONB, nullable=True)  # Flexible additional data
+    # رکوردهای بارگذاری‌شده برای آموزش/تست فرایند — در گزارش‌ها پیش‌فرض حذف می‌شوند
+    is_sample_data = Column(Boolean, default=False, nullable=False, server_default=text("0"))
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
@@ -260,3 +262,71 @@ class BlogPost(Base):
     published_at = Column(DateTime(timezone=True), nullable=True)
 
     author = relationship("User", foreign_keys=[author_id])
+
+
+class SupportTicket(Base):
+    """درخواست داخلی کارکنان (تیکت) برای ارجاع به فرد دارای دسترسی مناسب."""
+
+    __tablename__ = "support_tickets"
+    __table_args__ = (
+        Index("ix_support_tickets_requester", "requester_id"),
+        Index("ix_support_tickets_assignee", "assignee_id"),
+        Index("ix_support_tickets_status", "status"),
+        Index("ix_support_tickets_created", "created_at"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=True)
+    # مثال: profile_edit_unlock, process_general, data_correction, other
+    category = Column(String(80), nullable=False, default="other")
+    status = Column(String(30), nullable=False, default="open")  # open, in_progress, resolved, closed
+    priority = Column(String(20), nullable=False, default="normal")  # low, normal, high
+
+    requester_id = Column(UUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    assignee_id = Column(UUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    student_id = Column(UUID, ForeignKey("students.id", ondelete="SET NULL"), nullable=True)
+    process_instance_id = Column(UUID, ForeignKey("process_instances.id", ondelete="SET NULL"), nullable=True)
+    extra_context = Column(JSONB, nullable=True)  # شناسهٔ مرحله، یادداشت ساختاری، ...
+
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+    closed_at = Column(DateTime(timezone=True), nullable=True)
+
+    requester = relationship("User", foreign_keys=[requester_id])
+    assignee = relationship("User", foreign_keys=[assignee_id])
+    student = relationship("Student", foreign_keys=[student_id])
+    comments = relationship(
+        "TicketComment",
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+    )
+
+
+class TicketComment(Base):
+    """پاسخ یا پیام روی تیکت."""
+
+    __tablename__ = "ticket_comments"
+    __table_args__ = (Index("ix_ticket_comments_ticket", "ticket_id"),)
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    ticket_id = Column(UUID, ForeignKey("support_tickets.id", ondelete="CASCADE"), nullable=False)
+    author_id = Column(UUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    # user = پیام کاربر | system = لاگ خودکار (پیگیری، تغییر وضعیت، ارجاع)
+    kind = Column(String(20), nullable=False, default="user")
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    ticket = relationship("SupportTicket", back_populates="comments")
+    author = relationship("User", foreign_keys=[author_id])
+
+
+class SiteSetting(Base):
+    """تنظیمات کلید-مقدار برای وب‌سایت (مثلاً سیاست اقساط)."""
+
+    __tablename__ = "site_settings"
+
+    key = Column(String(100), primary_key=True)
+    value_json = Column(JSONB, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)

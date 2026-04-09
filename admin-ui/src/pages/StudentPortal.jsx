@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { processExecApi, studentApi, therapyApi, assignmentApi } from '../services/api'
 import GamificationPanel from '../components/GamificationPanel'
@@ -52,6 +53,7 @@ export default function StudentPortal() {
   const [instanceForms, setInstanceForms] = useState([])
   const [stepFormValues, setStepFormValues] = useState({})
   const lastFormCtxRef = useRef('')
+  const gamificationTabPanelRef = useRef(null)
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -116,6 +118,17 @@ export default function StudentPortal() {
       if (!cancelled) setStudentProfile(r.data)
     }).catch(() => {})
     return () => { cancelled = true }
+  }, [activeTab])
+
+  /** جلوگیری از پرش ناخواستهٔ viewport به ابتدای صفحه هنگام باز شدن تب گیمیفیکیشن */
+  useLayoutEffect(() => {
+    if (activeTab !== 'gamification') return
+    const el = gamificationTabPanelRef.current
+    if (!el) return
+    const id = window.requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => window.cancelAnimationFrame(id)
   }, [activeTab])
 
   const loadPrimaryJourney = async (instanceId) => {
@@ -390,6 +403,30 @@ export default function StudentPortal() {
         </div>
       </div>
 
+      {/* درخواست اداری / تیکت — همیشه قابل مشاهده در پنل دانشجو */}
+      <div
+        className="card"
+        style={{
+          marginBottom: '1.25rem',
+          padding: '1rem 1.25rem',
+          borderRadius: '12px',
+          border: '1px solid rgba(59, 130, 246, 0.35)',
+          background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%)',
+        }}
+      >
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+          <div>
+            <strong style={{ fontSize: '1.05rem' }}>درخواست به واحد اداری</strong>
+            <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', maxWidth: '42rem' }}>
+              برای مواردی مثل باز کردن پروفایل برای ویرایش مرحلهٔ ثبت‌شده، اصلاح داده یا پیگیری فرایند، می‌توانید تیکت ثبت کنید و مسئول مربوط را انتخاب کنید.
+            </p>
+          </div>
+          <Link to="/panel/tickets" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>
+            تیکت‌ها و درخواست‌ها
+          </Link>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="tab-bar">
         {tabs.map(tab => (
@@ -513,8 +550,8 @@ export default function StudentPortal() {
           {studentProfile && (
             <div className="card gam-dashboard-card" style={{ marginTop: '1.5rem' }}>
               <div className="card-header">
-                <h3 className="card-title">پیشرفت و بازی‌ها</h3>
-                <span className="badge" style={{ background: 'var(--primary-light)', color: 'var(--primary-dark)' }}>XP</span>
+                <h3 className="card-title">پیشرفت مسیر آموزشی</h3>
+                <span className="badge gam-dashboard-xp-badge">XP</span>
               </div>
               <GamificationPanel
                 extraData={studentProfile.extra_data}
@@ -1035,7 +1072,7 @@ export default function StudentPortal() {
 
       {/* Gamification Tab */}
       {activeTab === 'gamification' && (
-        <div className="card gam-tab-card">
+        <div ref={gamificationTabPanelRef} className="card gam-tab-card" id="student-gamification-panel">
           <div className="card-header">
             <h3 className="card-title">پیشرفت، رتبه و مدال‌ها</h3>
           </div>

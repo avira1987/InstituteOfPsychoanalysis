@@ -48,9 +48,9 @@ services:
       SECRET_KEY: change-me-in-production-use-a-real-secret-key
       APP_BASE_URL: https://lms.psychoanalysis.ir/anistito
       PAYMENT_CALLBACK_URL: https://lms.psychoanalysis.ir/anistito/api/payment/callback
-      # دیتابیس خالی: هنگام اولین بالا آمدن، همان Postgres با دمو پر می‌شود (بدون اجرای اسکریپت روی ویندوز)
-      SEED_DEMO_ON_STARTUP: "true"
-      SEED_DEMO_FULL_MATRIX: "true"
+      # دمو خودکار غیرفعال — برای پر کردن دستی دادهٔ دمو از اسکریپت‌ها یا API استفاده کنید
+      SEED_DEMO_ON_STARTUP: "false"
+      SEED_DEMO_FULL_MATRIX: "false"
     ports:
       - "3000:3000"
     depends_on:
@@ -62,11 +62,13 @@ services:
       - ./app:/app/app
       - ./metadata:/app/metadata
       - ./alembic:/app/alembic
+      # فرانت بیلدشده: روی میزبان حتماً `cd admin-ui && npm run build` (dist در git نیست؛ بدون بیلد، UI قدیمی/خالی می‌ماند)
       - ./admin-ui/dist:/app/admin-ui/dist
       - ./scripts:/app/scripts
     restart: unless-stopped
     command: >
       sh -c "python /app/scripts/wait_for_db.py &&
+             python /app/scripts/repair_alembic_if_empty_schema.py &&
              alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload"
 

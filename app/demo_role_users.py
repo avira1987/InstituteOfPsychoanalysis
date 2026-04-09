@@ -102,6 +102,7 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
                     term_count=1,
                     current_term=1,
                     therapy_started=False,
+                    is_sample_data=True,
                 )
                 db.add(student)
 

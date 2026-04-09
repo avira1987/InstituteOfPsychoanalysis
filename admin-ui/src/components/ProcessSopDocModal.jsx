@@ -125,14 +125,25 @@ export default function ProcessSopDocModal({ processId, onClose }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
           <div>
             <h2 id="sop-doc-modal-title" className="card-title" style={{ marginBottom: '0.35rem' }}>
-              {loading ? '…' : proc?.name_fa || 'سند فرایند'}
+              متن فرایند
             </h2>
+            {!loading && proc && (
+              <p style={{ fontSize: '0.95rem', fontWeight: 600, margin: '0 0 0.35rem 0' }}>{proc.name_fa}</p>
+            )}
+            {!loading && proc && proc.description && String(proc.description).trim() && (
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', lineHeight: 1.5 }}>
+                {proc.description}
+              </p>
+            )}
             {!loading && proc && (
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
                 کد: {proc.code}
                 {sopN != null ? ` | شماره SOP: ${sopN}` : ''}
-                {proc.has_flowchart ? ' | فلوچارت: دارد' : ''}
+                {proc.has_flowchart ? ' | تصویر: دارد' : ''}
               </p>
+            )}
+            {loading && (
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>در حال بارگذاری…</p>
             )}
           </div>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => onClose?.()}>
@@ -140,14 +151,13 @@ export default function ProcessSopDocModal({ processId, onClose }) {
           </button>
         </div>
 
-        {loading && <p style={{ textAlign: 'center', padding: '2rem' }}>در حال بارگذاری…</p>}
         {err && !loading && (
           <p style={{ color: 'var(--danger)', padding: '1rem 0' }}>{err}</p>
         )}
 
         {!loading && proc && !err && (
           <>
-            <h3 className="card-title" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>متن خام فرایند</h3>
+            <h3 className="card-title" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>متن فرایند (SOP)</h3>
             <div
               dir="rtl"
               style={{
@@ -164,16 +174,16 @@ export default function ProcessSopDocModal({ processId, onClose }) {
               {(proc.source_text && String(proc.source_text).trim()) ? proc.source_text : 'متنی ثبت نشده است.'}
             </div>
 
-            <h3 className="card-title" style={{ fontSize: '1rem', marginTop: '1.5rem', marginBottom: '0.5rem' }}>تصویر فلوچارت</h3>
+            <h3 className="card-title" style={{ fontSize: '1rem', marginTop: '1.5rem', marginBottom: '0.5rem' }}>تصویر فرایند</h3>
             {flowchartObjectUrl ? (
               <img
                 src={flowchartObjectUrl}
-                alt=""
+                alt={`فلوچارت ${proc.name_fa || proc.code || 'فرایند'}`}
                 style={{ maxWidth: '100%', height: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}
               />
             ) : (
               <div className="empty-state" style={{ padding: '1.25rem' }}>
-                <p style={{ margin: 0 }}>تصویری برای فلوچارت ثبت نشده است.</p>
+                <p style={{ margin: 0 }}>تصویری ثبت نشده است.</p>
               </div>
             )}
           </>

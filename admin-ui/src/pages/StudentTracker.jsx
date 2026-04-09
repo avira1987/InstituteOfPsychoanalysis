@@ -232,7 +232,7 @@ export default function StudentTracker() {
             <h3 className="card-title">ایجاد پروفایل دانشجو</h3>
             <button className="btn btn-outline btn-sm" onClick={() => setShowCreate(false)}>لغو</button>
           </div>
-          <form onSubmit={handleCreateStudent} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+          <form onSubmit={handleCreateStudent} className="form-grid-responsive-3">
             <div className="form-group">
               <label className="form-label">کاربر</label>
               <select className="form-input" value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })} required>
@@ -435,7 +435,7 @@ export default function StudentTracker() {
                     <h3 className="card-title">جزئیات فرایند</h3>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  <div className="form-grid-responsive-2">
                     <div className="detail-item">
                       <span className="detail-label">فرایند:</span>
                       <span>{labelProcess(instanceStatus.process_code)}</span>

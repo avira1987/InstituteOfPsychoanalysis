@@ -687,8 +687,10 @@ class ActionHandler:
         merged = {**ctx, **(context or {})}
         mode = action.get("mode", "initial_payment")
 
-        # فاصلهٔ بین اقساط ترم دوم (متادیتا: ~۲۵ روز)
-        term2_installment_gap_days = 25
+        from app.services.installment_settings_service import get_installment_policy
+
+        policy = await get_installment_policy(self.db)
+        term2_installment_gap_days = int(policy.get("term2_installment_gap_days") or 25)
 
         if mode == "initial_payment":
             pm = merged.get("payment_method")

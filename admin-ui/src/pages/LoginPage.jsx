@@ -267,6 +267,8 @@ export default function LoginPage() {
             ورود با پیامک
           </button>
           <button
+            type="button"
+            data-testid="login-tab-password"
             className={`otp-tab ${tab === 'password' ? 'active' : ''}`}
             onClick={() => {
               setTab('password')
@@ -403,6 +405,7 @@ export default function LoginPage() {
             <div className="form-group">
               <label className="form-label">نام کاربری</label>
               <input
+                data-testid="login-username"
                 className="form-input"
                 type="text"
                 value={username}
@@ -415,6 +418,7 @@ export default function LoginPage() {
             <div className="form-group">
               <label className="form-label">رمز عبور</label>
               <input
+                data-testid="login-password"
                 className="form-input"
                 type="password"
                 value={password}
@@ -449,6 +453,7 @@ export default function LoginPage() {
                   {challengeQuestion}
                 </div>
                 <input
+                  data-testid="login-challenge-answer"
                   className="form-input"
                   type="text"
                   value={challengeAnswer}
@@ -460,6 +465,7 @@ export default function LoginPage() {
             )}
             {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
             <button
+              data-testid="login-submit"
               className="btn btn-primary"
               type="submit"
               disabled={loading}

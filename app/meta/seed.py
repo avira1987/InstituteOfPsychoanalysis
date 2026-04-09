@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_factory, engine, Base
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
+from app.meta.sop_registry import get_sop_order_for_process_code
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +170,13 @@ def _insert_process_from_data(db: AsyncSession, data: dict) -> uuid.UUID:
     proc_data = data["process"]
     process_id = uuid.uuid4()
 
+    base_cfg = {**(proc_data.get("config") or {})}
+    if isinstance(data.get("ui_requirements"), dict):
+        base_cfg["ui_requirements"] = data["ui_requirements"]
+    sop = get_sop_order_for_process_code(proc_data["code"])
+    if sop is not None:
+        base_cfg.setdefault("sop_order", sop)
+
     process_def = ProcessDefinition(
         id=process_id,
         code=proc_data["code"],
@@ -178,10 +186,7 @@ def _insert_process_from_data(db: AsyncSession, data: dict) -> uuid.UUID:
         version=1,
         is_active=True,
         initial_state_code=proc_data["initial_state"],
-        config={
-            **(proc_data.get("config") or {}),
-            **({"ui_requirements": data.get("ui_requirements")} if isinstance(data.get("ui_requirements"), dict) else {}),
-        } or None,
+        config=base_cfg or None,
     )
     db.add(process_def)
 

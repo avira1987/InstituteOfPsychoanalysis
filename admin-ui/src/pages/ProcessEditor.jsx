@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { processApi, ruleApi } from '../services/api'
+import { processApi, ruleApi, getApiBase } from '../services/api'
+import { resolveProcessSopOrder } from '../utils/processSopOrder'
 
 export default function ProcessEditor() {
   const { processId } = useParams()
@@ -12,6 +13,8 @@ export default function ProcessEditor() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('visual')
   const [toast, setToast] = useState(null)
+  const [flowchartObjectUrl, setFlowchartObjectUrl] = useState(null)
+  const [flowchartUploading, setFlowchartUploading] = useState(false)
 
   // State form
   const [showAddState, setShowAddState] = useState(false)
@@ -39,6 +42,49 @@ export default function ProcessEditor() {
     loadData()
   }, [processId])
 
+  useEffect(() => {
+    if (!process?.has_flowchart || !processId) {
+      setFlowchartObjectUrl((u) => {
+        if (u) URL.revokeObjectURL(u)
+        return null
+      })
+      return undefined
+    }
+    let cancelled = false
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+    const base = getApiBase()
+    fetch(`${base}admin/processes/${processId}/flowchart`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error('flowchart')
+        return r.blob()
+      })
+      .then((blob) => {
+        if (cancelled) return
+        const url = URL.createObjectURL(blob)
+        setFlowchartObjectUrl((old) => {
+          if (old) URL.revokeObjectURL(old)
+          return url
+        })
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFlowchartObjectUrl((old) => {
+            if (old) URL.revokeObjectURL(old)
+            return null
+          })
+        }
+      })
+    return () => {
+      cancelled = true
+      setFlowchartObjectUrl((old) => {
+        if (old) URL.revokeObjectURL(old)
+        return null
+      })
+    }
+  }, [processId, process?.has_flowchart, process?.version])
+
   const loadData = async () => {
     try {
       const [procRes, statesRes, transRes, rulesRes] = await Promise.all([
@@ -56,6 +102,7 @@ export default function ProcessEditor() {
         name_en: procRes.data.name_en || '',
         description: procRes.data.description || '',
         initial_state_code: procRes.data.initial_state_code,
+        source_text: procRes.data.source_text || '',
       })
     } catch (err) {
       console.error('Failed to load process:', err)
@@ -65,10 +112,54 @@ export default function ProcessEditor() {
   }
 
   // ─── Process Edit ─────────────────────────────────
+  const handleSaveSourceText = async (e) => {
+    e.preventDefault()
+    try {
+      await processApi.update(processId, { source_text: processForm.source_text || '' })
+      showToast('متن خام ذخیره شد')
+      loadData()
+    } catch (err) {
+      showToast('خطا: ' + (err.response?.data?.detail || err.message), 'error')
+    }
+  }
+
+  const handleFlowchartUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFlowchartUploading(true)
+    try {
+      await processApi.uploadFlowchart(processId, file)
+      showToast('فلوچارت ذخیره شد')
+      e.target.value = ''
+      loadData()
+    } catch (err) {
+      const d = err.response?.data?.detail
+      showToast('خطا در بارگذاری: ' + (typeof d === 'string' ? d : err.message), 'error')
+    } finally {
+      setFlowchartUploading(false)
+    }
+  }
+
+  const handleRemoveFlowchart = async () => {
+    if (!confirm('تصویر فلوچارت حذف شود؟')) return
+    try {
+      await processApi.deleteFlowchart(processId)
+      showToast('فلوچارت حذف شد')
+      loadData()
+    } catch (err) {
+      showToast('خطا: ' + (err.response?.data?.detail || err.message), 'error')
+    }
+  }
+
   const handleUpdateProcess = async (e) => {
     e.preventDefault()
     try {
-      await processApi.update(processId, processForm)
+      await processApi.update(processId, {
+        name_fa: processForm.name_fa,
+        name_en: processForm.name_en,
+        description: processForm.description,
+        initial_state_code: processForm.initial_state_code,
+      })
       showToast('فرایند با موفقیت ویرایش شد')
       setEditingProcess(false)
       loadData()
@@ -213,6 +304,8 @@ export default function ProcessEditor() {
   if (loading) return <div className="empty-state">در حال بارگذاری...</div>
   if (!process) return <div className="empty-state">فرایند یافت نشد</div>
 
+  const sopNum = resolveProcessSopOrder(process)
+
   return (
     <div>
       {/* Toast */}
@@ -223,7 +316,12 @@ export default function ProcessEditor() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{process.name_fa}</h1>
-          <p className="page-subtitle">کد: {process.code} | نسخه: v{process.version} | وضعیت شروع: {process.initial_state_code}</p>
+          <p className="page-subtitle">
+            کد: {process.code}
+            {sopNum != null ? ` | شماره SOP: ${sopNum}` : ''}
+            {' '}| نسخه: v{process.version} | وضعیت شروع: {process.initial_state_code}
+            {process.has_flowchart ? ' | فلوچارت: دارد' : ''}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="btn btn-outline" onClick={() => setEditingProcess(!editingProcess)}>
@@ -268,6 +366,7 @@ export default function ProcessEditor() {
       <div className="tab-bar">
         {[
           { key: 'visual', label: 'نمای بصری' },
+          { key: 'sop_doc', label: 'متن و فلوچارت' },
           { key: 'states', label: `وضعیت‌ها (${states.length})` },
           { key: 'transitions', label: `انتقال‌ها (${transitions.length})` },
         ].map((tab) => (
@@ -336,6 +435,65 @@ export default function ProcessEditor() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'sop_doc' && (
+        <div className="card">
+          <h3 className="card-title" style={{ marginBottom: '0.5rem' }}>متن خام فرایند</h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+            متن کامل سند رسمی (SOP) را برای مرجع و بازبینی ادمین اینجا ذخیره کنید؛ این فقط برای مستندسازی است و اجرای خودکار فرایند را تغییر نمی‌دهد.
+          </p>
+          <form onSubmit={handleSaveSourceText}>
+            <textarea
+              className="form-input"
+              dir="rtl"
+              rows={14}
+              value={processForm.source_text ?? ''}
+              onChange={(e) => setProcessForm({ ...processForm, source_text: e.target.value })}
+              placeholder="متن خام فرایند را اینجا وارد کنید..."
+              style={{ fontFamily: 'inherit', lineHeight: 1.6 }}
+            />
+            <div style={{ marginTop: '0.75rem' }}>
+              <button className="btn btn-primary" type="submit">ذخیره متن</button>
+            </div>
+          </form>
+
+          <h3 className="card-title" style={{ marginTop: '2rem', marginBottom: '0.5rem' }}>تصویر فلوچارت</h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+            فایل تصویر (PNG، JPEG، GIF یا WebP، حداکثر حدود ۵ مگابایت). بارگذاری جدید، تصویر قبلی را جایگزین می‌کند.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
+            <label className="btn btn-outline" style={{ cursor: flowchartUploading ? 'wait' : 'pointer' }}>
+              {flowchartUploading ? 'در حال بارگذاری…' : 'انتخاب فایل تصویر'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                style={{ display: 'none' }}
+                disabled={flowchartUploading}
+                onChange={handleFlowchartUpload}
+              />
+            </label>
+            {process.has_flowchart && (
+              <button type="button" className="btn btn-outline btn-danger" onClick={handleRemoveFlowchart}>
+                حذف تصویر
+              </button>
+            )}
+          </div>
+          {flowchartObjectUrl && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <img
+                src={flowchartObjectUrl}
+                alt={`فلوچارت ${process.name_fa}`}
+                style={{ maxWidth: '100%', height: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+            </div>
+          )}
+          {!process.has_flowchart && !flowchartObjectUrl && (
+            <div className="empty-state" style={{ padding: '1.5rem' }}>
+              <p>هنوز تصویری برای فلوچارت ثبت نشده است.</p>
+            </div>
+          )}
         </div>
       )}
 

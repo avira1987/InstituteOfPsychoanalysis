@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from app.core.engine import StateMachineEngine
+
 # کلیدهای رزرو در ProcessInstance.context_data (با __ تا با payload معمول تداخل نکند)
 CTX_SUBMITTED = "__student_forms_submitted_states"
 CTX_EDIT_UNLOCK = "__student_forms_edit_unlock"
@@ -126,10 +128,14 @@ def is_state_locked_for_student(
     state_code: Optional[str],
 ) -> bool:
     """اگر برای این مرحله ثبت شده و باز بودن ویرایش فعال نباشد → فرم مخفی."""
-    if not state_code or not context_data:
+    if not state_code:
         return False
-    submitted = context_data.get(CTX_SUBMITTED) or {}
-    unlock = context_data.get(CTX_EDIT_UNLOCK) or {}
+    # JSONB / نمونهٔ قدیمی: context_data گاهی رشتهٔ JSON است.
+    ctx = StateMachineEngine._as_mapping(context_data)
+    if not ctx:
+        return False
+    submitted = ctx.get(CTX_SUBMITTED) or {}
+    unlock = ctx.get(CTX_EDIT_UNLOCK) or {}
     if not submitted.get(state_code):
         return False
     return not bool(unlock.get(state_code))

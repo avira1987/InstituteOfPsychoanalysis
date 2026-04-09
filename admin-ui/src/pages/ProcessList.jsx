@@ -68,7 +68,7 @@ export default function ProcessList() {
         <div>
           <h1 className="page-title">مدیریت فرایندها</h1>
           <p className="page-subtitle">
-            فقط مشاهدهٔ متن و تصویر SOP و تغییر وضعیت فعال/غیرفعال — بدون ایجاد یا ویرایش فرایند | مجموع:{' '}
+            با دکمهٔ «متن فرایند» متن و تصویر SOP را ببینید؛ فعال/غیرفعال کردن فرایند — بدون ایجاد یا ویرایش تعریف | مجموع:{' '}
             {processes.length} فرایند
           </p>
         </div>
@@ -141,9 +141,9 @@ export default function ProcessList() {
                           type="button"
                           className="btn btn-outline btn-sm"
                           onClick={() => setViewSopProcessId(p.id)}
-                          title="متن و تصویر SOP ذخیره‌شده"
+                          title="نمایش متن و تصویر فرایند (SOP)"
                         >
-                          مشاهده
+                          متن فرایند
                         </button>
                         <button
                           className={`btn btn-sm ${p.is_active ? 'btn-danger' : 'btn-success'}`}

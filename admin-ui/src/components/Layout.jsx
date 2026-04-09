@@ -21,6 +21,19 @@ const navItems = [
   { path: '/panel/students', label: 'ردیابی دانشجو', icon: '👨‍🎓', roles: ['admin', 'staff', 'supervisor', 'therapist'] },
   { path: '/panel/users', label: 'مدیریت کاربران', icon: '👥', roles: ['admin', 'staff'] },
   { path: '/panel/audit', label: 'گزارش حسابرسی', icon: '📝', roles: ['admin', 'staff'] },
+  {
+    path: '/panel/reports',
+    label: 'گزارشات',
+    icon: '📈',
+    roles: ['admin', 'staff', 'deputy_education', 'monitoring_committee_officer', 'finance'],
+  },
+  { path: '/panel/tickets', label: 'تیکت‌ها و درخواست‌ها', icon: '🎫', roles: [
+    'student',
+    'admin', 'staff', 'finance', 'therapist', 'supervisor', 'site_manager',
+    'progress_committee', 'education_committee', 'supervision_committee',
+    'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor',
+    'deputy_education', 'monitoring_committee_officer',
+  ]},
   { path: '/panel/finance', label: 'داشبورد مالی', icon: '💵', roles: ['admin', 'finance'] },
   { path: '/panel/guide', label: 'راهنمای جامع', icon: '📖' },
 ]

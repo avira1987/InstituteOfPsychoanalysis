@@ -233,11 +233,38 @@ class StripPathPrefixMiddleware(BaseHTTPMiddleware):
         request.scope["path"] = path
         return await call_next(request)
 
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """هدرهای حداقلی امنیتی برای پاسخ‌های API و SPA (مکمل Apache)."""
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "geolocation=(), microphone=(), camera=(), payment=()",
+        )
+        return response
+
+
+def _cors_origins_and_credentials():
+    raw = (get_settings().CORS_ALLOW_ORIGINS or "").strip()
+    if raw == "*" or not raw:
+        return ["*"], False
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    return (parts if parts else ["*"]), True
+
+
+_origins, _cors_cred = _cors_origins_and_credentials()
+
+# ترتیب: اولین add = بیرونی‌ترین؛ مسیر /anistito باید قبل از CORS و هدرها اصلاح شود.
 app.add_middleware(StripPathPrefixMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_origins,
+    allow_credentials=_cors_cred,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -254,6 +281,8 @@ from app.api.public_routes import router as public_router
 from app.api.therapy_routes import router as therapy_router
 from app.api.finance_routes import router as finance_router
 from app.api.assignment_routes import router as assignment_router
+from app.api.ticket_routes import router as ticket_router
+from app.api.reports_routes import router as reports_router
 
 app.include_router(auth_router)
 app.include_router(process_router)
@@ -265,6 +294,8 @@ app.include_router(public_router)
 app.include_router(therapy_router)
 app.include_router(finance_router)
 app.include_router(assignment_router)
+app.include_router(ticket_router)
+app.include_router(reports_router)
 
 # ─── Serve uploaded files (avatars) ─────────────────────────────
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / settings.UPLOAD_DIR
@@ -275,12 +306,14 @@ if UPLOAD_DIR.exists() or True:  # mount anyway so uploads can be created at run
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": settings.APP_VERSION}
 
 
 @app.get("/debug/process-count")
 async def debug_process_count():
-    """Debug: return process count (no auth) - remove in production."""
+    """Debug: return process count (no auth) — فقط وقتی DEBUG=true."""
+    if not settings.DEBUG:
+        raise StarletteHTTPException(status_code=404, detail="Not Found")
     from sqlalchemy import select, func
     from app.models.meta_models import ProcessDefinition
     from app.database import async_session_factory

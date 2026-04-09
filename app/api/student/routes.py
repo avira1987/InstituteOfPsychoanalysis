@@ -3,7 +3,7 @@
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
@@ -38,6 +38,10 @@ class StudentUpdate(BaseModel):
     current_term: Optional[int] = None
     weekly_sessions: Optional[int] = None
     therapy_started: Optional[bool] = None
+    extra_data: Optional[dict] = Field(
+        default=None,
+        description="ادغام سطح‌بالا در student.extra_data — فقط مدیر.",
+    )
 
 
 class StudentResponse(BaseModel):
@@ -240,8 +244,17 @@ async def update_student(
         raise HTTPException(status_code=404, detail="Student not found")
 
     update_dict = update_data.model_dump(exclude_unset=True)
+    extra_patch = update_dict.pop("extra_data", None)
     for key, value in update_dict.items():
         setattr(student, key, value)
+
+    if extra_patch is not None:
+        if current_user.role != "admin":
+            raise HTTPException(status_code=403, detail="Only admin can merge extra_data")
+        merged = dict(StateMachineEngine._as_mapping(student.extra_data))
+        merged.update(extra_patch)
+        student.extra_data = merged
+        flag_modified(student, "extra_data")
 
     await db.flush()
 

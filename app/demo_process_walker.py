@@ -384,6 +384,7 @@ async def create_demo_student(
         if st:
             st.student_code = student_code
             st.course_type = course_type
+            st.is_sample_data = True
             st.extra_data = _student_extra_for_demo()
             flag_modified(st, "extra_data")
             existing_u.full_name_fa = full_name_fa
@@ -413,6 +414,7 @@ async def create_demo_student(
         current_term=1,
         weekly_sessions=1,
         therapy_started=False,
+        is_sample_data=True,
         extra_data=_student_extra_for_demo(),
     )
     db.add(st)
@@ -1062,7 +1064,7 @@ async def seed_full_matrix(
                     db,
                     student_code=f"AUTO-DEMO-{code}"[:50],
                     username=f"auto_demo_{code}"[:90],
-                    full_name_fa=f"دمو ماتریس (بدون ترنزیشن): {code}",
+                    full_name_fa=f"نمونه آموزشی (بدون ترنزیشن) — {code}",
                     password=demo_password,
                     course_type=_course_type_for_process_code(code),
                 )
@@ -1085,7 +1087,7 @@ async def seed_full_matrix(
                 db,
                 student_code=f"AUTO-DEMO-{code}"[:50],
                 username=f"auto_demo_{code}"[:90],
-                full_name_fa=f"دمو ماتریس: {proc.get('name_fa') or code}",
+                full_name_fa=f"نمونه آموزشی — {proc.get('name_fa') or code}",
                 password=demo_password,
                 course_type=_course_type_for_process_code(code),
             )

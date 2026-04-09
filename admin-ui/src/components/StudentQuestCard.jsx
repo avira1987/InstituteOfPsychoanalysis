@@ -82,7 +82,7 @@ export default function StudentQuestCard({
   })
 
   return (
-    <div className="quest-card">
+    <div className="quest-card" data-testid="student-quest-card">
       <div className="quest-card-top">
         <div className="quest-card-head">
           <span className="quest-pill">مسیر فعلی شما</span>
@@ -171,6 +171,7 @@ export default function StudentQuestCard({
               <button
                 key={`${t.trigger_event}-${idx}`}
                 type="button"
+                data-testid={`quest-transition-${t.to_state || t.trigger_event || idx}`}
                 className="btn quest-cta"
                 disabled={transitionBlocked}
                 onClick={() => onTrigger(t)}

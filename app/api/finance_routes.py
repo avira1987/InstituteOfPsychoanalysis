@@ -10,12 +10,14 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.auth import require_role
 from app.models.operational_models import User, FinancialRecord, Student
+from app.services.installment_settings_service import get_installment_policy, update_installment_policy
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/finance", tags=["Finance"])
@@ -125,6 +127,36 @@ async def finance_education_context(
 ):
     """راهنمای هم‌ترازی با حسابداری و مراکز آموزشی (متن ثابت برای پنل)."""
     return _education_accounting_context()
+
+
+class InstallmentPolicyPatch(BaseModel):
+    """به‌روزرسانی جزئی سیاست اقساط."""
+
+    term2_installment_gap_days: Optional[int] = Field(None, ge=1, le=365)
+    installment_count_options: Optional[list[int]] = None
+
+
+@router.get("/installment-settings")
+async def finance_get_installment_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("finance")),
+):
+    """خواندن تنظیمات اقساط (سررسید بین اقساط ترم دوم، گزینه‌های تعداد قسط برای وب‌سایت)."""
+    return await get_installment_policy(db)
+
+
+@router.patch("/installment-settings")
+async def finance_patch_installment_settings(
+    body: InstallmentPolicyPatch,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("finance")),
+):
+    """ذخیرهٔ تنظیمات اقساط توسط اپراتور مالی یا مدیر."""
+    return await update_installment_policy(
+        db,
+        term2_installment_gap_days=body.term2_installment_gap_days,
+        installment_count_options=body.installment_count_options,
+    )
 
 
 @router.get("/transactions")

@@ -69,6 +69,13 @@ class Settings(BaseSettings):
     LMS_INTEGRATION_WEBHOOK_URL: str = ""  # اگر خالی باشد فقط روی context_data لاگ می‌شود
     LMS_INTEGRATION_SECRET: str = ""  # اختیاری: هدر X-Integration-Secret
 
+    # CORS — در production لیست دامنه‌ها را با کاما بگذارید (مثلاً https://lms...،https://ims...).
+    # مقدار * فقط برای توسعه؛ با allow_credentials سازگار نیست.
+    CORS_ALLOW_ORIGINS: str = "*"
+
+    # تیکتینگ: نام کاربری مسئول اولیهٔ واحد (دریافت همهٔ تیکت‌ها و ارجاع به فرد مورد نیاز). اگر خالی باشد اولین کاربر staff فعال.
+    TICKET_TRIAGE_USERNAME: str = ""
+
     # دمو: اگر true و جدول students خالی باشد، همان دیتابیس API با دادهٔ دمو پر می‌شود (بدون نیاز به اسکریپت روی میزبان)
     SEED_DEMO_ON_STARTUP: bool = False
     # اگر true باشد پس از سناریوها، ماتریس کامل فرایندها هم در پس‌زمینه اجرا می‌شود (چند دقیقه)

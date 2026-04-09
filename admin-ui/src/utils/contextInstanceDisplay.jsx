@@ -1,9 +1,12 @@
+import { PROCESS_LABELS_FA, STATE_LABELS_FA } from './processMetadataLabels'
+
 /** برچسب‌های ثابت برای کلیدهای رایج در context_data */
 export const CONTEXT_KEY_LABELS = {
   notes: 'یادداشت ثبت‌شده',
   interview_result: 'نتیجهٔ مصاحبه',
   weekly_sessions: 'تعداد جلسات هفتگی',
-  to_state: 'هدف انتقال',
+  from_state: 'مرحلهٔ قبل از انتقال',
+  to_state: 'مرحلهٔ بعد از انتقال',
   termination_requests: 'درخواست‌های خاتمه',
   reminder_45_48_sent_at: 'زمان ارسال یادآور (۴۵–۴۸ ساعت)',
   student_status: 'وضعیت دانشجو (در پرونده)',
@@ -13,6 +16,36 @@ export const CONTEXT_KEY_LABELS = {
   return_reminder_at: 'یادآور بازگشت',
   logged_at: 'زمان ثبت',
   payload: 'جزئیات',
+  admission_type: 'نوع پذیرش',
+  allowed_course_count: 'تعداد دروس مجاز',
+  therapist_id: 'شناسه درمانگر',
+  new_supervisor_id: 'شناسه سوپروایزر جدید',
+  session_credit_balance: 'موجودی اعتبار جلسه',
+  supervision_attendance_recorded: 'ثبت حضور در سوپرویژن',
+  session_payment_forfeited: 'جلسه بدون بازپرداخت (مصادره)',
+  forfeit_amount: 'مبلغ باقی‌ماندهٔ غیرقابل‌بازگشت',
+  invoice_amount: 'مبلغ فاکتور',
+  last_session_link: 'لینک جلسه آنلاین',
+  therapy_status: 'وضعیت درمان آموزشی',
+  payment_unlocked_for_50th_session: 'امکان پرداخت جلسه ۵۰ام فعال شد',
+  supervisor_slot_removed_from_available: 'حذف از وقت‌های آزاد سوپروایزر',
+  accumulated_therapy_hours: 'ساعت‌های تجمعی درمان',
+  payment_method: 'روش پرداخت',
+  payment_method_selected: 'انتخاب روش پرداخت',
+  installment_count: 'تعداد اقساط',
+  pending_installments_remaining: 'تعداد اقساط باقی‌مانده',
+  next_installment_due_at: 'سررسید قسط بعدی',
+  term_start_date: 'تاریخ شروع ترم',
+  total_score: 'نمرهٔ کل',
+  result_status: 'نتیجه (قبول/مردود)',
+  average_score: 'میانگین نمره',
+  participation_rate: 'میزان مشارکت',
+  grade: 'نمره',
+  course_name: 'نام درس',
+  selected_courses: 'دروس انتخاب‌شده',
+  source: 'منبع ثبت در سامانه',
+  parent_start_therapy_instance_id: 'شناسهٔ فرایند آغاز درمان (فنی)',
+  reason: 'علت',
 }
 
 const INTERVIEW_RESULT_LABELS = {
@@ -20,6 +53,26 @@ const INTERVIEW_RESULT_LABELS = {
   single_course: 'تک‌درس / محدود',
   full_admission: 'پذیرش کامل',
   rejected: 'رد',
+}
+
+/** مقادیر رشته‌ای رایج در context که در متادیتای مرحله‌ها نیستند */
+export const CONTEXT_VALUE_LABELS = {
+  cash: 'نقدی',
+  installment: 'اقساطی',
+  full: 'ثبت‌نام/پرداخت کامل',
+  PASS: 'قبول',
+  FAIL: 'مردود',
+  pass: 'قبول',
+  fail: 'مردود',
+  pending: 'در انتظار',
+  completed: 'تکمیل‌شده',
+  cancelled: 'لغو شده',
+  approved: 'تایید شده',
+  rejected: 'رد شده',
+  therapy_interruption_long: 'وقفهٔ طولانی درمان',
+  after_start_therapy_complete: 'پس از تکمیل آغاز درمان',
+  theory_1: 'درس تئوری ۱',
+  theory_2: 'درس تئوری ۲',
 }
 
 /**
@@ -68,6 +121,14 @@ function looksLikeIso(s) {
   return typeof s === 'string' && (/^\d{4}-\d{2}-\d{2}/.test(s) || (s.includes('T') && s.includes(':')))
 }
 
+/** رشتهٔ تک‌مقدار در context: تاریخ، یا برچسب فارسی از CONTEXT_VALUE_LABELS */
+export function formatContextStringForDisplay(value) {
+  if (typeof value !== 'string') return null
+  if (looksLikeIso(value)) return formatIsoMaybe(value)
+  if (CONTEXT_VALUE_LABELS[value]) return CONTEXT_VALUE_LABELS[value]
+  return null
+}
+
 export function formatInterviewResultDisplay(value, labelState) {
   if (typeof value !== 'string') return null
   return INTERVIEW_RESULT_LABELS[value] || (labelState ? labelState(value) : value)
@@ -86,7 +147,8 @@ export function renderFriendlyContextValue(React, value, fieldLabelMap, labelSta
   if (typeof value === 'boolean') return value ? 'بله' : 'خیر'
   if (typeof value === 'number') return String(value)
   if (typeof value === 'string') {
-    if (looksLikeIso(value)) return formatIsoMaybe(value)
+    const asDisplay = formatContextStringForDisplay(value)
+    if (asDisplay !== null) return asDisplay
     return value
   }
   if (Array.isArray(value)) {

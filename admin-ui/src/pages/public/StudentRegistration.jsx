@@ -74,7 +74,7 @@ export default function StudentRegistration() {
       </div>
 
       {result ? (
-        <div className="pub-register-form" style={{ textAlign: 'center' }}>
+        <div className="pub-register-form" style={{ textAlign: 'center' }} data-testid="register-success">
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
           <h2 style={{ color: 'var(--success)', marginBottom: '1rem' }}>ثبت‌نام موفق</h2>
           <p style={{ color: 'var(--text-secondary)', lineHeight: '2', marginBottom: '1.5rem' }}>
@@ -87,7 +87,10 @@ export default function StudentRegistration() {
             marginBottom: '1.5rem'
           }}>
             <strong>کد دانشجویی شما: </strong>
-            <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '1.2rem', direction: 'ltr', display: 'inline-block' }}>
+            <span
+              data-testid="register-student-code"
+              style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '1.2rem', direction: 'ltr', display: 'inline-block' }}
+            >
               {result.student_code}
             </span>
           </div>
@@ -107,10 +110,10 @@ export default function StudentRegistration() {
                 اطلاعات ورود (فعلاً به‌جای پیامک؛ حتماً یادداشت کنید)
               </div>
               <div style={{ direction: 'ltr', textAlign: 'center', fontSize: '1.05rem' }}>
-                نام کاربری: <strong>{result.username}</strong>
+                نام کاربری: <strong data-testid="register-username">{result.username}</strong>
               </div>
               <div style={{ direction: 'ltr', textAlign: 'center', fontSize: '1.1rem', letterSpacing: '1px', marginTop: '0.35rem' }}>
-                رمز عبور اولیه: <strong>{result.initial_password}</strong>
+                رمز عبور اولیه: <strong data-testid="register-initial-password">{result.initial_password}</strong>
               </div>
               {result.login_hint_fa && (
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.65rem', textAlign: 'center' }}>
@@ -142,13 +145,14 @@ export default function StudentRegistration() {
           </div>
         </div>
       ) : (
-        <form className="pub-register-form" onSubmit={handleSubmit}>
+        <form className="pub-register-form" onSubmit={handleSubmit} data-testid="register-form">
           <h2>اطلاعات ثبت‌نام</h2>
 
           <div className="pub-form-row">
             <div className="pub-form-group">
               <label>نام و نام خانوادگی *</label>
               <input
+                data-testid="register-input-full_name_fa"
                 name="full_name_fa"
                 value={form.full_name_fa}
                 onChange={handleChange}
@@ -159,6 +163,7 @@ export default function StudentRegistration() {
             <div className="pub-form-group">
               <label>شماره موبایل *</label>
               <input
+                data-testid="register-input-phone"
                 name="phone"
                 value={form.phone}
                 onChange={handleChange}
@@ -229,7 +234,7 @@ export default function StudentRegistration() {
             </div>
           )}
 
-          <button type="submit" className="pub-form-submit" disabled={loading}>
+          <button type="submit" className="pub-form-submit" disabled={loading} data-testid="register-submit">
             {loading ? 'در حال ثبت...' : 'ارسال فرم ثبت‌نام'}
           </button>
         </form>

@@ -24,7 +24,7 @@ export default function StudentProcessGuidancePanel({ guidance, variant = 'quest
       {taskFa && (
         <div className="spg-block spg-block--task">
           <span className="spg-label">تکلیف / اقدام شما در پنل</span>
-          <p className="spg-text">{taskFa}</p>
+          <p className="spg-text" data-testid="guidance-task-text">{taskFa}</p>
         </div>
       )}
     </div>

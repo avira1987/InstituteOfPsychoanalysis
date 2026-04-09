@@ -97,16 +97,25 @@ export default function GamificationPanel({ extraData, compact = false, onOpenDe
 
   if (compact) {
     return (
-      <div className="gam-compact">
+      <div className="gam-compact gam-compact--dashboard">
+        <div className="gam-compact-bg" aria-hidden="true" />
         <div className="gam-compact-main">
-          <div className="gam-level-pill" aria-hidden="true">
-            <span className="gam-level-num">{snap.level}</span>
-            <span className="gam-level-label">سطح</span>
+          <div className="gam-compact-ringbox" aria-hidden="true">
+            <div
+              className="gam-compact-donut"
+              style={{ background: `conic-gradient(from 210deg, #a855f7 0%, #6366f1 ${pct}%, rgba(148, 163, 184, 0.35) ${pct}%)` }}
+            >
+              <div className="gam-compact-donut-core">
+                <span className="gam-compact-donut-lv">{snap.level}</span>
+                <span className="gam-compact-donut-sub">سطح</span>
+              </div>
+            </div>
           </div>
           <div className="gam-compact-text">
+            <p className="gam-compact-kicker">مسیر انگیزشی و امتیاز مسیر آموزشی</p>
             <div className="gam-rank-title">{snap.rank_title_fa}</div>
             <div className="gam-xp-line">
-              <span>{snap.total_xp} XP</span>
+              <span className="gam-xp-total">{snap.total_xp} XP</span>
               {snap.level < MAX_LEVEL && (
                 <span className="gam-xp-sub">تا سطح بعد: {snap.xp_to_next_level} XP</span>
               )}
@@ -117,8 +126,8 @@ export default function GamificationPanel({ extraData, compact = false, onOpenDe
           </div>
         </div>
         {onOpenDetails && (
-          <button type="button" className="btn btn-secondary gam-compact-btn" onClick={onOpenDetails}>
-            مدال‌ها و جزئیات
+          <button type="button" className="btn gam-compact-btn gam-compact-cta" onClick={onOpenDetails}>
+            مشاهدهٔ کامل، مدال‌ها و رتبه
           </button>
         )}
       </div>
@@ -129,11 +138,12 @@ export default function GamificationPanel({ extraData, compact = false, onOpenDe
     <div className="gam-full">
       <div className="gam-hero">
         <div className="gam-hero-glow" aria-hidden="true" />
+        <div className="gam-hero-gridlines" aria-hidden="true" />
         <div className="gam-hero-inner">
           <div className="gam-ring-wrap">
             <div
               className="gam-donut"
-              style={{ background: `conic-gradient(var(--primary) ${pct}%, var(--border) 0)` }}
+              style={{ background: `conic-gradient(from 200deg, #f472b6 0%, #a78bfa 35%, var(--primary) ${pct}%, rgba(15, 23, 42, 0.65) ${pct}%)` }}
               aria-hidden="true"
             >
               <div className="gam-donut-hole">
@@ -141,8 +151,13 @@ export default function GamificationPanel({ extraData, compact = false, onOpenDe
                 <span className="gam-ring-sub">سطح</span>
               </div>
             </div>
+            <div className="gam-hero-badges-mini" aria-hidden="true">
+              <span className="gam-mini-chip">XP</span>
+              <span className="gam-mini-chip gam-mini-chip--accent">مسیر</span>
+            </div>
           </div>
           <div className="gam-hero-copy">
+            <p className="gam-hero-eyebrow">پروفایل انگیزشی</p>
             <h2 className="gam-hero-title">{snap.rank_title_fa}</h2>
             <p className="gam-hero-xp">
               مجموع تجربه: <strong>{snap.total_xp}</strong> XP
@@ -160,17 +175,22 @@ export default function GamificationPanel({ extraData, compact = false, onOpenDe
       </div>
 
       <div className="gam-stats-row">
-        <div className="gam-stat-chip">
+        <div className="gam-stat-chip gam-stat-chip--earned">
+          <span className="gam-stat-icon" aria-hidden="true">🏅</span>
           <span className="gam-stat-val">{snap.stats?.badges_earned ?? snap.badges.filter(b => b.earned).length}</span>
           <span className="gam-stat-key">مدال بازشده</span>
         </div>
         <div className="gam-stat-chip">
+          <span className="gam-stat-icon" aria-hidden="true">🎯</span>
           <span className="gam-stat-val">{snap.stats?.badges_total ?? snap.badges.length}</span>
           <span className="gam-stat-key">کل مدال‌ها</span>
         </div>
       </div>
 
-      <h3 className="gam-section-title">ویترین مدال‌ها</h3>
+      <div className="gam-section-head">
+        <h3 className="gam-section-title">ویترین مدال‌ها</h3>
+        <span className="gam-section-badge">دستاوردها</span>
+      </div>
       <p className="gam-section-desc">
         با پیشروی در فرایندها امتیاز تجربه (XP) می‌گیرید. مدال‌ها با رسیدن به آستانه‌های مشخص باز می‌شوند.
       </p>
@@ -180,6 +200,7 @@ export default function GamificationPanel({ extraData, compact = false, onOpenDe
             key={b.id}
             className={`gam-badge-card ${b.earned ? 'gam-badge-card--earned' : 'gam-badge-card--locked'}`}
           >
+            <div className="gam-badge-card-inner">
             <div className="gam-badge-emoji" aria-hidden="true">{b.emoji || '⭐'}</div>
             <div className="gam-badge-title">{b.title_fa}</div>
             <div className="gam-badge-desc">{b.description_fa}</div>
@@ -193,6 +214,7 @@ export default function GamificationPanel({ extraData, compact = false, onOpenDe
                 {new Date(b.earned_at).toLocaleDateString('fa-IR')}
               </div>
             )}
+            </div>
           </div>
         ))}
       </div>

@@ -7,7 +7,7 @@ No business logic is hardcoded; everything is data-driven.
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Text, Integer, Boolean, DateTime, ForeignKey, Index, UniqueConstraint
+    Column, String, Text, Integer, Boolean, DateTime, ForeignKey, Index, UniqueConstraint, LargeBinary,
 )
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -31,6 +31,10 @@ class ProcessDefinition(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     initial_state_code = Column(String(100), nullable=False)
     config = Column(JSONB, nullable=True)  # process-level config (timeouts, etc.)
+    # سند خام SOP و تصویر فلوچارت (فقط پنل ادمین؛ اجرای موتور وابسته نیست)
+    source_text = Column(Text, nullable=True)
+    flowchart_image = Column(LargeBinary, nullable=True)
+    flowchart_content_type = Column(String(128), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
     updated_by = Column(UUID, nullable=True)

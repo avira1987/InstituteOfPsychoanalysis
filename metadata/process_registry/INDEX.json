@@ -27,7 +27,7 @@
         "patient_referral"
       ],
       "last_converted": "2026-02-14",
-      "notes": "بر اساس فلوچارت و متن ۸ گامی. نواقص: فرایندهای فرعی و اجرای اکشن‌ها."
+      "notes": "بر اساس فلوچارت و متن ۸ گامی. نواقص: فرایندهای فرعی و اجرای اکشن‌ها. SOP کامل: processes/educational_leave/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی با DB: scripts/sync_sop_doc_from_registry_files.py"
     },
     {
       "code": "start_therapy",

@@ -65,3 +65,6 @@ async def init_db():
     # Ensure avatar_url exists if migrations (e.g. 005) did not run (e.g. when 001 fails with DuplicateTable)
     async with engine.begin() as conn:
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512)"))
+        await conn.execute(
+            text("ALTER TABLE ticket_comments ADD COLUMN IF NOT EXISTS kind VARCHAR(20) DEFAULT 'user'")
+        )

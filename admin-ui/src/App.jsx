@@ -22,8 +22,11 @@ import SiteManagerPortal from './pages/SiteManagerPortal'
 import CommitteePortal from './pages/CommitteePortal'
 import ProfilePage from './pages/ProfilePage'
 import FinancialDashboard from './pages/FinancialDashboard'
+import ReportsHubPage from './pages/ReportsHubPage'
+import TicketsPage from './pages/TicketsPage'
 
 import { getRouterBasename } from './utils/routerBasename'
+import { canAccessReportsHub } from './utils/reportsAccess'
 import HomePage from './pages/public/HomePage'
 import BlogList from './pages/public/BlogList'
 import BlogPost from './pages/public/BlogPost'
@@ -127,6 +130,15 @@ function RequireFinanceRole({ children }) {
   return children
 }
 
+/** گزارشات: مدیر سیستم، کارمند دفتر (مدیر داخلی)، معاون آموزش، مسئول کمیته نظارت، مالی */
+function RequireReportsRole({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  if (!canAccessReportsHub(user.role)) return <Navigate to="/panel" replace />
+  return children
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -160,6 +172,17 @@ export default function App() {
           <Route path="students" element={<StudentTracker />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="audit" element={<AuditViewer />} />
+          <Route
+            path="reports"
+            element={
+              <RequireReportsRole>
+                <ReportsHubPage />
+              </RequireReportsRole>
+            }
+          />
+          <Route path="automation-reports" element={<Navigate to="/panel/reports" replace />} />
+          <Route path="reports/automation" element={<Navigate to="/panel/reports" replace />} />
+          <Route path="tickets" element={<TicketsPage />} />
           <Route
             path="finance"
             element={

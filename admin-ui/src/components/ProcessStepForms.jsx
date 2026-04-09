@@ -18,7 +18,7 @@ function FieldRow({ field, values, onFieldChange, disabled }) {
           value={value ?? ''}
           onChange={e => onChange(e.target.value)}
           disabled={disabled}
-          rows={4}
+          rows={3}
         />
       </label>
     )
@@ -166,10 +166,12 @@ function FieldRow({ field, values, onFieldChange, disabled }) {
           value={value ?? ''}
           onChange={e => onChange(e.target.value)}
           disabled={disabled}
+          data-testid={`pf-checkbox-list-${name}`}
         />
         <label className="psf-field psf-check">
           <input
             type="checkbox"
+            data-testid={`pf-checkbox-list-ack-${name}`}
             checked={!!values[ackKey]}
             onChange={e => onFieldChange(ackKey, e.target.checked)}
             disabled={disabled}
@@ -222,18 +224,18 @@ export default function ProcessStepForms({
   }
 
   const leadText = hasAvailableTransitions
-    ? 'فیلدها را تکمیل کنید و «ثبت اطلاعات این مرحله» را بزنید؛ اگر دکمهٔ «مرحلهٔ بعد» در همین صفحه دیده می‌شود، پس از ثبت می‌توانید از آن استفاده کنید.'
-    : 'فیلدها را تکمیل کنید و «ثبت اطلاعات این مرحله» را بزنید. در این وضعیت فعلاً دکمهٔ خودکار برای مرحلهٔ بعد در سیستم برای شما فعال نیست؛ ادامهٔ کار توسط اداری/اساتید انجام می‌شود — بعداً صفحه را تازه کنید.'
+    ? 'فیلدها را تکمیل کنید، «ثبت اطلاعات این مرحله» را بزنید؛ سپس در صورت وجود، «مرحلهٔ بعد» را انتخاب کنید.'
+    : 'فیلدها را تکمیل و ثبت کنید. ادامهٔ مسیر در این مرحله توسط اداری/سیستم انجام می‌شود؛ بعداً صفحه را تازه کنید.'
 
   const submitHint = !ok
-    ? 'پس از پر کردن همهٔ موارد الزام، دوباره «ثبت اطلاعات» را بزنید.'
+    ? 'موارد الزام را پر کنید و دوباره ثبت کنید.'
     : hasAvailableTransitions
-      ? 'فرم کامل است. اگر در همین صفحه دکمهٔ «مرحلهٔ بعد» یا «اقدام» می‌بینید، همان را بزنید.'
-      : 'فرم کامل است. فعلاً اقدام بعدی از سمت شما روی سیستم پیش‌بینی نشده؛ منتظر اقدام اداری بمانید یا بعداً صفحه را باز کنید.'
+      ? 'پس از ثبت، در صورت وجود دکمهٔ «مرحلهٔ بعد» یا «اقدام»، همان را بزنید.'
+      : 'ثبت انجام شد؛ اقدام بعدی از سمت اداری است.'
 
   return (
     <div className="process-step-forms">
-      <h4 className="psf-title">کارهای این مرحله</h4>
+      <h4 className="psf-title">این مرحله</h4>
       <p className="psf-lead">
         {leadText}
       </p>
@@ -267,6 +269,7 @@ export default function ProcessStepForms({
       <div className="psf-submit-row">
         <button
           type="button"
+          data-testid="quest-step-form-submit"
           className="btn btn-primary psf-submit-btn"
           disabled={disabled}
           onClick={handleRegisterClick}

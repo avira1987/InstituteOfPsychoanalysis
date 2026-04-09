@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.engine import StateMachineEngine
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
 
 
@@ -32,6 +33,9 @@ class MetadataLoader:
         if not process:
             return None
 
+        # JSONB گاهی رشتهٔ JSON (legacy/import) است؛ .get روی str خطای ۵۰۰ می‌دهد.
+        cfg = StateMachineEngine._as_mapping(process.config)
+
         return {
             "process": {
                 "id": str(process.id),
@@ -41,8 +45,8 @@ class MetadataLoader:
                 "description": process.description,
                 "initial_state": process.initial_state_code,
                 "version": process.version,
-                "config": process.config,
-                "ui_requirements": (process.config or {}).get("ui_requirements", {}),
+                "config": cfg,
+                "ui_requirements": cfg.get("ui_requirements", {}),
             },
             "states": [
                 {
@@ -53,7 +57,7 @@ class MetadataLoader:
                     "assigned_role": s.assigned_role,
                     "sla_hours": s.sla_hours,
                     "on_sla_breach_event": s.on_sla_breach_event,
-                    "metadata": s.metadata_ or {},
+                    "metadata": StateMachineEngine._as_mapping(s.metadata_),
                 }
                 for s in process.states
             ],

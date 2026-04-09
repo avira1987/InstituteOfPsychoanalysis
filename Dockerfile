@@ -1,29 +1,29 @@
 FROM python:3.12-slim
 
-ARG HTTP_PROXY
-ARG HTTPS_PROXY
-ARG NO_PROXY
-ENV HTTP_PROXY=$HTTP_PROXY
-ENV HTTPS_PROXY=$HTTPS_PROXY
-ENV NO_PROXY=$NO_PROXY
+# فقط برای apt داخل بیلد (مثلاً socks5h://127.0.0.1:10808 وقتی اینترنت مستقیم نیست).
+ARG APT_PROXY
+RUN if [ -n "$APT_PROXY" ]; then \
+      printf 'Acquire::http::Proxy "%s";\nAcquire::https::Proxy "%s";\n' "$APT_PROXY" "$APT_PROXY" \
+        > /etc/apt/apt.conf.d/99anistito-proxy; \
+    fi
 
 WORKDIR /app
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /etc/apt/apt.conf.d/99anistito-proxy
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# wheelهای از پیش ساخته‌شده (روی ماشین لینوکس با pip wheel) — pip داخل بیلد به اینترنت نیاز ندارد
+COPY docker/wheelhouse /tmp/wheelhouse
+COPY requirements-docker.txt .
+RUN pip install --no-cache-dir --no-index --find-links=/tmp/wheelhouse -r requirements-docker.txt \
+    && rm -rf /tmp/wheelhouse
 
-# Copy application code
 COPY . .
 
-# Expose port
 EXPOSE 3000
 
-# Default command
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000"]

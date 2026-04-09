@@ -1,6 +1,5 @@
 # Production compose - API serves built admin-ui (no separate admin-ui container)
 # Redis maps to 6380 to avoid conflict with host Redis on 6379
-version: "3.8"
 services:
   db:
     image: postgres:16-alpine
@@ -38,9 +37,9 @@ services:
       dockerfile: Dockerfile
       network: host
       args:
-        HTTP_PROXY: ${HTTP_PROXY:-}
-        HTTPS_PROXY: ${HTTPS_PROXY:-}
-        NO_PROXY: ${NO_PROXY:-}
+        # فقط هنگام docker build: APT_PROXY/PIP_PROXY (مثلاً socks5h://127.0.0.1:10808). زمان اجرا کانتینر از این‌ها استفاده نمی‌کند.
+        APT_PROXY: ${APT_PROXY:-}
+        PIP_PROXY: ${PIP_PROXY:-}
     container_name: anistito-api
     env_file:
       - .env
@@ -60,6 +59,7 @@ services:
     restart: unless-stopped
     command: >
       sh -c "python /app/scripts/wait_for_db.py &&
+             python /app/scripts/repair_alembic_if_empty_schema.py &&
              alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 3000"
 volumes:

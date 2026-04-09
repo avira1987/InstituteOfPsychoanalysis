@@ -9,6 +9,7 @@ import {
   resolveContextRowLabel,
   renderFriendlyContextValue,
   formatInterviewResultDisplay,
+  formatContextStringForDisplay,
 } from '../utils/contextInstanceDisplay'
 import { filterContextForOperators } from '../utils/operatorContextFilter'
 
@@ -28,9 +29,8 @@ function formatScalar(value) {
   if (typeof value === 'boolean') return value ? 'بله' : 'خیر'
   if (typeof value === 'number') return String(value)
   if (typeof value === 'string') {
-    if (/^\d{4}-\d{2}-\d{2}/.test(value) || (value.includes('T') && value.includes(':'))) {
-      return formatIsoMaybe(value)
-    }
+    const asDisplay = formatContextStringForDisplay(value)
+    if (asDisplay !== null) return asDisplay
     return value
   }
   return null
