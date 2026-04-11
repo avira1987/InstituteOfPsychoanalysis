@@ -1,3 +1,11 @@
+# ─── فرانت (Vite) — بدون نیاز به npm روی میزبان؛ خروجی در مرحلهٔ نهایی کپی می‌شود ───
+FROM node:20-alpine AS frontend-build
+WORKDIR /frontend
+COPY admin-ui/package.json admin-ui/package-lock.json ./
+RUN npm ci
+COPY admin-ui/ ./
+RUN npm run build
+
 FROM python:3.12-slim
 
 # فقط برای apt داخل بیلد (مثلاً socks5h://127.0.0.1:10808 وقتی اینترنت مستقیم نیست).
@@ -23,7 +31,8 @@ RUN pip install --no-cache-dir --no-index --find-links=/tmp/wheelhouse -r requir
     && rm -rf /tmp/wheelhouse
 
 COPY . .
+COPY --from=frontend-build /frontend/dist ./admin-ui/dist
 
 EXPOSE 3000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000", "--log-level", "warning"]

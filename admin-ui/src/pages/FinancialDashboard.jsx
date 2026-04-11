@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { financeApi } from '../services/api'
+import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 
 const TYPE_LABELS = {
   payment: 'پرداخت',
@@ -212,6 +213,8 @@ export default function FinancialDashboard() {
           </p>
         </div>
       </div>
+
+      <PanelRoleActionQueue />
 
       {err && (
         <div className="card" style={{ borderColor: '#fca5a5', background: '#fef2f2', marginBottom: '1rem' }}>

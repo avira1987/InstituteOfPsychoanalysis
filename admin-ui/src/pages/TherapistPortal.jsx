@@ -5,6 +5,7 @@ import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/pro
 import { notesPayload } from '../utils/decisionPayload'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
+import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 
 const reviewStates = [
   'therapist_review', 'therapist_decision', 'awaiting_therapist',
@@ -236,6 +237,8 @@ export default function TherapistPortal() {
               </div>
             </div>
           </div>
+
+          <PanelRoleActionQueue />
 
           <div className="dashboard-grid">
             {/* Urgent Pending */}

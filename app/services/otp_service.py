@@ -155,7 +155,7 @@ async def verify_otp(db: AsyncSession, phone: str, code: str) -> dict:
             }
         user = User(
             id=uuid.uuid4(),
-            username=f"user_{phone}",
+            username=f"student_{phone}",
             phone=phone,
             hashed_password=get_password_hash(str(uuid.uuid4())),
             full_name_fa="",

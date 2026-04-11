@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_password_hash
 from app.models.operational_models import Student, User
+from app.website_staff_seed import ensure_staff_employees
 
 ADMIN_PASSWORD = "admin123"
 DEFAULT_PASSWORD = "demo123"
@@ -127,6 +128,8 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
                 is_active=True,
             )
             db.add(user)
+
+    await ensure_staff_employees(db, password=DEFAULT_PASSWORD)
 
     await db.commit()
 

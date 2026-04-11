@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-02-14",
+  "last_updated": "2026-04-11",
   "description": "فهرست فرایندهای ثبت‌شده — منبع حقیقت برای وضعیت و تکامل",
   "processes": [
     {
@@ -52,7 +52,25 @@
       ],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "یک‌بارمصرف. قانون ۲۴ ساعت. قانون هفته نهم. پذیرش مشروط در فرایند ثبت‌نام."
+      "notes": "یک‌بارمصرف. قانون ۲۴ ساعت. قانون هفته نهم. پذیرش مشروط در فرایند ثبت‌نام. SOP کامل: processes/start_therapy/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code start_therapy"
+    },
+    {
+      "code": "therapy_changes",
+      "name_fa": "مدیریت تغییرات درمان آموزشی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/therapy_changes",
+      "metadata_path": "metadata/processes/therapy_changes.json",
+      "rules_used": [],
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "sop_order": 3,
+      "notes": "آغاز مجدد، تغییر درمانگر، تغییر ساعت. قانون ۲۴ ساعت. SOP: processes/therapy_changes/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code therapy_changes"
     },
     {
       "code": "extra_session",
@@ -71,7 +89,8 @@
         "attendance_tracking"
       ],
       "last_converted": "2026-02-14",
-      "notes": "سیکل مذاکره درمانگر-دانشجو. ثبت ساعات مطابق SOP attendance_tracking."
+      "sop_order": 4,
+      "notes": "سیکل مذاکره درمانگر-دانشجو. ثبت ساعات مطابق SOP attendance_tracking. SOP کامل: processes/extra_session/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code extra_session"
     },
     {
       "code": "session_payment",
@@ -91,7 +110,8 @@
       ],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "شرط بدهی. تخصیص اعتبار. فعال‌سازی لینک و ثبت حضور به‌محض پرداخت."
+      "sop_order": 5,
+      "notes": "شرط بدهی. تخصیص اعتبار. فعال‌سازی لینک و ثبت حضور به‌محض پرداخت. SOP کامل: processes/session_payment/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code session_payment"
     },
     {
       "code": "attendance_tracking",
@@ -122,7 +142,8 @@
         "fee_determination"
       ],
       "last_converted": "2026-02-14",
-      "notes": "پیش‌بررسی وقفه/کنسلی/پرداخت. اسکیلیشن ۲ روزی. سه فیلد ساعات."
+      "sop_order": 6,
+      "notes": "پیش‌بررسی وقفه/کنسلی/پرداخت. اسکیلیشن ۲ روزی. سه فیلد ساعات. SOP کامل: processes/attendance_tracking/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code attendance_tracking"
     },
     {
       "code": "fee_determination",
@@ -147,7 +168,8 @@
       ],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "۴ سناریو. سهمیه ۳×هفتگی. سال شمسی. پیش‌شرط وقفه و کنسلی درمانگر."
+      "sop_order": 7,
+      "notes": "۴ سناریو. سهمیه ۳×هفتگی. سال شمسی. پیش‌شرط وقفه و کنسلی درمانگر. SOP کامل: processes/fee_determination/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code fee_determination"
     },
     {
       "code": "therapy_completion",
@@ -169,7 +191,8 @@
       ],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "اعتبارسنجی ۲۵۰/۷۵۰/۱۵۰. override کمیته. حذف وقت‌ها، آزادسازی درمانگر."
+      "sop_order": 8,
+      "notes": "اعتبارسنجی ۲۵۰/۷۵۰/۱۵۰. override کمیته. حذف وقت‌ها، آزادسازی درمانگر. SOP کامل: processes/therapy_completion/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code therapy_completion"
     },
     {
       "code": "therapy_session_increase",
@@ -188,7 +211,8 @@
       ],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "فقط دوره جامع. سیکل مذاکره درمانگر-دانشجو. جلسه Recurring، مشمول attendance."
+      "sop_order": 9,
+      "notes": "فقط دوره جامع. سیکل مذاکره درمانگر-دانشجو. جلسه Recurring، مشمول attendance. SOP کامل: processes/therapy_session_increase/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code therapy_session_increase"
     },
     {
       "code": "therapy_session_reduction",
@@ -216,7 +240,8 @@
         "violation_registration"
       ],
       "last_converted": "2026-02-14",
-      "notes": "Tapering. شرط ≥۲ جلسه. کاهش به ۱ بدون تکمیل = تخلف + violation_registration."
+      "sop_order": 10,
+      "notes": "Tapering. شرط ≥۲ جلسه. کاهش به ۱ بدون تکمیل = تخلف + violation_registration. SOP کامل: processes/therapy_session_reduction/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code therapy_session_reduction"
     },
     {
       "code": "therapy_early_termination",
@@ -242,7 +267,8 @@
         "committees_review"
       ],
       "last_converted": "2026-02-14",
-      "notes": "۴ گزینه علت. مسیر استاندارد با مهلت ۵ روز. مسیر علمی و انضباطی با BPMS."
+      "sop_order": 11,
+      "notes": "۴ گزینه علت. مسیر استاندارد با مهلت ۵ روز. مسیر علمی و انضباطی با BPMS. SOP بخش ۱: processes/therapy_early_termination/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code therapy_early_termination"
     },
     {
       "code": "specialized_commission_review",
@@ -263,7 +289,8 @@
         "committees_review"
       ],
       "last_converted": "2026-02-14",
-      "notes": "زیرفرایند الف قطع زودرس. تایید → Unlock، ۵ روز. رد → ارجاع به زیرفرایند ب."
+      "sop_order": 12,
+      "notes": "زیرفرایند الف قطع زودرس. تایید → Unlock، ۵ روز. رد → ارجاع به زیرفرایند ب. SOP بخش ۲: processes/specialized_commission_review/SOP_document.txt (+ SOP_flowchart.png اختیاری)؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code specialized_commission_review"
     },
     {
       "code": "committees_review",
@@ -288,7 +315,8 @@
         "patient_referral"
       ],
       "last_converted": "2026-02-14",
-      "notes": "نظارت ۳ روز، آموزش ۶ روز. ادامه یا قطع. انترن → patient_referral."
+      "sop_order": 13,
+      "notes": "نظارت ۳ روز، آموزش ۶ روز. ادامه یا قطع. انترن → patient_referral. SOP بخش ۳: processes/committees_review/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code committees_review"
     },
     {
       "code": "therapist_session_cancellation",
@@ -310,7 +338,8 @@
         "attendance_tracking"
       ],
       "last_converted": "2026-02-14",
-      "notes": "۱ جلسه/نوبت. عدم جبرانی یا جبرانی. سیکل مذاکره. بستانکار یا پرداخت."
+      "sop_order": 14,
+      "notes": "۱ جلسه/نوبت. عدم جبرانی یا جبرانی. سیکل مذاکره. بستانکار یا پرداخت. SOP: processes/therapist_session_cancellation/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code therapist_session_cancellation"
     },
     {
       "code": "unannounced_absence_reaction",
@@ -334,7 +363,36 @@
         "violation_registration"
       ],
       "last_converted": "2026-02-14",
-      "notes": "No-Show. ۳ حالت مسئول سایت. کمیته درمان. تایمر ۳ هفته برای مبهم."
+      "sop_order": 15,
+      "notes": "No-Show. ۳ حالت مدیر داخلی. کمیته درمان. تایمر ۳ هفته برای مبهم. SOP: processes/unannounced_absence_reaction/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code unannounced_absence_reaction"
+    },
+    {
+      "code": "unannounced_supervision_absence_reaction",
+      "name_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/unannounced_supervision_absence_reaction",
+      "metadata_path": "metadata/processes/unannounced_supervision_absence_reaction.json",
+      "rules_used": [
+        "student_on_supervision_leave",
+        "first_unannounced_absence",
+        "two_consecutive_unannounced"
+      ],
+      "roles_needed": [
+        "site_manager",
+        "therapy_committee_chair",
+        "therapy_committee_executor",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [
+        "fee_determination",
+        "violation_registration",
+        "patient_referral"
+      ],
+      "last_converted": "2026-02-14",
+      "sop_order": 27,
+      "notes": "مرحله ۲۷. No-Show سوپرویژن؛ وقفه؟ متوقف. fee_determination+SMS؛ ۲+ پیوسته مدیر داخلی ۳ روز؛ ۳ حالت؛ کمیته؛ ۳ هفته مبهم؛ مجری؛ ارجاع انترن. processes/unannounced_supervision_absence_reaction/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code unannounced_supervision_absence_reaction"
     },
     {
       "code": "therapy_interruption",
@@ -357,7 +415,8 @@
         "patient_referral"
       ],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۱۶. رد → violation_registration. تایید < ۴۲ روز: حفظ درمانگر/سوپروایزر، در پایان بررسی بازگشت. ≥ ۴۲ روز: آزادسازی فوری و patient_referral."
+      "sop_order": 16,
+      "notes": "مرحله ۱۶. رد → violation_registration. تایید < ۴۲ روز: حفظ درمانگر/سوپروایزر، در پایان بررسی بازگشت. ≥ ۴۲ روز: آزادسازی فوری و patient_referral. SOP: processes/therapy_interruption/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code therapy_interruption"
     },
     {
       "code": "student_session_cancellation",
@@ -382,11 +441,12 @@
         "fee_determination"
       ],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۱۷. قانون ۳ هفته متوالی. قانون ۱۲٪. ۱۰–۱۲٪ هشدار، >۱۲٪ تخلف. هر جلسه → fee_determination."
+      "sop_order": 17,
+      "notes": "مرحله ۱۷. قانون ۳ هفته متوالی. قانون ۱۲٪. ۱۰–۱۲٪ هشدار، >۱۲٪ تخلف. هر جلسه → fee_determination. SOP: processes/student_session_cancellation/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code student_session_cancellation"
     },
     {
       "code": "supervision_block_transition",
-      "name_fa": "آغاز سوپرویژن فردی دوم یا سوم یا چهارم یا پنجم",
+      "name_fa": "مدیریت تغییرات سوپرویژن فردی (آغاز مجدد، تغییر سوپروایزر، تغییر ساعت)",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/supervision_block_transition",
@@ -404,7 +464,8 @@
         "session_payment"
       ],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۱۹. قفل منطقی: پرداخت جلسه اول دوره جدید قبل از جلسه ۵۰. قانون ۲۴ ساعت. حداکثر ۱ جلسه/هفته."
+      "sop_order": 18,
+      "notes": "SOP دو بخشی در یک فایل: بخش ۱ مرحله ۱۸ (مدیریت تغییرات سوپرویژن)؛ بخش ۲ مرحله ۱۹ (آغاز بلوک ۲–۵، قفل پرداخت جلسه ۵۰). قفل منطقی، قانون ۲۴ ساعت، حداکثر ۱ جلسه/هفته. processes/supervision_block_transition/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_block_transition"
     },
     {
       "code": "supervision_50h_completion",
@@ -433,7 +494,8 @@
         "violation_registration"
       ],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۲۰. SMS ۴۵ و ۴۸. قفل پرداخت ۵۰ تا ثبت ۴۹. ارزیابی ۳ روز. تفکیک بستانکاری."
+      "sop_order": 20,
+      "notes": "مرحله ۲۰. SMS ۴۵ و ۴۸. قفل پرداخت ۵۰ تا ثبت ۴۹. ارزیابی ۳ روز. تفکیک بستانکاری. SOP: processes/supervision_50h_completion/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code supervision_50h_completion"
     },
     {
       "code": "supervision_session_increase",
@@ -454,7 +516,8 @@
         "supervision_50h_completion"
       ],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۲۱. فقط دوره جامع. مذاکره سوپروایزر-دانشجو. اتصال به supervision_50h_completion."
+      "sop_order": 21,
+      "notes": "مرحله ۲۱. فقط دوره جامع. مذاکره سوپروایزر-دانشجو. اتصال به supervision_50h_completion. SOP: processes/supervision_session_increase/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code supervision_session_increase"
     },
     {
       "code": "extra_supervision_session",
@@ -474,7 +537,8 @@
         "supervision_50h_completion"
       ],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۲۲. جلسه Ad-hoc تک‌هفته. تایید/رد+پیشنهاد/عدم امکان. پرداخت قبل از جلسه."
+      "sop_order": 22,
+      "notes": "مرحله ۲۲. جلسه Ad-hoc تک‌هفته. تایید/رد+پیشنهاد/عدم امکان. پرداخت قبل از جلسه. SOP: processes/extra_supervision_session/SOP_document.txt + SOP_flowchart.png؛ همگام‌سازی: scripts/sync_sop_doc_from_registry_files.py --code extra_supervision_session"
     },
     {
       "code": "supervision_session_reduction",
@@ -499,7 +563,35 @@
       ],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۲۳. مسیر الف: ۲+ جلسه → حذف انتخابی. مسیر ب: ۱ جلسه → احراز ۱۵۰/۲۵۰/۷۵۰ + تایید سوپروایزر."
+      "sop_order": 24,
+      "notes": "مرحله ۲۴ (نسخهٔ به‌روز SOP). مسیر الف: یک جلسه در هفته → کاهش تواتر پس از ۱۵۰/۲۵۰/۷۵۰ + فرم + تایید سوپروایزر. مسیر ب: بیش از یک جلسه در هفته → حذف انتخابی جلسات + شیت وقت آزاد + SMS به سوپروایزر. processes/supervision_session_reduction/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_session_reduction"
+    },
+    {
+      "code": "student_supervision_cancellation",
+      "name_fa": "کنسل کردن جلسات سوپرویژن توسط دانشجو و واکنش انستیتو",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/student_supervision_cancellation",
+      "metadata_path": "metadata/processes/student_supervision_cancellation.json",
+      "rules_used": [
+        "would_exceed_3_consecutive_weeks",
+        "consecutive_weeks_valid",
+        "cancellation_below_10_percent",
+        "cancellation_10_to_12_percent",
+        "cancellation_above_12_percent"
+      ],
+      "roles_needed": [
+        "student",
+        "supervisor",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration",
+        "fee_determination"
+      ],
+      "last_converted": "2026-02-14",
+      "sop_order": 25,
+      "notes": "مرحله ۲۵. ۳ هفته آینده؛ دو سوپروایزر فعال. قانون ۳ هفته متوالی؛ مبنای ۱۲٪ از ساعات گذرانده‌شده در همه دوره‌های ۵۰ ساعتی؛ Round Up. ۱۰٪ گزارش پیشگیرانه، >۱۲٪ تخلف؛ قفل حضور سوپروایزر. processes/student_supervision_cancellation/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code student_supervision_cancellation"
     },
     {
       "code": "supervisor_session_cancellation",
@@ -523,7 +615,8 @@
         "supervision_50h_completion"
       ],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۲۶. حداکثر ۱ جلسه/نوبت. ۴ هفته آینده. تفکیک از مرخصی سوپروایزر. عدم جبرانی یا جبرانی. سیکل مذاکره. بستانکار یا پرداخت. لینک آنلاین حتی اگر حضوری."
+      "sop_order": 26,
+      "notes": "مرحله ۲۶ (SOP به‌روز). تک‌جلسه در هر اجرا؛ ۴ هفته آینده. مسیر الف: بدون جبرانی + بستانکار اگر پرداخت شده. مسیر ب: جبرانی، حلقه مذاکره با دانشجو، پرداخت/اعتبار، لینک آنلاین، supervision_50h_completion. processes/supervisor_session_cancellation/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code supervisor_session_cancellation"
     },
     {
       "code": "supervision_interruption",
@@ -539,7 +632,8 @@
       "roles_needed": ["student", "progress_committee", "system"],
       "sub_process_refs": ["violation_registration", "patient_referral"],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۲۸. بدون بدهی در بازه وقفه. آستانه ۲۱ روز. <۲۱: حفظ سوپروایزر، بررسی بازگشت. ≥۲۱: آزادسازی فوری منابع و ارجاع بیماران."
+      "sop_order": 28,
+      "notes": "مرحله ۲۸ (SOP به‌روز). کمیته پیشرفت؛ جلسه حضوری/آنلاین؛ رد → تخلف. تایید: <۲۱ روز حفظ سوپروایزر+بیماران؛ بازگشت اولین جلسه. ≥۲۱ روز آزادسازی فوری+ارجاع بیماران. processes/supervision_interruption/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_interruption"
     },
     {
       "code": "fall_semester_preparation",
@@ -552,7 +646,8 @@
       "roles_needed": ["course_committee_executive", "deputy_education", "course_committee_scientific", "admissions_officer", "site_manager", "system"],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۲۹. پایپلاین ترتیبی ۹ مرحله. تقویم آموزشی، شهریه، پروانه، دروس، اساتید، مارکتینگ، مصاحبه‌ها. مهلت‌ها فقط هشداری (قفل نمی‌شود). SLA برای هر مرحله."
+      "sop_order": 29,
+      "notes": "مرحله ۲۹ (SOP به‌روز). فرم ۱ و ۲؛ پاییز+زمستان؛ هشدار بدون قفل؛ دروس دو مرحله‌ای؛ پذیرش→مارکتینگ؛ مصاحبه معاون+مدیر داخلی؛ تقویم و SMS. processes/fall_semester_preparation/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code fall_semester_preparation"
     },
     {
       "code": "winter_semester_preparation",
@@ -565,7 +660,8 @@
       "roles_needed": ["deputy_education", "course_committee_scientific", "admissions_officer", "site_manager", "system"],
       "sub_process_refs": ["fall_semester_preparation"],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۳۰. بازنگری و به‌روزرسانی برنامه پاییز برای زمستان. فرم‌ها پیش‌پر از پاییز. مهلت‌ها فقط هشداری."
+      "sop_order": 30,
+      "notes": "مرحله ۳۰ (SOP به‌روز). بازنگری پاییز برای زمستان؛ پروانه؛ دروس+مکان؛ پذیرش→مارکتینگ؛ مصاحبه؛ تقویم و SMS. هشدار بدون قفل. processes/winter_semester_preparation/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code winter_semester_preparation"
     },
     {
       "code": "introductory_course_registration",
@@ -577,8 +673,9 @@
       "rules_used": [],
       "roles_needed": ["applicant", "admissions_officer", "interviewer", "system"],
       "sub_process_refs": [],
-      "last_converted": "2026-02-14",
-      "notes": "مرحله ۳۱. ۴ فاز: درخواست+مصاحبه، نتایج، مدارک، ثبت‌نام+پرداخت. ۴ حالت پذیرش. امضای دیجیتال تعهدنامه. اقساط ۴ قسطی. حضور قفل در صورت بدهی."
+      "last_converted": "2026-04-11",
+      "sop_order": 31,
+      "notes": "مرحله ۳۱ (SOP به‌روز). ۴ فاز؛ ۴ حالت پذیرش+SMS؛ یادآوری ۲ ساعته؛ مدارک+تعهدنامه؛ LMS اقساط؛ حضور وابسته به تسویه. متادیتای student_task_fa روی stateها برای راهنمای پنل دانشجو. processes/introductory_course_registration/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code introductory_course_registration"
     },
     {
       "code": "introductory_term_end",
@@ -588,10 +685,11 @@
       "registry_path": "processes/introductory_term_end",
       "metadata_path": "metadata/processes/introductory_term_end.json",
       "rules_used": [],
-      "roles_needed": ["admissions_officer", "system"],
+      "roles_needed": ["admissions_officer", "deputy_education", "system"],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۳۲. خودکار پس از ثبت تمام نمرات. کارنامه ترمی+کلی. بررسی شرط درمان. مسدودی ثبت‌نام ترم ۲ مشروطین. پیگیری افت تحصیلی ۷ روزه."
+      "sop_order": 32,
+      "notes": "مرحله ۳۲ (SOP به‌روز). پس از نمرات: کارنامه ترم+کلی (قالب صالحی). جبرانی جایگزین نمره. مشروط درمان→مسدودی+SMS. SMS مهلت ترم بعد. لیست افت تحصیلی ۷ روز. processes/introductory_term_end/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code introductory_term_end"
     },
     {
       "code": "intro_second_semester_registration",
@@ -604,7 +702,8 @@
       "roles_needed": ["student", "system"],
       "sub_process_refs": ["start_therapy"],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۳۳. بررسی شرط درمان + تعلیق. منطق پیش‌نیاز/همنیاز (مردودی → همنیاز). تک‌درس فقط نقدی. اقساط ۴ قسطی."
+      "sop_order": 33,
+      "notes": "مرحله ۳۳ (SOP به‌روز). پل ترم ۱→۲؛ شرط درمان (Pop-up) + تعلیق؛ تک‌درس فقط تئوری ۲ و فقط نقدی؛ جبرانی/اولویت/حداکثر ۳؛ پیش‌نیاز→همنیاز؛ اقساط ۱–۴ و SMS یک هفته قبل؛ ثبت نهایی و لینک کلاس. processes/intro_second_semester_registration/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code intro_second_semester_registration"
     },
     {
       "code": "introductory_course_completion",
@@ -617,7 +716,8 @@
       "roles_needed": ["supervision_committee", "system"],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۳۴. خودکار پس از پاس ۱۰ درس. صدور گواهی. مهر و امضای الکترونیکی کمیته نظارت. دانلود PDF. اطلاع‌رسانی مهلت دوره جامع."
+      "sop_order": 34,
+      "notes": "مرحله ۳۴ (SOP به‌روز). تریگر: پاس ۱۰ درس. SMS مهلت جامع؛ پیش‌نویس گواهی (۱۳٫۵ ساعت/واحد)؛ تایید+مهر/امضای کمیته نظارت؛ بارگذاری LMS؛ SMS دانلود گواهی. processes/introductory_course_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code introductory_course_completion"
     },
     {
       "code": "comprehensive_course_registration",
@@ -627,15 +727,16 @@
       "registry_path": "processes/comprehensive_course_registration",
       "metadata_path": "metadata/processes/comprehensive_course_registration.json",
       "rules_used": [],
-      "roles_needed": ["student", "supervision_committee", "progress_committee_executive", "progress_committee_scientific", "admissions_officer", "system"],
+      "roles_needed": ["student", "supervision_committee", "progress_committee_executive", "progress_committee_scientific", "admissions_officer", "deputy_education", "system"],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۳۵. غربالگری ۳ لایه (نظارت، اجرایی پیشرفت، علمی پیشرفت). گزارش تجربه شخصی. مصاحبه. ۳ نتیجه. درمان ۲×/هفته الزامی. تمام دروس ترم اجباری."
+      "sop_order": 35,
+      "notes": "مرحله ۳۵ (SOP به‌روز). ۱۰ درس آشنایی؛ نظارت ۲روز+هشدار معاون؛ اجرایی/علمی پیشرفت ۲روز+SMS؛ قالب مرادی؛ مصاحبه حضوری/آنلاین+SMS+۲ساعت؛ ۳ نتیجه؛ ترم سوم جامع اجباری+درمان ۲×؛ اقساط ۱–۴+SMS هفته قبل؛ ثبت و لینک کلاس. processes/comprehensive_course_registration/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_course_registration"
     },
     {
       "code": "comprehensive_term_end",
       "name_fa": "پایان ترم‌های دوره جامع",
-      "status": "draft",
+      "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/comprehensive_term_end",
       "metadata_path": "metadata/processes/comprehensive_term_end.json",
@@ -643,31 +744,590 @@
       "roles_needed": ["system"],
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
-      "notes": "مرحله ۳۶. DRAFT — احتمال تغییر بنیادین تا ۸ اسفند. کارنامه ترمی+کلی (قالب صالحی). بررسی فارغ‌التحصیلی. SMS فقط به دانشجویان با دروس باقیمانده."
+      "sop_order": 36,
+      "notes": "مرحله ۳۶ (SOP به‌روز). تریگر: نمرات ترم جاری کامل. کارنامه ترم+کلی (قالب صالحی، جبرانی جایگزین نمره، PDF). بخش بالینی/نظارتی. در صورت اتمام همه دروس جامع: بدون SMS؛ وگرنه SMS مهلت ترم بعد. processes/comprehensive_term_end/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_term_end"
     },
-    {"code":"internship_readiness_consultation","name_fa":"مشورت و تعیین آمادگی برای آغاز انترنی","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/internship_readiness_consultation","metadata_path":"metadata/processes/internship_readiness_consultation.json","rules_used":[],"roles_needed":["student","progress_committee","system"],"sub_process_refs":["violation_registration"],"last_converted":"2026-02-14","notes":"مرحله ۳۷."},
-    {"code":"internship_12month_conditional_review","name_fa":"۱۲ ماه پس از قبولی مشروط در انترنی","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/internship_12month_conditional_review","metadata_path":"metadata/processes/internship_12month_conditional_review.json","rules_used":[],"roles_needed":["system","progress_committee"],"sub_process_refs":["violation_registration"],"last_converted":"2026-02-14","notes":"مرحله ۳۸. خودکار."},
-    {"code":"intern_hours_increase","name_fa":"اضافه شدن حداکثر ساعت‌های ارائه درمان انترن","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/intern_hours_increase","metadata_path":"metadata/processes/intern_hours_increase.json","rules_used":[],"roles_needed":["progress_committee","system"],"sub_process_refs":["violation_registration"],"last_converted":"2026-02-14","notes":"مرحله ۳۹."},
-    {"code":"comprehensive_term_start","name_fa":"آغاز ترم‌های دوره جامع","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/comprehensive_term_start","metadata_path":"metadata/processes/comprehensive_term_start.json","rules_used":[],"roles_needed":["course_committee_executive","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۰."},
-    {"code":"lesson_start_per_term","name_fa":"آغاز هر درس در هر ترم","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/lesson_start_per_term","metadata_path":"metadata/processes/lesson_start_per_term.json","rules_used":[],"roles_needed":["course_committee_executive","instructor","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۱."},
-    {"code":"student_non_registration","name_fa":"عدم ثبت‌نام دانشجو برای ترم بعد","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/student_non_registration","metadata_path":"metadata/processes/student_non_registration.json","rules_used":[],"roles_needed":["student","system"],"sub_process_refs":["violation_registration","educational_leave"],"last_converted":"2026-02-14","notes":"مرحله ۴۲."},
-    {"code":"ta_conceptual_questions","name_fa":"ثبت ۳ سوال تستی‌مفهومی (کمک‌مدرس)","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_conceptual_questions","metadata_path":"metadata/processes/ta_conceptual_questions.json","rules_used":[],"roles_needed":["teaching_assistant","system"],"sub_process_refs":["violation_registration"],"last_converted":"2026-02-14","notes":"مرحله ۴۳."},
-    {"code":"ta_student_consultation","name_fa":"شناسایی، تشویق و مشورت آموزشی (کمک‌مدرس)","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_student_consultation","metadata_path":"metadata/processes/ta_student_consultation.json","rules_used":[],"roles_needed":["teaching_assistant","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۴."},
-    {"code":"ta_essay_upload","name_fa":"آپلود جستار و دقایق منتخب فیلم (کمک‌مدرس)","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_essay_upload","metadata_path":"metadata/processes/ta_essay_upload.json","rules_used":[],"roles_needed":["teaching_assistant","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۵."},
-    {"code":"upgrade_to_ta","name_fa":"ارتقا به کمک‌مدرس","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/upgrade_to_ta","metadata_path":"metadata/processes/upgrade_to_ta.json","rules_used":[],"roles_needed":["student","supervision_committee","course_committee_scientific","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۶."},
-    {"code":"mentor_private_sessions","name_fa":"ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/mentor_private_sessions","metadata_path":"metadata/processes/mentor_private_sessions.json","rules_used":[],"roles_needed":["instructor","teaching_assistant","system"],"sub_process_refs":["violation_registration"],"last_converted":"2026-02-14","notes":"مرحله ۴۸."},
-    {"code":"ta_to_assistant_faculty","name_fa":"ارتقا رتبه از کمک‌مدرس به دستیار هیئت علمی","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_to_assistant_faculty","metadata_path":"metadata/processes/ta_to_assistant_faculty.json","rules_used":[],"roles_needed":["teaching_assistant","supervision_committee","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۴۹."},
-    {"code":"ta_to_instructor_auto","name_fa":"تبدیل خودکار کمک‌مدرس به مدرس در هر درس","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_to_instructor_auto","metadata_path":"metadata/processes/ta_to_instructor_auto.json","rules_used":[],"roles_needed":["system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۵۰. خودکار."},
-    {"code":"ta_track_change","name_fa":"تغییر یا اضافه کردن رسته کمک‌مدرس","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_track_change","metadata_path":"metadata/processes/ta_track_change.json","rules_used":[],"roles_needed":["teaching_assistant","course_committee_scientific","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۵۱."},
-    {"code":"ta_track_completion","name_fa":"خاتمه کمک‌مدرس برای هر رسته","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_track_completion","metadata_path":"metadata/processes/ta_track_completion.json","rules_used":[],"roles_needed":["system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۵۲. خودکار."},
-    {"code":"ta_instructor_leave","name_fa":"مرخصی کمک‌مدرس و مدرسین","status":"complete_in_metadata","has_registry_entry":true,"registry_path":"processes/ta_instructor_leave","metadata_path":"metadata/processes/ta_instructor_leave.json","rules_used":[],"roles_needed":["teaching_assistant","instructor","course_committee_scientific","system"],"sub_process_refs":[],"last_converted":"2026-02-14","notes":"مرحله ۵۳."}
+    {
+      "code": "internship_readiness_consultation",
+      "name_fa": "مشورت و تعیین آمادگی برای آغاز انترنی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/internship_readiness_consultation",
+      "metadata_path": "metadata/processes/internship_readiness_consultation.json",
+      "rules_used": [],
+      "roles_needed": ["student", "supervision_committee", "progress_committee", "deputy_education", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-02-14",
+      "sop_order": 37,
+      "notes": "مرحله ۳۷ (SOP به‌روز). تریگر: پاس تئوری تکنیک ۳+پیام مرادی. نظارت ۲روز؛ مصاحبه ۷روز+SMS؛ ۳ نتیجه (۳ساعت/۱ساعت/۳۰ساعت درمان)؛ قراردادها+سفته؛ بیمار Pending؛ سوپروایزر دوره ۵۰ساعتی (هیئت علمی ۱–۵)؛ قانون ۲۴ساعت؛ پرداخت+SMS. processes/internship_readiness_consultation/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code internship_readiness_consultation"
+    },
+    {
+      "code": "internship_12month_conditional_review",
+      "name_fa": "۱۲ ماه پس از قبولی مشروط در انترنی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/internship_12month_conditional_review",
+      "metadata_path": "metadata/processes/internship_12month_conditional_review.json",
+      "rules_used": [],
+      "roles_needed": ["student", "supervision_committee", "progress_committee", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-02-14",
+      "sop_order": 38,
+      "notes": "مرحله ۳۸ (SOP به‌روز). ماه ۱۲ مشروط؛ هشدار مسئول پروژه؛ نظارت مجوز/ارجاع تخلفات؛ مصاحبه+SMS؛ حالت ۱ الگوی استاندارد (۱۶+: ۳،۳،۴،۵،۳،۳) حالت ۲ محدود (۱۶+: ۲،۲،۳،۳،۲،۲،۴۲+:۳،۴۸+:۴)؛ UI ۲۵ بیمار+قوانین سقف. processes/internship_12month_conditional_review/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code internship_12month_conditional_review"
+    },
+    {
+      "code": "intern_hours_increase",
+      "name_fa": "اضافه شدن حداکثر ساعت‌های ارائه درمان انترن",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/intern_hours_increase",
+      "metadata_path": "metadata/processes/intern_hours_increase.json",
+      "rules_used": [],
+      "roles_needed": ["supervision_committee", "student", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-02-14",
+      "sop_order": 39,
+      "notes": "مرحله ۳۹ (SOP به‌روز). پایش روزانه سررسید ماه‌شمار؛ الگوی استاندارد (۴+۲…۲۸+۵) و مشروط (۴/۷/۱۲ هر+۱)؛ ارتباط با مرحله ۳۸ پس از ماه ۱۲؛ هشدار کمیته نظارت؛ تایید/رد→تخلفات+SMS تعویق؛ ثبت زمان در شیت آزاد+افزایش خودکار ظرفیت+SMS. processes/intern_hours_increase/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code intern_hours_increase"
+    },
+    {
+      "code": "comprehensive_term_start",
+      "name_fa": "آغاز ترم‌های دوره جامع",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/comprehensive_term_start",
+      "metadata_path": "metadata/processes/comprehensive_term_start.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "course_committee_executive", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "sop_order": 40,
+      "notes": "مرحله ۴۰ (SOP به‌روز). تعلیق/مرخصی+بازگشت؛ دروس ثابت صالحی+جبرانی ۱–۳؛ اقساط ۲–۴؛ حسابداری+SMS؛ ثبت نهایی و لینک کلاس؛ قفل حضور اگر قسط معوق. processes/comprehensive_term_start/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_term_start"
+    },
+    {
+      "code": "lesson_start_per_term",
+      "name_fa": "آغاز هر درس در هر ترم",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/lesson_start_per_term",
+      "metadata_path": "metadata/processes/lesson_start_per_term.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "teaching_assistant", "course_committee_executive", "system"],
+      "sub_process_refs": ["fall_semester_preparation", "winter_semester_preparation"],
+      "last_converted": "2026-02-14",
+      "sop_order": 41,
+      "notes": "مرحله ۴۱ (SOP به‌روز). لینک آنلاین برای همه؛ لیست حضور؛ حضور فقط مدرس؛ TA از پاییز/زمستان+حضور TA. processes/lesson_start_per_term/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code lesson_start_per_term"
+    },
+    {
+      "code": "student_non_registration",
+      "name_fa": "عدم ثبت‌نام دانشجو برای ترم بعد",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/student_non_registration",
+      "metadata_path": "metadata/processes/student_non_registration.json",
+      "rules_used": [],
+      "roles_needed": ["student", "supervision_committee", "system"],
+      "sub_process_refs": ["violation_registration", "educational_leave"],
+      "last_converted": "2026-02-14",
+      "sop_order": 42,
+      "notes": "مرحله ۴۲ (SOP به‌روز). لیست بدون ثبت‌نام؛ استثنا مرخصی‌ها؛ جلسه+ایمیل/SMS مرادی؛ تخلفات؛ ۳ شاخه (۲روز/۳روز/انصراف)؛ ۴هفته؛ غیبت جلسات؛ ۵روز+انصراف. processes/student_non_registration/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code student_non_registration"
+    },
+    {
+      "code": "ta_conceptual_questions",
+      "name_fa": "ثبت ۳ سوال تستی‌مفهومی (کمک‌مدرس)",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/ta_conceptual_questions",
+      "metadata_path": "metadata/processes/ta_conceptual_questions.json",
+      "rules_used": [],
+      "roles_needed": ["teaching_assistant", "instructor", "deputy_education", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-02-14",
+      "sop_order": 43,
+      "notes": "مرحله ۴۳ (SOP به‌روز). تئوری+تکنیک؛ قالب صالحی؛ ۳ PDF؛ ۲۴ساعت TA + تخلف؛ مدرس ۴روز؛ رد→۲۴ساعت اصلاح؛ مرکز مرجع؛ ۲ نمره/جلسه حداکثر ۳۴. processes/ta_conceptual_questions/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code ta_conceptual_questions"
+    },
+    {
+      "code": "ta_student_consultation",
+      "name_fa": "شناسایی، تشویق و مشورت آموزشی (کمک‌مدرس)",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/ta_student_consultation",
+      "metadata_path": "metadata/processes/ta_student_consultation.json",
+      "rules_used": [],
+      "roles_needed": ["teaching_assistant", "progress_committee", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "sop_order": 44,
+      "notes": "مرحله ۴۴ (SOP به‌روز). جلسات ۵/۱۰/۱۵؛ SMS؛ فرم پویا؛ مهلت ۴روز؛ قفل=صفر؛ ۲نمره حداکثر ۶؛ گزارش کمیته پیشرفت. processes/ta_student_consultation/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code ta_student_consultation"
+    },
+    {
+      "code": "ta_essay_upload",
+      "name_fa": "آپلود جستار و دقایق منتخب فیلم (کمک‌مدرس)",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/ta_essay_upload",
+      "metadata_path": "metadata/processes/ta_essay_upload.json",
+      "rules_used": [],
+      "roles_needed": ["teaching_assistant", "instructor", "reference_center", "marketing", "deputy_education", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-02-14",
+      "sop_order": 45,
+      "notes": "مرحله ۴۵ (SOP به‌روز). هر جلسه؛ Word+PDF؛ ۲۴س TA + تخلف+هشدار معاون؛ مدرس ۴روز؛ رد→۲۴س اصلاح؛ ۱/۲ نمره رسته؛ مرکز مرجع؛ مارکتینگ ۷روز+هشدار. processes/ta_essay_upload/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code ta_essay_upload"
+    },
+    {
+      "code": "ta_blog_content",
+      "name_fa": "ثبت محتوای وبلاگ از محتوای درسی (کمک‌مدرس)",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/ta_blog_content",
+      "metadata_path": "metadata/processes/ta_blog_content.json",
+      "rules_used": [],
+      "roles_needed": ["teaching_assistant", "instructor", "marketing", "deputy_education", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-02-14",
+      "sop_order": 46,
+      "notes": "مرحله ۴۶ (SOP به‌روز). فیلد متنی؛ نیم صفحه A4؛ بدون آپلود؛ ۲۴س TA؛ مدرس ۴روز read-only؛ رد→۲۴س؛ ۲/۳ نمره رسته؛ پیش‌نویس مارکتینگ. processes/ta_blog_content/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code ta_blog_content"
+    },
+    {
+      "code": "upgrade_to_ta",
+      "name_fa": "ارتقا به کمک‌مدرس",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/upgrade_to_ta",
+      "metadata_path": "metadata/processes/upgrade_to_ta.json",
+      "rules_used": [],
+      "roles_needed": ["student", "supervision_committee", "course_committee_scientific", "course_committee_project", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "sop_order": 47,
+      "notes": "مرحله ۴۷ (SOP به‌روز). ۴ شرط سیستمی؛ نظارت تأیید/رد+SMS؛ کمیته دروس وقت مصاحبه+SMS سه‌نفره؛ مصاحبه؛ رد/تأیید+رسته‌ها؛ تعهدنامه OTP؛ لیست TA. processes/upgrade_to_ta/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code upgrade_to_ta"
+    },
+    {
+      "code": "mentor_private_sessions",
+      "name_fa": "ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/mentor_private_sessions",
+      "metadata_path": "metadata/processes/mentor_private_sessions.json",
+      "rules_used": [],
+      "roles_needed": ["instructor", "teaching_assistant", "course_committee_scientific", "supervision_committee", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-02-14",
+      "sop_order": 48,
+      "notes": "مرحله ۴۸ (SOP به‌روز). فقط درس با TA؛ مهلت قبل جلسه۲؛ لحظه شروع جلسه۲ بدون ثبت→تخلف+هشدار کمیته دروس+SMS مسئول علمی؛ فرم read-only پایه؛ چند TA؛ پورتال TA؛ SMS دو مرحله+۲۴س قبل. processes/mentor_private_sessions/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code mentor_private_sessions"
+    },
+    {
+      "code": "ta_to_assistant_faculty",
+      "name_fa": "ارتقا رتبه از کمک‌مدرس به دستیار هیئت علمی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/ta_to_assistant_faculty",
+      "metadata_path": "metadata/processes/ta_to_assistant_faculty.json",
+      "rules_used": [],
+      "roles_needed": ["teaching_assistant", "supervision_committee", "course_committee_scientific", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "sop_order": 49,
+      "notes": "مرحله ۴۹ (SOP به‌روز). ۲× TA موفق؛ خودکار/دستی؛ قبلاً دستیار→پایان؛ نظارت تأیید/رد+جعفریان+لینک؛ نقش مدرس همان درس؛ رتبه یک‌بار؛ SMS ثابت؛ unlock درس بعد رسته. processes/ta_to_assistant_faculty/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code ta_to_assistant_faculty"
+    },
+    {
+      "code": "ta_to_instructor_auto",
+      "name_fa": "تبدیل خودکار کمک‌مدرس به مدرس در هر درس",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/ta_to_instructor_auto",
+      "metadata_path": "metadata/processes/ta_to_instructor_auto.json",
+      "rules_used": [],
+      "roles_needed": ["system", "course_committee_scientific", "deputy_education"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "sop_order": 50,
+      "notes": "مرحله ۵۰ (SOP به‌روز). ۱۰۰٪ خودکار؛ پایان ترم؛ دستیار هیئت علمی + ۲× TA موفق؛ حذف/اضافه لیست؛ SMS ثابت؛ unlock درس بعد رسته؛ گزارش log. processes/ta_to_instructor_auto/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code ta_to_instructor_auto"
+    },
+    {
+      "code": "ta_track_change",
+      "name_fa": "تغییر یا اضافه کردن رسته کمک‌مدرس",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/ta_track_change",
+      "metadata_path": "metadata/processes/ta_track_change.json",
+      "rules_used": [],
+      "roles_needed": ["teaching_assistant", "course_committee_scientific", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "sop_order": 51,
+      "notes": "مرحله ۵۱ (SOP به‌روز). پیش‌شرط upgrade_to_ta؛ radio اضافه/تغییر؛ کمیته دروس جلسه+SMS مصوب؛ موافق/عدم؛ فهرست ۵ رسته؛ منطق جایگزین یا افزودن+اولین درس. processes/ta_track_change/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code ta_track_change"
+    },
+    {
+      "code": "ta_track_completion",
+      "name_fa": "خاتمه کمک‌مدرس برای هر رسته",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/ta_track_completion",
+      "metadata_path": "metadata/processes/ta_track_completion.json",
+      "rules_used": [],
+      "roles_needed": ["system", "course_committee_scientific", "teaching_assistant"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "sop_order": 52,
+      "notes": "مرحله ۵۲ (SOP به‌روز). ۱۰۰٪ خودکار؛ پایان ترم؛ همهٔ دروس رسته ۲× موفق؛ رسته خاتمه؛ داشبورد پرونده؛ ۲ SMS مصوب (دانشجو+کمیته). processes/ta_track_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code ta_track_completion"
+    },
+    {
+      "code": "ta_instructor_leave",
+      "name_fa": "مرخصی کمک‌مدرس و مدرسین",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/ta_instructor_leave",
+      "metadata_path": "metadata/processes/ta_instructor_leave.json",
+      "rules_used": [],
+      "roles_needed": ["teaching_assistant", "instructor", "course_committee_scientific", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "sop_order": 53,
+      "notes": "مرحله ۵۳ (SOP به‌روز). ۱هفته تا ثبت‌نام؛ ۱ مرخصی/رسته TA؛ تماس قبل ثبت؛ موافق/عدم؛ مسیر TA جایگزین/بدون دستیار؛ مسیر مدرس جایگزین/لغو کلاس؛ ثبت پرونده. processes/ta_instructor_leave/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code ta_instructor_leave"
+    },
+    {
+      "code": "class_attendance",
+      "name_fa": "حضور و غیاب در تمامی کلاس‌ها",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/class_attendance",
+      "metadata_path": "metadata/processes/class_attendance.json",
+      "rules_used": [],
+      "roles_needed": ["instructor", "student", "teaching_assistant", "supervision_committee", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-02-14",
+      "sop_order": 54,
+      "notes": "مرحله ۵۴ (SOP به‌روز). لیست جلسه؛ شمارنده؛ ۵ غیبت→عادی I+قفل؛ مقاله‌نویسی→تخلف+گزارش؛ سوپرویژن زنده فقط سابقه. processes/class_attendance/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code class_attendance"
+    },
+    {
+      "code": "violation_registration",
+      "name_fa": "ثبت تخلفات",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/violation_registration",
+      "metadata_path": "metadata/processes/violation_registration.json",
+      "rules_used": [],
+      "roles_needed": ["student", "supervision_committee", "education_committee", "deputy_education", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-02-14",
+      "sop_order": 55,
+      "notes": "مرحله ۵۵ (SOP به‌روز). ۳روز SLA؛ گزارش عملکرد؛ جلسه+ایمیل/SMS؛ تذکر/اخطار۱–۳+۷روز؛ اخطار۳→تعلیق/ارجاع؛ کمیته آموزش؛ اخراج→read-only. processes/violation_registration/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code violation_registration"
+    },
+    {
+      "code": "class_session_cancellation",
+      "name_fa": "کنسل کردن جلسات کلاس‌های درسی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/class_session_cancellation",
+      "metadata_path": "metadata/processes/class_session_cancellation.json",
+      "rules_used": [],
+      "roles_needed": ["instructor", "course_committee_scientific", "student", "teaching_assistant", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-02-14",
+      "sop_order": 56,
+      "notes": "مرحله ۵۶ (SOP به‌روز). ۲ساعت بدون حضورغیاب→تخلف؛ کنسلی+جبرانی اجباری؛ جمعه هفته۱۵/۱۶؛ قفل لیست؛ ستون جبرانی؛ SMS دو مرحله؛ سابقه مدرس. processes/class_session_cancellation/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code class_session_cancellation"
+    },
+    {
+      "code": "student_instructor_evaluation",
+      "name_fa": "ارزیابی دانشجو از مدرسین",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/student_instructor_evaluation",
+      "metadata_path": "metadata/processes/student_instructor_evaluation.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "course_committee_scientific", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-04-09",
+      "sop_order": 57,
+      "notes": "مرحله ۵۷ (SOP). Trigger: ۱۴ روز قبل پایان ترم LMS؛ SMS با لینک اختصاصی؛ فرم اختیاری؛ ناشناس‌سازی؛ میانگین و Pie Chart؛ پورتال مدرس، کمیته دروس، کمیته پژوهش (در صورت فعال‌سازی). processes/student_instructor_evaluation/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code student_instructor_evaluation"
+    },
+    {
+      "code": "process_merged_to_one",
+      "name_fa": "منتقل‌شده به فرایند شماره ۱",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/process_merged_to_one",
+      "metadata_path": "metadata/processes/process_merged_to_one.json",
+      "rules_used": [],
+      "roles_needed": ["system"],
+      "sub_process_refs": ["educational_leave"],
+      "last_converted": "2026-04-09",
+      "sop_order": 58,
+      "notes": "مرحله ۵۸ — Stub: محتوای عملیاتی به فرایند شماره یک (educational_leave) منتقل شد. processes/process_merged_to_one/SOP_document.txt؛ فلوچارت ندارد؛ sync: scripts/sync_sop_doc_from_registry_files.py --code process_merged_to_one"
+    },
+    {
+      "code": "full_education_leave",
+      "name_fa": "مرخصی موقت از کل آموزش",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/full_education_leave",
+      "metadata_path": "metadata/processes/full_education_leave.json",
+      "rules_used": ["student_on_full_education_leave"],
+      "roles_needed": ["student", "progress_committee", "deputy_education", "therapy_education_coordinator", "monitoring_committee_officer", "system"],
+      "sub_process_refs": ["return_to_full_education", "patient_referral", "violation_registration"],
+      "last_converted": "2026-04-09",
+      "sop_order": 59,
+      "notes": "مرحله ۵۹ (SOP). وقفه ۱/۲ ترم؛ جلسه کمیته پیشرفت ۷روز؛ معاون آموزش؛ انترن→سوپروایزر+ارجاع بیمار؛ درمانگر ۳روز SMS + مهلت ۴روز هماهنگی؛ بازگشت+تخلف. processes/full_education_leave/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code full_education_leave"
+    },
+    {
+      "code": "return_to_full_education",
+      "name_fa": "بازگشت دوباره به کل آموزش پس از مرخصی از کل آموزش",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/return_to_full_education",
+      "metadata_path": "metadata/processes/return_to_full_education.json",
+      "rules_used": [],
+      "roles_needed": ["student", "system"],
+      "sub_process_refs": ["full_education_leave"],
+      "last_converted": "2026-04-09",
+      "sop_order": 60,
+      "notes": "مرحله ۶۰ (SOP). درمانگر+پرداخت+قانون ۲۴ساعت؛ جامع ۲ساعت/آشنایی ۱–۲؛ انترن→سوپروایزر ۱ساعت+پرداخت؛ بازگشایی ثبت‌نام. processes/return_to_full_education/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code return_to_full_education"
+    },
+    {
+      "code": "theory_course_completion",
+      "name_fa": "خاتمه دروس تئوری",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/theory_course_completion",
+      "metadata_path": "metadata/processes/theory_course_completion.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "teaching_assistant", "course_committee_scientific", "monitoring_committee_officer", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-04-09",
+      "sop_order": 61,
+      "notes": "مرحله ۶۱ (SOP). جلسه۱۸؛ مشارکت ۰–۱۰ تا ۲۴:۰۰؛ حضور ۰–۸؛ TA≥74؛ آزمون ۸۲؛ مرزی ۶۴–۷۳ امتحان مجدد+۴روز؛ ارزیابی کیفی ۴روز→نظارت. processes/theory_course_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code theory_course_completion"
+    },
+    {
+      "code": "group_supervision_course_completion",
+      "name_fa": "خاتمه هر درس سوپرویژن گروهی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/group_supervision_course_completion",
+      "metadata_path": "metadata/processes/group_supervision_course_completion.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "teaching_assistant", "course_committee_scientific", "monitoring_committee_officer", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-04-09",
+      "sop_order": 62,
+      "notes": "مرحله ۶۲ (SOP). جلسه۱۸ Pass/Fail تا ۲۴:۰۰؛ حضور ۰–۸؛ Pass→+۳۳.۳۳۳۳ ساعت (UI ۳۳.۳)؛ TA سه وظیفه+≥74؛ ارزیابی کیفی ۴روز سوال۷۸→نظارت. processes/group_supervision_course_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code group_supervision_course_completion"
+    },
+    {
+      "code": "skills_course_completion",
+      "name_fa": "خاتمه دروس تکنیک تمرین مهارت‌ها",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/skills_course_completion",
+      "metadata_path": "metadata/processes/skills_course_completion.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "teaching_assistant", "course_committee_scientific", "monitoring_committee_officer", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-04-09",
+      "sop_order": 63,
+      "notes": "مرحله ۶۳ (SOP). جلسه۱۷ عملی ۶۰/۴۲+مشارکت تا۲۴؛ جلسه۱۸ تست ۲۲/۴۰+حضور۸؛ غیبت→I؛ جمع۱۰۰≥74؛ بدون مجدد؛ TA۴وظیفه؛ ارزیابی۴روز. processes/skills_course_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code skills_course_completion"
+    },
+    {
+      "code": "film_observation_course_completion",
+      "name_fa": "خاتمه هر درس عملی کاربردی، مشاهده فیلم‌ها – بخش آپلود گزارش پایانی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/film_observation_course_completion",
+      "metadata_path": "metadata/processes/film_observation_course_completion.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-04-09",
+      "sop_order": 64,
+      "notes": "مرحله ۶۴ (SOP). جلسه۱۷→آپلود گزارش پایانی؛ مدرس نمره؛ غیبت امتحان→I؛ ≥74 PASS؛ <63 FAIL؛ ۶۲–۷۴ امتحان مجدد+پرداخت+آپلود مجدد. processes/film_observation_course_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code film_observation_course_completion"
+    },
+    {
+      "code": "live_therapy_observation_course_completion",
+      "name_fa": "خاتمه درس مشاهده زنده درمان – بخش آپلود گزارش پایانی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/live_therapy_observation_course_completion",
+      "metadata_path": "metadata/processes/live_therapy_observation_course_completion.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-04-09",
+      "sop_order": 65,
+      "notes": "مرحله ۶۵ (SOP). جلسه۱۷→آپلود گزارش؛ مدرس نمره؛ ≥74 PASS؛ <63 FAIL؛ ۶۲–۷۴ امتحان مجدد+پرداخت+آپلود مجدد. processes/live_therapy_observation_course_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_course_completion"
+    },
+    {
+      "code": "live_therapy_observation_session_prep",
+      "name_fa": "مقدمات برگزاری جلسات مشاهده زنده درمان",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/live_therapy_observation_session_prep",
+      "metadata_path": "metadata/processes/live_therapy_observation_session_prep.json",
+      "rules_used": [],
+      "roles_needed": ["admission_officer", "therapy_education_coordinator", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-04-09",
+      "sop_order": 66,
+      "notes": "مرحله ۶۶ (SOP). پذیرش→ارجاع؛ هماهنگی ۴رکن؛ ثبت LMS یا ختم؛ SMS فقط ارکان آموزشی. processes/live_therapy_observation_session_prep/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_session_prep"
+    },
+    {
+      "code": "live_supervision_course_completion",
+      "name_fa": "خاتمه درس سوپرویژن زنده",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/live_supervision_course_completion",
+      "metadata_path": "metadata/processes/live_supervision_course_completion.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "course_committee_scientific", "monitoring_committee_officer", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-04-09",
+      "sop_order": 67,
+      "notes": "مرحله ۶۷ (SOP). ۱۵عادی+۳پشت‌آینه؛ بسته۱۸جلسه؛ غیبت→پرداخت جبرانی؛ پیاده‌سازی۵روز؛ ارزیابی۳جلسه؛ جلسه۱۸→پاپ‌آپ کیفی؛ سوال۷۸→نظارت. processes/live_supervision_course_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_course_completion"
+    },
+    {
+      "code": "live_supervision_session_prep",
+      "name_fa": "مقدمات برگزاری جلسات سوپرویژن زنده",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/live_supervision_session_prep",
+      "metadata_path": "metadata/processes/live_supervision_session_prep.json",
+      "rules_used": [],
+      "roles_needed": ["admission_officer", "therapy_education_coordinator", "system"],
+      "sub_process_refs": [],
+      "last_converted": "2026-04-09",
+      "sop_order": 68,
+      "notes": "مرحله ۶۸ (SOP). پذیرش→ارجاع؛ هماهنگی ۴رکن؛ ثبت LMS یا ختم؛ SMS مدرس/کمک‌مدرس/دانشجو (بدون بیمار). processes/live_supervision_session_prep/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_session_prep"
+    },
+    {
+      "code": "article_writing_completion",
+      "name_fa": "خاتمه درس مقاله‌نویسی جهت گزارش موردی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/article_writing_completion",
+      "metadata_path": "metadata/processes/article_writing_completion.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "monitoring_committee_officer", "course_committee_scientific", "system"],
+      "sub_process_refs": ["violation_registration"],
+      "last_converted": "2026-04-09",
+      "sop_order": 69,
+      "notes": "مرحله ۶۹ (SOP). حداکثر۲ترم؛ ترم۳+ تخلف؛ تیک تکمیل→بستن کلاس؛ ۸روز دفاع+۴روز ارزیابی؛ سوال۷۸→نظارت. processes/article_writing_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code article_writing_completion"
+    },
+    {
+      "code": "thesis_defense_request",
+      "name_fa": "درخواست ثبت دفاع پایان‌نامه",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/thesis_defense_request",
+      "metadata_path": "metadata/processes/thesis_defense_request.json",
+      "rules_used": [],
+      "roles_needed": ["student", "progress_committee", "supervision_committee", "education_committee", "instructor", "system"],
+      "sub_process_refs": ["article_writing_completion", "violation_registration"],
+      "last_converted": "2026-04-09",
+      "sop_order": 70,
+      "notes": "مرحله ۷۰ (SOP). ۴شرط+گزارش سایکوتیک؛ کمیته پیشرفت/نظارت/آموزش؛ محرمانگی داور؛ A/B PASS؛ C/D/F اصلاح۲هفته+دفاع مجدد. processes/thesis_defense_request/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code thesis_defense_request"
+    },
+    {
+      "code": "upgrade_to_educational_therapist",
+      "name_fa": "ارتقا به درمانگر آموزشی",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/upgrade_to_educational_therapist",
+      "metadata_path": "metadata/processes/upgrade_to_educational_therapist.json",
+      "rules_used": [],
+      "roles_needed": [
+        "student",
+        "supervision_committee",
+        "education_committee",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "last_converted": "2026-04-09",
+      "sop_order": 71,
+      "notes": "مرحله ۷۱ (SOP). شروط ارتقا؛ کمیته نظارت؛ مصاحبه کمیته درمان آموزشی و سوپرویژن؛ درمان شخصی و سوپرویژن و ۵۰ ساعت؛ شیت وقت‌ها. processes/upgrade_to_educational_therapist/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code upgrade_to_educational_therapist"
+    },
+    {
+      "code": "intern_bulk_patient_referral",
+      "name_fa": "ارجاع کلیه بیماران انترن به درمانگران دیگر",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/intern_bulk_patient_referral",
+      "metadata_path": "metadata/processes/intern_bulk_patient_referral.json",
+      "rules_used": [],
+      "roles_needed": [
+        "student",
+        "supervision_committee",
+        "therapy_committee_executor",
+        "therapy_education_coordinator",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [
+        "patient_referral"
+      ],
+      "last_converted": "2026-04-09",
+      "sop_order": 72,
+      "notes": "مرحله ۷۲ (SOP). جلسه نظارت؛ شرایط ارجاع؛ تیک دانشجو؛ ۱۵ روز؛ کمیته درمان عموم؛ مسئول هماهنگی‌ها؛ مهلت ۳ روز؛ هشدار معاون مدیر داخلی. processes/intern_bulk_patient_referral/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code intern_bulk_patient_referral"
+    },
+    {
+      "code": "live_supervision_ta_evaluation",
+      "name_fa": "ارزیابی کمک‌مدرس درس سوپرویژن زنده",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/live_supervision_ta_evaluation",
+      "metadata_path": "metadata/processes/live_supervision_ta_evaluation.json",
+      "rules_used": ["live_supervision_ta_score_gte_74", "live_supervision_ta_score_lt_74"],
+      "roles_needed": ["teaching_assistant", "instructor", "course_committee_scientific", "system"],
+      "sub_process_refs": ["live_supervision_course_completion", "violation_registration"],
+      "last_converted": "2026-04-09",
+      "sop_order": 73,
+      "notes": "مرحله ۷۳ (SOP). شمارشگر۱۸ TA؛ ۳وظیفه+حضور۸؛ جمع۱۰۰؛ ≥74 PASS / <74 FAIL. processes/live_supervision_ta_evaluation/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_ta_evaluation"
+    },
+    {
+      "code": "live_therapy_observation_ta_attendance_completion",
+      "name_fa": "خاتمه درس مشاهده زنده درمان – بخش کمک مدرس و نمره حضور و غیاب و مشارکت",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/live_therapy_observation_ta_attendance_completion",
+      "metadata_path": "metadata/processes/live_therapy_observation_ta_attendance_completion.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "teaching_assistant", "course_committee_scientific", "monitoring_committee_officer", "system"],
+      "sub_process_refs": ["live_therapy_observation_course_completion", "violation_registration"],
+      "last_converted": "2026-04-09",
+      "sop_order": 74,
+      "notes": "مرحله ۷۴ (SOP). جلسه۱۸ مشارکت+حضور+TA؛ PDF تا۲۴/جلسه۱۸؛ تصحیح ۵/۳روز؛ جمع۱۰۰؛ ۶۴–۷۳+SMS۲۴ساعت؛ معدل ترم/کل؛ ارزیابی۴روز. processes/live_therapy_observation_ta_attendance_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_ta_attendance_completion"
+    },
+    {
+      "code": "film_observation_ta_attendance_completion",
+      "name_fa": "خاتمه هر درس عملی کاربردی، مشاهده فیلم‌ها – بخش کمک مدرس و نمره حضور و غیاب و مشارکت",
+      "status": "complete_in_metadata",
+      "has_registry_entry": true,
+      "registry_path": "processes/film_observation_ta_attendance_completion",
+      "metadata_path": "metadata/processes/film_observation_ta_attendance_completion.json",
+      "rules_used": [],
+      "roles_needed": ["student", "instructor", "teaching_assistant", "course_committee_scientific", "monitoring_committee_officer", "system"],
+      "sub_process_refs": ["film_observation_course_completion", "violation_registration"],
+      "last_converted": "2026-04-09",
+      "sop_order": 75,
+      "notes": "مرحله ۷۵ (SOP). جلسه۱۸ مشارکت+حضور+TA؛ PDF تا۲۴/جلسه۱۸؛ تصحیح ۵روز؛ جمع۱۰۰؛ ۶۴–۷۳+SMS۲۴ساعت؛ معدل ترم/کل؛ ارزیابی۴روز. processes/film_observation_ta_attendance_completion/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code film_observation_ta_attendance_completion"
+    }
   ],
   "all_processes_in_metadata": [
     "attendance_tracking",
+    "class_attendance",
+    "class_session_cancellation",
+    "violation_registration",
     "educational_leave",
     "extra_session",
+    "film_observation_course_completion",
+    "film_observation_ta_attendance_completion",
     "fee_determination",
+    "full_education_leave",
+    "group_supervision_course_completion",
+    "live_supervision_course_completion",
+    "live_supervision_session_prep",
+    "live_supervision_ta_evaluation",
+    "return_to_full_education",
     "session_payment",
+    "skills_course_completion",
     "start_therapy",
     "therapy_changes",
     "therapy_completion",
@@ -678,8 +1338,10 @@
     "committees_review",
     "therapist_session_cancellation",
     "unannounced_absence_reaction",
+    "unannounced_supervision_absence_reaction",
     "therapy_interruption",
     "student_session_cancellation",
+    "student_supervision_cancellation",
     "supervision_block_transition",
     "supervision_50h_completion",
     "supervision_session_increase",
@@ -698,23 +1360,33 @@
     "internship_readiness_consultation",
     "internship_12month_conditional_review",
     "intern_hours_increase",
+    "intern_bulk_patient_referral",
+    "live_therapy_observation_course_completion",
+    "live_therapy_observation_session_prep",
+    "live_therapy_observation_ta_attendance_completion",
     "comprehensive_term_start",
     "lesson_start_per_term",
     "student_non_registration",
+    "student_instructor_evaluation",
     "ta_conceptual_questions",
     "ta_student_consultation",
     "ta_essay_upload",
+    "ta_blog_content",
+    "upgrade_to_educational_therapist",
     "upgrade_to_ta",
     "mentor_private_sessions",
+    "process_merged_to_one",
     "ta_to_assistant_faculty",
     "ta_to_instructor_auto",
     "ta_track_change",
     "ta_track_completion",
-    "ta_instructor_leave"
+    "ta_instructor_leave",
+    "thesis_defense_request",
+    "theory_course_completion"
   ],
   "stats": {
-    "total_in_registry": 51,
-    "total_in_metadata": 51,
+    "total_in_registry": 76,
+    "total_in_metadata": 76,
     "with_gaps": 5
   }
 }

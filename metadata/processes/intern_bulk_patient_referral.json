@@ -1,0 +1,39 @@
+{
+  "process": {
+    "code": "intern_bulk_patient_referral",
+    "name_fa": "ارجاع کلیه بیماران انترن به درمانگران دیگر",
+    "name_en": "Bulk Referral of Intern Patients to Other Therapists",
+    "number": 72,
+    "description": "مسیر ساختاریافته ارجاع همه بیماران انترن: جلسه کمیته نظارت، ثبت شرایط ارجاع در پورتال، تیک و توضیح دانشجو برای هر بیمار، هشدار ۱۵ روزه، نقش کمیته درمان عموم، ارسال به مسئول هماهنگی‌ها، پیگیری با مهلت ۳ روز و هشدار به معاون مدیر داخلی.",
+    "initial_state": "supervision_start",
+    "initial_role": "supervision_committee",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "supervision_start", "name_fa": "شروع فرایند و ثبت جلسه توسط کمیته نظارت", "type": "initial", "assigned_role": "supervision_committee"},
+    {"code": "referral_conditions_set", "name_fa": "ثبت برگزاری جلسه و شرایط ارجاع؛ همگام‌سازی پورتال دانشجو", "type": "intermediate", "assigned_role": "system"},
+    {"code": "student_patient_log", "name_fa": "تیک و توضیح صحبت با هر بیمار توسط دانشجو", "type": "intermediate", "assigned_role": "student"},
+    {"code": "general_therapy_committee_review", "name_fa": "مشاهده و تکمیل اطلاعات توسط کمیته درمان عموم", "type": "intermediate", "assigned_role": "therapy_committee_executor"},
+    {"code": "coordination_followup", "name_fa": "پیگیری و ثبت ارجاع نهایی توسط مسئول هماهنگی‌ها", "type": "intermediate", "assigned_role": "therapy_education_coordinator"},
+    {"code": "completed", "name_fa": "پایان فرایند", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "supervision_start", "to": "referral_conditions_set", "trigger": "meeting_and_conditions_logged", "required_role": "supervision_committee", "description_fa": "ثبت زمان جلسه، برگزاری/عدم برگزاری، شرایط ارجاع؛ SMS به دانشجو؛ انتشار در پورتال دانشجو"},
+    {"from": "referral_conditions_set", "to": "student_patient_log", "trigger": "patient_list_published", "description_fa": "نمایش لیست بیماران در لاگ؛ شروع مهلت ۱۵ روز و هشدار در صورت تاخیر"},
+    {"from": "student_patient_log", "to": "general_therapy_committee_review", "trigger": "student_patient_contacts_done", "required_role": "student", "description_fa": "دانشجو تیک و توضیحات هر بیمار را ثبت کرد؛ پس از ۱۵ روز اعلان به کمیته درمان عموم و سایر سطوح"},
+    {"from": "general_therapy_committee_review", "to": "coordination_followup", "trigger": "committee_referral_notes_complete", "required_role": "therapy_committee_executor", "description_fa": "کمیته درمان عموم لیست را تکمیل کرد؛ ارسال به مسئول هماهنگی‌ها"},
+    {"from": "coordination_followup", "to": "completed", "trigger": "coordination_followup_complete", "required_role": "therapy_education_coordinator", "description_fa": "تیک پیگیری برای همه بیماران؛ مهلت ۳ روز؛ در صورت تاخیر هشدار به معاون مدیر داخلی — پایان"}
+  ],
+  "forms": [
+    {
+      "code": "intern_referral_supervision_meeting",
+      "name_fa": "ثبت جلسه و شرایط ارجاع",
+      "used_in_state": "supervision_start",
+      "fields": [
+        {"name": "meeting_datetime", "label_fa": "تاریخ و ساعت جلسه", "type": "datetime"},
+        {"name": "meeting_held", "label_fa": "جلسه برگزار شد", "type": "checkbox"},
+        {"name": "referral_conditions", "label_fa": "شرایط ارجاع (متن)", "type": "textarea", "required": true}
+      ]
+    }
+  ]
+}

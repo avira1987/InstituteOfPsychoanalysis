@@ -125,11 +125,18 @@ input, select, textarea { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  font-size: 1.15rem;
-  color: #fff;
-  background: linear-gradient(145deg, #6366f1 0%, #4f46e5 45%, #4338ca 100%);
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+  overflow: hidden;
+  padding: 3px;
+}
+
+.site-logo-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 
 .sidebar-brand-text {
@@ -840,6 +847,18 @@ table.table-users td.table-users-empty {
   padding: 2.5rem;
   width: 100%;
   max-width: 400px;
+}
+
+.login-brand-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.login-brand-logo {
+  max-width: min(100%, 220px);
+  height: auto;
+  width: auto;
 }
 
 .login-title {
@@ -2168,9 +2187,17 @@ table.table-users td.table-users-empty {
   cursor: pointer;
 }
 
+.mobile-header-logo {
+  flex-shrink: 0;
+  max-height: 36px;
+  width: auto;
+  box-sizing: border-box;
+}
+
 .mobile-title {
   font-weight: 600;
   font-size: 0.95rem;
+  min-width: 0;
 }
 
 .header-logout-btn {
@@ -2338,14 +2365,24 @@ table.table-users td.table-users-empty {
 .pub-navbar-logo {
   width: 42px;
   height: 42px;
-  background: var(--gradient-primary);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.95);
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-weight: 800;
-  font-size: 1.1rem;
+  box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  padding: 2px;
+}
+
+.pub-footer-logo-wrap {
+  margin-bottom: 0.75rem;
+}
+
+.pub-footer-logo {
+  max-height: 3.5rem;
+  width: auto;
 }
 
 .pub-navbar-title {
@@ -4136,6 +4173,12 @@ table.table-users td.table-users-empty {
 .spg--light .spg-text {
   color: var(--text);
   opacity: 1;
+}
+
+.spg-text--task-primary {
+  font-weight: 600;
+  font-size: 0.93rem;
+  line-height: 1.78;
 }
 
 .quest-desc {

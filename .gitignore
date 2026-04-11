@@ -16,6 +16,10 @@ env/
 # Environment variables
 .env
 
+# Local DB dumps (never commit)
+anistito_local.dump
+*.dump
+
 # IDE / Editor
 .vscode/
 .idea/

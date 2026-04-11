@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { processExecApi, studentApi, therapyApi, assignmentApi } from '../services/api'
 import GamificationPanel from '../components/GamificationPanel'
@@ -17,6 +17,7 @@ import {
 } from '../utils/processFormsStudent'
 import ProcessStepForms from '../components/ProcessStepForms'
 import StudentProcessGuidancePanel from '../components/StudentProcessGuidancePanel'
+import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 import { buildStudentGuidance } from '../utils/studentProcessGuidance'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
@@ -24,7 +25,7 @@ import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/pro
 const studentProcessCodes = [
   'educational_leave', 'start_therapy', 'extra_session', 'session_payment',
   'therapy_changes', 'therapy_session_increase', 'therapy_session_reduction',
-  'therapy_interruption', 'student_session_cancellation', 'supervision_block_transition',
+  'therapy_interruption', 'student_session_cancellation', 'student_supervision_cancellation', 'supervision_block_transition',
   'extra_supervision_session', 'supervision_session_increase', 'supervision_session_reduction',
   'introductory_course_registration', 'comprehensive_course_registration',
   'fee_determination', 'upgrade_to_ta', 'internship_readiness_consultation',
@@ -32,6 +33,7 @@ const studentProcessCodes = [
 
 export default function StudentPortal() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [studentProfile, setStudentProfile] = useState(null)
   const [activeProcesses, setActiveProcesses] = useState([])
   const [completedProcesses, setCompletedProcesses] = useState([])
@@ -173,7 +175,11 @@ export default function StudentPortal() {
       try {
         const meRes = await studentApi.me()
         myProfile = meRes.data
-      } catch {
+      } catch (e) {
+        if (user?.role === 'student' && e.response?.status === 404) {
+          navigate('/panel/complete-registration', { replace: true })
+          return
+        }
         if (user?.role === 'admin' || user?.role === 'staff') {
           const listRes = await studentApi.list().catch(() => ({ data: [] }))
           myProfile = listRes.data?.find(s => s.user_id === user?.id)
@@ -373,7 +379,8 @@ export default function StudentPortal() {
     { code: 'session_payment', icon: '💳', label: 'پرداخت جلسات' },
     { code: 'educational_leave', icon: '🏖️', label: 'درخواست مرخصی' },
     { code: 'extra_session', icon: '➕', label: 'جلسه اضافی' },
-    { code: 'student_session_cancellation', icon: '🚫', label: 'کنسل جلسه' },
+    { code: 'student_session_cancellation', icon: '🚫', label: 'کنسل جلسه درمان' },
+    { code: 'student_supervision_cancellation', icon: '🚫', label: 'کنسل جلسه سوپرویژن' },
   ]
 
   return (
@@ -546,6 +553,8 @@ export default function StudentPortal() {
               </div>
             </div>
           </div>
+
+          <PanelRoleActionQueue />
 
           {studentProfile && (
             <div className="card gam-dashboard-card" style={{ marginTop: '1.5rem' }}>

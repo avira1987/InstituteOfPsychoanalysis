@@ -47,7 +47,7 @@ export default function BlogList() {
     <>
       <div className="pub-page-header">
         <h1>مقالات و اخبار</h1>
-        <p>آخرین مقالات، اخبار و اطلاعیه‌های انیستیتو روانکاوی تهران</p>
+        <p>آخرین مقالات، اخبار و اطلاعیه‌های انستیتو روانکاوی تهران</p>
       </div>
 
       <section className="pub-section">

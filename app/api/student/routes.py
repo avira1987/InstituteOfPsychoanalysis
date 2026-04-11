@@ -1,7 +1,8 @@
 """Student-facing API endpoints."""
 
 import uuid
-from typing import Optional
+from typing import Literal, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -13,8 +14,18 @@ from app.core.engine import StateMachineEngine
 from app.core.gamification import GAMIFICATION_VERSION, merge_gamification_into_extra
 from app.api.auth import get_current_user, require_role
 from app.models.operational_models import User, Student
+from app.services.student_registration import (
+    build_complete_registration_response,
+    commit_registration_or_rollback,
+    create_student_profile_for_user,
+)
 from app.services.student_service import StudentService
 from app.services.student_tracker_summary import summarize_primary_path_for_student
+from app.api.public_routes import (
+    StudentRegistrationRequest,
+    _validate_registration_data,
+    _normalize_phone,
+)
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
 
@@ -42,6 +53,17 @@ class StudentUpdate(BaseModel):
         default=None,
         description="ادغام سطح‌بالا در student.extra_data — فقط مدیر.",
     )
+
+
+class CompleteStudentRegistrationBody(BaseModel):
+    """تکمیل ثبت‌نام پس از ورود با OTP؛ شماره موبایل از حساب کاربری خوانده می‌شود."""
+
+    full_name_fa: str = Field(..., min_length=1, description="نام و نام خانوادگی")
+    email: Optional[str] = None
+    education_level: Optional[str] = None
+    field_of_study: Optional[str] = None
+    course_type: Literal["introductory", "comprehensive"] = "introductory"
+    motivation: Optional[str] = None
 
 
 class StudentResponse(BaseModel):
@@ -157,6 +179,72 @@ async def list_students(
             tr = await summarize_primary_path_for_student(db, s)
         out.append(_student_to_response(s, tr))
     return out
+
+
+@router.post("/complete-registration")
+async def complete_student_registration(
+    body: CompleteStudentRegistrationBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    تکمیل ثبت‌نام برای کاربری که با OTP وارد شده و هنوز رکورد Student ندارد.
+    شماره موبایل از حساب کاربری (JWT) است؛ امکان جعل شمارهٔ دیگر وجود ندارد.
+    """
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="این مسیر فقط برای نقش دانشجو است.")
+
+    phone = _normalize_phone(current_user.phone or "")
+    if not phone:
+        raise HTTPException(status_code=400, detail="شماره موبایل در حساب کاربری ثبت نشده است.")
+
+    stmt_existing = select(Student).where(Student.user_id == current_user.id)
+    if (await db.execute(stmt_existing)).scalars().first():
+        raise HTTPException(status_code=409, detail="پروفایل دانشجویی شما قبلاً ثبت شده است.")
+
+    synth = StudentRegistrationRequest(
+        full_name_fa=body.full_name_fa,
+        phone=phone,
+        email=body.email,
+        education_level=body.education_level,
+        field_of_study=body.field_of_study,
+        course_type=body.course_type,
+        motivation=body.motivation,
+    )
+    _validate_registration_data(synth)
+
+    email_value = (body.email or "").strip() or None
+    if email_value:
+        stmt_email = select(User).where(User.email == email_value, User.id != current_user.id)
+        if (await db.execute(stmt_email)).scalars().first():
+            raise HTTPException(status_code=400, detail="این ایمیل قبلاً ثبت شده است.")
+
+    current_user.full_name_fa = (body.full_name_fa or "").strip()
+    current_user.email = email_value
+    await db.flush()
+
+    _, student_code = await create_student_profile_for_user(
+        db,
+        current_user,
+        course_type=body.course_type,
+        education_level=body.education_level,
+        field_of_study=body.field_of_study,
+        motivation=body.motivation,
+        registration_source="otp_then_complete",
+    )
+    try:
+        await commit_registration_or_rollback(db)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="در ذخیره اطلاعات خطایی رخ داد. لطفاً چند دقیقه دیگر تلاش کنید یا با پشتیبانی تماس بگیرید.",
+        ) from e
+
+    return build_complete_registration_response(
+        student_code=student_code,
+        username=current_user.username,
+        phone=phone,
+    )
 
 
 @router.get("/me", response_model=StudentResponse)

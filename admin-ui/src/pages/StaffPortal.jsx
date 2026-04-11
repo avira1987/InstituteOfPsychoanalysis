@@ -6,6 +6,7 @@ import { notesPayload } from '../utils/decisionPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
+import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 
 const staffReviewStates = [
   'staff_review', 'staff_verification', 'pending_staff',
@@ -293,6 +294,8 @@ export default function StaffPortal() {
               </div>
             </div>
           </div>
+
+          <PanelRoleActionQueue />
 
           <div className="card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-header">

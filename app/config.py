@@ -6,7 +6,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # Application
-    APP_NAME: str = "Tehran Institute of Psychoanalysis - انیستیتو روانکاوری تهران"
+    APP_NAME: str = "Tehran Institute of Psychoanalysis - انستیتو روانکاوری تهران"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     APP_BASE_URL: str = "https://lms.psychoanalysis.ir/anistito"  # for payment callback, SMS links, etc.

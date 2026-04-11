@@ -1,4 +1,5 @@
 import { PROCESS_LABELS_FA, STATE_LABELS_FA } from './processMetadataLabels'
+import { toFaDigits } from './persianDigits'
 
 /** نقش کاربر در رابط کاربری فارسی */
 export const ROLE_LABELS_FA = {
@@ -49,8 +50,8 @@ export function formatStudentCodeDisplay(code) {
   if (m) {
     const suffix = m[1]
     const procLabel = PROCESS_LABELS_FA[suffix]
-    if (procLabel) return `دانشجوی دمو — ${procLabel}`
-    return `دانشجوی دمو (${suffix})`
+    if (procLabel) return toFaDigits(`دانشجوی دمو — ${procLabel}`)
+    return toFaDigits(`دانشجوی دمو (${suffix})`)
   }
-  return s
+  return toFaDigits(s)
 }

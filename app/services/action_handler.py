@@ -45,6 +45,14 @@ class ActionHandler:
         """Execute a list of actions from a transition and return results."""
         results = []
         for action in actions:
+            if not isinstance(action, dict):
+                logger.warning(
+                    "Skipping invalid action (expected dict, got %s): %r",
+                    type(action).__name__,
+                    action,
+                )
+                results.append({"action": "invalid_action_shape", "success": True, "detail": "skipped"})
+                continue
             action_type = action.get("type", "unknown")
             try:
                 result = await self._dispatch(action_type, action, instance, context)

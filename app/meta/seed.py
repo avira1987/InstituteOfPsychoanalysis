@@ -19,6 +19,53 @@ logger = logging.getLogger(__name__)
 METADATA_DIR = Path(__file__).parent.parent.parent / "metadata"
 
 
+def _read_registry_sop_files(process_code: str) -> tuple[str | None, tuple[bytes, str] | None]:
+    """
+    متن و تصویر SOP از metadata/process_registry/processes/{code}/ در صورت وجود.
+    برمی‌گرداند (متن یا None، (بایت تصویر، content_type) یا None).
+    """
+    base = METADATA_DIR / "process_registry" / "processes" / process_code
+    text: str | None = None
+    txt_path = base / "SOP_document.txt"
+    if txt_path.is_file():
+        try:
+            text = txt_path.read_text(encoding="utf-8")
+        except OSError:
+            text = None
+    img: tuple[bytes, str] | None = None
+    for name, ctype in (
+        ("SOP_flowchart.png", "image/png"),
+        ("SOP_flowchart.jpg", "image/jpeg"),
+        ("SOP_flowchart.jpeg", "image/jpeg"),
+        ("SOP_flowchart.webp", "image/webp"),
+        ("SOP_flowchart.gif", "image/gif"),
+    ):
+        p = base / name
+        if p.is_file():
+            try:
+                img = (p.read_bytes(), ctype)
+            except OSError:
+                img = None
+            break
+    return text, img
+
+
+async def _attach_sop_files_from_registry(db: AsyncSession, process_id: uuid.UUID, process_code: str) -> None:
+    """پس از insert فرایند: اگر در رجیستری SOP باشد، فیلدهای source_text و flowchart در DB پر می‌شوند."""
+    text, img = _read_registry_sop_files(process_code)
+    if text is None and img is None:
+        return
+    r = await db.execute(select(ProcessDefinition).where(ProcessDefinition.id == process_id))
+    p = r.scalar_one_or_none()
+    if p is None:
+        return
+    if text is not None:
+        p.source_text = text
+    if img is not None:
+        p.flowchart_image = img[0]
+        p.flowchart_content_type = img[1]
+
+
 def get_rule_codes_from_rules_file() -> Set[str]:
     """Return set of rule codes defined in metadata/rules/all_rules.json."""
     rules_file = METADATA_DIR / "rules" / "all_rules.json"
@@ -120,7 +167,7 @@ async def load_rules(db: AsyncSession) -> Tuple[int, int]:
             db.add(rule_def)
             inserted += 1
 
-    logger.info(f"Rules synced: {inserted} inserted, {updated} updated")
+    logger.debug("Rules synced: %s inserted, %s updated", inserted, updated)
     return inserted, updated
 
 
@@ -161,7 +208,7 @@ async def sync_rules(db: AsyncSession) -> int:
         added += 1
 
     if added:
-        logger.info(f"Synced {added} new rule(s)")
+        logger.debug("Synced %s new rule(s)", added)
     return added
 
 
@@ -247,8 +294,9 @@ async def sync_process(db: AsyncSession, process_file: Path) -> None:
     proc_code = data["process"]["code"]
     await db.execute(delete(ProcessDefinition).where(ProcessDefinition.code == proc_code))
     await db.flush()
-    _insert_process_from_data(db, data)
-    logger.info(f"Synced process: {proc_code} ({data['process']['name_fa']})")
+    new_id = _insert_process_from_data(db, data)
+    await _attach_sop_files_from_registry(db, new_id, proc_code)
+    logger.debug("Synced process: %s (%s)", proc_code, data["process"]["name_fa"])
 
 
 async def load_process(db: AsyncSession, process_file: Path) -> None:
@@ -284,7 +332,7 @@ async def seed_all():
                     await load_process(db, process_file)
 
             await db.commit()
-            logger.info("Seed completed successfully!")
+            logger.debug("Seed completed successfully!")
 
         except Exception as e:
             await db.rollback()

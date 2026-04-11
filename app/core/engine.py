@@ -47,6 +47,26 @@ class UnauthorizedError(EngineError):
     pass
 
 
+def _normalize_json_list(raw) -> list:
+    """JSONB گاهی به‌صورت رشتهٔ 'null' یا JSON رشته‌ای ذخیره می‌شود؛ همیشه لیست برگردان."""
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s or s.lower() in ("null", "none"):
+            return []
+        try:
+            parsed = json.loads(s)
+        except (json.JSONDecodeError, TypeError):
+            return []
+        if parsed is None:
+            return []
+        return parsed if isinstance(parsed, list) else []
+    return []
+
+
 class StateMachineEngine:
     """
     Core state machine engine.
@@ -85,6 +105,17 @@ class StateMachineEngine:
 
     async def get_rules_map(self) -> dict[str, dict]:
         """Load all active rules as a code->definition map."""
+
+        def _coerce_jsonb(val):
+            # گاهی JSONB به‌صورت رشتهٔ JSON دوباره‌کدشده از DB برمی‌گردد
+            if isinstance(val, str):
+                try:
+                    parsed = json.loads(val)
+                    return parsed
+                except (json.JSONDecodeError, TypeError):
+                    return val
+            return val
+
         stmt = select(RuleDefinition).where(RuleDefinition.is_active == True)
         result = await self.db.execute(stmt)
         rules = result.scalars().all()
@@ -93,8 +124,8 @@ class StateMachineEngine:
                 "code": r.code,
                 "name_fa": r.name_fa,
                 "rule_type": r.rule_type,
-                "expression": r.expression,
-                "parameters": r.parameters,
+                "expression": _coerce_jsonb(r.expression),
+                "parameters": _coerce_jsonb(r.parameters) if r.parameters is not None else None,
                 "error_message_fa": r.error_message_fa,
             }
             for r in rules
@@ -203,7 +234,7 @@ class StateMachineEngine:
         candidates.sort(key=lambda t: t.priority or 0, reverse=True)
 
         # یک trigger چند شاخه: اگر UI مقصد را فرستاد، فقط همان ترنزیشن را بررسی کن
-        p = payload or {}
+        p = payload if isinstance(payload, dict) else {}
         explicit_to = p.get("to_state") or p.get("target_to_state")
         if explicit_to:
             narrowed = [t for t in candidates if t.to_state_code == explicit_to]
@@ -259,13 +290,13 @@ class StateMachineEngine:
             instance.completed_at = datetime.now(timezone.utc)
 
         # Update context data if payload provided
-        if payload:
-            ctx = instance.context_data or {}
+        if payload and isinstance(payload, dict):
+            ctx = dict(self._as_mapping(instance.context_data))
             ctx.update(payload)
             instance.context_data = ctx
 
         # 6. Post-transition actions
-        actions = transition.actions or []
+        actions = _normalize_json_list(transition.actions)
         action_results = []
         if actions:
             from app.services.action_handler import ActionHandler
@@ -348,11 +379,13 @@ class StateMachineEngine:
         student = result.scalars().first()
         if not student:
             return
-        extra = dict(student.extra_data or {})
-        hp = dict(extra.get("hidden_progress") or {})
-        instances_map = dict(hp.get("instances") or {})
+        extra = dict(self._as_mapping(student.extra_data))
+        hp = dict(self._as_mapping(extra.get("hidden_progress")))
+        raw_map = hp.get("instances")
+        instances_map = dict(raw_map) if isinstance(raw_map, dict) else {}
         iid = str(instance.id)
-        cur = dict(instances_map.get(iid) or {})
+        cur_raw = instances_map.get(iid)
+        cur = dict(cur_raw) if isinstance(cur_raw, dict) else {}
         cur["process_code"] = instance.process_code
         cur["transition_count"] = int(cur.get("transition_count", 0)) + 1
         cur["last_state"] = to_state
@@ -360,7 +393,9 @@ class StateMachineEngine:
         cur["updated_at"] = datetime.now(timezone.utc).isoformat()
         instances_map[iid] = cur
         hp["instances"] = instances_map
-        hp["total_xp"] = sum(int(v.get("xp", 0)) for v in instances_map.values())
+        hp["total_xp"] = sum(
+            int(v.get("xp", 0)) for v in instances_map.values() if isinstance(v, dict)
+        )
         extra["hidden_progress"] = hp
         student.extra_data = merge_gamification_into_extra(extra)
         flag_modified(student, "extra_data")
@@ -464,7 +499,7 @@ class StateMachineEngine:
                 **self._as_mapping(instance.context_data),
             },
             "student": {},
-            "payload": payload or {},
+            "payload": payload if isinstance(payload, dict) else {},
         }
 
         if student:
@@ -511,7 +546,7 @@ class StateMachineEngine:
 
         # دادهٔ همین ترنزیشن (مثلاً interview_result) در payload است؛ قوانین با مسیر instance.* ارزیابی می‌شوند
         # و context_data تا بعد از موفقیت ترنزیشن ذخیره نمی‌شود — بدون این ادغام، شرط‌های نتیجهٔ مصاحبه همیشه fail می‌شوند.
-        if payload:
+        if payload and isinstance(payload, dict):
             context["instance"].update(payload)
 
         # introductory_course_registration: چهار شاخه با یک trigger — اگر UI فقط to_state بفرستد
@@ -526,7 +561,7 @@ class StateMachineEngine:
                 "rejected": "rejected",
             }
             ts = None
-            if payload:
+            if isinstance(payload, dict):
                 ts = payload.get("to_state") or payload.get("target_to_state")
             if not ts:
                 ts = context["instance"].get("to_state")

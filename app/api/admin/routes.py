@@ -907,6 +907,7 @@ class SeedDemoMatrixRequest(BaseModel):
 
     matrix: bool = True
     scenarios: bool = True
+    profiles: bool = True
     force: bool = False
 
 
@@ -917,7 +918,7 @@ async def seed_demo_matrix(
     current_user: User = Depends(require_role("admin")),
 ):
     """
-    ایجاد کاربران/دانشجویان دمو (AUTO-DEMO-*, DEMO-SCEN-*) در **همین** دیتابیسی که API به آن وصل است.
+    ایجاد کاربران/دانشجویان دمو (AUTO-DEMO-*, DEMO-SCEN-*, AUTO-PROFILE-*) در **همین** دیتابیسی که API به آن وصل است.
     اگر فقط اسکریپت را روی میزبان بدون DATABASE_URL مشابه Docker اجرا کرده‌اید، داده در SQLite محلی مانده و در پنل دیده نمی‌شود — از این endpoint یا docker exec استفاده کنید.
     """
     os.environ.setdefault("SMS_PROVIDER", "log")
@@ -928,24 +929,30 @@ async def seed_demo_matrix(
         delete_demo_seed_users,
         seed_branch_scenarios,
         seed_full_matrix,
+        seed_profile_state_students,
     )
 
     out: dict = {"admin_login": {"username": "admin", "password": "admin123", "note": "password tab + math challenge"}}
 
     if body.force:
-        if body.matrix and body.scenarios:
-            prefixes = ("AUTO-DEMO-", "DEMO-SCEN-")
-        elif body.matrix:
-            prefixes = ("AUTO-DEMO-",)
-        else:
-            prefixes = ("DEMO-SCEN-",)
-        out["deleted_demo_rows"] = await delete_demo_seed_users(db, prefixes=prefixes)
+        prefixes: list[str] = []
+        if body.matrix:
+            prefixes.append("AUTO-DEMO-")
+        if body.scenarios:
+            prefixes.append("DEMO-SCEN-")
+        if body.profiles:
+            prefixes.append("AUTO-PROFILE-")
+        if not prefixes:
+            prefixes = ["AUTO-DEMO-", "DEMO-SCEN-", "AUTO-PROFILE-"]
+        out["deleted_demo_rows"] = await delete_demo_seed_users(db, prefixes=tuple(prefixes))
 
     # سناریوها سبک‌ترند — اول تا در پنل سریع‌تر چیزی ببینید؛ ماتریس کامل بعداً (می‌تواند دقیقه‌ها طول بکشد)
     if body.scenarios:
         out["scenarios"] = await seed_branch_scenarios(db, None, None, demo_pass)
     if body.matrix:
         out["matrix"] = await seed_full_matrix(db, None, None, demo_pass)
+    if body.profiles:
+        out["profiles"] = await seed_profile_state_students(db, demo_pass)
 
     return out
 

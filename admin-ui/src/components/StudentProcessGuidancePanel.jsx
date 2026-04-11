@@ -22,9 +22,9 @@ export default function StudentProcessGuidancePanel({ guidance, variant = 'quest
         </div>
       )}
       {taskFa && (
-        <div className="spg-block spg-block--task">
-          <span className="spg-label">تکلیف / اقدام شما در پنل</span>
-          <p className="spg-text" data-testid="guidance-task-text">{taskFa}</p>
+        <div className="spg-block spg-block--task" data-testid="guidance-task-block">
+          <span className="spg-label">وظیفهٔ شما در این مرحله</span>
+          <p className="spg-text spg-text--task-primary" data-testid="guidance-task-text">{taskFa}</p>
         </div>
       )}
     </div>

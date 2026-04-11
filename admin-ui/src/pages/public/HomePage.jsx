@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { publicApi } from '../../services/api'
 
 export default function HomePage() {
-  const [stats, setStats] = useState({ students: 0, processes: 0, staff: 0, years_active: 5 })
+  const [stats, setStats] = useState({ students: 0, processes: 0, staff: 0, processes_in_progress: 0 })
 
   useEffect(() => {
     publicApi.stats().then(r => setStats(r.data)).catch(() => {})
@@ -19,10 +19,10 @@ export default function HomePage() {
               سامانه اتوماسیون آموزشی
             </div>
             <h1>
-              انیستیتو <span>روانکاوی</span> تهران
+              انستیتو <span>روانکاوی</span> تهران
             </h1>
             <p className="pub-hero-desc">
-              سامانه جامع مدیریت آموزشی انیستیتو روانکاوی تهران. ثبت‌نام، پیگیری فرآیندها،
+              سامانه جامع مدیریت آموزشی انستیتو روانکاوی تهران. ثبت‌نام، پیگیری فرآیندها،
               مدیریت جلسات درمانی و سوپرویژن به صورت آنلاین و یکپارچه. ورود با کد یکبار مصرف پیامکی
               و پنل نقش‌محور برای دانشجو، کادر و کمیته‌ها.
             </p>
@@ -33,8 +33,8 @@ export default function HomePage() {
               <Link to="/guide" className="pub-hero-btn outline">
                 راهنمای سامانه
               </Link>
-              <Link to="/processes-info" className="pub-hero-btn outline">
-                فرآیندها
+              <Link to="/student-lifecycle" className="pub-hero-btn outline">
+                چرخه عمر و فرایندها
               </Link>
             </div>
           </div>
@@ -55,8 +55,8 @@ export default function HomePage() {
                   <span className="pub-hero-stat-label">کارشناس</span>
                 </div>
                 <div className="pub-hero-stat">
-                  <span className="pub-hero-stat-value">{stats.years_active || '۵'}</span>
-                  <span className="pub-hero-stat-label">سال فعالیت</span>
+                  <span className="pub-hero-stat-value">{stats.processes_in_progress ?? 0}</span>
+                  <span className="pub-hero-stat-label">فرایند در جریان</span>
                 </div>
               </div>
             </div>
@@ -69,7 +69,7 @@ export default function HomePage() {
         <div className="pub-section-header">
           <div className="pub-section-badge">امکانات سامانه</div>
           <h2>مدیریت هوشمند فرآیندهای آموزشی</h2>
-          <p>تمامی فرآیندهای آموزشی و اداری انیستیتو در یک سامانه یکپارچه</p>
+          <p>تمامی فرآیندهای آموزشی و اداری انستیتو در یک سامانه یکپارچه</p>
         </div>
 
         <div className="pub-features-grid">
@@ -144,7 +144,7 @@ export default function HomePage() {
             <div className="pub-step-num">۲</div>
             <div className="pub-step-content">
               <h3>بررسی مدارک</h3>
-              <p>کارشناسان انیستیتو مدارک و اطلاعات شما را بررسی و نتیجه را اطلاع‌رسانی می‌کنند.</p>
+              <p>کارشناسان انستیتو مدارک و اطلاعات شما را بررسی و نتیجه را اطلاع‌رسانی می‌کنند.</p>
             </div>
           </div>
 

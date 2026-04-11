@@ -6,7 +6,7 @@ export const CORE_REGISTRATION_CODES = ['introductory_course_registration', 'com
 const BLOCKED_WHILE_REGISTRATION_ACTIVE = new Set([
   'educational_leave', 'start_therapy', 'extra_session', 'session_payment',
   'therapy_changes', 'therapy_session_increase', 'therapy_session_reduction',
-  'therapy_interruption', 'student_session_cancellation', 'supervision_block_transition',
+  'therapy_interruption', 'student_session_cancellation', 'student_supervision_cancellation', 'supervision_block_transition',
   'extra_supervision_session', 'supervision_session_increase', 'supervision_session_reduction',
   'fee_determination', 'upgrade_to_ta', 'internship_readiness_consultation',
 ])

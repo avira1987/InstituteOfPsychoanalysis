@@ -1,4 +1,4 @@
-# انیستیتو روانکاوری تهران | Tehran Institute of Psychoanalysis
+# انستیتو روانکاوری تهران | Tehran Institute of Psychoanalysis
 
 Meta-Driven Educational Automation System for Tehran Institute of Psychoanalysis.
 

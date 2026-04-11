@@ -39,7 +39,7 @@ async def _ensure_admin_user(db):
             admin.hashed_password = get_password_hash("admin123")
             admin.is_active = True
             await db.commit()
-            logger.info("Admin password reset to admin123 (previous hash was invalid)")
+            logger.debug("Admin password reset to admin123 (previous hash was invalid)")
     else:
         admin = User(
             id=uuid.uuid4(),
@@ -51,7 +51,7 @@ async def _ensure_admin_user(db):
         )
         db.add(admin)
         await db.commit()
-        logger.info("Default admin created: username=admin, password=admin123")
+        logger.debug("Default admin created: username=admin, password=admin123")
 
 
 async def _seed_if_empty():
@@ -69,11 +69,11 @@ async def _seed_if_empty():
         result = await db.execute(select(func.count(ProcessDefinition.id)))
         count = result.scalar()
         if count > 0:
-            logger.info(f"Database already has {count} processes, skipping metadata seed.")
+            logger.debug("Database already has %s processes, skipping metadata seed.", count)
             return
 
         # Seed metadata
-        logger.info("Empty database detected. Seeding metadata...")
+        logger.debug("Empty database detected. Seeding metadata...")
         from app.meta.seed import load_rules, load_process, METADATA_DIR
         await load_rules(db)
 
@@ -83,7 +83,7 @@ async def _seed_if_empty():
                 await load_process(db, pf)
 
         await db.commit()
-        logger.info("Metadata seed completed.")
+        logger.debug("Metadata seed completed.")
 
 
 async def _maybe_auto_seed_demo_after_empty_db():
@@ -97,7 +97,7 @@ async def _maybe_auto_seed_demo_after_empty_db():
     from sqlalchemy import func, select
 
     from app.models.operational_models import Student
-    from app.demo_process_walker import seed_branch_scenarios, seed_full_matrix
+    from app.demo_process_walker import seed_branch_scenarios, seed_full_matrix, seed_profile_state_students
 
     os.environ.setdefault("SMS_PROVIDER", "log")
     os.environ.setdefault("OTP_RESTRICT_TO_STUDENT_PHONES", "false")
@@ -118,7 +118,8 @@ async def _maybe_auto_seed_demo_after_empty_db():
     try:
         async with async_session_factory() as db:
             await seed_branch_scenarios(db, None, None, demo_pass)
-        logger.info("Demo scenarios (DEMO-SCEN-*) seeded.")
+            await seed_profile_state_students(db, demo_pass)
+        logger.info("Demo scenarios (DEMO-SCEN-*) and profile matrix (AUTO-PROFILE-*) seeded.")
     except Exception:
         logger.exception("Demo scenario seed failed")
 
@@ -283,6 +284,7 @@ from app.api.finance_routes import router as finance_router
 from app.api.assignment_routes import router as assignment_router
 from app.api.ticket_routes import router as ticket_router
 from app.api.reports_routes import router as reports_router
+from app.api.panel_routes import router as panel_router
 
 app.include_router(auth_router)
 app.include_router(process_router)
@@ -296,6 +298,7 @@ app.include_router(finance_router)
 app.include_router(assignment_router)
 app.include_router(ticket_router)
 app.include_router(reports_router)
+app.include_router(panel_router)
 
 # ─── Serve uploaded files (avatars) ─────────────────────────────
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / settings.UPLOAD_DIR

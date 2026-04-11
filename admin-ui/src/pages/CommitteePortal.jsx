@@ -5,6 +5,7 @@ import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/pro
 import { notesPayload } from '../utils/decisionPayload'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
+import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 
 const roleConfig = {
   progress_committee: {
@@ -286,6 +287,8 @@ export default function CommitteePortal() {
               </div>
             </div>
           </div>
+
+          <PanelRoleActionQueue />
 
           <div className="dashboard-grid">
             <div className="card">

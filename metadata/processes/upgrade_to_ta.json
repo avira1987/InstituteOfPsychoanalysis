@@ -3,7 +3,7 @@
     "code": "upgrade_to_ta",
     "name_fa": "ارتقا به کمک‌مدرس",
     "name_en": "Upgrade to Teaching Assistant",
-    "number": 46,
+    "number": 47,
     "description": "شرط: معدل B، ۵۰ ساعت درمان آموزشی، شروع انترنی. کلیک دانشجو. بررسی خودکار ۴ شرط. کمیته نظارت تایید/رد. کمیته دروس: تنظیم وقت مصاحبه، مصاحبه، تعیین رسته. تعهدنامه با OTP. اضافه به لیست کمک‌مدرسین.",
     "initial_state": "student_click",
     "initial_role": "student"

@@ -132,6 +132,14 @@ def make_zip() -> bytes:
 
 
 def main() -> int:
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
     pw = os.environ.get("ANISTITO_SSH_PASSWORD")
     if not pw:
         print("خطا: ANISTITO_SSH_PASSWORD را تنظیم کنید.", file=sys.stderr)

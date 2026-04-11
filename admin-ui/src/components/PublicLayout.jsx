@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { getSiteLogoUrl } from '../utils/siteLogo'
 
 const NAV_ITEMS = [
   { path: '/', label: 'خانه' },
   { path: '/blog', label: 'مقالات' },
   { path: '/guide', label: 'راهنما' },
-  { path: '/processes-info', label: 'فرآیندها' },
+  { path: '/student-lifecycle', label: 'چرخه عمر و نقش‌ها' },
 ]
 
 const roleLabels = {
@@ -50,9 +51,11 @@ export default function PublicLayout() {
       <nav className={`pub-navbar ${scrolled ? 'scrolled' : ''}`}>
         <div className="pub-navbar-inner">
           <Link to="/" className="pub-navbar-brand">
-            <div className="pub-navbar-logo">IR</div>
+            <div className="pub-navbar-logo">
+              <img src={getSiteLogoUrl()} alt="" className="site-logo-img" width={42} height={48} />
+            </div>
             <div>
-              <div className="pub-navbar-title">انیستیتو روانکاوی تهران</div>
+              <div className="pub-navbar-title">انستیتو روانکاوی تهران</div>
               <div className="pub-navbar-subtitle">Tehran Institute of Psychoanalysis</div>
             </div>
           </Link>
@@ -99,9 +102,12 @@ export default function PublicLayout() {
         <div className="pub-footer-inner">
           <div className="pub-footer-grid">
             <div className="pub-footer-brand">
-              <h3>انیستیتو روانکاوی تهران</h3>
+              <div className="pub-footer-logo-wrap">
+                <img src={getSiteLogoUrl()} alt="" className="site-logo-img pub-footer-logo" width={48} height={56} loading="lazy" decoding="async" />
+              </div>
+              <h3>انستیتو روانکاوی تهران</h3>
               <p>
-                انیستیتو روانکاوی تهران (Tehran Institute of Psychoanalysis) با هدف آموزش و
+                انستیتو روانکاوی تهران (Tehran Institute of Psychoanalysis) با هدف آموزش و
                 پژوهش در حوزه روانکاوی و روان‌درمانی تحلیلی فعالیت می‌کند.
               </p>
             </div>
@@ -110,13 +116,13 @@ export default function PublicLayout() {
               <Link to="/">صفحه اصلی</Link>
               <Link to="/blog">مقالات و اخبار</Link>
               <Link to="/guide">راهنمای سامانه</Link>
-              <Link to="/processes-info">فرآیندها و مراحل</Link>
+              <Link to="/student-lifecycle">چرخه عمر و فرایندها</Link>
             </div>
             <div className="pub-footer-col">
               <h4>خدمات</h4>
               <Link to="/register">ثبت‌نام دانشجو</Link>
               <Link to="/login">ورود به سامانه</Link>
-              <Link to="/processes-info">شرایط پذیرش</Link>
+              <Link to="/register">شرایط پذیرش</Link>
             </div>
             <div className="pub-footer-col">
               <h4>تماس با ما</h4>
@@ -126,7 +132,7 @@ export default function PublicLayout() {
             </div>
           </div>
           <div className="pub-footer-bottom">
-            تمامی حقوق محفوظ است &copy; {new Date().getFullYear()} انیستیتو روانکاوی تهران
+            تمامی حقوق محفوظ است &copy; {new Date().getFullYear()} انستیتو روانکاوی تهران
           </div>
         </div>
       </footer>

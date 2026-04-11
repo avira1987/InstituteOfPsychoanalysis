@@ -1,5 +1,6 @@
 """Transition Manager - Validates and applies state transitions."""
 
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -114,16 +115,45 @@ class TransitionManager:
         context: dict,
     ) -> list[RuleResult]:
         """Evaluate all condition rules for a transition."""
-        condition_codes = transition.condition_rules or []
+        raw = transition.condition_rules
+        if raw is None:
+            return []
+        if isinstance(raw, str):
+            s = raw.strip().lower()
+            if s in ("", "null", "none", "[]"):
+                return []
+            if s.startswith("["):
+                try:
+                    parsed = json.loads(raw)
+                    condition_codes = list(parsed) if isinstance(parsed, list) else [raw]
+                except (json.JSONDecodeError, TypeError):
+                    condition_codes = [raw]
+            else:
+                condition_codes = [raw]
+        else:
+            try:
+                condition_codes = list(raw)
+            except TypeError:
+                return []
         if not condition_codes:
             return []
 
-        rules_to_evaluate = []
+        # هر کد شرط باید در rules_map باشد؛ در غیر این صورت قبلاً [] برمی‌گشت و all_passed([])==True
+        # و اولین ترنزیشنِ eligibility (مثلاً therapy_check_failed) بدون ارزیابی واقعی انتخاب می‌شد.
+        results: list[RuleResult] = []
         for code in condition_codes:
-            if code in rules_map:
-                rules_to_evaluate.append(rules_map[code])
-
-        return self.rule_evaluator.evaluate_rules(rules_to_evaluate, context)
+            rule_def = rules_map.get(code)
+            if not rule_def:
+                results.append(
+                    RuleResult(
+                        rule_code=code,
+                        passed=False,
+                        error_message=f"Rule '{code}' not found in registry",
+                    )
+                )
+            else:
+                results.append(self.rule_evaluator.evaluate_rule(rule_def, context))
+        return results
 
     async def apply_transition(
         self,

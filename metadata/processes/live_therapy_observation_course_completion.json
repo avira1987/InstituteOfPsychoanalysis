@@ -1,7 +1,7 @@
 {
   "process": {
     "code": "live_therapy_observation_course_completion",
-    "name_fa": "خاتمه درس مشاهده زنده درمان",
+    "name_fa": "خاتمه درس مشاهده زنده درمان – بخش آپلود گزارش پایانی",
     "name_en": "Live Therapy Observation Course Completion",
     "number": 65,
     "description": "خاتمه درس مشاهده زنده درمان: ثبت نمرات و ارزیابی نهایی. قفل نمره پس از مهلت.",

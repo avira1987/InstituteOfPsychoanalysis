@@ -1,0 +1,39 @@
+{
+  "process": {
+    "code": "upgrade_to_educational_therapist",
+    "name_fa": "ارتقا به درمانگر آموزشی",
+    "name_en": "Promotion to Educational Therapist",
+    "number": 71,
+    "description": "مسیر ارتقا به درمانگر آموزشی با شروط سختگیرانه؛ کمیته نظارت و کمیته درمان آموزشی و سوپرویژن؛ مصاحبه؛ هم‌ترازی درمان شخصی و سوپرویژن فردی؛ ۵۰ ساعت؛ شیت وقت‌های آزاد؛ پایان با ثبت دو زمان خالی در شیت درمانگران آموزشی.",
+    "initial_state": "student_start",
+    "initial_role": "student",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "student_start", "name_fa": "شروع درخواست توسط دانشجو", "type": "initial", "assigned_role": "student"},
+    {"code": "eligibility_failed", "name_fa": "عدم احراز شروط ارتقا", "type": "terminal", "assigned_role": "system"},
+    {"code": "monitoring_review", "name_fa": "بررسی صلاحیت — کمیته نظارت", "type": "intermediate", "assigned_role": "supervision_committee"},
+    {"code": "monitoring_rejected", "name_fa": "رد صلاحیت — کمیته نظارت", "type": "terminal", "assigned_role": "system"},
+    {"code": "edu_supervision_interview", "name_fa": "مصاحبه — کمیته درمان آموزشی و سوپرویژن", "type": "intermediate", "assigned_role": "education_committee"},
+    {"code": "interview_rejected", "name_fa": "رد صلاحیت پس از مصاحبه", "type": "terminal", "assigned_role": "system"},
+    {"code": "therapy_supervision_hours", "name_fa": "تکمیل ۵۰ ساعت درمان شخصی و سوپرویژن و انتخاب اسلات‌ها", "type": "intermediate", "assigned_role": "student"},
+    {"code": "promotion_completed", "name_fa": "ثبت زمان‌های خالی درمانگر آموزشی — پایان", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "student_start", "to": "eligibility_failed", "trigger": "conditions_failed", "description_fa": "عدم تحقق شروط ارتقا — پیغام رد"},
+    {"from": "student_start", "to": "monitoring_review", "trigger": "conditions_met", "description_fa": "شروط اولیه — ارسال به کمیته نظارت"},
+    {"from": "monitoring_review", "to": "monitoring_rejected", "trigger": "rejected", "required_role": "supervision_committee", "description_fa": "رد صلاحیت"},
+    {"from": "monitoring_review", "to": "edu_supervision_interview", "trigger": "approved", "required_role": "supervision_committee", "description_fa": "تایید — ارجاع به کمیته درمان آموزشی و سوپرویژن"},
+    {"from": "edu_supervision_interview", "to": "interview_rejected", "trigger": "interview_rejected", "required_role": "education_committee", "description_fa": "رد پس از مصاحبه"},
+    {"from": "edu_supervision_interview", "to": "therapy_supervision_hours", "trigger": "interview_approved", "required_role": "education_committee", "description_fa": "تایید مصاحبه — مسیر درمان و سوپرویژن"},
+    {"from": "therapy_supervision_hours", "to": "promotion_completed", "trigger": "slots_registered", "required_role": "student", "description_fa": "تکمیل ساعات و ثبت دو زمان خالی — پایان فرایند"}
+  ],
+  "forms": [
+    {
+      "code": "educational_therapist_upgrade_start",
+      "name_fa": "درخواست ارتقا به درمانگر آموزشی",
+      "used_in_state": "student_start",
+      "fields": [{"name": "acknowledge", "label_fa": "تایید مطالعه شرایط", "type": "checkbox", "required": true}]
+    }
+  ]
+}

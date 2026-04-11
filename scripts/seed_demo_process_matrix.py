@@ -1,6 +1,7 @@
 """
 ایجاد دادهٔ دمو برای پنل ادمین: یک دانشجوی تستی به ازای هر فرایند (AUTO-DEMO-*)
-به‌علاوه سناریوهای شاخه‌ای ثبت‌نام آشنایی (DEMO-SCEN-*).
+به‌علاوه سناریوهای شاخه‌ای ثبت‌نام آشنایی (DEMO-SCEN-*)
+و ماتریس پروفایل ثابت برای تست UI (AUTO-PROFILE-* — بدون فرایند فعال).
 
 اجرا (پس از migrate و تنظیم .env):
 
@@ -52,36 +53,46 @@ async def _main() -> int:
         help="Run scenarios then full matrix (سناریوها اول برای دیدن سریع‌تر در پنل)",
     )
     parser.add_argument(
+        "--profiles",
+        action="store_true",
+        help="Fixed profile-state students (AUTO-PROFILE-*) for UI/access testing — no processes",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
-        help="Delete existing AUTO-DEMO-* and DEMO-SCEN-* students then re-seed",
+        help="Delete existing AUTO-DEMO-*, DEMO-SCEN-*, AUTO-PROFILE-* (per selected modes) then re-seed",
     )
     args = parser.parse_args()
 
-    if not (args.matrix or args.scenarios or args.all):
+    if not (args.matrix or args.scenarios or args.profiles or args.all):
         args.all = True
 
     do_matrix = args.matrix or args.all
     do_scenarios = args.scenarios or args.all
+    do_profiles = args.profiles or args.all
 
     from app.database import async_session_factory
     from app.demo_process_walker import (
         delete_demo_seed_users,
         seed_branch_scenarios,
         seed_full_matrix,
+        seed_profile_state_students,
     )
 
     demo_pass = os.environ.get("DEMO_MATRIX_STUDENT_PASSWORD", "demo_student_123")
 
     async with async_session_factory() as db:
         if args.force:
-            if do_matrix and do_scenarios:
-                prefixes = ("AUTO-DEMO-", "DEMO-SCEN-")
-            elif do_matrix:
-                prefixes = ("AUTO-DEMO-",)
-            else:
-                prefixes = ("DEMO-SCEN-",)
-            n = await delete_demo_seed_users(db, prefixes=prefixes)
+            prefixes: list[str] = []
+            if do_matrix:
+                prefixes.append("AUTO-DEMO-")
+            if do_scenarios:
+                prefixes.append("DEMO-SCEN-")
+            if do_profiles:
+                prefixes.append("AUTO-PROFILE-")
+            if not prefixes:
+                prefixes = ["AUTO-DEMO-", "DEMO-SCEN-", "AUTO-PROFILE-"]
+            n = await delete_demo_seed_users(db, prefixes=tuple(prefixes))
             logger.info("Removed %s prior demo seed rows (prefixes=%s)", n, prefixes)
 
         if do_scenarios:
@@ -106,6 +117,10 @@ async def _main() -> int:
                 report.get("ok_count"),
                 report.get("stuck_count"),
             )
+
+        if do_profiles:
+            prof = await seed_profile_state_students(db, demo_pass)
+            print(json.dumps(prof, ensure_ascii=False, indent=2))
 
     print(
         "\n--- Admin UI login (use PASSWORD tab, not SMS) ---",

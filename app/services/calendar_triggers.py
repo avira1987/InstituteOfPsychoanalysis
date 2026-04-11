@@ -30,6 +30,11 @@ logger = logging.getLogger(__name__)
 SYSTEM_ACTOR_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
 
+def _context_as_dict(instance: ProcessInstance) -> dict[str, Any]:
+    """JSONB / ردیف قدیمی: ``context_data`` گاهی رشتهٔ JSON است (مشابه ``StateMachineEngine._as_mapping``)."""
+    return StateMachineEngine._as_mapping(instance.context_data)
+
+
 def _parse_iso_datetime(value: Any) -> Optional[datetime]:
     if value is None:
         return None
@@ -119,7 +124,7 @@ async def _run_leave_reminders(db: AsyncSession, now: datetime) -> list[dict]:
     )
     result = await db.execute(stmt)
     for instance in result.scalars().all():
-        ctx = dict(instance.context_data or {})
+        ctx = _context_as_dict(instance)
         rra = _parse_iso_datetime(ctx.get("return_reminder_at"))
         if not rra or now < rra:
             continue
@@ -148,7 +153,7 @@ async def _run_leave_return_deadline(db: AsyncSession, now: datetime) -> list[di
     )
     result = await db.execute(stmt)
     for instance in result.scalars().all():
-        ctx = dict(instance.context_data or {})
+        ctx = _context_as_dict(instance)
         rda = _parse_iso_datetime(ctx.get("return_deadline_at"))
         if not rda or now < rda:
             continue
@@ -178,7 +183,7 @@ async def _run_supervision_50h_session_time(db: AsyncSession, today: date) -> li
     )
     result = await db.execute(stmt)
     for instance in result.scalars().all():
-        ctx = instance.context_data or {}
+        ctx = _context_as_dict(instance)
         sd = _parse_date(ctx.get("session_date") or ctx.get("supervision_session_date"))
         if not sd or sd > today:
             continue
@@ -210,7 +215,7 @@ async def _run_attendance_session_time(db: AsyncSession, today: date) -> list[di
     )
     result = await db.execute(stmt)
     for instance in result.scalars().all():
-        ctx = instance.context_data or {}
+        ctx = _context_as_dict(instance)
         sd = _parse_date(ctx.get("session_date"))
         if not sd or sd > today:
             continue
@@ -245,7 +250,7 @@ async def _run_intro_second_semester_installment_due(db: AsyncSession, today: da
     )
     result = await db.execute(stmt)
     for instance in result.scalars().all():
-        ctx = instance.context_data or {}
+        ctx = _context_as_dict(instance)
         try:
             pend = int(ctx.get("pending_installments_remaining") or 0)
         except (TypeError, ValueError):
@@ -289,7 +294,7 @@ async def _run_attendance_therapist_not_recorded_deadline(db: AsyncSession, now:
     )
     result = await db.execute(stmt)
     for instance in result.scalars().all():
-        ctx = instance.context_data or {}
+        ctx = _context_as_dict(instance)
         sd = _parse_date(ctx.get("session_date"))
         if not sd:
             continue

@@ -70,10 +70,12 @@ services:
       sh -c "python /app/scripts/wait_for_db.py &&
              python /app/scripts/repair_alembic_if_empty_schema.py &&
              alembic upgrade head &&
-             uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload"
+             uvicorn app.main:app --host 0.0.0.0 --port 3000 --log-level warning --reload"
 
   # ─── بیلد فرانت در داکر: خروجی در ./admin-ui/dist (همان پوشه‌ای که api mount می‌کند)
-  # اجرا: docker compose run --rm admin-ui-build
+  # اجرا: docker compose --profile admin-ui-build run --rm admin-ui-build
+  # یا: powershell ./scripts/build-admin-ui-docker.ps1  |  bash scripts/build-admin-ui-docker.sh
+  # ایمیج API هم با Dockerfile چندمرحله‌ای admin-ui را داخل بیلد می‌سازد (نیازی به npm روی میزبان نیست).
   # پروفایل جدا تا `docker compose up` به‌طور پیش‌فرض node را pull نکند
   admin-ui-build:
     profiles:

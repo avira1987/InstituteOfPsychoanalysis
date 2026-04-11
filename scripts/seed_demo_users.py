@@ -8,7 +8,7 @@ Users:
 - student1, student2, student3 - دانشجو
 - therapist1 - درمانگر
 - supervisor1 - سوپروایزر
-- staff1 - کارمند دفتر
+- staff1 … staff10 - کارمندان دفتر (نقش staff)
 - site_manager1 - مسئول سایت
 - progress_committee1 - کمیته پیشرفت
 """
@@ -30,6 +30,11 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 try:
+    from app.website_staff_seed import STAFF_EMPLOYEES
+except ImportError:
+    STAFF_EMPLOYEES = []
+
+try:
     from app.config import get_settings
     DATABASE_URL = get_settings().DATABASE_URL
 except Exception:
@@ -46,7 +51,10 @@ def get_password_hash(password: str) -> str:
 
 DEMO_PASSWORD = "demo123"
 
-# (username, full_name_fa, role, email_suffix)
+if not STAFF_EMPLOYEES:
+    raise RuntimeError("STAFF_EMPLOYEES missing: run from repo root so app.website_staff_seed loads")
+
+# (username, full_name_fa, role, email)
 DEMO_USERS = [
     ("admin", "مدیر سیستم", "admin", "admin@anistito.ir"),
     ("student1", "علی دانشجو", "student", "student1@anistito.ir"),
@@ -54,9 +62,9 @@ DEMO_USERS = [
     ("student3", "رضا دانشجو", "student", "student3@anistito.ir"),
     ("therapist1", "دکتر احمد درمانگر", "therapist", "therapist1@anistito.ir"),
     ("supervisor1", "دکتر زهرا سوپروایزر", "supervisor", "supervisor1@anistito.ir"),
-    ("staff1", "محمد کارمند", "staff", "staff1@anistito.ir"),
     ("site_manager1", "فاطمه مسئول سایت", "site_manager", "site_manager1@anistito.ir"),
     ("progress_committee1", "حسین کمیته پیشرفت", "progress_committee", "committee1@anistito.ir"),
+    *[(u, name, "staff", email) for u, name, email in STAFF_EMPLOYEES],
 ]
 
 # (username, student_code, course_type, weekly_sessions)
@@ -158,7 +166,8 @@ async def main():
     print("  student3 / demo123        - Student (STU-003)")
     print("  therapist1 / demo123      - Therapist")
     print("  supervisor1 / demo123     - Supervisor")
-    print("  staff1 / demo123          - Staff")
+    for u, name, _ in STAFF_EMPLOYEES:
+        print(f"  {u} / demo123          - Staff ({name})")
     print("  site_manager1 / demo123   - Site Manager")
     print("  progress_committee1 / demo123 - Progress Committee")
     print("=" * 50)

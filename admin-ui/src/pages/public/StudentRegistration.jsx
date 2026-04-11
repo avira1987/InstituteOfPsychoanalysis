@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { publicApi } from '../../services/api'
+import React, { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { publicApi, studentApi } from '../../services/api'
+import { useAuth } from '../../contexts/AuthContext'
 
 /** Map API error (string or 422 validation array) to a single Persian message. */
 function getRegistrationErrorMessage(err) {
@@ -28,11 +29,18 @@ function getRegistrationErrorMessage(err) {
   const status = err.response?.status
   if (status === 500) return 'خطایی در سرور رخ داد. لطفاً چند دقیقه دیگر تلاش کنید.'
   if (status === 404) return 'سرویس ثبت‌نام در دسترس نیست. لطفاً بعداً تلاش کنید.'
+  if (status === 409) return typeof detail === 'string' ? detail : 'پروفایل دانشجویی قبلاً ثبت شده است.'
   if (!err.response) return 'خطا در ارتباط با سرور. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.'
   return 'خطا در ثبت‌نام. لطفاً اطلاعات را بررسی کرده و دوباره تلاش کنید.'
 }
 
-export default function StudentRegistration() {
+/**
+ * @param {{ mode?: 'public' | 'panel' }} props
+ * — mode=panel: پس از ورود با OTP؛ شماره از حساب کاربری است و API تکمیل ثبت‌نام فراخوانی می‌شود.
+ */
+export default function StudentRegistration({ mode = 'public' }) {
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [form, setForm] = useState({
     full_name_fa: '',
     phone: '',
@@ -46,6 +54,12 @@ export default function StudentRegistration() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    if (mode === 'panel' && user?.phone) {
+      setForm(prev => ({ ...prev, phone: user.phone }))
+    }
+  }, [mode, user?.phone])
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
@@ -57,6 +71,18 @@ export default function StudentRegistration() {
     setResult(null)
 
     try {
+      if (mode === 'panel') {
+        await studentApi.completeRegistration({
+          full_name_fa: form.full_name_fa,
+          email: form.email || undefined,
+          education_level: form.education_level || undefined,
+          field_of_study: form.field_of_study || undefined,
+          course_type: form.course_type,
+          motivation: form.motivation || undefined,
+        })
+        navigate('/panel/portal/student', { replace: true })
+        return
+      }
       const res = await publicApi.register(form)
       setResult(res.data)
     } catch (err) {
@@ -66,11 +92,17 @@ export default function StudentRegistration() {
     }
   }
 
+  const isPanel = mode === 'panel'
+
   return (
     <>
       <div className="pub-page-header">
-        <h1>ثبت‌نام دانشجو</h1>
-        <p>فرم ثبت‌نام اولیه در دوره‌های آموزشی انیستیتو روانکاوی تهران</p>
+        <h1>{isPanel ? 'تکمیل ثبت‌نام دانشجو' : 'ثبت‌نام دانشجو'}</h1>
+        <p>
+          {isPanel
+            ? 'شماره موبایل شما از ورود با پیامک تأیید شده است. بقیهٔ اطلاعات را تکمیل کنید تا مسیر ثبت‌نام دوره در پنل شما باز شود.'
+            : 'فرم ثبت‌نام اولیه در دوره‌های آموزشی انستیتو روانکاوی تهران'}
+        </p>
       </div>
 
       {result ? (
@@ -162,15 +194,25 @@ export default function StudentRegistration() {
             </div>
             <div className="pub-form-group">
               <label>شماره موبایل *</label>
-              <input
-                data-testid="register-input-phone"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                placeholder="۰۹۱۲XXXXXXX"
-                required
-                style={{ direction: 'ltr', textAlign: 'right' }}
-              />
+              {isPanel ? (
+                <input
+                  data-testid="register-input-phone"
+                  readOnly
+                  value={user?.phone || form.phone || ''}
+                  style={{ direction: 'ltr', textAlign: 'right', background: 'var(--bg-muted, #f3f4f6)' }}
+                  title="شماره از ورود با پیامک"
+                />
+              ) : (
+                <input
+                  data-testid="register-input-phone"
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                  placeholder="۰۹۱۲XXXXXXX"
+                  required
+                  style={{ direction: 'ltr', textAlign: 'right' }}
+                />
+              )}
             </div>
           </div>
 

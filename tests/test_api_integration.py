@@ -62,7 +62,7 @@ async def test_sms_endpoint():
         r = await client.post(
             "/api/admin/test-sms",
             headers=headers,
-            json={"phone": "09123456789", "message": "تست API انیستیتو"},
+            json={"phone": "09123456789", "message": "تست API انستیتو"},
         )
         assert r.status_code == 200, f"SMS test failed: {r.text}"
         data = r.json()

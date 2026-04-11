@@ -200,6 +200,8 @@ export const studentApi = {
   get: (id) => api.get(`students/${id}`),
   create: (data) => api.post('students', data),
   update: (id, data) => api.patch(`students/${id}`, data),
+  /** پس از ورود با OTP؛ شماره از حساب کاربری است */
+  completeRegistration: (data) => api.post('students/complete-registration', data),
 }
 
 // ─── Process Execution ─────────────────────────────────────────
@@ -291,10 +293,17 @@ export const blogApi = {
   adminDelete: (id) => api.delete(`blog/admin/posts/${id}`),
 }
 
+// ─── پنل نقش‌ها (اقدامات راهنما) ────────────────────────────────
+export const panelApi = {
+  actionQueue: () => api.get('panel/action-queue'),
+}
+
 // ─── Public ─────────────────────────────────────────────────────
 export const publicApi = {
   stats: () => api.get('public/stats'),
   processes: () => api.get('public/processes'),
+  /** ماتریس چرخه عمر دانشجو — GET بدون احراز هویت */
+  studentLifecycleMatrix: () => api.get('public/student-lifecycle-matrix'),
   register: (data) => api.post('public/register', data),
 }
 

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { authApi } from '../services/api'
+import { authApi, studentApi } from '../services/api'
+import { getSiteLogoUrl } from '../utils/siteLogo'
 
 const LOGIN_TAB_KEY = 'login_tab'
 const LOGIN_ERROR_KEY = 'login_error'
@@ -72,6 +73,17 @@ export default function LoginPage() {
 
     const doRedirect = async () => {
       try {
+        if (user.role === 'student') {
+          try {
+            await studentApi.me()
+          } catch (meErr) {
+            if (meErr.response?.status === 404) {
+              navigate('/panel/complete-registration', { replace: true })
+              return
+            }
+            throw meErr
+          }
+        }
         const res = await authApi.home()
         const target = res.data?.redirect_url
           || (user.role === 'student' ? '/panel/portal/student' : '/panel')
@@ -247,7 +259,10 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card" style={{ maxWidth: '420px' }}>
-        <h2 className="login-title">انیستیتو روانکاوی تهران</h2>
+        <div className="login-brand-logo-wrap">
+          <img src={getSiteLogoUrl()} alt="" className="login-brand-logo site-logo-img" width={200} height={80} />
+        </div>
+        <h2 className="login-title">انستیتو روانکاوی تهران</h2>
         <p className="login-subtitle">Tehran Institute of Psychoanalysis</p>
 
         {/* Tab Switch */}

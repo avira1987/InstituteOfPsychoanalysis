@@ -61,7 +61,7 @@ services:
       sh -c "python /app/scripts/wait_for_db.py &&
              python /app/scripts/repair_alembic_if_empty_schema.py &&
              alembic upgrade head &&
-             uvicorn app.main:app --host 0.0.0.0 --port 3000"
+             uvicorn app.main:app --host 0.0.0.0 --port 3000 --log-level warning"
 volumes:
   postgres_data:
   redis_data:

@@ -1,9 +1,10 @@
 """Process execution API endpoints."""
 
+import json
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,8 +74,28 @@ class TransitionResultResponse(BaseModel):
     to_state: Optional[str] = None
     trigger_event: Optional[str] = None
     error: Optional[str] = None
-    actions: list[dict] = []
-    rule_results: list[dict] = []
+    actions: list[dict] = Field(default_factory=list)
+    rule_results: list[dict] = Field(default_factory=list)
+
+    @field_validator("actions", mode="before")
+    @classmethod
+    def _coerce_actions(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            s = v.strip()
+            if not s or s.lower() in ("null", "none"):
+                return []
+            try:
+                parsed = json.loads(s)
+            except (json.JSONDecodeError, TypeError):
+                return []
+            if parsed is None:
+                return []
+            return parsed if isinstance(parsed, list) else []
+        return []
 
 
 # ─── Endpoints ──────────────────────────────────────────────────

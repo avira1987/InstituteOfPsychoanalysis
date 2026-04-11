@@ -5,6 +5,7 @@ import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/pro
 import { notesPayload } from '../utils/decisionPayload'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
+import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 
 const siteManagerReviewStates = [
   'site_manager_review', 'site_manager_followup', 'pending_site_manager',
@@ -225,6 +226,8 @@ export default function SiteManagerPortal() {
               </div>
             </div>
           </div>
+
+          <PanelRoleActionQueue />
 
           <div className="dashboard-grid">
             {/* Attendance Alerts */}

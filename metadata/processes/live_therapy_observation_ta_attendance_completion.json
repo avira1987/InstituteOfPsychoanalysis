@@ -1,0 +1,41 @@
+{
+  "process": {
+    "code": "live_therapy_observation_ta_attendance_completion",
+    "name_fa": "خاتمه درس مشاهده زنده درمان – بخش کمک مدرس و نمره حضور و غیاب و مشارکت",
+    "name_en": "Live Therapy Observation — TA, Attendance, Participation",
+    "number": 74,
+    "description": "جلسه ۱۸: مشارکت، حضور، TA؛ گزارش PDF تا ۲۴ جلسه ۱۸؛ تصحیح ۵/۳ روز؛ مرزی ۶۴–۷۳ و SMS ۲۴ ساعت؛ معدل ترم/کل؛ ارزیابی کیفی.",
+    "initial_state": "grades_entry",
+    "initial_role": "instructor",
+    "requires_form": true
+  },
+  "states": [
+    {"code": "grades_entry", "name_fa": "ثبت نمرات و ارزیابی", "type": "initial", "assigned_role": "instructor"},
+    {"code": "grades_locked", "name_fa": "نمرات قفل شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "delay_reported", "name_fa": "تاخیر گزارش به کمیته", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {"from": "grades_entry", "to": "grades_locked", "trigger": "grades_submitted", "required_role": "instructor", "conditions": ["course_grades_submitted_in_time"], "description_fa": "ثبت نمرات و قفل"},
+    {"from": "grades_entry", "to": "delay_reported", "trigger": "sla_breach", "conditions": ["course_grades_sla_breach"], "description_fa": "گذشت مهلت و گزارش"}
+  ],
+  "forms": [
+    {
+      "code": "live_therapy_observation_ta_grades_form",
+      "name_fa": "ثبت نمرات درس مشاهده زنده درمان",
+      "used_in_state": "grades_entry",
+      "fields": [
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {
+          "name": "students_grades",
+          "label_fa": "لیست دانشجویان و نمرات",
+          "type": "dynamic_list",
+          "fields": [
+            "student_name",
+            "student_id",
+            "grade"
+          ]
+        }
+      ]
+    }
+  ]
+}

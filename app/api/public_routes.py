@@ -13,11 +13,16 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.operational_models import User, Student
+from app.models.operational_models import User, Student, ProcessInstance
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.api.auth import get_password_hash
-from app.services.student_service import StudentService
+from app.services.student_registration import (
+    build_public_registration_response,
+    commit_registration_or_rollback,
+    create_student_profile_for_user,
+)
 from app.services.installment_settings_service import get_installment_policy
+from app.meta.student_lifecycle_matrix import get_student_lifecycle_matrix
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/public", tags=["Public"])
@@ -45,13 +50,27 @@ async def public_stats(db: AsyncSession = Depends(get_db)):
     students = (await db.execute(select(func.count(Student.id)))).scalar() or 0
     processes = (await db.execute(select(func.count(ProcessDefinition.id)))).scalar() or 0
     users = (await db.execute(select(func.count(User.id)))).scalar() or 0
+    processes_in_progress = (
+        await db.execute(
+            select(func.count(ProcessInstance.id)).where(
+                ProcessInstance.is_completed.is_(False),
+                ProcessInstance.is_cancelled.is_(False),
+            )
+        )
+    ).scalar() or 0
 
     return {
         "students": students,
         "processes": processes,
         "staff": users,
-        "years_active": 5,
+        "processes_in_progress": processes_in_progress,
     }
+
+
+@router.get("/student-lifecycle-matrix")
+async def public_student_lifecycle_matrix():
+    """ماتریس چرخه عمر دانشجو و نقش‌ها — برای UI عمومی و اتوماسیون وب (بدون DB)."""
+    return get_student_lifecycle_matrix()
 
 
 @router.get("/processes")
@@ -122,8 +141,19 @@ async def register_student(data: StudentRegistrationRequest, db: AsyncSession = 
     _validate_registration_data(data)
 
     phone = _normalize_phone(data.phone)
-    existing = await db.execute(select(User).where(User.phone == phone))
-    if existing.scalars().first():
+    existing_row = await db.execute(select(User).where(User.phone == phone))
+    existing_user = existing_row.scalars().first()
+    if existing_user:
+        stmt_st = select(Student).where(Student.user_id == existing_user.id)
+        has_student = (await db.execute(stmt_st)).scalars().first()
+        if not has_student:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "این شماره قبلاً برای ورود با پیامک ثبت شده است. "
+                    "لطفاً وارد شوید و از منوی پنل، تکمیل ثبت‌نام دانشجو را انجام دهید."
+                ),
+            )
         raise HTTPException(status_code=400, detail="این شماره موبایل قبلاً ثبت شده است.")
 
     email_value = (data.email or "").strip() or None  # avoid storing "" (breaks unique constraint)
@@ -149,46 +179,26 @@ async def register_student(data: StudentRegistrationRequest, db: AsyncSession = 
     db.add(user)
     await db.flush()
 
-    student_count = (await db.execute(select(func.count(Student.id)))).scalar() or 0
-    student_code = f"STU-{student_count + 1001}"
-
-    student = Student(
-        id=uuid.uuid4(),
-        user_id=user.id,
-        student_code=student_code,
+    student, student_code = await create_student_profile_for_user(
+        db,
+        user,
         course_type=data.course_type,
-        extra_data={
-            "education_level": data.education_level,
-            "field_of_study": data.field_of_study,
-            "motivation": data.motivation,
-            "registration_source": "public_website",
-        },
+        education_level=data.education_level,
+        field_of_study=data.field_of_study,
+        motivation=data.motivation,
+        registration_source="public_website",
     )
-    db.add(student)
-
-    # Auto-start initial registration process for the new student and mark it as primary.
-    # This should not block registration if it fails; errors are logged but not exposed to the user.
     try:
-        service = StudentService(db)
-        await service.start_initial_process_for_student(student, user)
-    except Exception:
-        logger.exception("Failed to auto-start initial process for student %s", student.student_code)
-    try:
-        await db.commit()
+        await commit_registration_or_rollback(db)
     except Exception as e:
-        await db.rollback()
-        logger.exception("Student registration commit failed")
         raise HTTPException(
             status_code=500,
             detail="در ذخیره اطلاعات خطایی رخ داد. لطفاً چند دقیقه دیگر تلاش کنید یا با پشتیبانی تماس بگیرید.",
         ) from e
 
-    return {
-        "success": True,
-        "message": "ثبت‌نام شما با موفقیت انجام شد. همین حالا می‌توانید وارد پنل کاربری شوید؛ ورود با پیامک یا با نام کاربری و رمز عبور زیر ممکن است.",
-        "student_code": student_code,
-        "username": user.username,
-        "phone": phone,
-        "initial_password": initial_password_plain,
-        "login_hint_fa": "در نسخهٔ عملیاتی، همین اطلاعات از طریق پیامک ارسال می‌شود. این صفحه فعلاً همان نقش را دارد.",
-    }
+    return build_public_registration_response(
+        student_code=student_code,
+        username=user.username,
+        phone=phone,
+        initial_password_plain=initial_password_plain,
+    )

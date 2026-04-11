@@ -95,6 +95,8 @@ class EventBus:
 
         # Also publish individual action events
         for action in (actions or []):
+            if not isinstance(action, dict):
+                continue
             action_event = Event(
                 event_type=f"action.{action.get('type', 'unknown')}",
                 payload={

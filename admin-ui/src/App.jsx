@@ -6,7 +6,6 @@ import Layout from './components/Layout'
 import PublicLayout from './components/PublicLayout'
 
 import Dashboard from './pages/Dashboard'
-import ProcessList from './pages/ProcessList'
 import ProcessEditor from './pages/ProcessEditor'
 import RuleManager from './pages/RuleManager'
 import StudentTracker from './pages/StudentTracker'
@@ -31,8 +30,9 @@ import HomePage from './pages/public/HomePage'
 import BlogList from './pages/public/BlogList'
 import BlogPost from './pages/public/BlogPost'
 import StudentGuide from './pages/public/StudentGuide'
-import ProcessesInfo from './pages/public/ProcessesInfo'
+import StudentLifecycleMatrix from './pages/public/StudentLifecycleMatrix'
 import StudentRegistration from './pages/public/StudentRegistration'
+import CompleteStudentRegistration from './pages/CompleteStudentRegistration'
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -149,7 +149,8 @@ export default function App() {
           <Route path="blog" element={<BlogList />} />
           <Route path="blog/:slug" element={<BlogPost />} />
           <Route path="guide" element={<StudentGuide />} />
-          <Route path="processes-info" element={<ProcessesInfo />} />
+          <Route path="processes-info" element={<Navigate to="/student-lifecycle" replace />} />
+          <Route path="student-lifecycle" element={<StudentLifecycleMatrix />} />
           <Route path="register" element={<StudentRegistration />} />
         </Route>
 
@@ -166,7 +167,7 @@ export default function App() {
           }
         >
           <Route index element={<PanelIndex />} />
-          <Route path="processes" element={<ProcessList />} />
+          <Route path="processes" element={<Navigate to="/panel" replace />} />
           <Route path="processes/:processId" element={<ProcessEditor />} />
           <Route path="rules" element={<RuleManager />} />
           <Route path="students" element={<StudentTracker />} />
@@ -189,6 +190,14 @@ export default function App() {
               <RequireFinanceRole>
                 <FinancialDashboard />
               </RequireFinanceRole>
+            }
+          />
+          <Route
+            path="complete-registration"
+            element={
+              <RequireStudentRole>
+                <CompleteStudentRegistration />
+              </RequireStudentRole>
             }
           />
           <Route

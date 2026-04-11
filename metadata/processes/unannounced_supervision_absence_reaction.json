@@ -1,0 +1,134 @@
+{
+  "process": {
+    "code": "unannounced_supervision_absence_reaction",
+    "name_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی",
+    "name_en": "Institute Reaction to Unannounced Absence (Individual Supervision)",
+    "description": "پاسخ به No-Show سوپرویژن. فاز ۱: وقفه سوپرویژن؟ متوقف. هر غیبت: fee_determination + SMS. ۲+ پیوسته: اعلان مدیر داخلی، مهلت ۳ روز، هشدار معاون. سه حالت: ۱ تخلف+SMS، ۲ قطع+کمیته، ۳ مبهم+تایمر ۳ هفته+کمیته. مجری: تخلف/ارجاع انترن در صورت قطع. زیرفرایندها: fee_determination، violation_registration، patient_referral (انترن).",
+    "initial_state": "identified",
+    "triggered_by": "attendance_tracking",
+    "trigger_event": "unexcused_supervision_absence_no_cancellation"
+  },
+  "states": [
+    {"code": "identified", "name_fa": "غیبت بدون اطلاع سوپرویژن شناسایی شد", "type": "initial", "assigned_role": "system"},
+    {"code": "stopped_on_leave", "name_fa": "متوقف (دانشجو در وقفه سوپرویژن)", "type": "terminal", "assigned_role": "system"},
+    {"code": "first_absence_handled", "name_fa": "غیبت اول — SMS ارسال شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "site_manager_review", "name_fa": "بررسی مدیر داخلی (۲ جلسه پیوسته)", "type": "intermediate", "assigned_role": "site_manager"},
+    {"code": "option_1_violation", "name_fa": "قصد غیبت معین — تخلف ثبت شد", "type": "terminal", "assigned_role": "system"},
+    {"code": "committee_pending", "name_fa": "در انتظار کمیته درمان آموزشی و سوپرویژن", "type": "intermediate", "assigned_role": "therapy_committee_chair"},
+    {"code": "committee_executor_review", "name_fa": "پیگیری مجری کمیته", "type": "intermediate", "assigned_role": "therapy_committee_executor"},
+    {"code": "ambiguous_3week_wait", "name_fa": "وضعیت مبهم — تایمر ۳ هفته", "type": "intermediate", "assigned_role": "system", "sla_days": 21},
+    {"code": "student_returned", "name_fa": "دانشجو در ۳ هفته فرایند سوپرویژن را آغاز کرد", "type": "terminal", "assigned_role": "system"},
+    {"code": "violation_reported", "name_fa": "تخلف به کمیته نظارت ارسال شد", "type": "terminal", "assigned_role": "system"}
+  ],
+  "transitions": [
+    {
+      "from": "identified",
+      "to": "stopped_on_leave",
+      "trigger": "system_check",
+      "conditions": ["student_on_supervision_leave"],
+      "description_fa": "دانشجو در وقفه سوپرویژن — متوقف"
+    },
+    {
+      "from": "identified",
+      "to": "first_absence_handled",
+      "trigger": "system_check",
+      "conditions": ["first_unannounced_absence"],
+      "description_fa": "غیبت اول — SMS یادآوری (همراه با fee_determination در لایه حضور)",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "unannounced_supervision_absence_reminder", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "identified",
+      "to": "site_manager_review",
+      "trigger": "system_check",
+      "conditions": ["two_consecutive_unannounced"],
+      "description_fa": "۲ جلسه پیوسته — اعلان مدیر داخلی",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "unannounced_supervision_absence_alert", "recipients": ["site_manager"]}
+      ]
+    },
+    {
+      "from": "site_manager_review",
+      "to": "option_1_violation",
+      "trigger": "site_manager_option_1",
+      "required_role": "site_manager",
+      "description_fa": "حالت ۱ — غیبت موقت معین",
+      "actions": [
+        {"type": "notification", "notification_type": "sms", "template": "unannounced_supervision_option1_sms", "recipients": ["student"]},
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "two_consecutive_supervision_no_show"}}
+      ]
+    },
+    {
+      "from": "site_manager_review",
+      "to": "committee_pending",
+      "trigger": "site_manager_option_2",
+      "required_role": "site_manager",
+      "description_fa": "حالت ۲ — قطع قطعی",
+      "actions": [
+        {"type": "release_supervisor_slots"},
+        {"type": "move_supervisor_to_past_list"},
+        {"type": "notification", "notification_type": "sms", "template": "supervision_terminated_notice", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "in_app", "template": "committee_supervision_delegation_message", "recipients": ["therapy_committee_chair"]}
+      ]
+    },
+    {
+      "from": "site_manager_review",
+      "to": "ambiguous_3week_wait",
+      "trigger": "site_manager_option_3",
+      "required_role": "site_manager",
+      "description_fa": "حالت ۳ — مبهم",
+      "actions": [
+        {"type": "release_supervisor_slots"},
+        {"type": "move_supervisor_to_past_list"},
+        {"type": "notification", "notification_type": "sms", "template": "unannounced_supervision_option3_sms", "recipients": ["student"]}
+      ]
+    },
+    {
+      "from": "ambiguous_3week_wait",
+      "to": "student_returned",
+      "trigger": "student_started_supervision_block_transition",
+      "description_fa": "دانشجو در ۳ هفته فرایند تغییر/آغاز دوباره سوپرویژن را آغاز کرد"
+    },
+    {
+      "from": "ambiguous_3week_wait",
+      "to": "committee_pending",
+      "trigger": "sla_3weeks_breach",
+      "description_fa": "۳ هفته بدون بازگشت — اعلان مسئول علمی",
+      "actions": [
+        {"type": "notification", "notification_type": "in_app", "template": "committee_supervision_delegation_ambiguous", "recipients": ["therapy_committee_chair"]}
+      ]
+    },
+    {
+      "from": "committee_pending",
+      "to": "committee_executor_review",
+      "trigger": "chair_delegated",
+      "required_role": "therapy_committee_chair",
+      "description_fa": "واگذار کردم"
+    },
+    {
+      "from": "committee_executor_review",
+      "to": "violation_reported",
+      "trigger": "executor_option_a",
+      "required_role": "therapy_committee_executor",
+      "description_fa": "قطع سوپرویژن قطعی",
+      "actions": [
+        {"type": "record_result_in_student_portal", "result": "definitive_supervision_stop"},
+        {"type": "release_supervisor_slots"},
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "two_consecutive_supervision_no_show_stop"}},
+        {"type": "start_process", "process_code": "patient_referral", "payload": {"reason": "supervision_no_show_intern"}, "run_if_intern": true}
+      ]
+    },
+    {
+      "from": "committee_executor_review",
+      "to": "violation_reported",
+      "trigger": "executor_option_b",
+      "required_role": "therapy_committee_executor",
+      "description_fa": "پذیرفته بازگشت به سوپرویژن",
+      "actions": [
+        {"type": "record_result_in_student_portal", "result": "agreed_to_return_supervision"},
+        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "two_consecutive_supervision_no_show"}}
+      ]
+    }
+  ]
+}

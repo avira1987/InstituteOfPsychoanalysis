@@ -51,7 +51,7 @@ async def send_sms(phone: str, message: str) -> dict:
 def _otp_fallback_message_fa(code: str) -> str:
     """Full SMS body when not using SendOtp (Kavenegar / console fallback)."""
     return (
-        f"کد ورود دانشجویی شما به پورتال انیستیتو روانکاوی تهران: {code}\n"
+        f"کد ورود دانشجویی شما به پورتال انستیتو روانکاوی تهران: {code}\n"
         f"این کد تا ۲ دقیقه معتبر است."
     )
 

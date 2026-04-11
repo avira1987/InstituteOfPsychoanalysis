@@ -64,7 +64,7 @@ async def test_process_level_a_load_sync_start_matches_initial_state(
 
 
 # با اضافه کردن فرایند جدید به metadata/processes این عدد را به‌روز کنید.
-EXPECTED_PROCESS_JSON_COUNT = 67
+EXPECTED_PROCESS_JSON_COUNT = 74
 
 
 def test_metadata_process_count_matches_level_a_parametrize():

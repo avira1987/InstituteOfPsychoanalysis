@@ -5,6 +5,7 @@ import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/pro
 import { notesPayload } from '../utils/decisionPayload'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
+import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 
 const supervisorReviewStates = [
   'supervisor_review', 'supervisor_decision', 'awaiting_supervisor',
@@ -221,6 +222,8 @@ export default function SupervisorPortal() {
               </div>
             </div>
           </div>
+
+          <PanelRoleActionQueue />
 
           <div className="dashboard-grid">
             {/* Pending Reviews */}

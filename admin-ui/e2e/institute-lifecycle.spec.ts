@@ -11,6 +11,7 @@ import {
 import { answerFromMathQuestion } from './helpers/challenge'
 import { buildE2eRunId, e2eFullName, e2eUniquePhone } from './helpers/test-data'
 import { retryStep, waitForResponseAfterAction, warnIfSlow } from './helpers/waits'
+import { toFaDigits } from './helpers/faDigits'
 
 async function waitForAuthToken(page: Page, timeout = 15_000) {
   await expect
@@ -42,7 +43,7 @@ async function submitPasswordLoginChallenge(page: Page) {
   await page.getByTestId('login-submit').click()
 }
 
-test.describe('انیستیتو — یکپارچگی UI و API (بدون mock)', () => {
+test.describe('انستیتو — یکپارچگی UI و API (بدون mock)', () => {
   test.afterEach(async ({ page }, testInfo) => {
     if (testInfo.status !== 'passed') {
       logFailure(testInfo.title, testInfo.error?.message || testInfo.error, page)
@@ -103,7 +104,7 @@ test.describe('انیستیتو — یکپارچگی UI و API (بدون mock)',
                 { timeout: 25_000, intervals: [200, 400, 800] },
               )
               .toBe(true)
-            await expect(page.getByTestId('register-student-code')).toContainText(studentCode)
+            await expect(page.getByTestId('register-student-code')).toContainText(toFaDigits(studentCode))
             return
           } catch (e) {
             lastErr = e
@@ -172,7 +173,7 @@ test.describe('انیستیتو — یکپارچگی UI و API (بدون mock)',
         const api = await fetchStudentMe(request, baseURL, token)
         userIdForCleanup = api.user_id
         expect(api.student_code).toBe(studentCode)
-        await page.getByText(studentCode, { exact: false }).first().waitFor({ state: 'visible' })
+        await page.getByText(toFaDigits(studentCode), { exact: false }).first().waitFor({ state: 'visible' })
       })
 
       await test.step('reload پنل — دوباره GET students/me و تطابق', async () => {
