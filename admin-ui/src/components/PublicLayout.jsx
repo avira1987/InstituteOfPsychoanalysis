@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { path: '/', label: 'خانه' },
   { path: '/blog', label: 'مقالات' },
   { path: '/guide', label: 'راهنما' },
-  { path: '/student-lifecycle', label: 'چرخه عمر و نقش‌ها' },
+  { path: '/student-lifecycle', label: 'مسیر تحصیلی' },
 ]
 
 const roleLabels = {
@@ -78,10 +78,9 @@ export default function PublicLayout() {
                 پنل {roleLabels[user.role] || user.role}
               </button>
             ) : (
-              <>
-                <Link to="/login" className="pub-navbar-link">ورود</Link>
-                <Link to="/register" className="pub-navbar-cta">ثبت‌نام</Link>
-              </>
+              <Link to="/login" className="pub-navbar-cta">
+                ورود و ثبت‌نام
+              </Link>
             )}
           </div>
 
@@ -116,7 +115,7 @@ export default function PublicLayout() {
               <Link to="/">صفحه اصلی</Link>
               <Link to="/blog">مقالات و اخبار</Link>
               <Link to="/guide">راهنمای سامانه</Link>
-              <Link to="/student-lifecycle">چرخه عمر و فرایندها</Link>
+              <Link to="/student-lifecycle">مسیر تحصیلی و نقش‌ها</Link>
             </div>
             <div className="pub-footer-col">
               <h4>خدمات</h4>

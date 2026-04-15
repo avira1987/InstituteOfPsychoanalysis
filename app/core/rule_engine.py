@@ -36,6 +36,23 @@ class RuleEvaluationError(Exception):
         super().__init__(f"Rule '{rule_code}': {message}")
 
 
+def _is_plain_number(x: Any) -> bool:
+    """True for int/float but not bool (bool is a subclass of int)."""
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def _coerce_none_for_ordering(field_value: Any, expected_value: Any) -> tuple[Any, Any]:
+    """جلوگیری از TypeError در gt/gte/lt/lte وقتی یک طرف None و طرف دیگر عدد است (مثلاً debt_sessions_count)."""
+    a, b = field_value, expected_value
+    if a is None and _is_plain_number(b):
+        a = 0
+    elif b is None and _is_plain_number(a):
+        b = 0
+    elif a is None and b is None:
+        a, b = 0, 0
+    return a, b
+
+
 class RuleResult:
     """Result of evaluating a single rule."""
     def __init__(self, rule_code: str, passed: bool, value: Any = None,
@@ -139,6 +156,9 @@ class RuleEvaluator:
             op_func = OPERATORS.get(op)
             if op_func is None:
                 raise RuleEvaluationError("unknown", f"Unknown operator: {op}")
+
+            if op in ("gt", "gte", "lt", "lte"):
+                field_value, expected_value = _coerce_none_for_ordering(field_value, expected_value)
 
             return op_func(field_value, expected_value)
 

@@ -12,6 +12,7 @@ from app.api.auth import get_current_user
 from app.core.engine import StateMachineEngine
 from app.meta.process_forms import get_process_forms, get_process_ui_requirements
 from app.meta.seed import load_process
+from app.models.operational_models import Student
 
 
 def test_get_process_forms_returns_list():
@@ -50,10 +51,10 @@ def test_get_process_ui_requirements_returns_dashboard():
 
 
 def test_get_process_forms_marks_view_only_forms():
-    """View-only forms are marked as dashboard so UI can render them safely."""
+    """View-only forms with readonly fields normalize to kind 'form' (see process_forms._normalize_form)."""
     forms = get_process_forms("live_supervision_ta_evaluation")
     assert forms
-    assert forms[0]["kind"] == "dashboard"
+    assert forms[0]["kind"] == "form"
 
 
 @pytest.mark.asyncio
@@ -236,3 +237,56 @@ async def test_api_trigger_transition_with_payload(
     assert data.get("success") is True
     assert data.get("from_state") == "payment_due"
     assert data.get("to_state") == "payment_selection"
+
+
+@pytest.mark.asyncio
+async def test_api_start_intro_second_semester_blocked_when_class_access_blocked(
+    process_api_client, db_session: AsyncSession, sample_student, sample_user
+):
+    """ثبت‌نام ترم دوم آشنایی وقتی class_access_blocked فعال است، از API رد شود."""
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "intro_second_semester_registration.json")
+    sample_student.extra_data = {"class_access_blocked": True}
+    db_session.add(sample_student)
+    await db_session.commit()
+
+    r = await process_api_client.post(
+        "/api/process/start",
+        json={
+            "process_code": "intro_second_semester_registration",
+            "student_id": str(sample_student.id),
+        },
+    )
+    assert r.status_code == 400
+    assert "مرخصی" in (r.json().get("detail") or "")
+
+
+@pytest.mark.asyncio
+async def test_api_start_educational_leave_sets_primary_instance(
+    process_api_client, db_session: AsyncSession, sample_student, sample_user
+):
+    """شروع مرخصی آموزشی باید primary_instance_id دانشجو را به همان نمونه وصل کند."""
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "educational_leave.json")
+    sample_student.extra_data = {}
+    db_session.add(sample_student)
+    await db_session.commit()
+
+    r = await process_api_client.post(
+        "/api/process/start",
+        json={
+            "process_code": "educational_leave",
+            "student_id": str(sample_student.id),
+        },
+    )
+    assert r.status_code == 200
+    data = r.json()
+    iid = data.get("instance_id")
+    assert iid
+
+    st = await db_session.get(Student, sample_student.id)
+    extra = st.extra_data or {}
+    if isinstance(extra, str):
+        import json
+        extra = json.loads(extra)
+    assert extra.get("primary_instance_id") == iid

@@ -1,0 +1,21 @@
+<!DOCTYPE project [
+  <!ENTITY jaxrpctargets SYSTEM "../common/targets.xml">
+]>
+
+<project name="jaxrpc-tutorial" default="build" basedir=".">
+
+  <property file="../../common/build.properties"/>
+  <property file="../common/build.properties"/>
+  <property file="build.properties"/>
+
+  &jaxrpctargets;
+
+  <target name="build" depends="build-static"
+     description="Executes the targets needed to build a static stub client.">
+  </target>
+
+  <target name="run" depends="run-client"
+     description="Runs the client.">
+  </target>
+
+</project>

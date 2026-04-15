@@ -285,6 +285,8 @@ from app.api.assignment_routes import router as assignment_router
 from app.api.ticket_routes import router as ticket_router
 from app.api.reports_routes import router as reports_router
 from app.api.panel_routes import router as panel_router
+from app.api.interview_slots_routes import router as interview_slots_router
+from app.api.alocom_routes import router as alocom_router
 
 app.include_router(auth_router)
 app.include_router(process_router)
@@ -299,6 +301,8 @@ app.include_router(assignment_router)
 app.include_router(ticket_router)
 app.include_router(reports_router)
 app.include_router(panel_router)
+app.include_router(interview_slots_router)
+app.include_router(alocom_router)
 
 # ─── Serve uploaded files (avatars) ─────────────────────────────
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / settings.UPLOAD_DIR

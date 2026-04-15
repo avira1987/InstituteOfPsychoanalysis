@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { processExecApi, studentApi, therapyApi } from '../services/api'
+import { processExecApi, studentApi, therapyApi, alocomApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
+import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
+import PopupToast from '../components/PopupToast'
 
 const reviewStates = [
   'therapist_review', 'therapist_decision', 'awaiting_therapist',
@@ -22,6 +24,11 @@ export default function TherapistPortal() {
   const [instanceDetail, setInstanceDetail] = useState(null)
   const [availableTransitions, setAvailableTransitions] = useState([])
   const [decisionNotes, setDecisionNotes] = useState('')
+  /** ساعت جلسات برای فرایند therapy_changes در مرحلهٔ بررسی درمانگر */
+  const [therapyScheduleTime, setTherapyScheduleTime] = useState('')
+  /** پیشنهاد جایگزین برای therapy_session_increase */
+  const [therapyIncreaseAltDate, setTherapyIncreaseAltDate] = useState('')
+  const [therapyIncreaseAltTime, setTherapyIncreaseAltTime] = useState('')
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [studentSearch, setStudentSearch] = useState('')
@@ -99,15 +106,47 @@ export default function TherapistPortal() {
     }
   }
 
-  const triggerTransition = async (triggerEvent) => {
+  const triggerTransition = async (transition) => {
     if (!selectedInstance) return
+    const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
+    const toState = typeof transition === 'object' ? transition.to_state : undefined
     try {
-      const payload = notesPayload(decisionNotes)
+      let payload = notesPayload(decisionNotes)
+      const st = instanceDetail?.current_state
+      const pcode = instanceDetail?.process_code
+      if (
+        pcode === 'therapy_changes'
+        && st === 'schedule_change_review'
+        && (triggerEvent === 'schedule_change_approved' || triggerEvent === 'schedule_change_rejected')
+        && therapyScheduleTime.trim()
+      ) {
+        payload = { ...payload, session_time_hhmm: therapyScheduleTime.trim() }
+      }
+      if (
+        pcode === 'therapy_session_increase'
+        && st === 'therapist_review'
+        && triggerEvent === 'therapist_proposed_alternative'
+      ) {
+        const ad = therapyIncreaseAltDate.trim()
+        const at = therapyIncreaseAltTime.trim()
+        if (!ad || !at) {
+          showToast('برای پیشنهاد جایگزین، تاریخ و ساعت را وارد کنید (YYYY-MM-DD و مثال 14:30).', 'error')
+          return
+        }
+        payload = { ...payload, therapist_alternative_date: ad, therapist_alternative_time_hhmm: at }
+      }
+      payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
+      if (toState) payload.to_state = toState
       const res = await processExecApi.trigger(selectedInstance, {
-        trigger_event: triggerEvent, payload,
+        trigger_event: triggerEvent,
+        payload,
+        ...(toState ? { to_state: toState } : {}),
       })
       if (res.data.success) {
         showToast(`تصمیم ثبت شد: ${labelState(res.data.to_state)}`)
+        setTherapyScheduleTime('')
+        setTherapyIncreaseAltDate('')
+        setTherapyIncreaseAltTime('')
         viewInstance(selectedInstance)
         loadData()
       } else {
@@ -141,18 +180,7 @@ export default function TherapistPortal() {
 
   return (
     <div>
-      {toast && (
-        <div style={{
-          position: 'fixed', top: '1rem', left: '50%', transform: 'translateX(-50%)',
-          padding: '0.75rem 1.5rem', borderRadius: '8px', zIndex: 1000, fontWeight: 500,
-          background: toast.type === 'error' ? '#fef2f2' : '#f0fdf4',
-          color: toast.type === 'error' ? '#dc2626' : '#16a34a',
-          border: `1px solid ${toast.type === 'error' ? '#fca5a5' : '#86efac'}`,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        }}>
-          {toast.msg}
-        </div>
-      )}
+      <PopupToast toast={toast} />
 
       <div className="page-header">
         <div>
@@ -358,11 +386,17 @@ export default function TherapistPortal() {
           </div>
 
           {/* Detail Panel */}
-          {instanceDetail && <InstanceDetailPanel
+          {instanceDetail &&           <InstanceDetailPanel
             instanceDetail={instanceDetail}
             availableTransitions={availableTransitions}
             decisionNotes={decisionNotes}
             setDecisionNotes={setDecisionNotes}
+            therapyScheduleTime={therapyScheduleTime}
+            setTherapyScheduleTime={setTherapyScheduleTime}
+            therapyIncreaseAltDate={therapyIncreaseAltDate}
+            setTherapyIncreaseAltDate={setTherapyIncreaseAltDate}
+            therapyIncreaseAltTime={therapyIncreaseAltTime}
+            setTherapyIncreaseAltTime={setTherapyIncreaseAltTime}
             triggerTransition={triggerTransition}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
             accentColor="var(--warning)"
@@ -478,6 +512,12 @@ export default function TherapistPortal() {
             availableTransitions={availableTransitions}
             decisionNotes={decisionNotes}
             setDecisionNotes={setDecisionNotes}
+            therapyScheduleTime={therapyScheduleTime}
+            setTherapyScheduleTime={setTherapyScheduleTime}
+            therapyIncreaseAltDate={therapyIncreaseAltDate}
+            setTherapyIncreaseAltDate={setTherapyIncreaseAltDate}
+            therapyIncreaseAltTime={therapyIncreaseAltTime}
+            setTherapyIncreaseAltTime={setTherapyIncreaseAltTime}
             triggerTransition={triggerTransition}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
             accentColor="var(--primary)"
@@ -490,11 +530,31 @@ export default function TherapistPortal() {
 
 function TherapistSessionsPanel({ sessions, onReload, showToast }) {
   const [draft, setDraft] = useState({})
+  const [alocomAgentServiceId, setAlocomAgentServiceId] = useState('')
   const setField = (id, field, value) => {
     setDraft(prev => ({
       ...prev,
       [id]: { ...prev[id], [field]: value },
     }))
+  }
+  const provisionAlocom = async (s) => {
+    const aid = parseInt(String(alocomAgentServiceId).trim(), 10)
+    if (!aid || Number.isNaN(aid)) {
+      showToast('شناسهٔ سرویس الوکام (agent_service_id) را در فیلد بالا وارد کنید.', 'error')
+      return
+    }
+    try {
+      await alocomApi.provisionTherapySession(s.id, {
+        agent_service_id: aid,
+        title: `جلسه درمان ${s.session_date}`,
+        fetch_student_event_link: true,
+      })
+      showToast('کلاس الوکام ایجاد و لینک ذخیره شد')
+      onReload()
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast(typeof d === 'string' ? d : (e.message || 'خطا در الوکام'), 'error')
+    }
   }
   const save = async (s) => {
     const row = draft[s.id] || {}
@@ -502,6 +562,7 @@ function TherapistSessionsPanel({ sessions, onReload, showToast }) {
     const provider = row.meeting_provider !== undefined ? row.meeting_provider : (s.meeting_provider || 'manual')
     const scoreRaw = row.instructor_score !== undefined ? row.instructor_score : (s.instructor_score ?? '')
     const comment = row.instructor_comment !== undefined ? row.instructor_comment : (s.instructor_comment || '')
+    const attendance = row.attendance_status !== undefined ? row.attendance_status : ''
     try {
       const payload = {
         meeting_url: meetingUrl || null,
@@ -511,6 +572,9 @@ function TherapistSessionsPanel({ sessions, onReload, showToast }) {
       if (scoreRaw !== '' && scoreRaw != null) {
         const n = Number(scoreRaw)
         if (!Number.isNaN(n)) payload.instructor_score = n
+      }
+      if (attendance === 'present' || attendance === 'absent_excused' || attendance === 'absent_unexcused') {
+        payload.attendance_status = attendance
       }
       await therapyApi.patchSession(s.id, payload)
       showToast('ذخیره شد')
@@ -523,6 +587,17 @@ function TherapistSessionsPanel({ sessions, onReload, showToast }) {
     <div className="card">
       <div className="card-header">
         <h3 className="card-title">جلسات آنلاین — لینک و نمره</h3>
+      </div>
+      <div style={{ padding: '0 1rem 1rem', borderBottom: '1px solid var(--border)' }}>
+        <label className="form-label" style={{ fontSize: '0.8rem' }}>شناسهٔ سرویس خریداری‌شده در الوکام (agent_service_id)</label>
+        <input
+          className="form-input"
+          dir="ltr"
+          style={{ textAlign: 'left', maxWidth: '220px' }}
+          placeholder="مثال: ۱۴"
+          value={alocomAgentServiceId}
+          onChange={e => setAlocomAgentServiceId(e.target.value)}
+        />
       </div>
       {sessions.length === 0 ? (
         <div className="empty-state" style={{ padding: '2rem' }}>
@@ -549,6 +624,12 @@ function TherapistSessionsPanel({ sessions, onReload, showToast }) {
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
                   پرداخت: {s.payment_status} | وضعیت: {s.status} | لینک فعال: {s.links_unlocked ? 'بله' : 'خیر'}
+                  {s.alocom_event_id ? ` | رویداد الوکام: ${s.alocom_event_id}` : ''}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => provisionAlocom(s)}>
+                    ایجاد کلاس الوکام و لینک دانشجو
+                  </button>
                 </div>
                 <input
                   className="form-input"
@@ -565,7 +646,18 @@ function TherapistSessionsPanel({ sessions, onReload, showToast }) {
                 >
                   <option value="manual">دستی</option>
                   <option value="skyroom">اسکای‌روم</option>
-                  <option value="voicoom">الووکام</option>
+                  <option value="voicoom">ویوکام</option>
+                  <option value="alocom">الوکام (یکپارچه)</option>
+                </select>
+                <select
+                  className="form-input"
+                  value={row.attendance_status !== undefined ? row.attendance_status : ''}
+                  onChange={e => setField(s.id, 'attendance_status', e.target.value)}
+                >
+                  <option value="">حضور/غیاب (بدون تغییر)</option>
+                  <option value="present">حاضر</option>
+                  <option value="absent_excused">غایب موجه</option>
+                  <option value="absent_unexcused">غایب غیرموجه</option>
                 </select>
                 <input
                   className="form-input"
@@ -594,7 +686,29 @@ function TherapistSessionsPanel({ sessions, onReload, showToast }) {
   )
 }
 
-function InstanceDetailPanel({ instanceDetail, availableTransitions, decisionNotes, setDecisionNotes, triggerTransition, onClose, accentColor }) {
+function InstanceDetailPanel({
+  instanceDetail,
+  availableTransitions,
+  decisionNotes,
+  setDecisionNotes,
+  therapyScheduleTime,
+  setTherapyScheduleTime,
+  therapyIncreaseAltDate,
+  setTherapyIncreaseAltDate,
+  therapyIncreaseAltTime,
+  setTherapyIncreaseAltTime,
+  triggerTransition,
+  onClose,
+  accentColor,
+}) {
+  const showTherapyScheduleField =
+    instanceDetail?.process_code === 'therapy_changes'
+    && instanceDetail?.current_state === 'schedule_change_review'
+
+  const showTherapyIncreaseAlternativeFields =
+    instanceDetail?.process_code === 'therapy_session_increase'
+    && instanceDetail?.current_state === 'therapist_review'
+
   return (
     <div className="card">
       <div className="card-header">
@@ -629,6 +743,50 @@ function InstanceDetailPanel({ instanceDetail, availableTransitions, decisionNot
           <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--warning)' }}>
             تصمیم شما
           </h4>
+          {showTherapyScheduleField && (
+            <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.88rem' }}>
+              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>ساعت جلسات آینده (الزامی برای تایید)</span>
+              <input
+                className="form-input"
+                dir="ltr"
+                style={{ textAlign: 'left', maxWidth: '12rem' }}
+                placeholder="14:30"
+                value={therapyScheduleTime}
+                onChange={e => setTherapyScheduleTime(e.target.value)}
+              />
+              <span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.78rem', color: '#64748b' }}>
+                این مقدار در پروندهٔ فرایند ذخیره می‌شود تا دانشجو در مرحلهٔ بعد همان را ببیند.
+              </span>
+            </label>
+          )}
+          {showTherapyIncreaseAlternativeFields && (
+            <div style={{ marginBottom: '0.75rem', fontSize: '0.88rem' }}>
+              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                پیشنهاد جایگزین (فقط هنگام زدن دکمهٔ «پیشنهاد جایگزین»)
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                <input
+                  className="form-input"
+                  dir="ltr"
+                  style={{ textAlign: 'left', maxWidth: '11rem' }}
+                  placeholder="تاریخ YYYY-MM-DD"
+                  value={therapyIncreaseAltDate}
+                  onChange={e => setTherapyIncreaseAltDate(e.target.value)}
+                />
+                <input
+                  className="form-input"
+                  dir="ltr"
+                  style={{ textAlign: 'left', maxWidth: '8rem' }}
+                  placeholder="14:30"
+                  value={therapyIncreaseAltTime}
+                  onChange={e => setTherapyIncreaseAltTime(e.target.value)}
+                />
+              </div>
+              <span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.78rem', color: '#64748b' }}>
+                در صورت تایید یا رد بدون پیشنهاد جایگزین، این فیلدها را خالی بگذارید.
+              </span>
+            </div>
+          )}
           <DecisionNotesBlock
             value={decisionNotes}
             onChange={setDecisionNotes}
@@ -642,7 +800,7 @@ function InstanceDetailPanel({ instanceDetail, availableTransitions, decisionNot
               return (
                 <button
                   key={idx}
-                  onClick={() => triggerTransition(t.trigger_event)}
+                  onClick={() => triggerTransition(t)}
                   style={{
                     padding: '0.6rem 1.2rem', borderRadius: '8px', border: 'none',
                     cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem',

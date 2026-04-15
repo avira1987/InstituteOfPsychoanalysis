@@ -35,6 +35,8 @@ class User(Base):
     security_question = Column(String(255), nullable=True)  # سوال امنیتی
     security_answer_hash = Column(String(255), nullable=True)  # پاسخ هش‌شده
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    # شناسهٔ کاربر agent در الوکام (برای نقش teacher/participant در رویداد)
+    alocom_agent_user_id = Column(Integer, nullable=True)
 
     # Relationships
     student_profile = relationship("Student", back_populates="user", uselist=False, foreign_keys="[Student.user_id]")
@@ -58,7 +60,7 @@ class Student(Base):
     enrollment_date = Column(Date, nullable=True)
     extra_data = Column(JSONB, nullable=True)  # Flexible additional data
     # رکوردهای بارگذاری‌شده برای آموزش/تست فرایند — در گزارش‌ها پیش‌فرض حذف می‌شوند
-    is_sample_data = Column(Boolean, default=False, nullable=False, server_default=text("0"))
+    is_sample_data = Column(Boolean, default=False, nullable=False, server_default=text("false"))
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
@@ -130,10 +132,12 @@ class TherapySession(Base):
     amount = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
     meeting_url = Column(Text, nullable=True)
-    meeting_provider = Column(String(50), nullable=True)  # manual, skyroom, voicoom
+    meeting_provider = Column(String(50), nullable=True)  # manual, skyroom, voicoom, alocom
     links_unlocked = Column(Boolean, default=False, nullable=False)
     instructor_score = Column(Float, nullable=True)
     instructor_comment = Column(Text, nullable=True)
+    alocom_event_id = Column(String(80), nullable=True, index=True)
+    session_starts_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
@@ -165,12 +169,16 @@ class AssignmentSubmission(Base):
 
 
 class PaymentPending(Base):
-    """Links gateway authority to a process instance for callback (BUILD_TODO § و — بخش ۶)."""
+    """Links order reference (ResNum/orderId) + optional gateway id to instance for callback (BUILD_TODO § و — بخش ۶)."""
     __tablename__ = "payment_pending"
-    __table_args__ = (Index("ix_payment_pending_authority", "authority"),)
+    __table_args__ = (
+        Index("ix_payment_pending_authority", "authority"),
+        Index("ix_payment_pending_gateway_track_id", "gateway_track_id"),
+    )
 
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
-    authority = Column(String(255), nullable=False)  # gateway token/trackId
+    authority = Column(String(255), nullable=False)  # ResNum / orderId (same as SendToken ResNum)
+    gateway_track_id = Column(String(255), nullable=True)  # SEP token, Zibal trackId, mock authority
     instance_id = Column(UUID, ForeignKey("process_instances.id", ondelete="CASCADE"), nullable=False)
     student_id = Column(UUID, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Integer, nullable=False)
@@ -240,6 +248,30 @@ class LoginChallenge(Base):
     is_used = Column(
         Boolean, default=False, nullable=False, server_default=text("false")
     )
+
+
+class InterviewSlot(Base):
+    """زمان‌های قابل رزرو برای مصاحبهٔ پذیرش؛ پس از تخصیص تا پایان مصاحبه برای دیگران آزاد نمی‌شود."""
+
+    __tablename__ = "interview_slots"
+    __table_args__ = (
+        Index("ix_interview_slots_starts", "starts_at"),
+        Index("ix_interview_slots_assigned_student", "assigned_student_id"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    starts_at = Column(DateTime(timezone=True), nullable=False)
+    ends_at = Column(DateTime(timezone=True), nullable=False)
+    course_type = Column(String(50), nullable=True)  # introductory | comprehensive | None = هر دو
+    mode = Column(String(20), nullable=False, default="in_person")  # in_person | online
+    location_fa = Column(String(500), nullable=True)
+    meeting_link = Column(Text, nullable=True)
+    label_fa = Column(String(255), nullable=True)
+    created_by = Column(UUID, ForeignKey("users.id"), nullable=True)
+    assigned_student_id = Column(UUID, ForeignKey("students.id", ondelete="SET NULL"), nullable=True)
+    assigned_instance_id = Column(UUID, ForeignKey("process_instances.id", ondelete="SET NULL"), nullable=True)
+    reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
 class BlogPost(Base):

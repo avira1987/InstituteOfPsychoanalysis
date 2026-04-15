@@ -88,6 +88,12 @@ class TestSimpleComparisons:
         expr = {"field": "instance.absences_this_year", "operator": "lt", "value": "instance.absence_quota"}
         assert evaluator.evaluate_expression(expr, context) is False
 
+    def test_ordering_none_coerces_like_zero(self, evaluator):
+        """payment_selection_valid: debt_sessions_count ممکن است در context نباشد — None <= 0 نباید TypeError بدهد."""
+        context = {"instance": {}}
+        expr = {"field": "instance.debt_sessions_count", "operator": "lte", "value": 0}
+        assert evaluator.evaluate_expression(expr, context) is True
+
 
 # ─── Logical Operators ──────────────────────────────────────────
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { ticketApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
+import PopupToast from '../components/PopupToast'
 
 const CATEGORY_LABELS = {
   profile_edit_unlock: 'باز کردن پروفایل / ویرایش مرحلهٔ ثبت‌شده',
@@ -219,6 +220,7 @@ export default function TicketsPage() {
 
   return (
     <div className="page tickets-page" dir="rtl">
+      <PopupToast toast={toast} />
       <header className="page-header">
         <div>
           <h1 className="page-title">تیکت‌ها و درخواست‌های داخلی</h1>
@@ -232,21 +234,6 @@ export default function TicketsPage() {
           تیکت جدید
         </button>
       </header>
-
-      {toast && (
-        <div
-          className="toast-banner"
-          style={{
-            marginBottom: '1rem',
-            padding: '0.75rem 1rem',
-            borderRadius: '8px',
-            background: toast.type === 'error' ? '#fef2f2' : '#ecfdf5',
-            border: `1px solid ${toast.type === 'error' ? '#fecaca' : '#a7f3d0'}`,
-          }}
-        >
-          {toast.msg}
-        </div>
-      )}
 
       <div className="filters-row" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
         <label>

@@ -34,11 +34,11 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
-      network: host
+      dockerfile: Dockerfile.prod
+      # network: host روی Docker Desktop ویندوز/مک پشتیبانی نمی‌شود و بیلد را می‌شکند؛ فقط روی لینوکس در صورت نیاز:
+      # docker compose -f docker-compose.prod.yml build --build-arg ...   یا  DOCKER_BUILDKIT=1 docker build --network=host .
       args:
-        # فقط هنگام docker build: APT_PROXY/PIP_PROXY (مثلاً socks5h://127.0.0.1:10808). زمان اجرا کانتینر از این‌ها استفاده نمی‌کند.
-        APT_PROXY: ${APT_PROXY:-}
+        # رزرو برای اسکریپت‌های بیلد سفارشی (ایمیج فعلی از APT در Dockerfile استفاده نمی‌کند)
         PIP_PROXY: ${PIP_PROXY:-}
     container_name: anistito-api
     env_file:
@@ -49,6 +49,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       DEBUG: "false"
       SECRET_KEY: anistito-prod-secret-change-me
+      # پرداخت سپ: در فایل .env کنار همین compose تنظیم کنید؛
+      # PAYMENT_PROVIDER=saman، SEP_TERMINAL_ID، SEP_PASSWORD (در صورت نیاز)،
+      # PAYMENT_CALLBACK_URL=<همان دامنهٔ عمومی>/api/payment/callback، APP_BASE_URL برای ریدایرکت پس از کال‌بک
     ports:
       - "3000:3000"
     depends_on:

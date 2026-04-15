@@ -1,28 +1,20 @@
 # ─── فرانت (Vite) — بدون نیاز به npm روی میزبان؛ خروجی در مرحلهٔ نهایی کپی می‌شود ───
 FROM node:20-alpine AS frontend-build
 WORKDIR /frontend
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+ENV NPM_CONFIG_FUND=false
 COPY admin-ui/package.json admin-ui/package-lock.json ./
-RUN npm ci
+# با NODE_ENV=production، npm devDependencies (vite و …) را نصب نمی‌کند → vite: not found
+RUN NODE_ENV=development npm ci --no-audit
 COPY admin-ui/ ./
-RUN npm run build
+# بدون ENV NODE_ENV=production قبل از بیلد — npm ممکن است devDeps را از PATH حذف کند و vite پیدا نشود
+RUN npm exec vite build
 
 FROM python:3.12-slim
 
-# فقط برای apt داخل بیلد (مثلاً socks5h://127.0.0.1:10808 وقتی اینترنت مستقیم نیست).
-ARG APT_PROXY
-RUN if [ -n "$APT_PROXY" ]; then \
-      printf 'Acquire::http::Proxy "%s";\nAcquire::https::Proxy "%s";\n' "$APT_PROXY" "$APT_PROXY" \
-        > /etc/apt/apt.conf.d/99anistito-proxy; \
-    fi
-
+# بدون gcc/libpq-dev: همهٔ بسته‌ها از wheelhouse با ویل از پیش ساخته نصب می‌شوند (کمتر دانلود از debian، بیلد پایدارتر در شبکه ضعیف).
+# اگر روزی pip به سورس نیاز داشت، موقتاً gcc و libpq-dev را برگردانید.
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -f /etc/apt/apt.conf.d/99anistito-proxy
 
 # wheelهای از پیش ساخته‌شده (روی ماشین لینوکس با pip wheel) — pip داخل بیلد به اینترنت نیاز ندارد
 COPY docker/wheelhouse /tmp/wheelhouse

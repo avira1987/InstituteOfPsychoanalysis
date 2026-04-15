@@ -22,15 +22,39 @@ from app.services.student_registration import (
     create_student_profile_for_user,
 )
 from app.services.installment_settings_service import get_installment_policy
+from app.services.sms_gateway import normalize_ir_mobile
 from app.meta.student_lifecycle_matrix import get_student_lifecycle_matrix
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/public", tags=["Public"])
 
 
+def _normalize_national_code_digits(raw: str) -> str:
+    return (raw or "").strip().replace(" ", "").replace("-", "")
+
+
+def validate_national_code_ir(raw: str) -> str:
+    """کد ملی ایران — ۱۰ رقم با رقم کنترل؛ مقدار نرمال‌شدهٔ فقط رقمی برمی‌گردد."""
+    s = _normalize_national_code_digits(raw)
+    if not re.fullmatch(r"\d{10}", s):
+        raise HTTPException(status_code=400, detail="کد ملی باید دقیقاً ۱۰ رقم باشد.")
+    if len(set(s)) == 1:
+        raise HTTPException(status_code=400, detail="کد ملی نامعتبر است.")
+    check = int(s[9])
+    csum = sum(int(s[i]) * (10 - i) for i in range(9)) % 11
+    if csum < 2:
+        if check != csum:
+            raise HTTPException(status_code=400, detail="کد ملی نامعتبر است.")
+    else:
+        if check != 11 - csum:
+            raise HTTPException(status_code=400, detail="کد ملی نامعتبر است.")
+    return s
+
+
 class StudentRegistrationRequest(BaseModel):
     full_name_fa: str = Field(..., min_length=1, description="نام و نام خانوادگی")
     phone: str = Field(..., min_length=1, description="شماره موبایل")
+    national_code: str = Field(..., min_length=1, description="کد ملی")
     email: Optional[str] = None
     education_level: Optional[str] = None
     field_of_study: Optional[str] = None
@@ -69,7 +93,7 @@ async def public_stats(db: AsyncSession = Depends(get_db)):
 
 @router.get("/student-lifecycle-matrix")
 async def public_student_lifecycle_matrix():
-    """ماتریس چرخه عمر دانشجو و نقش‌ها — برای UI عمومی و اتوماسیون وب (بدون DB)."""
+    """مسیر تحصیلی و نقش‌ها — نمای عمومی (بدون DB)."""
     return get_student_lifecycle_matrix()
 
 
@@ -108,7 +132,7 @@ async def public_processes(db: AsyncSession = Depends(get_db)):
 
 
 def _normalize_phone(phone: str) -> str:
-    return phone.strip().replace(" ", "").replace("-", "")
+    return normalize_ir_mobile(phone or "")
 
 def _validate_registration_data(data: StudentRegistrationRequest) -> None:
     """Validate and raise HTTPException with Persian message if invalid."""
@@ -139,6 +163,7 @@ def _validate_registration_data(data: StudentRegistrationRequest) -> None:
 async def register_student(data: StudentRegistrationRequest, db: AsyncSession = Depends(get_db)):
     """Public student registration (creates user + student profile)."""
     _validate_registration_data(data)
+    nc = validate_national_code_ir(data.national_code or "")
 
     phone = _normalize_phone(data.phone)
     existing_row = await db.execute(select(User).where(User.phone == phone))
@@ -186,6 +211,7 @@ async def register_student(data: StudentRegistrationRequest, db: AsyncSession = 
         education_level=data.education_level,
         field_of_study=data.field_of_study,
         motivation=data.motivation,
+        national_code=nc,
         registration_source="public_website",
     )
     try:

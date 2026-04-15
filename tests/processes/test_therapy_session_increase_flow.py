@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.engine import StateMachineEngine
-from app.meta.seed import load_process
+from app.meta.seed import load_process, load_rules
 
 
 @pytest.mark.asyncio
@@ -19,6 +19,7 @@ class TestTherapySessionIncreaseFlow:
         process_file = processes_dir / "therapy_session_increase.json"
         assert process_file.exists()
 
+        await load_rules(db_session)
         await load_process(db_session, process_file)
         await db_session.commit()
 
@@ -40,6 +41,7 @@ class TestTherapySessionIncreaseFlow:
     ):
         """جریان: request_submitted → therapist_review → session_added (تایید درمانگر)."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_rules(db_session)
         await load_process(db_session, processes_dir / "therapy_session_increase.json")
         await db_session.commit()
 
@@ -52,14 +54,20 @@ class TestTherapySessionIncreaseFlow:
         )
         await db_session.commit()
 
+        assert sample_student.weekly_sessions == 2
+
         result = await engine.execute_transition(
             instance_id=instance.id,
             trigger_event="day_time_entered",
             actor_id=sample_user.id,
             actor_role="student",
+            payload={
+                "first_session_date": "2026-06-01",
+                "preferred_time_hhmm": "10:00",
+            },
         )
         await db_session.commit()
-        assert result.success is True
+        assert result.success is True, getattr(result, "error", None)
         assert result.to_state == "therapist_review"
 
         result = await engine.execute_transition(
@@ -75,3 +83,6 @@ class TestTherapySessionIncreaseFlow:
         instance = await engine.get_process_instance(instance.id)
         assert instance.current_state_code == "session_added"
         assert instance.is_completed is True
+
+        await db_session.refresh(sample_student)
+        assert sample_student.weekly_sessions == 3

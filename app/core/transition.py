@@ -106,7 +106,26 @@ class TransitionManager:
         # Allow system transitions
         if required == "system":
             return True
-        return actor_role == required
+        if actor_role == required:
+            return True
+        # متادیتای ثبت‌نام: «applicant» همان نقش دانشجو در پنل است
+        if required == "applicant" and actor_role == "student":
+            return True
+        # پذیرش: در متادیتا «admissions_officer» است؛ در UI نقش‌های دفتر همان کار را انجام می‌دهند
+        if required == "admissions_officer" and actor_role in (
+            "staff",
+            "site_manager",
+            "deputy_education",
+        ):
+            return True
+        # کمیته پیشرفت — در پنل همان کارمندان/معاون
+        if required == "progress_committee" and actor_role in (
+            "staff",
+            "site_manager",
+            "deputy_education",
+        ):
+            return True
+        return False
 
     async def evaluate_conditions(
         self,

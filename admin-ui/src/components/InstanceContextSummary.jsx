@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import {
   CTX_STUDENT_FORMS_SUBMITTED,
   CTX_STUDENT_FORMS_UNLOCK,
+  CTX_DOCUMENTS_RESUBMIT_FIELDS,
 } from '../utils/processFormsStudent'
 import { labelState, formatActorRole } from '../utils/processDisplay'
 import {
@@ -96,6 +97,31 @@ export default function InstanceContextSummary({
           key,
           label: 'وضعیت ثبت فرم‌های مرحله',
           value: summarizeFormsSubmitted(raw),
+        })
+        continue
+      }
+      if (key === CTX_DOCUMENTS_RESUBMIT_FIELDS) {
+        const parts = Array.isArray(raw) ? raw.map((k) => resolveContextRowLabel(k, fieldLabelMap) || k) : []
+        out.push({
+          key,
+          label: 'مدارک نیازمند بارگذاری مجدد',
+          value: parts.length ? parts.join('، ') : '—',
+        })
+        continue
+      }
+      if (key === '__document_field_status') {
+        out.push({
+          key,
+          label: 'وضعیت بررسی هر مدرک',
+          value: renderFriendlyContextValue(React, raw, fieldLabelMap, labelState, 0),
+        })
+        continue
+      }
+      if (key === '__document_field_rejection_notes') {
+        out.push({
+          key,
+          label: 'توضیح نقص مدارک',
+          value: renderFriendlyContextValue(React, raw, fieldLabelMap, labelState, 0),
         })
         continue
       }

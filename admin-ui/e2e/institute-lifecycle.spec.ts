@@ -9,7 +9,7 @@ import {
   deactivateUserAsAdmin,
 } from './helpers/student-api'
 import { answerFromMathQuestion } from './helpers/challenge'
-import { buildE2eRunId, e2eFullName, e2eUniquePhone } from './helpers/test-data'
+import { buildE2eRunId, e2eFullName, e2eUniquePhone, E2E_VALID_NATIONAL_CODE } from './helpers/test-data'
 import { retryStep, waitForResponseAfterAction, warnIfSlow } from './helpers/waits'
 import { toFaDigits } from './helpers/faDigits'
 
@@ -80,6 +80,7 @@ test.describe('انستیتو — یکپارچگی UI و API (بدون mock)', (
               async () => {
                 await page.getByTestId('register-input-full_name_fa').fill(fullName)
                 await page.getByTestId('register-input-phone').fill(phone)
+                await page.getByTestId('register-input-national_code').fill(E2E_VALID_NATIONAL_CODE)
                 await page.getByTestId('register-submit').click()
               },
               { timeout: 60_000, label: 'POST public/register' },

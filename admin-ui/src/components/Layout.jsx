@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { getAvatarUrl } from '../services/api'
+import { getAvatarUrl, panelApi } from '../services/api'
 import { getSiteLogoUrl } from '../utils/siteLogo'
 
 /** priority: کمتر = پراستفاده‌تر (مرتب‌سازی منو)؛ پروفایل و راهنما همیشه انتهای لیست */
@@ -10,6 +10,7 @@ const navItems = [
   { path: '/panel/portal/student', label: 'پنل دانشجو', icon: '🎓', roles: ['student'], strictRoles: true, priority: 20 },
   { path: '/panel/portal/therapist', label: 'پنل درمانگر', icon: '💊', roles: ['therapist', 'admin'], priority: 21 },
   { path: '/panel/portal/supervisor', label: 'پنل سوپروایزر', icon: '👁️', roles: ['supervisor', 'admin'], priority: 22 },
+  { path: '/panel/portal/interviewer', label: 'پنل مصاحبه‌گر', icon: '🎤', roles: ['interviewer', 'admin'], priority: 22 },
   { path: '/panel/portal/staff', label: 'پنل کارمند', icon: '🏢', roles: ['staff', 'admin'], priority: 23 },
   { path: '/panel/portal/site-manager', label: 'پنل مسئول سایت', icon: '🏗️', roles: ['site_manager', 'admin'], priority: 24 },
   { path: '/panel/portal/committee', label: 'پنل کمیته', icon: '📋', roles: [
@@ -19,7 +20,7 @@ const navItems = [
   ], priority: 25 },
   { path: '/panel/tickets', label: 'تیکت‌ها و درخواست‌ها', icon: '🎫', roles: [
     'student',
-    'admin', 'staff', 'finance', 'therapist', 'supervisor', 'site_manager',
+    'admin', 'staff', 'finance', 'therapist', 'supervisor', 'site_manager', 'interviewer',
     'progress_committee', 'education_committee', 'supervision_committee',
     'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor',
     'deputy_education', 'monitoring_committee_officer',
@@ -34,6 +35,7 @@ const navItems = [
   },
   { path: '/panel/users', label: 'مدیریت کاربران', icon: '👥', roles: ['admin', 'staff'], priority: 44 },
   { path: '/panel/audit', label: 'گزارش حسابرسی', icon: '📝', roles: ['admin', 'staff'], priority: 46 },
+  { path: '/panel/processes', label: 'مدیریت فرایندها', icon: '🔄', roles: ['admin', 'staff'], priority: 47 },
   { path: '/panel/rules', label: 'مدیریت قوانین', icon: '📋', roles: ['admin'], priority: 48 },
   { path: '/panel/finance', label: 'داشبورد مالی', icon: '💵', roles: ['admin', 'finance'], priority: 50 },
   { path: '/panel/profile', label: 'پروفایل من', icon: '👤', priority: 85 },
@@ -56,12 +58,37 @@ const roleLabels = {
   deputy_education: 'معاون آموزش',
   monitoring_committee_officer: 'مسئول کمیته نظارت',
   finance: 'اپراتور مالی',
+  interviewer: 'مصاحبه‌گر',
 }
 
 export default function Layout() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [navPendingByPath, setNavPendingByPath] = useState({})
+
+  const loadNavPending = useCallback(async () => {
+    if (!user) return
+    try {
+      const res = await panelApi.navPendingCounts()
+      setNavPendingByPath(res.data?.counts || {})
+    } catch {
+      setNavPendingByPath({})
+    }
+  }, [user])
+
+  useEffect(() => {
+    loadNavPending()
+    const t = setInterval(loadNavPending, 60000)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') loadNavPending()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [loadNavPending])
 
   const handleLogout = () => {
     logout()
@@ -103,20 +130,33 @@ export default function Layout() {
           </div>
         </div>
         <nav className="sidebar-nav" aria-label="منوی اصلی">
-          {visibleNav.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === '/panel'}
-              className={({ isActive }) =>
-                `sidebar-link ${isActive ? 'active' : ''}`
-              }
-              onClick={() => setMobileOpen(false)}
-            >
-              <span className="sidebar-link-icon" aria-hidden="true">{item.icon}</span>
-              <span className="sidebar-link-label">{item.label}</span>
-            </NavLink>
-          ))}
+          {visibleNav.map((item) => {
+            const raw = navPendingByPath[item.path]
+            const n = typeof raw === 'number' && raw > 0 ? raw : 0
+            const badge =
+              n > 0 ? (n > 99 ? '۹۹+' : n.toLocaleString('fa-IR')) : null
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.path === '/panel'}
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive ? 'active' : ''}`
+                }
+                onClick={() => setMobileOpen(false)}
+              >
+                <span className="sidebar-link-icon" aria-hidden="true">{item.icon}</span>
+                <span className="sidebar-link-text">
+                  <span className="sidebar-link-label">{item.label}</span>
+                  {badge != null ? (
+                    <span className="sidebar-nav-badge" title="کار منتظر">
+                      {badge}
+                    </span>
+                  ) : null}
+                </span>
+              </NavLink>
+            )
+          })}
         </nav>
 
         <div className="sidebar-footer">

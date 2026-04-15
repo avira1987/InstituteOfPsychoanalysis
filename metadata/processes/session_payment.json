@@ -6,12 +6,71 @@
     "description": "موتور مالی جریان درمان. پیش‌شرط: جلسه اول در آغاز درمان پرداخت شده. قفل ثبت حضور تا پرداخت. شامل: داشبورد مالی (بدهکار/بستانکار/جلسه پیش‌رو)، شرط بدهی (تسویه اجباری با جلسات آتی در صورت بدهی)، پرداخت ۱ یا چند جلسه، تخصیص اعتبار به جلسات، فعال‌سازی لینک و ثبت حضور.",
     "initial_state": "payment_due"
   },
+  "forms": [
+    {
+      "code": "session_payment_selection",
+      "title_fa": "انتخاب تعداد جلسه و تسویه بدهی",
+      "used_in_state": "payment_selection",
+      "fields": [
+        {
+          "name": "sessions_to_pay",
+          "label_fa": "تعداد جلسات برای پیش‌پرداخت",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "max": 52
+        },
+        {
+          "name": "debt_settlement_included",
+          "label_fa": "تسویهٔ بدهی جلسه‌های قبلی در همین پرداخت (در صورت وجود بدهی)",
+          "type": "checkbox",
+          "required": false
+        }
+      ]
+    }
+  ],
   "states": [
-    {"code": "payment_due", "name_fa": "مبلغ قابل پرداخت", "type": "initial", "assigned_role": "student"},
-    {"code": "payment_selection", "name_fa": "انتخاب جلسات و تسویه بدهی", "type": "intermediate", "assigned_role": "student"},
-    {"code": "awaiting_payment", "name_fa": "در انتظار پرداخت (درگاه)", "type": "intermediate", "assigned_role": "student", "sla_hours": 72},
+    {
+      "code": "payment_due",
+      "name_fa": "مبلغ قابل پرداخت",
+      "type": "initial",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "شروع پرداخت جلسات آتی",
+        "student_task_fa": "دکمهٔ «ادامه به انتخاب جلسات و تسویه» را بزنید. اگر بدهی جلسهٔ قبلی دارید، در مرحلهٔ بعد آن را همراه پرداخت انتخاب کنید."
+      }
+    },
+    {
+      "code": "payment_selection",
+      "name_fa": "انتخاب جلسات و تسویه بدهی",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب تعداد جلسه و تسویه",
+        "student_task_fa": "فرم همین صفحه را تکمیل کنید؛ در صورت بدهی، گزینهٔ تسویه را فعال کنید. سپس دکمهٔ «ادامه و ثبت مرحله» را بزنید تا به درگاه هدایت شوید."
+      }
+    },
+    {
+      "code": "awaiting_payment",
+      "name_fa": "در انتظار پرداخت (درگاه)",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "sla_hours": 72,
+      "metadata": {
+        "student_short_fa": "پرداخت درگاه",
+        "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+      }
+    },
     {"code": "payment_confirmed", "name_fa": "پرداخت تایید شد", "type": "terminal", "assigned_role": "system"},
-    {"code": "payment_failed", "name_fa": "پرداخت ناموفق", "type": "intermediate", "assigned_role": "student"},
+    {
+      "code": "payment_failed",
+      "name_fa": "پرداخت ناموفق",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "می‌توانید دوباره تلاش کنید یا در صورت نیاز با پشتیبانی تماس بگیرید."
+      }
+    },
     {"code": "session_suspended", "name_fa": "جلسات معلق", "type": "terminal", "assigned_role": "system"}
   ],
   "transitions": [

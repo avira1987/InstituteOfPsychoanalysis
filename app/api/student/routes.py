@@ -21,10 +21,12 @@ from app.services.student_registration import (
 )
 from app.services.student_service import StudentService
 from app.services.student_tracker_summary import summarize_primary_path_for_student
+from app.services.attendance_service import AttendanceService
 from app.api.public_routes import (
     StudentRegistrationRequest,
     _validate_registration_data,
     _normalize_phone,
+    validate_national_code_ir,
 )
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
@@ -59,6 +61,7 @@ class CompleteStudentRegistrationBody(BaseModel):
     """تکمیل ثبت‌نام پس از ورود با OTP؛ شماره موبایل از حساب کاربری خوانده می‌شود."""
 
     full_name_fa: str = Field(..., min_length=1, description="نام و نام خانوادگی")
+    national_code: str = Field(..., min_length=1, description="کد ملی")
     email: Optional[str] = None
     education_level: Optional[str] = None
     field_of_study: Optional[str] = None
@@ -83,6 +86,7 @@ class StudentResponse(BaseModel):
     primary_process_name_fa: Optional[str] = None
     primary_current_state: Optional[str] = None
     primary_path_missing: Optional[bool] = None
+    therapy_hours_progress_fa: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -205,6 +209,7 @@ async def complete_student_registration(
     synth = StudentRegistrationRequest(
         full_name_fa=body.full_name_fa,
         phone=phone,
+        national_code=body.national_code,
         email=body.email,
         education_level=body.education_level,
         field_of_study=body.field_of_study,
@@ -212,6 +217,7 @@ async def complete_student_registration(
         motivation=body.motivation,
     )
     _validate_registration_data(synth)
+    nc = validate_national_code_ir(body.national_code or "")
 
     email_value = (body.email or "").strip() or None
     if email_value:
@@ -230,6 +236,7 @@ async def complete_student_registration(
         education_level=body.education_level,
         field_of_study=body.field_of_study,
         motivation=body.motivation,
+        national_code=nc,
         registration_source="otp_then_complete",
     )
     try:
@@ -276,6 +283,19 @@ async def get_my_student_profile(
         await db.commit()
         await db.refresh(student)
 
+    therapy_hours_progress_fa: Optional[str] = None
+    if student.therapy_started:
+        try:
+            m = await AttendanceService(db).get_therapy_completion_metrics(student.id)
+            th = float(m.get("therapy_hours_2x") or 0)
+            therapy_hours_progress_fa = (
+                f"پیشرفت ساعات درمان آموزشی (بر اساس جلسات تکمیل‌شده در سامانه): "
+                f"{th:g} از ۲۵۰. پس از تکمیل حدنصاب‌های اعلام‌شده، از بخش «درخواست‌های دیگر» "
+                f"فرایند «تکمیل و خاتمه درمان آموزشی» را اجرا کنید."
+            )
+        except Exception:
+            therapy_hours_progress_fa = None
+
     return StudentResponse(
         id=str(student.id),
         user_id=str(student.user_id),
@@ -287,6 +307,7 @@ async def get_my_student_profile(
         therapy_started=student.therapy_started,
         weekly_sessions=student.weekly_sessions,
         extra_data=_extra_for_response(student.extra_data),
+        therapy_hours_progress_fa=therapy_hours_progress_fa,
     )
 
 

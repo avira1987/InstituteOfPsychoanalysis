@@ -1,0 +1,2 @@
+java -classpath /root/java/jwsdpjars/jaxrpc-impl.jar:/root/java/jwsdpjars/jaxrpc-api.jar:/root/java/jwsdpjars/jax-qname.jar:/root/java/jwsdpjars/activation.jar:/root/java/jwsdpjars/mail.jar:/root/java/jwsdpjars/xsdlib.jar:/root/java/jwsdpjars/saaj-api.jar:/root/java/jwsdpjars/saaj-impl.jar:/root/java/jwsdpjars/commons-logging.jar:/root/java/jwsdpjars/xercesImpl.jar:/root/java/jwsdpjars/dom.jar:.  refpayclient/useit
+

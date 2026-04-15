@@ -7,13 +7,69 @@
     "initial_state": "change_request"
   },
   "states": [
-    {"code": "change_request", "name_fa": "ثبت درخواست تغییر", "type": "initial", "assigned_role": "student"},
-    {"code": "change_type_determination", "name_fa": "تعیین نوع تغییر", "type": "intermediate", "assigned_role": "system"},
-    {"code": "restart_review", "name_fa": "بررسی آغاز مجدد", "type": "intermediate", "assigned_role": "progress_committee", "sla_hours": 168},
-    {"code": "therapist_change_review", "name_fa": "بررسی تغییر درمانگر", "type": "intermediate", "assigned_role": "progress_committee", "sla_hours": 168},
-    {"code": "schedule_change_review", "name_fa": "بررسی تغییر ساعت", "type": "intermediate", "assigned_role": "therapist", "sla_hours": 72},
-    {"code": "new_therapist_selection", "name_fa": "انتخاب درمانگر جدید", "type": "intermediate", "assigned_role": "student"},
-    {"code": "new_schedule_confirmation", "name_fa": "تایید ساعت جدید", "type": "intermediate", "assigned_role": "student"},
+    {
+      "code": "change_request",
+      "name_fa": "ثبت درخواست تغییر",
+      "type": "initial",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "ثبت نوع درخواست",
+        "student_task_fa": "نوع تغییر را انتخاب و دلیل کوتاه بنویسید؛ سپس یک‌بار دکمهٔ ادامه را بزنید تا درخواست به مسیر درست (کمیته یا درمانگر) برود."
+      }
+    },
+    {
+      "code": "restart_review",
+      "name_fa": "بررسی آغاز مجدد",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "sla_hours": 168,
+      "metadata": {
+        "student_short_fa": "بررسی کمیته پیشرفت",
+        "student_task_fa": "درخواست آغاز مجدد در کمیته پیشرفت در حال بررسی است؛ پس از اعلام نتیجه همین صفحه را تازه کنید."
+      }
+    },
+    {
+      "code": "therapist_change_review",
+      "name_fa": "بررسی تغییر درمانگر",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "sla_hours": 168,
+      "metadata": {
+        "student_short_fa": "بررسی کمیته پیشرفت",
+        "student_task_fa": "درخواست تغییر درمانگر در کمیته پیشرفت در حال بررسی است؛ پس از تایید، درمانگر جدید را در مرحلهٔ بعد انتخاب می‌کنید."
+      }
+    },
+    {
+      "code": "schedule_change_review",
+      "name_fa": "بررسی تغییر ساعت",
+      "type": "intermediate",
+      "assigned_role": "therapist",
+      "sla_hours": 72,
+      "metadata": {
+        "student_short_fa": "بررسی درمانگر",
+        "student_task_fa": "درمانگر در حال بررسی پیشنهاد شما برای ساعت جلسات است."
+      }
+    },
+    {
+      "code": "new_therapist_selection",
+      "name_fa": "انتخاب درمانگر جدید",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب درمانگر جدید",
+        "student_task_fa": "شناسهٔ درمانگر جدید را مطابق راهنمای انستیتو وارد کنید و تایید نهایی را بزنید."
+      }
+    },
+    {
+      "code": "new_schedule_confirmation",
+      "name_fa": "تایید ساعت جدید",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "تایید ساعت جلسات",
+        "student_task_fa": "ساعت پیشنهادی توسط درمانگر را بررسی کنید؛ در صورت تایید، دکمهٔ ادامه را بزنید تا ساعت روی جلسات آینده ثبت شود."
+      }
+    },
     {"code": "change_approved", "name_fa": "تغییر تایید شد", "type": "terminal", "assigned_role": "system"},
     {"code": "change_rejected", "name_fa": "تغییر رد شد", "type": "terminal", "assigned_role": "system"},
     {"code": "restart_activated", "name_fa": "آغاز مجدد فعال شد", "type": "terminal", "assigned_role": "system"}
@@ -21,26 +77,23 @@
   "transitions": [
     {
       "from": "change_request",
-      "to": "change_type_determination",
-      "trigger": "request_submitted",
-      "required_role": "student"
-    },
-    {
-      "from": "change_type_determination",
       "to": "restart_review",
-      "trigger": "type_restart",
+      "trigger": "request_submitted",
+      "required_role": "student",
       "conditions": ["change_type_is_restart"]
     },
     {
-      "from": "change_type_determination",
+      "from": "change_request",
       "to": "therapist_change_review",
-      "trigger": "type_therapist_change",
+      "trigger": "request_submitted",
+      "required_role": "student",
       "conditions": ["change_type_is_therapist"]
     },
     {
-      "from": "change_type_determination",
+      "from": "change_request",
       "to": "schedule_change_review",
-      "trigger": "type_schedule_change",
+      "trigger": "request_submitted",
+      "required_role": "student",
       "conditions": ["change_type_is_schedule"]
     },
     {
@@ -104,6 +157,67 @@
       "actions": [
         {"type": "update_schedule"},
         {"type": "notification", "notification_type": "sms", "template": "schedule_changed", "recipients": ["student", "therapist"]}
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "code": "therapy_change_request",
+      "used_in_state": "change_request",
+      "title_fa": "جزئیات درخواست",
+      "fields": [
+        {
+          "name": "change_type",
+          "label_fa": "نوع تغییر",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "restart", "label_fa": "آغاز مجدد درمان (حذف جلسات آینده و شروع مجدد طبق مقررات)"},
+            {"value": "therapist_change", "label_fa": "تغییر درمانگر آموزشی"},
+            {"value": "schedule_change", "label_fa": "تغییر ساعت جلسات"}
+          ]
+        },
+        {
+          "name": "request_reason",
+          "label_fa": "توضیح کوتاه / دلیل درخواست",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "code": "therapy_new_therapist",
+      "used_in_state": "new_therapist_selection",
+      "title_fa": "درمانگر جدید",
+      "fields": [
+        {
+          "name": "new_therapist_id",
+          "label_fa": "شناسهٔ کاربری (UUID) درمانگر جدید",
+          "type": "text",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "therapy_schedule_student_confirm",
+      "used_in_state": "new_schedule_confirmation",
+      "title_fa": "تایید نهایی ساعت جلسات",
+      "fields": [
+        {
+          "name": "session_time_hhmm",
+          "label_fa": "ساعت توافق‌شده برای جلسات آینده (مثال ۱۴:۳۰)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "schedule_confirm_ack",
+          "label_fa": "ساعت بالا را با درمانگر هماهنگ کرده‌ام و تایید می‌کنم",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "تایید می‌کنم"}
+          ]
+        }
       ]
     }
   ]

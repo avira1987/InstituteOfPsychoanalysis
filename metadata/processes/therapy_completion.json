@@ -14,7 +14,16 @@
     "override": "مسئول علمی کمیته نظارت می‌تواند حدنصاب‌ها را در پروفایل دانشجو تغییر دهد. اولویت با مقادیر دستی."
   },
   "states": [
-    {"code": "initiated", "name_fa": "آغاز شده", "type": "initial", "assigned_role": "student"},
+    {
+      "code": "initiated",
+      "name_fa": "آغاز شده",
+      "type": "initial",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "ایست بازرسی خاتمهٔ رسمی درمان آموزشی",
+        "student_task_fa": "ساعات درمان، بالینی و سوپرویژن را در باکس پایین با حدنصاب‌ها ببینید؛ اگر همهٔ شرایط احراز است، دکمهٔ «ادامه و ثبت مرحله» را بزنید؛ در غیر این صورت پس از تکمیل ساعات دوباره همین فرایند را اجرا کنید."
+      }
+    },
     {"code": "conditions_not_met", "name_fa": "شرایط احراز نشده", "type": "terminal", "assigned_role": "system"},
     {"code": "therapy_completed", "name_fa": "درمان تکمیل و خاتمه یافت", "type": "terminal", "assigned_role": "system"}
   ],
@@ -32,6 +41,12 @@
           "template": "therapy_completion_conditions_not_met",
           "recipients": ["student"],
           "message_fa": "شرایط خاتمه احراز نشده است. وضعیت فعلی: [ساعات دانشجو] / [حدنصاب‌ها]."
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_completion_conditions_not_met",
+          "recipients": ["student"]
         }
       ]
     },
@@ -52,6 +67,12 @@
           "template": "therapy_completion_success",
           "recipients": ["student"],
           "message_fa": "درمان آموزشی با موفقیت تکمیل و خاتمه یافت."
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_completion_success",
+          "recipients": ["student"]
         }
       ]
     }

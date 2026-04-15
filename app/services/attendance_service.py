@@ -169,6 +169,40 @@ class AttendanceService:
             "total_hours": completed_sessions,  # 1 session = 1 hour (standard)
         }
 
+    async def get_therapy_completion_metrics(self, student_id: uuid.UUID) -> dict:
+        """
+        ساعات مورد استفاده در فرایند therapy_completion:
+        - therapy_hours_2x: همهٔ جلسات درمان آموزشی با وضعیت completed (۱ جلسه = ۱ ساعت؛
+          شامل جلسه اضافی)؛ هم‌تراز با ثبت حضور و جلسه اضافی.
+        - clinical_hours / supervision_hours: از extra_data دانشجو (ثبت دستی/فرایندهای دیگر).
+        """
+        stmt = select(func.count()).select_from(TherapySession).where(
+            TherapySession.student_id == student_id,
+            TherapySession.status == "completed",
+        )
+        r = await self.db.execute(stmt)
+        from_sessions = float(r.scalar() or 0)
+
+        st = await self.db.get(Student, student_id)
+        ex = dict(st.extra_data or {}) if st else {}
+        clinical = float(ex.get("clinical_hours") or 0)
+        supervision = float(ex.get("supervision_hours") or 0)
+        # انباشت قدیمی جلسه اضافی یا اصلاح دستی؛ با حداکثر جلسات تکمیل‌شده هم‌تراز می‌شود
+        try:
+            legacy_extra = float(ex.get("accumulated_therapy_hours") or 0)
+        except (TypeError, ValueError):
+            legacy_extra = 0.0
+        try:
+            stored_th = float(ex.get("therapy_hours_2x") or 0)
+        except (TypeError, ValueError):
+            stored_th = 0.0
+        therapy_hours_2x = max(from_sessions, legacy_extra, stored_th)
+        return {
+            "therapy_hours_2x": therapy_hours_2x,
+            "clinical_hours": clinical,
+            "supervision_hours": supervision,
+        }
+
     # ─── Attendance History ─────────────────────────────────────
 
     async def get_attendance_history(

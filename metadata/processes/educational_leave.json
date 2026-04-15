@@ -3,20 +3,20 @@
     "code": "educational_leave",
     "name_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها",
     "name_en": "Temporary Educational Leave from Class Registration",
-    "description": "مدیریت ساختارمند وقفه‌های تحصیلی دانشجویان با هدف حفظ تعادل میان نیازهای شخصی دانشجو و الزامات آموزش روانکاوی. شامل: ثبت درخواست (۱ یا ۲ ترم)، هشدار انترن+۲ترم، تعیین جلسه ظرف ۷ روز، هشدار به معاون در صورت تاخیر، اطلاع‌رسانی جلسه، تصمیم‌گیری کمیته، رد/تایید با اقدامات متمایز برای انترن (۱ یا ۲ ترم)، بازگشت و پایش ثبت‌نام مجدد.",
+    "description": "مدیریت ساختارمند وقفه‌های تحصیلی دانشجویان با هدف حفظ تعادل میان نیازهای شخصی دانشجو و الزامات آموزش روانکاوی. شامل: ثبت درخواست (۱ یا ۲ ترم)، هشدار انترن+۲ترم، تعیین جلسه ظرف ۷ روز، هشدار به معاون در صورت تاخیر، اطلاع‌رسانی جلسه، تصمیم‌گیری کمیته، رد/تایید با اقدامات متمایز برای انترن (۱ یا ۲ ترم)، بازگشت و پایش ثبت‌نام مجدد. یادآوری بازگشت و مهلت ثبت‌نام پس از فعال‌سازی مرخصی به‌صورت خودکار از روی تنظیمات سامانه (فاصلهٔ روز از زمان فعال‌سازی) محاسبه می‌شود نه تاریخ ثابت تقویمی.",
     "initial_state": "request_form"
   },
   "states": [
     {"code": "request_form", "name_fa": "ثبت درخواست اولیه", "type": "initial", "assigned_role": "student"},
     {"code": "committee_review", "name_fa": "بررسی و تعیین جلسه توسط کمیته پیشرفت", "type": "intermediate", "assigned_role": "progress_committee", "sla_hours": 168, "on_sla_breach_event": "sla_breach_7days"},
     {"code": "deputy_alerted", "name_fa": "هشدار به معاون مدیر آموزش", "type": "intermediate", "assigned_role": "deputy_education", "metadata": {"reason": "عدم ثبت جلسه ظرف ۷ روز توسط کمیته پیشرفت"}},
-    {"code": "session_scheduled", "name_fa": "جلسه تنظیم شد", "type": "intermediate", "assigned_role": "progress_committee"},
+    {"code": "session_scheduled", "name_fa": "جلسه تنظیم شد", "type": "intermediate", "assigned_role": "progress_committee", "metadata": {"student_short_fa": "زمان جلسه کمیته", "student_task_fa": "زمان و نحوهٔ برگزاری جلسه در همین صفحه (بخش جزئیات پرونده) نمایش داده می‌شود؛ در روز مقرر طبق اعلام کمیته حاضر شوید."}},
     {"code": "committee_decision", "name_fa": "برگزاری جلسه و تصمیم‌گیری", "type": "intermediate", "assigned_role": "progress_committee"},
     {"code": "rejected", "name_fa": "رد درخواست", "type": "terminal", "assigned_role": "system"},
-    {"code": "approved_non_intern", "name_fa": "تایید - دانشجو غیر انترن", "type": "intermediate", "assigned_role": "system"},
-    {"code": "approved_intern_1term", "name_fa": "تایید - انترن وقفه ۱ ترم", "type": "intermediate", "assigned_role": "system"},
-    {"code": "approved_intern_2term", "name_fa": "تایید - انترن وقفه ۲ ترم", "type": "intermediate", "assigned_role": "system"},
-    {"code": "on_leave", "name_fa": "در وقفه تحصیلی", "type": "intermediate", "assigned_role": "system"},
+    {"code": "approved_non_intern", "name_fa": "تایید - دانشجو غیر انترن", "type": "intermediate", "assigned_role": "student", "metadata": {"student_short_fa": "تأیید نهایی مرخصی", "student_task_fa": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را در سامانه فعال کنید؛ پس از آن ثبت‌نام کلاس برای شما تا زمان بازگشت مسدود می‌شود."}},
+    {"code": "approved_intern_1term", "name_fa": "تایید - انترن وقفه ۱ ترم", "type": "intermediate", "assigned_role": "student", "metadata": {"student_short_fa": "تأیید نهایی مرخصی", "student_task_fa": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ سوپرویژن و درمان طبق مصوبه ادامه می‌یابد."}},
+    {"code": "approved_intern_2term", "name_fa": "تایید - انترن وقفه ۲ ترم", "type": "intermediate", "assigned_role": "student", "metadata": {"student_short_fa": "تأیید نهایی مرخصی", "student_task_fa": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ پس از آن وضعیت انترنی و سوپروایزر طبق مصوبه به‌روز می‌شود."}},
+    {"code": "on_leave", "name_fa": "در وقفه تحصیلی", "type": "intermediate", "assigned_role": "system", "metadata": {"student_short_fa": "در وقفه تحصیلی", "student_task_fa": "ثبت‌نام دروس کلاس تا اعلام بازگشت در سامانه برای شما مسدود است. زمان تقریبی یادآوری بازگشت و مهلت اعلام ثبت‌نام ترم در جزئیات همین کارت نمایش داده می‌شود."}},
     {"code": "return_reminder_sent", "name_fa": "یادآوری بازگشت ارسال شد", "type": "intermediate", "assigned_role": "system", "sla_hours": 336},
     {"code": "returned", "name_fa": "بازگشت به تحصیل", "type": "terminal", "assigned_role": "system"},
     {"code": "violation_registered", "name_fa": "ثبت تخلف عدم بازگشت", "type": "terminal", "assigned_role": "system"}
@@ -113,27 +113,33 @@
       "from": "approved_non_intern",
       "to": "on_leave",
       "trigger": "leave_activated",
+      "required_role": "student",
       "description_fa": "اعمال وقفه در پورتال دانشجو (LMS)",
       "actions": [
-        {"type": "suspend_class_registration"}
+        {"type": "suspend_class_registration"},
+        {"type": "set_leave_return_schedule"}
       ]
     },
     {
       "from": "approved_intern_1term",
       "to": "on_leave",
       "trigger": "leave_activated",
+      "required_role": "student",
       "description_fa": "اعمال وقفه - انترنی حفظ می‌شود",
       "actions": [
-        {"type": "suspend_class_registration"}
+        {"type": "suspend_class_registration"},
+        {"type": "set_leave_return_schedule"}
       ]
     },
     {
       "from": "approved_intern_2term",
       "to": "on_leave",
       "trigger": "leave_activated",
+      "required_role": "student",
       "description_fa": "اعمال وقفه - لغو انترنی و آزادسازی وقت سوپروایزر",
       "actions": [
         {"type": "suspend_class_registration"},
+        {"type": "set_leave_return_schedule"},
         {"type": "revoke_intern_status"}
       ]
     },
@@ -141,7 +147,7 @@
       "from": "on_leave",
       "to": "return_reminder_sent",
       "trigger": "send_return_reminder",
-      "description_fa": "پایان مهلت وقفه - ارسال SMS یادآوری (۱۵ بهمن برای ترم پاییز، ۵ مرداد برای ترم زمستان)",
+      "description_fa": "رسیدن به زمان یادآوری بازگشت (طبق return_reminder_at در context) — ارسال پیامک یادآوری",
       "actions": [
         {"type": "notification", "notification_type": "sms", "template": "return_reminder", "recipients": ["student"]}
       ]
@@ -150,7 +156,8 @@
       "from": "return_reminder_sent",
       "to": "returned",
       "trigger": "student_registered",
-      "description_fa": "دانشجو برای ترم آینده ثبت‌نام کرد",
+      "required_role": "student",
+      "description_fa": "دانشجو ثبت‌نام ترم آینده را در سامانه انجام داده و با دکمه در پورتال اعلام کرده است (تأیید دستی در پنل، نه اتصال خودکار به سیستم ثبت‌نام)",
       "actions": [
         {"type": "reactivate_class_registration"}
       ]
@@ -163,6 +170,33 @@
       "actions": [
         {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "no_return_from_leave"}},
         {"type": "notification", "notification_type": "sms", "template": "violation_no_return", "recipients": ["student", "monitoring_committee_officer"]}
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "code": "leave_request",
+      "used_in_state": "request_form",
+      "title_fa": "درخواست مرخصی آموزشی",
+      "description_fa": "مدت وقفه را انتخاب کنید. وضعیت انترنی شما از پرونده آموزشی خوانده می‌شود (نیازی به تکرار در فرم نیست).",
+      "visible_to": ["student"],
+      "fields": [
+        {
+          "name": "leave_terms",
+          "label_fa": "تعداد ترم وقفه",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": 1, "label_fa": "یک ترم"},
+            {"value": 2, "label_fa": "دو ترم"}
+          ]
+        },
+        {
+          "name": "request_reason",
+          "label_fa": "توضیح کوتاه درخواست (اختیاری)",
+          "type": "textarea",
+          "required": false
+        }
       ]
     }
   ]

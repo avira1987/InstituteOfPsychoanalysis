@@ -54,6 +54,14 @@ def _smoke_action_dict(action_type: str) -> dict:
             "process_code": "session_payment",
             "payload": {},
         }
+    if action_type == "warn_if":
+        return {
+            "type": "warn_if",
+            "condition": "student.is_intern AND leave_terms == 2",
+            "message_fa": "پیام آزمایشی هشدار",
+        }
+    if action_type == "set_leave_return_schedule":
+        return {"type": "set_leave_return_schedule"}
     return {"type": action_type}
 
 

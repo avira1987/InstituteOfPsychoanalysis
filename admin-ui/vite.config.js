@@ -5,6 +5,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => ({
   base: mode === 'development' ? '/' : '/anistito/',
   plugins: [react()],
+  build: {
+    // جلوگیری از هشدار stderr (در PowerShell به‌صورت NativeCommandError دیده می‌شد)
+    chunkSizeWarningLimit: 900,
+  },
   server: {
     // جدا از پورت API (معمولاً 3000 با uvicorn یا Docker) تا پروکسی به خودِ Vite نخورد
     port: 5173,

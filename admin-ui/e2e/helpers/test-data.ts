@@ -19,6 +19,9 @@ export function e2eFullName(runId: string): string {
  * Iranian mobile: 09 + 9 digits. Spread across workers/time/random to avoid collisions in parallel.
  * `stepAttempt` differentiates register/login retries so a new phone is used per retry when needed.
  */
+/** کد ملی معتبر برای E2E (ثابت؛ با قوانین رقم کنترل ایران سازگار است). */
+export const E2E_VALID_NATIONAL_CODE = '0499370899'
+
 export function e2eUniquePhone(
   testInfo: Pick<TestInfo, 'workerIndex' | 'retry' | 'parallelIndex'>,
   stepAttempt = 0,

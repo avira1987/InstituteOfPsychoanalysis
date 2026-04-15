@@ -3,9 +3,11 @@ import { useAuth } from '../contexts/AuthContext'
 import { processExecApi, studentApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
+import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
+import PopupToast from '../components/PopupToast'
 
 const supervisorReviewStates = [
   'supervisor_review', 'supervisor_decision', 'awaiting_supervisor',
@@ -85,12 +87,18 @@ export default function SupervisorPortal() {
     }
   }
 
-  const triggerTransition = async (triggerEvent) => {
+  const triggerTransition = async (transition) => {
     if (!selectedInstance) return
+    const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
+    const toState = typeof transition === 'object' ? transition.to_state : undefined
     try {
-      const payload = notesPayload(decisionNotes)
+      let payload = notesPayload(decisionNotes)
+      payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
+      if (toState) payload.to_state = toState
       const res = await processExecApi.trigger(selectedInstance, {
-        trigger_event: triggerEvent, payload,
+        trigger_event: triggerEvent,
+        payload,
+        ...(toState ? { to_state: toState } : {}),
       })
       if (res.data.success) {
         showToast(`تصمیم ثبت شد: ${labelState(res.data.to_state)}`)
@@ -126,18 +134,7 @@ export default function SupervisorPortal() {
 
   return (
     <div>
-      {toast && (
-        <div style={{
-          position: 'fixed', top: '1rem', left: '50%', transform: 'translateX(-50%)',
-          padding: '0.75rem 1.5rem', borderRadius: '8px', zIndex: 1000, fontWeight: 500,
-          background: toast.type === 'error' ? '#fef2f2' : '#f0fdf4',
-          color: toast.type === 'error' ? '#dc2626' : '#16a34a',
-          border: `1px solid ${toast.type === 'error' ? '#fca5a5' : '#86efac'}`,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        }}>
-          {toast.msg}
-        </div>
-      )}
+      <PopupToast toast={toast} />
 
       <div className="page-header">
         <div>
@@ -398,7 +395,7 @@ export default function SupervisorPortal() {
                       return (
                         <button
                           key={idx}
-                          onClick={() => triggerTransition(t.trigger_event)}
+                          onClick={() => triggerTransition(t)}
                           style={{
                             padding: '0.6rem 1.2rem', borderRadius: '8px', border: 'none',
                             cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',

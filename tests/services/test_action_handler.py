@@ -281,3 +281,99 @@ class TestActionHandlerTherapyLifecycle:
         assert instance.context_data.get("pending_installments_remaining") == 3
         due = instance.context_data.get("next_installment_due_at")
         assert due and len(str(due)) >= 10
+
+    async def test_create_online_class_links_fallback_when_alocom_off(
+        self, db_session: AsyncSession, sample_student: Student, sample_user
+    ):
+        """بدون فعال‌سازی الوکام، اکشن به ui_hints + integration_events برمی‌گردد."""
+        today = datetime.now(timezone.utc).date()
+        ts = TherapySession(
+            id=uuid.uuid4(),
+            student_id=sample_student.id,
+            therapist_id=sample_user.id,
+            session_date=today + timedelta(days=2),
+            status="scheduled",
+            payment_status="paid",
+        )
+        db_session.add(ts)
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code="introductory_course_registration",
+            student_id=sample_student.id,
+            current_state_code="payment",
+        )
+        db_session.add(instance)
+        await db_session.flush()
+
+        handler = ActionHandler(db_session)
+        results = await handler.handle_actions(
+            [{"type": "create_online_class_links", "agent_service_id": 99}],
+            instance,
+            {},
+        )
+        await db_session.commit()
+
+        assert results[0]["success"] is True
+        await db_session.refresh(instance)
+        hints = instance.context_data.get("ui_hints") or []
+        assert any(h.get("action") == "create_online_class_links" for h in hints)
+
+    async def test_create_online_class_links_calls_provision_when_configured(
+        self, db_session: AsyncSession, sample_student: Student, sample_user, monkeypatch
+    ):
+        class _Cfg:
+            ALOCOM_ENABLED = True
+            ALOCOM_USERNAME = "u"
+            ALOCOM_PASSWORD = "p"
+            ALOCOM_DEFAULT_AGENT_SERVICE_ID = 0
+            ALOCOM_FALLBACK_TO_UI_HINTS = True
+
+        monkeypatch.setattr("app.services.action_handler.get_settings", lambda: _Cfg())
+
+        async def fake_provision(db, session, **kwargs):
+            session.meeting_url = "https://alocom.test/class/x"
+            session.meeting_provider = "alocom"
+            session.links_unlocked = True
+            session.alocom_event_id = "ev42"
+            return {"meeting_url": session.meeting_url, "alocom_event_id": "ev42", "slug": "x"}
+
+        monkeypatch.setattr(
+            "app.services.action_handler.provision_therapy_session_alocom",
+            fake_provision,
+        )
+
+        today = datetime.now(timezone.utc).date()
+        ts = TherapySession(
+            id=uuid.uuid4(),
+            student_id=sample_student.id,
+            therapist_id=sample_user.id,
+            session_date=today + timedelta(days=2),
+            status="scheduled",
+            payment_status="paid",
+        )
+        db_session.add(ts)
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code="introductory_course_registration",
+            student_id=sample_student.id,
+            current_state_code="payment",
+        )
+        db_session.add(instance)
+        await db_session.flush()
+
+        handler = ActionHandler(db_session)
+        results = await handler.handle_actions(
+            [{"type": "create_online_class_links", "agent_service_id": 5}],
+            instance,
+            {},
+        )
+        await db_session.commit()
+
+        assert results[0]["success"] is True
+        await db_session.refresh(ts)
+        assert ts.meeting_url == "https://alocom.test/class/x"
+        assert ts.meeting_provider == "alocom"
+        assert ts.links_unlocked is True
+        assert ts.alocom_event_id == "ev42"
+        await db_session.refresh(instance)
+        assert instance.context_data.get("last_session_link") == "https://alocom.test/class/x"

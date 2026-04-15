@@ -1,11 +1,16 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { processExecApi, studentApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
+import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
+import PopupToast from '../components/PopupToast'
+import InterviewSlotsAdmin from '../components/InterviewSlotsAdmin'
+import InterviewBookingsPanel from '../components/InterviewBookingsPanel'
+import DocumentsReviewPanel from '../components/DocumentsReviewPanel'
 
 const siteManagerReviewStates = [
   'site_manager_review', 'site_manager_followup', 'pending_site_manager',
@@ -94,12 +99,18 @@ export default function SiteManagerPortal() {
     }
   }
 
-  const triggerTransition = async (triggerEvent) => {
+  const triggerTransition = async (transition) => {
     if (!selectedInstance) return
+    const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
+    const toState = typeof transition === 'object' ? transition.to_state : undefined
     try {
-      const payload = notesPayload(decisionNotes)
+      let payload = notesPayload(decisionNotes)
+      payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
+      if (toState) payload.to_state = toState
       const res = await processExecApi.trigger(selectedInstance, {
-        trigger_event: triggerEvent, payload,
+        trigger_event: triggerEvent,
+        payload,
+        ...(toState ? { to_state: toState } : {}),
       })
       if (res.data.success) {
         showToast(`عملیات انجام شد: ${labelState(res.data.to_state)}`)
@@ -113,6 +124,17 @@ export default function SiteManagerPortal() {
     }
   }
 
+  /** قبل از return بارگذاری — وگرنه React #310 (تعداد متفاوت هوک). */
+  const documentReviewQueue = useMemo(
+    () =>
+      allActiveInstances.filter(
+        i =>
+          i.process_code === 'introductory_course_registration' &&
+          ['documents_review', 'documents_incomplete'].includes(i.current_state),
+      ),
+    [allActiveInstances],
+  )
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem' }}>
@@ -125,23 +147,14 @@ export default function SiteManagerPortal() {
     { id: 'dashboard', label: 'داشبورد', icon: '📊' },
     { id: 'alerts', label: `هشدارها (${attendanceAlerts.length})`, icon: '🔔' },
     { id: 'pending', label: `پیگیری‌ها (${pendingActions.length})`, icon: '📋' },
+    { id: 'documentsReview', label: `بررسی مدارک (${documentReviewQueue.length})`, icon: '📎' },
+    { id: 'interviewSlots', label: 'اسلات مصاحبه', icon: '📅' },
     { id: 'overview', label: 'نمای کلی', icon: '👁️' },
   ]
 
   return (
     <div>
-      {toast && (
-        <div style={{
-          position: 'fixed', top: '1rem', left: '50%', transform: 'translateX(-50%)',
-          padding: '0.75rem 1.5rem', borderRadius: '8px', zIndex: 1000, fontWeight: 500,
-          background: toast.type === 'error' ? '#fef2f2' : '#f0fdf4',
-          color: toast.type === 'error' ? '#dc2626' : '#16a34a',
-          border: `1px solid ${toast.type === 'error' ? '#fca5a5' : '#86efac'}`,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        }}>
-          {toast.msg}
-        </div>
-      )}
+      <PopupToast toast={toast} />
 
       <div className="page-header">
         <div>
@@ -410,6 +423,21 @@ export default function SiteManagerPortal() {
         </div>
       )}
 
+      {activeTab === 'interviewSlots' && (
+        <>
+          <InterviewSlotsAdmin showToast={showToast} />
+          <InterviewBookingsPanel showToast={showToast} />
+        </>
+      )}
+
+      {activeTab === 'documentsReview' && (
+        <DocumentsReviewPanel
+          queue={documentReviewQueue}
+          onRefresh={loadData}
+          showToast={showToast}
+        />
+      )}
+
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="card">
@@ -521,7 +549,7 @@ function ActionPanel({ instanceDetail, availableTransitions, decisionNotes, setD
               return (
                 <button
                   key={idx}
-                  onClick={() => triggerTransition(t.trigger_event)}
+                  onClick={() => triggerTransition(t)}
                   style={{
                     padding: '0.6rem 1.2rem', borderRadius: '8px', border: 'none',
                     cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem',

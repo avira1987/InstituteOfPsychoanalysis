@@ -217,3 +217,93 @@ async def test_maybe_start_session_payment_creates_when_none(db_session: AsyncSe
     assert pay[0].context_data.get("source") == "after_start_therapy_complete"
     assert student.extra_data.get("primary_instance_id") == str(pay[0].id)
 
+
+@pytest.mark.asyncio
+async def test_repoint_primary_after_session_payment_prefers_active_process(db_session: AsyncSession):
+    """پس از تکمیل session_payment، primary به نمونهٔ فعال دیگر (مثلاً مرخصی) منتقل شود."""
+    user = User(
+        id=uuid.uuid4(),
+        username="stu_repoint",
+        hashed_password="x",
+        role="student",
+    )
+    student = Student(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        student_code="STU-REPOINT",
+        course_type="comprehensive",
+        is_intern=False,
+        term_count=1,
+        current_term=1,
+        weekly_sessions=2,
+        extra_data={},
+    )
+    pay_done = ProcessInstance(
+        id=uuid.uuid4(),
+        process_code="session_payment",
+        student_id=student.id,
+        current_state_code="payment_confirmed",
+        is_completed=True,
+        is_cancelled=False,
+    )
+    leave_active = ProcessInstance(
+        id=uuid.uuid4(),
+        process_code="educational_leave",
+        student_id=student.id,
+        current_state_code="on_leave",
+        is_completed=False,
+        is_cancelled=False,
+    )
+    student.extra_data = {"primary_instance_id": str(pay_done.id)}
+    db_session.add_all([user, student, pay_done, leave_active])
+    await db_session.commit()
+
+    service = StudentService(db_session)
+    await service.repoint_primary_after_session_payment_completed(pay_done)
+    await db_session.commit()
+    await db_session.refresh(student)
+
+    assert student.extra_data.get("primary_instance_id") == str(leave_active.id)
+    assert "dashboard_therapy_hint_fa" not in (student.extra_data or {})
+
+
+@pytest.mark.asyncio
+async def test_repoint_primary_after_session_payment_sets_hint_when_no_active(db_session: AsyncSession):
+    """اگر نمونهٔ فعال دیگری نباشد، primary خالی و راهنمای داشبورد ثبت شود."""
+    user = User(
+        id=uuid.uuid4(),
+        username="stu_repoint2",
+        hashed_password="x",
+        role="student",
+    )
+    student = Student(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        student_code="STU-REPOINT2",
+        course_type="comprehensive",
+        is_intern=False,
+        term_count=1,
+        current_term=1,
+        weekly_sessions=2,
+        extra_data={},
+    )
+    pay_done = ProcessInstance(
+        id=uuid.uuid4(),
+        process_code="session_payment",
+        student_id=student.id,
+        current_state_code="payment_confirmed",
+        is_completed=True,
+        is_cancelled=False,
+    )
+    student.extra_data = {"primary_instance_id": str(pay_done.id)}
+    db_session.add_all([user, student, pay_done])
+    await db_session.commit()
+
+    service = StudentService(db_session)
+    await service.repoint_primary_after_session_payment_completed(pay_done)
+    await db_session.commit()
+    await db_session.refresh(student)
+
+    assert student.extra_data.get("primary_instance_id") is None
+    assert student.extra_data.get("dashboard_therapy_hint_fa")
+

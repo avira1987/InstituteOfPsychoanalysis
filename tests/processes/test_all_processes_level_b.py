@@ -77,6 +77,7 @@ LEVEL_B_INITIAL_CONTEXT: dict[str, dict[str, Any]] = {
         "student_on_leave": False,
         "consecutive_unannounced_count": 1,
     },
+    "therapy_changes": {"change_type": "therapist_change"},
 }
 
 

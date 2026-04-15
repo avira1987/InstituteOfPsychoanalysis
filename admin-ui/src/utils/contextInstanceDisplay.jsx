@@ -1,4 +1,5 @@
 import { PROCESS_LABELS_FA, STATE_LABELS_FA } from './processMetadataLabels'
+import { parseStepFileUploadValue, resolveUploadPublicUrl } from './uploadPublicUrl'
 
 /** برچسب‌های ثابت برای کلیدهای رایج در context_data */
 export const CONTEXT_KEY_LABELS = {
@@ -14,6 +15,13 @@ export const CONTEXT_KEY_LABELS = {
   decision: 'تصمیم',
   interview_result_submitted: 'ثبت نتیجهٔ مصاحبه',
   return_reminder_at: 'یادآور بازگشت',
+  return_deadline_at: 'مهلت ثبت‌نام پس از یادآوری',
+  leave_schedule_set_at: 'زمان تنظیم تقویم بازگشت',
+  committee_meeting_at: 'زمان جلسه کمیته (ثبت‌شده در سامانه)',
+  committee_meeting_mode: 'نحوهٔ جلسه کمیته',
+  committee_meeting_link: 'لینک جلسه آنلاین',
+  committee_meeting_location_fa: 'محل یا آدرس جلسه',
+  student_portal_alert_fa: 'هشدار نمایش داده‌شده به دانشجو',
   logged_at: 'زمان ثبت',
   payload: 'جزئیات',
   admission_type: 'نوع پذیرش',
@@ -26,6 +34,12 @@ export const CONTEXT_KEY_LABELS = {
   forfeit_amount: 'مبلغ باقی‌ماندهٔ غیرقابل‌بازگشت',
   invoice_amount: 'مبلغ فاکتور',
   last_session_link: 'لینک جلسه آنلاین',
+  therapy_session_id: 'شناسهٔ جلسهٔ درمان (ثبت‌شده)',
+  payment_amount_rial: 'مبلغ پرداخت (ریال)',
+  agreed_session_date: 'تاریخ توافق‌شدهٔ جلسه',
+  agreed_session_time: 'ساعت توافق‌شدهٔ جلسه',
+  extra_session_calendar_summary_fa: 'خلاصهٔ ثبت تقویم (جلسه اضافی)',
+  extra_session_calendar_noted_at: 'زمان یادداشت تقویم',
   therapy_status: 'وضعیت درمان آموزشی',
   payment_unlocked_for_50th_session: 'امکان پرداخت جلسه ۵۰ام فعال شد',
   supervisor_slot_removed_from_available: 'حذف از وقت‌های آزاد سوپروایزر',
@@ -45,7 +59,21 @@ export const CONTEXT_KEY_LABELS = {
   selected_courses: 'دروس انتخاب‌شده',
   source: 'منبع ثبت در سامانه',
   parent_start_therapy_instance_id: 'شناسهٔ فرایند آغاز درمان (فنی)',
+  parent_instance_id: 'فرایند مرتبط (والد)',
+  parent_process_code: 'کد فرایند والد',
+  therapy_changes_next_step_fa: 'گام پیشنهادی بعد از این فرایند',
+  ui_completion_summary_fa: 'خلاصهٔ نتیجه (تعیین تکلیف هزینه جلسه)',
+  fee_settlement_mode: 'نحوهٔ تسویهٔ مالی',
+  fee_settlement_amount: 'مبلغ تسویه‌شده',
   reason: 'علت',
+  photo: 'عکس پرسنلی',
+  id_card: 'تصویر شناسنامه',
+  national_card: 'تصویر کارت ملی',
+  bachelor_degree: 'مدرک کارشناسی / پزشکی عمومی',
+  master_degree: 'مدرک کارشناسی ارشد',
+  latest_certificate: 'آخرین مدرک تحصیلی',
+  digital_commitment: 'تعهدنامه دیجیتال (کد پیامکی)',
+  selected_timeslot: 'زمان مصاحبه انتخاب‌شده',
 }
 
 const INTERVIEW_RESULT_LABELS = {
@@ -73,6 +101,8 @@ export const CONTEXT_VALUE_LABELS = {
   after_start_therapy_complete: 'پس از تکمیل آغاز درمان',
   theory_1: 'درس تئوری ۱',
   theory_2: 'درس تئوری ۲',
+  online: 'آنلاین',
+  in_person: 'حضوری',
 }
 
 /**
@@ -137,6 +167,59 @@ export function formatInterviewResultDisplay(value, labelState) {
 const MAX_DEPTH = 5
 
 /**
+ * اگر مقدار شبیه خروجی فیلد file_upload باشد، پیش‌نمایش تصویر/PDF در پنل ادمین/کارمند.
+ * @param {typeof import('react')} React
+ * @returns {import('react').ReactNode | null}
+ */
+function renderIfProcessStepFileUpload(React, value) {
+  const { url, mime, isLocalPlaceholder, fileName } = parseStepFileUploadValue(value)
+  if (url) {
+    const src = resolveUploadPublicUrl(url)
+    const showImage = mime.startsWith('image/')
+    const showPdf = mime === 'application/pdf'
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
+        {showImage && (
+          <a href={src} target="_blank" rel="noopener noreferrer">
+            <img
+              src={src}
+              alt=""
+              style={{
+                maxWidth: 'min(100%, 280px)',
+                maxHeight: '200px',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+                display: 'block',
+                objectFit: 'contain',
+              }}
+            />
+          </a>
+        )}
+        {showPdf && (
+          <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline">
+            باز کردن PDF
+          </a>
+        )}
+        {!showImage && !showPdf && (
+          <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline">
+            باز کردن فایل
+          </a>
+        )}
+        <span style={{ fontSize: '0.72rem', color: '#64748b', direction: 'ltr', wordBreak: 'break-all' }}>{url}</span>
+      </div>
+    )
+  }
+  if (isLocalPlaceholder) {
+    return (
+      <span style={{ color: '#b45309', fontSize: '0.82rem' }}>
+        فایل روی سرور ثبت نشده (نام محلی: {fileName || '—'})
+      </span>
+    )
+  }
+  return null
+}
+
+/**
  * @param {typeof import('react')} React
  * @param {Map<string, string>|null|undefined} fieldLabelMap
  * @param {(s: string) => string} labelState
@@ -149,6 +232,8 @@ export function renderFriendlyContextValue(React, value, fieldLabelMap, labelSta
   if (typeof value === 'string') {
     const asDisplay = formatContextStringForDisplay(value)
     if (asDisplay !== null) return asDisplay
+    const fileFromString = renderIfProcessStepFileUpload(React, value)
+    if (fileFromString !== null) return fileFromString
     return value
   }
   if (Array.isArray(value)) {
@@ -178,6 +263,8 @@ export function renderFriendlyContextValue(React, value, fieldLabelMap, labelSta
     )
   }
   if (typeof value === 'object') {
+    const filePreview = renderIfProcessStepFileUpload(React, value)
+    if (filePreview !== null) return filePreview
     const entries = Object.entries(value)
     if (entries.length === 0) return '—'
     return (

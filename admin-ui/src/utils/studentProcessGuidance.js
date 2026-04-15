@@ -1,4 +1,5 @@
 import { filterFormsForStudent } from './processFormsStudent'
+import { labelState } from './processDisplay'
 
 export function findStateDefinition(definition, stateCode) {
   if (!definition?.states || !stateCode) return null
@@ -37,16 +38,16 @@ export function buildStudentGuidance({
       taskFa = customTask
     } else if (role === 'student' && hasStudentWork) {
       if (hasForms && !stepFormLocked) {
-        taskFa = 'فرم‌های همین صفحه را تکمیل و ثبت کنید؛ بعد از ثبت، اگر دکمهٔ اقدام بعدی برای شما فعال بود همان را بزنید.'
+        taskFa = 'فرم‌های همین صفحه را تکمیل و ثبت کنید؛ سپس دکمهٔ «ادامه و ثبت مرحله» را بزنید تا به مرحلهٔ بعد بروید. پرداخت یا پیامک در صورت نیاز توسط سامانه انجام می‌شود.'
       } else if (nTrans > 0) {
-        const labels = transitions
-          .map(t => t.description_fa || t.description || t.trigger_event)
-          .filter(Boolean)
-        taskFa = labels.length === 1
-          ? `اقدام لازم از سمت شما: ${labels[0]}`
-          : `یکی از اقدام‌های زیر را انجام دهید: ${labels.join('؛ ')}`
+        if (nTrans === 1) {
+          const next = labelState(transitions[0]?.to_state)
+          taskFa = `پس از انجام کارهای همین صفحه، دکمهٔ «ادامه و ثبت مرحله» را بزنید تا به «${next}» بروید. پرداخت یا پیامک در صورت نیاز توسط سامانه انجام می‌شود؛ متن روی دکمه فقط ثبت مرحله است.`
+        } else {
+          taskFa = 'پس از انجام کارهای همین صفحه، یکی از دکمه‌های «ادامه به …» را بزنید تا به همان مرحلهٔ انتخابی بروید. پرداخت یا پیامک در صورت نیاز توسط سامانه انجام می‌شود.'
+        }
       } else if (hasForms && stepFormLocked) {
-        taskFa = 'اطلاعات این مرحله قبلاً ثبت شده است؛ اگر دکمهٔ مرحلهٔ بعد را می‌بینید همان را بزنید؛ در غیر این صورت منتظر اقدام اداری بمانید.'
+        taskFa = 'اطلاعات این مرحله قبلاً ثبت شده است؛ اگر دکمهٔ «ادامه و ثبت مرحله» را می‌بینید همان را بزنید؛ در غیر این صورت منتظر اقدام اداری بمانید.'
       }
     } else if (role === 'student' && !hasStudentWork) {
       taskFa = 'در این لحظه کاری از داخل پنل برای شما پیش‌بینی نشده؛ اگر پیامی دریافت کردید طبق آن عمل کنید؛ در غیر این صورت بعداً همین صفحه را تازه کنید.'

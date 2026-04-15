@@ -2,13 +2,13 @@
 
 Providers:
   - "mock"   → development (always succeeds)
-  - "saman"  → Saman (SEP) via sep.shaparak.ir
+  - "saman"  → Saman (SEP) via sep.shaparak.ir (amounts in Rials)
   - "zibal"  → Zibal via gateway.zibal.ir
 
-Configure via .env:
+Configure via .env (never commit real secrets):
   PAYMENT_PROVIDER=saman
-  SEP_TERMINAL_ID=15378188
-  SEP_PASSWORD=6624451
+  SEP_TERMINAL_ID=<terminal_id>
+  SEP_PASSWORD=<optional per merchant doc>
   PAYMENT_CALLBACK_URL=https://yourdomain.com/api/payment/callback
 
   # or for Zibal:
@@ -104,7 +104,6 @@ async def _saman_create(request: PaymentRequest) -> PaymentResponse:
     4. Verify via /verifyTxnRandomSessionkey/ipg/VerifyTransaction
     """
     terminal_id = settings.SEP_TERMINAL_ID
-    password = settings.SEP_PASSWORD
     if not terminal_id:
         logger.warning("SEP_TERMINAL_ID not set, falling back to mock")
         return _mock_create(request)
@@ -121,6 +120,9 @@ async def _saman_create(request: PaymentRequest) -> PaymentResponse:
             "RedirectUrl": request.callback_url,
             "CellNumber": request.mobile or "",
         }
+        pw = (getattr(settings, "SEP_PASSWORD", None) or "").strip()
+        if pw:
+            payload["Password"] = pw
 
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.post(token_url, json=payload)

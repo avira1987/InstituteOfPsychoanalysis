@@ -4,11 +4,12 @@ import logging
 import uuid
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.models.operational_models import ProcessInstance, Student, User
+from app.core.engine import StateMachineEngine
+from app.models.operational_models import ProcessInstance, Student, TherapySession, User
 from app.services.process_service import ProcessService
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,46 @@ EXPECTED_REGISTRATION_CODE = {
     "introductory": "introductory_course_registration",
     "comprehensive": "comprehensive_course_registration",
 }
+
+# مقادیر فرم پذیرش در metadata با برچسب فارسی هم‌نام با ثبت‌نام عمومی (کدهای انگلیسی) هستند
+_EDUCATION_CODE_TO_FA = {
+    "bachelor": "کارشناسی",
+    "master": "کارشناسی ارشد",
+    "phd": "دکتری",
+    "specialist": "تخصص/فوق تخصص",
+}
+
+
+def _admission_form_seed_context(user: User, student: Student) -> dict:
+    """
+    پر کردن context نمونهٔ فرایند ثبت‌نام با داده‌هایی که از همان مرحلهٔ ثبت‌نام وب‌سایت
+    در User / Student ذخیره شده‌اند تا در پنل فرم پذیرش خالی نباشد.
+    """
+    extra = StateMachineEngine._as_mapping(student.extra_data) if student and student.extra_data else {}
+    out: dict = {"source": "auto_start_on_registration"}
+    fn = (user.full_name_fa or "").strip()
+    if fn:
+        out["full_name"] = fn
+    ph = (user.phone or "").strip()
+    if ph:
+        out["phone"] = ph
+    em = (user.email or "").strip()
+    if em:
+        out["email"] = em
+    raw_el = extra.get("education_level")
+    if raw_el is not None and str(raw_el).strip():
+        s = str(raw_el).strip()
+        out["education_level"] = _EDUCATION_CODE_TO_FA.get(s, s)
+    fos = extra.get("field_of_study")
+    if fos is not None and str(fos).strip():
+        out["field_of_study"] = str(fos).strip()
+    mot = extra.get("motivation")
+    if mot is not None and str(mot).strip():
+        out["motivation"] = str(mot).strip()
+    nc = extra.get("national_code")
+    if nc is not None and str(nc).strip():
+        out["national_code"] = str(nc).strip()
+    return out
 
 
 class StudentService:
@@ -50,7 +91,7 @@ class StudentService:
         if not expected:
             return False
 
-        extra = dict(student.extra_data or {})
+        extra = dict(StateMachineEngine._as_mapping(student.extra_data))
         pid_str = extra.get("primary_instance_id")
 
         if pid_str:
@@ -64,7 +105,7 @@ class StudentService:
                 inst = result.scalars().first()
                 if inst and inst.student_id == student.id:
                     return False
-            extra = dict(student.extra_data or {})
+            extra = dict(StateMachineEngine._as_mapping(student.extra_data))
             extra.pop("primary_instance_id", None)
             student.extra_data = extra
 
@@ -107,7 +148,7 @@ class StudentService:
 
         To avoid schema migrations, this is stored in student.extra_data["primary_instance_id"].
         """
-        extra = dict(student.extra_data or {})
+        extra = dict(StateMachineEngine._as_mapping(student.extra_data))
         extra["primary_instance_id"] = str(instance_id)
         student.extra_data = extra
         flag_modified(student, "extra_data")
@@ -135,7 +176,7 @@ class StudentService:
             student_id=student.id,
             actor_id=actor.id,
             actor_role=actor.role or "student",
-            initial_context={"source": "auto_start_on_registration"},
+            initial_context=_admission_form_seed_context(actor, student),
         )
         await self.set_primary_instance_for_student(student, instance.id)
         return instance
@@ -239,7 +280,7 @@ class StudentService:
         if latest_done and latest_done.current_state_code in self._START_THERAPY_TERMINAL:
             return
 
-        ctx = dict(registration_instance.context_data or {})
+        ctx = dict(StateMachineEngine._as_mapping(registration_instance.context_data))
         initial = {
             "parent_registration_instance_id": str(registration_instance.id),
             "source": "after_introductory_registration_complete",
@@ -298,7 +339,7 @@ class StudentService:
             await self.set_primary_instance_for_student(student, active.id)
             return
 
-        ctx = dict(therapy_instance.context_data or {})
+        ctx = dict(StateMachineEngine._as_mapping(therapy_instance.context_data))
         initial = {
             "source": "after_start_therapy_complete",
             "parent_start_therapy_instance_id": str(therapy_instance.id),
@@ -324,6 +365,195 @@ class StudentService:
 
         await self.db.flush()
         await self.set_primary_instance_for_student(student, pay.id)
+
+    _PRIMARY_PRIORITY = (
+        "educational_leave",
+        "session_payment",
+        "extra_session",
+        "start_therapy",
+        "attendance_tracking",
+        "therapy_session_increase",
+        "therapy_session_reduction",
+        "therapy_interruption",
+        "student_session_cancellation",
+    )
+
+    async def repoint_primary_after_session_payment_completed(self, completed: ProcessInstance) -> None:
+        """
+        پس از پایان موفق session_payment (payment_confirmed)، اگر primary_instance_id همان نمونهٔ تمام‌شده است،
+        به نمونهٔ فعال دیگر اشاره کن؛ در غیر این صورت primary را خالی کن و راهنمای داشبورد بگذار.
+        """
+        if completed.process_code != "session_payment":
+            return
+        if completed.current_state_code != "payment_confirmed" or not completed.is_completed:
+            return
+
+        stmt = select(Student).where(Student.id == completed.student_id)
+        result = await self.db.execute(stmt)
+        student = result.scalars().first()
+        if not student:
+            return
+
+        extra = dict(StateMachineEngine._as_mapping(student.extra_data))
+        pid_raw = extra.get("primary_instance_id")
+        if not pid_raw or str(pid_raw) != str(completed.id):
+            return
+
+        stmt = select(ProcessInstance).where(
+            ProcessInstance.student_id == student.id,
+            ProcessInstance.is_completed == False,
+            ProcessInstance.is_cancelled == False,
+        )
+        result = await self.db.execute(stmt)
+        active = [p for p in result.scalars().all() if p.process_code != "fee_determination"]
+        if active:
+            rank = {c: i for i, c in enumerate(self._PRIMARY_PRIORITY)}
+            active.sort(key=lambda p: (rank.get(p.process_code, 50), p.started_at or completed.started_at))
+            await self.set_primary_instance_for_student(student, active[0].id)
+            extra = dict(StateMachineEngine._as_mapping(student.extra_data))
+            extra.pop("dashboard_therapy_hint_fa", None)
+            student.extra_data = extra
+            flag_modified(student, "extra_data")
+            return
+
+        extra.pop("primary_instance_id", None)
+        extra["dashboard_therapy_hint_fa"] = (
+            "پرداخت جلسات ثبت شد. برای شرکت در جلسات آنلاین به تب «جلسات آنلاین» بروید. "
+            "برای پرداخت دوره‌های بعدی در صورت نیاز از «درخواست‌های دیگر» فرایند «پرداخت جلسات» را دوباره باز کنید."
+        )
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+
+    async def repoint_primary_after_therapy_completion_terminal(self, completed: ProcessInstance) -> None:
+        """
+        پس از پایان فرایند therapy_completion (هر دو شاخهٔ پایانی)، اگر primary به همین نمونه اشاره می‌کرد،
+        به نمونهٔ فعال دیگر بچسبان یا primary را خالی کن و راهنمای داشبورد بگذار.
+        """
+        if completed.process_code != "therapy_completion":
+            return
+        if completed.current_state_code not in ("therapy_completed", "conditions_not_met"):
+            return
+        if not completed.is_completed:
+            return
+
+        stmt = select(Student).where(Student.id == completed.student_id)
+        result = await self.db.execute(stmt)
+        student = result.scalars().first()
+        if not student:
+            return
+
+        extra = dict(StateMachineEngine._as_mapping(student.extra_data))
+        pid_raw = extra.get("primary_instance_id")
+        if pid_raw and str(pid_raw) != str(completed.id):
+            return
+
+        stmt = select(ProcessInstance).where(
+            ProcessInstance.student_id == student.id,
+            ProcessInstance.is_completed == False,
+            ProcessInstance.is_cancelled == False,
+        )
+        result = await self.db.execute(stmt)
+        active = [p for p in result.scalars().all() if p.process_code != "fee_determination"]
+        if active:
+            rank = {c: i for i, c in enumerate(self._PRIMARY_PRIORITY)}
+            active.sort(key=lambda p: (rank.get(p.process_code, 50), p.started_at or completed.started_at))
+            await self.set_primary_instance_for_student(student, active[0].id)
+            extra = dict(StateMachineEngine._as_mapping(student.extra_data))
+            extra.pop("dashboard_therapy_hint_fa", None)
+            student.extra_data = extra
+            flag_modified(student, "extra_data")
+            return
+
+        extra.pop("primary_instance_id", None)
+        if completed.current_state_code == "therapy_completed":
+            extra["dashboard_therapy_hint_fa"] = (
+                "درمان آموزشی شما با موفقیت خاتمه یافت. مسیر سوپرویژن، دروس و کارورزی را از داشبورد و فازهای مربوط دنبال کنید."
+            )
+        else:
+            extra["dashboard_therapy_hint_fa"] = (
+                "در حال حاضر همهٔ حدنصاب‌های لازم برای خاتمهٔ رسمی درمان تکمیل نشده است. پس از تکمیل ساعات، "
+                "دوباره همین فرایند را از بخش فرایندها اجرا کنید."
+            )
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+
+    async def count_unpaid_therapy_sessions(self, student_id: uuid.UUID) -> int:
+        stmt = select(func.count()).select_from(TherapySession).where(
+            TherapySession.student_id == student_id,
+            TherapySession.payment_status == "pending",
+            TherapySession.status.in_(["scheduled", "completed"]),
+        )
+        r = await self.db.execute(stmt)
+        return int(r.scalar() or 0)
+
+    async def maybe_ensure_session_payment_for_unpaid_sessions(self) -> list[dict]:
+        """
+        اگر دانشجویی درمان شروع کرده، جلسهٔ درمان بدون پرداخت دارد و نمونهٔ فعال session_payment ندارد،
+        نمونهٔ جدید باز می‌کند و در صورت primary خالی یا اشاره به فرایند تمام‌شده، primary را به آن می‌چسباند.
+        """
+        stmt = (
+            select(TherapySession.student_id)
+            .where(
+                TherapySession.payment_status == "pending",
+                TherapySession.status.in_(["scheduled", "completed"]),
+            )
+            .distinct()
+        )
+        result = await self.db.execute(stmt)
+        student_ids = list(result.scalars().all())
+        out: list[dict] = []
+        service = ProcessService(self.db)
+        for sid in student_ids:
+            stu = await self.db.get(Student, sid)
+            if not stu or not stu.therapy_started:
+                continue
+            stmt = select(ProcessInstance).where(
+                ProcessInstance.student_id == sid,
+                ProcessInstance.process_code == "session_payment",
+                ProcessInstance.is_completed == False,
+                ProcessInstance.is_cancelled == False,
+            )
+            if (await self.db.execute(stmt)).scalars().first():
+                continue
+            unpaid = await self.count_unpaid_therapy_sessions(sid)
+            if unpaid <= 0:
+                continue
+            actor_id = await self._resolve_system_actor_id(None)
+            try:
+                pay = await service.start_process_for_student(
+                    process_code="session_payment",
+                    student_id=sid,
+                    actor_id=actor_id,
+                    actor_role="system",
+                    initial_context={
+                        "source": "auto_unpaid_therapy_sessions",
+                        "unpaid_sessions_count": unpaid,
+                    },
+                )
+            except Exception:
+                logger.exception(
+                    "maybe_ensure_session_payment_for_unpaid_sessions: start failed student=%s",
+                    sid,
+                )
+                continue
+            await self.db.flush()
+            extra = dict(StateMachineEngine._as_mapping(stu.extra_data))
+            pid = extra.get("primary_instance_id")
+            repoint = False
+            if not pid:
+                repoint = True
+            else:
+                try:
+                    puuid = uuid.UUID(str(pid))
+                    pinst = await self.db.get(ProcessInstance, puuid)
+                    if pinst and pinst.student_id == sid and pinst.is_completed:
+                        repoint = True
+                except (ValueError, TypeError):
+                    repoint = True
+            if repoint:
+                await self.set_primary_instance_for_student(stu, pay.id)
+            out.append({"student_id": str(sid), "instance_id": str(pay.id)})
+        return out
 
     async def update_therapy_status(self, student_id: uuid.UUID, started: bool):
         """Update the therapy_started status of a student."""

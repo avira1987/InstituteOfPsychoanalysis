@@ -21,6 +21,7 @@ async def create_student_profile_for_user(
     education_level: Optional[str],
     field_of_study: Optional[str],
     motivation: Optional[str],
+    national_code: Optional[str] = None,
     registration_source: str,
 ) -> tuple[Student, str]:
     """
@@ -41,6 +42,7 @@ async def create_student_profile_for_user(
             "field_of_study": field_of_study,
             "motivation": motivation,
             "registration_source": registration_source,
+            **({"national_code": national_code} if national_code else {}),
         },
     )
     db.add(student)

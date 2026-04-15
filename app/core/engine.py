@@ -9,12 +9,12 @@ import uuid
 import logging
 from datetime import date, datetime, timezone
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
-from app.models.operational_models import ProcessInstance, Student, StateHistory
+from app.models.operational_models import ProcessInstance, Student, StateHistory, TherapySession
 from app.core.rule_engine import RuleEvaluator
 from app.core.transition import TransitionManager, TransitionResult, TransitionError
 from app.core.event_bus import event_bus, Event
@@ -24,6 +24,14 @@ from app.core.gamification import merge_gamification_into_extra
 from app.utils.date_utils import get_current_shamsi_year, get_current_term_week
 
 logger = logging.getLogger(__name__)
+
+# introductory_course_registration: چند ترنزیشن با trigger یکسان (interview_result_submitted)
+_INTERVIEW_RESULT_BY_TO_STATE = {
+    "result_conditional_therapy": "conditional_therapy",
+    "result_single_course": "single_course",
+    "result_full_admission": "full_admission",
+    "rejected": "rejected",
+}
 
 
 class EngineError(Exception):
@@ -188,6 +196,28 @@ class StateMachineEngine:
             source="state_machine_engine",
         ))
 
+        if process_code == "therapy_changes":
+            try:
+                await self.db.flush()
+                from app.services.therapy_changes_chaining import propagate_on_therapy_changes_started
+
+                await propagate_on_therapy_changes_started(self.db, instance)
+            except Exception:
+                logger.exception(
+                    "therapy_changes start propagation failed (instance=%s)",
+                    instance.id,
+                )
+
+        if process_code == "therapy_completion":
+            try:
+                await self.db.flush()
+                await self._persist_therapy_completion_snapshot(instance)
+            except Exception:
+                logger.exception(
+                    "therapy_completion initial snapshot failed (instance=%s)",
+                    instance.id,
+                )
+
         logger.info(f"Started process '{process_code}' for student {student_id}, instance={instance.id}")
         return instance
 
@@ -221,6 +251,16 @@ class StateMachineEngine:
 
         process_def = await self.get_process_definition(instance.process_code)
         current_state = instance.current_state_code
+
+        if payload is None:
+            payload = {}
+        elif not isinstance(payload, dict):
+            payload = {}
+        if trigger_event == "interview_result_submitted":
+            ts = payload.get("to_state") or payload.get("target_to_state")
+            # همیشه از to_state هم‌راستا کن — مقدار قدیمی در context_data یا payload ممکن است مانع pass شدن قوانین شود
+            if ts and ts in _INTERVIEW_RESULT_BY_TO_STATE:
+                payload = {**payload, "interview_result": _INTERVIEW_RESULT_BY_TO_STATE[ts]}
 
         # 2–3. همهٔ ترنزیشن‌های هم‌نام با trigger (به‌ترتیب priority)، تا اولین شاخه‌ای که قوانینش pass شود
         all_transitions = await self.transition_manager.find_transitions_for_state(
@@ -256,13 +296,42 @@ class StateMachineEngine:
         if not transition:
             failed = [r for r in last_rule_results if not r.passed]
             error_msgs = [r.error_message or f"Rule '{r.rule_code}' failed" for r in failed]
+            err = "; ".join(error_msgs) if error_msgs else "هیچ شاخه‌ای از قوانین عبور نکرد"
+            if trigger_event == "interview_result_submitted" and len(candidates) > 1:
+                err += (
+                    " — برای دکمه‌های نتیجهٔ مصاحبه، «to_state» و «interview_result» باید با همان دکمه هماهنگ باشند؛ "
+                    "اگر این خطا را می‌بینید، مقدار قدیمی در پرونده ممکن است جلوی شاخهٔ درست را گرفته باشد."
+                )
             return TransitionResult(
                 success=False,
                 from_state=current_state,
                 trigger_event=trigger_event,
                 rule_results=last_rule_results,
-                error="; ".join(error_msgs) if error_msgs else "هیچ شاخه‌ای از قوانین عبور نکرد",
+                error=err,
             )
+
+        if (
+            instance.process_code == "therapy_session_reduction"
+            and trigger_event == "sessions_selected"
+            and transition.to_state_code in ("reduction_completed", "violation_warning")
+        ):
+            from app.services.action_handler import validate_therapy_reduction_preflight
+
+            st_stmt = select(Student).where(Student.id == instance.student_id)
+            st_res = await self.db.execute(st_stmt)
+            st_student = st_res.scalars().first()
+            if st_student:
+                perr = await validate_therapy_reduction_preflight(
+                    self.db, instance, payload or {}, st_student
+                )
+                if perr:
+                    return TransitionResult(
+                        success=False,
+                        from_state=current_state,
+                        trigger_event=trigger_event,
+                        rule_results=rule_results,
+                        error=perr,
+                    )
 
         # 4. Check RBAC
         if not self.transition_manager.validate_role(transition, actor_role):
@@ -293,7 +362,47 @@ class StateMachineEngine:
         if payload and isinstance(payload, dict):
             ctx = dict(self._as_mapping(instance.context_data))
             ctx.update(payload)
+            if instance.process_code == "educational_leave" and "leave_terms" in ctx:
+                try:
+                    ctx["leave_terms"] = int(ctx["leave_terms"])
+                except (TypeError, ValueError):
+                    pass
+            if trigger_event == "documents_approved":
+                ctx.pop("__documents_resubmit_fields", None)
+                ctx.pop("__document_field_status", None)
+                ctx.pop("__document_field_rejection_notes", None)
+            elif trigger_event == "documents_resubmitted":
+                ctx.pop("__documents_resubmit_fields", None)
+                ctx.pop("__document_field_status", None)
+                ctx.pop("__document_field_rejection_notes", None)
             instance.context_data = ctx
+            flag_modified(instance, "context_data")
+
+        if instance.process_code == "therapy_changes" and transition.to_state_code in (
+            "change_approved",
+            "restart_activated",
+        ):
+            ctx2 = dict(self._as_mapping(instance.context_data))
+            if transition.to_state_code == "restart_activated":
+                ctx2["therapy_changes_next_step_fa"] = (
+                    "جلسات آینده از تقویم حذف شدند. در صورت نیاز برای بازآغازی و رزرو، از فرایند «آغاز درمان آموزشی» "
+                    "یا مطابق راهنمای انستیتو اقدام کنید."
+                )
+            else:
+                ctx2["therapy_changes_next_step_fa"] = (
+                    "تغییر در سامانه ثبت شد. جلسات آتی را در بخش جلسات درمان بررسی کنید."
+                )
+            instance.context_data = ctx2
+            flag_modified(instance, "context_data")
+
+        if instance.process_code == "therapy_completion":
+            try:
+                await self._persist_therapy_completion_snapshot(instance)
+            except Exception:
+                logger.exception(
+                    "therapy_completion snapshot after transition failed (instance=%s)",
+                    instance.id,
+                )
 
         # 6. Post-transition actions
         actions = _normalize_json_list(transition.actions)
@@ -302,6 +411,40 @@ class StateMachineEngine:
             from app.services.action_handler import ActionHandler
             handler = ActionHandler(self.db)
             action_results = await handler.handle_actions(actions, instance, payload or {})
+
+        if instance.process_code == "therapy_session_reduction":
+            ctx_tr = dict(self._as_mapping(instance.context_data))
+            if transition.to_state_code == "violation_warning":
+                ctx_tr["therapy_reduction_next_step_fa"] = (
+                    "اگر می‌خواهید با وجود هشدار ادامه دهید، مرحلهٔ بعد را تأیید کنید؛ پس از آن کاهش در برنامه اعمال "
+                    "می‌شود و در صورت نیاز فرایند ثبت تخلف نیز باز می‌شود."
+                )
+                instance.context_data = ctx_tr
+                flag_modified(instance, "context_data")
+            elif transition.to_state_code == "reduction_completed":
+                ctx_tr["therapy_reduction_next_step_fa"] = (
+                    "کاهش جلسات هفتگی در پرونده ثبت شد. جلسات انتخاب‌شده لغو شده‌اند. "
+                    "برای پرداخت جلسات آتی در صورت نیاز از فرایند «پرداخت برای جلسات آتی درمان آموزشی» استفاده کنید."
+                )
+                instance.context_data = ctx_tr
+                flag_modified(instance, "context_data")
+            elif transition.to_state_code == "reduction_with_violation":
+                vid = ctx_tr.get("violation_registration_instance_id")
+                ctx_tr["therapy_reduction_next_step_fa"] = (
+                    "کاهش با ثبت تخلف آموزشی ثبت شد. "
+                    + (
+                        f"فرایند «ثبت تخلف» باز شده است (شناسه: {vid}). در تب «فرایندها» آن را ببینید."
+                        if vid
+                        else "فرایند ثبت تخلف در سامانه باز شده است؛ در تب فرایندها پیگیری کنید."
+                    )
+                )
+                instance.context_data = ctx_tr
+                flag_modified(instance, "context_data")
+
+        if instance.process_code == "fee_determination" and instance.is_completed:
+            from app.services.fee_determination_runner import attach_fee_determination_completion_ui_hint
+
+            await attach_fee_determination_completion_ui_hint(self.db, instance)
 
         # 7. Audit
         await self.audit_logger.log_transition(
@@ -360,6 +503,49 @@ class StateMachineEngine:
             except Exception:
                 logger.exception(
                     "Follow-up after start_therapy therapy_active failed (instance=%s)",
+                    instance.id,
+                )
+
+        if (
+            transition.to_state_code == "payment_confirmed"
+            and instance.process_code == "session_payment"
+            and instance.is_completed
+        ):
+            try:
+                from app.services.student_service import StudentService
+
+                await StudentService(self.db).repoint_primary_after_session_payment_completed(instance)
+            except Exception:
+                logger.exception(
+                    "repoint_primary_after_session_payment_completed failed (instance=%s)",
+                    instance.id,
+                )
+
+        if (
+            instance.process_code == "therapy_completion"
+            and instance.is_completed
+            and transition.to_state_code in ("therapy_completed", "conditions_not_met")
+        ):
+            try:
+                from app.services.student_service import StudentService
+
+                await StudentService(self.db).repoint_primary_after_therapy_completion_terminal(instance)
+            except Exception:
+                logger.exception(
+                    "repoint_primary_after_therapy_completion_terminal failed (instance=%s)",
+                    instance.id,
+                )
+
+        if instance.process_code == "therapy_changes":
+            try:
+                from app.services.therapy_changes_chaining import propagate_therapy_changes_completed
+
+                await propagate_therapy_changes_completed(
+                    self.db, instance, transition.to_state_code
+                )
+            except Exception:
+                logger.exception(
+                    "therapy_changes parent propagation failed (instance=%s)",
                     instance.id,
                 )
 
@@ -441,13 +627,30 @@ class StateMachineEngine:
         result = await self.db.execute(stmt)
         history = result.scalars().all()
 
+        ctx_out = self._as_mapping(instance.context_data)
+        if instance.process_code == "session_payment":
+            ctx_out = await self._merge_session_payment_financial_context(instance, ctx_out)
+        if instance.process_code == "therapy_completion":
+            try:
+                fresh = await self._therapy_completion_resolved_fields(instance)
+                ctx_out = {**ctx_out, **fresh}
+            except Exception:
+                logger.exception("therapy_completion fresh context for status failed (instance=%s)", instance.id)
+        if instance.process_code == "therapy_session_reduction":
+            try:
+                ctx_out = await self._merge_therapy_session_reduction_instance_context(instance, ctx_out)
+            except Exception:
+                logger.exception(
+                    "therapy_session_reduction context for status failed (instance=%s)", instance.id
+                )
+
         return {
             "instance_id": str(instance.id),
             "process_code": instance.process_code,
             "current_state": instance.current_state_code,
             "is_completed": instance.is_completed,
             "is_cancelled": instance.is_cancelled,
-            "context_data": instance.context_data,
+            "context_data": ctx_out,
             "started_at": instance.started_at.isoformat() if instance.started_at else None,
             "completed_at": instance.completed_at.isoformat() if instance.completed_at else None,
             "last_transition_at": instance.last_transition_at.isoformat() if instance.last_transition_at else None,
@@ -462,6 +665,140 @@ class StateMachineEngine:
                 for h in history
             ],
         }
+
+    async def rollback_to_previous_state(
+        self,
+        instance_id: uuid.UUID,
+        actor_id: uuid.UUID,
+        actor_role: str,
+        reason: Optional[str] = None,
+    ) -> TransitionResult:
+        """
+        بازگرداندن نمونه به وضعیت قبلی بر اساس آخرین رکورد تاریخچه (اصلاح اشتباه کلیک / تصمیم).
+        رکورد جدید در state_history با trigger manual_rollback ثبت می‌شود.
+        """
+        instance = await self.get_process_instance(instance_id)
+        if instance.is_cancelled:
+            raise InvalidTransitionError("فرایند لغوشده قابل بازگشت نیست.")
+
+        stmt = (
+            select(StateHistory)
+            .where(StateHistory.instance_id == instance_id)
+            .order_by(StateHistory.entered_at)
+        )
+        result = await self.db.execute(stmt)
+        history = list(result.scalars().all())
+
+        if len(history) < 2:
+            raise InvalidTransitionError("مرحلهٔ قبلی برای بازگشت وجود ندارد.")
+
+        last = history[-1]
+        if last.from_state_code is None:
+            raise InvalidTransitionError("امکان بازگشت از وضعیت اولیهٔ فرایند نیست.")
+
+        if last.to_state_code != instance.current_state_code:
+            raise InvalidTransitionError(
+                "وضعیت فعلی نمونه با آخرین رکورد تاریخچه هم‌خوان نیست؛ با پشتیبانی تماس بگیرید."
+            )
+
+        target_state = last.from_state_code
+        from_current = instance.current_state_code
+        now = datetime.now(timezone.utc)
+
+        process_def = await self.get_process_definition(instance.process_code)
+        is_target_terminal = await self.transition_manager.check_terminal_state(
+            process_def.id, target_state
+        )
+
+        instance.current_state_code = target_state
+        instance.last_transition_at = now
+        instance.is_completed = bool(is_target_terminal)
+        instance.completed_at = datetime.now(timezone.utc) if is_target_terminal else None
+
+        ctx = dict(self._as_mapping(instance.context_data))
+        log_entries = ctx.get("__rollback_log")
+        if not isinstance(log_entries, list):
+            log_entries = []
+        log_entries.append(
+            {
+                "at": now.isoformat(),
+                "from_state": from_current,
+                "to_state": target_state,
+                "reason": (reason or "").strip()[:2000],
+                "actor_id": str(actor_id),
+                "actor_role": actor_role,
+            }
+        )
+        ctx["__rollback_log"] = log_entries
+
+        # پاک‌سازی سبک دادهٔ نتیجهٔ مصاحبه هنگام برگشت از شاخهٔ نتیجه
+        if from_current in (
+            "result_conditional_therapy",
+            "result_single_course",
+            "result_full_admission",
+            "rejected",
+        ) or from_current.startswith("result_"):
+            for k in (
+                "interview_result",
+                "allowed_course_count",
+                "interviewer_notes",
+                "result",
+            ):
+                ctx.pop(k, None)
+
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+
+        rb = StateHistory(
+            id=uuid.uuid4(),
+            instance_id=instance.id,
+            from_state_code=from_current,
+            to_state_code=target_state,
+            trigger_event="manual_rollback",
+            actor_id=actor_id,
+            actor_role=actor_role,
+            payload={"reason": reason} if reason else None,
+            entered_at=now,
+        )
+        self.db.add(rb)
+
+        await self.audit_logger.log_transition(
+            instance_id=instance.id,
+            process_code=instance.process_code,
+            from_state=from_current,
+            to_state=target_state,
+            trigger_event="manual_rollback",
+            actor_id=actor_id,
+            actor_role=actor_role,
+            payload={"reason": reason} if reason else None,
+        )
+
+        await event_bus.publish_transition(
+            process_code=instance.process_code,
+            instance_id=str(instance.id),
+            from_state=from_current,
+            to_state=target_state,
+            trigger_event="manual_rollback",
+            actor_id=str(actor_id),
+            actions=[],
+        )
+
+        logger.info(
+            "Rollback: %s [%s] --manual_rollback--> [%s] (instance=%s)",
+            instance.process_code,
+            from_current,
+            target_state,
+            instance.id,
+        )
+
+        return TransitionResult(
+            success=True,
+            from_state=from_current,
+            to_state=target_state,
+            trigger_event="manual_rollback",
+            actions=[],
+            rule_results=[],
+        )
 
     # ─── Internal Helpers ───────────────────────────────────────────
 
@@ -479,6 +816,148 @@ class StateMachineEngine:
             except (json.JSONDecodeError, TypeError):
                 return {}
         return {}
+
+    async def _merge_session_payment_financial_context(
+        self, instance: ProcessInstance, merged: dict
+    ) -> dict:
+        """شمارش جلسات درمان بدون پرداخت از DB + پرچم تسویه از پرونده/فرم."""
+        out = dict(merged)
+        stmt = select(func.count()).select_from(TherapySession).where(
+            TherapySession.student_id == instance.student_id,
+            TherapySession.payment_status == "pending",
+            TherapySession.status.in_(["scheduled", "completed"]),
+        )
+        r = await self.db.execute(stmt)
+        out["debt_sessions_count"] = int(r.scalar() or 0)
+        dsi = out.get("debt_settlement_included")
+        if isinstance(dsi, str):
+            out["debt_settlement_included"] = dsi.strip().lower() in ("1", "true", "yes", "on")
+        elif dsi is None:
+            out["debt_settlement_included"] = False
+        else:
+            out["debt_settlement_included"] = bool(dsi)
+        return out
+
+    async def _merge_therapy_session_reduction_instance_context(
+        self, instance: ProcessInstance, merged: dict
+    ) -> dict:
+        """ساعات/آستانه‌ها و لیست جلسات آتی برای فرم checkbox در پنل دانشجو."""
+        out = dict(merged)
+        stmt = select(Student).where(Student.id == instance.student_id)
+        result = await self.db.execute(stmt)
+        student = result.scalars().first()
+        if not student:
+            return out
+        extra = self._as_mapping(student.extra_data)
+        att = AttendanceService(self.db)
+        m = await att.get_therapy_completion_metrics(student.id)
+        out.setdefault("therapy_hours_2x", float(m["therapy_hours_2x"]))
+        out.setdefault("clinical_hours", float(m["clinical_hours"]))
+        out.setdefault("supervision_hours", float(m["supervision_hours"]))
+        out.setdefault("therapy_threshold", float(extra.get("therapy_threshold", 250)))
+        out.setdefault("clinical_threshold", float(extra.get("clinical_threshold", 750)))
+        out.setdefault("supervision_threshold", float(extra.get("supervision_threshold", 150)))
+        out["student_weekly_sessions_before"] = int(student.weekly_sessions or 1)
+
+        today = datetime.now(timezone.utc).date()
+        sess_stmt = (
+            select(TherapySession)
+            .where(
+                TherapySession.student_id == instance.student_id,
+                TherapySession.session_date >= today,
+                TherapySession.status == "scheduled",
+                TherapySession.is_extra.is_(False),
+            )
+            .order_by(TherapySession.session_date.asc())
+            .limit(80)
+        )
+        sr = await self.db.execute(sess_stmt)
+        rows = list(sr.scalars().all())
+        upcoming = [
+            {
+                "value": str(ts.id),
+                "label_fa": f"{ts.session_date.isoformat()} — جلسهٔ درمان (برنامه‌ریزی‌شده)",
+            }
+            for ts in rows
+        ]
+        out["upcoming_therapy_sessions"] = upcoming
+        ws = int(student.weekly_sessions or 1)
+        # حداقل یک جلسه برای شروع کاهش؛ تطابق دقیق با «تعداد پس از کاهش» در سرور اعتبارسنجی می‌شود.
+        out["therapy_reduction_min_remove_count"] = 1
+        return out
+
+    async def _therapy_completion_default_thresholds(self, process_def: ProcessDefinition) -> dict:
+        cfg = self._as_mapping(process_def.config)
+        d = cfg.get("default_thresholds") or {}
+        return {
+            "therapy_hours": float(d.get("therapy_hours") or 250),
+            "clinical_hours": float(d.get("clinical_hours") or 750),
+            "supervision_hours": float(d.get("supervision_hours") or 150),
+        }
+
+    async def _therapy_completion_resolved_fields(self, instance: ProcessInstance) -> dict:
+        """مقادیر ساعات و آستانه‌ها برای قوانین therapy_completion و نمایش در پنل."""
+        process_def = await self.get_process_definition(instance.process_code)
+        defaults = await self._therapy_completion_default_thresholds(process_def)
+        stmt = select(Student).where(Student.id == instance.student_id)
+        result = await self.db.execute(stmt)
+        student = result.scalars().first()
+        extra = self._as_mapping(student.extra_data) if student else {}
+        ov = self._as_mapping(extra.get("therapy_completion_threshold_overrides"))
+
+        def _thr(ov_key: str, def_key: str) -> float:
+            v = ov.get(ov_key)
+            if v is not None:
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    pass
+            return float(defaults.get(def_key) or 0)
+
+        therapy_threshold = _thr("therapy_threshold", "therapy_hours")
+        clinical_threshold = _thr("clinical_threshold", "clinical_hours")
+        supervision_threshold = _thr("supervision_threshold", "supervision_hours")
+
+        attendance = AttendanceService(self.db)
+        m = await attendance.get_therapy_completion_metrics(instance.student_id)
+        th = float(m["therapy_hours_2x"])
+        ch = float(m["clinical_hours"])
+        sh = float(m["supervision_hours"])
+
+        preview_fa = (
+            f"وضعیت ساعات (ایست بازرسی خاتمه): درمان آموزشی {th:g} از {therapy_threshold:g}؛ "
+            f"تجربه بالینی {ch:g} از {clinical_threshold:g}؛ "
+            f"سوپرویژن {sh:g} از {supervision_threshold:g}."
+        )
+
+        return {
+            "therapy_hours_2x": th,
+            "clinical_hours": ch,
+            "supervision_hours": sh,
+            "therapy_threshold": therapy_threshold,
+            "clinical_threshold": clinical_threshold,
+            "supervision_threshold": supervision_threshold,
+            "therapy_hours": th,
+            "therapy_completion_preview_fa": preview_fa,
+        }
+
+    async def _persist_therapy_completion_snapshot(self, instance: ProcessInstance) -> None:
+        """ذخیرهٔ snapshot روی context_data برای اعلان‌ها و UI."""
+        fields = await self._therapy_completion_resolved_fields(instance)
+        ctx = dict(self._as_mapping(instance.context_data))
+        ctx.update(fields)
+        if instance.current_state_code == "therapy_completed":
+            ctx["therapy_completion_next_step_fa"] = (
+                "درمان آموزشی شما در پرونده به‌عنوان «خاتمه‌یافته» ثبت شد. ادامهٔ مسیر آموزشی "
+                "(سوپرویژن، دروس، کارورزی) را از داشبورد و فازهای مربوط پیگیری کنید."
+            )
+        elif instance.current_state_code == "conditions_not_met":
+            ctx["therapy_completion_next_step_fa"] = (
+                "حداقل یکی از حدنصاب‌های لازم برای خاتمهٔ رسمی هنوز کامل نیست. پس از تکمیل ساعات درمان، "
+                "بالینی و سوپرویژن طبق اعلام انستیتو، می‌توانید دوباره همین فرایند را اجرا کنید."
+            )
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
 
     async def _build_context(self, instance: ProcessInstance, payload: Optional[dict] = None) -> dict:
         """Build the evaluation context for rule evaluation.
@@ -565,14 +1044,66 @@ class StateMachineEngine:
                 ts = payload.get("to_state") or payload.get("target_to_state")
             if not ts:
                 ts = context["instance"].get("to_state")
-            if ts and not context["instance"].get("interview_result"):
-                inferred = _branch_to_interview.get(ts)
-                if inferred:
-                    context["instance"]["interview_result"] = inferred
+            inferred = _branch_to_interview.get(ts) if ts else None
+            if inferred:
+                context["instance"]["interview_result"] = inferred
 
         # قوانین مثل schedule_valid_for_course از instance.weekly_sessions استفاده می‌کنند؛
         # مقدار پیش‌فرض روی student است نه context_data — بدون این، None >= int خطا می‌دهد.
         if student and context["instance"].get("weekly_sessions") is None:
             context["instance"]["weekly_sessions"] = student.weekly_sessions
+        ws_inst = context["instance"].get("weekly_sessions")
+        if isinstance(ws_inst, str):
+            s = ws_inst.strip()
+            if s.isdigit():
+                try:
+                    context["instance"]["weekly_sessions"] = int(s)
+                except (TypeError, ValueError):
+                    pass
+
+        # session_payment: بدهی از روی جلسات واقعی + پرچم تسویه از فرم/پرونده
+        if instance.process_code == "session_payment":
+            context["instance"] = await self._merge_session_payment_financial_context(
+                instance, context["instance"]
+            )
+
+        if instance.process_code == "therapy_completion":
+            tc = await self._therapy_completion_resolved_fields(instance)
+            context["instance"].update(tc)
+
+        if instance.process_code == "attendance_tracking":
+            inst = context["instance"]
+            raw_sid = inst.get("therapy_session_id") or inst.get("session_id")
+            if raw_sid:
+                try:
+                    suid = uuid.UUID(str(raw_sid))
+                except (TypeError, ValueError):
+                    suid = None
+                if suid:
+                    ts_row = await self.db.get(TherapySession, suid)
+                    if ts_row:
+                        inst["session_paid"] = ts_row.payment_status in ("paid", "waived")
+                        inst["session_cancelled"] = ts_row.status == "cancelled"
+                        inst["session_date"] = ts_row.session_date.isoformat()
+            if student:
+                stmt_lv = select(ProcessInstance).where(
+                    ProcessInstance.student_id == student.id,
+                    ProcessInstance.process_code == "educational_leave",
+                    ProcessInstance.current_state_code.in_(["on_leave", "return_reminder_sent"]),
+                    ProcessInstance.is_completed == False,
+                    ProcessInstance.is_cancelled == False,
+                )
+                rlv = await self.db.execute(stmt_lv)
+                inst["student_on_leave"] = rlv.scalars().first() is not None
+
+        # fee_determination: قوانین session_paid؛ برای سوپرویژن supervision_session_paid را هم‌راستا کن
+        if instance.process_code == "fee_determination":
+            inst = context["instance"]
+            if inst.get("session_paid") is None and inst.get("supervision_session_paid") is not None:
+                inst["session_paid"] = bool(inst.get("supervision_session_paid"))
+            if inst.get("context") == "supervision" and inst.get("session_paid") is None:
+                sp = inst.get("supervision_session_paid")
+                if sp is not None:
+                    inst["session_paid"] = bool(sp)
 
         return context

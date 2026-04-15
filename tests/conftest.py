@@ -11,6 +11,7 @@ import asyncio
 import pytest
 import pytest_asyncio
 from datetime import datetime, timezone
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.database import Base
@@ -42,6 +43,18 @@ async def db_engine():
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # جداول قدیمی بدون ستون جدید (قبل از migration 013)
+        await conn.execute(
+            text(
+                "ALTER TABLE payment_pending ADD COLUMN IF NOT EXISTS gateway_track_id VARCHAR(255)"
+            )
+        )
+        await conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_payment_pending_gateway_track_id "
+                "ON payment_pending (gateway_track_id)"
+            )
+        )
     yield engine
     skip_drop = os.environ.get("PYTEST_SKIP_DROP_ALL", "").lower() in ("1", "true", "yes")
     if not skip_drop:

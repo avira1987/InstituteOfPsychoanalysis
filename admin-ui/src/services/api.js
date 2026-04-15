@@ -208,8 +208,13 @@ export const studentApi = {
 export const processExecApi = {
   definitions: () => api.get('process/definitions'),
   getDefinition: (code) => api.get(`process/definitions/${code}`),
+  /** متادیتای فرم‌ها برای یک وضعیت (مثلاً documents_upload) — برای گالری مدارک در پروفایل */
+  getProcessFormsForState: (processCode, state) =>
+    api.get(`process/definitions/${processCode}/forms`, { params: state ? { state } : {} }),
   start: (data) => api.post('process/start', data),
   trigger: (instanceId, data) => api.post(`process/${instanceId}/trigger`, data),
+  /** بازگشت به مرحلهٔ قبل (ادمین، معاون آموزش، کارمند) */
+  rollback: (instanceId, body) => api.post(`process/${instanceId}/rollback`, body || {}),
   status: (instanceId) => api.get(`process/${instanceId}/status`),
   transitions: (instanceId) => api.get(`process/${instanceId}/transitions`),
   /** وضعیت + انتقال‌ها + فرم‌های مرحلهٔ فعلی (مثل بارگذاری داشبورد فرایند در UI) */
@@ -219,16 +224,51 @@ export const processExecApi = {
   /** دانشجو: ثبت فرم مرحله (قفل تا باز شدن توسط کارمند) */
   registerStudentStepForms: (instanceId, body) =>
     api.post(`process/${instanceId}/student-step-forms/register`, body),
+  /** دانشجو: آپلود فایل مدرک (multipart؛ field_name در FormData) */
+  uploadStudentStepFile: (instanceId, formData) =>
+    api.post(`process/${instanceId}/student-step-forms/upload-file`, formData, {
+      timeout: 120000,
+      // بدون این، Content-Type پیش‌فرض application/json باعث می‌شود axios FormData را به JSON تبدیل کند و فایل به سرور نرسد.
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   /** کارمند/اداری: اجازهٔ ویرایش مجدد فرم مرحله برای دانشجو */
   unlockStudentStepFormsEdit: (instanceId, body) =>
     api.post(`process/${instanceId}/student-step-forms/unlock-edit`, body || {}),
+}
+
+// ─── پرداخت (درگاه سپ / زبال و mock در بک‌اند) ───────────────
+/** amount به ریال (شاپرک). */
+export const paymentApi = {
+  create: (body) => api.post('payment/create', body),
+}
+
+// ─── اسلات مصاحبه (پذیرش / دانشجو) ───────────────────────────
+export const interviewSlotsApi = {
+  available: (courseType) =>
+    api.get('interview-slots/available', {
+      params: courseType ? { course_type: courseType } : {},
+    }),
+  book: (body) => api.post('interview-slots/book', body),
+  /** رزروهای انجام‌شده با اطلاعات دانشجو — مصاحبه‌گر / دفتر */
+  bookings: (includePast) =>
+    api.get('interview-slots/bookings', { params: { include_past: !!includePast } }),
+  manageList: (includePast) =>
+    api.get('interview-slots/manage', { params: { include_past: !!includePast } }),
+  manageCreate: (body) => api.post('interview-slots/manage', body),
+  manageDelete: (id) => api.delete(`interview-slots/manage/${id}`),
 }
 
 // ─── Therapy sessions (student / therapist) ───────────────────
 export const therapyApi = {
   mySessions: () => api.get('therapy-sessions/me'),
   forTherapist: () => api.get('therapy-sessions/for-therapist'),
+  forStudent: (studentId) => api.get(`therapy-sessions/for-student/${studentId}`),
   patchSession: (sessionId, data) => api.patch(`therapy-sessions/${sessionId}`, data),
+}
+
+export const alocomApi = {
+  provisionTherapySession: (sessionId, body) =>
+    api.post(`integrations/alocom/therapy-sessions/${sessionId}/provision`, body),
 }
 
 // ─── Finance (اپراتور مالی / مدیر) ─────────────────────────────
@@ -296,13 +336,14 @@ export const blogApi = {
 // ─── پنل نقش‌ها (اقدامات راهنما) ────────────────────────────────
 export const panelApi = {
   actionQueue: () => api.get('panel/action-queue'),
+  navPendingCounts: () => api.get('panel/nav-pending-counts'),
 }
 
 // ─── Public ─────────────────────────────────────────────────────
 export const publicApi = {
   stats: () => api.get('public/stats'),
   processes: () => api.get('public/processes'),
-  /** ماتریس چرخه عمر دانشجو — GET بدون احراز هویت */
+  /** مسیر تحصیلی و نقش‌ها؛ دریافت عمومی بدون ورود */
   studentLifecycleMatrix: () => api.get('public/student-lifecycle-matrix'),
   register: (data) => api.post('public/register', data),
 }

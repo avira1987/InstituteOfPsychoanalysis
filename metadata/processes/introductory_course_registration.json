@@ -231,29 +231,6 @@
   ],
   "forms": [
     {
-      "code": "admission_form",
-      "name_fa": "فرم پذیرش (وب‌سایت)",
-      "used_in_state": "application_submitted",
-      "note_fa": "فرم عمومی در وب‌سایت مؤسسه — قبل از ایجاد حساب کاربری",
-      "fields": [
-        {"name": "full_name", "label_fa": "نام و نام خانوادگی", "type": "text", "required": true},
-        {"name": "national_code", "label_fa": "کد ملی", "type": "text", "required": true},
-        {"name": "phone", "label_fa": "شماره تماس", "type": "tel", "required": true},
-        {"name": "email", "label_fa": "ایمیل", "type": "email", "required": true},
-        {"name": "education_level", "label_fa": "مقطع تحصیلی", "type": "select", "options": ["کارشناسی", "کارشناسی ارشد", "دکتری", "پزشکی عمومی", "تخصص/فوق تخصص"], "required": true},
-        {"name": "field_of_study", "label_fa": "رشته تحصیلی", "type": "text", "required": true},
-        {"name": "motivation", "label_fa": "انگیزه شرکت در دوره", "type": "textarea", "required": false}
-      ]
-    },
-    {
-      "code": "interview_timeslot_form",
-      "name_fa": "فرم انتخاب وقت مصاحبه",
-      "used_in_state": "interview_scheduled",
-      "fields": [
-        {"name": "selected_timeslot", "label_fa": "انتخاب وقت مصاحبه", "type": "radio_list", "source": "available_interview_slots", "format": "{date} ساعت {time} — {interview_type}", "required": true}
-      ]
-    },
-    {
       "code": "interview_result_form",
       "name_fa": "فرم ثبت نتیجه مصاحبه (محرمانه)",
       "used_in_state": "interview_completed",

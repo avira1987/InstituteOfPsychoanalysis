@@ -218,6 +218,8 @@ def _insert_process_from_data(db: AsyncSession, data: dict) -> uuid.UUID:
     process_id = uuid.uuid4()
 
     base_cfg = {**(proc_data.get("config") or {})}
+    if proc_data.get("default_thresholds"):
+        base_cfg["default_thresholds"] = proc_data["default_thresholds"]
     if isinstance(data.get("ui_requirements"), dict):
         base_cfg["ui_requirements"] = data["ui_requirements"]
     sop = get_sop_order_for_process_code(proc_data["code"])

@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-ماتریس چرخه عمر دانشجو تا فارغ‌التحصیلی — هم‌راستا با metadata/process_registry/INDEX.json
-برای API عمومی و UI اتوماسیون وب (بدون وابستگی به دیتابیس).
+ماتریس چرخه عمر دانشجو تا فارغ‌التحصیلی — هم‌راستا با فهرست فرایندهای ثبت‌شده در متادیتا.
+برای نمای عمومی و بدون وابستگی به پایگاه داده.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "1.0"
+_DEFAULT_PROCESS_LABEL_FA = "فرایند ثبت‌شده در سامانه"
+
+SCHEMA_VERSION = "1.1"
 
 
 @lru_cache(maxsize=1)
@@ -20,6 +23,28 @@ def _load_process_index_json() -> dict[str, Any]:
     path = root / "metadata" / "process_registry" / "INDEX.json"
     with path.open(encoding="utf-8") as f:
         return json.load(f)
+
+
+@lru_cache(maxsize=1)
+def _process_name_fa_by_code() -> dict[str, str]:
+    idx = _load_process_index_json()
+    out: dict[str, str] = {}
+    for proc in idx.get("processes") or []:
+        code = proc.get("code")
+        if not code:
+            continue
+        raw = (proc.get("name_fa") or "").strip()
+        out[code] = raw or _DEFAULT_PROCESS_LABEL_FA
+    return out
+
+
+def _public_label_fa(code: str, names: dict[str, str]) -> str:
+    """نام نمایشی بدون حروف لاتین؛ در صورت نبود یا مخلوط بودن، برچسب عمومی فارسی."""
+    raw = (names.get(code) or "").strip()
+    if raw and not re.search(r"[A-Za-z]", raw):
+        return raw
+    return _DEFAULT_PROCESS_LABEL_FA
+
 
 ROLES_ORDER: list[str] = [
     "admin",
@@ -39,14 +64,50 @@ ROLES_ORDER: list[str] = [
     "student",
 ]
 
+_ROLE_FALLBACK_FA: dict[str, str] = {
+    "admin": "مدیر سیستم",
+    "staff": "کارمند دفتر",
+    "finance": "اپراتور مالی",
+    "therapist": "درمانگر",
+    "supervisor": "سوپروایزر",
+    "site_manager": "مسئول سایت",
+    "deputy_education": "معاون مدیر آموزش",
+    "monitoring_committee_officer": "مسئول علمی اجرایی کمیته نظارت",
+    "progress_committee": "کمیته پیشرفت",
+    "education_committee": "کمیته آموزش",
+    "supervision_committee": "کمیته نظارت",
+    "specialized_commission": "کمیسیون تخصصی",
+    "therapy_committee_chair": "مسئول پروژه کمیته درمان آموزشی و سوپرویژن",
+    "therapy_committee_executor": "مجری کمیته درمان آموزشی و سوپرویژن",
+    "student": "دانشجو",
+}
+
+
+@lru_cache(maxsize=1)
+def _role_labels_fa() -> dict[str, str]:
+    root = Path(__file__).resolve().parents[2]
+    path = root / "metadata" / "roles.json"
+    with path.open(encoding="utf-8") as f:
+        data = json.load(f)
+    out: dict[str, str] = {}
+    for entry in data:
+        code = entry.get("code")
+        name = entry.get("name_fa")
+        if code and name and code not in out:
+            out[code] = name
+    for code in ROLES_ORDER:
+        out.setdefault(code, _ROLE_FALLBACK_FA.get(code, "نقش کاربری"))
+    return out
+
+
 LIFECYCLE_PHASES: list[dict[str, Any]] = [
     {
         "phase_id": "P0_admissions_path",
         "title_fa": "مسیر ورود و ثبت‌نام (آشنایی / جامع)",
         "student_state_hints": [
-            "متقاضی؛ هنوز student_code ندارد",
-            "دانشجوی introductory تازه‌ثبت‌نام",
-            "دانشجوی comprehensive تازه‌ثبت‌نام",
+            "درخواست ورود داده‌اید و هنوز ثبت‌نام نهایی نشده است.",
+            "تازه در دورهٔ آشنایی (مقدماتی) پذیرفته شده‌اید.",
+            "تازه در دورهٔ جامع پذیرفته شده‌اید.",
         ],
         "process_codes": [
             "introductory_course_registration",
@@ -55,14 +116,13 @@ LIFECYCLE_PHASES: list[dict[str, Any]] = [
             "fall_semester_preparation",
             "winter_semester_preparation",
         ],
-        "demo_student_count_hint": 3,
     },
     {
         "phase_id": "P1_intro_terms",
         "title_fa": "ترم‌های آشنایی و گذار بین ترم‌ها",
         "student_state_hints": [
-            "introductory؛ ترم ۱ یا ۲؛ در انتظار پایان ترم",
-            "نیاز به ثبت‌نام ترم دوم آشنایی",
+            "در ترم اول یا دوم دورهٔ آشنایی هستید و منتظر پایان ترم یا اقدام بعدی‌اید.",
+            "برای ادامه باید ثبت‌نام ترم دوم آشنایی را انجام دهید.",
         ],
         "process_codes": [
             "comprehensive_term_start",
@@ -71,14 +131,13 @@ LIFECYCLE_PHASES: list[dict[str, Any]] = [
             "intro_second_semester_registration",
             "introductory_course_completion",
         ],
-        "demo_student_count_hint": 4,
     },
     {
         "phase_id": "P2_comprehensive_terms",
         "title_fa": "چرخه ترم در دوره جامع",
         "student_state_hints": [
-            "comprehensive؛ میان ترم‌ها",
-            "پایان ترم؛ آماده شروع ترم بعد",
+            "در دورهٔ جامع هستید و بین دو ترم یا در حال گذر از یک ترم به ترم بعد هستید.",
+            "یک ترم تمام شده و برای ترم بعد باید طبق اعلام سامانه اقدام کنید.",
         ],
         "process_codes": [
             "comprehensive_term_end",
@@ -86,16 +145,15 @@ LIFECYCLE_PHASES: list[dict[str, Any]] = [
             "lesson_start_per_term",
             "student_instructor_evaluation",
         ],
-        "demo_student_count_hint": 3,
     },
     {
         "phase_id": "P3_educational_therapy",
         "title_fa": "درمان آموزشی (از شروع تا خاتمه)",
         "student_state_hints": [
-            "therapy_started=False (قبل از آغاز)",
-            "در حال درمان؛ پرداخت/حضور فعال",
-            "درخواست تغییر/افزایش/کاهش جلسه",
-            "تکمیل یا وقفه یا خاتمه زودهنگام",
+            "هنوز درمان آموزشی شخصی شروع نشده است.",
+            "درمان در جریان است؛ پرداخت و حضور در جلسات را دنبال کنید.",
+            "درخواست تغییر درمانگر، افزایش یا کاهش جلسه دارید.",
+            "درمان در وضعیت پایان، وقفه، یا خاتمهٔ زودهنگام قرار گرفته است.",
         ],
         "process_codes": [
             "start_therapy",
@@ -113,15 +171,14 @@ LIFECYCLE_PHASES: list[dict[str, Any]] = [
             "student_session_cancellation",
             "unannounced_absence_reaction",
         ],
-        "demo_student_count_hint": 8,
     },
     {
         "phase_id": "P4_supervision",
         "title_fa": "سوپرویژن فردی و گروهی",
         "student_state_hints": [
-            "گذر بین بلوک‌های سوپرویژن",
-            "نزدیک تکمیل ۵۰ ساعت",
-            "تغییر تعداد جلسات یا لغو",
+            "در دورهٔ سوپرویژن هستید و بین بلوک‌های سوپرویژن جابه‌جا می‌شوید.",
+            "نزدیک به پایان یک بلوک ۵۰ ساعته هستید.",
+            "تعداد جلسات سوپرویژن را تغییر می‌دهید یا جلسه‌ای لغو می‌شود.",
         ],
         "process_codes": [
             "supervision_block_transition",
@@ -135,43 +192,40 @@ LIFECYCLE_PHASES: list[dict[str, Any]] = [
             "unannounced_supervision_absence_reaction",
             "group_supervision_course_completion",
         ],
-        "demo_student_count_hint": 5,
     },
     {
         "phase_id": "P5_leave_and_return",
         "title_fa": "مرخصی‌ها و بازگشت به تحصیل",
         "student_state_hints": [
-            "مرخصی آموزشی موقت از کلاس",
-            "مرخصی کامل از تحصیل",
-            "بازگشت و ادامه",
+            "مرخصی موقت از کلاس دارید.",
+            "از تحصیل کامل مرخص شده‌اید.",
+            "پس از مرخصی به تحصیل بازگشته‌اید یا در حال بازگشت هستید.",
         ],
         "process_codes": [
             "educational_leave",
             "full_education_leave",
             "return_to_full_education",
         ],
-        "demo_student_count_hint": 3,
     },
     {
         "phase_id": "P6_committees",
         "title_fa": "کمیسیون‌ها و کمیته‌ها (تصمیم‌گیری)",
         "student_state_hints": [
-            "پرونده نیازمند نظر تخصصی یا چندکمیته",
-            "تخلف یا ارجاع بیمار در کارورزی",
+            "پروندهٔ شما نیاز به بررسی در کمیسیون یا کمیته دارد.",
+            "موضوع مربوط به کارورزی یا نظارت است.",
         ],
         "process_codes": [
             "specialized_commission_review",
             "committees_review",
             "process_merged_to_one",
         ],
-        "demo_student_count_hint": 2,
     },
     {
         "phase_id": "P7_internship",
         "title_fa": "کارورزی و آمادگی / شرایط دوازده ماهه",
         "student_state_hints": [
-            "is_intern=True؛ آمادگی یا افزایش ساعت",
-            "ارجاع گروهی بیمار",
+            "در دورهٔ کارورزی هستید؛ در حال آماده‌سازی یا افزایش ساعت هستید.",
+            "بحث ارجاع بیمار در گروه کارورزی مطرح می‌شود.",
         ],
         "process_codes": [
             "internship_readiness_consultation",
@@ -179,13 +233,12 @@ LIFECYCLE_PHASES: list[dict[str, Any]] = [
             "intern_hours_increase",
             "intern_bulk_patient_referral",
         ],
-        "demo_student_count_hint": 4,
     },
     {
         "phase_id": "P8_courses_completion",
         "title_fa": "دروس نظری و عملی و تکمیل مقاله/پایان‌نامه",
         "student_state_hints": [
-            "در حال گذراندن درس؛ آماده تکمیل نمره نهایی",
+            "در حال گذراندن درس‌ها هستید؛ در نهایت تکمیل نمره یا نهایی کردن واحد پیش رو می‌آید.",
         ],
         "process_codes": [
             "theory_course_completion",
@@ -199,13 +252,12 @@ LIFECYCLE_PHASES: list[dict[str, Any]] = [
             "thesis_defense_request",
             "upgrade_to_educational_therapist",
         ],
-        "demo_student_count_hint": 6,
     },
     {
         "phase_id": "P9_ta_track",
         "title_fa": "مسیر کمک‌آموز و ارتقا به مدرس/دستیار",
         "student_state_hints": [
-            "دانشجو در نقش TA یا در مسیر ارتقا",
+            "در نقش کمک‌آموز هستید یا در مسیر ارتقا به مدرس یا دستیار آموزشی.",
         ],
         "process_codes": [
             "ta_conceptual_questions",
@@ -223,96 +275,94 @@ LIFECYCLE_PHASES: list[dict[str, Any]] = [
             "live_therapy_observation_ta_attendance_completion",
             "film_observation_ta_attendance_completion",
         ],
-        "demo_student_count_hint": 5,
     },
     {
         "phase_id": "P10_class_ops",
         "title_fa": "کلاس، حضور، کنسلی، تخلف",
         "student_state_hints": [
-            "کلاس حضوری/مجازی فعال",
-            "کنسلی جلسه کلاس",
-            "ثبت تخلف آموزشی",
+            "کلاس حضوری یا مجازی برای شما فعال است.",
+            "برای جلسهٔ کلاس لغو یا جابه‌جایی ثبت کرده‌اید.",
+            "تخلف آموزشی ثبت شده یا در حال پیگیری است.",
         ],
         "process_codes": [
             "class_attendance",
             "class_session_cancellation",
             "violation_registration",
         ],
-        "demo_student_count_hint": 3,
     },
 ]
 
 ROLE_ACTION_PATTERNS: dict[str, list[str]] = {
     "admin": [
-        "ایجاد/تنظیم کاربر و نقش",
-        "نظارت بر نمونه فرایندها و رفع بن‌بست با override",
-        "بازبینی گزارش حسابرسی برای سناریوهای دمو",
+        "ایجاد کاربران و تعیین نقش‌ها در سامانه",
+        "در صورت نیاز، رفع مسدودیت فرایندها با مجوز مدیریتی",
+        "مشاهده گزارش‌های مدیریتی و وضعیت کلی سامانه",
     ],
     "staff": [
-        "ایجاد یا به‌روزرسانی نمونه دانشجو و پیگیری نمونه فرایند",
-        "هماهنگی بین دانشجو و درمانگر/سوپروایزر در موارد اداری",
-        "مشاهده وضعیت فرایند در پنل برای رفع گیر",
+        "پیگیری پروندهٔ دانشجویان و روند کارها",
+        "هماهنگی بین دانشجو و درمانگر یا سوپروایزر در امور اداری",
+        "بررسی وضعیت فرایندها برای رفع گیرهای روزمره",
     ],
     "finance": [
-        "ثبت/تأیید پرداخت‌های مرتبط با session_payment و هزینه‌ها",
-        "هم‌ترازی بدهی/اعتبار با سناریوهای حضور و کنسلی",
-        "بازبینی تراکنش‌ها و مانده بدهکاران در داشبورد مالی",
+        "ثبت و تأیید پرداخت‌ها و هماهنگی با هزینه‌های آموزشی و جلسات",
+        "بررسی بدهی و مانده حساب دانشجویان",
+        "مشاهده گزارش‌های مالی در داشبورد مالی",
     ],
     "therapist": [
-        "پذیرش یا رد دانشجوی اختصاص‌یافته",
-        "ثبت حضور، کنسلی، و اجرای قوانین ۲۴ ساعته/هفته نهم در فرایندهای درمان",
+        "پذیرش یا رد دانشجوی اختصاص‌یافته به شما",
+        "ثبت حضور و غیاب و جلسات؛ رعایت زمان‌بندی اعلام‌شده برای جلسات",
     ],
     "supervisor": [
-        "نظارت بر درمانگران و دانشجویان تحت پوشش",
-        "تأیید/بازخورد در مسیرهای سوپرویژن و گزارش جلسات",
+        "همراهی درمانگران و دانشجویان تحت پوشش شما",
+        "ثبت بازخورد و تأیید گزارش‌های مربوط به سوپرویژن",
     ],
     "site_manager": [
-        "پیگیری هشدارهای حضور درمانگر و بستن follow-up",
-        "مرور تب هشدارها و ثبت اقدام پیگیری برای هر مورد",
-        "هماهنگی با درمانگر در صورت تکرار غیبت یا تأخیر ثبت حضور",
+        "پیگیری هشدارهای مربوط به حضور درمانگران و بستن پیگیری",
+        "هماهنگی با درمانگر در صورت تکرار غیبت یا تأخیر در ثبت حضور",
     ],
     "deputy_education": [
-        "رسیدگی به SLA مرخصی/کمیته و escalation تأخیر",
+        "پیگیری پرونده‌های با مرخصی طولانی یا تأخیر در کمیته‌ها",
+        "در صورت نیاز، ارتقای موضوع به مدیران مربوطه",
     ],
     "monitoring_committee_officer": [
-        "مدیریت هشدار تخلف و ارجاع بیمار در سناریوهای کارورزی/نظارت",
+        "پیگیری پیام‌های مربوط به تخلف آموزشی یا ارجاع بیمار در کارورزی",
     ],
     "progress_committee": [
-        "بررسی و تأیید/رد درخواست‌های مرخصی و تغییرات درمان طبق صلاحیت",
+        "بررسی درخواست‌های مرخصی و تغییرات درمان در حیطهٔ صلاحیت کمیته",
     ],
     "education_committee": [
-        "آرای نهایی ادامه/خاتمه در مسیرهای آموزشی مشمول کمیته آموزش",
+        "تصمیم‌گیری دربارهٔ ادامه یا خاتمه مسیر در پرونده‌های ارجاع‌شده به کمیته آموزش",
     ],
     "supervision_committee": [
-        "پرونده‌های انضباطی/سوپرویژن مشمول این کمیته",
+        "بررسی پرونده‌های انضباطی/سوپرویژن که به این کمیته ارجاع شده است",
     ],
     "specialized_commission": [
-        "جلسه و تصمیم برای خاتمه زودهنگام و موارد تخصصی",
+        "جلسه و تصمیم‌گیری دربارهٔ خاتمهٔ زودهنگام و موارد تخصصی",
     ],
     "therapy_committee_chair": [
-        "تفویض پیگیری و نظارت بر پرونده‌های no-show درمان",
+        "تفویض پیگیری و نظارت بر پرونده‌های غیبت از جلسات درمان",
     ],
     "therapy_committee_executor": [
         "پیگیری عملی دانشجو و ثبت گزارش مجری",
     ],
     "student": [
-        "ارسال درخواست، پرداخت، انتخاب درمانگر، شرکت در جلسات طبق SOP",
-        "پیگیری فرایند فعال در تب فرایندها و تکمیل فرم‌های مرحله در صورت نیاز",
-        "مرور جلسات و تکالیف از تب‌های مربوطه",
+        "ارسال درخواست‌ها، پرداخت، و انتخاب درمانگر طبق اعلام سامانه",
+        "پیگیری فرایند فعال در پنل و تکمیل فرم‌های مرحله در صورت نیاز",
+        "مشاهده جلسات و تکالیف از بخش‌های مربوط در پنل",
     ],
 }
 
 
 def get_panel_action_queue_for_role(role: str) -> dict[str, Any]:
     """
-    صف «اقدامات منتظر انجام» برای نمایش در پنل نقش‌ها + اتوماسیون وب.
-    ترکیب: الگوی نقش + فرایندهای رجیستری که roles_needed آن نقش را دارد.
+    صف اقدامات پیشنهادی برای نمایش در پنل نقش‌ها.
+    ترکیب الگوی نقش و فرایندهایی که در متادیتا به این نقش نیاز دارند.
     """
     items: list[dict[str, Any]] = []
     patterns = ROLE_ACTION_PATTERNS.get(role)
     if not patterns:
         patterns = [
-            "بررسی تب‌های پنل و فرایندهای مرتبط با نقش شما؛ در صورت ابهام با مدیریت هماهنگ کنید.",
+            "بررسی بخش‌های پنل مرتبط با نقش شما؛ در صورت ابهام با مدیریت هماهنگ کنید.",
         ]
     for i, title in enumerate(patterns):
         items.append(
@@ -362,25 +412,36 @@ def get_panel_action_queue_for_role(role: str) -> dict[str, Any]:
 
 
 def get_student_lifecycle_matrix() -> dict[str, Any]:
-    """بار برای JSON — بدون I/O."""
-    total_demo = sum(int(p.get("demo_student_count_hint") or 0) for p in LIFECYCLE_PHASES)
+    """خروجی آمادهٔ نمایش؛ نام هر فرایند از فهرست ثبت‌شده و بدون حروف لاتین در متن نمایشی."""
+    names = _process_name_fa_by_code()
     all_codes: list[str] = []
+    phases_out: list[dict[str, Any]] = []
     for p in LIFECYCLE_PHASES:
-        all_codes.extend(p.get("process_codes") or [])
+        codes = p.get("process_codes") or []
+        all_codes.extend(codes)
+        phases_out.append(
+            {
+                "phase_id": p["phase_id"],
+                "title_fa": p["title_fa"],
+                "student_state_hints": p["student_state_hints"],
+                "process_codes": codes,
+                "process_labels_fa": [_public_label_fa(c, names) for c in codes],
+            }
+        )
     return {
         "schema_version": SCHEMA_VERSION,
-        "title_fa": "ماتریس چرخه عمر دانشجو و فرایندها (ثبت‌نام تا فارغ‌التحصیلی)",
+        "title_fa": "مسیر آموزشی از ورود تا پایان دوره",
         "description_fa": (
-            "فازهای آموزشی، نمونه وضعیت دانشجو، کدهای فرایند رجیستری، "
-            "تعداد پیشنهادی دانشجوی دمو در هر فاز، و الگوی اقدام به تفکیک نقش."
+            "نقشهٔ کلی مراحل آموزشی، مثال‌هایی از وضعیت شما در هر بخش، "
+            "کارهایی که ممکن است در سامانه ثبت شود، و نقش افراد مختلف — بدون نیاز به دانش فنی."
         ),
         "roles_order": ROLES_ORDER,
-        "phases": LIFECYCLE_PHASES,
+        "role_labels_fa": _role_labels_fa(),
+        "phases": phases_out,
         "role_action_patterns": ROLE_ACTION_PATTERNS,
         "stats": {
             "phase_count": len(LIFECYCLE_PHASES),
             "unique_process_codes": len(set(all_codes)),
             "total_process_refs": len(all_codes),
-            "suggested_total_demo_students": total_demo,
         },
     }

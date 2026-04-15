@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { processExecApi, studentApi, therapyApi, assignmentApi } from '../services/api'
 import GamificationPanel from '../components/GamificationPanel'
@@ -12,15 +12,27 @@ import {
   mergeFormPayload,
   stepFormsBlockTransition,
   isStudentStepFormLocked,
-  pickFormValuesFromContext,
+  mergeAdmissionFormDefaultsFromProfile,
   filterFormsForStudent,
+  CTX_DOCUMENTS_RESUBMIT_FIELDS,
 } from '../utils/processFormsStudent'
 import ProcessStepForms from '../components/ProcessStepForms'
 import StudentProcessGuidancePanel from '../components/StudentProcessGuidancePanel'
 import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
+import PopupToast from '../components/PopupToast'
+import InterviewSlotPicker from '../components/InterviewSlotPicker'
 import { buildStudentGuidance } from '../utils/studentProcessGuidance'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import {
+  STUDENT_TRANSITION_CTA_INTRO,
+  getStudentTransitionButtonMain,
+  getStudentTransitionButtonSub,
+  getStudentTransitionTooltip,
+  getStudentNextStepHintBox,
+} from '../utils/studentTransitionCta'
+import StudentRegistration from './public/StudentRegistration'
+import StudentProfileDocumentsSection from '../components/StudentProfileDocumentsSection'
 
 const studentProcessCodes = [
   'educational_leave', 'start_therapy', 'extra_session', 'session_payment',
@@ -28,12 +40,12 @@ const studentProcessCodes = [
   'therapy_interruption', 'student_session_cancellation', 'student_supervision_cancellation', 'supervision_block_transition',
   'extra_supervision_session', 'supervision_session_increase', 'supervision_session_reduction',
   'introductory_course_registration', 'comprehensive_course_registration',
-  'fee_determination', 'upgrade_to_ta', 'internship_readiness_consultation',
+  'fee_determination', 'therapy_completion', 'upgrade_to_ta', 'internship_readiness_consultation',
 ]
 
 export default function StudentPortal() {
   const { user } = useAuth()
-  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [studentProfile, setStudentProfile] = useState(null)
   const [activeProcesses, setActiveProcesses] = useState([])
   const [completedProcesses, setCompletedProcesses] = useState([])
@@ -52,6 +64,8 @@ export default function StudentPortal() {
   const [assignments, setAssignments] = useState([])
   const [primaryJourney, setPrimaryJourney] = useState(null)
   const [primaryJourneyLoading, setPrimaryJourneyLoading] = useState(false)
+  /** پروفایل Student هنوز ایجاد نشده (GET /students/me → 404) — فرم پذیرش در همان پنل */
+  const [admissionRequired, setAdmissionRequired] = useState(false)
   const [instanceForms, setInstanceForms] = useState([])
   const [stepFormValues, setStepFormValues] = useState({})
   const lastFormCtxRef = useRef('')
@@ -62,7 +76,32 @@ export default function StudentPortal() {
     setTimeout(() => setToast(null), 4000)
   }
 
-  useEffect(() => { loadData() }, [])
+  /** بازگشت از درگاه پرداخت (ریدایرکت کال‌بک با ?payment=success|failed) */
+  const paymentReturnHandled = useRef(false)
+  useEffect(() => {
+    const payment = searchParams.get('payment')
+    if (!payment) {
+      paymentReturnHandled.current = false
+      return
+    }
+    if (paymentReturnHandled.current) return
+    paymentReturnHandled.current = true
+    if (payment === 'success') {
+      showToast('پرداخت با موفقیت ثبت شد. در صورت نیاز صفحه را یک‌بار تازه کنید.', 'success')
+    } else if (payment === 'failed') {
+      const reason = searchParams.get('reason')
+      showToast(
+        reason ? `پرداخت ناموفق: ${reason}` : 'پرداخت تکمیل نشد یا توسط بانک رد شد.',
+        'error',
+      )
+    }
+    const next = new URLSearchParams(searchParams)
+    next.delete('payment')
+    next.delete('ref')
+    next.delete('reason')
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- فقط یک‌بار پس از برگشت از بانک
+  }, [searchParams, setSearchParams])
 
   const loadTherapyAndAssignments = async () => {
     if (!studentProfile) return
@@ -98,7 +137,7 @@ export default function StudentPortal() {
     const k = `${sid}|${st}|${activeTab === 'processes' ? 'p' : 'd'}`
     if (lastFormCtxRef.current !== k) {
       lastFormCtxRef.current = k
-      setStepFormValues(pickFormValuesFromContext(forms, ctx))
+      setStepFormValues(mergeAdmissionFormDefaultsFromProfile(forms, ctx, user, studentProfile))
     }
   }, [
     activeTab,
@@ -111,6 +150,8 @@ export default function StudentPortal() {
     primaryJourney?.detail?.context_data,
     primaryJourney?.forms,
     studentProfile?.extra_data?.primary_instance_id,
+    user,
+    studentProfile,
   ])
 
   useEffect(() => {
@@ -133,7 +174,7 @@ export default function StudentPortal() {
     return () => window.cancelAnimationFrame(id)
   }, [activeTab])
 
-  const loadPrimaryJourney = async (instanceId) => {
+  const loadPrimaryJourney = useCallback(async (instanceId) => {
     if (!instanceId) {
       setPrimaryJourney(null)
       return
@@ -166,35 +207,52 @@ export default function StudentPortal() {
     } finally {
       setPrimaryJourneyLoading(false)
     }
-  }
+  }, [])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const defsRes = await processExecApi.definitions()
+      // ابتدا پروفایل دانشجو — اگر /process/definitions خطا بدهد، نباید پروفایل خالی بماند
       let myProfile = null
       try {
         const meRes = await studentApi.me()
-        myProfile = meRes.data
-      } catch (e) {
-        if (user?.role === 'student' && e.response?.status === 404) {
-          navigate('/panel/complete-registration', { replace: true })
-          return
+        myProfile = meRes.data ?? null
+        setAdmissionRequired(false)
+        if (!myProfile) {
+          setAdmissionRequired(true)
         }
-        if (user?.role === 'admin' || user?.role === 'staff') {
+      } catch (e) {
+        if (e.response?.status === 404) {
+          myProfile = null
+          setAdmissionRequired(true)
+        } else if (user?.role === 'admin' || user?.role === 'staff') {
           const listRes = await studentApi.list().catch(() => ({ data: [] }))
           myProfile = listRes.data?.find(s => s.user_id === user?.id)
+          setAdmissionRequired(false)
+        } else {
+          setAdmissionRequired(false)
         }
       }
       setStudentProfile(myProfile)
 
       if (myProfile) {
-        const instancesRes = await processExecApi.studentInstances(myProfile.id)
-        const instances = instancesRes.data?.instances || []
-        setActiveProcesses(instances.filter(i => !i.is_completed && !i.is_cancelled))
-        setCompletedProcesses(instances.filter(i => i.is_completed))
-        setCancelledProcesses(instances.filter(i => i.is_cancelled))
+        let instances = []
+        try {
+          const instancesRes = await processExecApi.studentInstances(myProfile.id)
+          instances = instancesRes.data?.instances || []
+          setActiveProcesses(instances.filter(i => !i.is_completed && !i.is_cancelled))
+          setCompletedProcesses(instances.filter(i => i.is_completed))
+          setCancelledProcesses(instances.filter(i => i.is_cancelled))
+        } catch (e) {
+          console.error('Student instances load failed', e)
+          setActiveProcesses([])
+          setCompletedProcesses([])
+          setCancelledProcesses([])
+        }
 
-        const primaryId = myProfile.extra_data?.primary_instance_id
+        const leaveActive = instances.find(
+          i => i.process_code === 'educational_leave' && !i.is_completed && !i.is_cancelled,
+        )
+        const primaryId = leaveActive?.instance_id || myProfile.extra_data?.primary_instance_id
         if (primaryId) {
           await loadPrimaryJourney(primaryId)
         } else {
@@ -204,7 +262,13 @@ export default function StudentPortal() {
         setPrimaryJourney(null)
       }
 
-      const allDefs = defsRes.data?.processes || []
+      let allDefs = []
+      try {
+        const defsRes = await processExecApi.definitions()
+        allDefs = defsRes.data?.processes || []
+      } catch (e) {
+        console.error('Process definitions load failed', e)
+      }
       setAvailableProcesses(allDefs.filter(p =>
         studentProcessCodes.includes(p.code) || p.code?.includes('student')
       ))
@@ -213,7 +277,11 @@ export default function StudentPortal() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id, user?.role, loadPrimaryJourney])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const startProcess = async (processCode) => {
     if (!studentProfile) return showToast('پروفایل دانشجو یافت نشد', 'error')
@@ -262,7 +330,12 @@ export default function StudentPortal() {
     const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
     const toState = typeof transition === 'object' ? transition.to_state : undefined
     const lockedProc = isStudentStepFormLocked(instanceDetail?.context_data, instanceDetail?.current_state)
-    if (!lockedProc && stepFormsBlockTransition(instanceForms, stepFormValues)) {
+    const rawResubmit = instanceDetail?.context_data?.[CTX_DOCUMENTS_RESUBMIT_FIELDS]
+    const resubmitNames = Array.isArray(rawResubmit) && rawResubmit.length ? rawResubmit : undefined
+    if (!lockedProc && stepFormsBlockTransition(instanceForms, stepFormValues, {
+      resubmitFieldNames: resubmitNames,
+      contextData: instanceDetail?.context_data,
+    })) {
       showToast('ابتدا همهٔ موارد الزام فرم این مرحله را تکمیل کنید.', 'error')
       return
     }
@@ -296,7 +369,12 @@ export default function StudentPortal() {
       return
     }
     const lockedP = isStudentStepFormLocked(primaryJourney?.detail?.context_data, primaryJourney?.detail?.current_state)
-    if (!lockedP && stepFormsBlockTransition(primaryJourney?.forms, stepFormValues)) {
+    const rawPrimary = primaryJourney?.detail?.context_data?.[CTX_DOCUMENTS_RESUBMIT_FIELDS]
+    const resubmitPrimary = Array.isArray(rawPrimary) && rawPrimary.length ? rawPrimary : undefined
+    if (!lockedP && stepFormsBlockTransition(primaryJourney?.forms, stepFormValues, {
+      resubmitFieldNames: resubmitPrimary,
+      contextData: primaryJourney?.detail?.context_data,
+    })) {
       showToast('ابتدا همهٔ موارد الزام فرم این مرحله را تکمیل کنید.', 'error')
       return
     }
@@ -322,6 +400,22 @@ export default function StudentPortal() {
     }
   }
 
+  const interviewSlotInstanceId = useMemo(() => {
+    if (!studentProfile || admissionRequired) return null
+    const eligible = (inst) => {
+      if (!inst || inst.is_completed || inst.is_cancelled) return false
+      const { process_code, current_state } = inst
+      return (
+        (process_code === 'introductory_course_registration' && current_state === 'application_submitted') ||
+        (process_code === 'comprehensive_course_registration' && current_state === 'interview_scheduled')
+      )
+    }
+    const primary = primaryJourney?.detail
+    if (primary && eligible(primary)) return primary.instance_id
+    const fromList = activeProcesses.find((p) => eligible(p))
+    return fromList?.instance_id || null
+  }, [studentProfile, admissionRequired, primaryJourney, activeProcesses])
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem' }}>
@@ -344,11 +438,17 @@ export default function StudentPortal() {
   const roadmapProgress = instanceDetail && roadmapStates.length
     ? Math.min(100, Math.round((roadmapStates.findIndex(s => s.code === instanceDetail.current_state) + 1) / roadmapStates.length * 100))
     : 0
-  const nextHint = availableTransitions[0]?.description || availableTransitions[0]?.trigger_event
+  const nextStepHintBox = getStudentNextStepHintBox(availableTransitions)
   const stepFormLockedProcess = isStudentStepFormLocked(instanceDetail?.context_data, instanceDetail?.current_state)
   const stepFormLockedPrimary = isStudentStepFormLocked(primaryJourney?.detail?.context_data, primaryJourney?.detail?.current_state)
+  const docsResubmitProcess = Array.isArray(instanceDetail?.context_data?.[CTX_DOCUMENTS_RESUBMIT_FIELDS])
+    && instanceDetail.context_data[CTX_DOCUMENTS_RESUBMIT_FIELDS].length
+    ? instanceDetail.context_data[CTX_DOCUMENTS_RESUBMIT_FIELDS]
+    : null
   const processTransitionBlocked = instanceDetail && stepFormsBlockTransition(instanceForms, stepFormValues, {
     lockedSubmitted: stepFormLockedProcess,
+    resubmitFieldNames: docsResubmitProcess || undefined,
+    contextData: instanceDetail?.context_data,
   })
 
   const primaryGuidance =
@@ -362,6 +462,10 @@ export default function StudentPortal() {
         })
       : null
 
+  const showSessionPaymentAfterTherapy =
+    primaryJourney?.detail?.process_code === 'session_payment' &&
+    primaryJourney?.detail?.context_data?.source === 'after_start_therapy_complete'
+
   const instanceGuidance =
     instanceDetail && processDefinition
       ? buildStudentGuidance({
@@ -374,65 +478,76 @@ export default function StudentPortal() {
       : null
 
   const accessCtx = { studentProfile, activeProcesses }
+  /** مسیر اصلی در کارت بالا نمایش داده می‌شود؛ در داشبورد فقط «سایر» فرایندهای فعال را لیست می‌کنیم تا تکرار نشود */
+  const primaryInstanceId =
+    studentProfile?.extra_data?.primary_instance_id || primaryJourney?.detail?.instance_id || null
+  const otherActiveProcesses = primaryInstanceId
+    ? activeProcesses.filter(p => p.instance_id !== primaryInstanceId)
+    : activeProcesses
+  const regCodeForProfile = studentProfile
+    ? (studentProfile.course_type === 'comprehensive' ? 'comprehensive_course_registration' : 'introductory_course_registration')
+    : null
+  const showManualRegStart = Boolean(
+    studentProfile &&
+      !admissionRequired &&
+      !primaryJourneyLoading &&
+      !primaryJourney?.detail &&
+      regCodeForProfile &&
+      canStartProcess(regCodeForProfile, accessCtx).ok,
+  )
   const registrationBlocking = studentProfile && hasActiveRegistrationProcess(activeProcesses)
+
+  const showInterviewSlotPicker = Boolean(interviewSlotInstanceId)
   const quickActionItems = [
     { code: 'session_payment', icon: '💳', label: 'پرداخت جلسات' },
     { code: 'educational_leave', icon: '🏖️', label: 'درخواست مرخصی' },
     { code: 'extra_session', icon: '➕', label: 'جلسه اضافی' },
+    { code: 'therapy_session_increase', icon: '📈', label: 'افزایش جلسات هفتگی درمان' },
     { code: 'student_session_cancellation', icon: '🚫', label: 'کنسل جلسه درمان' },
     { code: 'student_supervision_cancellation', icon: '🚫', label: 'کنسل جلسه سوپرویژن' },
   ]
 
   return (
     <div>
-      {toast && (
-        <div style={{
-          position: 'fixed', top: '1rem', left: '50%', transform: 'translateX(-50%)',
-          padding: '0.75rem 1.5rem', borderRadius: '8px', zIndex: 1000, fontWeight: 500,
-          background: toast.type === 'error' ? '#fef2f2' : '#f0fdf4',
-          color: toast.type === 'error' ? '#dc2626' : '#16a34a',
-          border: `1px solid ${toast.type === 'error' ? '#fca5a5' : '#86efac'}`,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        }}>
-          {toast.msg}
-        </div>
-      )}
+      <PopupToast toast={toast} />
 
       {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">پنل دانشجو</h1>
           <p className="page-subtitle">
-            {studentProfile
-              ? `${user?.full_name_fa || user?.username} | کد دانشجویی: ${formatStudentCodeDisplay(studentProfile.student_code)} | دوره: ${studentProfile.course_type === 'comprehensive' ? 'جامع' : 'آشنایی'}`
-              : 'پروفایل دانشجو یافت نشد — لطفاً با مدیریت تماس بگیرید'}
+            {admissionRequired
+              ? `${user?.full_name_fa || user?.username || 'کاربر گرامی'} — فرم پذیرش را در کارت زیر تکمیل کنید تا مسیر دوره برایتان فعال شود.`
+              : studentProfile
+                ? `${user?.full_name_fa || user?.username} · کد: ${formatStudentCodeDisplay(studentProfile.student_code)} · دورهٔ ${studentProfile.course_type === 'comprehensive' ? 'جامع' : 'آشنایی'}`
+                : 'پروفایل دانشجو یافت نشد — با واحد اداری تماس بگیرید.'}
           </p>
         </div>
       </div>
 
-      {/* درخواست اداری / تیکت — همیشه قابل مشاهده در پنل دانشجو */}
-      <div
-        className="card"
-        style={{
-          marginBottom: '1.25rem',
-          padding: '1rem 1.25rem',
-          borderRadius: '12px',
-          border: '1px solid rgba(59, 130, 246, 0.35)',
-          background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%)',
-        }}
-      >
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-          <div>
-            <strong style={{ fontSize: '1.05rem' }}>درخواست به واحد اداری</strong>
-            <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', maxWidth: '42rem' }}>
-              برای مواردی مثل باز کردن پروفایل برای ویرایش مرحلهٔ ثبت‌شده، اصلاح داده یا پیگیری فرایند، می‌توانید تیکت ثبت کنید و مسئول مربوط را انتخاب کنید.
+      {admissionRequired && (
+        <div
+          className="card"
+          style={{
+            marginBottom: '1.25rem',
+            padding: '0',
+            borderRadius: '12px',
+            border: '1px solid rgba(59, 130, 246, 0.4)',
+            background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%)',
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{ padding: '1rem 1.25rem 0.5rem', borderBottom: '1px solid rgba(59, 130, 246, 0.2)' }}>
+            <h3 className="card-title" style={{ marginBottom: '0.35rem' }}>وضعیت فعلی</h3>
+            <p className="muted" style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.65, maxWidth: '48rem' }}>
+              پس از ارسال، مسیر ثبت‌نام دوره معمولاً خودکار باز می‌شود. اگر در داشبورد مسیر را ندیدید، از همان‌جا دکمهٔ «شروع فرایند ثبت‌نام» را بزنید.
             </p>
           </div>
-          <Link to="/panel/tickets" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>
-            تیکت‌ها و درخواست‌ها
-          </Link>
+          <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
+            <StudentRegistration mode="panel" embedded onPanelSuccess={loadData} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tabs */}
       <div className="tab-bar">
@@ -451,48 +566,166 @@ export default function StudentPortal() {
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' && (
         <>
-          {studentProfile && (
-            <StudentQuestCard
-              loading={primaryJourneyLoading}
-              detail={primaryJourney?.detail}
-              definition={primaryJourney?.definition}
-              transitions={primaryJourney?.transitions}
-              forms={primaryJourney?.forms}
-              stepFormLocked={stepFormLockedPrimary}
-              stepFormValues={stepFormValues}
-              onStepFieldChange={(name, v) => setStepFormValues(prev => ({ ...prev, [name]: v }))}
-              onFormRegisterSubmit={async ({ ok, missing }) => {
-                if (!ok) {
-                  showToast(`موارد ناقص: ${missing.join('، ')}`, 'error')
-                  return
-                }
-                const pid = studentProfile?.extra_data?.primary_instance_id || primaryJourney?.detail?.instance_id
-                if (!pid) {
-                  showToast('شناسه فرایند یافت نشد', 'error')
-                  return
-                }
-                try {
-                  await processExecApi.registerStudentStepForms(pid, { form_values: stepFormValues })
-                  await loadPrimaryJourney(pid)
-                  showToast(
-                    'اطلاعات این مرحله ثبت شد. اگر دکمهٔ مرحلهٔ بعد را می‌بینید همان را بزنید؛ در غیر این صورت منتظر اقدام اداری بمانید.',
-                    'success',
-                  )
-                } catch (e) {
-                  const d = e.response?.data?.detail
-                  if (d && typeof d === 'object' && Array.isArray(d.missing)) {
-                    showToast(`موارد ناقص: ${d.missing.join('، ')}`, 'error')
-                  } else {
-                    showToast(typeof d === 'string' ? d : (e.message || 'خطا در ثبت'), 'error')
-                  }
-                }
-              }}
-              decisionNotes={decisionNotes}
-              onDecisionNotesChange={setDecisionNotes}
-              onTrigger={triggerPrimaryTransition}
-              onOpenProcesses={() => setActiveTab('processes')}
-              extraData={studentProfile.extra_data}
+          {showInterviewSlotPicker && (
+            <InterviewSlotPicker
+              courseType={studentProfile.course_type}
+              instanceId={interviewSlotInstanceId}
+              onBooked={loadData}
             />
+          )}
+          {showSessionPaymentAfterTherapy && (
+            <div
+              className="card"
+              role="status"
+              style={{
+                marginBottom: '1rem',
+                borderRadius: '12px',
+                border: '1px solid rgba(16, 185, 129, 0.45)',
+                background: 'linear-gradient(135deg, rgba(236, 253, 245, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%)',
+                padding: '1rem 1.25rem',
+                fontSize: '0.95rem',
+                lineHeight: 1.75,
+              }}
+            >
+              <strong style={{ color: '#047857' }}>مرحله بعد پس از آغاز درمان</strong>
+              <p style={{ margin: '0.45rem 0 0' }}>
+                آغاز درمان آموزشی شما ثبت شد. مسیر فعلی شما «پرداخت برای جلسات آتی درمان آموزشی» است؛
+                هزینهٔ جلسات پیشِ رو را از همین کارت یا تب فرایندها تکمیل کنید تا لینک جلسات و حضور فعال بماند.
+              </p>
+            </div>
+          )}
+          {studentProfile?.extra_data?.dashboard_therapy_hint_fa && (
+            <div
+              className="card"
+              role="status"
+              style={{
+                marginBottom: '1rem',
+                borderRadius: '12px',
+                border: '1px solid rgba(59, 130, 246, 0.35)',
+                background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%)',
+                padding: '1rem 1.25rem',
+                fontSize: '0.95rem',
+                lineHeight: 1.75,
+              }}
+            >
+              <strong style={{ color: '#1d4ed8' }}>پس از پرداخت جلسات</strong>
+              <p style={{ margin: '0.45rem 0 0' }}>{studentProfile.extra_data.dashboard_therapy_hint_fa}</p>
+            </div>
+          )}
+          {studentProfile?.therapy_started && studentProfile?.therapy_hours_progress_fa && (
+            <div
+              className="card"
+              role="status"
+              style={{
+                marginBottom: '1rem',
+                borderRadius: '12px',
+                border: '1px solid rgba(120, 113, 108, 0.35)',
+                background: 'linear-gradient(135deg, rgba(250, 250, 249, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%)',
+                padding: '1rem 1.25rem',
+                fontSize: '0.95rem',
+                lineHeight: 1.75,
+              }}
+            >
+              <strong style={{ color: '#44403c' }}>پیشرفت ساعات درمان آموزشی</strong>
+              <p style={{ margin: '0.45rem 0 0' }}>{studentProfile.therapy_hours_progress_fa}</p>
+            </div>
+          )}
+          {studentProfile && !admissionRequired && (
+            primaryJourneyLoading ? (
+              <StudentQuestCard
+                loading
+                detail={primaryJourney?.detail}
+                definition={primaryJourney?.definition}
+                transitions={primaryJourney?.transitions}
+                forms={primaryJourney?.forms}
+                stepFormLocked={stepFormLockedPrimary}
+                stepFormValues={stepFormValues}
+                onStepFieldChange={(name, v) => setStepFormValues(prev => ({ ...prev, [name]: v }))}
+                onFormRegisterSubmit={async () => {}}
+                decisionNotes={decisionNotes}
+                onDecisionNotesChange={setDecisionNotes}
+                onTrigger={triggerPrimaryTransition}
+                onOpenProcesses={() => setActiveTab('processes')}
+                extraData={studentProfile.extra_data}
+                studentId={studentProfile?.id}
+              />
+            ) : showManualRegStart ? (
+              <div
+                className="card"
+                style={{
+                  marginBottom: '1.25rem',
+                  border: '1px solid rgba(59, 130, 246, 0.35)',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%)',
+                }}
+              >
+                <div className="card-header">
+                  <h3 className="card-title">وضعیت فعلی</h3>
+                  <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', lineHeight: 1.65, maxWidth: '46rem' }}>
+                    مسیر ثبت‌نام هنوز به پروفایل وصل نشده. با دکمهٔ زیر، فرایند ثبت‌نام دورهٔ {studentProfile.course_type === 'comprehensive' ? 'جامع' : 'آشنایی'} را شروع کنید.
+                  </p>
+                </div>
+                <div style={{ padding: '0 1.25rem 1.25rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => regCodeForProfile && startProcess(regCodeForProfile)}
+                  >
+                    شروع {regCodeForProfile ? labelProcess(regCodeForProfile) : 'فرایند ثبت‌نام'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <StudentQuestCard
+                loading={false}
+                detail={primaryJourney?.detail}
+                definition={primaryJourney?.definition}
+                transitions={primaryJourney?.transitions}
+                forms={primaryJourney?.forms}
+                stepFormLocked={stepFormLockedPrimary}
+                stepFormValues={stepFormValues}
+                onStepFieldChange={(name, v) => setStepFormValues(prev => ({ ...prev, [name]: v }))}
+                onFormRegisterSubmit={async ({ ok, missing }) => {
+                  if (!ok) {
+                    showToast(`موارد ناقص: ${missing.join('، ')}`, 'error')
+                    return
+                  }
+                  const pid = studentProfile?.extra_data?.primary_instance_id || primaryJourney?.detail?.instance_id
+                  if (!pid) {
+                    showToast('شناسه فرایند یافت نشد', 'error')
+                    return
+                  }
+                  try {
+                    const regRes = await processExecApi.registerStudentStepForms(pid, { form_values: stepFormValues })
+                    await loadPrimaryJourney(pid)
+                    if (regRes.data?.auto_advanced_to_documents_review) {
+                      showToast(
+                        'مدارک در پرونده ثبت شد و به‌صورت خودکار برای بررسی پذیرش ارسال شد. در پنل کارمند در «بررسی مدارک» دیده می‌شود.',
+                        'success',
+                      )
+                    } else {
+                      showToast(
+                        'اطلاعات این مرحله ثبت شد. اگر دکمهٔ «ادامه و ثبت مرحله» را می‌بینید همان را بزنید تا پرونده برای پذیرش برود؛ در غیر این صورت منتظر اقدام اداری بمانید.',
+                        'success',
+                      )
+                    }
+                  } catch (e) {
+                    const d = e.response?.data?.detail
+                    if (d && typeof d === 'object' && Array.isArray(d.missing)) {
+                      showToast(`موارد ناقص: ${d.missing.join('، ')}`, 'error')
+                    } else {
+                      showToast(typeof d === 'string' ? d : (e.message || 'خطا در ثبت'), 'error')
+                    }
+                  }
+                }}
+                decisionNotes={decisionNotes}
+                onDecisionNotesChange={setDecisionNotes}
+                onTrigger={triggerPrimaryTransition}
+                onOpenProcesses={() => setActiveTab('processes')}
+                extraData={studentProfile.extra_data}
+                studentId={studentProfile?.id}
+              />
+            )
           )}
 
           <div className="stats-grid">
@@ -554,40 +787,51 @@ export default function StudentPortal() {
             </div>
           </div>
 
-          <PanelRoleActionQueue />
+          {user?.role !== 'student' && <PanelRoleActionQueue />}
 
           {studentProfile && (
-            <div className="card gam-dashboard-card" style={{ marginTop: '1.5rem' }}>
-              <div className="card-header">
-                <h3 className="card-title">پیشرفت مسیر آموزشی</h3>
-                <span className="badge gam-dashboard-xp-badge">XP</span>
-              </div>
-              <GamificationPanel
-                extraData={studentProfile.extra_data}
-                compact
-                onOpenDetails={() => setActiveTab('gamification')}
-              />
+            <div
+              className="card"
+              style={{
+                marginTop: '1.25rem',
+                padding: '0.85rem 1.15rem',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                borderRadius: '10px',
+                border: '1px solid var(--border, #e5e7eb)',
+                background: 'var(--bg-white, #fff)',
+              }}
+            >
+              <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>پیشرفت، امتیاز و مدال‌ها</div>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setActiveTab('gamification')}>
+                باز کردن تب پیشرفت و مدال‌ها
+              </button>
             </div>
           )}
 
           <div className="dashboard-grid">
-            {/* Active Processes */}
+            {/* سایر فرایندهای فعال (مسیر اصلی در کارت بالاست) */}
             <div className="card">
               <div className="card-header">
-                <h3 className="card-title">فرایندهای فعال</h3>
-                <span className="badge badge-warning">{activeProcesses.length}</span>
+                <h3 className="card-title">{primaryInstanceId ? 'سایر فرایندهای فعال' : 'فرایندهای فعال'}</h3>
+                <span className="badge badge-warning">{otherActiveProcesses.length}</span>
               </div>
-              {activeProcesses.length === 0 ? (
+              {otherActiveProcesses.length === 0 ? (
                 <div className="empty-state" style={{ padding: '2rem' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📭</div>
-                  <p>فرایند فعالی ندارید</p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                    اگر تازه ثبت‌نام کرده‌اید، معمولاً مسیر ثبت‌نام از بالای همین صفحه (کارت مسیر) دیده می‌شود؛ در غیر این صورت با پذیرش تماس بگیرید.
-                  </p>
+                  <p>{primaryInstanceId ? 'فرایند فعال دیگری جز مسیر اصلی ندارید.' : 'فرایند فعالی ندارید.'}</p>
+                  {!primaryInstanceId && (
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem', lineHeight: 1.65 }}>
+                      اگر تازه ثبت‌نام کرده‌اید، مسیر را در کارت «مسیر فعلی» بالای صفحه ببینید؛ در غیر این صورت با پذیرش تماس بگیرید.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {activeProcesses.map(p => (
+                  {otherActiveProcesses.map(p => (
                     <button
                       key={p.instance_id}
                       onClick={() => { viewInstance(p.instance_id); setActiveTab('processes') }}
@@ -620,42 +864,55 @@ export default function StudentPortal() {
               )}
             </div>
 
-            {/* Recent Completed */}
+            {/* فقط تکمیل‌های اخیر — لغوها را اینجا نمی‌آوریم تا با «فعال» قاطی نشود */}
             <div className="card">
               <div className="card-header">
-                <h3 className="card-title">آخرین فعالیت‌ها</h3>
+                <h3 className="card-title">آخرین تکمیل‌ها</h3>
               </div>
-              {completedProcesses.length === 0 && cancelledProcesses.length === 0 ? (
+              {completedProcesses.length === 0 ? (
                 <div className="empty-state" style={{ padding: '2rem' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📋</div>
-                  <p>هنوز فرایندی تکمیل نشده است</p>
+                  <p>هنوز فرایندی به‌عنوان «تکمیل‌شده» ثبت نشده است.</p>
+                  {cancelledProcesses.length > 0 && (
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.65rem', lineHeight: 1.65 }}>
+                      {cancelledProcesses.length.toLocaleString('fa-IR')} مورد لغوشده در تاریخچه دارید — در تب «فرایندها» قابل مشاهده است.
+                    </p>
+                  )}
                 </div>
               ) : (
-                <div className="timeline" style={{ paddingRight: '1.5rem' }}>
-                  {[...completedProcesses, ...cancelledProcesses].slice(0, 8).map((p, idx) => (
-                    <div key={p.instance_id} className="timeline-item">
-                      <div className="timeline-dot" style={{
-                        background: p.is_completed ? 'var(--success)' : 'var(--danger)',
-                        boxShadow: `0 0 0 2px var(--bg-white), 0 0 0 4px ${p.is_completed ? 'var(--success)' : 'var(--danger)'}`,
-                      }} />
-                      <div className="timeline-content">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 500, fontSize: '0.85rem' }}>
-                            {labelProcess(p.process_code)}
-                          </span>
-                          <span className={`badge ${p.is_completed ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.65rem' }}>
-                            {p.is_completed ? 'تکمیل' : 'لغو'}
-                          </span>
-                        </div>
-                        {p.completed_at && (
-                          <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.25rem' }}>
-                            {new Date(p.completed_at).toLocaleDateString('fa-IR')}
+                <>
+                  <div className="timeline" style={{ paddingRight: '1.5rem' }}>
+                    {completedProcesses.slice(0, 5).map(p => (
+                      <div key={p.instance_id} className="timeline-item">
+                        <div
+                          className="timeline-dot"
+                          style={{
+                            background: 'var(--success)',
+                            boxShadow: '0 0 0 2px var(--bg-white), 0 0 0 4px var(--success)',
+                          }}
+                        />
+                        <div className="timeline-content">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 500, fontSize: '0.85rem' }}>
+                              {labelProcess(p.process_code)}
+                            </span>
+                            <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>تکمیل</span>
                           </div>
-                        )}
+                          {p.completed_at && (
+                            <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.25rem' }}>
+                              {new Date(p.completed_at).toLocaleDateString('fa-IR')}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                  {cancelledProcesses.length > 0 && (
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0 1rem 1rem', lineHeight: 1.6 }}>
+                      موارد لغوشده ({cancelledProcesses.length.toLocaleString('fa-IR')}) در این فهرست نیستند؛ در تب «فرایندها» ببینید.
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -667,7 +924,7 @@ export default function StudentPortal() {
                 <h3 className="card-title">دسترسی سریع</h3>
               </div>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', lineHeight: 1.6 }}>
-                فقط اگر در این مرحله از مسیر تحصیلی‌تان مجاز باشید، دکمه فعال است؛ بقیه را از «درخواست‌های دیگر» ببینید (با توضیح قفل بودن).
+                دکمه‌ها فقط وقتی برای مرحلهٔ فعلی‌تان مجازند فعال می‌شوند؛ بقیهٔ فرایندها را در «درخواست‌های دیگر» ببینید.
               </p>
               <div className="quick-actions-grid">
                 {quickActionItems.map(item => {
@@ -787,6 +1044,26 @@ export default function StudentPortal() {
                 </div>
               )}
 
+              {typeof instanceDetail.context_data?.student_portal_alert_fa === 'string'
+                && instanceDetail.context_data.student_portal_alert_fa.trim() && (
+                <div
+                  role="alert"
+                  style={{
+                    marginBottom: '1.25rem',
+                    padding: '1rem 1.25rem',
+                    borderRadius: '10px',
+                    borderRight: '4px solid #d97706',
+                    background: 'linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)',
+                    fontSize: '0.9rem',
+                    lineHeight: 1.75,
+                    color: '#78350f',
+                  }}
+                >
+                  <strong style={{ display: 'block', marginBottom: '0.35rem' }}>توجه</strong>
+                  {instanceDetail.context_data.student_portal_alert_fa}
+                </div>
+              )}
+
               {processDefinition && roadmapStates.length > 0 && (
                 <div style={{ marginBottom: '1.5rem' }}>
                   <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem' }}>مسیر این فرایند</h4>
@@ -812,10 +1089,10 @@ export default function StudentPortal() {
                       )
                     })}
                   </div>
-                  {nextHint && (
-                    <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: '#fffbeb', borderRadius: '8px', borderRight: '4px solid #f59e0b', fontSize: '0.85rem' }}>
+                  {nextStepHintBox && (
+                    <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: '#fffbeb', borderRadius: '8px', borderRight: '4px solid #f59e0b', fontSize: '0.85rem', lineHeight: 1.7 }}>
                       <strong style={{ color: '#b45309' }}>راهنمای قدم بعد:</strong>{' '}
-                      {nextHint}
+                      {nextStepHintBox}
                     </div>
                   )}
                 </div>
@@ -864,6 +1141,9 @@ export default function StudentPortal() {
                   onFieldChange={(name, v) => setStepFormValues(prev => ({ ...prev, [name]: v }))}
                   disabled={false}
                   hasAvailableTransitions={(availableTransitions?.length || 0) > 0}
+                  instanceId={selectedInstance}
+                  resubmitFieldNames={docsResubmitProcess || null}
+                  contextData={instanceDetail?.context_data}
                   onRegisterSubmit={async ({ ok, missing }) => {
                     if (!ok) {
                       showToast(`موارد ناقص: ${missing.join('، ')}`, 'error')
@@ -874,12 +1154,19 @@ export default function StudentPortal() {
                       return
                     }
                     try {
-                      await processExecApi.registerStudentStepForms(selectedInstance, { form_values: stepFormValues })
+                      const regRes = await processExecApi.registerStudentStepForms(selectedInstance, { form_values: stepFormValues })
                       await viewInstance(selectedInstance)
-                      showToast(
-                        'اطلاعات این مرحله ثبت شد. اگر دکمهٔ مرحلهٔ بعد را می‌بینید همان را بزنید؛ در غیر این صورت منتظر اقدام اداری بمانید.',
-                        'success',
-                      )
+                      if (regRes.data?.auto_advanced_to_documents_review) {
+                        showToast(
+                          'مدارک در پرونده ثبت شد و به‌صورت خودکار برای بررسی پذیرش ارسال شد. در پنل کارمند در «بررسی مدارک» دیده می‌شود.',
+                          'success',
+                        )
+                      } else {
+                        showToast(
+                          'اطلاعات این مرحله ثبت شد. اگر دکمهٔ «ادامه و ثبت مرحله» را می‌بینید همان را بزنید تا پرونده برای پذیرش برود؛ در غیر این صورت منتظر اقدام اداری بمانید.',
+                          'success',
+                        )
+                      }
                     } catch (e) {
                       const d = e.response?.data?.detail
                       if (d && typeof d === 'object' && Array.isArray(d.missing)) {
@@ -898,9 +1185,12 @@ export default function StudentPortal() {
                   padding: '1.25rem', background: 'linear-gradient(135deg, var(--primary-light) 0%, #f0f4ff 100%)',
                   borderRadius: '10px', marginBottom: '1.5rem', borderRight: '4px solid var(--primary)',
                 }}>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--primary)' }}>
-                    اقدامات ممکن
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--primary)' }}>
+                    قدم بعد در مسیر
                   </h4>
+                  <p style={{ fontSize: '0.8rem', color: '#475569', marginBottom: '0.85rem', lineHeight: 1.75 }}>
+                    {STUDENT_TRANSITION_CTA_INTRO}
+                  </p>
                   {processTransitionBlocked && (
                     <p style={{ fontSize: '0.82rem', color: '#b45309', marginBottom: '0.75rem', lineHeight: 1.6 }}>
                       تا تکمیل فرم مرحلهٔ فعلی، رفتن به مرحلهٔ بعد ممکن نیست.
@@ -919,14 +1209,23 @@ export default function StudentPortal() {
                         type="button"
                         onClick={() => triggerTransition(t)}
                         className="btn btn-primary"
-                        style={{ fontSize: '0.85rem', opacity: processTransitionBlocked ? 0.5 : 1 }}
+                        style={{
+                          fontSize: '0.85rem',
+                          opacity: processTransitionBlocked ? 0.5 : 1,
+                          display: 'inline-flex',
+                          flexDirection: 'column',
+                          alignItems: 'stretch',
+                          gap: '0.2rem',
+                        }}
                         disabled={processTransitionBlocked}
-                        title={processTransitionBlocked ? 'فرم این مرحله را کامل کنید' : (t.description || t.trigger_event)}
+                        title={processTransitionBlocked ? 'فرم این مرحله را کامل کنید' : getStudentTransitionTooltip(t)}
                       >
-                        {(t.description || t.description_fa || t.trigger_event)}
-                        <span style={{ fontSize: '0.7rem', marginRight: '0.5rem', opacity: 0.7 }}>
-                          → {labelState(t.to_state)}
-                        </span>
+                        <span>{getStudentTransitionButtonMain(t, availableTransitions.length)}</span>
+                        {t.to_state && (
+                          <span style={{ fontSize: '0.7rem', opacity: 0.88 }}>
+                            {getStudentTransitionButtonSub(t)}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -962,6 +1261,9 @@ export default function StudentPortal() {
                 >
                   <div>
                     <div style={{ fontWeight: 600 }}>تاریخ جلسه: {s.session_date}</div>
+                    {s.session_starts_at ? (
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>زمان شروع (UTC): {s.session_starts_at}</div>
+                    ) : null}
                     <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>وضعیت پرداخت: {s.payment_status} | وضعیت جلسه: {s.status}</div>
                   </div>
                   {s.meeting_url ? (
@@ -1018,8 +1320,8 @@ export default function StudentPortal() {
             <>
               <div className="requests-intro">
                 <p>
-                  <strong>قدم اصلی شما</strong> همیشه از <button type="button" className="link-like" onClick={() => setActiveTab('dashboard')}>داشبورد</button>
-                  {' '}و کارت «مسیر فعلی» است. اینجا فقط وقتی باید بروید که به فرایند دیگری (مثلاً مرخصی یا سوپرویژن) نیاز دارید و در همان مرحله مجازید.
+                  مسیر اصلی را از <button type="button" className="link-like" onClick={() => setActiveTab('dashboard')}>داشبورد</button>
+                  {' '}و کارت «مسیر فعلی» جلو ببرید. اینجا برای شروع فرایندهای جانبی (مثلاً مرخصی) است؛ اگر دکمه قفل است، علت در همان کارت نوشته شده.
                 </p>
                 {registrationBlocking && (
                   <div className="requests-banner" role="status">
@@ -1099,14 +1401,13 @@ export default function StudentPortal() {
       {activeTab === 'profile' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {primaryGuidance && (
-            <div className="card">
-              <div className="card-header">
-                <h3 className="card-title">فرایند فعلی و تکلیف شما</h3>
-              </div>
-              <StudentProcessGuidancePanel guidance={primaryGuidance} variant="light" />
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0 1.25rem 1.25rem', lineHeight: 1.65 }}>
-                جزئیات کامل فرم‌ها و دکمه‌ها را در تب <button type="button" className="link-like" onClick={() => setActiveTab('dashboard')}>داشبورد</button>
-                {' '}در کارت «مسیر فعلی» یا در تب <button type="button" className="link-like" onClick={() => setActiveTab('processes')}>فرایندها</button> می‌بینید.
+            <div className="card" style={{ padding: '1rem 1.25rem' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.75, color: 'var(--text-secondary)' }}>
+                راهنمای مرحله و فرم‌ها را در{' '}
+                <button type="button" className="link-like" onClick={() => setActiveTab('dashboard')}>داشبورد</button>
+                {' '}(کارت مسیر فعلی) یا{' '}
+                <button type="button" className="link-like" onClick={() => setActiveTab('processes')}>فرایندها</button>
+                {' '}می‌بینید؛ این تب فقط برای مشاهدهٔ اطلاعات ثابت پروفایل است.
               </p>
             </div>
           )}
@@ -1142,6 +1443,35 @@ export default function StudentPortal() {
               </div>
             )}
           </div>
+          </div>
+          {studentProfile?.extra_data?.primary_instance_id && (
+            <StudentProfileDocumentsSection instanceId={studentProfile.extra_data.primary_instance_id} />
+          )}
+        </div>
+      )}
+
+      {/* تیکت — فقط جایی که با مسیر روزمره هم‌پوشانی ندارد */}
+      {['dashboard', 'profile', 'requests'].includes(activeTab) && (
+        <div
+          className="card"
+          style={{
+            marginTop: '1.5rem',
+            padding: '1rem 1.25rem',
+            borderRadius: '12px',
+            border: '1px solid rgba(59, 130, 246, 0.35)',
+            background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%)',
+          }}
+        >
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <div>
+              <strong style={{ fontSize: '1.05rem' }}>درخواست به واحد اداری</strong>
+              <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.92rem', maxWidth: '42rem', lineHeight: 1.65 }}>
+                ویرایش مرحلهٔ ثبت‌شده، اصلاح داده یا پیگیری — از طریق تیکت با مسئول مربوط در ارتباط باشید.
+              </p>
+            </div>
+            <Link to="/panel/tickets" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>
+              تیکت‌ها و درخواست‌ها
+            </Link>
           </div>
         </div>
       )}

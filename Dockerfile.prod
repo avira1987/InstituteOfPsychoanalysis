@@ -1,0 +1,16 @@
+# Production build: از admin-ui/dist از قبل بیلدشده در مخزن استفاده می‌کند — بدون نیاز به node روی سرور یا pull از Docker Hub
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY docker/wheelhouse /tmp/wheelhouse
+COPY requirements-docker.txt .
+RUN pip install --no-cache-dir --no-index --find-links=/tmp/wheelhouse -r requirements-docker.txt \
+    && rm -rf /tmp/wheelhouse
+
+COPY . .
+COPY admin-ui/dist ./admin-ui/dist
+
+EXPOSE 3000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000", "--log-level", "warning"]

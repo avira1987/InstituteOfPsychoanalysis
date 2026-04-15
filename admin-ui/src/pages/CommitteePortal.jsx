@@ -3,9 +3,12 @@ import { useAuth } from '../contexts/AuthContext'
 import { processExecApi, studentApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
+import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
+import PopupToast from '../components/PopupToast'
+import ProcessRollbackSection from '../components/ProcessRollbackSection'
 
 const roleConfig = {
   progress_committee: {
@@ -13,7 +16,10 @@ const roleConfig = {
     subtitle: 'بررسی مرخصی‌ها، تغییرات درمان و پیشرفت دانشجویان',
     icon: '📈',
     accentColor: 'var(--success)',
-    reviewKeywords: ['committee_review', 'progress_committee', 'leave_review', 'progress_review', 'awaiting_committee'],
+    reviewKeywords: [
+      'committee_review', 'progress_committee', 'leave_review', 'progress_review', 'awaiting_committee',
+      'restart_review', 'therapist_change_review',
+    ],
   },
   education_committee: {
     title: 'پنل کمیته آموزش',
@@ -87,6 +93,14 @@ export default function CommitteePortal() {
   const [decisionNotes, setDecisionNotes] = useState('')
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
+  const [rollbackBusy, setRollbackBusy] = useState(false)
+  /** فیلدهای جلسه مرخصی آموزشی — همراه تریگر committee_set_meeting به API فرستاده می‌شود */
+  const [leaveMeeting, setLeaveMeeting] = useState({
+    committee_meeting_at: '',
+    committee_meeting_mode: 'in_person',
+    committee_meeting_link: '',
+    committee_meeting_location_fa: '',
+  })
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -141,17 +155,98 @@ export default function CommitteePortal() {
       ])
       setInstanceDetail(statusRes.data)
       setAvailableTransitions(transRes.data?.transitions || [])
+      const ctx = statusRes.data?.context_data || {}
+      const iso = ctx.committee_meeting_at
+      let localDt = ''
+      if (typeof iso === 'string' && iso.length >= 10) {
+        try {
+          const d = new Date(iso)
+          if (!Number.isNaN(d.getTime())) {
+            const pad = n => String(n).padStart(2, '0')
+            localDt = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+          }
+        } catch { /* ignore */ }
+      }
+      setLeaveMeeting({
+        committee_meeting_at: localDt,
+        committee_meeting_mode: ctx.committee_meeting_mode === 'online' ? 'online' : 'in_person',
+        committee_meeting_link: ctx.committee_meeting_link || '',
+        committee_meeting_location_fa: ctx.committee_meeting_location_fa || '',
+      })
     } catch (err) {
       console.error('View error:', err)
     }
   }
 
-  const triggerTransition = async (triggerEvent) => {
+  const handleProcessRollback = async (reason) => {
     if (!selectedInstance) return
+    setRollbackBusy(true)
     try {
-      const payload = notesPayload(decisionNotes)
+      const res = await processExecApi.rollback(selectedInstance, { reason: reason || undefined })
+      if (res.data?.success) {
+        showToast(`فرایند به «${labelState(res.data.to_state)}» برگردانده شد`)
+        await viewInstance(selectedInstance)
+        loadData()
+      } else {
+        showToast(res.data?.error || 'بازگشت انجام نشد', 'error')
+      }
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast(typeof d === 'string' ? d : (e.message || 'خطا در بازگشت'), 'error')
+    } finally {
+      setRollbackBusy(false)
+    }
+  }
+
+  const triggerTransition = async (transition) => {
+    if (!selectedInstance) return
+    const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
+    const toState = typeof transition === 'object' ? transition.to_state : undefined
+    try {
+      let payload = notesPayload(decisionNotes)
+      if (
+        instanceDetail?.process_code === 'educational_leave'
+        && triggerEvent === 'committee_set_meeting'
+      ) {
+        if (!leaveMeeting.committee_meeting_at || !String(leaveMeeting.committee_meeting_at).trim()) {
+          showToast('تاریخ و ساعت جلسه را مشخص کنید.', 'error')
+          return
+        }
+        const mode = leaveMeeting.committee_meeting_mode
+        if (mode === 'online' && !(leaveMeeting.committee_meeting_link || '').trim()) {
+          showToast('برای جلسه آنلاین، لینک جلسه الزامی است.', 'error')
+          return
+        }
+        if (mode === 'in_person' && !(leaveMeeting.committee_meeting_location_fa || '').trim()) {
+          showToast('برای جلسه حضوری، آدرس یا محل الزامی است.', 'error')
+          return
+        }
+        let iso = ''
+        try {
+          const d = new Date(leaveMeeting.committee_meeting_at)
+          if (Number.isNaN(d.getTime())) {
+            showToast('تاریخ و ساعت جلسه معتبر نیست.', 'error')
+            return
+          }
+          iso = d.toISOString()
+        } catch {
+          showToast('تاریخ و ساعت جلسه معتبر نیست.', 'error')
+          return
+        }
+        payload = {
+          ...payload,
+          committee_meeting_at: iso,
+          committee_meeting_mode: mode,
+          committee_meeting_link: (leaveMeeting.committee_meeting_link || '').trim(),
+          committee_meeting_location_fa: (leaveMeeting.committee_meeting_location_fa || '').trim(),
+        }
+      }
+      payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
+      if (toState) payload.to_state = toState
       const res = await processExecApi.trigger(selectedInstance, {
-        trigger_event: triggerEvent, payload,
+        trigger_event: triggerEvent,
+        payload,
+        ...(toState ? { to_state: toState } : {}),
       })
       if (res.data.success) {
         showToast(`تصمیم ثبت شد: ${labelState(res.data.to_state)}`)
@@ -182,18 +277,7 @@ export default function CommitteePortal() {
 
   return (
     <div>
-      {toast && (
-        <div style={{
-          position: 'fixed', top: '1rem', left: '50%', transform: 'translateX(-50%)',
-          padding: '0.75rem 1.5rem', borderRadius: '8px', zIndex: 1000, fontWeight: 500,
-          background: toast.type === 'error' ? '#fef2f2' : '#f0fdf4',
-          color: toast.type === 'error' ? '#dc2626' : '#16a34a',
-          border: `1px solid ${toast.type === 'error' ? '#fca5a5' : '#86efac'}`,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        }}>
-          {toast.msg}
-        </div>
-      )}
+      <PopupToast toast={toast} />
 
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -440,6 +524,85 @@ export default function CommitteePortal() {
                 title="پرونده و سابقه (قبل از تصمیم)"
               />
 
+              {instanceDetail.process_code === 'educational_leave'
+                && instanceDetail.current_state === 'committee_review'
+                && availableTransitions.some(t => t.trigger_event === 'committee_set_meeting') && (
+                <div style={{
+                  padding: '1rem 1.25rem', marginBottom: '1.25rem', borderRadius: '10px',
+                  background: '#f0f9ff', borderRight: '4px solid #0284c7',
+                }}>
+                  <h4 style={{ fontSize: '0.92rem', fontWeight: 700, marginBottom: '0.75rem', color: '#0369a1' }}>
+                    تعیین جلسه کمیته پیشرفت (زمان و لینک برای دانشجو)
+                  </h4>
+                  <p style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '0.75rem', lineHeight: 1.65 }}>
+                    پیش از زدن دکمهٔ ثبت جلسه، همهٔ موارد زیر را پر کنید؛ پس از انتقال، در پورتال دانشجو و پیامک نمایش داده می‌شود.
+                  </p>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                    تاریخ و ساعت جلسه (محلی مرورگر)
+                    <input
+                      type="datetime-local"
+                      className="psf-input"
+                      style={{ width: '100%', marginTop: '0.35rem' }}
+                      value={leaveMeeting.committee_meeting_at}
+                      onChange={e => setLeaveMeeting(prev => ({ ...prev, committee_meeting_at: e.target.value }))}
+                    />
+                  </label>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', display: 'block', marginBottom: '0.35rem' }}>نحوهٔ برگزاری</span>
+                    <label style={{ marginLeft: '1rem' }}>
+                      <input
+                        type="radio"
+                        name="leave-meeting-mode"
+                        checked={leaveMeeting.committee_meeting_mode === 'in_person'}
+                        onChange={() => setLeaveMeeting(prev => ({ ...prev, committee_meeting_mode: 'in_person' }))}
+                      />
+                      {' '}حضوری
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="leave-meeting-mode"
+                        checked={leaveMeeting.committee_meeting_mode === 'online'}
+                        onChange={() => setLeaveMeeting(prev => ({ ...prev, committee_meeting_mode: 'online' }))}
+                      />
+                      {' '}آنلاین
+                    </label>
+                  </div>
+                  {leaveMeeting.committee_meeting_mode === 'online' ? (
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                      لینک جلسه
+                      <input
+                        type="url"
+                        className="psf-input"
+                        dir="ltr"
+                        style={{ width: '100%', marginTop: '0.35rem' }}
+                        placeholder="https://..."
+                        value={leaveMeeting.committee_meeting_link}
+                        onChange={e => setLeaveMeeting(prev => ({ ...prev, committee_meeting_link: e.target.value }))}
+                      />
+                    </label>
+                  ) : (
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                      آدرس یا محل حضوری
+                      <textarea
+                        className="psf-input psf-textarea"
+                        rows={2}
+                        style={{ width: '100%', marginTop: '0.35rem' }}
+                        value={leaveMeeting.committee_meeting_location_fa}
+                        onChange={e => setLeaveMeeting(prev => ({ ...prev, committee_meeting_location_fa: e.target.value }))}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+
+              <ProcessRollbackSection
+                user={user}
+                instanceDetail={instanceDetail}
+                onRollback={handleProcessRollback}
+                busy={rollbackBusy}
+              />
+
               {availableTransitions.length > 0 && (
                 <div style={{
                   padding: '1.25rem', background: 'var(--success-light)',
@@ -461,7 +624,7 @@ export default function CommitteePortal() {
                       return (
                         <button
                           key={idx}
-                          onClick={() => triggerTransition(t.trigger_event)}
+                          onClick={() => triggerTransition(t)}
                           style={{
                             padding: '0.6rem 1.2rem', borderRadius: '8px', border: 'none',
                             cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',

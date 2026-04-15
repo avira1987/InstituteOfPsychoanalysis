@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ruleApi } from '../services/api'
+import PopupToast from '../components/PopupToast'
 
 export default function RuleManager() {
   const [rules, setRules] = useState([])
@@ -114,7 +115,7 @@ export default function RuleManager() {
 
   return (
     <div>
-      {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+      <PopupToast toast={toast} />
 
       {/* Expression Modal */}
       {viewExpression && (

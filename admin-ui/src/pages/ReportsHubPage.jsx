@@ -60,7 +60,7 @@ export default function ReportsHubPage() {
       </div>
 
       {error && (
-        <div className="toast toast-error" style={{ marginBottom: '1rem' }}>
+        <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
           {error}
         </div>
       )}

@@ -1,12 +1,17 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { processExecApi, studentApi, userApi, auditApi, assignmentApi } from '../services/api'
+import { processExecApi, studentApi, userApi, auditApi, assignmentApi, therapyApi, alocomApi } from '../services/api'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { notesPayload } from '../utils/decisionPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
+import PopupToast from '../components/PopupToast'
+import InterviewSlotsAdmin from '../components/InterviewSlotsAdmin'
+import InterviewBookingsPanel from '../components/InterviewBookingsPanel'
+import DocumentsReviewPanel from '../components/DocumentsReviewPanel'
+import ProcessRollbackSection from '../components/ProcessRollbackSection'
 
 const staffReviewStates = [
   'staff_review', 'staff_verification', 'pending_staff',
@@ -29,6 +34,7 @@ export default function StaffPortal() {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [unlockFormsBusy, setUnlockFormsBusy] = useState(false)
+  const [rollbackBusy, setRollbackBusy] = useState(false)
   const [studentSearch, setStudentSearch] = useState('')
   const [showNewStudent, setShowNewStudent] = useState(false)
   const [newStudent, setNewStudent] = useState({
@@ -117,6 +123,26 @@ export default function StaffPortal() {
     }
   }
 
+  const handleProcessRollback = async (reason) => {
+    if (!selectedInstance) return
+    setRollbackBusy(true)
+    try {
+      const res = await processExecApi.rollback(selectedInstance, { reason: reason || undefined })
+      if (res.data?.success) {
+        showToast(`فرایند به «${labelState(res.data.to_state)}» برگردانده شد`)
+        await viewInstance(selectedInstance)
+        loadData()
+      } else {
+        showToast(res.data?.error || 'بازگشت انجام نشد', 'error')
+      }
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast(typeof d === 'string' ? d : (e.message || 'خطا در بازگشت'), 'error')
+    } finally {
+      setRollbackBusy(false)
+    }
+  }
+
   const triggerTransition = async (transition) => {
     if (!selectedInstance) return
     const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
@@ -172,6 +198,17 @@ export default function StaffPortal() {
     }
   }
 
+  /** باید قبل از هر return زودهنگام باشد — وگرنه تعداد هوک‌ها بین رندرها عوض می‌شود (React #310). */
+  const documentReviewQueue = useMemo(
+    () =>
+      allActiveInstances.filter(
+        i =>
+          i.process_code === 'introductory_course_registration' &&
+          ['documents_review', 'documents_incomplete'].includes(i.current_state),
+      ),
+    [allActiveInstances],
+  )
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem' }}>
@@ -191,25 +228,17 @@ export default function StaffPortal() {
   const tabs = [
     { id: 'dashboard', label: 'داشبورد', icon: '📊' },
     { id: 'pending', label: `وظایف (${pendingActions.length})`, icon: '📥' },
+    { id: 'documentsReview', label: `بررسی مدارک (${documentReviewQueue.length})`, icon: '📎' },
     { id: 'students', label: 'دانشجویان', icon: '👨‍🎓' },
     { id: 'processes', label: 'فرایندها', icon: '🔄' },
+    { id: 'interviewSlots', label: 'اسلات مصاحبه', icon: '📅' },
+    { id: 'onlineClasses', label: 'کلاس آنلاین', icon: '🖥️' },
     { id: 'activity', label: 'فعالیت‌ها', icon: '📝' },
   ]
 
   return (
     <div>
-      {toast && (
-        <div style={{
-          position: 'fixed', top: '1rem', left: '50%', transform: 'translateX(-50%)',
-          padding: '0.75rem 1.5rem', borderRadius: '8px', zIndex: 1000, fontWeight: 500,
-          background: toast.type === 'error' ? '#fef2f2' : '#f0fdf4',
-          color: toast.type === 'error' ? '#dc2626' : '#16a34a',
-          border: `1px solid ${toast.type === 'error' ? '#fca5a5' : '#86efac'}`,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        }}>
-          {toast.msg}
-        </div>
-      )}
+      <PopupToast toast={toast} />
 
       <div className="page-header">
         <div>
@@ -472,6 +501,7 @@ export default function StaffPortal() {
             )}
           </div>
           {instanceDetail && <DetailPanel
+            user={user}
             instanceDetail={instanceDetail}
             availableTransitions={availableTransitions}
             decisionNotes={decisionNotes}
@@ -479,6 +509,8 @@ export default function StaffPortal() {
             triggerTransition={triggerTransition}
             onUnlockStudentForms={unlockStudentFormsForInstance}
             unlockFormsBusy={unlockFormsBusy}
+            onRollback={handleProcessRollback}
+            rollbackBusy={rollbackBusy}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
           />}
         </div>
@@ -636,6 +668,7 @@ export default function StaffPortal() {
             )}
           </div>
           {instanceDetail && <DetailPanel
+            user={user}
             instanceDetail={instanceDetail}
             availableTransitions={availableTransitions}
             decisionNotes={decisionNotes}
@@ -643,9 +676,30 @@ export default function StaffPortal() {
             triggerTransition={triggerTransition}
             onUnlockStudentForms={unlockStudentFormsForInstance}
             unlockFormsBusy={unlockFormsBusy}
+            onRollback={handleProcessRollback}
+            rollbackBusy={rollbackBusy}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
           />}
         </div>
+      )}
+
+      {activeTab === 'interviewSlots' && (
+        <>
+          <InterviewSlotsAdmin showToast={showToast} />
+          <InterviewBookingsPanel showToast={showToast} />
+        </>
+      )}
+
+      {activeTab === 'documentsReview' && (
+        <DocumentsReviewPanel
+          queue={documentReviewQueue}
+          onRefresh={loadData}
+          showToast={showToast}
+        />
+      )}
+
+      {activeTab === 'onlineClasses' && (
+        <StaffAlocomPanel students={filteredStudents} showToast={showToast} />
       )}
 
       {/* Activity Tab */}
@@ -700,7 +754,204 @@ export default function StaffPortal() {
   )
 }
 
+function StaffAlocomPanel({ students, showToast }) {
+  const [studentId, setStudentId] = useState('')
+  const [sessions, setSessions] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [agentServiceId, setAgentServiceId] = useState('')
+  const [feedbackDraft, setFeedbackDraft] = useState({})
+
+  const setFb = (sessionId, field, value) => {
+    setFeedbackDraft(prev => ({
+      ...prev,
+      [sessionId]: { ...prev[sessionId], [field]: value },
+    }))
+  }
+
+  const loadSessions = async () => {
+    if (!studentId) {
+      showToast('دانشجو را انتخاب کنید', 'error')
+      return
+    }
+    setLoading(true)
+    try {
+      const r = await therapyApi.forStudent(studentId)
+      setSessions(Array.isArray(r.data) ? r.data : [])
+    } catch {
+      setSessions([])
+      showToast('خطا در بارگذاری جلسات', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const provision = async (session) => {
+    const aid = parseInt(String(agentServiceId).trim(), 10)
+    if (!aid || Number.isNaN(aid)) {
+      showToast('شناسهٔ سرویس الوکام (agent_service_id) را وارد کنید', 'error')
+      return
+    }
+    try {
+      await alocomApi.provisionTherapySession(session.id, {
+        agent_service_id: aid,
+        title: `کلاس ${session.session_date}`,
+        fetch_student_event_link: true,
+      })
+      showToast('کلاس الوکام ایجاد شد')
+      loadSessions()
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast(typeof d === 'string' ? d : (e.message || 'خطا'), 'error')
+    }
+  }
+
+  const saveAttendance = async (session, attendance_status) => {
+    if (!attendance_status) return
+    try {
+      await therapyApi.patchSession(session.id, { attendance_status })
+      showToast('حضور و غیاب ثبت شد')
+      loadSessions()
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast(typeof d === 'string' ? d : (e.message || 'خطا'), 'error')
+    }
+  }
+
+  const saveInstructorFeedback = async (s) => {
+    const row = feedbackDraft[s.id] || {}
+    const comment = row.instructor_comment !== undefined ? row.instructor_comment : (s.instructor_comment || '')
+    const scoreRaw = row.instructor_score !== undefined ? row.instructor_score : (s.instructor_score ?? '')
+    const payload = { instructor_comment: comment || null }
+    if (scoreRaw !== '' && scoreRaw != null) {
+      const n = Number(scoreRaw)
+      if (!Number.isNaN(n)) payload.instructor_score = n
+    }
+    try {
+      await therapyApi.patchSession(s.id, payload)
+      showToast('نظر و نمره ذخیره شد')
+      loadSessions()
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast(typeof d === 'string' ? d : (e.message || 'خطا'), 'error')
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h3 className="card-title">کلاس آنلاین الوکام (اپراتور)</h3>
+      </div>
+      <div style={{ padding: '1rem', display: 'grid', gap: '1rem' }}>
+        <div className="inline-form" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="form-group">
+            <label className="form-label">دانشجو</label>
+            <select
+              className="form-input"
+              style={{ minWidth: '220px' }}
+              value={studentId}
+              onChange={e => setStudentId(e.target.value)}
+            >
+              <option value="">انتخاب…</option>
+              {students.map(s => (
+                <option key={s.id} value={s.id}>{formatStudentCodeDisplay(s.student_code)}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">agent_service_id</label>
+            <input
+              className="form-input"
+              dir="ltr"
+              style={{ width: '140px', textAlign: 'left' }}
+              value={agentServiceId}
+              onChange={e => setAgentServiceId(e.target.value)}
+              placeholder="مثال: 14"
+            />
+          </div>
+          <button type="button" className="btn btn-primary btn-sm" onClick={loadSessions} disabled={loading}>
+            بارگذاری جلسات
+          </button>
+        </div>
+        {loading ? <p>در حال بارگذاری…</p> : null}
+        {!loading && sessions.length === 0 && studentId ? (
+          <p style={{ color: 'var(--text-secondary)' }}>جلسه‌ای برای این دانشجو ثبت نشده است.</p>
+        ) : null}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {sessions.map(s => (
+            <div
+              key={s.id}
+              style={{
+                padding: '1rem',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                display: 'grid',
+                gap: '0.5rem',
+              }}
+            >
+              <div style={{ fontWeight: 600 }}>تاریخ {s.session_date} | وضعیت {s.status}</div>
+              <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                لینک: {s.meeting_url ? 'دارد' : 'ندارد'} | رویداد الوکام: {s.alocom_event_id || '—'}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => provision(s)}>
+                  ایجاد کلاس الوکام
+                </button>
+                <select
+                  className="form-input"
+                  style={{ width: 'auto', minWidth: '160px' }}
+                  defaultValue=""
+                  onChange={e => {
+                    const v = e.target.value
+                    e.target.value = ''
+                    if (v) saveAttendance(s, v)
+                  }}
+                >
+                  <option value="">ثبت حضور/غیاب…</option>
+                  <option value="present">حاضر</option>
+                  <option value="absent_excused">غایب موجه</option>
+                  <option value="absent_unexcused">غایب غیرموجه</option>
+                </select>
+              </div>
+              <div style={{ display: 'grid', gap: '0.35rem', maxWidth: '480px' }}>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>نمره / بازخورد مدرس</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  dir="ltr"
+                  style={{ textAlign: 'left', maxWidth: '120px' }}
+                  placeholder="نمره"
+                  value={
+                    feedbackDraft[s.id]?.instructor_score !== undefined
+                      ? feedbackDraft[s.id].instructor_score
+                      : (s.instructor_score ?? '')
+                  }
+                  onChange={e => setFb(s.id, 'instructor_score', e.target.value)}
+                />
+                <textarea
+                  className="form-input"
+                  rows={2}
+                  placeholder="نظر مدرس"
+                  value={
+                    feedbackDraft[s.id]?.instructor_comment !== undefined
+                      ? feedbackDraft[s.id].instructor_comment
+                      : (s.instructor_comment || '')
+                  }
+                  onChange={e => setFb(s.id, 'instructor_comment', e.target.value)}
+                />
+                <button type="button" className="btn btn-secondary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => saveInstructorFeedback(s)}>
+                  ذخیرهٔ نظر و نمره
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DetailPanel({
+  user,
   instanceDetail,
   availableTransitions,
   decisionNotes,
@@ -708,6 +959,8 @@ function DetailPanel({
   triggerTransition,
   onUnlockStudentForms,
   unlockFormsBusy,
+  onRollback,
+  rollbackBusy,
   onClose,
 }) {
   return (
@@ -752,6 +1005,15 @@ function DetailPanel({
         history={instanceDetail.history}
         title="پرونده و سابقه (قبل از اقدام)"
       />
+
+      {onRollback && (
+        <ProcessRollbackSection
+          user={user}
+          instanceDetail={instanceDetail}
+          onRollback={onRollback}
+          busy={rollbackBusy}
+        />
+      )}
 
       {availableTransitions.length > 0 && (
         <div style={{

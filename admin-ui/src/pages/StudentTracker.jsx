@@ -5,6 +5,7 @@ import { notesPayload } from '../utils/decisionPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
+import PopupToast from '../components/PopupToast'
 
 export default function StudentTracker() {
   const [students, setStudents] = useState([])
@@ -179,7 +180,7 @@ export default function StudentTracker() {
 
   return (
     <div>
-      {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+      <PopupToast toast={toast} />
 
       {/* Error display */}
       {error && (

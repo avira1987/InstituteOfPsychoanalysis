@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { authApi, studentApi } from '../services/api'
+import { authApi } from '../services/api'
 import { getSiteLogoUrl } from '../utils/siteLogo'
 
 const LOGIN_TAB_KEY = 'login_tab'
@@ -73,17 +73,6 @@ export default function LoginPage() {
 
     const doRedirect = async () => {
       try {
-        if (user.role === 'student') {
-          try {
-            await studentApi.me()
-          } catch (meErr) {
-            if (meErr.response?.status === 404) {
-              navigate('/panel/complete-registration', { replace: true })
-              return
-            }
-            throw meErr
-          }
-        }
         const res = await authApi.home()
         const target = res.data?.redirect_url
           || (user.role === 'student' ? '/panel/portal/student' : '/panel')

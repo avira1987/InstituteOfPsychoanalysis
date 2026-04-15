@@ -44,6 +44,13 @@
 | `add_hour_by_course_and_weekly_sessions` | ضرایب از `weekly_sessions` دانشجو یا از اکشن؛ نتیجه در `context_data.accumulated_therapy_hours`. |
 | `update_record` | فیلدهای امتیاز/نتیجه در context (مثلاً `total_score`, `result_status`)؛ در `students.extra_data.gradebook[process_code]` ذخیره می‌شود. |
 | `deduct_credit_session` | ابتدا از `session_credit_balance` در context کم می‌کند؛ در نبود اعتبار، بدهی ثبت می‌کند. |
+| `create_online_class_links` | اگر `ALOCOM_ENABLED=true` و نام کاربری/رمز الوکام و `agent_service_id` (از اکشن، `context_data` یا `ALOCOM_DEFAULT_AGENT_SERVICE_ID`) موجود باشد، رویداد در الوکام ساخته می‌شود و روی نزدیک‌ترین جلسهٔ `scheduled` (یا جلسهٔ `therapy_session_id` / `session_id`) فیلدهای `meeting_url`، `meeting_provider=alocom`، `links_unlocked`، `alocom_event_id` پر می‌شود. در غیر این صورت با `ALOCOM_FALLBACK_TO_UI_HINTS=true` همان رفتار قبلی (`ui_hints` + وب‌هوک) اجرا می‌شود. فیلدهای اختیاری: `title` / `title_fa`، `duration_minutes`، `start_by_admin`، `session_starts_at` (ISO)، `fetch_student_event_link`. |
+
+## الوکام (کلاس آنلاین)
+
+- متغیرهای محیطی: `ALOCOM_ENABLED`، `ALOCOM_API_BASE`، `ALOCOM_USERNAME`، `ALOCOM_PASSWORD`، `ALOCOM_DEFAULT_AGENT_SERVICE_ID`، مسیرهای اختیاری `ALOCOM_PATH_*` در [`app/config.py`](../app/config.py).
+- اپراتور/درمانگر می‌تواند بدون ترنزیشن از `POST /api/integrations/alocom/therapy-sessions/{session_id}/provision` استفاده کند.
+- ثبت حضور و نظر مدرس: `PATCH /api/therapy-sessions/{id}` با `attendance_status` و `instructor_comment` / `instructor_score` (نقش‌های `therapist`، `staff`، `admin` طبق دسترسی).
 
 ## تست خودکار
 

@@ -141,17 +141,9 @@ export default function Dashboard() {
       </div>
 
       {loadError && (
-        <div className="toast toast-error" style={{ marginBottom: '1rem' }}>
+        <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
           {loadError}
           {debugCount != null && ` | سرور ${debugCount} فرایند دارد — رفرش یا ورود مجدد`}
-        </div>
-      )}
-
-      {!loadError && user?.role === 'admin' && !loading && stats && stats.total_students === 0 && (
-        <div className="toast toast-error" style={{ marginBottom: '1rem' }}>
-          هنوز هیچ دانشجویی در دیتابیس سرور ثبت نیست. اگر با Docker کار می‌کنید، بعد از به‌روزرسانی کد،{' '}
-          <code style={{ direction: 'ltr', display: 'inline' }}>docker compose up -d --build api</code>
-          {' '}بزنید تا با استارت اولیهٔ خالی، دادهٔ دمو (در صورت فعال بودن در compose) پر شود؛ یا از API/اسکریپت بارگذاری دمو روی سرور استفاده کنید.
         </div>
       )}
 

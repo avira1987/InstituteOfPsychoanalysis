@@ -78,9 +78,9 @@ export default function StudentGuide() {
       <div className="pub-page-header">
         <h1>راهنمای استفاده از سامانه</h1>
         <p>
-          آموزش گام‌به‌گام ورود با پیامک، پنل دانشجو و پیگیری فرآیندها در اتوماسیون آموزشی.
-          برای نمای کلی فازها و نقش‌ها، صفحه{' '}
-          <Link to="/student-lifecycle">چرخه عمر دانشجو و اقدام نقش‌ها</Link>
+          آموزش گام‌به‌گام ورود با پیامک، پنل دانشجو و پیگیری فرآیندها.
+          برای نمای کلی مراحل و نقش‌ها، صفحه{' '}
+          <Link to="/student-lifecycle">مسیر تحصیلی و نقش‌ها</Link>
           {' '}را ببینید.
         </p>
       </div>
@@ -146,7 +146,7 @@ export default function StudentGuide() {
               شروع ثبت‌نام
             </Link>
             <Link to="/student-lifecycle" className="pub-cta-btn" style={{ background: 'transparent', border: '2px solid currentColor' }}>
-              چرخه عمر و نقش‌ها
+              مسیر تحصیلی و نقش‌ها
             </Link>
           </div>
         </div>

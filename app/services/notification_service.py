@@ -133,6 +133,12 @@ TEMPLATES = {
     "extra_session_payment_timeout": {
         "sms": "مهلت پرداخت جلسه اضافی تمام شد. جلسه لغو شد.",
     },
+    "extra_session_sla_therapist": {
+        "sms": "یادآوری: درخواست جلسه اضافی درمان در کارتابل شماست؛ لطفاً در پورتال بررسی کنید.",
+    },
+    "extra_session_sla_payment": {
+        "sms": "یادآوری: برای جلسه اضافی درمان، پرداخت را در پورتال دانشجویی تکمیل کنید.",
+    },
     "payment_invoice": {
         "sms": "فاکتور پرداخت جلسه درمان صادر شد. لطفاً پرداخت کنید.",
     },
@@ -147,6 +153,9 @@ TEMPLATES = {
     },
     "payment_retry": {
         "sms": "لطفاً پرداخت را مجدداً انجام دهید.",
+    },
+    "session_payment_sla_payment": {
+        "sms": "یادآوری: مهلت پرداخت جلسات درمان در پورتال رو به پایان است؛ لطفاً هرچه زودتر از بخش پرداخت اقدام کنید.",
     },
     "debt_settlement_required": {
         "sms": "دانشجوی گرامی، به دلیل وجود بدهی، لطفاً تسویه بدهی را همراه با جلسات آتی انتخاب کنید.",
@@ -174,6 +183,7 @@ TEMPLATES = {
         "sms": "تبریک! ساعات درمان آموزشی شما تکمیل شد.",
     },
     "therapy_completion_conditions_not_met": {
+        "sms": "شرایط خاتمه درمان هنوز کامل نیست. جزئیات ساعات در پورتال بخش همین فرایند را ببینید.",
         "in_app": "شرایط خاتمه احراز نشده است. وضعیت فعلی: درمان {therapy_hours}/{therapy_threshold}، بالینی {clinical_hours}/{clinical_threshold}، سوپرویژن {supervision_hours}/{supervision_threshold}.",
     },
     "therapy_completion_success": {
@@ -192,6 +202,12 @@ TEMPLATES = {
     "therapy_session_increase_rejected": {
         "sms": "دانشجوی گرامی، درمانگر آموزشی شما در حال حاضر امکان افزایش جلسات هفتگی را ندارد.",
         "in_app": "امکان اضافه کردن جلسه در هفته را ندارم. (نظر درمانگر آموزشی)",
+    },
+    "therapy_session_increase_sla_therapist": {
+        "sms": "یادآوری: درخواست افزایش جلسات هفتگی درمان در پورتال شما در انتظار بررسی است؛ لطفاً تا پایان مهلت اقدام کنید.",
+    },
+    "therapy_session_increase_reminder_student_response": {
+        "sms": "یادآوری: پاسخ شما به پیشنهاد زمانی درمانگر (افزایش جلسات هفتگی) در پورتال ثبت نشده؛ لطفاً تأیید یا زمان جدید ارسال کنید.",
     },
     "supervision_session_increase_request": {
         "sms": "درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن فردی ثبت شده. لطفاً در پورتال بررسی فرمایید."
@@ -220,9 +236,14 @@ TEMPLATES = {
     },
     "therapy_session_reduction_blocked": {
         "in_app": "شما امکان کاهش جلسات به کمتر از یک بار در هفته را از این طریق ندارید. در صورت نیاز به قطع موقت، از فرایند وقفه موقت استفاده کنید و در صورت نیاز به درمان با تواتر کمتر، باید از سیستم آموزشی خارج شده و از طریق سایت درمان عمومی اقدام نمایید.",
+        "sms": "کاهش جلسات از این مسیر فقط با حداقل ۲ جلسه/هفته ممکن است. برای وقفه از فرایند وقفهٔ درمان استفاده کنید.",
     },
     "therapy_session_reduction_violation_warning": {
         "in_app": "توجه: کاهش جلسات به یک بار در هفته پیش از تکمیل ساعات مصوب، تخلف آموزشی محسوب می‌شود. طبق مقررات، ساعات گذرانده شده در حالت یک جلسه در هفته جزو ۲۵۰ ساعت درمان آموزشی دو بار در هفته برای فارغ‌التحصیلی محاسبه نخواهد شد (ساعات سوخت می‌شود). همچنین گزارش این اقدام جهت ثبت تخلف به کمیته نظارت ارسال می‌گردد.",
+        "sms": "هشدار انستیتو: کاهش به ۱ جلسه/هفته پیش از تکمیل ساعات، تخلف آموزشی است. ادامه را در پورتال تأیید کنید.",
+    },
+    "therapy_session_reduction_completed": {
+        "sms": "انستیتو: کاهش جلسات هفتگی درمان آموزشی ثبت شد. برنامهٔ جدید: {new_weekly} جلسه در هفته (قبلاً {old_weekly}). جلسات انتخاب‌شده لغو شدند.",
     },
     "violation_session_reduction": {
         "in_app": "گزارش تخلف آموزشی: دانشجو {student_name} جلسات هفتگی را به یک بار در هفته کاهش داده در حالی که ساعات ۲۵۰/۷۵۰/۱۵۰ تکمیل نشده است. فرایند ثبت تخلف آغاز شد.",
@@ -344,10 +365,10 @@ TEMPLATES = {
     },
     "meeting_scheduled": {
         "email_subject": "تعیین زمان جلسه کمیته پیشرفت",
-        "email_body": "دانشجوی گرامی، زمان و مکان جلسه بررسی درخواست وقفه شما تعیین شده است. لطفاً به پورتال مراجعه کنید.",
+        "email_body": "دانشجوی گرامی، زمان و مکان جلسه بررسی درخواست وقفه شما تعیین شده است.\n{meeting_summary_fa}\nلطفاً به پورتال مراجعه کنید.",
     },
     "meeting_scheduled_sms": {
-        "sms": "زمان جلسه کمیته پیشرفت برای درخواست وقفه تعیین شد. لطفاً به پورتال مراجعه کنید.",
+        "sms": "زمان جلسه کمیته پیشرفت برای درخواست وقفه تعیین شد.\n{meeting_summary_fa}\nلطفاً به پورتال مراجعه کنید.",
     },
     "leave_rejected_committee_alert": {
         "sms": "گزارش عدم تایید وقفه در کلاس‌ها ثبت شد. لطفاً در پورتال کمیته نظارت بررسی فرمایید.",
@@ -362,7 +383,13 @@ TEMPLATES = {
         "sms": "دانشجوی گرامی\nموضوع: زمان‌بندی آغاز درمان آموزشی\nبه اطلاع می‌رساند که وقت شما برای درمان آموزشی با آقای/خانم ...، روز... ساعت... و روز... ساعت... با تاریخ آغاز... ثبت شده است.\nمسئول هماهنگی‌ها ۰۲۱۲۲۷۲۸۰۰۰ داخلی ۱",
     },
     "therapy_scheduled_therapist": {
-        "sms": "درمانگر آموزشی محترم\nموضوع: آغاز درمان آموزشی دانشجو\nبه اطلاع می‌رساند که آقای/خانم ... دانشجوی دوره... درخواست آغاز درمان آموزشی خود را با شما در روز... ساعت... و روز... ساعت... و تاریخ آغاز... ثبت کرده‌اند.\nمسئول هماهنگی‌ها ۰۲۱۲۲۷۲۸۰۰۰ داخلی ۱",
+        "sms": "درمانگر آموزشی محترم\nموضوع: آغاز درمان آموزشی دانشجو\nبه اطلاع می‌رساند که آقای/خانم ... دانشجوی دوره... درخواست آغاز درمان آموزشی خود را با شما در روز... ساعت... و روز... ساعت... و تاریخ آغاز... ثبت کرده‌اند.\nمسئول هماهنگی‌ها ۰۲۱۲۲۷۲۸۰۰ داخلی ۱",
+    },
+    "start_therapy_sla_therapist_pending": {
+        "sms": "یادآوری آغاز درمان آموزشی: درخواست شما هنوز در انتظار پاسخ درمانگر است. لطفاً پورتال دانشجویی را بررسی کنید.",
+    },
+    "start_therapy_sla_payment_pending": {
+        "sms": "یادآوری آغاز درمان آموزشی: پرداخت جلسهٔ اول در پورتال شما ناقص است. از مسیر «پرداخت» همان صفحه اقدام کنید.",
     },
     "supervision_interruption_meeting_invite": {
         "sms": "جزئیات جلسه بررسی درخواست وقفه سوپرویژن فردی در پورتال شما موجود است. لطفاً مراجعه فرمایید.",
@@ -465,6 +492,8 @@ class NotificationService:
             return template.get("sms")
         elif notification_type == "email":
             return template.get("email_body")
+        elif notification_type == "in_app":
+            return template.get("in_app")
         return None
 
     async def send_sms(self, phone: str, message: str) -> NotificationResult:
@@ -521,6 +550,19 @@ class NotificationService:
         elif notification_type == "email":
             subject = TEMPLATES.get(template_name, {}).get("email_subject", "Notification")
             return await self.send_email(recipient_contact, subject, message)
+        elif notification_type == "in_app":
+            logger.info(
+                "[IN_APP] to=%s template=%s msg=%s",
+                recipient_contact,
+                template_name,
+                (message or "")[:200],
+            )
+            return NotificationResult(
+                success=True,
+                notification_type="in_app",
+                recipient=recipient_contact,
+                message=message or "",
+            )
         else:
             logger.warning(f"Unknown notification type: {notification_type}")
             return NotificationResult(

@@ -11,25 +11,28 @@ export default function StudentLifecycleMatrix() {
     publicApi
       .studentLifecycleMatrix()
       .then((r) => setPayload(r.data))
-      .catch((e) => setError(e?.message || 'خطا در بارگذاری'))
+      .catch(() =>
+        setError('خطا در بارگذاری اطلاعات. لطفاً اتصال اینترنت را بررسی کرده و دوباره تلاش کنید.'),
+      )
       .finally(() => setLoading(false))
   }, [])
+
+  const roleLabel = (role) => (payload?.role_labels_fa && payload.role_labels_fa[role]) || 'نقش کاربری'
 
   return (
     <>
       <div className="pub-page-header">
-        <h1 data-testid="lifecycle-page-title">چرخه عمر دانشجو و اقدام نقش‌ها</h1>
-        <p>
-          نمایش فازهای آموزشی از ثبت‌نام تا فارغ‌التحصیلی، فرایندهای مرتبط در رجیستری، و الگوی اقدام برای
-          هر نقش — برای آموزش تیم و اتوماسیون وب.
+        <h1 data-testid="lifecycle-page-title">مسیر آموزشی شما از ورود تا پایان دوره</h1>
+        <p style={{ lineHeight: 1.75 }}>
+          این صفحه فقط <b>نقشهٔ کلی</b> را نشان می‌دهد: معمولاً در هر مرحله چه اتفاقی می‌افتد و{' '}
+          <b>چه کسانی</b> در سامانه در کنار شما کار می‌کنند. نیازی به یاد گرفتن نام‌های فنی یا جزئیات
+          سامانه نیست؛ کافی است تصویر بزرگ را ببینید تا بدانید تقریباً کجای مسیر هستید و بعدش چه چیزهایی ممکن
+          است پیش بیاید. برای کارهای دقیق همان روز، همیشه به <b>پنل خودتان</b> و{' '}
+          <Link to="/guide">راهنمای سامانه</Link> مراجعه کنید.
         </p>
         {payload?.stats && (
-          <p style={{ marginTop: '0.75rem', fontSize: '0.95rem', opacity: 0.9 }}>
-            <span data-testid="lifecycle-stat-phases">{payload.stats.phase_count}</span> فاز،{' '}
-            <span data-testid="lifecycle-stat-processes">{payload.stats.unique_process_codes}</span> نوع فرایند
-            منحصربه‌فرد، جمع پیشنهادی حدود{' '}
-            <span data-testid="lifecycle-stat-demo">{payload.stats.suggested_total_demo_students}</span> دانشجوی
-            نمونه در سناریوهای دمو.
+          <p style={{ marginTop: '0.75rem', fontSize: '0.95rem', opacity: 0.9 }} data-testid="lifecycle-intro-note">
+            این مسیر در چند بخش اصلی تقسیم شده است؛ تعداد دقیق مراحل برای هر نفر ممکن است فرق کند.
           </p>
         )}
       </div>
@@ -54,8 +57,11 @@ export default function StudentLifecycleMatrix() {
         <div data-testid="lifecycle-matrix-root">
           <section className="pub-section">
             <div className="pub-section-header">
-              <div className="pub-section-badge">فازها</div>
-              <h2>فازها و فرایندهای رجیستری</h2>
+              <div className="pub-section-badge">مراحل</div>
+              <h2>مراحل اصلی مسیر</h2>
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.95rem', color: 'var(--text-secondary, #64748b)' }}>
+                هر بخش چه معنی‌ای برای شما دارد
+              </p>
             </div>
             <div className="pub-info-grid">
               {(payload.phases || []).map((phase) => (
@@ -65,15 +71,8 @@ export default function StudentLifecycleMatrix() {
                   data-testid={`lifecycle-phase-${phase.phase_id}`}
                 >
                   <h3>{phase.title_fa}</h3>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' }}>
-                    پیشنهاد دمو:{' '}
-                    <strong data-testid={`lifecycle-demo-count-${phase.phase_id}`}>
-                      {phase.demo_student_count_hint}
-                    </strong>{' '}
-                    دانشجو
-                  </p>
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <strong style={{ fontSize: '0.9rem' }}>نمونه وضعیت دانشجو</strong>
+                    <b style={{ fontSize: '0.9rem' }}>مثال: ممکن است در این مرحله…</b>
                     <ul style={{ marginTop: '0.35rem' }}>
                       {(phase.student_state_hints || []).map((h, i) => (
                         <li key={i}>{h}</li>
@@ -81,22 +80,24 @@ export default function StudentLifecycleMatrix() {
                     </ul>
                   </div>
                   <div>
-                    <strong style={{ fontSize: '0.9rem' }}>کدهای فرایند</strong>
+                    <b style={{ fontSize: '0.9rem' }}>کارهایی که ممکن است در سامانه ثبت شود</b>
                     <ul
-                      className="lifecycle-process-codes"
+                      className="lifecycle-process-list"
                       style={{
                         marginTop: '0.35rem',
-                        fontFamily: 'ui-monospace, monospace',
-                        fontSize: '0.82rem',
-                        direction: 'ltr',
-                        textAlign: 'left',
+                        fontSize: '0.9rem',
+                        lineHeight: 1.65,
                       }}
                     >
-                      {(phase.process_codes || []).map((code) => (
-                        <li key={code} data-testid={`lifecycle-process-${code}`}>
-                          {code}
-                        </li>
-                      ))}
+                      {(phase.process_codes || []).map((code, idx) => {
+                        const labels = phase.process_labels_fa || []
+                        const text = labels[idx] || 'فرایند ثبت‌شده در سامانه'
+                        return (
+                          <li key={code} data-testid={`lifecycle-process-${code}`}>
+                            {text}
+                          </li>
+                        )
+                      })}
                     </ul>
                   </div>
                 </div>
@@ -107,7 +108,11 @@ export default function StudentLifecycleMatrix() {
           <section className="pub-section" style={{ paddingTop: 0 }}>
             <div className="pub-section-header">
               <div className="pub-section-badge">نقش‌ها</div>
-              <h2>الگوی اقدام به تفکیک نقش</h2>
+              <h2>هر نقش معمولاً چه کاری انجام می‌دهد؟</h2>
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.95rem', color: 'var(--text-secondary, #64748b)' }}>
+                این‌ها نقش‌های سازمانی در سامانه‌اند؛ لازم نیست حفظ کنید. فقط بدانید گاهی باید با چه کسانی هماهنگ
+                شوید.
+              </p>
             </div>
             <div className="pub-info-grid">
               {(payload.roles_order || []).map((role) => {
@@ -115,7 +120,7 @@ export default function StudentLifecycleMatrix() {
                 if (!items.length) return null
                 return (
                   <div key={role} className="pub-info-card" data-testid={`lifecycle-role-${role}`}>
-                    <h3 style={{ direction: 'ltr', textAlign: 'right' }}>{role}</h3>
+                    <h3>{roleLabel(role)}</h3>
                     <ul>
                       {items.map((line, j) => (
                         <li key={j}>{line}</li>
@@ -128,6 +133,9 @@ export default function StudentLifecycleMatrix() {
           </section>
 
           <div style={{ textAlign: 'center', marginTop: '1rem', marginBottom: '2rem' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary, #64748b)', marginBottom: '0.75rem' }}>
+              برای قدم‌به‌قدم استفاده از سامانه:
+            </p>
             <Link to="/guide">راهنمای سامانه</Link>
             {' · '}
             <Link to="/">خانه</Link>

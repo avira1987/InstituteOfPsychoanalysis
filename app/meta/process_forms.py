@@ -6,6 +6,12 @@ from typing import Optional
 
 METADATA_PROCESSES_DIR = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
 
+# وضعیت‌هایی که همان فرم مرحلهٔ دیگری را نشان می‌دهند (مثلاً بررسی مدارک = همان فیلدهای آپلود)
+STATE_FORM_ALIASES: dict[str, str] = {
+    "documents_incomplete": "documents_upload",
+    "documents_review": "documents_upload",
+}
+
 
 def _load_process_metadata(process_code: str) -> dict:
     path = METADATA_PROCESSES_DIR / f"{process_code}.json"
@@ -48,7 +54,8 @@ def get_process_forms(process_code: str, state_code: Optional[str] = None) -> li
     forms = data.get("forms") or []
     if state_code is None:
         return [_normalize_form(f) for f in forms]
-    return [_normalize_form(f) for f in forms if f.get("used_in_state") == state_code]
+    effective_state = STATE_FORM_ALIASES.get(state_code, state_code)
+    return [_normalize_form(f) for f in forms if f.get("used_in_state") == effective_state]
 
 
 def get_process_ui_requirements(process_code: str) -> dict:

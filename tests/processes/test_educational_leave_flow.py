@@ -57,6 +57,7 @@ class TestEducationalLeaveFlow:
             trigger_event="student_submitted",
             actor_id=sample_student_user.id,
             actor_role="student",
+            payload={"leave_terms": 1},
         )
         await db_session.commit()
         assert result.success is True

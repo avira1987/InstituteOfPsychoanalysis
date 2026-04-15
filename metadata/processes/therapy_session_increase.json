@@ -8,11 +8,127 @@
     "eligibility": "فقط دوره جامع. دوره آشنایی دسترسی ندارد."
   },
   "states": [
-    {"code": "request_submitted", "name_fa": "ثبت درخواست افزایش جلسه", "type": "initial", "assigned_role": "student"},
-    {"code": "therapist_review", "name_fa": "بررسی و تصمیم درمانگر", "type": "intermediate", "assigned_role": "therapist", "sla_hours": 48},
-    {"code": "student_response", "name_fa": "پاسخ دانشجو به پیشنهاد جایگزین", "type": "intermediate", "assigned_role": "student"},
-    {"code": "session_added", "name_fa": "جلسه هفتگی اضافه شد", "type": "terminal", "assigned_role": "system"},
-    {"code": "request_rejected", "name_fa": "امکان افزایش جلسه وجود ندارد", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "request_submitted",
+      "name_fa": "ثبت درخواست افزایش جلسه",
+      "type": "initial",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "درخواست افزایش جلسهٔ هفتگی",
+        "student_task_fa": "تاریخ نزدیک‌ترین جلسه و ساعت شروع را وارد کنید؛ فرم را ثبت کنید؛ سپس «ادامه و ثبت مرحله» را بزنید تا درمانگر بررسی کند. پس از تأیید، یک جلسهٔ هفتگی دیگر به برنامهٔ شما اضافه می‌شود."
+      }
+    },
+    {
+      "code": "therapist_review",
+      "name_fa": "بررسی و تصمیم درمانگر",
+      "type": "intermediate",
+      "assigned_role": "therapist",
+      "sla_hours": 48,
+      "metadata": {
+        "student_short_fa": "منتظر تصمیم درمانگر",
+        "student_task_fa": "درمانگر در حال بررسی زمان پیشنهادی شماست؛ پس از اعلام نتیجه همین صفحه را تازه کنید. در صورت پیشنهاد زمان جدید، پیامک دریافت می‌کنید."
+      }
+    },
+    {
+      "code": "student_response",
+      "name_fa": "پاسخ دانشجو به پیشنهاد جایگزین",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "sla_hours": 72,
+      "metadata": {
+        "student_short_fa": "تأیید یا اصلاح زمان",
+        "student_task_fa": "اگر با زمان پیشنهادی درمانگر موافقید، دکمهٔ تأیید را بزنید. اگر زمان دیگری می‌خواهید، تاریخ و ساعت جدید را در فرم بنویسید و دکمهٔ «ورود زمان جدید» را بزنید."
+      }
+    },
+    {
+      "code": "session_added",
+      "name_fa": "جلسه هفتگی اضافه شد",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "تکمیل شد",
+        "student_task_fa": "تعداد جلسات هفتگی در پروندهٔ شما به‌روز شده است؛ جلسهٔ جدید در فهرست جلسات درمان دیده می‌شود."
+      }
+    },
+    {
+      "code": "request_rejected",
+      "name_fa": "امکان افزایش جلسه وجود ندارد",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "پایان درخواست",
+        "student_task_fa": "درمانگر در حال حاضر امکان افزایش جلسات هفتگی را اعلام نکرده است؛ در صورت نیاز بعداً می‌توانید دوباره درخواست دهید."
+      }
+    }
+  ],
+  "forms": [
+    {
+      "title_fa": "زمان جلسهٔ هفتگی اضافه",
+      "used_in_state": "request_submitted",
+      "fields": [
+        {
+          "name": "first_session_date",
+          "label_fa": "تاریخ نزدیک‌ترین جلسه (میلادی YYYY-MM-DD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "preferred_time_hhmm",
+          "label_fa": "ساعت شروع (مثال 14:30)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "preferred_weekday_fa",
+          "label_fa": "روز هفته (اختیاری)",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "title_fa": "پاسخ به پیشنهاد درمانگر",
+      "used_in_state": "student_response",
+      "fields": [
+        {
+          "name": "student_response_note",
+          "label_fa": "توضیح کوتاه (اختیاری)",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "name": "new_first_session_date",
+          "label_fa": "اگر زمان دیگری می‌خواهید — تاریخ (YYYY-MM-DD)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "new_preferred_time_hhmm",
+          "label_fa": "اگر زمان دیگری می‌خواهید — ساعت (مثال 15:00)",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "title_fa": "جزئیات تصمیم درمانگر (در صورت پیشنهاد جایگزین)",
+      "used_in_state": "therapist_review",
+      "visible_to": ["therapist", "admin"],
+      "fields": [
+        {
+          "name": "therapist_alternative_date",
+          "label_fa": "تاریخ پیشنهادی جایگزین (YYYY-MM-DD) — فقط هنگام «پیشنهاد جایگزین»",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "therapist_alternative_time_hhmm",
+          "label_fa": "ساعت پیشنهادی جایگزین (مثال 10:00)",
+          "type": "text",
+          "required": false
+        }
+      ]
+    }
   ],
   "transitions": [
     {
@@ -33,7 +149,7 @@
       "required_role": "therapist",
       "description_fa": "درمانگر زمان پیشنهادی را تایید کرد",
       "actions": [
-        {"type": "add_recurring_therapy_session"},
+        {"type": "add_recurring_therapy_session", "weekly_increment": 1},
         {"type": "notification", "notification_type": "in_app", "template": "therapy_session_increase_approved", "recipients": ["student"]}
       ]
     },
@@ -65,7 +181,7 @@
       "required_role": "student",
       "description_fa": "دانشجو پیشنهاد درمانگر را تایید کرد",
       "actions": [
-        {"type": "add_recurring_therapy_session"},
+        {"type": "add_recurring_therapy_session", "weekly_increment": 1},
         {"type": "notification", "notification_type": "in_app", "template": "therapy_session_increase_approved", "recipients": ["student"]}
       ]
     },

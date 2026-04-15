@@ -63,13 +63,10 @@
   },
   {
     "code": "24_hour_rule",
-    "name_fa": "قانون ۲۴ ساعت",
-    "rule_type": "computation",
-    "expression": {
-      "if": {"field": "instance.hours_until_first_slot", "operator": "lt", "value": 24},
-      "then": "use_next_slot",
-      "else": "use_first_slot"
-    }
+    "name_fa": "قانون ۲۴ ساعت — حداقل فاصله تا اولین جلسهٔ ثبت‌شده",
+    "rule_type": "validation",
+    "expression": {"field": "instance.hours_until_first_slot", "operator": "gte", "value": 24},
+    "error_message_fa": "اولین جلسه باید حداقل ۲۴ ساعت بعد از زمان فعلی باشد؛ تاریخ در سامانه اصلاح می‌شود یا دوباره انتخاب کنید."
   },
   {
     "code": "absence_quota",

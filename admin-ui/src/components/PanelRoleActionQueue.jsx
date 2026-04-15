@@ -2,27 +2,24 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { panelApi } from '../services/api'
 
-/**
- * صف اقدامات پیشنهادی برای نقش جاری — از GET /api/panel/action-queue
- * data-testid برای اتوماسیون وب (Playwright)
- */
+/** راهنمای اقدام نقش در پنل — شناسهٔ آزمایشی برای اتوماسیون تست */
 export default function PanelRoleActionQueue() {
   const { user } = useAuth()
   const [data, setData] = useState(null)
-  const [err, setErr] = useState(null)
-  const role = user?.role || 'unknown'
+  const [err, setErr] = useState(false)
+  const role = user?.role ?? ''
 
   useEffect(() => {
     if (!user) return
     let cancelled = false
-    setErr(null)
+    setErr(false)
     panelApi
       .actionQueue()
       .then((r) => {
         if (!cancelled) setData(r.data)
       })
-      .catch((e) => {
-        if (!cancelled) setErr(e?.response?.data?.detail || e.message || 'خطا')
+      .catch(() => {
+        if (!cancelled) setErr(true)
       })
     return () => {
       cancelled = true
@@ -39,7 +36,7 @@ export default function PanelRoleActionQueue() {
         data-testid="panel-role-action-queue-error"
       >
         <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-          راهنمای اقدامات نقش بارگذاری نشد ({String(err)})
+          راهنمای اقدامات نقش بارگذاری نشد. لطفاً بعداً دوباره تلاش کنید.
         </p>
       </div>
     )
@@ -55,7 +52,7 @@ export default function PanelRoleActionQueue() {
       data-panel-role={role}
     >
       <div className="card-header">
-        <h3 className="card-title">اقدامات منتظر انجام (راهنمای نقش)</h3>
+        <h3 className="card-title">راهنمای اقدام برای نقش شما</h3>
         {data.stats?.total != null && (
           <span className="badge badge-primary" data-testid="panel-role-action-queue-count">
             {data.stats.total.toLocaleString('fa-IR')} مورد
@@ -63,7 +60,8 @@ export default function PanelRoleActionQueue() {
         )}
       </div>
       <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', lineHeight: 1.6 }}>
-        بر اساس نقش شما در سامانه و فرایندهای رجیستری که این نقش در آن‌ها ذکر شده؛ برای آموزش تیم و سناریوهای اتوماسیون.
+        بر اساس نقش شما و فرایندهایی که در سامانه با این نقش مرتبط‌اند؛ راهنمای کلی اقدامات معمول — کارهای دقیق همان
+        روز را در تب‌های پنل ببینید.
       </p>
       <ol style={{ margin: 0, paddingRight: '1.25rem', lineHeight: 1.75 }}>
         {data.items.map((it, i) => (
@@ -74,20 +72,6 @@ export default function PanelRoleActionQueue() {
             data-process-code={it.process_code || ''}
           >
             <span>{it.title_fa}</span>
-            {it.process_code ? (
-              <code
-                style={{
-                  fontSize: '0.72rem',
-                  marginRight: '0.35rem',
-                  padding: '0.1rem 0.35rem',
-                  borderRadius: '4px',
-                  background: '#f1f5f9',
-                }}
-                dir="ltr"
-              >
-                {it.process_code}
-              </code>
-            ) : null}
           </li>
         ))}
       </ol>

@@ -3,6 +3,17 @@ import { Link, useNavigate } from 'react-router-dom'
 import { publicApi, studentApi } from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
 
+/** اعتبارسنجی کد ملی ایران (۱۰ رقم + رقم کنترل) — هم‌راستا با سرور */
+function validateIranNationalCode(raw) {
+  const d = String(raw || '').replace(/\D/g, '')
+  if (d.length !== 10) return false
+  if (new Set(d).size === 1) return false
+  const check = parseInt(d[9], 10)
+  const csum = d.slice(0, 9).split('').reduce((acc, ch, i) => acc + parseInt(ch, 10) * (10 - i), 0) % 11
+  if (csum < 2) return check === csum
+  return check === 11 - csum
+}
+
 /** Map API error (string or 422 validation array) to a single Persian message. */
 function getRegistrationErrorMessage(err) {
   const detail = err.response?.data?.detail
@@ -11,6 +22,7 @@ function getRegistrationErrorMessage(err) {
     const fieldNames = {
       full_name_fa: 'نام و نام خانوادگی',
       phone: 'شماره موبایل',
+      national_code: 'کد ملی',
       email: 'ایمیل',
       course_type: 'نوع دوره',
       education_level: 'مقطع تحصیلی',
@@ -35,15 +47,22 @@ function getRegistrationErrorMessage(err) {
 }
 
 /**
- * @param {{ mode?: 'public' | 'panel' }} props
+ * @param {{
+ *   mode?: 'public' | 'panel'
+ *   embedded?: boolean
+ *   onPanelSuccess?: () => void | Promise<void>
+ * }} props
  * — mode=panel: پس از ورود با OTP؛ شماره از حساب کاربری است و API تکمیل ثبت‌نام فراخوانی می‌شود.
+ * — embedded: بدون هدر صفحهٔ عمومی؛ برای قرارگیری داخل کارت پنل دانشجو.
+ * — onPanelSuccess: پس از ثبت موفق در پنل (به‌جای navigate ساده).
  */
-export default function StudentRegistration({ mode = 'public' }) {
+export default function StudentRegistration({ mode = 'public', embedded = false, onPanelSuccess }) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const [form, setForm] = useState({
     full_name_fa: '',
     phone: '',
+    national_code: '',
     email: '',
     education_level: '',
     field_of_study: '',
@@ -55,10 +74,14 @@ export default function StudentRegistration({ mode = 'public' }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (mode === 'panel' && user?.phone) {
-      setForm(prev => ({ ...prev, phone: user.phone }))
-    }
-  }, [mode, user?.phone])
+    if (mode !== 'panel' || !user) return
+    setForm(prev => ({
+      ...prev,
+      phone: user.phone || prev.phone,
+      full_name_fa: prev.full_name_fa || user.full_name_fa || '',
+      email: prev.email || user.email || '',
+    }))
+  }, [mode, user])
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -70,20 +93,37 @@ export default function StudentRegistration({ mode = 'public' }) {
     setError('')
     setResult(null)
 
+    const ncDigits = String(form.national_code || '').replace(/\D/g, '')
+    if (!validateIranNationalCode(ncDigits)) {
+      setError('کد ملی را کامل و صحیح وارد کنید (۱۰ رقم معتبر).')
+      setLoading(false)
+      return
+    }
+
     try {
       if (mode === 'panel') {
         await studentApi.completeRegistration({
           full_name_fa: form.full_name_fa,
+          national_code: ncDigits,
           email: form.email || undefined,
           education_level: form.education_level || undefined,
           field_of_study: form.field_of_study || undefined,
           course_type: form.course_type,
           motivation: form.motivation || undefined,
         })
-        navigate('/panel/portal/student', { replace: true })
+        try {
+          await refreshUser()
+        } catch {
+          /* پروفایل دانشجو از students/me لود می‌شود؛ اگر auth/me خطا داد باز هم به پنل برو */
+        }
+        if (onPanelSuccess) {
+          await onPanelSuccess()
+        } else {
+          navigate('/panel/portal/student', { replace: true })
+        }
         return
       }
-      const res = await publicApi.register(form)
+      const res = await publicApi.register({ ...form, national_code: ncDigits, phone: form.phone })
       setResult(res.data)
     } catch (err) {
       setError(getRegistrationErrorMessage(err))
@@ -96,14 +136,16 @@ export default function StudentRegistration({ mode = 'public' }) {
 
   return (
     <>
-      <div className="pub-page-header">
-        <h1>{isPanel ? 'تکمیل ثبت‌نام دانشجو' : 'ثبت‌نام دانشجو'}</h1>
-        <p>
-          {isPanel
-            ? 'شماره موبایل شما از ورود با پیامک تأیید شده است. بقیهٔ اطلاعات را تکمیل کنید تا مسیر ثبت‌نام دوره در پنل شما باز شود.'
-            : 'فرم ثبت‌نام اولیه در دوره‌های آموزشی انستیتو روانکاوی تهران'}
-        </p>
-      </div>
+      {!embedded && (
+        <div className="pub-page-header">
+          <h1>{isPanel ? 'تکمیل ثبت‌نام دانشجو' : 'ثبت‌نام دانشجو'}</h1>
+          <p>
+            {isPanel
+              ? 'شماره موبایل شما از ورود با پیامک تأیید شده است. بقیهٔ اطلاعات را تکمیل کنید تا مسیر ثبت‌نام دوره در پنل شما باز شود.'
+              : 'فرم ثبت‌نام اولیه در دوره‌های آموزشی انستیتو روانکاوی تهران'}
+          </p>
+        </div>
+      )}
 
       {result ? (
         <div className="pub-register-form" style={{ textAlign: 'center' }} data-testid="register-success">
@@ -218,6 +260,21 @@ export default function StudentRegistration({ mode = 'public' }) {
 
           <div className="pub-form-row">
             <div className="pub-form-group">
+              <label>کد ملی *</label>
+              <input
+                data-testid="register-input-national_code"
+                name="national_code"
+                value={form.national_code}
+                onChange={handleChange}
+                placeholder="۱۰ رقم بدون خط تیره"
+                required
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={14}
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="pub-form-group">
               <label>ایمیل</label>
               <input
                 name="email"
@@ -228,6 +285,9 @@ export default function StudentRegistration({ mode = 'public' }) {
                 style={{ direction: 'ltr', textAlign: 'right' }}
               />
             </div>
+          </div>
+
+          <div className="pub-form-row">
             <div className="pub-form-group">
               <label>نوع دوره *</label>
               <select name="course_type" value={form.course_type} onChange={handleChange} required>

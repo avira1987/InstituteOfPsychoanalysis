@@ -1,6 +1,7 @@
 """OTP (One-Time Password) service for SMS-based authentication."""
 
 import random
+import re
 import uuid
 import logging
 from datetime import datetime, timezone, timedelta
@@ -10,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.operational_models import OTPCode, User
-from app.services.sms_gateway import send_otp_sms
+from app.services.sms_gateway import normalize_ir_mobile, send_otp_sms
 from app.api.auth import create_access_token, get_password_hash
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,8 @@ def _generate_code() -> str:
 
 async def request_otp(db: AsyncSession, phone: str) -> dict:
     """Generate and send an OTP code to the given phone number (ورود دانشجو با موبایل)."""
-    phone = phone.strip().replace(" ", "")
-    if not phone.startswith("09") or len(phone) != 11:
+    phone = normalize_ir_mobile(phone)
+    if not re.fullmatch(r"09\d{9}", phone):
         return {"success": False, "error": "شماره موبایل نامعتبر است. فرمت صحیح: 09xxxxxxxxx"}
 
     settings = get_settings()
@@ -104,15 +105,17 @@ async def request_otp(db: AsyncSession, phone: str) -> dict:
     if settings.OTP_SHOW_CODE_IN_UI:
         result["dev_code"] = code
         result["dev_hint"] = (
-            "کد برای تست روی همین صفحه نمایش داده شد. برای ارسال واقعی پیامک، "
-            "SMS_PROVIDER=mellipayamak و SMS_USERNAME، SMS_PASSWORD، SMS_LINE_NUMBER را تنظیم کنید."
+            "کد برای تست روی همین صفحه نمایش داده شد. برای ارسال واقعی: "
+            "SMS_PROVIDER=mellipayamak، SMS_USERNAME و (SMS_PASSWORD یا همان APIKey در SMS_API_KEY به‌عنوان password طبق پنل) یا فقط SMS_API_KEY برای کنسول، و SMS_LINE_NUMBER."
         )
     return result
 
 
 async def verify_otp(db: AsyncSession, phone: str, code: str) -> dict:
     """Verify an OTP code and return a JWT token if valid."""
-    phone = phone.strip().replace(" ", "")
+    phone = normalize_ir_mobile(phone)
+    if not re.fullmatch(r"09\d{9}", phone):
+        return {"success": False, "error": "شماره موبایل نامعتبر است. فرمت صحیح: 09xxxxxxxxx"}
     settings = get_settings()
     now = datetime.now(timezone.utc)
 

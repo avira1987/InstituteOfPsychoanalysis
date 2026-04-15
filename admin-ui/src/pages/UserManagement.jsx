@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { userApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
+import PopupToast from '../components/PopupToast'
 
 const roleLabels = {
   admin: 'مدیر سیستم',
@@ -180,7 +181,7 @@ export default function UserManagement() {
 
   return (
     <div className="user-management-page">
-      {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+      <PopupToast toast={toast} />
 
       {/* مودال: ایجاد کاربر */}
       {showCreate && currentUser?.role === 'admin' && (

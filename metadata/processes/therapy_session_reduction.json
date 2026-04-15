@@ -6,11 +6,75 @@
     "description": "مدیریت Tapering. شرط ورود: حداقل ۲ جلسه در هفته. کاهش به ۱ جلسه پیش از تکمیل ۲۵۰/۷۵۰/۱۵۰ = تخلف آموزشی با هشدار و ثبت در کمیته نظارت. حذف جلسات، آزادسازی وقت درمانگر، ثبت تاریخچه.",
     "initial_state": "initiated"
   },
+  "forms": [
+    {
+      "code": "therapy_reduction_selection",
+      "title_fa": "کاهش جلسات هفتگی درمان",
+      "used_in_state": "session_selection",
+      "fields": [
+        {
+          "name": "remaining_sessions_after_reduction",
+          "label_fa": "تعداد جلسات در هفته پس از کاهش",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "max": 12
+        },
+        {
+          "name": "selected_sessions",
+          "label_fa": "جلسات آتی برنامه‌ریزی‌شده که باید لغو شوند",
+          "type": "checkbox_list",
+          "required": true,
+          "source": "therapy_reduction_upcoming_sessions"
+        }
+      ]
+    },
+    {
+      "code": "therapy_reduction_violation_ack",
+      "title_fa": "تایید با علم به تبعات آموزشی",
+      "used_in_state": "violation_warning",
+      "fields": [
+        {
+          "name": "violation_continue_ack",
+          "label_fa": "می‌دانم که ادامهٔ این مسیر تخلف آموزشی ثبت می‌شود و کاهش در برنامه اعمال می‌گردد.",
+          "type": "checkbox",
+          "required": true
+        }
+      ]
+    }
+  ],
   "states": [
-    {"code": "initiated", "name_fa": "آغاز فرایند", "type": "initial", "assigned_role": "student"},
+    {
+      "code": "initiated",
+      "name_fa": "آغاز فرایند",
+      "type": "initial",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "شروع درخواست کاهش جلسات",
+        "student_task_fa": "دکمهٔ «ادامه و ثبت مرحله» را بزنید. اگر کمتر از ۲ جلسه در هفته دارید، در همین مسیر اعلام می‌شود."
+      }
+    },
     {"code": "blocked", "name_fa": "ورود ممنوع (کمتر از ۲ جلسه)", "type": "terminal", "assigned_role": "system"},
-    {"code": "session_selection", "name_fa": "انتخاب جلسات برای حذف", "type": "intermediate", "assigned_role": "student"},
-    {"code": "violation_warning", "name_fa": "هشدار تخلف آموزشی (تایید الزامی)", "type": "intermediate", "assigned_role": "student"},
+    {
+      "code": "session_selection",
+      "name_fa": "انتخاب جلسات برای حذف",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب تعداد جلسهٔ هفتگی و جلسات آتی برای لغو",
+        "student_task_fa": "تعداد جلسات هفتگی پس از کاهش و جلسات آتی مورد نظر برای لغو را در فرم مشخص کنید؛ سپس «ادامه و ثبت مرحله» را بزنید. حداقل تعداد جلسات لغو باید با کاهش برنامه هم‌خوان باشد."
+      }
+    },
+    {
+      "code": "violation_warning",
+      "name_fa": "هشدار تخلف آموزشی (تایید الزامی)",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "هشدار و تایید نهایی",
+        "student_task_fa": "چک‌باکس را بزنید و سپس «ادامه و ثبت مرحله» را بزنید تا کاهش با ثبت تخلف اعمال شود."
+      }
+    },
     {"code": "reduction_completed", "name_fa": "کاهش انجام شد", "type": "terminal", "assigned_role": "system"},
     {"code": "reduction_with_violation", "name_fa": "کاهش با ثبت تخلف", "type": "terminal", "assigned_role": "system"}
   ],
@@ -22,7 +86,8 @@
       "conditions": ["fewer_than_2_weekly_sessions"],
       "description_fa": "کمتر از ۲ جلسه — ورود ممنوع",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "therapy_session_reduction_blocked", "recipients": ["student"]}
+        {"type": "notification", "notification_type": "in_app", "template": "therapy_session_reduction_blocked", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "sms", "template": "therapy_session_reduction_blocked", "recipients": ["student"]}
       ]
     },
     {
@@ -66,7 +131,8 @@
       "conditions": ["reduction_results_in_1", "completion_conditions_not_met"],
       "description_fa": "کاهش به ۱ جلسه بدون تکمیل — هشدار تخلف",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "therapy_session_reduction_violation_warning", "recipients": ["student"]}
+        {"type": "notification", "notification_type": "in_app", "template": "therapy_session_reduction_violation_warning", "recipients": ["student"]},
+        {"type": "notification", "notification_type": "sms", "template": "therapy_session_reduction_violation_warning", "recipients": ["student"]}
       ]
     },
     {

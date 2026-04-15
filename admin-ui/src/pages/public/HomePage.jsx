@@ -34,7 +34,7 @@ export default function HomePage() {
                 راهنمای سامانه
               </Link>
               <Link to="/student-lifecycle" className="pub-hero-btn outline">
-                چرخه عمر و فرایندها
+                مسیر تحصیلی و نقش‌ها
               </Link>
             </div>
           </div>

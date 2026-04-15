@@ -7,6 +7,7 @@ import PublicLayout from './components/PublicLayout'
 
 import Dashboard from './pages/Dashboard'
 import ProcessEditor from './pages/ProcessEditor'
+import ProcessListPage from './pages/ProcessListPage'
 import RuleManager from './pages/RuleManager'
 import StudentTracker from './pages/StudentTracker'
 import AuditViewer from './pages/AuditViewer'
@@ -19,6 +20,7 @@ import SupervisorPortal from './pages/SupervisorPortal'
 import StaffPortal from './pages/StaffPortal'
 import SiteManagerPortal from './pages/SiteManagerPortal'
 import CommitteePortal from './pages/CommitteePortal'
+import InterviewerPortal from './pages/InterviewerPortal'
 import ProfilePage from './pages/ProfilePage'
 import FinancialDashboard from './pages/FinancialDashboard'
 import ReportsHubPage from './pages/ReportsHubPage'
@@ -118,7 +120,17 @@ function PanelIndex() {
   const { user } = useAuth()
   if (user?.role === 'student') return <Navigate to="/panel/portal/student" replace />
   if (user?.role === 'finance') return <Navigate to="/panel/finance" replace />
+  if (user?.role === 'interviewer') return <Navigate to="/panel/portal/interviewer" replace />
   return <Dashboard />
+}
+
+/** مصاحبه‌گر پذیرش — فهرست رزروها */
+function RequireInterviewerPortalRole({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'interviewer' && user.role !== 'admin') return <Navigate to="/panel" replace />
+  return children
 }
 
 /** فقط مدیر سیستم یا اپراتور مالی به داشبورد مالی دسترسی دارند */
@@ -167,7 +179,7 @@ export default function App() {
           }
         >
           <Route index element={<PanelIndex />} />
-          <Route path="processes" element={<Navigate to="/panel" replace />} />
+          <Route path="processes" element={<ProcessListPage />} />
           <Route path="processes/:processId" element={<ProcessEditor />} />
           <Route path="rules" element={<RuleManager />} />
           <Route path="students" element={<StudentTracker />} />
@@ -211,6 +223,14 @@ export default function App() {
           <Route path="portal/therapist" element={<TherapistPortal />} />
           <Route path="portal/supervisor" element={<SupervisorPortal />} />
           <Route path="portal/staff" element={<StaffPortal />} />
+          <Route
+            path="portal/interviewer"
+            element={
+              <RequireInterviewerPortalRole>
+                <InterviewerPortal />
+              </RequireInterviewerPortalRole>
+            }
+          />
           <Route path="portal/site-manager" element={<SiteManagerPortal />} />
           <Route path="portal/committee" element={<CommitteePortal />} />
           <Route path="profile" element={<ProfilePage />} />

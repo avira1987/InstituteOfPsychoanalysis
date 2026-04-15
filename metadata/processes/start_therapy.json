@@ -9,11 +9,58 @@
   "states": [
     {"code": "eligibility_check", "name_fa": "بررسی صلاحیت و یک‌بارمصرف بودن", "type": "initial", "assigned_role": "system"},
     {"code": "already_completed", "name_fa": "قبلاً انجام شده", "type": "terminal", "assigned_role": "system"},
-    {"code": "therapist_selection", "name_fa": "انتخاب درمانگر و برنامه هفتگی", "type": "intermediate", "assigned_role": "student"},
-    {"code": "therapist_confirmation", "name_fa": "تایید درمانگر", "type": "intermediate", "assigned_role": "therapist", "sla_hours": 72},
-    {"code": "schedule_first_session", "name_fa": "تنظیم روز و ساعت جلسات", "type": "intermediate", "assigned_role": "student"},
-    {"code": "first_session_24h_check", "name_fa": "محاسبه تاریخ شروع (قانون ۲۴ ساعت)", "type": "intermediate", "assigned_role": "system"},
-    {"code": "payment_pending", "name_fa": "در انتظار پرداخت جلسه اول", "type": "intermediate", "assigned_role": "student", "sla_hours": 48},
+    {
+      "code": "therapist_selection",
+      "name_fa": "انتخاب درمانگر و برنامه هفتگی",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب درمانگر و تعداد جلسات هفتگی",
+        "student_task_fa": "درمانگر آموزشی و برنامهٔ هفتگی (مثلاً ۲ جلسه در هفته برای دوره جامع) را در فرم زیر مشخص کنید؛ سپس دکمهٔ ادامه را بزنید تا درخواست برای درمانگر ارسال شود."
+      }
+    },
+    {
+      "code": "therapist_confirmation",
+      "name_fa": "تایید درمانگر",
+      "type": "intermediate",
+      "assigned_role": "therapist",
+      "sla_hours": 72,
+      "metadata": {
+        "student_short_fa": "در انتظار پاسخ درمانگر",
+        "student_task_fa": "درمانگر انتخابی باید درخواست شما را در پنل خود بررسی و بپذیرد یا رد کند. لطفاً چند ساعت صبر کنید و همین صفحه را تازه کنید."
+      }
+    },
+    {
+      "code": "schedule_first_session",
+      "name_fa": "تنظیم روز و ساعت جلسات",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "تاریخ شروع جلسات",
+        "student_task_fa": "تاریخ شروع اولین جلسه را ثبت کنید؛ سامانه قانون ۲۴ ساعت را اعمال می‌کند و در صورت نیاز تاریخ را به هفتهٔ بعد موکول می‌کند. سپس به مرحلهٔ پرداخت هدایت می‌شوید."
+      }
+    },
+    {
+      "code": "first_session_24h_check",
+      "name_fa": "محاسبه تاریخ شروع (قانون ۲۴ ساعت)",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "در حال ثبت زمان‌بندی",
+        "student_task_fa": "این مرحله معمولاً به‌صورت خودکار طی چند ثانیه تکمیل می‌شود. اگر متوقف ماند، صفحه را تازه کنید."
+      }
+    },
+    {
+      "code": "payment_pending",
+      "name_fa": "در انتظار پرداخت جلسه اول",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "sla_hours": 48,
+      "metadata": {
+        "student_short_fa": "پرداخت جلسهٔ اول",
+        "student_task_fa": "هزینهٔ جلسهٔ اول را از طریق درگاه بانک همین صفحه بپردازید. پس از تأیید بانک، درمان در پروندهٔ شما فعال می‌شود و به مرحلهٔ «پرداخت جلسات آتی» هدایت می‌شوید."
+      }
+    },
     {"code": "therapy_active", "name_fa": "درمان فعال", "type": "terminal", "assigned_role": "system"},
     {"code": "ineligible", "name_fa": "عدم صلاحیت", "type": "terminal", "assigned_role": "system"},
     {"code": "week9_blocked", "name_fa": "مسدود - هفته نهم", "type": "terminal", "assigned_role": "system"}
@@ -90,7 +137,10 @@
       "trigger": "session_time_selected",
       "required_role": "student",
       "conditions": ["schedule_valid_for_course"],
-      "description_fa": "برنامه هفتگی ثبت شد (جامع ۲+/هفته، آشنایی ۱–۲/هفته)"
+      "description_fa": "برنامه هفتگی ثبت شد (جامع ۲+/هفته، آشنایی ۱–۲/هفته)",
+      "actions": [
+        {"type": "apply_start_therapy_session_schedule"}
+      ]
     },
     {
       "from": "first_session_24h_check",
@@ -119,6 +169,43 @@
         {"type": "create_session_link"},
         {"type": "notification", "notification_type": "sms", "template": "therapy_scheduled_student", "recipients": ["student"]},
         {"type": "notification", "notification_type": "sms", "template": "therapy_scheduled_therapist", "recipients": ["therapist"]}
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "code": "start_therapy_therapist_pick",
+      "name_fa": "انتخاب درمانگر و برنامه هفتگی",
+      "used_in_state": "therapist_selection",
+      "fields": [
+        {
+          "name": "therapist_id",
+          "label_fa": "شناسه درمانگر آموزشی (UUID)",
+          "type": "text",
+          "required": true,
+          "description_fa": "شناسهٔ کاربر درمانگر را از پذیرش یا هماهنگی اداری دریافت کنید و بدون فاصله وارد کنید.",
+          "dir": "ltr"
+        },
+        {
+          "name": "weekly_sessions",
+          "label_fa": "تعداد جلسات در هفته",
+          "type": "select",
+          "options": [1, 2, 3, 4, 5],
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "start_therapy_first_session_date",
+      "name_fa": "تاریخ شروع اولین جلسه",
+      "used_in_state": "schedule_first_session",
+      "fields": [
+        {
+          "name": "first_session_date",
+          "label_fa": "تاریخ اولین جلسه (میلادی)",
+          "type": "date_picker",
+          "required": true
+        }
       ]
     }
   ]

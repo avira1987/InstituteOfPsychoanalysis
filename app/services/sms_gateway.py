@@ -9,12 +9,19 @@ OTP login uses Melipayamak **SendOtp** (webservice-Otp.pdf):
   POST https://rest.payamak-panel.com/api/SendSMS/SendOtp
   Fields: username, password, from, to, code (integer — panel inserts default template text).
 
+General SMS (official SDK: github.com/Melipayamak/melipayamak-python — melipayamak/sms/rest.py):
+  POST https://rest.payamak-panel.com/api/SendSMS/SendSMS
+  Form: username, password, to, from, text, isFlash
+
 Configure via .env:
   SMS_PROVIDER=mellipayamak
-  SMS_USERNAME=panel_username
-  SMS_PASSWORD=webservice_password   # often different from console Bearer token
-  SMS_API_KEY=...                    # used as SMS_PASSWORD if SMS_PASSWORD empty
+  SMS_USERNAME=نام_کاربری_پنل
+  # رمز: یا SMS_PASSWORD (رمز وب‌سرویس کلاسیک) یا طبق راهنمای پنل همان APIKey را در SMS_API_KEY بگذارید
+  # (پنل: «مقدار فوق را به‌جای رمز عبور در پارامتر Password به متدها ارسال نمایید» → ما همان را در فیلد password می‌فرستیم).
+  SMS_PASSWORD=                    # اختیاری اگر SMS_API_KEY پر باشد
+  SMS_API_KEY=...                  # اغلب = همان APIKey به‌عنوان password برای rest.payamak-panel.com
   SMS_LINE_NUMBER=3000xxxx
+  # اگر فقط APIKey دارید و SMS_USERNAME خالی است: مسیر جایگزین POST .../api/send/simple/{token} (node-melipayamak)
 """
 
 import asyncio
@@ -25,15 +32,41 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+# کنسول REST ملی‌پیامک — توکن API در مسیر URL قرار می‌گیرد (مستند غیررسمی اما هم‌راستا با node-melipayamak)
+_MELLI_CONSOLE_API_BASE = "https://console.melipayamak.com/api"
 
-def _normalize_ir_mobile(phone: str) -> str:
-    """Normalize Iranian mobile to 09xxxxxxxxx (11 digits)."""
-    p = re.sub(r"\s+", "", (phone or "").strip())
+
+def _mellipayamak_password_for_rest() -> str:
+    """پارامتر password برای rest.payamak-panel.com: رمز وب‌سرویس یا همان APIKey طبق راهنمای پنل."""
+    p = (settings.SMS_PASSWORD or "").strip()
+    return p if p else (settings.SMS_API_KEY or "").strip()
+
+
+_FA_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")
+_AR_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+
+
+def normalize_ir_mobile(phone: str) -> str:
+    """Normalize Iranian mobile to 09xxxxxxxxx (11 ASCII digits).
+
+    Accepts Persian/Arabic digits, spaces, +98 / 0098 / 98… prefixes.
+    """
+    p = (phone or "").strip()
+    p = p.translate(_FA_DIGITS).translate(_AR_DIGITS)
+    p = re.sub(r"\s+", "", p)
+    p = p.replace("-", "")
     if p.startswith("+98"):
         p = "0" + p[3:]
+    elif p.startswith("0098"):
+        p = "0" + p[4:]
     elif p.startswith("98") and len(p) >= 12:
         p = "0" + p[2:]
     return p
+
+
+def _normalize_ir_mobile(phone: str) -> str:
+    """Backward-compatible alias for SMS helpers."""
+    return normalize_ir_mobile(phone)
 
 
 async def send_sms(phone: str, message: str) -> dict:
@@ -67,6 +100,20 @@ def _payamak_send_otp_response_ok(data: object) -> bool:
         return True
     s = str(data.get("StrRetStatus", data.get("strRetStatus", ""))).strip().lower()
     return s == "ok"
+
+
+def _payamak_rest_send_sms_response_ok(data: object) -> bool:
+    """پاسخ JSON متد SendSMS روی rest (مشابه سایر متدهای REST پنل)."""
+    if not isinstance(data, dict):
+        return False
+    if _payamak_send_otp_response_ok(data):
+        return True
+    val = data.get("Value")
+    if val is not None and str(val).strip().isdigit() and int(str(val).strip()) > 0:
+        return True
+    if str(data.get("RetStatus", "")).strip() in ("2", "200"):
+        return True
+    return False
 
 
 async def _try_fetch_line_rest_payamak(username: str, password: str) -> str:
@@ -166,7 +213,7 @@ async def _send_mellipayamak_otp_rest(phone: str, code: str, username: str, pass
 
 
 async def send_otp_sms(phone: str, code: str) -> dict:
-    """Send login OTP: Melipayamak SendOtp (REST) when username+password; else generic SMS text."""
+    """Send login OTP: SendOtp روی rest وقتی username + (رمز یا APIKey به‌عنوان password)؛ وگرنه مسیر console/send/simple."""
     provider = (settings.SMS_PROVIDER or "log").lower()
 
     if provider == "log":
@@ -174,13 +221,20 @@ async def send_otp_sms(phone: str, code: str) -> dict:
 
     if provider == "mellipayamak":
         username = (settings.SMS_USERNAME or "").strip()
-        password = (settings.SMS_PASSWORD or settings.SMS_API_KEY or "").strip()
-        if username and password:
-            return await _send_mellipayamak_otp_rest(phone, code, username, password)
+        api_key = (settings.SMS_API_KEY or "").strip()
+        webservice_password = _mellipayamak_password_for_rest()
+        if username and webservice_password:
+            return await _send_mellipayamak_otp_rest(phone, code, username, webservice_password)
+        if api_key:
+            return await _send_mellipayamak(phone, _otp_fallback_message_fa(code))
         logger.warning(
-            "Melipayamak OTP: SMS_USERNAME or password missing; using console simple SMS (set SMS_USERNAME + SMS_PASSWORD for SendOtp)",
+            "Melipayamak OTP: need SMS_USERNAME+(SMS_PASSWORD|SMS_API_KEY) or SMS_API_KEY for console",
         )
-        return await _send_mellipayamak(phone, _otp_fallback_message_fa(code))
+        return {
+            "success": False,
+            "provider": "mellipayamak",
+            "error": "تنظیمات پیامک ملی‌پیامک ناقص است (نام کاربری/رمز یا APIKey).",
+        }
 
     if provider == "kavenegar":
         return await _send_kavenegar(phone, _otp_fallback_message_fa(code))
@@ -215,76 +269,117 @@ def _extract_first_sender_line(obj: object) -> str | None:
 
 
 async def _try_fetch_mellipayamak_line(api_key: str) -> str:
-    """اگر SMS_LINE_NUMBER خالی باشد، با Bearer سعی می‌کند خط ارسال را از API کنسول بگیرد."""
-    import httpx
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
-    candidates = (
-        "https://console.melipayamak.com/api/SharedService/GetUserLines",
-        "https://console.melipayamak.com/api/Line/GetLines",
-        "https://console.melipayamak.com/api/line/list",
-        "https://console.melipayamak.com/api/User/GetLines",
-        "https://console.melipayamak.com/api/numbers",
-    )
-
-    async def _one(client: httpx.AsyncClient, url: str) -> str:
-        try:
-            resp = await client.get(url, headers=headers)
-            if resp.status_code != 200:
-                return ""
-            data = resp.json()
-            line = _extract_first_sender_line(data)
-            if line:
-                logger.info("[SMS-MELLIPAYAMAK] Resolved sender line via console API (suffix ...%s)", line[-4:])
-            return line or ""
-        except Exception as e:
-            logger.debug("[SMS-MELLIPAYAMAK] Line probe %s: %s", url, e)
-            return ""
-
-    timeout = httpx.Timeout(6.0, connect=5.0)
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        results = await asyncio.gather(*[_one(client, u) for u in candidates])
-    for line in results:
-        if line:
-            return line
+    """کنسول ملی‌پیامک فعلاً خط را در پاسخ‌های استاندارد API عمومی با توکن-در-مسیر ارائه نمی‌کند؛ خط را در .env بگذارید."""
     return ""
 
 
-def _mellipayamak_body_indicates_success(data: object) -> bool:
-    """Parse console REST JSON — recId/recIds یعنی قطعاً OK؛ وگرنه در غیاب فیلدهای خطا، ۲۰۰ را OK می‌گیریم."""
+async def _send_mellipayamak_rest_classic(phone: str, message: str) -> dict:
+    """ارسال متن کامل مطابق نمونهٔ رسمی melipayamak/sms/rest.py (SendSMS)."""
+    import httpx
+
+    username = (settings.SMS_USERNAME or "").strip()
+    password = _mellipayamak_password_for_rest()
+    if not username or not password:
+        return {
+            "success": False,
+            "provider": "mellipayamak_rest",
+            "error": "برای REST ملی‌پیامک SMS_USERNAME و (SMS_PASSWORD یا SMS_API_KEY به‌عنوان password) لازم است.",
+        }
+
+    to = _normalize_ir_mobile(phone)
+    if not re.fullmatch(r"09\d{9}", to):
+        return {
+            "success": False,
+            "provider": "mellipayamak_rest",
+            "error": "شماره گیرنده باید به صورت 09xxxxxxxxx باشد.",
+        }
+
+    line = (settings.SMS_LINE_NUMBER or "").strip()
+    if not line:
+        line = await _try_fetch_line_rest_payamak(username, password)
+    if not line:
+        return {
+            "success": False,
+            "provider": "mellipayamak_rest",
+            "error": "SMS_LINE_NUMBER خالی است و GetUserNumbers خطی برنگرداند.",
+        }
+
+    url = "https://rest.payamak-panel.com/api/SendSMS/SendSMS"
+    form = {
+        "username": username,
+        "password": password,
+        "to": to,
+        "from": line,
+        "text": message or "",
+        "isFlash": "false",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.post(url, data=form)
+            try:
+                data = resp.json()
+            except Exception:
+                data = {"raw": resp.text}
+
+            if resp.status_code == 200 and isinstance(data, dict) and _payamak_rest_send_sms_response_ok(data):
+                logger.info(
+                    "[SMS-MELLIPAYAMAK-REST] SendSMS ok to=%s RetStatus=%s",
+                    to,
+                    data.get("RetStatus"),
+                )
+                return {"success": True, "provider": "mellipayamak_rest", "response": data}
+
+            err = data if isinstance(data, dict) else resp.text
+            logger.error(
+                "Melipayamak REST SendSMS failed: HTTP %s body=%s",
+                resp.status_code,
+                err,
+            )
+            return {
+                "success": False,
+                "provider": "mellipayamak_rest",
+                "error": str(err) if err else f"HTTP {resp.status_code}",
+            }
+    except ImportError:
+        return {"success": False, "provider": "mellipayamak_rest", "error": "httpx not installed"}
+    except Exception as e:
+        logger.error("Melipayamak REST SendSMS exception: %s", e)
+        return {"success": False, "provider": "mellipayamak_rest", "error": str(e)}
+
+
+def _mellipayamak_console_response_ok(data: object) -> bool:
+    """پاسخ send/simple کنسول: موفقیت = وجود recId / recIds (مطابق README node-melipayamak)."""
     if not isinstance(data, dict):
-        return True
+        return False
     rid = data.get("recId")
-    rids = data.get("recIds")
     if rid is not None and str(rid).strip() != "":
         return True
+    rids = data.get("recIds")
     if isinstance(rids, list) and len(rids) > 0:
         return True
-    for k in ("message", "error", "errors"):
-        v = data.get(k)
-        if v is None:
-            continue
-        s = str(v).strip().lower()
-        if s and s not in ("ok", "success", "true", "0"):
-            return False
-    st = data.get("status")
-    if isinstance(st, str) and len(st) > 2 and not st.strip().isdigit():
-        return False
-    return True
+    return False
 
 
 async def _send_mellipayamak(phone: str, message: str) -> dict:
-    """Melli Payamak REST Console API.
+    """Melli Payamak: ابتدا REST پنل (username + password یا APIKey به‌جای password)، سپس در صورت نیاز console/send/simple/{token}."""
+    username = (settings.SMS_USERNAME or "").strip()
+    api_key = (settings.SMS_API_KEY or "").strip()
+    rest_pw = _mellipayamak_password_for_rest()
+    rest_result: dict | None = None
 
-    Uses the token-based REST API at console.melipayamak.com.
-    SMS_API_KEY should be the API token from the console.
-    """
-    api_key = settings.SMS_API_KEY
+    if username and rest_pw:
+        rest_result = await _send_mellipayamak_rest_classic(phone, message)
+        if rest_result.get("success"):
+            return rest_result
+        logger.warning(
+            "[SMS-MELLIPAYAMAK] REST SendSMS failed (%s); trying console API",
+            rest_result.get("error"),
+        )
+
     if not api_key:
+        if rest_result is not None:
+            return rest_result
         logger.warning("SMS_API_KEY not set for mellipayamak, falling back to log")
         return _send_log(phone, message)
 
@@ -302,34 +397,40 @@ async def _send_mellipayamak(phone: str, message: str) -> dict:
 
     try:
         import httpx
-        url = "https://console.melipayamak.com/api/send/simple"
+
+        # توکن در مسیر؛ UUID استاندارد کاراکتر امن مسیر است (بدون نیاز به encode)
+        token_seg = api_key.strip()
+        url = f"{_MELLI_CONSOLE_API_BASE}/send/simple/{token_seg}"
 
         payload: dict = {"to": to, "text": message}
         if line:
             payload["from"] = line
 
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(url, json=payload, headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            })
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Anistito-SMS/1.0 (melipayamak console)",
+        }
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(url, json=payload, headers=headers)
 
             try:
                 data = resp.json()
             except Exception:
                 data = {"raw": resp.text}
 
-            if resp.status_code == 200 and _mellipayamak_body_indicates_success(data):
+            if resp.status_code == 200 and _mellipayamak_console_response_ok(data):
                 logger.info(
-                    "[SMS-MELLIPAYAMAK] sent to=%s ok response_keys=%s",
+                    "[SMS-MELLIPAYAMAK] sent to=%s ok recId=%s",
                     to,
-                    list(data.keys()) if isinstance(data, dict) else type(data).__name__,
+                    (data.get("recId") if isinstance(data, dict) else None),
                 )
                 return {"success": True, "provider": "mellipayamak", "response": data}
 
             err_detail = data if isinstance(data, dict) else resp.text
             if isinstance(data, dict):
-                for key in ("message", "error", "errors", "status"):
+                for key in ("status", "message", "error", "errors", "title", "detail"):
                     if key in data and data[key] not in (None, "", 0, "0"):
                         err_detail = data[key]
                         break
@@ -345,7 +446,16 @@ async def _send_mellipayamak(phone: str, message: str) -> dict:
                 resp.status_code,
             )
             logger.debug("Mellipayamak error detail: %s", error_text)
-            return {"success": False, "provider": "mellipayamak", "error": error_text}
+            console_err = {"success": False, "provider": "mellipayamak", "error": error_text}
+            if rest_result is not None:
+                return {
+                    "success": False,
+                    "provider": "mellipayamak",
+                    "error": (
+                        f"Console: {error_text}; REST: {rest_result.get('error')}"
+                    ),
+                }
+            return console_err
 
     except ImportError:
         logger.error("httpx not installed. Run: pip install httpx")
@@ -356,11 +466,14 @@ async def _send_mellipayamak(phone: str, message: str) -> dict:
         hint = ""
         if not line:
             hint = " Set SMS_LINE_NUMBER in .env from your Melipayamak panel."
-        return {
+        out = {
             "success": False,
             "provider": "mellipayamak",
             "error": f"{err}{hint}",
         }
+        if rest_result is not None:
+            out["error"] = f"Console: {out['error']}; REST: {rest_result.get('error')}"
+        return out
 
 
 async def _send_kavenegar(phone: str, message: str) -> dict:

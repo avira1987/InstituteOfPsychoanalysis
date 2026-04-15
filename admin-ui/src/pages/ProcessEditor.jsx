@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { processApi, ruleApi, getApiBase } from '../services/api'
 import { resolveProcessSopOrder } from '../utils/processSopOrder'
+import PopupToast from '../components/PopupToast'
 
 export default function ProcessEditor() {
   const { processId } = useParams()
@@ -308,10 +309,7 @@ export default function ProcessEditor() {
 
   return (
     <div>
-      {/* Toast */}
-      {toast && (
-        <div className={`toast toast-${toast.type}`}>{toast.msg}</div>
-      )}
+      <PopupToast toast={toast} />
 
       <div className="page-header">
         <div>

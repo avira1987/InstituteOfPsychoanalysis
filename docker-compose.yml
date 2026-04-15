@@ -82,9 +82,15 @@ services:
       - admin-ui-build
     image: node:20-alpine
     working_dir: /app
+    environment:
+      # کم‌کردن stderr که در PowerShell به‌صورت خطا دیده می‌شود
+      NPM_CONFIG_UPDATE_NOTIFIER: "false"
+      NPM_CONFIG_FUND: "false"
     volumes:
       - ./admin-ui:/app
-    command: sh -c "npm ci && npm run build"
+      # node_modules میزبان (ویندوز) با باینری لینوکس داخل کانتینر قاطی نشود — EIO روی unlink esbuild
+      - /app/node_modules
+    command: sh -c "npm ci --no-audit && npm run build"
 
   # ─── Admin UI جدا (Vite dev): اختیاری — پروفایل dev-ui (npm در ایمیج ممکن است به اینترنت نیاز داشته باشد)
   # دسترسی اصلی: ابتدا روی میزبان `cd admin-ui && npm run build` سپس فرانت از همان پورت 3000 سرو می‌شود.
