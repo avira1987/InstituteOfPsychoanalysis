@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { processExecApi, studentApi } from '../services/api'
+import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
+import { processExecApi, studentApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
+import { isDocumentReviewState } from '../utils/documentReviewStates'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
-import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 import PopupToast from '../components/PopupToast'
+import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
+import OperatorFollowupSection from '../components/OperatorFollowupSection'
+import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
+import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+
+const SUPERVISOR_DEEP_LINK_TABS = ['dashboard', 'reviews', 'students', 'processes']
 
 const supervisorReviewStates = [
   'supervisor_review', 'supervisor_decision', 'awaiting_supervisor',
@@ -16,7 +23,7 @@ const supervisorReviewStates = [
 
 export default function SupervisorPortal() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('reviews')
   const [allStudents, setAllStudents] = useState([])
   const [pendingReviews, setPendingReviews] = useState([])
   const [allActiveInstances, setAllActiveInstances] = useState([])
@@ -27,6 +34,8 @@ export default function SupervisorPortal() {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [studentSearch, setStudentSearch] = useState('')
+  const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
+  const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -37,9 +46,14 @@ export default function SupervisorPortal() {
 
   const loadData = async () => {
     try {
-      const studentsRes = await studentApi.list().catch(() => ({ data: [] }))
+      const [studentsRes, followupRes] = await Promise.all([
+        studentApi.list().catch(() => ({ data: [] })),
+        panelApi.myOperatorFollowup().catch(() => ({ data: {} })),
+      ])
       const students = studentsRes.data || []
       setAllStudents(students)
+      setOperatorFollowupItems(followupRes.data?.items || [])
+      setOperatorReadinessAlerts(followupRes.data?.readiness_alerts || [])
 
       const pending = []
       const allActive = []
@@ -49,6 +63,8 @@ export default function SupervisorPortal() {
           const instances = instRes.data?.instances || []
           for (const inst of instances) {
             if (!inst.is_completed && !inst.is_cancelled) {
+              // مراحل بررسی/تکمیل مدارک مخصوص پنل کارمند است و در پنل سوپروایزر نمایش داده نمی‌شود.
+              if (isDocumentReviewState(inst.current_state)) continue
               const enriched = { ...inst, student_code: s.student_code, student_id: s.id }
               allActive.push(enriched)
               if (isWaitingForReview(inst.current_state)) {
@@ -86,6 +102,13 @@ export default function SupervisorPortal() {
       console.error('View error:', err)
     }
   }
+
+  usePortalInstanceDeepLink({
+    loading,
+    setActiveTab,
+    viewInstance,
+    allowedTabs: SUPERVISOR_DEEP_LINK_TABS,
+  })
 
   const triggerTransition = async (transition) => {
     if (!selectedInstance) return
@@ -126,8 +149,8 @@ export default function SupervisorPortal() {
   })
 
   const tabs = [
+    { id: 'reviews', label: `کارهای من (${pendingReviews.length})`, icon: '📥' },
     { id: 'dashboard', label: 'داشبورد', icon: '📊' },
-    { id: 'reviews', label: `بررسی‌ها (${pendingReviews.length})`, icon: '📥' },
     { id: 'students', label: 'دانشجویان', icon: '👨‍🎓' },
     { id: 'processes', label: 'فرایندها', icon: '🔄' },
   ]
@@ -135,6 +158,11 @@ export default function SupervisorPortal() {
   return (
     <div>
       <PopupToast toast={toast} />
+
+      <ResolvedProcessHistoryBanner
+        instanceDetail={instanceDetail}
+        availableTransitions={availableTransitions}
+      />
 
       <div className="page-header">
         <div>
@@ -144,6 +172,18 @@ export default function SupervisorPortal() {
           </p>
         </div>
       </div>
+
+      <OperatorPortalReminderBanner
+        portalPath="/panel/portal/supervisor"
+        pendingTab="reviews"
+        actionLabel="رفتن به بررسی‌ها"
+      />
+
+      <OperatorFollowupSection
+        items={operatorFollowupItems}
+        readinessAlerts={operatorReadinessAlerts}
+        inboxTitle="پرونده‌های باز مرتبط با نقش شما"
+      />
 
       <div className="tab-bar">
         {tabs.map(tab => (
@@ -219,8 +259,6 @@ export default function SupervisorPortal() {
               </div>
             </div>
           </div>
-
-          <PanelRoleActionQueue />
 
           <div className="dashboard-grid">
             {/* Pending Reviews */}
@@ -367,6 +405,12 @@ export default function SupervisorPortal() {
                   <div>{instanceDetail.started_at ? new Date(instanceDetail.started_at).toLocaleDateString('fa-IR') : '-'}</div>
                 </div>
               </div>
+
+              <OperatorInstanceGuidanceBlock
+                instanceDetail={instanceDetail}
+                portalRole={user?.role}
+                availableTransitions={availableTransitions}
+              />
 
               <InstanceContextSummary
                 contextData={instanceDetail.context_data}

@@ -51,8 +51,26 @@ class UserResponse(BaseModel):
     avatar_url: Optional[str] = None
     role: str
     is_active: bool
+    primary_site_admin: bool = False
 
     model_config = {"from_attributes": True}
+
+
+def user_to_response(user: User) -> UserResponse:
+    """JSON پروفایل کاربر؛ primary_site_admin فقط برای مدیر سیستم با نام کاربری تنظیم‌شده."""
+    flag = user.role == "admin" and user.username == get_settings().PRIMARY_SITE_ADMIN_USERNAME
+    return UserResponse(
+        id=str(user.id),
+        username=user.username,
+        full_name_fa=user.full_name_fa,
+        full_name_en=user.full_name_en,
+        email=user.email,
+        phone=user.phone,
+        avatar_url=user.avatar_url,
+        role=user.role,
+        is_active=user.is_active,
+        primary_site_admin=flag,
+    )
 
 
 # ─── Utility Functions ──────────────────────────────────────────
@@ -135,6 +153,27 @@ def require_role(*roles: str):
     return role_checker
 
 
+async def require_primary_site_admin(current_user: User = Depends(get_current_user)) -> User:
+    """فقط مدیر سیستم با نام کاربری PRIMARY_SITE_ADMIN_USERNAME."""
+    s = get_settings()
+    if current_user.role != "admin" or current_user.username != s.PRIMARY_SITE_ADMIN_USERNAME:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="فقط مدیر اصلی سامانه به این بخش دسترسی دارد.",
+        )
+    return current_user
+
+
+async def require_admin_only(current_user: User = Depends(get_current_user)) -> User:
+    """هر حساب با نقش admin (صندوق پیگیری سراسری، گزارش‌های مدیریتی، …)."""
+    if (current_user.role or "").strip() != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="فقط مدیر سیستم به این بخش دسترسی دارد.",
+        )
+    return current_user
+
+
 # ─── Auth Service ───────────────────────────────────────────────
 
 async def authenticate_user(
@@ -156,6 +195,7 @@ async def create_user(db: AsyncSession, user_data: UserCreate) -> User:
         username=user_data.username,
         email=user_data.email,
         hashed_password=get_password_hash(user_data.password),
+        portal_password_plain=None,
         full_name_fa=user_data.full_name_fa,
         role=user_data.role,
         phone=user_data.phone,

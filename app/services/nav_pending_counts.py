@@ -10,6 +10,12 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.portal_role_nav import (
+    committee_kind_paths,
+    staff_lane_paths,
+    user_sees_nav_path,
+)
+from app.core.portal_role_home import committee_kind_for_role, committee_kind_path, staff_lane_path
 from app.models.operational_models import ProcessInstance, Student, SupportTicket, User
 
 # ─── همان آرایه‌های کلیدواژهٔ پنل‌های فرانت ───────────────────────────────
@@ -170,60 +176,7 @@ async def _ticket_pending_count(db: AsyncSession, user: User) -> int:
 
 
 def _user_sees_nav_path(user_role: str, path: str) -> bool:
-    """هم‌راستا با فیلتر navItems در Layout.jsx — فقط همان مسیرهایی که کاربر در منو دارد."""
-    meta = [
-        ("/panel/portal/student", ["student"], True),
-        ("/panel/portal/therapist", ["therapist", "admin"], False),
-        ("/panel/portal/supervisor", ["supervisor", "admin"], False),
-        ("/panel/portal/staff", ["staff", "admin"], False),
-        ("/panel/portal/site-manager", ["site_manager", "admin"], False),
-        (
-            "/panel/portal/committee",
-            [
-                "progress_committee",
-                "education_committee",
-                "supervision_committee",
-                "specialized_commission",
-                "therapy_committee_chair",
-                "therapy_committee_executor",
-                "deputy_education",
-                "monitoring_committee_officer",
-                "admin",
-            ],
-            False,
-        ),
-        (
-            "/panel/tickets",
-            [
-                "student",
-                "admin",
-                "staff",
-                "finance",
-                "therapist",
-                "supervisor",
-                "site_manager",
-                "progress_committee",
-                "education_committee",
-                "supervision_committee",
-                "specialized_commission",
-                "therapy_committee_chair",
-                "therapy_committee_executor",
-                "deputy_education",
-                "monitoring_committee_officer",
-            ],
-            False,
-        ),
-    ]
-    for p, roles, strict in meta:
-        if p != path:
-            continue
-        in_role = user_role in roles
-        if strict:
-            return in_role
-        if not in_role and user_role != "admin":
-            return False
-        return True
-    return False
+    return user_sees_nav_path(user_role, path)
 
 
 async def compute_nav_pending_counts(db: AsyncSession, user: User) -> dict[str, Any]:
@@ -249,9 +202,19 @@ async def compute_nav_pending_counts(db: AsyncSession, user: User) -> dict[str, 
 
     counts["/panel/portal/therapist"] = n_therapist
     counts["/panel/portal/supervisor"] = n_supervisor
-    counts["/panel/portal/staff"] = n_staff
+    counts[staff_lane_path("admissions")] = n_staff
+    for lane in staff_lane_paths():
+        if lane != staff_lane_path("admissions"):
+            counts[lane] = 0
+
     counts["/panel/portal/site-manager"] = n_site
-    counts["/panel/portal/committee"] = n_committee
+
+    for kind in ("progress", "education", "supervision", "therapy"):
+        path = committee_kind_path(kind)
+        if role == "admin" or committee_kind_for_role(role) == kind:
+            counts[path] = n_committee
+        else:
+            counts[path] = 0
 
     if role == "student":
         sr = await db.execute(select(Student.id).where(Student.user_id == user.id))

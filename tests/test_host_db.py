@@ -2,9 +2,25 @@
 تست وجود داده فرایندها در دیتابیس هاست اینترنتی.
 اجرا: pytest tests/test_host_db.py -v
 یا مستقیم: python tests/test_host_db.py
+
+به‌طور پیش‌فرض روی CI/ویندوز بدون plink اجرا نمی‌شود — RUN_HOST_DB_TESTS=1 و وجود plink.exe کنار مخزن.
 """
+import os
 import subprocess
 import sys
+
+import pytest
+
+from pathlib import Path
+
+_PLINK = Path(__file__).resolve().parents[1] / "plink.exe"
+
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("RUN_HOST_DB_TESTS", "").lower() not in ("1", "true", "yes")
+    or not _PLINK.is_file(),
+    reason="نیاز به plink.exe و RUN_HOST_DB_TESTS=1 (تست سرور ریموت)",
+)
 
 
 def run_ssh(cmd: str) -> tuple[str, int]:

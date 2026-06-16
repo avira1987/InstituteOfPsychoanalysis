@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.engine import StateMachineEngine
-from app.meta.seed import load_process
+from app.meta.seed import load_process, load_rules
 
 
 @pytest.mark.asyncio
@@ -19,6 +19,7 @@ class TestTaTrackCompletionFlow:
         process_file = processes_dir / "ta_track_completion.json"
         assert process_file.exists()
 
+        await load_rules(db_session)
         await load_process(db_session, process_file)
         await db_session.commit()
 
@@ -36,10 +37,11 @@ class TestTaTrackCompletionFlow:
         assert instance.is_completed is False
 
     async def test_ta_track_completion_flow_to_track_completed(
-        self, db_session: AsyncSession, sample_student, sample_user
+        self, db_session: AsyncSession, sample_student, sample_user, sample_student_user
     ):
         """جریان: end_of_track_check → track_completed با trigger conditions_met."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_rules(db_session)
         await load_process(db_session, processes_dir / "ta_track_completion.json")
         await db_session.commit()
 
@@ -55,8 +57,8 @@ class TestTaTrackCompletionFlow:
         result = await engine.execute_transition(
             instance_id=instance.id,
             trigger_event="conditions_met",
-            actor_id=sample_user.id,
-            actor_role="system",
+            actor_id=sample_student_user.id,
+            actor_role="student",
         )
         await db_session.commit()
         assert result.success is True

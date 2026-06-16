@@ -26,6 +26,14 @@ from app.models.operational_models import (
     BlogPost,
 )
 from app.models.audit_models import AuditLog
+from app.models.dynamic_forms import (
+    FormTemplate,
+    FormTemplateVersion,
+    FormAssignment,
+    FormResponse,
+    FormApprovalStep,
+    PortalNavConfig,
+)
 
 # this is the Alembic Config object
 config = context.config

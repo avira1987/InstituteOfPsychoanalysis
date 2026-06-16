@@ -7,8 +7,18 @@
     "initial_state": "eligibility_check"
   },
   "states": [
-    {"code": "eligibility_check", "name_fa": "بررسی صلاحیت و یک‌بارمصرف بودن", "type": "initial", "assigned_role": "system"},
-    {"code": "already_completed", "name_fa": "قبلاً انجام شده", "type": "terminal", "assigned_role": "system"},
+    {
+      "code": "eligibility_check",
+      "name_fa": "بررسی صلاحیت و یک‌بارمصرف بودن",
+      "type": "initial",
+      "assigned_role": "system"
+    },
+    {
+      "code": "already_completed",
+      "name_fa": "قبلاً انجام شده",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
     {
       "code": "therapist_selection",
       "name_fa": "انتخاب درمانگر و برنامه هفتگی",
@@ -27,7 +37,9 @@
       "sla_hours": 72,
       "metadata": {
         "student_short_fa": "در انتظار پاسخ درمانگر",
-        "student_task_fa": "درمانگر انتخابی باید درخواست شما را در پنل خود بررسی و بپذیرد یا رد کند. لطفاً چند ساعت صبر کنید و همین صفحه را تازه کنید."
+        "student_task_fa": "درمانگر انتخابی باید درخواست شما را در پنل خود بررسی و بپذیرد یا رد کند. لطفاً چند ساعت صبر کنید و همین صفحه را تازه کنید.",
+        "operator_task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+        "operator_short_fa": "تایید درمانگر"
       }
     },
     {
@@ -61,51 +73,110 @@
         "student_task_fa": "هزینهٔ جلسهٔ اول را از طریق درگاه بانک همین صفحه بپردازید. پس از تأیید بانک، درمان در پروندهٔ شما فعال می‌شود و به مرحلهٔ «پرداخت جلسات آتی» هدایت می‌شوید."
       }
     },
-    {"code": "therapy_active", "name_fa": "درمان فعال", "type": "terminal", "assigned_role": "system"},
-    {"code": "ineligible", "name_fa": "عدم صلاحیت", "type": "terminal", "assigned_role": "system"},
-    {"code": "week9_blocked", "name_fa": "مسدود - هفته نهم", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "therapy_active",
+      "name_fa": "درمان فعال",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "ineligible",
+      "name_fa": "عدم صلاحیت",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "week9_blocked",
+      "name_fa": "مسدود - هفته نهم",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
       "from": "eligibility_check",
       "to": "already_completed",
       "trigger": "duplicate_attempt",
-      "conditions": ["already_started_therapy"],
+      "conditions": [
+        "already_started_therapy"
+      ],
       "description_fa": "دانشجو قبلاً این فرایند را انجام داده — پیام و پایان",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "therapy_already_used", "recipients": ["student"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_already_used",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "eligibility_check",
       "to": "therapist_selection",
       "trigger": "eligible",
-      "conditions": ["student_eligible_for_therapy", "therapy_not_started"],
+      "conditions": [
+        "student_eligible_for_therapy",
+        "therapy_not_started"
+      ],
       "description_fa": "صلاحیت تایید شد — نمایش وقت‌های آزاد درمانگران",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "therapy_eligible", "recipients": ["student"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_eligible",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "eligibility_check",
       "to": "ineligible",
       "trigger": "not_eligible",
-      "conditions": ["student_not_eligible"],
+      "conditions": [
+        "student_not_eligible"
+      ],
       "description_fa": "عدم صلاحیت",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "therapy_ineligible", "recipients": ["student"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_ineligible",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "eligibility_check",
       "to": "week9_blocked",
       "trigger": "week9_deadline_exceeded",
-      "conditions": ["week_9_deadline"],
+      "conditions": [
+        "week_9_deadline"
+      ],
       "description_fa": "مهلت هفته نهم گذشته — مسدودیت کلاس آنلاین و حضور/غیاب",
       "actions": [
-        {"type": "block_class_access"},
-        {"type": "notification", "notification_type": "sms", "template": "week9_block", "recipients": ["student", "admin"]}
-      ]
+        {
+          "type": "block_class_access"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "week9_block",
+          "recipients": [
+            "student",
+            "admin"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "therapist_selection",
@@ -128,7 +199,14 @@
       "required_role": "therapist",
       "description_fa": "درمانگر نپذیرفت",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "therapist_declined", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapist_declined",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -136,18 +214,25 @@
       "to": "first_session_24h_check",
       "trigger": "session_time_selected",
       "required_role": "student",
-      "conditions": ["schedule_valid_for_course"],
+      "conditions": [
+        "schedule_valid_for_course"
+      ],
       "description_fa": "برنامه هفتگی ثبت شد (جامع ۲+/هفته، آشنایی ۱–۲/هفته)",
       "actions": [
-        {"type": "apply_start_therapy_session_schedule"}
+        {
+          "type": "apply_start_therapy_session_schedule"
+        }
       ]
     },
     {
       "from": "first_session_24h_check",
       "to": "payment_pending",
       "trigger": "24h_check_passed",
-      "conditions": ["24_hour_rule"],
-      "description_fa": "تاریخ اولین جلسه محاسبه شد (قانون ۲۴ ساعت)"
+      "conditions": [
+        "24_hour_rule"
+      ],
+      "description_fa": "تاریخ اولین جلسه محاسبه شد (قانون ۲۴ ساعت)",
+      "required_role": "system"
     },
     {
       "from": "payment_pending",
@@ -155,8 +240,16 @@
       "trigger": "payment_failed",
       "description_fa": "پرداخت ناموفق — بازگشت برای تلاش مجدد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "payment_rejected", "recipients": ["student"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "payment_rejected",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "payment_pending",
@@ -164,12 +257,33 @@
       "trigger": "payment_confirmed",
       "description_fa": "پرداخت تایید — ثبت نهایی، رفع محدودیت، اطلاع‌رسانی",
       "actions": [
-        {"type": "activate_therapy"},
-        {"type": "resolve_access_restrictions"},
-        {"type": "create_session_link"},
-        {"type": "notification", "notification_type": "sms", "template": "therapy_scheduled_student", "recipients": ["student"]},
-        {"type": "notification", "notification_type": "sms", "template": "therapy_scheduled_therapist", "recipients": ["therapist"]}
-      ]
+        {
+          "type": "activate_therapy"
+        },
+        {
+          "type": "resolve_access_restrictions"
+        },
+        {
+          "type": "create_session_link"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_scheduled_student",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_scheduled_therapist",
+          "recipients": [
+            "therapist"
+          ]
+        }
+      ],
+      "required_role": "system"
     }
   ],
   "forms": [
@@ -180,17 +294,22 @@
       "fields": [
         {
           "name": "therapist_id",
-          "label_fa": "شناسه درمانگر آموزشی (UUID)",
-          "type": "text",
+          "label_fa": "درمانگر آموزشی",
+          "type": "therapist_select",
           "required": true,
-          "description_fa": "شناسهٔ کاربر درمانگر را از پذیرش یا هماهنگی اداری دریافت کنید و بدون فاصله وارد کنید.",
-          "dir": "ltr"
+          "description_fa": "درمانگر آموزشی خود را از فهرست انتخاب کنید."
         },
         {
           "name": "weekly_sessions",
           "label_fa": "تعداد جلسات در هفته",
           "type": "select",
-          "options": [1, 2, 3, 4, 5],
+          "options": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
           "required": true
         }
       ]

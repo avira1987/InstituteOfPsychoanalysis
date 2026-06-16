@@ -10,13 +10,97 @@
     "based_on": "fall_semester_preparation"
   },
   "states": [
-    {"code": "license_check", "name_fa": "بررسی وضعیت پروانه فعالیت", "type": "initial", "assigned_role": "deputy_education_director", "sla_days": 3, "sla_warning_recipients": ["education_director"]},
-    {"code": "course_list_review", "name_fa": "بازبینی و ویرایش لیست دروس ترم زمستان", "type": "intermediate", "assigned_role": "scientific_officer_course_committee", "sla_days": 4, "sla_warning_recipients": ["deputy_education_director"]},
-    {"code": "course_finalization", "name_fa": "نهایی‌سازی مکان‌ها و تایید مدرسین", "type": "intermediate", "assigned_role": "scientific_officer_course_committee", "sla_days": 5, "sla_warning_recipients": ["deputy_education_director"]},
-    {"code": "marketing_campaign", "name_fa": "شروع کمپین بازاریابی زمستان", "type": "intermediate", "assigned_role": "admissions_officer", "sla_days": 2, "sla_warning_recipients": ["deputy_education_director"]},
-    {"code": "interviewer_assignment", "name_fa": "تعیین مصاحبه‌کنندگان زمستان", "type": "intermediate", "assigned_role": "deputy_education_director", "sla_days": 3, "sla_warning_recipients": ["education_director"]},
-    {"code": "interview_scheduling", "name_fa": "زمان‌بندی دقیق مصاحبه‌های زمستان", "type": "intermediate", "assigned_role": "site_manager", "sla_days": 3, "sla_warning_recipients": ["deputy_education_director"], "editable_anytime": true},
-    {"code": "published", "name_fa": "انتشار تقویم زمستان و اطلاع‌رسانی", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "license_check",
+      "name_fa": "بررسی وضعیت پروانه فعالیت",
+      "type": "initial",
+      "assigned_role": "deputy_education_director",
+      "sla_days": 3,
+      "sla_warning_recipients": [
+        "education_director"
+      ],
+      "metadata": {
+        "operator_task_fa": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+        "operator_short_fa": "بررسی وضعیت پروانه فعالیت"
+      }
+    },
+    {
+      "code": "course_list_review",
+      "name_fa": "بازبینی و ویرایش لیست دروس ترم زمستان",
+      "type": "intermediate",
+      "assigned_role": "scientific_officer_course_committee",
+      "sla_days": 4,
+      "sla_warning_recipients": [
+        "deputy_education_director"
+      ],
+      "metadata": {
+        "operator_task_fa": "بررسی علمی و ثبت نظر.",
+        "operator_short_fa": "بازبینی و ویرایش لیست دروس ترم زمستان"
+      }
+    },
+    {
+      "code": "course_finalization",
+      "name_fa": "نهایی‌سازی مکان‌ها و تایید مدرسین",
+      "type": "intermediate",
+      "assigned_role": "scientific_officer_course_committee",
+      "sla_days": 5,
+      "sla_warning_recipients": [
+        "deputy_education_director"
+      ],
+      "metadata": {
+        "operator_task_fa": "بررسی علمی و ثبت نظر.",
+        "operator_short_fa": "نهایی‌سازی مکان‌ها و تایید مدرسین"
+      }
+    },
+    {
+      "code": "marketing_campaign",
+      "name_fa": "شروع کمپین بازاریابی زمستان",
+      "type": "intermediate",
+      "assigned_role": "admissions_officer",
+      "sla_days": 2,
+      "sla_warning_recipients": [
+        "deputy_education_director"
+      ],
+      "metadata": {
+        "operator_task_fa": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.",
+        "operator_short_fa": "شروع کمپین بازاریابی زمستان"
+      }
+    },
+    {
+      "code": "interviewer_assignment",
+      "name_fa": "تعیین مصاحبه‌کنندگان زمستان",
+      "type": "intermediate",
+      "assigned_role": "deputy_education_director",
+      "sla_days": 3,
+      "sla_warning_recipients": [
+        "education_director"
+      ],
+      "metadata": {
+        "operator_task_fa": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+        "operator_short_fa": "تعیین مصاحبه‌کنندگان زمستان"
+      }
+    },
+    {
+      "code": "interview_scheduling",
+      "name_fa": "زمان‌بندی دقیق مصاحبه‌های زمستان",
+      "type": "intermediate",
+      "assigned_role": "site_manager",
+      "sla_days": 3,
+      "sla_warning_recipients": [
+        "deputy_education_director"
+      ],
+      "editable_anytime": true,
+      "metadata": {
+        "operator_task_fa": "بررسی درخواست و ثبت تصمیم.",
+        "operator_short_fa": "زمان‌بندی دقیق مصاحبه‌های زمستان"
+      }
+    },
+    {
+      "code": "published",
+      "name_fa": "انتشار تقویم زمستان و اطلاع‌رسانی",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
@@ -26,7 +110,14 @@
       "required_role": "deputy_education_director",
       "description_fa": "وضعیت پروانه فعالیت بررسی شد",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "winter_license_reviewed_review_courses", "recipients": ["scientific_officer_course_committee"]}
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "winter_license_reviewed_review_courses",
+          "recipients": [
+            "scientific_officer_course_committee"
+          ]
+        }
       ]
     },
     {
@@ -35,8 +126,16 @@
       "trigger": "sla_expired",
       "description_fa": "مهلت بررسی پروانه گذشت — هشدار به مدیر آموزش",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "sla_warning_winter_license_delay", "recipients": ["education_director"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "sla_warning_winter_license_delay",
+          "recipients": [
+            "education_director"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "course_list_review",
@@ -51,8 +150,16 @@
       "trigger": "sla_expired",
       "description_fa": "مهلت بازبینی لیست دروس گذشت — هشدار به معاون",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "sla_warning_winter_course_review_delay", "recipients": ["deputy_education_director"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "sla_warning_winter_course_review_delay",
+          "recipients": [
+            "deputy_education_director"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "course_finalization",
@@ -61,8 +168,17 @@
       "required_role": "scientific_officer_course_committee",
       "description_fa": "مکان‌ها و تایید مدرسین نهایی شد",
       "actions": [
-        {"type": "publish_courses_to_website"},
-        {"type": "notification", "notification_type": "in_app", "template": "winter_courses_finalized_start_marketing", "recipients": ["admissions_officer"]}
+        {
+          "type": "publish_courses_to_website"
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "winter_courses_finalized_start_marketing",
+          "recipients": [
+            "admissions_officer"
+          ]
+        }
       ]
     },
     {
@@ -71,8 +187,16 @@
       "trigger": "sla_expired",
       "description_fa": "مهلت نهایی‌سازی زمستان گذشت — هشدار به معاون",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "sla_warning_winter_finalization_delay", "recipients": ["deputy_education_director"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "sla_warning_winter_finalization_delay",
+          "recipients": [
+            "deputy_education_director"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "marketing_campaign",
@@ -81,7 +205,14 @@
       "required_role": "admissions_officer",
       "description_fa": "کمپین بازاریابی زمستان آغاز شد",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "winter_marketing_started_set_interviewers", "recipients": ["deputy_education_director"]}
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "winter_marketing_started_set_interviewers",
+          "recipients": [
+            "deputy_education_director"
+          ]
+        }
       ]
     },
     {
@@ -90,8 +221,16 @@
       "trigger": "sla_expired",
       "description_fa": "مهلت شروع بازاریابی زمستان گذشت — هشدار به معاون",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "sla_warning_winter_marketing_delay", "recipients": ["deputy_education_director"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "sla_warning_winter_marketing_delay",
+          "recipients": [
+            "deputy_education_director"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "interviewer_assignment",
@@ -100,7 +239,14 @@
       "required_role": "deputy_education_director",
       "description_fa": "مصاحبه‌کنندگان زمستان تعیین شدند",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "winter_interviewers_set_schedule_times", "recipients": ["site_manager"]}
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "winter_interviewers_set_schedule_times",
+          "recipients": [
+            "site_manager"
+          ]
+        }
       ]
     },
     {
@@ -109,8 +255,16 @@
       "trigger": "sla_expired",
       "description_fa": "مهلت تعیین مصاحبه‌کنندگان زمستان گذشت — هشدار به مدیر آموزش",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "sla_warning_winter_interviewer_delay", "recipients": ["education_director"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "sla_warning_winter_interviewer_delay",
+          "recipients": [
+            "education_director"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "interview_scheduling",
@@ -119,9 +273,26 @@
       "required_role": "site_manager",
       "description_fa": "زمان‌بندی مصاحبه‌های زمستان ثبت شد — انتشار و اطلاع‌رسانی",
       "actions": [
-        {"type": "publish_academic_calendar_to_profiles"},
-        {"type": "notification", "notification_type": "sms", "template": "winter_calendar_published", "recipients": ["all_active_fall_students"]},
-        {"type": "notification", "notification_type": "in_app", "template": "winter_calendar_published", "recipients": ["all_active_fall_students", "all_instructors"]}
+        {
+          "type": "publish_academic_calendar_to_profiles"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "winter_calendar_published",
+          "recipients": [
+            "all_active_fall_students"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "winter_calendar_published",
+          "recipients": [
+            "all_active_fall_students",
+            "all_instructors"
+          ]
+        }
       ]
     },
     {
@@ -130,8 +301,16 @@
       "trigger": "sla_expired",
       "description_fa": "مهلت زمان‌بندی مصاحبه‌های زمستان گذشت — هشدار به معاون",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "sla_warning_winter_interview_scheduling_delay", "recipients": ["deputy_education_director"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "sla_warning_winter_interview_scheduling_delay",
+          "recipients": [
+            "deputy_education_director"
+          ]
+        }
+      ],
+      "required_role": "system"
     }
   ],
   "forms": [
@@ -140,9 +319,31 @@
       "name_fa": "فرم بررسی پروانه فعالیت (زمستان)",
       "used_in_state": "license_check",
       "fields": [
-        {"name": "license_status", "label_fa": "وضعیت پروانه", "type": "radio", "options": ["بدون تغییر", "تغییر کرده"], "required": true},
-        {"name": "new_license_number", "label_fa": "شماره پروانه جدید", "type": "text", "required": false, "visible_if": {"license_status": "تغییر کرده"}},
-        {"name": "license_notes", "label_fa": "توضیحات", "type": "textarea", "required": false}
+        {
+          "name": "license_status",
+          "label_fa": "وضعیت پروانه",
+          "type": "radio",
+          "options": [
+            "بدون تغییر",
+            "تغییر کرده"
+          ],
+          "required": true
+        },
+        {
+          "name": "new_license_number",
+          "label_fa": "شماره پروانه جدید",
+          "type": "text",
+          "required": false,
+          "visible_if": {
+            "license_status": "تغییر کرده"
+          }
+        },
+        {
+          "name": "license_notes",
+          "label_fa": "توضیحات",
+          "type": "textarea",
+          "required": false
+        }
       ]
     },
     {
@@ -158,11 +359,40 @@
           "required": true,
           "pre_filled_from": "fall_semester_preparation.course_list_form",
           "columns": [
-            {"name": "course_name", "label_fa": "نام درس", "type": "text"},
-            {"name": "proposed_day", "label_fa": "روز پیشنهادی", "type": "select", "options": ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]},
-            {"name": "proposed_time", "label_fa": "ساعت پیشنهادی", "type": "time"},
-            {"name": "instructor", "label_fa": "مدرس", "type": "text"},
-            {"name": "teaching_assistant", "label_fa": "دستیار آموزشی", "type": "text"}
+            {
+              "name": "course_name",
+              "label_fa": "نام درس",
+              "type": "text"
+            },
+            {
+              "name": "proposed_day",
+              "label_fa": "روز پیشنهادی",
+              "type": "select",
+              "options": [
+                "شنبه",
+                "یکشنبه",
+                "دوشنبه",
+                "سه‌شنبه",
+                "چهارشنبه",
+                "پنجشنبه",
+                "جمعه"
+              ]
+            },
+            {
+              "name": "proposed_time",
+              "label_fa": "ساعت پیشنهادی",
+              "type": "time"
+            },
+            {
+              "name": "instructor",
+              "label_fa": "مدرس",
+              "type": "text"
+            },
+            {
+              "name": "teaching_assistant",
+              "label_fa": "دستیار آموزشی",
+              "type": "text"
+            }
           ]
         }
       ]
@@ -178,12 +408,40 @@
           "type": "table",
           "required": true,
           "columns": [
-            {"name": "course_name", "label_fa": "نام درس", "type": "text", "auto_fill": true},
-            {"name": "day", "label_fa": "روز", "type": "text", "auto_fill": true},
-            {"name": "time", "label_fa": "ساعت", "type": "time", "auto_fill": true},
-            {"name": "instructor", "label_fa": "مدرس", "type": "text", "auto_fill": true},
-            {"name": "classroom_location", "label_fa": "مکان کلاس", "type": "text"},
-            {"name": "instructor_coordinated", "label_fa": "هماهنگی با مدرس انجام شد", "type": "checkbox"}
+            {
+              "name": "course_name",
+              "label_fa": "نام درس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "day",
+              "label_fa": "روز",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "time",
+              "label_fa": "ساعت",
+              "type": "time",
+              "auto_fill": true
+            },
+            {
+              "name": "instructor",
+              "label_fa": "مدرس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "classroom_location",
+              "label_fa": "مکان کلاس",
+              "type": "text"
+            },
+            {
+              "name": "instructor_coordinated",
+              "label_fa": "هماهنگی با مدرس انجام شد",
+              "type": "checkbox"
+            }
           ]
         }
       ]
@@ -193,12 +451,42 @@
       "name_fa": "فرم تعیین مصاحبه‌کنندگان زمستان",
       "used_in_state": "interviewer_assignment",
       "fields": [
-        {"name": "comprehensive_interviewers", "label_fa": "مصاحبه‌کنندگان دوره جامع", "type": "multi_select", "required": true},
-        {"name": "comprehensive_date_range_start", "label_fa": "شروع بازه مصاحبه دوره جامع", "type": "date", "required": true},
-        {"name": "comprehensive_date_range_end", "label_fa": "پایان بازه مصاحبه دوره جامع", "type": "date", "required": true},
-        {"name": "introductory_interviewers", "label_fa": "مصاحبه‌کنندگان دوره مقدماتی", "type": "multi_select", "required": true},
-        {"name": "introductory_date_range_start", "label_fa": "شروع بازه مصاحبه دوره مقدماتی", "type": "date", "required": true},
-        {"name": "introductory_date_range_end", "label_fa": "پایان بازه مصاحبه دوره مقدماتی", "type": "date", "required": true}
+        {
+          "name": "comprehensive_interviewers",
+          "label_fa": "مصاحبه‌کنندگان دوره جامع",
+          "type": "multi_select",
+          "required": true
+        },
+        {
+          "name": "comprehensive_date_range_start",
+          "label_fa": "شروع بازه مصاحبه دوره جامع",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "comprehensive_date_range_end",
+          "label_fa": "پایان بازه مصاحبه دوره جامع",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "introductory_interviewers",
+          "label_fa": "مصاحبه‌کنندگان دوره مقدماتی",
+          "type": "multi_select",
+          "required": true
+        },
+        {
+          "name": "introductory_date_range_start",
+          "label_fa": "شروع بازه مصاحبه دوره مقدماتی",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "introductory_date_range_end",
+          "label_fa": "پایان بازه مصاحبه دوره مقدماتی",
+          "type": "date",
+          "required": true
+        }
       ]
     },
     {
@@ -207,11 +495,46 @@
       "used_in_state": "interview_scheduling",
       "editable_anytime": true,
       "fields": [
-        {"name": "interview_start_time", "label_fa": "ساعت شروع مصاحبه‌ها", "type": "time", "required": true},
-        {"name": "interview_end_time", "label_fa": "ساعت پایان مصاحبه‌ها", "type": "time", "required": true},
-        {"name": "slot_duration_minutes", "label_fa": "مدت هر نوبت (دقیقه)", "type": "select", "options": [15, 30, 45, 60], "required": true},
-        {"name": "interview_mode", "label_fa": "نوع مصاحبه", "type": "select", "options": ["حضوری", "آنلاین"], "required": true},
-        {"name": "interview_location_or_link", "label_fa": "مکان یا لینک مصاحبه", "type": "text", "required": true}
+        {
+          "name": "interview_start_time",
+          "label_fa": "ساعت شروع مصاحبه‌ها",
+          "type": "time",
+          "required": true
+        },
+        {
+          "name": "interview_end_time",
+          "label_fa": "ساعت پایان مصاحبه‌ها",
+          "type": "time",
+          "required": true
+        },
+        {
+          "name": "slot_duration_minutes",
+          "label_fa": "مدت هر نوبت (دقیقه)",
+          "type": "select",
+          "options": [
+            15,
+            30,
+            45,
+            60
+          ],
+          "required": true
+        },
+        {
+          "name": "interview_mode",
+          "label_fa": "نوع مصاحبه",
+          "type": "select",
+          "options": [
+            "حضوری",
+            "آنلاین"
+          ],
+          "required": true
+        },
+        {
+          "name": "interview_location_or_link",
+          "label_fa": "مکان یا لینک مصاحبه",
+          "type": "text",
+          "required": true
+        }
       ]
     }
   ]

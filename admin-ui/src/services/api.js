@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { getRouterBasename } from '../utils/routerBasename'
+import { emitSimulatedSmsFromApi } from '../utils/simulatedSmsBridge'
 
 // API base. Override با VITE_API_BASE در .env در صورت نیاز.
 export function getApiBase() {
@@ -50,7 +51,14 @@ api.interceptors.request.use((config) => {
 // Handle 401: ریدایرکت فقط برای درخواست‌های احراز‌شده. درخواست‌های صفحهٔ لاگین هرگز ریدایرکت نکن تا خطا همان‌جا بماند.
 // اگر config نبود (خطای شبکه و...) ریدایرکت نکن تا خطا در همان صفحه نمایش داده شود.
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    try {
+      emitSimulatedSmsFromApi(response?.data)
+    } catch (_) {
+      /* ignore */
+    }
+    return response
+  },
   (error) => {
     if (error.response?.status === 401) {
       const config = error.config
@@ -178,6 +186,12 @@ export const auditApi = {
   list: (params) => api.get('admin/audit-logs', { params }),
 }
 
+// ─── System (admin) ────────────────────────────────────────────
+export const systemApi = {
+  /** اسنپ‌شات منابع کانتینر/میزبان (RAM, CPU load, RSS, disk) — فقط ادمین. */
+  resourceSnapshot: () => api.get('admin/system/resource-snapshot'),
+}
+
 // ─── Dashboard ─────────────────────────────────────────────────
 export const dashboardApi = {
   stats: () => api.get('admin/dashboard/stats'),
@@ -202,6 +216,16 @@ export const studentApi = {
   update: (id, data) => api.patch(`students/${id}`, data),
   /** پس از ورود با OTP؛ شماره از حساب کاربری است */
   completeRegistration: (data) => api.post('students/complete-registration', data),
+  /** فهرست درمانگران آموزشی برای انتخاب (نام نمایشی + شناسه) */
+  therapists: () => api.get('students/therapists'),
+  getRegistrationProfileByUser: (userId) => api.get(`students/by-user/${userId}/registration-profile`),
+  updateRegistrationProfileByUser: (userId, data) =>
+    api.patch(`students/by-user/${userId}/registration-profile`, data),
+  /** ادمین/پذیرش: تغییر نوع دورهٔ فرم اولیهٔ ثبت‌نام */
+  updateRegistrationCourseType: (studentId, data) =>
+    api.patch(`students/${studentId}/registration-course-type`, data),
+  updateRegistrationCourseTypeByUser: (userId, data) =>
+    api.patch(`students/by-user/${userId}/registration-course-type`, data),
 }
 
 // ─── Process Execution ─────────────────────────────────────────
@@ -234,28 +258,50 @@ export const processExecApi = {
   /** کارمند/اداری: اجازهٔ ویرایش مجدد فرم مرحله برای دانشجو */
   unlockStudentStepFormsEdit: (instanceId, body) =>
     api.post(`process/${instanceId}/student-step-forms/unlock-edit`, body || {}),
+  /** ادمین/پذیرش: تغییر مستقیم دروس انتخاب‌شده در پرونده */
+  operatorUpdateSelectedCourses: (instanceId, body) =>
+    api.post(`process/${instanceId}/operator-step-forms/update-selected-courses`, body),
+  /** اپراتور: ثبت فرم مرحلهٔ فعلی فرایند (مثل آماده‌سازی ترم پاییز/زمستان) */
+  registerOperatorStepForms: (instanceId, body) =>
+    api.post(`process/${instanceId}/operator-step-forms/register`, body),
+  /** دانشجو: درخواست ویرایش مرحلهٔ ثبت‌شده (ایجاد تیکت) */
+  createEditRequest: (instanceId, body) =>
+    api.post(`process/${instanceId}/edit-requests`, body),
 }
 
 // ─── پرداخت (درگاه سپ / زبال و mock در بک‌اند) ───────────────
 /** amount به ریال (شاپرک). */
 export const paymentApi = {
-  create: (body) => api.post('payment/create', body),
+  /** درخواست به زیبال روی سرور انجام می‌شود؛ timeout کوتاه‌تر از کلاینت عمومی */
+  create: (body) =>
+    api.post('payment/create', body, { timeout: 30000 }),
 }
 
-// ─── اسلات مصاحبه (پذیرش / دانشجو) ───────────────────────────
+// ─── وقت مصاحبه (پذیرش / دانشجو) ───────────────────────────
 export const interviewSlotsApi = {
   available: (courseType) =>
     api.get('interview-slots/available', {
       params: courseType ? { course_type: courseType } : {},
     }),
   book: (body) => api.post('interview-slots/book', body),
+  myBookings: (includePast) =>
+    api.get('interview-slots/my-bookings', { params: { include_past: !!includePast } }),
   /** رزروهای انجام‌شده با اطلاعات دانشجو — مصاحبه‌گر / دفتر */
   bookings: (includePast) =>
     api.get('interview-slots/bookings', { params: { include_past: !!includePast } }),
   manageList: (includePast) =>
     api.get('interview-slots/manage', { params: { include_past: !!includePast } }),
   manageCreate: (body) => api.post('interview-slots/manage', body),
+  manageUpdate: (id, body) => api.patch(`interview-slots/manage/${id}`, body),
+  reschedule: (id, body) => api.patch(`interview-slots/manage/${id}/reschedule`, body),
   manageDelete: (id) => api.delete(`interview-slots/manage/${id}`),
+  /** مصاحبه‌گر: الگوی هفتگی برای ساخت خودکار وقت */
+  recurringRulesList: () => api.get('interview-slots/recurring-rules'),
+  /** فقط ادمین — کاربرانی که می‌توانند مالک الگوی تکراری باشند */
+  recurringRuleCandidateOwners: () => api.get('interview-slots/recurring-rules/candidate-owners'),
+  recurringRuleCreate: (body) => api.post('interview-slots/recurring-rules', body),
+  recurringRuleUpdate: (id, body) => api.patch(`interview-slots/recurring-rules/${id}`, body),
+  recurringRuleDelete: (id) => api.delete(`interview-slots/recurring-rules/${id}`),
 }
 
 // ─── Therapy sessions (student / therapist) ───────────────────
@@ -269,6 +315,8 @@ export const therapyApi = {
 export const alocomApi = {
   provisionTherapySession: (sessionId, body) =>
     api.post(`integrations/alocom/therapy-sessions/${sessionId}/provision`, body),
+  provisionInterviewSlot: (slotId, body = {}) =>
+    api.post(`integrations/alocom/interview-slots/${slotId}/provision`, body),
 }
 
 // ─── Finance (اپراتور مالی / مدیر) ─────────────────────────────
@@ -277,6 +325,8 @@ export const financeApi = {
   context: () => api.get('finance/context'),
   installmentSettings: () => api.get('finance/installment-settings'),
   patchInstallmentSettings: (body) => api.patch('finance/installment-settings', body),
+  programFinancialDefaults: () => api.get('finance/program-defaults'),
+  patchProgramFinancialDefaults: (body) => api.patch('finance/program-defaults', body),
   transactions: (params) => api.get('finance/transactions', { params }),
   studentBalances: (params) => api.get('finance/student-balances', { params }),
   async exportCsv() {
@@ -312,15 +362,24 @@ export const ticketApi = {
   get: (id) => api.get(`tickets/${id}`),
   create: (data) => api.post('tickets', data),
   patch: (id, data) => api.patch(`tickets/${id}`, data),
+  processEditDecision: (id, data) => api.post(`tickets/${id}/process-edit-decision`, data),
   addComment: (id, body) => api.post(`tickets/${id}/comments`, body),
 }
 
 // ─── Users ─────────────────────────────────────────────────────
 export const userApi = {
-  list: (params) => api.get('admin/users', { params }),
+  /** از کش مرورگر/پروکسی جلوگیری می‌کند تا بعد از حذف/ویرایش لیست تازه برگردد */
+  list: (params) => {
+    const p = params && typeof params === 'object' ? params : {}
+    return api.get('admin/users', {
+      params: { ...p, _ts: Date.now() },
+      headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
+    })
+  },
   create: (data) => api.post('auth/register', data),
   update: (id, data) => api.patch(`admin/users/${id}`, data),
-  delete: (id) => api.delete(`admin/users/${id}`),
+  /** بدون params: غیرفعال‌سازی. با `{ params: { permanent: true } }`: حذف دائمی از پایگاه. */
+  delete: (id, config) => api.delete(`admin/users/${id}`, config),
 }
 
 // ─── Blog (Public) ──────────────────────────────────────────────
@@ -333,16 +392,55 @@ export const blogApi = {
   adminDelete: (id) => api.delete(`blog/admin/posts/${id}`),
 }
 
-// ─── پنل نقش‌ها (اقدامات راهنما) ────────────────────────────────
+// ─── پنل نقش‌ها ──────────────────────────────────────────────────
 export const panelApi = {
-  actionQueue: () => api.get('panel/action-queue'),
+  /** صندوق نمونهٔ فرایند باز برای نقش فعلی (JWT) */
+  myProcessInbox: (params) => api.get('panel/my-process-inbox', { params }),
+  /** کارتابل فرایند + هشدار آمادگی نقش (وقت مصاحبه، جلسات درمان، …) */
+  myOperatorFollowup: (params) => api.get('panel/my-operator-followup', { params }),
   navPendingCounts: () => api.get('panel/nav-pending-counts'),
+  /** فید اعلان‌های اقدام (زنگوله + صفحهٔ همه اعلان‌ها) */
+  actionNotifications: (params) => api.get('panel/action-notifications', { params }),
+  /** صندوق پیگیری سراسری — نقش admin */
+  operatorFollowupInbox: (params) => api.get('panel/operator-followup-inbox', { params }),
+  /** پیامک شبیه‌سازی‌شده (SMS_PROVIDER=log) برای شمارهٔ موبایل کاربر */
+  simulatedSms: (params) => api.get('panel/simulated-sms', { params }),
+  dismissSimulatedSms: (id) => api.post(`panel/simulated-sms/${encodeURIComponent(id)}/dismiss`),
+  /** تاریخچهٔ پیامک‌های ارسالی به دانشجو (بدون کد ورود) */
+  studentSmsHistory: (params) => api.get('panel/student-sms-history', { params }),
+}
+
+// ─── فرم‌های داینامیک (DB) ─────────────────────────────────────
+export const dynamicFormsApi = {
+  listTemplates: () => api.get('dynamic-forms/templates'),
+  createTemplate: (data) => api.post('dynamic-forms/templates', data),
+  getTemplate: (id) => api.get(`dynamic-forms/templates/${id}`),
+  patchTemplate: (id, data) => api.patch(`dynamic-forms/templates/${id}`, data),
+  publishVersion: (templateId, data) => api.post(`dynamic-forms/templates/${templateId}/versions`, data),
+  listAssignments: (params) => api.get('dynamic-forms/assignments', { params }),
+  createAssignment: (data) => api.post('dynamic-forms/assignments', data),
+  patchAssignment: (id, data) => api.patch(`dynamic-forms/assignments/${id}`, data),
+  openForInstance: (instanceId) => api.get(`dynamic-forms/open-for-instance/${instanceId}`),
+  createResponse: (data) => api.post('dynamic-forms/responses', data),
+  listResponses: (params) => api.get('dynamic-forms/responses', { params }),
+  uploadResponseFile: (formData) =>
+    api.post('dynamic-forms/responses/upload-file', formData, {
+      timeout: 120000,
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  approveResponse: (responseId, data) => api.post(`dynamic-forms/responses/${responseId}/approve`, data || {}),
+  rejectResponse: (responseId, data) => api.post(`dynamic-forms/responses/${responseId}/reject`, data || {}),
+  unlockResponseFields: (responseId, data) => api.post(`dynamic-forms/responses/${responseId}/unlock-fields`, data || {}),
+  getPortalNavDynamic: () => api.get('panel/portal-nav-dynamic'),
+  putPortalNavDynamic: (role, data) => api.put(`panel/portal-nav-dynamic/${encodeURIComponent(role)}`, data),
 }
 
 // ─── Public ─────────────────────────────────────────────────────
 export const publicApi = {
   stats: () => api.get('public/stats'),
   processes: () => api.get('public/processes'),
+  portalConfig: () => api.get('public/portal-config'),
+  smsSimulationStatus: () => api.get('public/sms-simulation-status'),
   /** مسیر تحصیلی و نقش‌ها؛ دریافت عمومی بدون ورود */
   studentLifecycleMatrix: () => api.get('public/student-lifecycle-matrix'),
   register: (data) => api.post('public/register', data),

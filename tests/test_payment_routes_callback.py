@@ -3,8 +3,8 @@
 import uuid
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
+from starlette.testclient import TestClient
 
 from app.main import app
 from app.api import payment_routes
@@ -15,7 +15,8 @@ from app.services.payment_gateway import PaymentResponse
 @pytest.mark.asyncio
 async def test_callback_post_sep_lowercase_state_and_get_query_params(db_session, sample_student, monkeypatch):
     """Saman sends state (lowercase) and ResNum; GET redirect uses query string; pending keyed by authority=ResNum."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    # TestClient هم‌DB با فیکسچر است و روی ویندوز از ناپایداری AsyncClient + proactor جلوگیری می‌کند
+    with TestClient(app) as client:
         # ── POST form (typical SEP) ─────────────────────────────
         inst_id = uuid.uuid4()
         inst = ProcessInstance(
@@ -49,7 +50,7 @@ async def test_callback_post_sep_lowercase_state_and_get_query_params(db_session
 
         monkeypatch.setattr(payment_routes, "verify_payment", fake_verify_counting)
 
-        r = await client.post(
+        r = client.post(
             "/api/payment/callback",
             params={"format": "json"},
             data={
@@ -99,7 +100,7 @@ async def test_callback_post_sep_lowercase_state_and_get_query_params(db_session
 
         monkeypatch.setattr(payment_routes, "verify_payment", fake_verify_2)
 
-        r3 = await client.get(
+        r3 = client.get(
             "/api/payment/callback",
             params={
                 "state": "OK",
@@ -143,7 +144,7 @@ async def test_callback_post_sep_lowercase_state_and_get_query_params(db_session
 
         monkeypatch.setattr(payment_routes, "verify_payment", fake_verify_br)
 
-        r4 = await client.post(
+        r4 = client.post(
             "/api/payment/callback",
             follow_redirects=False,
             data={

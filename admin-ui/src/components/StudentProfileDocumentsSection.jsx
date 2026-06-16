@@ -71,7 +71,7 @@ export default function StudentProfileDocumentsSection({ instanceId }) {
     if (!contextData || typeof contextData !== 'object' || !galleryFields.length) return false
     return galleryFields.some((f) => {
       const v = contextData[f.name]
-      if (f.type === 'sms_verification') return v != null && String(v).trim() !== ''
+      if (f.type === 'checkbox') return !!v
       const { url, isLocalPlaceholder } = parseStepFileUploadValue(v)
       return !!(url || isLocalPlaceholder)
     })

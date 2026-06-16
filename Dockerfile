@@ -7,6 +7,8 @@ COPY admin-ui/package.json admin-ui/package-lock.json ./
 # با NODE_ENV=production، npm devDependencies (vite و …) را نصب نمی‌کند → vite: not found
 RUN NODE_ENV=development npm ci --no-audit
 COPY admin-ui/ ./
+# portalRoleAccess.js: ../../../metadata از /frontend/src/utils → /metadata
+COPY metadata/portal_role_assigned_role_map.json /metadata/portal_role_assigned_role_map.json
 # بدون ENV NODE_ENV=production قبل از بیلد — npm ممکن است devDeps را از PATH حذف کند و vite پیدا نشود
 RUN npm exec vite build
 

@@ -1,13 +1,26 @@
 #!/usr/bin/env python3
 """
-One-shot deploy: pg_dump از anistito-db لوکال، tar پروژه (شامل admin-ui/dist)،
-آپلود، استخراج در /opt/anistito، pg_restore روی سرور، بیلد API با Dockerfile.prod (بدون pull ایمیج node).
+One-shot deploy: tar پروژه (شامل admin-ui/dist)، آپلود، استخراج در /opt/anistito،
+بیلد API با Dockerfile.prod (بدون pull ایمیج node).
 
-Requires: pip install paramiko، Docker لوکال با کانتینر anistito-db
-Environment: DEPLOY_SSH_PASSWORD
+حالت پیش‌فرض (--replace-db لوکال): pg_dump از anistito-db لوکال، pg_restore کامل روی سرور.
+
+حالت حفظ دیتابیس سرور (--preserve-remote-db یا DEPLOY_PRESERVE_REMOTE_DB=1):
+بدون pg_dump/pg_restore؛ دادهٔ تولیدی روی سرور دست‌نخورده می‌ماند. اسکیما با alembic
+upgrade head که در command ایمیج API اجرا می‌شود به‌روز می‌شود (برای ستون‌های جدید
+در migration نوع nullable یا default تنظیم شود تا ردیف‌های قدیم خطا ندهند).
+
+نکته: فایل .env کنار compose روی سرور فقط نام متغیرهایی با حروف/عدد/_ داشته باشد؛
+کلیدهایی مثل VAR(NAME)= ارزش خطای compose می‌دهند. انتهای خط باید Unix LF باشد
+(اگر CRLF مانده، قبل از compose با sed یا dos2unix اصلاح شود).
+
+Requires: pip install paramiko؛ در حالت replace-db همچنین Docker لوکال با anistito-db
+رمز SSH: اول از متغیر محیطی DEPLOY_SSH_PASSWORD، در غیر این صورت از فایل <ریشه>/.env
+(کلید DEPLOY_SSH_PASSWORD؛ در صورت نبودن در env ست می‌شود).
 """
 from __future__ import annotations
 
+import argparse
 import os
 import subprocess
 import sys
@@ -22,6 +35,38 @@ HOST = "80.191.11.129"
 PORT = 9123
 REMOTE_TAR = "/tmp/anistito_sync.tgz"
 REMOTE_DUMP = "/tmp/anistito_local.dump"
+
+
+def _parse_dotenv_file(path: Path) -> dict[str, str]:
+    """Parse minimal KEY=value lines (no python-dotenv dependency)."""
+    out: dict[str, str] = {}
+    if not path.is_file():
+        return out
+    text = path.read_text(encoding="utf-8", errors="replace")
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key = key.strip()
+        if not key:
+            continue
+        val = val.strip()
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+            val = val[1:-1]
+        out[key] = val
+    return out
+
+
+def apply_repo_dotenv(repo_root: Path) -> None:
+    """Merge <repo>/.env into os.environ without overriding existing vars."""
+    for k, v in _parse_dotenv_file(repo_root / ".env").items():
+        if k not in os.environ:
+            os.environ[k] = v
 
 
 def _tar_filter(ti: tarfile.TarInfo) -> tarfile.TarInfo | None:
@@ -91,6 +136,45 @@ def sftp_put(local: Path, remote: str, password: str) -> None:
     t.close()
 
 
+def remote_deploy_script(*, preserve_remote_db: bool) -> str:
+    if preserve_remote_db:
+        db_block = '''
+echo "=== Database: SKIP pg_restore (preserving remote data) ==="
+echo "=== Schema migrations: alembic upgrade head runs in API container on start ==="
+'''
+    else:
+        db_block = r'''
+echo "=== Restore database from pg_dump (full replace) ==="
+docker cp /tmp/anistito_local.dump anistito-db:/tmp/restore.dump
+set +e
+docker exec anistito-db pg_restore -U anistito -d anistito --clean --if-exists --no-owner --no-acl /tmp/restore.dump 2>&1
+RV=$?
+set -e
+if [ "$RV" -gt 1 ]; then echo "pg_restore failed: $RV"; exit "$RV"; fi
+'''
+    return rf"""
+set -e
+cd /opt/anistito
+echo "=== Extracting (server .env unchanged if not in archive) ==="
+tar -xzf /tmp/anistito_sync.tgz
+
+echo "=== Stopping API ==="
+docker stop anistito-api 2>/dev/null || true
+
+{db_block}
+
+echo "=== Rebuild and start API (Dockerfile.prod — no Node image pull) ==="
+docker compose -f docker-compose.prod.yml build --pull=false api
+docker compose -f docker-compose.prod.yml up -d api
+
+echo "=== Health ==="
+sleep 10
+curl -s -o /dev/null -w "HTTP %{{http_code}}\n" http://127.0.0.1:3000/health || true
+docker ps --filter name=anistito-api --format "{{{{.Status}}}}"
+echo "Done."
+"""
+
+
 def ssh_bash(password: str, script: str) -> tuple[int, str, str]:
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -123,52 +207,62 @@ def main() -> int:
         except Exception:
             pass
 
+    ap = argparse.ArgumentParser(description="Deploy anistito to remote host via SSH.")
+    ap.add_argument(
+        "--preserve-remote-db",
+        action="store_true",
+        help="Do not pg_dump/pg_restore; keep server PostgreSQL data; migrations via Alembic on API start.",
+    )
+    ap.add_argument(
+        "--replace-db-from-local",
+        action="store_true",
+        help="Explicitly replace remote DB from local Docker anistito-db (default unless PRESERVE set).",
+    )
+    args, _unknown = ap.parse_known_args()
+
+    apply_repo_dotenv(ROOT)
+
     pw = os.environ.get("DEPLOY_SSH_PASSWORD")
     if not pw:
-        print("Set DEPLOY_SSH_PASSWORD", file=sys.stderr)
+        print(
+            "Set DEPLOY_SSH_PASSWORD in the environment or in .env at repo root.",
+            file=sys.stderr,
+        )
         return 1
+
+    preserve_env = os.environ.get("DEPLOY_PRESERVE_REMOTE_DB", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    preserve_db = args.preserve_remote_db or preserve_env
+    if args.replace_db_from_local and preserve_db:
+        print("Conflicting flags: use either --preserve-remote-db or --replace-db-from-local", file=sys.stderr)
+        return 2
+    if args.replace_db_from_local:
+        preserve_db = False
 
     ensure_admin_ui_dist()
 
-    print("=== pg_dump from local anistito-db ===", flush=True)
-    dump_path = run_pg_dump_local()
-    print(f"  {dump_path} ({dump_path.stat().st_size // 1024} KB)", flush=True)
+    dump_path: Path | None = None
+    if not preserve_db:
+        print("=== pg_dump from local anistito-db ===", flush=True)
+        dump_path = run_pg_dump_local()
+        print(f"  {dump_path} ({dump_path.stat().st_size // 1024} KB)", flush=True)
 
     print("=== Building tar (excludes .git, node_modules, .env — includes admin-ui/dist) ===", flush=True)
     tar_path = make_tar()
     print(f"  {tar_path} ({tar_path.stat().st_size // 1024} KB)", flush=True)
 
-    print("=== Uploading archive + database dump ===", flush=True)
+    if preserve_db:
+        print("=== Uploading archive only (remote DB untouched) ===", flush=True)
+    else:
+        print("=== Uploading archive + database dump ===", flush=True)
     sftp_put(tar_path, REMOTE_TAR, pw)
-    sftp_put(dump_path, REMOTE_DUMP, pw)
+    if dump_path is not None:
+        sftp_put(dump_path, REMOTE_DUMP, pw)
 
-    remote_script = r"""
-set -e
-cd /opt/anistito
-echo "=== Extracting (server .env unchanged if not in archive) ==="
-tar -xzf /tmp/anistito_sync.tgz
-
-echo "=== Stopping API ==="
-docker stop anistito-api 2>/dev/null || true
-
-echo "=== Restore database from pg_dump (full replace) ==="
-docker cp /tmp/anistito_local.dump anistito-db:/tmp/restore.dump
-set +e
-docker exec anistito-db pg_restore -U anistito -d anistito --clean --if-exists --no-owner --no-acl /tmp/restore.dump 2>&1
-RV=$?
-set -e
-if [ "$RV" -gt 1 ]; then echo "pg_restore failed: $RV"; exit "$RV"; fi
-
-echo "=== Rebuild and start API (Dockerfile.prod — no Node image pull) ==="
-docker compose -f docker-compose.prod.yml build --pull=false api
-docker compose -f docker-compose.prod.yml up -d api
-
-echo "=== Health ==="
-sleep 10
-curl -s -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:3000/health || true
-docker ps --filter name=anistito-api --format "{{.Status}}"
-echo "Done."
-"""
+    remote_script = remote_deploy_script(preserve_remote_db=preserve_db)
     print("=== Running remote deploy ===")
     code, out, err = ssh_bash(pw, remote_script)
     _safe_print(sys.stdout, out)

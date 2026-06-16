@@ -157,11 +157,11 @@ export const STATE_LABELS_FA = {
   "calendar_entry": "تدوین تقویم آموزشی دو ترم (پاییز و زمستان)",
   "tuition_entry": "تعیین شهریه و هزینه مصاحبه",
   "license_check": "بررسی وضعیت پروانه فعالیت",
-  "course_list_creation": "تنظیم لیست دروس، روزها، مدرسین و دستیاران",
+  "course_list_creation": "لیست دروس، مدرسین، کمک‌مدرسین",
   "course_finalization": "نهایی‌سازی مکان‌ها و هماهنگی با مدرسین",
   "marketing_campaign": "شروع کمپین بازاریابی پذیرش",
   "interviewer_assignment": "تعیین مصاحبه‌کنندگان و بازه‌های زمانی",
-  "interview_scheduling": "زمان‌بندی دقیق مصاحبه‌ها",
+  "interview_scheduling": "زمان‌بندی دقیق اسلات‌های مصاحبه",
   "published": "انتشار تقویم و اطلاع‌رسانی",
   "triggered": "راه‌اندازی شده",
   "excluded": "خارج از شمول",
@@ -208,11 +208,11 @@ export const STATE_LABELS_FA = {
   "certificate_draft_generated": "پیش‌نویس گواهی تولید شده",
   "certificate_review": "بررسی و تایید کمیته نظارت",
   "certificate_approved": "گواهی تایید و در پورتال بارگذاری شده",
-  "interview_payment_confirmed": "پرداخت مصاحبه تایید شد",
+  "interview_payment_confirmed": "پرداخت هزینه مصاحبه تأیید شد",
   "result_conditional_therapy": "نتیجه: پذیرش مشروط به درمان",
   "result_single_course": "نتیجه: پذیرش تک‌درس",
   "result_full_admission": "نتیجه: پذیرش کامل (بدون شرط)",
-  "documents_upload": "در انتظار آپلود مدارک و تعهدنامه",
+  "documents_upload": "در انتظار آپلود مدارک و تأیید قوانین",
   "documents_review": "بررسی مدارک توسط مسئول پذیرش",
   "documents_incomplete": "مدارک ناقص — در انتظار تکمیل",
   "credentials_created": "حساب کاربری ایجاد شد — ارسال اطلاعات ورود",
@@ -411,4 +411,1205 @@ export const STATE_LABELS_FA = {
   "referred_to_education_committee": "ارجاع به کمیته آموزش",
   "expelled": "اخراج — پورتال مسدود",
   "course_list_review": "بازبینی و ویرایش لیست دروس ترم زمستان"
+}
+
+export const STUDENT_TASK_LABELS_FA = {
+  "interview_payment": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.",
+  "payment": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.",
+  "payment_processing": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.",
+  "session_scheduled": "زمان و نحوهٔ برگزاری جلسه در همین صفحه (بخش جزئیات پرونده) نمایش داده می‌شود؛ در روز مقرر طبق اعلام کمیته حاضر شوید.",
+  "approved_non_intern": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را در سامانه فعال کنید؛ پس از آن ثبت‌نام کلاس برای شما تا زمان بازگشت مسدود می‌شود.",
+  "approved_intern_1term": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ سوپرویژن و درمان طبق مصوبه ادامه می‌یابد.",
+  "approved_intern_2term": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ پس از آن وضعیت انترنی و سوپروایزر طبق مصوبه به‌روز می‌شود.",
+  "on_leave": "ثبت‌نام دروس کلاس تا اعلام بازگشت در سامانه برای شما مسدود است. زمان تقریبی یادآوری بازگشت و مهلت اعلام ثبت‌نام ترم در جزئیات همین کارت نمایش داده می‌شود.",
+  "extra_request": "تاریخ و ساعت پیشنهادی خود را در فرم همین صفحه وارد و ثبت کنید؛ سپس دکمهٔ ادامه را بزنید تا درمانگر بررسی کند.",
+  "therapist_review": "درمانگر زمان شما را بررسی می‌کند؛ اگر پیامک یا اعلان دریافت کردید طبق آن عمل کنید؛ بعداً همین صفحه را تازه کنید.",
+  "student_response": "اگر زمان پیشنهادی درمانگر را می‌پذیرید، تاریخ و ساعت را در فرم تأیید کنید؛ در غیر این صورت زمان جدید پیشنهاد دهید و ثبت کنید.",
+  "payment_required": "ابتدا از بخش پرداخت درگاه همین صفحه مبلغ جلسه اضافی را بپردازید؛ پس از تأیید بانک، مرحلهٔ بعد به‌صورت خودکار ثبت می‌شود.",
+  "extra_session_confirmed": "جلسه در سیستم ثبت شده است؛ لینک جلسه در همین مسیر یا پیامک آمده است. در زمان مقرر حاضر شوید.",
+  "promissory_note": "سفته را حضوری تحویل دهید؛ پس از ثبت توسط کمیته پیشرفت مرحله بعد فعال می‌شود.",
+  "first_session_payment": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.",
+  "application_submitted": "باید زمان مصاحبه را از مسیر اعلام‌شده در سایت یا پیامک پذیرش انتخاب کنید؛ پس از رزرو موفق، مرحلهٔ پرداخت هزینهٔ مصاحبه به‌صورت خودکار برای شما فعال می‌شود.",
+  "interview_scheduled": "باید هزینه مصاحبه را در درگاه پرداخت همین صفحه بپردازید؛ پس از پرداخت، مرحله بعد به‌صورت خودکار فعال می‌شود.",
+  "interview_payment_confirmed": "پرداخت شما ثبت شد و جزئیات زمان مصاحبه از طریق پیامک ارسال شده است. در زمان مقرر در مصاحبه حاضر شوید؛ پس از برگزاری مصاحبه، این صفحه را تازه‌سازی کنید.",
+  "interview_completed": "منتظر ثبت نتیجه مصاحبه توسط مصاحبه‌گر باشید؛ اگر فرم یا اقدامی برای شما باز شد، آن را تکمیل کنید.",
+  "result_conditional_therapy": "پذیرش شما مشروط به شروع درمان شخصی است؛ مراحل بعد (آپلود مدارک و پرداخت) را طبق راهنمای پنل پیش ببرید.",
+  "result_single_course": "پذیرش شما محدود به درس(های) اعلام‌شده است؛ آپلود و پرداخت را طبق محدودیت‌های پنل انجام دهید (در صورت نیاز فقط پرداخت نقدی).",
+  "result_full_admission": "پذیرش کامل دریافت شد؛ مراحل بعد را طبق پنل (آپلود مدارک، انتخاب درس و پرداخت) پیش ببرید.",
+  "rejected": "پرونده شما در این دوره رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید.",
+  "documents_upload": "باید مدارک و تأییدیه‌های خواسته‌شده را در همین پورتال بارگذاری و ثبت کنید.",
+  "documents_review": "در این مرحله بررسی توسط مسئول پذیرش انجام می‌شود؛ اگر فرمی برای شما باز است تکمیل کنید، در غیر این صورت بعداً صفحه را تازه کنید.",
+  "documents_incomplete": "باید کاستی‌های اعلام‌شده را برطرف و مدارک را دوباره بارگذاری کنید.",
+  "credentials_created": "اطلاعات ورود از سامانه آموزش ارسال شده است؛ سپس مرحله انتخاب درس در LMS برای شما فعال می‌شود — صفحه را بعداً تازه کنید.",
+  "course_selection": "باید دروس مجاز را در LMS طبق سطح پذیرش انتخاب و ثبت کنید؛ اگر دکمه مرحله بعد در پنل فعال شد پس از ثبت درس آن را بزنید.",
+  "registration_complete": "ثبت‌نام شما در این فرایند تکمیل شد؛ برای مراحل بعد آموزش سراغ دگر بخش‌های پنل بروید.",
+  "installment_overdue": "قسط معوق را پرداخت کنید تا پس از رفع بلاک، حضور شما در کلاس‌ها ثبت شود.",
+  "followup_in_progress": "در این مرحله مسئول پذیرش با فهرست دانشجویان افت تحصیلی تماس می‌گیرد؛ اگر برای شما پیام یا تماس ثبت شد همان را دنبال کنید. اگر اقدامی از سمت شما در پنل باز نشده، همین صفحه را بعداً تازه کنید — نیاز به اقدام فوری در پنل نیست مگر اعلام شده باشد.",
+  "payment_due": "دکمهٔ «ادامه به انتخاب جلسات و تسویه» را بزنید. اگر بدهی جلسهٔ قبلی دارید، در مرحلهٔ بعد آن را همراه پرداخت انتخاب کنید.",
+  "payment_selection": "فرم همین صفحه را تکمیل کنید؛ در صورت بدهی، گزینهٔ تسویه را فعال کنید. سپس دکمهٔ «ادامه و ثبت مرحله» را بزنید تا به درگاه هدایت شوید.",
+  "awaiting_payment": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.",
+  "payment_failed": "می‌توانید دوباره تلاش کنید یا در صورت نیاز با پشتیبانی تماس بگیرید.",
+  "therapist_selection": "درمانگر آموزشی و برنامهٔ هفتگی (مثلاً ۲ جلسه در هفته برای دوره جامع) را در فرم زیر مشخص کنید؛ سپس دکمهٔ ادامه را بزنید تا درخواست برای درمانگر ارسال شود.",
+  "therapist_confirmation": "درمانگر انتخابی باید درخواست شما را در پنل خود بررسی و بپذیرد یا رد کند. لطفاً چند ساعت صبر کنید و همین صفحه را تازه کنید.",
+  "schedule_first_session": "تاریخ شروع اولین جلسه را ثبت کنید؛ سامانه قانون ۲۴ ساعت را اعمال می‌کند و در صورت نیاز تاریخ را به هفتهٔ بعد موکول می‌کند. سپس به مرحلهٔ پرداخت هدایت می‌شوید.",
+  "first_session_24h_check": "این مرحله معمولاً به‌صورت خودکار طی چند ثانیه تکمیل می‌شود. اگر متوقف ماند، صفحه را تازه کنید.",
+  "payment_pending": "هزینهٔ جلسهٔ اول را از طریق درگاه بانک همین صفحه بپردازید. پس از تأیید بانک، درمان در پروندهٔ شما فعال می‌شود و به مرحلهٔ «پرداخت جلسات آتی» هدایت می‌شوید.",
+  "change_request": "نوع تغییر را انتخاب و دلیل کوتاه بنویسید؛ سپس یک‌بار دکمهٔ ادامه را بزنید تا درخواست به مسیر درست (کمیته یا درمانگر) برود.",
+  "restart_review": "درخواست آغاز مجدد در کمیته پیشرفت در حال بررسی است؛ پس از اعلام نتیجه همین صفحه را تازه کنید.",
+  "therapist_change_review": "درخواست تغییر درمانگر در کمیته پیشرفت در حال بررسی است؛ پس از تایید، درمانگر جدید را در مرحلهٔ بعد انتخاب می‌کنید.",
+  "schedule_change_review": "درمانگر در حال بررسی پیشنهاد شما برای ساعت جلسات است.",
+  "new_therapist_selection": "شناسهٔ درمانگر جدید را مطابق راهنمای انستیتو وارد کنید و تایید نهایی را بزنید.",
+  "new_schedule_confirmation": "ساعت پیشنهادی توسط درمانگر را بررسی کنید؛ در صورت تایید، دکمهٔ ادامه را بزنید تا ساعت روی جلسات آینده ثبت شود.",
+  "initiated": "ساعات درمان، بالینی و سوپرویژن را در باکس پایین با حدنصاب‌ها ببینید؛ اگر همهٔ شرایط احراز است، دکمهٔ «ادامه و ثبت مرحله» را بزنید؛ در غیر این صورت پس از تکمیل ساعات دوباره همین فرایند را اجرا کنید.",
+  "request_submitted": "تاریخ نزدیک‌ترین جلسه و ساعت شروع را وارد کنید؛ فرم را ثبت کنید؛ سپس «ادامه و ثبت مرحله» را بزنید تا درمانگر بررسی کند. پس از تأیید، یک جلسهٔ هفتگی دیگر به برنامهٔ شما اضافه می‌شود.",
+  "session_added": "تعداد جلسات هفتگی در پروندهٔ شما به‌روز شده است؛ جلسهٔ جدید در فهرست جلسات درمان دیده می‌شود.",
+  "request_rejected": "درمانگر در حال حاضر امکان افزایش جلسات هفتگی را اعلام نکرده است؛ در صورت نیاز بعداً می‌توانید دوباره درخواست دهید.",
+  "session_selection": "تعداد جلسات هفتگی پس از کاهش و جلسات آتی مورد نظر برای لغو را در فرم مشخص کنید؛ سپس «ادامه و ثبت مرحله» را بزنید. حداقل تعداد جلسات لغو باید با کاهش برنامه هم‌خوان باشد.",
+  "violation_warning": "چک‌باکس را بزنید و سپس «ادامه و ثبت مرحله» را بزنید تا کاهش با ثبت تخلف اعمال شود.",
+  "revision_upload": "فایل پایان‌نامه اصلاح‌شده را بارگذاری کنید؛ پس از ثبت، منتظر زمان‌بندی دفاع مجدد باشید."
+}
+
+export const PROCESS_STATE_LABELS_FA = {
+  "article_writing_completion": {
+    "course_active": "کلاس مقاله‌نویسی فعال",
+    "class_closed_student": "کلاس بسته شد - مهلت ۸ روزه درخواست دفاع",
+    "instructor_eval_pending": "منتظر فرم ارزیابی مدرس (۴ روز)",
+    "completed_to_defense": "خاتمه کلاس - انتقال به فاز دفاع",
+    "student_delay_violation": "تاخیر دانشجو - گزارش تخلف",
+    "instructor_delay_violation": "تاخیر مدرس - گزارش تخلف",
+    "term3_violation": "اخذ در ترم سوم - گزارش تخلف"
+  },
+  "attendance_tracking": {
+    "session_scheduled": "جلسه برنامه‌ریزی شده",
+    "recording_closed": "ثبت بسته شده",
+    "auto_absence_unpaid": "غیبت خودکار (پرداخت نشده)",
+    "therapist_recording": "ثبت حضور و غیاب توسط درمانگر",
+    "site_manager_pending": "در انتظار پیگیری مسئول سایت",
+    "deputy_escalated": "اسکیت به معاون مدیر آموزش",
+    "session_completed": "جلسه تکمیل شد (+۱ ساعت)",
+    "absence_recorded": "غیبت ثبت شد",
+    "excused_absence": "غیبت موجه",
+    "unexcused_absence": "غیبت غیرموجه",
+    "quota_exceeded": "سهمیه غیبت تمام شد"
+  },
+  "class_attendance": {
+    "attendance_list_ready": "لیست حضور و غیاب در پورتال مدرس",
+    "session_recorded": "وضعیت جلسه ثبت شد",
+    "incomplete_triggered": "۵ غیبت — وضعیت I و قفل نمره",
+    "article_violation_reported": "غیبت درس مقاله‌نویسی — گزارش به کمیته نظارت"
+  },
+  "class_session_cancellation": {
+    "cancellation_request": "انتخاب درس و جلسه جهت کنسلی",
+    "makeup_scheduled": "زمان جبرانی محاسبه و تایید شد"
+  },
+  "committees_review": {
+    "supervision_review": "بررسی کمیته نظارت",
+    "education_review": "تصمیم‌گیری کمیته آموزش",
+    "awaiting_student_restart": "در انتظار بازگشت به درمان (مهلت ۵ روز)",
+    "restart_completed": "دانشجو درمان را از سر گرفت",
+    "violation_no_restart": "عدم آغاز در مهلت — ثبت تخلف",
+    "education_terminated": "قطع قطعی آموزش (اخراج)"
+  },
+  "comprehensive_course_registration": {
+    "application_submitted": "ثبت درخواست ورود به دوره جامع",
+    "supervision_committee_review": "بررسی پرونده توسط کمیته نظارت",
+    "supervision_rejected": "رد توسط کمیته نظارت",
+    "executive_review": "بررسی پرونده و معدل توسط مسئول اجرایی کمیته پیشرفت",
+    "scientific_review": "تصمیم‌گیری مسئول علمی کمیته پیشرفت",
+    "scientific_rejected": "رد توسط مسئول علمی کمیته پیشرفت",
+    "document_upload": "بارگذاری گزارش تجربه شخصی",
+    "interview_scheduled": "انتخاب زمان مصاحبه",
+    "interview_payment": "پرداخت هزینه مصاحبه",
+    "interview_completed": "مصاحبه انجام شده — در انتظار نتیجه",
+    "result_accepted": "پذیرفته شده",
+    "result_rejected": "رد قطعی",
+    "result_rejected_with_suggestion": "رد همراه با پیشنهاد",
+    "course_display": "نمایش دروس ترم ۳ (اول جامع)",
+    "payment": "پرداخت شهریه (نقدی یا اقساط)",
+    "registration_complete": "ثبت‌نام نهایی انجام شد"
+  },
+  "comprehensive_term_end": {
+    "grades_submitted": "تمام نمرات ترم وارد شده",
+    "transcript_generated": "کارنامه‌های ترمی و کلی تولید شده",
+    "graduation_check": "بررسی وضعیت اتمام دروس جامع",
+    "completed_all_courses": "تمام دروس جامع پاس شده",
+    "registration_notification_sent": "اطلاعیه ثبت‌نام ترم بعدی ارسال شد",
+    "process_complete": "فرایند تکمیل شد"
+  },
+  "comprehensive_term_start": {
+    "eligibility_check": "بررسی موانع (تعلیق/مرخصی)",
+    "blocked": "مسدود — تعلیق یا مرخصی",
+    "course_display": "نمایش دروس و شهریه",
+    "payment_choice": "انتخاب نحوه پرداخت",
+    "payment_processing": "پرداخت",
+    "registration_complete": "ثبت‌نام نهایی — لینک کلاس‌ها فعال"
+  },
+  "educational_leave": {
+    "request_form": "ثبت درخواست اولیه",
+    "committee_review": "بررسی و تعیین جلسه توسط کمیته پیشرفت",
+    "deputy_alerted": "هشدار به معاون مدیر آموزش",
+    "session_scheduled": "جلسه تنظیم شد",
+    "committee_decision": "برگزاری جلسه و تصمیم‌گیری",
+    "rejected": "رد درخواست",
+    "approved_non_intern": "تایید - دانشجو غیر انترن",
+    "approved_intern_1term": "تایید - انترن وقفه ۱ ترم",
+    "approved_intern_2term": "تایید - انترن وقفه ۲ ترم",
+    "on_leave": "در وقفه تحصیلی",
+    "return_reminder_sent": "یادآوری بازگشت ارسال شد",
+    "returned": "بازگشت به تحصیل",
+    "violation_registered": "ثبت تخلف عدم بازگشت"
+  },
+  "extra_session": {
+    "extra_request": "ثبت درخواست جلسه اضافی",
+    "therapist_review": "بررسی و تصمیم درمانگر",
+    "student_response": "پاسخ دانشجو به پیشنهاد جایگزین",
+    "payment_required": "پرداخت جلسه اضافی",
+    "extra_session_confirmed": "جلسه اضافی تایید و ثبت شد",
+    "extra_session_completed": "جلسه اضافی برگزار شد",
+    "extra_session_cancelled": "جلسه اضافی لغو شد",
+    "extra_request_rejected": "درخواست رد شد"
+  },
+  "extra_supervision_session": {
+    "extra_request": "ثبت درخواست جلسه اضافی سوپرویژن",
+    "supervisor_review": "بررسی و تصمیم سوپروایزر",
+    "student_response": "پاسخ دانشجو به پیشنهاد جایگزین",
+    "payment_required": "پرداخت جلسه اضافی سوپرویژن",
+    "extra_session_confirmed": "جلسه اضافی سوپرویژن تایید و ثبت شد",
+    "extra_session_completed": "جلسه اضافی برگزار شد",
+    "extra_request_rejected": "امکان برگزاری جلسه اضافه وجود ندارد"
+  },
+  "fall_semester_preparation": {
+    "calendar_entry": "تدوین تقویم آموزشی دو ترم (پاییز و زمستان)",
+    "tuition_entry": "تعیین شهریه و هزینه مصاحبه",
+    "license_check": "بررسی وضعیت پروانه فعالیت",
+    "course_list_creation": "لیست دروس، مدرسین، کمک‌مدرسین",
+    "course_finalization": "نهایی‌سازی مکان‌ها و هماهنگی با مدرسین",
+    "marketing_campaign": "شروع کمپین بازاریابی پذیرش",
+    "interviewer_assignment": "تعیین مصاحبه‌کنندگان و بازه‌های زمانی",
+    "interview_scheduling": "زمان‌بندی دقیق اسلات‌های مصاحبه",
+    "published": "انتشار تقویم و اطلاع‌رسانی"
+  },
+  "fee_determination": {
+    "triggered": "راه‌اندازی شده",
+    "excluded": "خارج از شمول",
+    "scenario_1_credit_returned": "بازگشت اعتبار",
+    "scenario_2_no_action": "بدون اقدام مالی",
+    "scenario_3_forfeited": "مصادره هزینه",
+    "scenario_4_debt_created": "ایجاد بدهی"
+  },
+  "film_observation_course_completion": {
+    "grades_entry": "ثبت نمرات و ارزیابی",
+    "grades_locked": "نمرات قفل شد",
+    "delay_reported": "تاخیر گزارش به کمیته"
+  },
+  "film_observation_ta_attendance_completion": {
+    "grades_entry": "ثبت نمرات و ارزیابی",
+    "grades_locked": "نمرات قفل شد",
+    "delay_reported": "تاخیر گزارش به کمیته"
+  },
+  "full_education_leave": {
+    "leave_request": "درخواست مرخصی از کل آموزش",
+    "therapist_assignment": "تعیین تکلیف درمانگر آموزشی",
+    "leave_approved": "مرخصی تایید شد",
+    "leave_rejected": "مرخصی رد شد"
+  },
+  "group_supervision_course_completion": {
+    "grades_entry": "ثبت نمرات و ارزیابی",
+    "grades_locked": "نمرات قفل شد",
+    "delay_reported": "تاخیر — گزارش به کمیته"
+  },
+  "internship_12month_conditional_review": {
+    "month_12_trigger": "ورود انترن مشروط به ماه ۱۲",
+    "supervision_review": "بررسی انضباطی و صدور مجوز کمیته نظارت",
+    "supervision_rejected": "عدم مجوز — ارجاع به تخلفات",
+    "interview_scheduling": "تنظیم وقت مصاحبه ارزیابی مجدد",
+    "interview_held": "برگزاری مصاحبه",
+    "result_unrestricted": "ادامه با رفع کامل محدودیت",
+    "result_conditional": "ادامه مشروط انترنی"
+  },
+  "internship_readiness_consultation": {
+    "auto_trigger": "شروع خودکار پس از پاس تئوری تکنیک ۳",
+    "student_request": "ثبت درخواست ارتقا به انترن",
+    "supervision_committee_review": "بررسی و صدور مجوز کمیته نظارت",
+    "supervision_rejected": "رد توسط کمیته نظارت",
+    "interview_scheduling": "تنظیم وقت مصاحبه",
+    "interview_held": "برگزاری مصاحبه",
+    "interview_result_unconditional": "قبولی بدون شرط — ۳ ساعت",
+    "interview_result_conditional": "قبولی مشروط — ۱ ساعت",
+    "interview_result_retry": "درخواست دوباره پس از ۳۰ ساعت درمان",
+    "contract_practice": "امضای قرارداد پرکیس",
+    "contract_rules": "امضای قوانین اداری/آموزشی/بالینی",
+    "promissory_note": "تحویل سفته حضوری",
+    "capacity_check": "بررسی بیمار موجود برای ارجاع",
+    "pending_patient": "منتظر بیمار — Pending",
+    "supervisor_selection": "انتخاب سوپروایزر و زمان",
+    "first_session_payment": "پرداخت جلسه اول سوپرویژن",
+    "internship_started": "انترنی آغاز شد"
+  },
+  "intern_bulk_patient_referral": {
+    "supervision_start": "شروع فرایند و ثبت جلسه توسط کمیته نظارت",
+    "referral_conditions_set": "ثبت برگزاری جلسه و شرایط ارجاع؛ همگام‌سازی پورتال دانشجو",
+    "student_patient_log": "تیک و توضیح صحبت با هر بیمار توسط دانشجو",
+    "general_therapy_committee_review": "مشاهده و تکمیل اطلاعات توسط کمیته درمان عموم",
+    "coordination_followup": "پیگیری و ثبت ارجاع نهایی توسط مسئول هماهنگی‌ها",
+    "completed": "پایان فرایند"
+  },
+  "intern_hours_increase": {
+    "deadline_reached": "رسیدن به سررسید افزایش ساعت",
+    "supervision_review": "بررسی کمیته نظارت",
+    "rejected_referral": "عدم تایید — ارجاع به تخلفات",
+    "approved_time_coordination": "هماهنگی زمان‌های جدید با انترن",
+    "hours_increased": "ظرفیت افزایش یافت"
+  },
+  "introductory_course_completion": {
+    "all_courses_passed": "قبولی در تمام دروس دوره آشنایی",
+    "invitation_sent": "ارسال دعوتنامه ثبت‌نام دوره جامع",
+    "certificate_draft_generated": "پیش‌نویس گواهی تولید شده",
+    "certificate_review": "بررسی و تایید کمیته نظارت",
+    "certificate_approved": "گواهی تایید و در پورتال بارگذاری شده",
+    "process_complete": "فرایند تکمیل شد"
+  },
+  "introductory_course_registration": {
+    "application_submitted": "فرم پذیرش تکمیل شد",
+    "interview_scheduled": "زمان مصاحبه انتخاب شد",
+    "interview_payment": "در انتظار پرداخت هزینه مصاحبه",
+    "interview_payment_confirmed": "پرداخت هزینه مصاحبه تأیید شد",
+    "interview_completed": "مصاحبه انجام شد — در انتظار ثبت نتیجه",
+    "result_conditional_therapy": "نتیجه: پذیرش مشروط به درمان",
+    "result_single_course": "نتیجه: پذیرش تک‌درس",
+    "result_full_admission": "نتیجه: پذیرش کامل (بدون شرط)",
+    "rejected": "رد شد — امکان ثبت‌نام مجدد نیست",
+    "documents_upload": "در انتظار آپلود مدارک و تأیید قوانین",
+    "documents_review": "بررسی مدارک توسط مسئول پذیرش",
+    "documents_incomplete": "مدارک ناقص — در انتظار تکمیل",
+    "credentials_created": "حساب کاربری ایجاد شد — ارسال اطلاعات ورود",
+    "course_selection": "انتخاب دروس مجاز در LMS",
+    "payment": "پرداخت شهریه (نقدی یا اقساط)",
+    "registration_complete": "ثبت‌نام نهایی انجام شد",
+    "installment_overdue": "قسط معوق — بلاک حضور و غیاب"
+  },
+  "introductory_term_end": {
+    "grades_submitted": "تمام نمرات ثبت شد — شروع فرایند",
+    "transcript_generated": "کارنامه ترمی و تجمیعی تولید شد",
+    "therapy_check": "بررسی وضعیت شرط درمان",
+    "therapy_blocked": "مسدودیت ثبت‌نام — درمانگر فعال ندارد",
+    "registration_notification_sent": "پیامک اطلاع‌رسانی ثبت‌نام ارسال شد",
+    "decline_list_generated": "لیست دانشجویان افت تحصیلی تولید شد",
+    "followup_in_progress": "پیگیری تماس با دانشجویان افت تحصیلی",
+    "followup_complete": "پیگیری تکمیل شد"
+  },
+  "intro_second_semester_registration": {
+    "eligibility_check": "بررسی صلاحیت ثبت‌نام",
+    "therapy_check_failed": "توقف — شرط درمان برآورده نشده",
+    "suspension_check_failed": "توقف — دانشجو تعلیق شده",
+    "course_selection": "انتخاب دروس ترم دوم",
+    "payment_method": "انتخاب روش پرداخت",
+    "payment_processing": "در حال پرداخت",
+    "registration_complete": "ثبت‌نام نهایی — دروس ثبت و لینک کلاس فعال (اقساط باز یا تسویهٔ در حال انجام)",
+    "installment_overdue": "قسط معوق — بلاک حضور و غیاب",
+    "term2_registration_closed": "پایان فرایند ثبت‌نام ترم دوم — تسویهٔ مالی تکمیل‌شده"
+  },
+  "lesson_start_per_term": {
+    "student_enrollment": "ثبت‌نام دانشجو در درس",
+    "links_created": "لینک آنلاین ایجاد و فعال",
+    "attendance_list_ready": "لیست حضور و غیاب آماده",
+    "lesson_active": "درس فعال — حضور توسط مدرس"
+  },
+  "live_supervision_course_completion": {
+    "grades_entry": "ثبت نمرات و ارزیابی",
+    "grades_locked": "نمرات قفل شد",
+    "delay_reported": "تاخیر — گزارش به کمیته"
+  },
+  "live_supervision_session_prep": {
+    "patient_referral": "ثبت و ارجاع پرونده بیمار",
+    "coordination_pending": "هماهنگی چندجانبه — جستجوی زمان مشترک",
+    "session_scheduled": "زمان در LMS ثبت و پیامک ارسال شد",
+    "coordination_closed": "وقت خاصی هماهنگ نشد — پرونده مختومه"
+  },
+  "live_supervision_ta_evaluation": {
+    "session_18_completed": "اتمام جلسه ۱۸ — تجمیع نمرات",
+    "evaluation_computed": "محاسبه نمره و تعیین PASS/FAIL",
+    "passed": "قبولی (نمره ≥ ۷۴) — ثبت در پرونده",
+    "failed": "مردودی (نمره < ۷۴) — ثبت در پرونده"
+  },
+  "live_therapy_observation_course_completion": {
+    "grades_entry": "ثبت نمرات و ارزیابی",
+    "grades_locked": "نمرات قفل شد",
+    "delay_reported": "تاخیر گزارش به کمیته"
+  },
+  "live_therapy_observation_session_prep": {
+    "patient_referral": "ثبت و ارجاع پرونده بیمار",
+    "coordination_pending": "هماهنگی زمان جلسه",
+    "session_scheduled": "زمان در LMS ثبت و پیامک ارسال شد",
+    "coordination_closed": "وقت هماهنگ نشد — پرونده مختومه"
+  },
+  "live_therapy_observation_ta_attendance_completion": {
+    "grades_entry": "ثبت نمرات و ارزیابی",
+    "grades_locked": "نمرات قفل شد",
+    "delay_reported": "تاخیر گزارش به کمیته"
+  },
+  "mentor_private_sessions": {
+    "instructor_click": "کلیک مدرس",
+    "deadline_missed": "تخلف — عدم ثبت تا جلسه دوم",
+    "sessions_registered": "۲ جلسه ثبت شد",
+    "process_complete": "ثبت نهایی — SMS و یادآوری"
+  },
+  "patient_referral": {
+    "referral_triggered": "ارجاع راه‌اندازی شد",
+    "patients_listed": "لیست بیماران انترن ثبت شد",
+    "therapists_assigned": "درمانگران جایگزین تخصیص یافتند",
+    "notifications_sent": "اطلاع‌رسانی به بیماران و درمانگران انجام شد",
+    "closed": "ارجاع مختومه"
+  },
+  "process_merged_to_one": {
+    "merged": "منتقل به فرایند ۱"
+  },
+  "return_to_full_education": {
+    "return_request": "درخواست بازگشت",
+    "clinical_roles_selection": "انتخاب ارکان بالینی",
+    "return_approved": "بازگشت تایید شد",
+    "return_rejected": "بازگشت رد شد"
+  },
+  "session_payment": {
+    "payment_due": "مبلغ قابل پرداخت",
+    "payment_selection": "انتخاب جلسات و تسویه بدهی",
+    "awaiting_payment": "در انتظار پرداخت (درگاه)",
+    "payment_confirmed": "پرداخت تایید شد",
+    "payment_failed": "پرداخت ناموفق",
+    "session_suspended": "جلسات معلق"
+  },
+  "skills_course_completion": {
+    "grades_entry": "ثبت نمرات و ارزیابی",
+    "grades_locked": "نمرات قفل شد",
+    "delay_reported": "تاخیر — گزارش به کمیته"
+  },
+  "specialized_commission_review": {
+    "commission_review": "بررسی کمیسیون تخصصی",
+    "awaiting_student_restart": "در انتظار آغاز دوباره (مهلت ۵ روز)",
+    "restart_completed": "دانشجو درمان را از سر گرفت",
+    "violation_no_restart": "عدم آغاز در مهلت — ثبت تخلف",
+    "referred_to_committees": "ارجاع به کمیته‌ها (عدم صلاحیت تخصصی)"
+  },
+  "start_therapy": {
+    "eligibility_check": "بررسی صلاحیت و یک‌بارمصرف بودن",
+    "already_completed": "قبلاً انجام شده",
+    "therapist_selection": "انتخاب درمانگر و برنامه هفتگی",
+    "therapist_confirmation": "تایید درمانگر",
+    "schedule_first_session": "تنظیم روز و ساعت جلسات",
+    "first_session_24h_check": "محاسبه تاریخ شروع (قانون ۲۴ ساعت)",
+    "payment_pending": "در انتظار پرداخت جلسه اول",
+    "therapy_active": "درمان فعال",
+    "ineligible": "عدم صلاحیت",
+    "week9_blocked": "مسدود - هفته نهم"
+  },
+  "student_instructor_evaluation": {
+    "evaluation_open": "مهلت ارزیابی — دانشجو فرم را تکمیل می‌کند",
+    "evaluation_closed": "پایان مهلت — محاسبات و توزیع نتایج"
+  },
+  "student_non_registration": {
+    "list_generated": "لیست دانشجویان بدون ثبت‌نام",
+    "meeting_scheduled": "جلسه تنظیم شده",
+    "meeting_held": "جلسه برگزار شد — ثبت نتیجه",
+    "branch_register": "قصد ثبت‌نام — مهلت ۲ روز",
+    "branch_leave": "قصد مرخصی/وقفه — مهلت ۳ روز",
+    "branch_withdrawal": "قصد انصراف",
+    "registration_completed": "ثبت‌نام انجام شد — ثبت غیبت جلسات گذشته",
+    "leave_started": "فرایند مرخصی آغاز شد",
+    "withdrawal_triggered": "انصراف از آموزش اجرا شد"
+  },
+  "student_session_cancellation": {
+    "calendar_displayed": "نمایش تقویم ۳ هفته آینده",
+    "consecutive_blocked": "مسدود — بیش از ۳ هفته متوالی",
+    "sessions_selected": "جلسات انتخاب شده",
+    "cancellation_applied": "کنسلی اعمال و تعیین تکلیف مالی",
+    "warning_and_applied": "هشدار ۱۰–۱۲٪ + کنسلی اعمال",
+    "violation_and_applied": "تخلف >۱۲٪ + کنسلی اعمال"
+  },
+  "student_supervision_cancellation": {
+    "calendar_displayed": "نمایش تقویم ۳ هفته آینده (سوپرویژن)",
+    "consecutive_blocked": "مسدود — بیش از ۳ هفته متوالی",
+    "sessions_selected": "جلسات انتخاب شده",
+    "cancellation_applied": "کنسلی اعمال و تعیین تکلیف مالی",
+    "warning_and_applied": "هشدار ۱۰–۱۲٪ + کنسلی اعمال",
+    "violation_and_applied": "تخلف >۱۲٪ + کنسلی اعمال"
+  },
+  "supervision_50h_completion": {
+    "session_scheduled": "جلسه برنامه‌ریزی شده",
+    "recording_closed": "ثبت بسته (وقفه یا کنسلی)",
+    "auto_absence_unpaid": "غیبت خودکار (پرداخت نشده)",
+    "supervisor_recording": "ثبت حضور/غیاب توسط سوپروایزر",
+    "site_manager_pending": "در انتظار پیگیری مسئول سایت",
+    "deputy_escalated": "اسکیت به معاون مدیر آموزش",
+    "session_completed": "جلسه تکمیل (+۱ ساعت به بلوک فعلی)",
+    "absence_recorded": "غیبت ثبت شد",
+    "evaluation_pending": "در انتظار تکمیل فرم ارزیابی (۵۰ ساعت)",
+    "evaluation_completed": "ارزیابی تکمیل شد",
+    "evaluation_sla_breach": "عدم تکمیل فرم در ۳ روز — تخلف"
+  },
+  "supervision_block_transition": {
+    "payment_intent_50th": "قصد پرداخت جلسه ۵۰ام",
+    "not_at_50th": "هنوز به جلسه ۵۰ نرسیده",
+    "supervisor_slots_displayed": "نمایش شیت وقت‌های آزاد سوپروایزرها",
+    "slot_selected": "انتخاب سوپروایزر و زمان (قانون ۲۴ ساعت اعمال شده)",
+    "new_block_first_paid": "پرداخت جلسه اول دوره جدید انجام شد — قفل ۵۰ام باز شد",
+    "both_paid_completed": "هر دو پرداخت انجام و اطلاع‌رسانی"
+  },
+  "supervision_interruption": {
+    "request_submitted": "ثبت درخواست وقفه در سوپرویژن",
+    "committee_scheduling": "تعیین جلسه بررسی توسط کمیته پیشرفت",
+    "meeting_held": "جلسه برگزار شد — تصمیم‌گیری کمیته",
+    "rejected": "رد درخواست وقفه",
+    "approved_short_pause": "تایید وقفه کوتاه (< ۲۱ روز) — ثبت در LMS",
+    "approved_long_pause": "تایید وقفه بلند (≥ ۲۱ روز) — آزادسازی فوری",
+    "monitoring_return": "پایش بازگشت دانشجو در تاریخ پایان وقفه",
+    "returned_successfully": "دانشجو بازگشت و جلسه اول را حضور یافت",
+    "absent_resources_released": "عدم حضور — آزادسازی سوپروایزر و ارجاع مراجعان"
+  },
+  "supervision_session_increase": {
+    "request_submitted": "ثبت درخواست افزایش جلسه سوپرویژن",
+    "supervisor_review": "بررسی و تصمیم سوپروایزر",
+    "student_response": "پاسخ دانشجو به پیشنهاد جایگزین",
+    "session_added": "جلسه هفتگی سوپرویژن اضافه شد",
+    "request_rejected": "امکان افزایش جلسه وجود ندارد"
+  },
+  "supervision_session_reduction": {
+    "initiated": "آغاز فرایند",
+    "session_selection": "انتخاب جلسات برای حذف",
+    "multi_reduction_completed": "کاهش جلسات متعدد انجام شد",
+    "eligibility_blocked": "شرایط کاهش توالی احراز نشده",
+    "structure_selection": "تعیین ساختار جدید (توالی + روز و ساعت)",
+    "supervisor_review": "بررسی و تایید سوپروایزر",
+    "frequency_reduction_completed": "کاهش توالی انجام شد"
+  },
+  "supervisor_session_cancellation": {
+    "session_selection": "انتخاب جلسه برای لغو",
+    "makeup_choice": "انتخاب نوع کنسلی (جبرانی یا بدون جبرانی)",
+    "cancelled_no_makeup": "لغو بدون جبرانی — بستانکار اگر پرداخت شده",
+    "makeup_proposed": "منتظر پاسخ دانشجو به پیشنهاد جلسه جبرانی",
+    "supervisor_review_counter": "بررسی پیشنهاد جایگزین دانشجو توسط سوپروایزر",
+    "payment_pending": "منتظر پرداخت برای جلسه جبرانی",
+    "makeup_confirmed": "جلسه جبرانی ثبت شد — لینک آنلاین و حضور فعال",
+    "makeup_session_completed": "جلسه جبرانی برگزار شد — ساعات ثبت",
+    "student_declined_makeup": "دانشجو جبرانی نمی‌خواهد — بستانکار اگر پرداخت شده"
+  },
+  "ta_blog_content": {
+    "session_ended": "جلسه کلاس پایان یافت",
+    "ta_write": "نگارش محتوای وبلاگ",
+    "instructor_review": "تایید علمی توسط مدرس",
+    "rejected_revision": "رد — اصلاح",
+    "approved_marketing_draft": "تایید — پیش‌نویس مارکتینگ"
+  },
+  "ta_conceptual_questions": {
+    "session_ended": "جلسه کلاس پایان یافت",
+    "ta_upload": "آپلود ۳ سوال توسط کمک‌مدرس",
+    "upload_late": "تاخیر آپلود — تخلف ثبت",
+    "instructor_review": "بررسی توسط مدرس",
+    "question_rejected": "سوال رد شد — اصلاح ۲۴ ساعته",
+    "questions_approved": "تایید — آرشیو و ۲ نمره"
+  },
+  "ta_essay_upload": {
+    "session_ended": "جلسه کلاس پایان یافت",
+    "ta_upload": "آپلود جستار و دقایق منتخب",
+    "instructor_review": "تایید علمی توسط مدرس",
+    "rejected_revision": "رد — اصلاح",
+    "approved_reference_center": "تایید — مرکز مرجع و مارکتینگ"
+  },
+  "ta_instructor_leave": {
+    "leave_request": "درخواست مرخصی",
+    "course_committee_review": "بررسی کمیته دروس",
+    "leave_rejected": "رد مرخصی",
+    "substitute_assigned": "جایگزین موقت تعیین شد",
+    "classes_cancelled": "کلاس‌ها لغو شد",
+    "leave_approved": "مرخصی تایید شد"
+  },
+  "ta_student_consultation": {
+    "session_5_10_15": "جلسه ۵ یا ۱۰ یا ۱۵ برگزار شد",
+    "ta_form_fill": "تکمیل فرم توسط کمک‌مدرس",
+    "form_locked": "فرم قفل — نمره صفر",
+    "form_submitted": "فرم ثبت — ۲ نمره + ارسال به کمیته پیشرفت"
+  },
+  "ta_to_assistant_faculty": {
+    "auto_or_manual_trigger": "شروع خودکار یا دستی",
+    "already_assistant": "قبلاً دستیار هیئت علمی",
+    "supervision_review": "بررسی کمیته نظارت",
+    "supervision_rejected": "رد — لینک دستی برای ترم‌های بعد",
+    "upgrade_applied": "ارتقا اعمال شد"
+  },
+  "ta_to_instructor_auto": {
+    "end_of_term_check": "بررسی پایان ترم",
+    "conditions_not_met": "شرایط احراز نشد",
+    "upgrade_applied": "ارتقا خودکار اعمال شد"
+  },
+  "ta_track_change": {
+    "ta_click": "کلیک کمک‌مدرس و انتخاب مسیر",
+    "path_selected": "درخواست به پورتال کمیته دروس ارسال شد",
+    "course_committee_review": "هماهنگی و ثبت زمان جلسه توسط کمیته دروس",
+    "meeting_scheduled": "جلسه زمان‌گذاری شده — منتظر برگزاری و ثبت نتیجه",
+    "rejected": "عدم موافقت — فرایند پایان یافت",
+    "track_applied": "رسته اعمال شد"
+  },
+  "ta_track_completion": {
+    "end_of_track_check": "پایش سیستمی و احراز شرایط (خودکار)",
+    "track_completed": "رسته خاتمه یافت — پرونده و اطلاع‌رسانی به‌روز شد"
+  },
+  "theory_course_completion": {
+    "grades_entry": "ثبت نمرات و ارزیابی کیفی",
+    "grades_locked": "نمرات قفل شد",
+    "delay_reported": "تاخیر — گزارش به کمیته"
+  },
+  "therapist_session_cancellation": {
+    "session_selection": "انتخاب جلسه برای لغو",
+    "make_up_choice": "انتخاب جبرانی یا نه",
+    "cancelled_no_make_up": "لغو بدون جبرانی",
+    "make_up_proposed": "منتظر پاسخ دانشجو به جلسه جبرانی",
+    "therapist_review_alternative": "بررسی پیشنهاد جایگزین دانشجو",
+    "payment_required": "پرداخت جلسه جبرانی (بدون بستانکاری)",
+    "make_up_confirmed": "جلسه جبرانی ثبت شد",
+    "cancelled_student_declined": "دانشجو جبرانی نخواست"
+  },
+  "therapy_changes": {
+    "change_request": "ثبت درخواست تغییر",
+    "restart_review": "بررسی آغاز مجدد",
+    "therapist_change_review": "بررسی تغییر درمانگر",
+    "schedule_change_review": "بررسی تغییر ساعت",
+    "new_therapist_selection": "انتخاب درمانگر جدید",
+    "new_schedule_confirmation": "تایید ساعت جدید",
+    "change_approved": "تغییر تایید شد",
+    "change_rejected": "تغییر رد شد",
+    "restart_activated": "آغاز مجدد فعال شد"
+  },
+  "therapy_completion": {
+    "initiated": "آغاز شده",
+    "conditions_not_met": "شرایط احراز نشده",
+    "therapy_completed": "درمان تکمیل و خاتمه یافت"
+  },
+  "therapy_early_termination": {
+    "reason_selection": "انتخاب علت قطع",
+    "awaiting_student_restart": "در انتظار آغاز دوباره توسط دانشجو (مهلت ۵ روز)",
+    "restart_completed": "دانشجو درمان را از سر گرفت",
+    "violation_no_restart": "عدم آغاز در مهلت — ثبت تخلف",
+    "scientific_referred": "ارجاع به کمیسیون تخصصی (۳)",
+    "disciplinary_referred": "ارجاع به کمیته‌ها (۴)"
+  },
+  "therapy_interruption": {
+    "request_submitted": "ثبت درخواست وقفه",
+    "committee_scheduling": "تعیین جلسه توسط کمیته",
+    "meeting_held": "جلسه برگزار و تصمیم گرفته شد",
+    "rejected": "رد درخواست وقفه",
+    "awaiting_return": "منتظر بازگشت در تاریخ پایان وقفه (< ۴۲ روز)",
+    "returned_successfully": "دانشجو بازگشت",
+    "no_return_resources_freed": "عدم بازگشت — آزادسازی و ارجاع",
+    "long_interruption_applied": "وقفه بلند (≥ ۴۲ روز) — آزادسازی فوری"
+  },
+  "therapy_session_increase": {
+    "request_submitted": "ثبت درخواست افزایش جلسه",
+    "therapist_review": "بررسی و تصمیم درمانگر",
+    "student_response": "پاسخ دانشجو به پیشنهاد جایگزین",
+    "session_added": "جلسه هفتگی اضافه شد",
+    "request_rejected": "امکان افزایش جلسه وجود ندارد"
+  },
+  "therapy_session_reduction": {
+    "initiated": "آغاز فرایند",
+    "blocked": "ورود ممنوع (کمتر از ۲ جلسه)",
+    "session_selection": "انتخاب جلسات برای حذف",
+    "violation_warning": "هشدار تخلف آموزشی (تایید الزامی)",
+    "reduction_completed": "کاهش انجام شد",
+    "reduction_with_violation": "کاهش با ثبت تخلف"
+  },
+  "thesis_defense_request": {
+    "eligibility_check": "بررسی شروط چهارگانه و بارگذاری گزارش سایکوتیک",
+    "conditions_not_met": "عدم احراز شروط — مسیر مسدود",
+    "progress_committee_review": "بررسی گزارش توسط کمیته پیشرفت",
+    "report_rejected": "رد گزارش — خاتمه فرایند",
+    "report_revision": "نیاز به اصلاح گزارش — بازگشت به دانشجو",
+    "supervision_committee_review": "بررسی و صدور مجوز توسط کمیته نظارت",
+    "defense_permit_denied": "عدم صدور مجوز دفاع",
+    "thesis_upload": "بارگذاری پایان‌نامه توسط دانشجو",
+    "education_committee_scheduling": "تعیین داوران و زمان توسط کمیته آموزش",
+    "first_defense_held": "برگزاری دفاع اول و ثبت نمرات داوران",
+    "defense_passed": "قبول — پایان فرایند",
+    "revision_required": "نیاز به اصلاح — مهلت ۲ هفته",
+    "revision_upload": "آپلود پایان‌نامه اصلاح‌شده",
+    "revision_delay_violation": "تاخیر در آپلود اصلاحات — گزارش تخلف",
+    "second_defense_held": "برگزاری دفاع مجدد — داوری نهایی",
+    "defense_failed": "مردود (FAIL) — پایان فرایند"
+  },
+  "unannounced_absence_reaction": {
+    "identified": "غیبت بدون اطلاع شناسایی شد",
+    "stopped_on_leave": "متوقف (دانشجو در وقفه)",
+    "first_absence_handled": "غیبت اول — SMS ارسال شد",
+    "site_manager_review": "بررسی مسئول سایت (۲ جلسه پیوسته)",
+    "option_1_violation": "قصد غیبت معین — تخلف ثبت شد",
+    "committee_pending": "در انتظار کمیته درمان آموزشی",
+    "committee_executor_review": "پیگیری مجری کمیته",
+    "ambiguous_3week_wait": "وضعیت مبهم — تایمر ۳ هفته",
+    "student_returned": "دانشجو در ۳ هفته بازگشت",
+    "violation_reported": "تخلف به کمیته نظارت ارسال شد"
+  },
+  "unannounced_supervision_absence_reaction": {
+    "identified": "غیبت بدون اطلاع سوپرویژن شناسایی شد",
+    "stopped_on_leave": "متوقف (دانشجو در وقفه سوپرویژن)",
+    "first_absence_handled": "غیبت اول — SMS ارسال شد",
+    "site_manager_review": "بررسی مدیر داخلی (۲ جلسه پیوسته)",
+    "option_1_violation": "قصد غیبت معین — تخلف ثبت شد",
+    "committee_pending": "در انتظار کمیته درمان آموزشی و سوپرویژن",
+    "committee_executor_review": "پیگیری مجری کمیته",
+    "ambiguous_3week_wait": "وضعیت مبهم — تایمر ۳ هفته",
+    "student_returned": "دانشجو در ۳ هفته فرایند سوپرویژن را آغاز کرد",
+    "violation_reported": "تخلف به کمیته نظارت ارسال شد"
+  },
+  "upgrade_to_educational_therapist": {
+    "student_start": "شروع درخواست توسط دانشجو",
+    "eligibility_failed": "عدم احراز شروط ارتقا",
+    "monitoring_review": "بررسی صلاحیت — کمیته نظارت",
+    "monitoring_rejected": "رد صلاحیت — کمیته نظارت",
+    "edu_supervision_interview": "مصاحبه — کمیته درمان آموزشی و سوپرویژن",
+    "interview_rejected": "رد صلاحیت پس از مصاحبه",
+    "therapy_supervision_hours": "تکمیل ۵۰ ساعت درمان شخصی و سوپرویژن و انتخاب اسلات‌ها",
+    "promotion_completed": "ثبت زمان‌های خالی درمانگر آموزشی — پایان"
+  },
+  "upgrade_to_ta": {
+    "student_click": "کلیک دانشجو",
+    "conditions_not_met": "شرایط احراز نشد",
+    "supervision_review": "بررسی کمیته نظارت",
+    "supervision_rejected": "رد توسط کمیته نظارت",
+    "interview_scheduling": "تنظیم وقت مصاحبه",
+    "interview_held": "مصاحبه برگزار شد",
+    "course_committee_rejected": "رد توسط کمیته دروس",
+    "track_selection": "انتخاب رسته‌های توافق شده",
+    "commitment_signature": "امضای تعهدنامه",
+    "ta_registered": "کمک‌مدرس ثبت شد"
+  },
+  "violation_registration": {
+    "violation_reported": "تخلف ثبت و ارجاع به کمیته نظارت",
+    "review_status_set": "قابل بررسی نیست / قابل بررسی است",
+    "meeting_scheduled": "جلسه تنظیم و دعوت‌نامه ارسال شد",
+    "verdict_issued": "حکم صادر شد (تذکر/اخطار ۱-۳)",
+    "suspension_next_term": "تعلیق از ترم بعد",
+    "suspension_immediate": "تعلیق آنی",
+    "referred_to_education_committee": "ارجاع به کمیته آموزش",
+    "closed": "مختومه (مبرا / رد)",
+    "expelled": "اخراج — پورتال مسدود"
+  },
+  "winter_semester_preparation": {
+    "license_check": "بررسی وضعیت پروانه فعالیت",
+    "course_list_review": "بازبینی و ویرایش لیست دروس ترم زمستان",
+    "course_finalization": "نهایی‌سازی مکان‌ها و تایید مدرسین",
+    "marketing_campaign": "شروع کمپین بازاریابی زمستان",
+    "interviewer_assignment": "تعیین مصاحبه‌کنندگان زمستان",
+    "interview_scheduling": "زمان‌بندی دقیق مصاحبه‌های زمستان",
+    "published": "انتشار تقویم زمستان و اطلاع‌رسانی"
+  }
+}
+
+export const PROCESS_STUDENT_TASK_LABELS_FA = {
+  "article_writing_completion": {},
+  "attendance_tracking": {},
+  "class_attendance": {},
+  "class_session_cancellation": {},
+  "committees_review": {},
+  "comprehensive_course_registration": {
+    "interview_payment": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.",
+    "payment": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+  },
+  "comprehensive_term_end": {},
+  "comprehensive_term_start": {
+    "payment_processing": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+  },
+  "educational_leave": {
+    "session_scheduled": "زمان و نحوهٔ برگزاری جلسه در همین صفحه (بخش جزئیات پرونده) نمایش داده می‌شود؛ در روز مقرر طبق اعلام کمیته حاضر شوید.",
+    "approved_non_intern": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را در سامانه فعال کنید؛ پس از آن ثبت‌نام کلاس برای شما تا زمان بازگشت مسدود می‌شود.",
+    "approved_intern_1term": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ سوپرویژن و درمان طبق مصوبه ادامه می‌یابد.",
+    "approved_intern_2term": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ پس از آن وضعیت انترنی و سوپروایزر طبق مصوبه به‌روز می‌شود.",
+    "on_leave": "ثبت‌نام دروس کلاس تا اعلام بازگشت در سامانه برای شما مسدود است. زمان تقریبی یادآوری بازگشت و مهلت اعلام ثبت‌نام ترم در جزئیات همین کارت نمایش داده می‌شود."
+  },
+  "extra_session": {
+    "extra_request": "تاریخ و ساعت پیشنهادی خود را در فرم همین صفحه وارد و ثبت کنید؛ سپس دکمهٔ ادامه را بزنید تا درمانگر بررسی کند.",
+    "therapist_review": "درمانگر زمان شما را بررسی می‌کند؛ اگر پیامک یا اعلان دریافت کردید طبق آن عمل کنید؛ بعداً همین صفحه را تازه کنید.",
+    "student_response": "اگر زمان پیشنهادی درمانگر را می‌پذیرید، تاریخ و ساعت را در فرم تأیید کنید؛ در غیر این صورت زمان جدید پیشنهاد دهید و ثبت کنید.",
+    "payment_required": "ابتدا از بخش پرداخت درگاه همین صفحه مبلغ جلسه اضافی را بپردازید؛ پس از تأیید بانک، مرحلهٔ بعد به‌صورت خودکار ثبت می‌شود.",
+    "extra_session_confirmed": "جلسه در سیستم ثبت شده است؛ لینک جلسه در همین مسیر یا پیامک آمده است. در زمان مقرر حاضر شوید."
+  },
+  "extra_supervision_session": {},
+  "fall_semester_preparation": {},
+  "fee_determination": {},
+  "film_observation_course_completion": {},
+  "film_observation_ta_attendance_completion": {},
+  "full_education_leave": {},
+  "group_supervision_course_completion": {},
+  "internship_12month_conditional_review": {},
+  "internship_readiness_consultation": {
+    "promissory_note": "سفته را حضوری تحویل دهید؛ پس از ثبت توسط کمیته پیشرفت مرحله بعد فعال می‌شود.",
+    "first_session_payment": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+  },
+  "intern_bulk_patient_referral": {},
+  "intern_hours_increase": {},
+  "introductory_course_completion": {},
+  "introductory_course_registration": {
+    "application_submitted": "باید زمان مصاحبه را از مسیر اعلام‌شده در سایت یا پیامک پذیرش انتخاب کنید؛ پس از رزرو موفق، مرحلهٔ پرداخت هزینهٔ مصاحبه به‌صورت خودکار برای شما فعال می‌شود.",
+    "interview_scheduled": "باید هزینه مصاحبه را در درگاه پرداخت همین صفحه بپردازید؛ پس از پرداخت، مرحله بعد به‌صورت خودکار فعال می‌شود.",
+    "interview_payment": "باید هزینه مصاحبه را در درگاه پرداخت تکمیل کنید؛ در صورت خطا دوباره تلاش کنید تا تأیید پرداخت ثبت شود.",
+    "interview_payment_confirmed": "پرداخت شما ثبت شد و جزئیات زمان مصاحبه از طریق پیامک ارسال شده است. در زمان مقرر در مصاحبه حاضر شوید؛ پس از برگزاری مصاحبه، این صفحه را تازه‌سازی کنید.",
+    "interview_completed": "منتظر ثبت نتیجه مصاحبه توسط مصاحبه‌گر باشید؛ اگر فرم یا اقدامی برای شما باز شد، آن را تکمیل کنید.",
+    "result_conditional_therapy": "پذیرش شما مشروط به شروع درمان شخصی است؛ مراحل بعد (آپلود مدارک و پرداخت) را طبق راهنمای پنل پیش ببرید.",
+    "result_single_course": "پذیرش شما محدود به درس(های) اعلام‌شده است؛ آپلود و پرداخت را طبق محدودیت‌های پنل انجام دهید (در صورت نیاز فقط پرداخت نقدی).",
+    "result_full_admission": "پذیرش کامل دریافت شد؛ مراحل بعد را طبق پنل (آپلود مدارک، انتخاب درس و پرداخت) پیش ببرید.",
+    "rejected": "پرونده شما در این دوره رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید.",
+    "documents_upload": "باید مدارک و تأییدیه‌های خواسته‌شده را در همین پورتال بارگذاری و ثبت کنید.",
+    "documents_review": "در این مرحله بررسی توسط مسئول پذیرش انجام می‌شود؛ اگر فرمی برای شما باز است تکمیل کنید، در غیر این صورت بعداً صفحه را تازه کنید.",
+    "documents_incomplete": "باید کاستی‌های اعلام‌شده را برطرف و مدارک را دوباره بارگذاری کنید.",
+    "credentials_created": "اطلاعات ورود از سامانه آموزش ارسال شده است؛ سپس مرحله انتخاب درس در LMS برای شما فعال می‌شود — صفحه را بعداً تازه کنید.",
+    "course_selection": "باید دروس مجاز را در LMS طبق سطح پذیرش انتخاب و ثبت کنید؛ اگر دکمه مرحله بعد در پنل فعال شد پس از ثبت درس آن را بزنید.",
+    "payment": "باید شهریه را حداکثر در ۴ قسط طبق راهنمای پنل پرداخت کنید تا ثبت‌نام نهایی شود.",
+    "registration_complete": "ثبت‌نام شما در این فرایند تکمیل شد؛ برای مراحل بعد آموزش سراغ دگر بخش‌های پنل بروید.",
+    "installment_overdue": "قسط معوق را پرداخت کنید تا پس از رفع بلاک، حضور شما در کلاس‌ها ثبت شود."
+  },
+  "introductory_term_end": {
+    "followup_in_progress": "در این مرحله مسئول پذیرش با فهرست دانشجویان افت تحصیلی تماس می‌گیرد؛ اگر برای شما پیام یا تماس ثبت شد همان را دنبال کنید. اگر اقدامی از سمت شما در پنل باز نشده، همین صفحه را بعداً تازه کنید — نیاز به اقدام فوری در پنل نیست مگر اعلام شده باشد."
+  },
+  "intro_second_semester_registration": {
+    "payment_processing": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+  },
+  "lesson_start_per_term": {},
+  "live_supervision_course_completion": {},
+  "live_supervision_session_prep": {},
+  "live_supervision_ta_evaluation": {},
+  "live_therapy_observation_course_completion": {},
+  "live_therapy_observation_session_prep": {},
+  "live_therapy_observation_ta_attendance_completion": {},
+  "mentor_private_sessions": {},
+  "patient_referral": {},
+  "process_merged_to_one": {},
+  "return_to_full_education": {},
+  "session_payment": {
+    "payment_due": "دکمهٔ «ادامه به انتخاب جلسات و تسویه» را بزنید. اگر بدهی جلسهٔ قبلی دارید، در مرحلهٔ بعد آن را همراه پرداخت انتخاب کنید.",
+    "payment_selection": "فرم همین صفحه را تکمیل کنید؛ در صورت بدهی، گزینهٔ تسویه را فعال کنید. سپس دکمهٔ «ادامه و ثبت مرحله» را بزنید تا به درگاه هدایت شوید.",
+    "awaiting_payment": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.",
+    "payment_failed": "می‌توانید دوباره تلاش کنید یا در صورت نیاز با پشتیبانی تماس بگیرید."
+  },
+  "skills_course_completion": {},
+  "specialized_commission_review": {},
+  "start_therapy": {
+    "therapist_selection": "درمانگر آموزشی و برنامهٔ هفتگی (مثلاً ۲ جلسه در هفته برای دوره جامع) را در فرم زیر مشخص کنید؛ سپس دکمهٔ ادامه را بزنید تا درخواست برای درمانگر ارسال شود.",
+    "therapist_confirmation": "درمانگر انتخابی باید درخواست شما را در پنل خود بررسی و بپذیرد یا رد کند. لطفاً چند ساعت صبر کنید و همین صفحه را تازه کنید.",
+    "schedule_first_session": "تاریخ شروع اولین جلسه را ثبت کنید؛ سامانه قانون ۲۴ ساعت را اعمال می‌کند و در صورت نیاز تاریخ را به هفتهٔ بعد موکول می‌کند. سپس به مرحلهٔ پرداخت هدایت می‌شوید.",
+    "first_session_24h_check": "این مرحله معمولاً به‌صورت خودکار طی چند ثانیه تکمیل می‌شود. اگر متوقف ماند، صفحه را تازه کنید.",
+    "payment_pending": "هزینهٔ جلسهٔ اول را از طریق درگاه بانک همین صفحه بپردازید. پس از تأیید بانک، درمان در پروندهٔ شما فعال می‌شود و به مرحلهٔ «پرداخت جلسات آتی» هدایت می‌شوید."
+  },
+  "student_instructor_evaluation": {},
+  "student_non_registration": {},
+  "student_session_cancellation": {},
+  "student_supervision_cancellation": {},
+  "supervision_50h_completion": {},
+  "supervision_block_transition": {},
+  "supervision_interruption": {},
+  "supervision_session_increase": {},
+  "supervision_session_reduction": {},
+  "supervisor_session_cancellation": {
+    "payment_pending": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+  },
+  "ta_blog_content": {},
+  "ta_conceptual_questions": {},
+  "ta_essay_upload": {},
+  "ta_instructor_leave": {},
+  "ta_student_consultation": {},
+  "ta_to_assistant_faculty": {},
+  "ta_to_instructor_auto": {},
+  "ta_track_change": {},
+  "ta_track_completion": {},
+  "theory_course_completion": {},
+  "therapist_session_cancellation": {
+    "payment_required": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+  },
+  "therapy_changes": {
+    "change_request": "نوع تغییر را انتخاب و دلیل کوتاه بنویسید؛ سپس یک‌بار دکمهٔ ادامه را بزنید تا درخواست به مسیر درست (کمیته یا درمانگر) برود.",
+    "restart_review": "درخواست آغاز مجدد در کمیته پیشرفت در حال بررسی است؛ پس از اعلام نتیجه همین صفحه را تازه کنید.",
+    "therapist_change_review": "درخواست تغییر درمانگر در کمیته پیشرفت در حال بررسی است؛ پس از تایید، درمانگر جدید را در مرحلهٔ بعد انتخاب می‌کنید.",
+    "schedule_change_review": "درمانگر در حال بررسی پیشنهاد شما برای ساعت جلسات است.",
+    "new_therapist_selection": "شناسهٔ درمانگر جدید را مطابق راهنمای انستیتو وارد کنید و تایید نهایی را بزنید.",
+    "new_schedule_confirmation": "ساعت پیشنهادی توسط درمانگر را بررسی کنید؛ در صورت تایید، دکمهٔ ادامه را بزنید تا ساعت روی جلسات آینده ثبت شود."
+  },
+  "therapy_completion": {
+    "initiated": "ساعات درمان، بالینی و سوپرویژن را در باکس پایین با حدنصاب‌ها ببینید؛ اگر همهٔ شرایط احراز است، دکمهٔ «ادامه و ثبت مرحله» را بزنید؛ در غیر این صورت پس از تکمیل ساعات دوباره همین فرایند را اجرا کنید."
+  },
+  "therapy_early_termination": {},
+  "therapy_interruption": {},
+  "therapy_session_increase": {
+    "request_submitted": "تاریخ نزدیک‌ترین جلسه و ساعت شروع را وارد کنید؛ فرم را ثبت کنید؛ سپس «ادامه و ثبت مرحله» را بزنید تا درمانگر بررسی کند. پس از تأیید، یک جلسهٔ هفتگی دیگر به برنامهٔ شما اضافه می‌شود.",
+    "therapist_review": "درمانگر در حال بررسی زمان پیشنهادی شماست؛ پس از اعلام نتیجه همین صفحه را تازه کنید. در صورت پیشنهاد زمان جدید، پیامک دریافت می‌کنید.",
+    "student_response": "اگر با زمان پیشنهادی درمانگر موافقید، دکمهٔ تأیید را بزنید. اگر زمان دیگری می‌خواهید، تاریخ و ساعت جدید را در فرم بنویسید و دکمهٔ «ورود زمان جدید» را بزنید.",
+    "session_added": "تعداد جلسات هفتگی در پروندهٔ شما به‌روز شده است؛ جلسهٔ جدید در فهرست جلسات درمان دیده می‌شود.",
+    "request_rejected": "درمانگر در حال حاضر امکان افزایش جلسات هفتگی را اعلام نکرده است؛ در صورت نیاز بعداً می‌توانید دوباره درخواست دهید."
+  },
+  "therapy_session_reduction": {
+    "initiated": "دکمهٔ «ادامه و ثبت مرحله» را بزنید. اگر کمتر از ۲ جلسه در هفته دارید، در همین مسیر اعلام می‌شود.",
+    "session_selection": "تعداد جلسات هفتگی پس از کاهش و جلسات آتی مورد نظر برای لغو را در فرم مشخص کنید؛ سپس «ادامه و ثبت مرحله» را بزنید. حداقل تعداد جلسات لغو باید با کاهش برنامه هم‌خوان باشد.",
+    "violation_warning": "چک‌باکس را بزنید و سپس «ادامه و ثبت مرحله» را بزنید تا کاهش با ثبت تخلف اعمال شود."
+  },
+  "thesis_defense_request": {
+    "revision_upload": "فایل پایان‌نامه اصلاح‌شده را بارگذاری کنید؛ پس از ثبت، منتظر زمان‌بندی دفاع مجدد باشید."
+  },
+  "unannounced_absence_reaction": {},
+  "unannounced_supervision_absence_reaction": {},
+  "upgrade_to_educational_therapist": {},
+  "upgrade_to_ta": {},
+  "violation_registration": {},
+  "winter_semester_preparation": {}
+}
+
+export const OPERATOR_TASK_LABELS_FA = {
+  "course_active": "ثبت نمره/حضور/تأیید TA.",
+  "instructor_eval_pending": "ثبت نمره/حضور/تأیید TA.",
+  "therapist_recording": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+  "site_manager_pending": "بررسی درخواست و ثبت تصمیم.",
+  "deputy_escalated": "بررسی پرونده و تأیید یا ارجاع.",
+  "attendance_list_ready": "ثبت نمره/حضور/تأیید TA.",
+  "cancellation_request": "ثبت نمره/حضور/تأیید TA.",
+  "supervision_review": "بررسی/صدور مجوز طبق دستور کار.",
+  "education_review": "بررسی پرونده در جلسه کمیته آموزش.",
+  "supervision_committee_review": "بررسی/صدور مجوز طبق دستور کار.",
+  "executive_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "scientific_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "interview_completed": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "committee_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "deputy_alerted": "بررسی پرونده و تأیید یا ارجاع.",
+  "session_scheduled": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "committee_decision": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "therapist_review": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+  "extra_session_completed": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+  "supervisor_review": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+  "calendar_entry": "هماهنگی اجرایی و ثبت تصمیم.",
+  "tuition_entry": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+  "license_check": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+  "course_list_creation": "بررسی علمی و ثبت نظر.",
+  "course_finalization": "بررسی علمی و ثبت نظر.",
+  "marketing_campaign": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.",
+  "interviewer_assignment": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+  "interview_scheduling": "بررسی درخواست و ثبت تصمیم.",
+  "grades_entry": "ثبت نمره/حضور/تأیید TA.",
+  "therapist_assignment": "بررسی پرونده در جلسه کمیته آموزش.",
+  "interview_held": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "capacity_check": "بررسی/صدور مجوز طبق دستور کار.",
+  "supervision_start": "بررسی/صدور مجوز طبق دستور کار.",
+  "general_therapy_committee_review": "اجرا و پیگیری تصمیم کمیته درمان.",
+  "coordination_followup": "هماهنگی آموزش درمان و ثبت اطلاعات.",
+  "approved_time_coordination": "بررسی/صدور مجوز طبق دستور کار.",
+  "certificate_review": "بررسی/صدور مجوز طبق دستور کار.",
+  "followup_in_progress": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.",
+  "lesson_active": "ثبت نمره/حضور/تأیید TA.",
+  "patient_referral": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.",
+  "coordination_pending": "هماهنگی آموزش درمان و ثبت اطلاعات.",
+  "instructor_click": "ثبت نمره/حضور/تأیید TA.",
+  "sessions_registered": "ثبت نمره/حضور/تأیید TA.",
+  "patients_listed": "بررسی گزارش و ثبت اقدام.",
+  "therapists_assigned": "بررسی گزارش و ثبت اقدام.",
+  "clinical_roles_selection": "بررسی پرونده در جلسه کمیته آموزش.",
+  "commission_review": "بررسی پرونده و ثبت رأی.",
+  "therapist_confirmation": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+  "meeting_scheduled": "بررسی/صدور مجوز طبق دستور کار.",
+  "meeting_held": "بررسی/صدور مجوز طبق دستور کار.",
+  "supervisor_recording": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+  "evaluation_pending": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+  "committee_scheduling": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "session_selection": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+  "makeup_choice": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+  "supervisor_review_counter": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+  "makeup_session_completed": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+  "ta_write": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+  "instructor_review": "ثبت نمره/حضور/تأیید TA.",
+  "rejected_revision": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+  "ta_upload": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+  "question_rejected": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+  "leave_request": "بررسی و ثبت تصمیم طبق نقش شما (مدرس یا TA).",
+  "course_committee_review": "بررسی علمی و ثبت نظر.",
+  "substitute_assigned": "بررسی علمی و ثبت نظر.",
+  "ta_form_fill": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+  "ta_click": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+  "make_up_choice": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+  "therapist_review_alternative": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+  "restart_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "therapist_change_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "schedule_change_review": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+  "reason_selection": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+  "progress_committee_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+  "education_committee_scheduling": "بررسی پرونده در جلسه کمیته آموزش.",
+  "site_manager_review": "بررسی درخواست و ثبت تصمیم.",
+  "committee_pending": "بررسی پرونده درمان و ثبت تصمیم.",
+  "committee_executor_review": "اجرا و پیگیری تصمیم کمیته درمان.",
+  "monitoring_review": "بررسی/صدور مجوز طبق دستور کار.",
+  "edu_supervision_interview": "بررسی پرونده در جلسه کمیته آموزش.",
+  "track_selection": "بررسی موضوع در کمیته درس.",
+  "violation_reported": "بررسی گزارش و ثبت اقدام.",
+  "review_status_set": "بررسی/صدور مجوز طبق دستور کار.",
+  "suspension_next_term": "بررسی/صدور مجوز طبق دستور کار.",
+  "suspension_immediate": "بررسی/صدور مجوز طبق دستور کار.",
+  "referred_to_education_committee": "بررسی پرونده در جلسه کمیته آموزش.",
+  "course_list_review": "بررسی علمی و ثبت نظر."
+}
+
+export const PROCESS_OPERATOR_TASK_LABELS_FA = {
+  "article_writing_completion": {
+    "course_active": "ثبت نمره/حضور/تأیید TA.",
+    "instructor_eval_pending": "ثبت نمره/حضور/تأیید TA."
+  },
+  "attendance_tracking": {
+    "therapist_recording": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+    "site_manager_pending": "بررسی درخواست و ثبت تصمیم.",
+    "deputy_escalated": "بررسی پرونده و تأیید یا ارجاع."
+  },
+  "class_attendance": {
+    "attendance_list_ready": "ثبت نمره/حضور/تأیید TA."
+  },
+  "class_session_cancellation": {
+    "cancellation_request": "ثبت نمره/حضور/تأیید TA."
+  },
+  "committees_review": {
+    "supervision_review": "بررسی/صدور مجوز طبق دستور کار.",
+    "education_review": "بررسی پرونده در جلسه کمیته آموزش."
+  },
+  "comprehensive_course_registration": {
+    "supervision_committee_review": "بررسی/صدور مجوز طبق دستور کار.",
+    "executive_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+    "scientific_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+    "interview_completed": "بررسی پرونده و ثبت تصمیم جلسه."
+  },
+  "comprehensive_term_end": {},
+  "comprehensive_term_start": {},
+  "educational_leave": {
+    "committee_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+    "deputy_alerted": "بررسی پرونده و تأیید یا ارجاع.",
+    "session_scheduled": "بررسی پرونده و ثبت تصمیم جلسه.",
+    "committee_decision": "بررسی پرونده و ثبت تصمیم جلسه."
+  },
+  "extra_session": {
+    "therapist_review": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+    "extra_session_completed": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+  },
+  "extra_supervision_session": {
+    "supervisor_review": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+    "extra_session_completed": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+  },
+  "fall_semester_preparation": {
+    "calendar_entry": "هماهنگی اجرایی و ثبت تصمیم.",
+    "tuition_entry": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+    "license_check": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+    "course_list_creation": "بررسی علمی و ثبت نظر.",
+    "course_finalization": "بررسی علمی و ثبت نظر.",
+    "marketing_campaign": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.",
+    "interviewer_assignment": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+    "interview_scheduling": "بررسی درخواست و ثبت تصمیم."
+  },
+  "fee_determination": {},
+  "film_observation_course_completion": {
+    "grades_entry": "ثبت نمره/حضور/تأیید TA."
+  },
+  "film_observation_ta_attendance_completion": {
+    "grades_entry": "ثبت نمره/حضور/تأیید TA."
+  },
+  "full_education_leave": {
+    "therapist_assignment": "بررسی پرونده در جلسه کمیته آموزش."
+  },
+  "group_supervision_course_completion": {
+    "grades_entry": "ثبت نمره/حضور/تأیید TA."
+  },
+  "internship_12month_conditional_review": {
+    "supervision_review": "بررسی/صدور مجوز طبق دستور کار.",
+    "interview_scheduling": "بررسی پروژه و ثبت تصمیم کمیته پیشرفت.",
+    "interview_held": "بررسی پرونده و ثبت تصمیم جلسه."
+  },
+  "internship_readiness_consultation": {
+    "supervision_committee_review": "بررسی/صدور مجوز طبق دستور کار.",
+    "interview_scheduling": "بررسی پروژه و ثبت تصمیم کمیته پیشرفت.",
+    "interview_held": "بررسی پرونده و ثبت تصمیم جلسه.",
+    "capacity_check": "بررسی/صدور مجوز طبق دستور کار."
+  },
+  "intern_bulk_patient_referral": {
+    "supervision_start": "بررسی/صدور مجوز طبق دستور کار.",
+    "general_therapy_committee_review": "اجرا و پیگیری تصمیم کمیته درمان.",
+    "coordination_followup": "هماهنگی آموزش درمان و ثبت اطلاعات."
+  },
+  "intern_hours_increase": {
+    "supervision_review": "بررسی/صدور مجوز طبق دستور کار.",
+    "approved_time_coordination": "بررسی/صدور مجوز طبق دستور کار."
+  },
+  "introductory_course_completion": {
+    "certificate_review": "بررسی/صدور مجوز طبق دستور کار."
+  },
+  "introductory_course_registration": {},
+  "introductory_term_end": {
+    "followup_in_progress": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه."
+  },
+  "intro_second_semester_registration": {},
+  "lesson_start_per_term": {
+    "lesson_active": "ثبت نمره/حضور/تأیید TA."
+  },
+  "live_supervision_course_completion": {
+    "grades_entry": "ثبت نمره/حضور/تأیید TA."
+  },
+  "live_supervision_session_prep": {
+    "patient_referral": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.",
+    "coordination_pending": "هماهنگی آموزش درمان و ثبت اطلاعات."
+  },
+  "live_supervision_ta_evaluation": {},
+  "live_therapy_observation_course_completion": {
+    "grades_entry": "ثبت نمره/حضور/تأیید TA."
+  },
+  "live_therapy_observation_session_prep": {
+    "patient_referral": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.",
+    "coordination_pending": "هماهنگی آموزش درمان و ثبت اطلاعات."
+  },
+  "live_therapy_observation_ta_attendance_completion": {
+    "grades_entry": "ثبت نمره/حضور/تأیید TA."
+  },
+  "mentor_private_sessions": {
+    "instructor_click": "ثبت نمره/حضور/تأیید TA.",
+    "sessions_registered": "ثبت نمره/حضور/تأیید TA."
+  },
+  "patient_referral": {
+    "patients_listed": "بررسی گزارش و ثبت اقدام.",
+    "therapists_assigned": "بررسی گزارش و ثبت اقدام."
+  },
+  "process_merged_to_one": {},
+  "return_to_full_education": {
+    "clinical_roles_selection": "بررسی پرونده در جلسه کمیته آموزش."
+  },
+  "session_payment": {},
+  "skills_course_completion": {
+    "grades_entry": "ثبت نمره/حضور/تأیید TA."
+  },
+  "specialized_commission_review": {
+    "commission_review": "بررسی پرونده و ثبت رأی."
+  },
+  "start_therapy": {
+    "therapist_confirmation": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+  },
+  "student_instructor_evaluation": {},
+  "student_non_registration": {
+    "meeting_scheduled": "بررسی/صدور مجوز طبق دستور کار.",
+    "meeting_held": "بررسی/صدور مجوز طبق دستور کار."
+  },
+  "student_session_cancellation": {},
+  "student_supervision_cancellation": {},
+  "supervision_50h_completion": {
+    "supervisor_recording": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+    "site_manager_pending": "بررسی درخواست و ثبت تصمیم.",
+    "deputy_escalated": "بررسی پرونده و تأیید یا ارجاع.",
+    "evaluation_pending": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+  },
+  "supervision_block_transition": {},
+  "supervision_interruption": {
+    "committee_scheduling": "بررسی پرونده و ثبت تصمیم جلسه.",
+    "meeting_held": "بررسی پرونده و ثبت تصمیم جلسه."
+  },
+  "supervision_session_increase": {
+    "supervisor_review": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+  },
+  "supervision_session_reduction": {
+    "supervisor_review": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+  },
+  "supervisor_session_cancellation": {
+    "session_selection": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+    "makeup_choice": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+    "supervisor_review_counter": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+    "makeup_session_completed": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+  },
+  "ta_blog_content": {
+    "ta_write": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+    "instructor_review": "ثبت نمره/حضور/تأیید TA.",
+    "rejected_revision": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست."
+  },
+  "ta_conceptual_questions": {
+    "ta_upload": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+    "instructor_review": "ثبت نمره/حضور/تأیید TA.",
+    "question_rejected": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست."
+  },
+  "ta_essay_upload": {
+    "ta_upload": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+    "instructor_review": "ثبت نمره/حضور/تأیید TA.",
+    "rejected_revision": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست."
+  },
+  "ta_instructor_leave": {
+    "leave_request": "بررسی و ثبت تصمیم طبق نقش شما (مدرس یا TA).",
+    "course_committee_review": "بررسی علمی و ثبت نظر.",
+    "substitute_assigned": "بررسی علمی و ثبت نظر."
+  },
+  "ta_student_consultation": {
+    "ta_form_fill": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست."
+  },
+  "ta_to_assistant_faculty": {
+    "supervision_review": "بررسی/صدور مجوز طبق دستور کار."
+  },
+  "ta_to_instructor_auto": {},
+  "ta_track_change": {
+    "ta_click": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+    "course_committee_review": "بررسی علمی و ثبت نظر.",
+    "meeting_scheduled": "بررسی علمی و ثبت نظر."
+  },
+  "ta_track_completion": {},
+  "theory_course_completion": {
+    "grades_entry": "ثبت نمره/حضور/تأیید TA."
+  },
+  "therapist_session_cancellation": {
+    "session_selection": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+    "make_up_choice": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+    "therapist_review_alternative": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+  },
+  "therapy_changes": {
+    "restart_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+    "therapist_change_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+    "schedule_change_review": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+  },
+  "therapy_completion": {},
+  "therapy_early_termination": {
+    "reason_selection": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+  },
+  "therapy_interruption": {
+    "committee_scheduling": "بررسی پرونده و ثبت تصمیم جلسه.",
+    "meeting_held": "بررسی پرونده و ثبت تصمیم جلسه."
+  },
+  "therapy_session_increase": {
+    "therapist_review": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+  },
+  "therapy_session_reduction": {},
+  "thesis_defense_request": {
+    "progress_committee_review": "بررسی پرونده و ثبت تصمیم جلسه.",
+    "supervision_committee_review": "بررسی/صدور مجوز طبق دستور کار.",
+    "education_committee_scheduling": "بررسی پرونده در جلسه کمیته آموزش."
+  },
+  "unannounced_absence_reaction": {
+    "site_manager_review": "بررسی درخواست و ثبت تصمیم.",
+    "committee_pending": "بررسی پرونده درمان و ثبت تصمیم.",
+    "committee_executor_review": "اجرا و پیگیری تصمیم کمیته درمان."
+  },
+  "unannounced_supervision_absence_reaction": {
+    "site_manager_review": "بررسی درخواست و ثبت تصمیم.",
+    "committee_pending": "بررسی پرونده درمان و ثبت تصمیم.",
+    "committee_executor_review": "اجرا و پیگیری تصمیم کمیته درمان."
+  },
+  "upgrade_to_educational_therapist": {
+    "monitoring_review": "بررسی/صدور مجوز طبق دستور کار.",
+    "edu_supervision_interview": "بررسی پرونده در جلسه کمیته آموزش."
+  },
+  "upgrade_to_ta": {
+    "supervision_review": "بررسی/صدور مجوز طبق دستور کار.",
+    "interview_scheduling": "بررسی موضوع در کمیته درس.",
+    "interview_held": "بررسی موضوع در کمیته درس.",
+    "track_selection": "بررسی موضوع در کمیته درس."
+  },
+  "violation_registration": {
+    "violation_reported": "بررسی گزارش و ثبت اقدام.",
+    "review_status_set": "بررسی/صدور مجوز طبق دستور کار.",
+    "meeting_scheduled": "بررسی/صدور مجوز طبق دستور کار.",
+    "suspension_next_term": "بررسی/صدور مجوز طبق دستور کار.",
+    "suspension_immediate": "بررسی/صدور مجوز طبق دستور کار.",
+    "referred_to_education_committee": "بررسی پرونده در جلسه کمیته آموزش."
+  },
+  "winter_semester_preparation": {
+    "license_check": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+    "course_list_review": "بررسی علمی و ثبت نظر.",
+    "course_finalization": "بررسی علمی و ثبت نظر.",
+    "marketing_campaign": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.",
+    "interviewer_assignment": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+    "interview_scheduling": "بررسی درخواست و ثبت تصمیم."
+  }
 }

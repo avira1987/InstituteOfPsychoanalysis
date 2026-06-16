@@ -1,0 +1,4430 @@
+{
+  "description_fa": "نگاشت سناریوهای پیامک فرایند با پترن‌های تأییدشده ملی‌پیامک؛ کمبود = تمپلیت‌های فرایند بدون پترن پیشنهادی.",
+  "counts": {
+    "sms_actions_in_process_metadata": 145,
+    "unique_template_keys": 129,
+    "melipayamak_patterns": 9,
+    "templates_without_mapped_panel_pattern": 114,
+    "gap_by_audience": {
+      "student_applicant": 75,
+      "staff": 22,
+      "mixed": 17
+    }
+  },
+  "melipayamak_patterns_ref": [
+    {
+      "bodyId": 447750,
+      "title": "مصاحبه تا 30 دیگر"
+    },
+    {
+      "bodyId": 447752,
+      "title": "پرداخت مبلغ برای رزرو نوبت مصاحبه"
+    },
+    {
+      "bodyId": 447759,
+      "title": "ارسال تاییدیه تاریخ مصاحبه"
+    },
+    {
+      "bodyId": 447765,
+      "title": "دقیقه قبل مصاحبه 30"
+    },
+    {
+      "bodyId": 447766,
+      "title": "رد اطلاعات پذیرش"
+    },
+    {
+      "bodyId": 447768,
+      "title": "کد ورود"
+    },
+    {
+      "bodyId": 447769,
+      "title": "تایید اطلاعات پذیرش"
+    },
+    {
+      "bodyId": 447770,
+      "title": "لینک ورود به کلاس"
+    },
+    {
+      "bodyId": 447772,
+      "title": "اقدام در پروفایل"
+    }
+  ],
+  "panel_pattern_mappings": [
+    {
+      "bodyId": 447768,
+      "panel_title": "کد ورود",
+      "match_quality": "high",
+      "covers_template_keys": [],
+      "covers_runtime": [
+        "OTP /api/auth OTP — خارج از متادیتای فرایند"
+      ],
+      "variable_hints": "{0}=کد"
+    },
+    {
+      "bodyId": 447769,
+      "panel_title": "تایید اطلاعات پذیرش",
+      "match_quality": "medium",
+      "covers_template_keys": [
+        "approved_upload_documents"
+      ],
+      "notes": "متن پنل عمومی است؛ تمپلیت مدارک جامع ممکن است متفاوت باشد.",
+      "variable_hints": "{0}=نام"
+    },
+    {
+      "bodyId": 447766,
+      "panel_title": "رد اطلاعات پذیرش",
+      "match_quality": "medium",
+      "covers_template_keys": [
+        "result_rejected",
+        "comprehensive_application_rejected_scientific",
+        "comprehensive_application_rejected_supervision",
+        "comprehensive_rejected_definitive"
+      ],
+      "notes": "رد پذیرش فرم/پرونده نزدیک است؛ جزئیات هر تمپلیت با پترن یکسان نیست.",
+      "variable_hints": "{0}=نام"
+    },
+    {
+      "bodyId": 447759,
+      "panel_title": "ارسال تاییدیه تاریخ مصاحبه",
+      "match_quality": "high",
+      "covers_template_keys": [
+        "interview_details_applicant",
+        "interview_scheduled_student_in_person",
+        "interview_scheduled_student_online",
+        "internship_interview_scheduled"
+      ],
+      "notes": "در کد بعضی کلیدها در notification_service تعریف نشده‌اند — قبل از پترن باید همسان‌سازی شود.",
+      "variable_hints": "{0} نام؛ {1} تاریخ؛ {2} ساعت"
+    },
+    {
+      "bodyId": 447752,
+      "panel_title": "پرداخت مبلغ رزرو مصاحبه",
+      "match_quality": "high",
+      "covers_template_keys": [],
+      "covers_runtime": [
+        "اعلام به کارمند پذیرش/مالی پس از پرداخت رزرو مصاحبه"
+      ],
+      "variable_hints": "{0} مبلغ ریال؛ {1} نام کاربر"
+    },
+    {
+      "bodyId": 447750,
+      "panel_title": "مصاحبه ۳۰ دقیقه قبل — متقاضی",
+      "match_quality": "high",
+      "covers_template_keys": [
+        "interview_reminder_applicant_inperson",
+        "interview_reminder_applicant_online"
+      ],
+      "variable_hints": "{0}=نام"
+    },
+    {
+      "bodyId": 447765,
+      "panel_title": "مصاحبه ۳۰ دقیقه قبل — مصاحبه‌کننده",
+      "match_quality": "high",
+      "covers_template_keys": [
+        "interview_reminder_interviewer_inperson",
+        "interview_reminder_interviewer_online",
+        "interview_scheduled_interviewer"
+      ],
+      "variable_hints": "{0}=نام کاربر/متقاضی"
+    },
+    {
+      "bodyId": 447770,
+      "panel_title": "لینک ورود کلاس ۳۰ دقیقه قبل",
+      "match_quality": "medium",
+      "covers_template_keys": [
+        "live_supervision_session_confirmed"
+      ],
+      "notes": "متن پترن پورتال را می‌خواهد؛ تمپلیت سوپرویژن زنده جزئیات تاریخ/ساعت دارد.",
+      "variable_hints": "{0}=مسیر یا نام دوره/کلاس"
+    },
+    {
+      "bodyId": 447772,
+      "panel_title": "اقدام در پروفایل",
+      "match_quality": "low",
+      "covers_template_keys": [],
+      "covers_runtime": [
+        "یادآوری عمومی اقدام در پورتال برای SLAها و پیگیری‌ها"
+      ],
+      "variable_hints": "{0}=مسیر یا برچسب کوتاه"
+    }
+  ],
+  "process_sms_template_inventory": [
+    {
+      "template_key": "absence_recorded",
+      "process_count": 1,
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "attendance_tracking",
+          "trigger": "absence_unexcused"
+        }
+      ]
+    },
+    {
+      "template_key": "academic_calendar_published",
+      "process_count": 1,
+      "process_codes": [
+        "fall_semester_preparation"
+      ],
+      "recipient_roles": [
+        "all_active_students"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "fall_semester_preparation",
+          "trigger": "interview_times_set"
+        }
+      ]
+    },
+    {
+      "template_key": "approved_upload_documents",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "scientific_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "attendance_site_manager_delay",
+      "process_count": 1,
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "recipient_roles": [
+        "deputy_education"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "attendance_tracking",
+          "trigger": "site_manager_sla_breach"
+        }
+      ]
+    },
+    {
+      "template_key": "certificate_ready_for_download",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_completion"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_completion",
+          "trigger": "student_notified"
+        }
+      ]
+    },
+    {
+      "template_key": "change_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_changes",
+          "trigger": "restart_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "committee_sla_breach",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "deputy_education"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "sla_breach_7days"
+        }
+      ]
+    },
+    {
+      "template_key": "comprehensive_accepted",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "interview_result_accepted"
+        }
+      ]
+    },
+    {
+      "template_key": "comprehensive_application_rejected_scientific",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "scientific_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "comprehensive_application_rejected_supervision",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "supervision_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "comprehensive_course_invitation",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_completion"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_completion",
+          "trigger": "all_10_courses_passed"
+        }
+      ]
+    },
+    {
+      "template_key": "comprehensive_rejected_definitive",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "interview_result_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "comprehensive_rejected_with_suggestion",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "interview_result_rejected_with_suggestion"
+        }
+      ]
+    },
+    {
+      "template_key": "debt_settlement_required",
+      "process_count": 1,
+      "process_codes": [
+        "session_payment"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "session_payment",
+          "trigger": "selection_invalid"
+        }
+      ]
+    },
+    {
+      "template_key": "documents_deficiency_list",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "documents_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "education_termination_notice",
+      "process_count": 1,
+      "process_codes": [
+        "committees_review"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "committees_review",
+          "trigger": "education_verdict_terminate"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_alternative_proposed",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "therapist_proposed_alternative"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_approved_payment",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "therapist_approved"
+        },
+        {
+          "process": "extra_session",
+          "trigger": "student_confirmed_alternative"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_cancelled",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "session_cancelled"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_confirmed",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "payment_completed"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_payment_timeout",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "payment_timeout"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "therapist_unavailable"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_request",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "therapist"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "extra_requested"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_supervision_confirmed",
+      "process_count": 1,
+      "process_codes": [
+        "extra_supervision_session"
+      ],
+      "recipient_roles": [
+        "student",
+        "supervisor"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "extra_supervision_session",
+          "trigger": "payment_completed"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_supervision_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "extra_supervision_session"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "extra_supervision_session",
+          "trigger": "supervisor_unavailable"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_supervision_request",
+      "process_count": 1,
+      "process_codes": [
+        "extra_supervision_session"
+      ],
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "extra_supervision_session",
+          "trigger": "extra_requested"
+        },
+        {
+          "process": "extra_supervision_session",
+          "trigger": "student_reentered_time"
+        }
+      ]
+    },
+    {
+      "template_key": "file_forwarded_to_executive",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "progress_committee"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "supervision_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "file_forwarded_to_scientific",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "progress_committee"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "executive_opinion_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "intern_2term_referral_started",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "monitoring_committee_officer"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "intern_hours_increase_deferred",
+      "process_count": 1,
+      "process_codes": [
+        "intern_hours_increase"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "intern_hours_increase",
+          "trigger": "rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "intern_hours_increased",
+      "process_count": 1,
+      "process_codes": [
+        "intern_hours_increase"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "intern_hours_increase",
+          "trigger": "times_registered"
+        }
+      ]
+    },
+    {
+      "template_key": "internship_12month_interview",
+      "process_count": 1,
+      "process_codes": [
+        "internship_12month_conditional_review"
+      ],
+      "recipient_roles": [
+        "progress_project",
+        "progress_scientific",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "internship_12month_conditional_review",
+          "trigger": "interview_scheduled"
+        }
+      ]
+    },
+    {
+      "template_key": "internship_interview_scheduled",
+      "process_count": 1,
+      "process_codes": [
+        "internship_readiness_consultation"
+      ],
+      "recipient_roles": [
+        "progress_project",
+        "progress_scientific",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "internship_readiness_consultation",
+          "trigger": "interview_scheduled"
+        }
+      ]
+    },
+    {
+      "template_key": "internship_started",
+      "process_count": 1,
+      "process_codes": [
+        "internship_readiness_consultation"
+      ],
+      "recipient_roles": [
+        "student",
+        "supervisor"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "internship_readiness_consultation",
+          "trigger": "payment_completed"
+        }
+      ]
+    },
+    {
+      "template_key": "interview_details_applicant",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "payment_success"
+        }
+      ]
+    },
+    {
+      "template_key": "interview_details_interviewer",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "interviewer"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "payment_success"
+        }
+      ]
+    },
+    {
+      "template_key": "interview_reminder_applicant_inperson",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_time_reached"
+        }
+      ]
+    },
+    {
+      "template_key": "interview_reminder_applicant_online",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_time_reached"
+        }
+      ]
+    },
+    {
+      "template_key": "interview_reminder_interviewer_inperson",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "interviewer"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_time_reached"
+        }
+      ]
+    },
+    {
+      "template_key": "interview_reminder_interviewer_online",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "interviewer"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_time_reached"
+        }
+      ]
+    },
+    {
+      "template_key": "interview_scheduled_interviewer",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "progress_committee"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "interview_payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "interview_scheduled_student_in_person",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "interview_payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "interview_scheduled_student_online",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "interview_payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "leave_approved",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "leave_approved_intern_1",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "leave_approved_intern_2_warning",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "leave_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "leave_rejected_committee_alert",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "monitoring_committee_officer"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "live_supervision_session_confirmed",
+      "process_count": 1,
+      "process_codes": [
+        "live_supervision_session_prep"
+      ],
+      "recipient_roles": [
+        "class_students",
+        "instructor",
+        "teaching_assistant"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "live_supervision_session_prep",
+          "trigger": "time_registered"
+        }
+      ]
+    },
+    {
+      "template_key": "lms_credentials",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "documents_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "makeup_session_proposed",
+      "process_count": 1,
+      "process_codes": [
+        "therapist_session_cancellation"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapist_session_cancellation",
+          "trigger": "make_up_date_entered"
+        },
+        {
+          "process": "therapist_session_cancellation",
+          "trigger": "therapist_entered_new_makeup"
+        }
+      ]
+    },
+    {
+      "template_key": "meeting_scheduled_sms",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_set_meeting"
+        }
+      ]
+    },
+    {
+      "template_key": "mentor_sessions_registered",
+      "process_count": 1,
+      "process_codes": [
+        "mentor_private_sessions"
+      ],
+      "recipient_roles": [
+        "instructor",
+        "teaching_assistant"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "mentor_private_sessions",
+          "trigger": "registered"
+        }
+      ]
+    },
+    {
+      "template_key": "next_term_registration_deadline",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_term_end"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_term_end",
+          "trigger": "remaining_courses_exist"
+        }
+      ]
+    },
+    {
+      "template_key": "next_term_registration_open",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_term_end"
+      ],
+      "recipient_roles": [
+        "eligible_students"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_term_end",
+          "trigger": "send_registration_notification"
+        }
+      ]
+    },
+    {
+      "template_key": "non_registration_meeting_invite_sms",
+      "process_count": 1,
+      "process_codes": [
+        "student_non_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "student_non_registration",
+          "trigger": "invitation_sent"
+        }
+      ]
+    },
+    {
+      "template_key": "patient_referral_notice",
+      "process_count": 1,
+      "process_codes": [
+        "patient_referral"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "patient_referral",
+          "trigger": "notifications_done"
+        }
+      ]
+    },
+    {
+      "template_key": "payment_confirmed",
+      "process_count": 1,
+      "process_codes": [
+        "session_payment"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "session_payment",
+          "trigger": "payment_successful"
+        }
+      ]
+    },
+    {
+      "template_key": "payment_overdue",
+      "process_count": 1,
+      "process_codes": [
+        "session_payment"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "session_payment",
+          "trigger": "payment_timeout"
+        }
+      ]
+    },
+    {
+      "template_key": "payment_rejected",
+      "process_count": 4,
+      "process_codes": [
+        "comprehensive_course_registration",
+        "extra_session",
+        "session_payment",
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "interview_payment_failed"
+        },
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "tuition_payment_failed"
+        }
+      ]
+    },
+    {
+      "template_key": "payment_retry",
+      "process_count": 1,
+      "process_codes": [
+        "session_payment"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "session_payment",
+          "trigger": "retry_payment"
+        }
+      ]
+    },
+    {
+      "template_key": "proof_of_enrollment_required",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "scientific_requested_proof"
+        }
+      ]
+    },
+    {
+      "template_key": "quota_exceeded",
+      "process_count": 1,
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "recipient_roles": [
+        "admin",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "attendance_tracking",
+          "trigger": "absence_unexcused"
+        }
+      ]
+    },
+    {
+      "template_key": "registration_complete",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "tuition_payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "registration_confirmed_term2",
+      "process_count": 1,
+      "process_codes": [
+        "intro_second_semester_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "intro_second_semester_registration",
+          "trigger": "payment_completed"
+        },
+        {
+          "process": "intro_second_semester_registration",
+          "trigger": "payment_completed"
+        }
+      ]
+    },
+    {
+      "template_key": "required_documents_list",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "proceed_to_documents"
+        },
+        {
+          "process": "introductory_course_registration",
+          "trigger": "proceed_to_documents"
+        }
+      ]
+    },
+    {
+      "template_key": "result_conditional_therapy",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_result_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "result_full_admission",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_result_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "result_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_result_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "result_single_course",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_result_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "return_reminder",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "send_return_reminder"
+        }
+      ]
+    },
+    {
+      "template_key": "schedule_changed",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "therapy_changes",
+          "trigger": "new_schedule_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "session_reminder",
+      "process_count": 1,
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "attendance_tracking",
+          "trigger": "session_time_reached"
+        }
+      ]
+    },
+    {
+      "template_key": "sessions_suspended",
+      "process_count": 1,
+      "process_codes": [
+        "session_payment"
+      ],
+      "recipient_roles": [
+        "admin",
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "session_payment",
+          "trigger": "max_retries_exceeded"
+        }
+      ]
+    },
+    {
+      "template_key": "student_declined_makeup",
+      "process_count": 1,
+      "process_codes": [
+        "therapist_session_cancellation"
+      ],
+      "recipient_roles": [
+        "therapist"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "therapist_session_cancellation",
+          "trigger": "student_declined_makeup"
+        }
+      ]
+    },
+    {
+      "template_key": "student_declined_supervision_makeup",
+      "process_count": 1,
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "supervisor_session_cancellation",
+          "trigger": "student_declined_makeup"
+        }
+      ]
+    },
+    {
+      "template_key": "student_supervision_counter_proposal",
+      "process_count": 1,
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "supervisor_session_cancellation",
+          "trigger": "student_counter_proposed"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_block_transition_complete",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_block_transition"
+      ],
+      "recipient_roles": [
+        "new_supervisor",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "supervision_block_transition",
+          "trigger": "payment_success_50th"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_interruption_meeting_invite",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_interruption"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervision_interruption",
+          "trigger": "meeting_scheduled"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_makeup_proposed",
+      "process_count": 1,
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervisor_session_cancellation",
+          "trigger": "makeup_date_entered"
+        },
+        {
+          "process": "supervisor_session_cancellation",
+          "trigger": "supervisor_entered_new_time"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_session_increase_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_session_increase"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervision_session_increase",
+          "trigger": "supervisor_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_session_increase_request",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_session_increase"
+      ],
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "supervision_session_increase",
+          "trigger": "day_time_entered"
+        },
+        {
+          "process": "supervision_session_increase",
+          "trigger": "student_reentered_time"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_session_reduction_approved",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_session_reduction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervision_session_reduction",
+          "trigger": "supervisor_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_session_reduction_multi",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_session_reduction"
+      ],
+      "recipient_roles": [
+        "student",
+        "supervisor"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "supervision_session_reduction",
+          "trigger": "sessions_selected"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_session_reduction_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_session_reduction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervision_session_reduction",
+          "trigger": "supervisor_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_terminated_notice",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_supervision_absence_reaction",
+          "trigger": "site_manager_option_2"
+        }
+      ]
+    },
+    {
+      "template_key": "supervisor_cancellation_no_makeup",
+      "process_count": 1,
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervisor_session_cancellation",
+          "trigger": "no_makeup_selected"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_approved_commitment",
+      "process_count": 1,
+      "process_codes": [
+        "upgrade_to_ta"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "upgrade_to_ta",
+          "trigger": "tracks_registered"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_blog_ready_for_review",
+      "process_count": 1,
+      "process_codes": [
+        "ta_blog_content"
+      ],
+      "recipient_roles": [
+        "instructor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "ta_blog_content",
+          "trigger": "content_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_consultation_reminder",
+      "process_count": 1,
+      "process_codes": [
+        "ta_student_consultation"
+      ],
+      "recipient_roles": [
+        "teaching_assistant"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "ta_student_consultation",
+          "trigger": "reminder_sent"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_eligibility_approved",
+      "process_count": 1,
+      "process_codes": [
+        "upgrade_to_ta"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "upgrade_to_ta",
+          "trigger": "approved"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_essay_ready_for_review",
+      "process_count": 1,
+      "process_codes": [
+        "ta_essay_upload"
+      ],
+      "recipient_roles": [
+        "instructor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "ta_essay_upload",
+          "trigger": "uploaded"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_interview_scheduled",
+      "process_count": 1,
+      "process_codes": [
+        "upgrade_to_ta"
+      ],
+      "recipient_roles": [
+        "course_committee_project",
+        "course_committee_scientific",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "upgrade_to_ta",
+          "trigger": "interview_scheduled"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_questions_ready_for_review",
+      "process_count": 1,
+      "process_codes": [
+        "ta_conceptual_questions"
+      ],
+      "recipient_roles": [
+        "instructor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "ta_conceptual_questions",
+          "trigger": "uploaded_on_time"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_to_assistant_faculty_congrats",
+      "process_count": 1,
+      "process_codes": [
+        "ta_to_assistant_faculty"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "ta_to_assistant_faculty",
+          "trigger": "approved"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_to_instructor_auto_congrats",
+      "process_count": 1,
+      "process_codes": [
+        "ta_to_instructor_auto"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "ta_to_instructor_auto",
+          "trigger": "conditions_met"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_track_completion_committee_notify",
+      "process_count": 1,
+      "process_codes": [
+        "ta_track_completion"
+      ],
+      "recipient_roles": [
+        "course_committee_scientific"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "ta_track_completion",
+          "trigger": "conditions_met"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_track_completion_congrats",
+      "process_count": 1,
+      "process_codes": [
+        "ta_track_completion"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "ta_track_completion",
+          "trigger": "conditions_met"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_track_meeting_scheduled",
+      "process_count": 1,
+      "process_codes": [
+        "ta_track_change"
+      ],
+      "recipient_roles": [
+        "course_committee_scientific",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "ta_track_change",
+          "trigger": "meeting_registered"
+        }
+      ]
+    },
+    {
+      "template_key": "therapist_cancellation_no_makeup",
+      "process_count": 1,
+      "process_codes": [
+        "therapist_session_cancellation"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapist_session_cancellation",
+          "trigger": "no_make_up"
+        },
+        {
+          "process": "therapist_session_cancellation",
+          "trigger": "therapist_declined_makeup"
+        }
+      ]
+    },
+    {
+      "template_key": "therapist_changed",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "therapy_changes",
+          "trigger": "new_therapist_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "therapist_declined",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "therapist_declined"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_already_used",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "duplicate_attempt"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_completion_conditions_not_met",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_completion"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_completion",
+          "trigger": "process_link_clicked"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_completion_success",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_completion"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_completion",
+          "trigger": "process_link_clicked"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_condition_block",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_term_end"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_term_end",
+          "trigger": "therapy_condition_check"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_early_termination_standard",
+      "process_count": 3,
+      "process_codes": [
+        "committees_review",
+        "specialized_commission_review",
+        "therapy_early_termination"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "committees_review",
+          "trigger": "education_verdict_continue"
+        },
+        {
+          "process": "specialized_commission_review",
+          "trigger": "commission_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_eligible",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "eligible"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_ineligible",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "not_eligible"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_interruption_meeting",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_interruption"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_interruption",
+          "trigger": "meeting_scheduled"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_restart_approved",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "therapy_changes",
+          "trigger": "restart_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_scheduled_student",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_scheduled_therapist",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "therapist"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_session_increase_alternative",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_session_increase"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_session_increase",
+          "trigger": "therapist_proposed_alternative"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_session_increase_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_session_increase"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_session_increase",
+          "trigger": "therapist_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_session_increase_request",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_session_increase"
+      ],
+      "recipient_roles": [
+        "therapist"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "therapy_session_increase",
+          "trigger": "day_time_entered"
+        },
+        {
+          "process": "therapy_session_increase",
+          "trigger": "student_reentered_time"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_session_reduction_blocked",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_session_reduction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_session_reduction",
+          "trigger": "process_link_clicked"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_session_reduction_violation_warning",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_session_reduction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_session_reduction",
+          "trigger": "sessions_selected"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_terminated_notice",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_absence_reaction",
+          "trigger": "site_manager_option_2"
+        }
+      ]
+    },
+    {
+      "template_key": "tuition_payment_to_accounting",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_term_start"
+      ],
+      "recipient_roles": [
+        "accounting"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "comprehensive_term_start",
+          "trigger": "payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_absence_option1_sms",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_absence_reaction",
+          "trigger": "site_manager_option_1"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_absence_option3_sms",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_absence_reaction",
+          "trigger": "site_manager_option_3"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_absence_reminder",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_absence_reaction",
+          "trigger": "system_check"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_supervision_absence_reminder",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_supervision_absence_reaction",
+          "trigger": "system_check"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_supervision_option1_sms",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_supervision_absence_reaction",
+          "trigger": "site_manager_option_1"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_supervision_option3_sms",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_supervision_absence_reaction",
+          "trigger": "site_manager_option_3"
+        }
+      ]
+    },
+    {
+      "template_key": "violation_no_return",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "monitoring_committee_officer",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "return_deadline_passed"
+        }
+      ]
+    },
+    {
+      "template_key": "week9_block",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "admin",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "week9_deadline_exceeded"
+        }
+      ]
+    },
+    {
+      "template_key": "winter_calendar_published",
+      "process_count": 1,
+      "process_codes": [
+        "winter_semester_preparation"
+      ],
+      "recipient_roles": [
+        "all_active_fall_students"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "winter_semester_preparation",
+          "trigger": "interview_times_set"
+        }
+      ]
+    }
+  ],
+  "gap_templates_need_new_panel_pattern": [
+    {
+      "template_key": "absence_recorded",
+      "process_count": 1,
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "attendance_tracking",
+          "trigger": "absence_unexcused"
+        }
+      ]
+    },
+    {
+      "template_key": "academic_calendar_published",
+      "process_count": 1,
+      "process_codes": [
+        "fall_semester_preparation"
+      ],
+      "recipient_roles": [
+        "all_active_students"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "fall_semester_preparation",
+          "trigger": "interview_times_set"
+        }
+      ]
+    },
+    {
+      "template_key": "attendance_site_manager_delay",
+      "process_count": 1,
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "recipient_roles": [
+        "deputy_education"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "attendance_tracking",
+          "trigger": "site_manager_sla_breach"
+        }
+      ]
+    },
+    {
+      "template_key": "certificate_ready_for_download",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_completion"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_completion",
+          "trigger": "student_notified"
+        }
+      ]
+    },
+    {
+      "template_key": "change_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_changes",
+          "trigger": "restart_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "committee_sla_breach",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "deputy_education"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "sla_breach_7days"
+        }
+      ]
+    },
+    {
+      "template_key": "comprehensive_accepted",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "interview_result_accepted"
+        }
+      ]
+    },
+    {
+      "template_key": "comprehensive_course_invitation",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_completion"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_completion",
+          "trigger": "all_10_courses_passed"
+        }
+      ]
+    },
+    {
+      "template_key": "comprehensive_rejected_with_suggestion",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "interview_result_rejected_with_suggestion"
+        }
+      ]
+    },
+    {
+      "template_key": "debt_settlement_required",
+      "process_count": 1,
+      "process_codes": [
+        "session_payment"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "session_payment",
+          "trigger": "selection_invalid"
+        }
+      ]
+    },
+    {
+      "template_key": "documents_deficiency_list",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "documents_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "education_termination_notice",
+      "process_count": 1,
+      "process_codes": [
+        "committees_review"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "committees_review",
+          "trigger": "education_verdict_terminate"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_alternative_proposed",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "therapist_proposed_alternative"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_approved_payment",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "therapist_approved"
+        },
+        {
+          "process": "extra_session",
+          "trigger": "student_confirmed_alternative"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_cancelled",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "session_cancelled"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_confirmed",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "payment_completed"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_payment_timeout",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "payment_timeout"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "therapist_unavailable"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_session_request",
+      "process_count": 1,
+      "process_codes": [
+        "extra_session"
+      ],
+      "recipient_roles": [
+        "therapist"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "extra_session",
+          "trigger": "extra_requested"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_supervision_confirmed",
+      "process_count": 1,
+      "process_codes": [
+        "extra_supervision_session"
+      ],
+      "recipient_roles": [
+        "student",
+        "supervisor"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "extra_supervision_session",
+          "trigger": "payment_completed"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_supervision_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "extra_supervision_session"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "extra_supervision_session",
+          "trigger": "supervisor_unavailable"
+        }
+      ]
+    },
+    {
+      "template_key": "extra_supervision_request",
+      "process_count": 1,
+      "process_codes": [
+        "extra_supervision_session"
+      ],
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "extra_supervision_session",
+          "trigger": "extra_requested"
+        },
+        {
+          "process": "extra_supervision_session",
+          "trigger": "student_reentered_time"
+        }
+      ]
+    },
+    {
+      "template_key": "file_forwarded_to_executive",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "progress_committee"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "supervision_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "file_forwarded_to_scientific",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "progress_committee"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "executive_opinion_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "intern_2term_referral_started",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "monitoring_committee_officer"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "intern_hours_increase_deferred",
+      "process_count": 1,
+      "process_codes": [
+        "intern_hours_increase"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "intern_hours_increase",
+          "trigger": "rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "intern_hours_increased",
+      "process_count": 1,
+      "process_codes": [
+        "intern_hours_increase"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "intern_hours_increase",
+          "trigger": "times_registered"
+        }
+      ]
+    },
+    {
+      "template_key": "internship_12month_interview",
+      "process_count": 1,
+      "process_codes": [
+        "internship_12month_conditional_review"
+      ],
+      "recipient_roles": [
+        "progress_project",
+        "progress_scientific",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "internship_12month_conditional_review",
+          "trigger": "interview_scheduled"
+        }
+      ]
+    },
+    {
+      "template_key": "internship_started",
+      "process_count": 1,
+      "process_codes": [
+        "internship_readiness_consultation"
+      ],
+      "recipient_roles": [
+        "student",
+        "supervisor"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "internship_readiness_consultation",
+          "trigger": "payment_completed"
+        }
+      ]
+    },
+    {
+      "template_key": "interview_details_interviewer",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "interviewer"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "payment_success"
+        }
+      ]
+    },
+    {
+      "template_key": "leave_approved",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "leave_approved_intern_1",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "leave_approved_intern_2_warning",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "leave_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "leave_rejected_committee_alert",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "monitoring_committee_officer"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "lms_credentials",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "documents_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "makeup_session_proposed",
+      "process_count": 1,
+      "process_codes": [
+        "therapist_session_cancellation"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapist_session_cancellation",
+          "trigger": "make_up_date_entered"
+        },
+        {
+          "process": "therapist_session_cancellation",
+          "trigger": "therapist_entered_new_makeup"
+        }
+      ]
+    },
+    {
+      "template_key": "meeting_scheduled_sms",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "committee_set_meeting"
+        }
+      ]
+    },
+    {
+      "template_key": "mentor_sessions_registered",
+      "process_count": 1,
+      "process_codes": [
+        "mentor_private_sessions"
+      ],
+      "recipient_roles": [
+        "instructor",
+        "teaching_assistant"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "mentor_private_sessions",
+          "trigger": "registered"
+        }
+      ]
+    },
+    {
+      "template_key": "next_term_registration_deadline",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_term_end"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_term_end",
+          "trigger": "remaining_courses_exist"
+        }
+      ]
+    },
+    {
+      "template_key": "next_term_registration_open",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_term_end"
+      ],
+      "recipient_roles": [
+        "eligible_students"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_term_end",
+          "trigger": "send_registration_notification"
+        }
+      ]
+    },
+    {
+      "template_key": "non_registration_meeting_invite_sms",
+      "process_count": 1,
+      "process_codes": [
+        "student_non_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "student_non_registration",
+          "trigger": "invitation_sent"
+        }
+      ]
+    },
+    {
+      "template_key": "patient_referral_notice",
+      "process_count": 1,
+      "process_codes": [
+        "patient_referral"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "patient_referral",
+          "trigger": "notifications_done"
+        }
+      ]
+    },
+    {
+      "template_key": "payment_confirmed",
+      "process_count": 1,
+      "process_codes": [
+        "session_payment"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "session_payment",
+          "trigger": "payment_successful"
+        }
+      ]
+    },
+    {
+      "template_key": "payment_overdue",
+      "process_count": 1,
+      "process_codes": [
+        "session_payment"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "session_payment",
+          "trigger": "payment_timeout"
+        }
+      ]
+    },
+    {
+      "template_key": "payment_rejected",
+      "process_count": 4,
+      "process_codes": [
+        "comprehensive_course_registration",
+        "extra_session",
+        "session_payment",
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "interview_payment_failed"
+        },
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "tuition_payment_failed"
+        }
+      ]
+    },
+    {
+      "template_key": "payment_retry",
+      "process_count": 1,
+      "process_codes": [
+        "session_payment"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "session_payment",
+          "trigger": "retry_payment"
+        }
+      ]
+    },
+    {
+      "template_key": "proof_of_enrollment_required",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "scientific_requested_proof"
+        }
+      ]
+    },
+    {
+      "template_key": "quota_exceeded",
+      "process_count": 1,
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "recipient_roles": [
+        "admin",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "attendance_tracking",
+          "trigger": "absence_unexcused"
+        }
+      ]
+    },
+    {
+      "template_key": "registration_complete",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "comprehensive_course_registration",
+          "trigger": "tuition_payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "registration_confirmed_term2",
+      "process_count": 1,
+      "process_codes": [
+        "intro_second_semester_registration"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "intro_second_semester_registration",
+          "trigger": "payment_completed"
+        },
+        {
+          "process": "intro_second_semester_registration",
+          "trigger": "payment_completed"
+        }
+      ]
+    },
+    {
+      "template_key": "required_documents_list",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "proceed_to_documents"
+        },
+        {
+          "process": "introductory_course_registration",
+          "trigger": "proceed_to_documents"
+        }
+      ]
+    },
+    {
+      "template_key": "result_conditional_therapy",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_result_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "result_full_admission",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_result_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "result_single_course",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "recipient_roles": [
+        "applicant"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_course_registration",
+          "trigger": "interview_result_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "return_reminder",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "send_return_reminder"
+        }
+      ]
+    },
+    {
+      "template_key": "schedule_changed",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "therapy_changes",
+          "trigger": "new_schedule_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "session_reminder",
+      "process_count": 1,
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "attendance_tracking",
+          "trigger": "session_time_reached"
+        }
+      ]
+    },
+    {
+      "template_key": "sessions_suspended",
+      "process_count": 1,
+      "process_codes": [
+        "session_payment"
+      ],
+      "recipient_roles": [
+        "admin",
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "session_payment",
+          "trigger": "max_retries_exceeded"
+        }
+      ]
+    },
+    {
+      "template_key": "student_declined_makeup",
+      "process_count": 1,
+      "process_codes": [
+        "therapist_session_cancellation"
+      ],
+      "recipient_roles": [
+        "therapist"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "therapist_session_cancellation",
+          "trigger": "student_declined_makeup"
+        }
+      ]
+    },
+    {
+      "template_key": "student_declined_supervision_makeup",
+      "process_count": 1,
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "supervisor_session_cancellation",
+          "trigger": "student_declined_makeup"
+        }
+      ]
+    },
+    {
+      "template_key": "student_supervision_counter_proposal",
+      "process_count": 1,
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "supervisor_session_cancellation",
+          "trigger": "student_counter_proposed"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_block_transition_complete",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_block_transition"
+      ],
+      "recipient_roles": [
+        "new_supervisor",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "supervision_block_transition",
+          "trigger": "payment_success_50th"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_interruption_meeting_invite",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_interruption"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervision_interruption",
+          "trigger": "meeting_scheduled"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_makeup_proposed",
+      "process_count": 1,
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervisor_session_cancellation",
+          "trigger": "makeup_date_entered"
+        },
+        {
+          "process": "supervisor_session_cancellation",
+          "trigger": "supervisor_entered_new_time"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_session_increase_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_session_increase"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervision_session_increase",
+          "trigger": "supervisor_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_session_increase_request",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_session_increase"
+      ],
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "supervision_session_increase",
+          "trigger": "day_time_entered"
+        },
+        {
+          "process": "supervision_session_increase",
+          "trigger": "student_reentered_time"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_session_reduction_approved",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_session_reduction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervision_session_reduction",
+          "trigger": "supervisor_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_session_reduction_multi",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_session_reduction"
+      ],
+      "recipient_roles": [
+        "student",
+        "supervisor"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "supervision_session_reduction",
+          "trigger": "sessions_selected"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_session_reduction_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "supervision_session_reduction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervision_session_reduction",
+          "trigger": "supervisor_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "supervision_terminated_notice",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_supervision_absence_reaction",
+          "trigger": "site_manager_option_2"
+        }
+      ]
+    },
+    {
+      "template_key": "supervisor_cancellation_no_makeup",
+      "process_count": 1,
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "supervisor_session_cancellation",
+          "trigger": "no_makeup_selected"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_approved_commitment",
+      "process_count": 1,
+      "process_codes": [
+        "upgrade_to_ta"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "upgrade_to_ta",
+          "trigger": "tracks_registered"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_blog_ready_for_review",
+      "process_count": 1,
+      "process_codes": [
+        "ta_blog_content"
+      ],
+      "recipient_roles": [
+        "instructor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "ta_blog_content",
+          "trigger": "content_submitted"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_consultation_reminder",
+      "process_count": 1,
+      "process_codes": [
+        "ta_student_consultation"
+      ],
+      "recipient_roles": [
+        "teaching_assistant"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "ta_student_consultation",
+          "trigger": "reminder_sent"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_eligibility_approved",
+      "process_count": 1,
+      "process_codes": [
+        "upgrade_to_ta"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "upgrade_to_ta",
+          "trigger": "approved"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_essay_ready_for_review",
+      "process_count": 1,
+      "process_codes": [
+        "ta_essay_upload"
+      ],
+      "recipient_roles": [
+        "instructor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "ta_essay_upload",
+          "trigger": "uploaded"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_interview_scheduled",
+      "process_count": 1,
+      "process_codes": [
+        "upgrade_to_ta"
+      ],
+      "recipient_roles": [
+        "course_committee_project",
+        "course_committee_scientific",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "upgrade_to_ta",
+          "trigger": "interview_scheduled"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_questions_ready_for_review",
+      "process_count": 1,
+      "process_codes": [
+        "ta_conceptual_questions"
+      ],
+      "recipient_roles": [
+        "instructor"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "ta_conceptual_questions",
+          "trigger": "uploaded_on_time"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_to_assistant_faculty_congrats",
+      "process_count": 1,
+      "process_codes": [
+        "ta_to_assistant_faculty"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "ta_to_assistant_faculty",
+          "trigger": "approved"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_to_instructor_auto_congrats",
+      "process_count": 1,
+      "process_codes": [
+        "ta_to_instructor_auto"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "ta_to_instructor_auto",
+          "trigger": "conditions_met"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_track_completion_committee_notify",
+      "process_count": 1,
+      "process_codes": [
+        "ta_track_completion"
+      ],
+      "recipient_roles": [
+        "course_committee_scientific"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "ta_track_completion",
+          "trigger": "conditions_met"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_track_completion_congrats",
+      "process_count": 1,
+      "process_codes": [
+        "ta_track_completion"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "ta_track_completion",
+          "trigger": "conditions_met"
+        }
+      ]
+    },
+    {
+      "template_key": "ta_track_meeting_scheduled",
+      "process_count": 1,
+      "process_codes": [
+        "ta_track_change"
+      ],
+      "recipient_roles": [
+        "course_committee_scientific",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "ta_track_change",
+          "trigger": "meeting_registered"
+        }
+      ]
+    },
+    {
+      "template_key": "therapist_cancellation_no_makeup",
+      "process_count": 1,
+      "process_codes": [
+        "therapist_session_cancellation"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapist_session_cancellation",
+          "trigger": "no_make_up"
+        },
+        {
+          "process": "therapist_session_cancellation",
+          "trigger": "therapist_declined_makeup"
+        }
+      ]
+    },
+    {
+      "template_key": "therapist_changed",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "therapy_changes",
+          "trigger": "new_therapist_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "therapist_declined",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "therapist_declined"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_already_used",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "duplicate_attempt"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_completion_conditions_not_met",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_completion"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_completion",
+          "trigger": "process_link_clicked"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_completion_success",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_completion"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_completion",
+          "trigger": "process_link_clicked"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_condition_block",
+      "process_count": 1,
+      "process_codes": [
+        "introductory_term_end"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "introductory_term_end",
+          "trigger": "therapy_condition_check"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_early_termination_standard",
+      "process_count": 3,
+      "process_codes": [
+        "committees_review",
+        "specialized_commission_review",
+        "therapy_early_termination"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "committees_review",
+          "trigger": "education_verdict_continue"
+        },
+        {
+          "process": "specialized_commission_review",
+          "trigger": "commission_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_eligible",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "eligible"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_ineligible",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "not_eligible"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_interruption_meeting",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_interruption"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_interruption",
+          "trigger": "meeting_scheduled"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_restart_approved",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "therapy_changes",
+          "trigger": "restart_approved"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_scheduled_student",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_scheduled_therapist",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "therapist"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_session_increase_alternative",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_session_increase"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_session_increase",
+          "trigger": "therapist_proposed_alternative"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_session_increase_rejected",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_session_increase"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_session_increase",
+          "trigger": "therapist_rejected"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_session_increase_request",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_session_increase"
+      ],
+      "recipient_roles": [
+        "therapist"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "therapy_session_increase",
+          "trigger": "day_time_entered"
+        },
+        {
+          "process": "therapy_session_increase",
+          "trigger": "student_reentered_time"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_session_reduction_blocked",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_session_reduction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_session_reduction",
+          "trigger": "process_link_clicked"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_session_reduction_violation_warning",
+      "process_count": 1,
+      "process_codes": [
+        "therapy_session_reduction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "therapy_session_reduction",
+          "trigger": "sessions_selected"
+        }
+      ]
+    },
+    {
+      "template_key": "therapy_terminated_notice",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_absence_reaction",
+          "trigger": "site_manager_option_2"
+        }
+      ]
+    },
+    {
+      "template_key": "tuition_payment_to_accounting",
+      "process_count": 1,
+      "process_codes": [
+        "comprehensive_term_start"
+      ],
+      "recipient_roles": [
+        "accounting"
+      ],
+      "audience": "staff",
+      "examples": [
+        {
+          "process": "comprehensive_term_start",
+          "trigger": "payment_confirmed"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_absence_option1_sms",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_absence_reaction",
+          "trigger": "site_manager_option_1"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_absence_option3_sms",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_absence_reaction",
+          "trigger": "site_manager_option_3"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_absence_reminder",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_absence_reaction",
+          "trigger": "system_check"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_supervision_absence_reminder",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_supervision_absence_reaction",
+          "trigger": "system_check"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_supervision_option1_sms",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_supervision_absence_reaction",
+          "trigger": "site_manager_option_1"
+        }
+      ]
+    },
+    {
+      "template_key": "unannounced_supervision_option3_sms",
+      "process_count": 1,
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "recipient_roles": [
+        "student"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "unannounced_supervision_absence_reaction",
+          "trigger": "site_manager_option_3"
+        }
+      ]
+    },
+    {
+      "template_key": "violation_no_return",
+      "process_count": 1,
+      "process_codes": [
+        "educational_leave"
+      ],
+      "recipient_roles": [
+        "monitoring_committee_officer",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "educational_leave",
+          "trigger": "return_deadline_passed"
+        }
+      ]
+    },
+    {
+      "template_key": "week9_block",
+      "process_count": 1,
+      "process_codes": [
+        "start_therapy"
+      ],
+      "recipient_roles": [
+        "admin",
+        "student"
+      ],
+      "audience": "mixed",
+      "examples": [
+        {
+          "process": "start_therapy",
+          "trigger": "week9_deadline_exceeded"
+        }
+      ]
+    },
+    {
+      "template_key": "winter_calendar_published",
+      "process_count": 1,
+      "process_codes": [
+        "winter_semester_preparation"
+      ],
+      "recipient_roles": [
+        "all_active_fall_students"
+      ],
+      "audience": "student_applicant",
+      "examples": [
+        {
+          "process": "winter_semester_preparation",
+          "trigger": "interview_times_set"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "description_fa": "قواعد MVP درخواست ویرایش برای فرم‌های پرتکرار دانشجو/متقاضی.",
+  "rules": [
+    {
+      "process_code": "introductory_course_registration",
+      "state_code": "documents_upload",
+      "form_code": "documents_upload_form",
+      "field_names": [
+        "photo",
+        "id_card",
+        "national_card",
+        "bachelor_degree",
+        "master_degree",
+        "latest_certificate",
+        "digital_commitment"
+      ],
+      "default_target_role": "admissions_officer",
+      "allow_after_submit": true,
+      "priority": "high"
+    },
+    {
+      "process_code": "introductory_course_registration",
+      "state_code": "course_selection",
+      "form_code": "course_selection_form",
+      "field_names": [
+        "selected_courses"
+      ],
+      "default_target_role": "admissions_officer",
+      "allow_after_submit": true,
+      "priority": "normal"
+    },
+    {
+      "process_code": "intro_second_semester_registration",
+      "state_code": "course_selection",
+      "form_code": "term2_course_selection_form",
+      "field_names": [
+        "available_courses"
+      ],
+      "default_target_role": "admissions_officer",
+      "allow_after_submit": true,
+      "priority": "normal"
+    },
+    {
+      "process_code": "start_therapy",
+      "state_code": "therapist_selection",
+      "form_code": "start_therapy_therapist_pick",
+      "field_names": [
+        "therapist_id",
+        "weekly_sessions"
+      ],
+      "default_target_role": "therapist",
+      "allow_after_submit": true,
+      "priority": "high"
+    },
+    {
+      "process_code": "start_therapy",
+      "state_code": "schedule_first_session",
+      "form_code": "start_therapy_first_session_date",
+      "field_names": [
+        "first_session_date"
+      ],
+      "default_target_role": "therapist",
+      "allow_after_submit": true,
+      "priority": "normal"
+    },
+    {
+      "process_code": "therapy_changes",
+      "state_code": "change_request",
+      "form_code": "therapy_change_request",
+      "field_names": [
+        "change_type",
+        "request_reason"
+      ],
+      "default_target_role": "therapist",
+      "allow_after_submit": true,
+      "priority": "normal"
+    },
+    {
+      "process_code": "therapy_session_increase",
+      "state_code": "request_submitted",
+      "form_code": "form",
+      "field_names": [
+        "first_session_date",
+        "preferred_time_hhmm",
+        "preferred_weekday_fa"
+      ],
+      "default_target_role": "therapist",
+      "allow_after_submit": true,
+      "priority": "normal"
+    },
+    {
+      "process_code": "therapy_session_reduction",
+      "state_code": "session_selection",
+      "form_code": "therapy_reduction_selection",
+      "field_names": [
+        "remaining_sessions_after_reduction",
+        "selected_sessions"
+      ],
+      "default_target_role": "therapist",
+      "allow_after_submit": true,
+      "priority": "normal"
+    },
+    {
+      "process_code": "educational_leave",
+      "state_code": "request_form",
+      "form_code": "leave_request",
+      "field_names": [
+        "leave_terms",
+        "request_reason"
+      ],
+      "default_target_role": "progress_committee",
+      "allow_after_submit": true,
+      "priority": "normal"
+    },
+    {
+      "process_code": "full_education_leave",
+      "state_code": "leave_request",
+      "form_code": "full_leave_request_form",
+      "field_names": [
+        "start_date",
+        "end_date",
+        "reason"
+      ],
+      "default_target_role": "education_committee",
+      "allow_after_submit": true,
+      "priority": "normal"
+    },
+    {
+      "process_code": "return_to_full_education",
+      "state_code": "return_request",
+      "form_code": "return_request_form",
+      "field_names": [
+        "return_date",
+        "notes"
+      ],
+      "default_target_role": "education_committee",
+      "allow_after_submit": true,
+      "priority": "normal"
+    },
+    {
+      "process_code": "lesson_start_per_term",
+      "state_code": "student_enrollment",
+      "form_code": "lesson_enrollment_form",
+      "field_names": [
+        "selected_courses"
+      ],
+      "default_target_role": "admissions_officer",
+      "allow_after_submit": true,
+      "priority": "normal"
+    }
+  ]
+}

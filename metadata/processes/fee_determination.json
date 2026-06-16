@@ -14,76 +14,152 @@
     }
   },
   "states": [
-    {"code": "triggered", "name_fa": "راه‌اندازی شده", "type": "initial", "assigned_role": "system"},
-    {"code": "excluded", "name_fa": "خارج از شمول", "type": "terminal", "assigned_role": "system", "metadata": {"reason": "وقفه یا کنسلی توسط درمانگر/سوپروایزر"}},
-    {"code": "scenario_1_credit_returned", "name_fa": "بازگشت اعتبار", "type": "terminal", "assigned_role": "system"},
-    {"code": "scenario_2_no_action", "name_fa": "بدون اقدام مالی", "type": "terminal", "assigned_role": "system"},
-    {"code": "scenario_3_forfeited", "name_fa": "مصادره هزینه", "type": "terminal", "assigned_role": "system"},
-    {"code": "scenario_4_debt_created", "name_fa": "ایجاد بدهی", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "triggered",
+      "name_fa": "راه‌اندازی شده",
+      "type": "initial",
+      "assigned_role": "system"
+    },
+    {
+      "code": "excluded",
+      "name_fa": "خارج از شمول",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "reason": "وقفه یا کنسلی توسط درمانگر/سوپروایزر"
+      }
+    },
+    {
+      "code": "scenario_1_credit_returned",
+      "name_fa": "بازگشت اعتبار",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "scenario_2_no_action",
+      "name_fa": "بدون اقدام مالی",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "scenario_3_forfeited",
+      "name_fa": "مصادره هزینه",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "scenario_4_debt_created",
+      "name_fa": "ایجاد بدهی",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
       "from": "triggered",
       "to": "excluded",
       "trigger": "precheck",
-      "conditions": ["student_on_leave"],
+      "conditions": [
+        "student_on_leave"
+      ],
       "priority": 1,
-      "description_fa": "دانشجو در وقفه — فرایند متوقف"
+      "description_fa": "دانشجو در وقفه — فرایند متوقف",
+      "required_role": "system"
     },
     {
       "from": "triggered",
       "to": "excluded",
       "trigger": "precheck",
-      "conditions": ["session_cancelled_by_provider"],
+      "conditions": [
+        "session_cancelled_by_provider"
+      ],
       "priority": 2,
-      "description_fa": "جلسه توسط درمانگر/سوپروایزر کنسل شده"
+      "description_fa": "جلسه توسط درمانگر/سوپروایزر کنسل شده",
+      "required_role": "system"
     },
     {
       "from": "triggered",
       "to": "scenario_1_credit_returned",
       "trigger": "evaluate",
-      "conditions": ["session_paid", "absence_quota_not_exceeded"],
+      "conditions": [
+        "session_paid",
+        "absence_quota_not_exceeded"
+      ],
       "description_fa": "پرداخت کرده + در سهمیه → یک جلسه بستانکار",
       "actions": [
-        {"type": "add_to_credit_balance", "sessions": 1},
-        {"type": "increment_absence_counter"}
-      ]
+        {
+          "type": "add_to_credit_balance",
+          "sessions": 1
+        },
+        {
+          "type": "increment_absence_counter"
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "triggered",
       "to": "scenario_2_no_action",
       "trigger": "evaluate",
-      "conditions": ["session_not_paid", "absence_quota_not_exceeded"],
+      "conditions": [
+        "session_not_paid",
+        "absence_quota_not_exceeded"
+      ],
       "description_fa": "پرداخت نکرده + در سهمیه → فقط کسر از سهمیه",
       "actions": [
-        {"type": "increment_absence_counter"}
-      ]
+        {
+          "type": "increment_absence_counter"
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "triggered",
       "to": "scenario_3_forfeited",
       "trigger": "evaluate",
-      "conditions": ["session_paid", "absence_quota_exceeded"],
+      "conditions": [
+        "session_paid",
+        "absence_quota_exceeded"
+      ],
       "description_fa": "پرداخت کرده + خارج سهمیه → مصادره",
       "actions": [
-        {"type": "forfeit_session_payment"},
-        {"type": "increment_absence_counter"}
-      ]
+        {
+          "type": "forfeit_session_payment"
+        },
+        {
+          "type": "increment_absence_counter"
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "triggered",
       "to": "scenario_4_debt_created",
       "trigger": "evaluate",
-      "conditions": ["session_not_paid", "absence_quota_exceeded"],
+      "conditions": [
+        "session_not_paid",
+        "absence_quota_exceeded"
+      ],
       "description_fa": "پرداخت نکرده + خارج سهمیه → بدهکار یا کسر از بستانکاری",
       "actions": [
-        {"type": "create_debt_or_deduct_credit"},
-        {"type": "increment_absence_counter"}
-      ]
+        {
+          "type": "create_debt_or_deduct_credit"
+        },
+        {
+          "type": "increment_absence_counter"
+        }
+      ],
+      "required_role": "system"
     }
   ],
   "triggers": [
-    {"event": "therapist_registered_absence", "source_process": "attendance_tracking"},
-    {"event": "student_cancelled_session", "source": "student_portal"}
+    {
+      "event": "therapist_registered_absence",
+      "source_process": "attendance_tracking"
+    },
+    {
+      "event": "student_cancelled_session",
+      "source": "student_portal"
+    }
   ]
 }

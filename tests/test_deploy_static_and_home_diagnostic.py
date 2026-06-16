@@ -56,18 +56,21 @@ def test_dist_state_diagnostic_message():
         )
 
     html = index.read_text(encoding="utf-8", errors="replace")
-    # Vite: /assets/index-xxxxx.js
-    scripts = re.findall(r'src="(/assets/[^"]+\.js)"', html)
+    # Vite: dev base=/ → /assets/؛ production base=/anistito/ → /anistito/assets/
+    scripts = re.findall(r'src="((?:/anistito)?/assets/[^"]+\.js)"', html)
     if not scripts:
         pytest.fail(
-            "index.html هیچ script با مسیر /assets/*.js ندارد؛ بیلد Vite معمولی نیست.\n"
-            "منبع مشکل: فایل index اشتباه یا بیلد خراب."
+            "index.html هیچ script با مسیر /assets/*.js یا /anistito/assets/*.js ندارد؛ بیلد خراب.\n"
+            "منبع مشکل: فایل index اشتباه یا بیلد ناقص."
         )
 
-    main_js = dist / "assets" / Path(scripts[0]).name
+    rel = scripts[0].lstrip("/")
+    if rel.startswith("anistito/"):
+        rel = rel[len("anistito/") :]
+    main_js = dist / rel
     if not main_js.is_file():
         pytest.fail(
-            f"index.html به {scripts[0]} اشاره می‌کند اما فایل روی دیسک نیست: {main_js}\n"
+            f"index.html به {scripts[0]} اشاره می‌کند اما فایل روی دیسک نیست: {main_js} (انتظار زیر dist/assets)\n"
             "منبع مشکل: بیلد ناقص یا sync ناقص به سرور.\n"
             "کار: npm run build و مطمئن شوید کل پوشه dist کپی می‌شود."
         )
@@ -92,7 +95,7 @@ async def test_root_returns_spa_html_when_dist_exists():
         "اگر JSON است، یعنی در زمان import اپ، dist وجود نداشته و مسیر SPA mount نشده.\n"
         "منبع مشکل: سرور از ریشهٔ دیگری import می‌کند یا dist قبل از استارت ساخته نشده."
     )
-    assert "/assets/" in r.text, "index سرو‌شده باید به /assets/ ارجاع دهد"
+    assert "/assets/" in r.text, "index سرو‌شده باید به /assets/ یا /anistito/assets/ ارجاع دهد"
 
 
 @pytest.mark.asyncio
@@ -105,10 +108,12 @@ async def test_asset_from_index_is_reachable():
         pytest.skip("بدون dist")
 
     index_html = (main_mod.ADMIN_UI_DIR / "index.html").read_text(encoding="utf-8", errors="replace")
-    m = re.search(r'src="(/assets/[^"]+\.js)"', index_html)
+    m = re.search(r'src="((?:/anistito)?/assets/[^"]+\.js)"', index_html)
     if not m:
         pytest.fail("نمی‌توان مسیر JS را از index استخراج کرد")
     path = m.group(1)
+    if path.startswith("/anistito/assets/"):
+        path = path[len("/anistito") :]  # همان فایل تحت mount /assets در main
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.get(path)
@@ -169,6 +174,46 @@ async def test_api_auth_home_exists_and_shape_for_admin():
     assert "redirect_url" in data, data
     assert data["redirect_url"] == "/panel"
     assert "primary_instance_id" in data
+
+
+@pytest.mark.asyncio
+async def test_api_auth_home_therapist_redirects_to_tasks_tab():
+    """اپراتور درمانگر باید مستقیم به تب کارهای من برود."""
+    import uuid
+
+    from app.database import get_db
+    from app.main import app
+    from app.api.auth import get_current_user
+    from app.models.operational_models import User
+
+    therapist = User(
+        id=uuid.uuid4(),
+        username="diag_therapist",
+        email=None,
+        hashed_password="x",
+        role="therapist",
+        is_active=True,
+    )
+
+    async def override_user():
+        return therapist
+
+    async def override_db():
+        class _Dummy:
+            pass
+
+        yield _Dummy()
+
+    app.dependency_overrides[get_current_user] = override_user
+    app.dependency_overrides[get_db] = override_db
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.get("/api/auth/home")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    assert r.json()["redirect_url"] == "/panel/portal/therapist?tab=pending"
 
 
 @pytest.mark.asyncio

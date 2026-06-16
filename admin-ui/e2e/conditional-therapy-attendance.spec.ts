@@ -9,8 +9,8 @@ import {
 } from './helpers/student-api'
 import { cancelProcessInstanceAsAdmin, fetchStudentProcessInstances } from './helpers/process-api'
 import { answerFromMathQuestion } from './helpers/challenge'
-import { buildE2eRunId, e2eFullName, e2eUniquePhone, E2E_VALID_NATIONAL_CODE } from './helpers/test-data'
-import { retryStep, waitForResponseAfterAction, warnIfSlow } from './helpers/waits'
+import { buildE2eRunId, e2eFullName, e2eRegisterStudentViaApi, e2eUniquePhone } from './helpers/test-data'
+import { retryStep, warnIfSlow } from './helpers/waits'
 
 const baseURL = getE2eBaseUrl()
 
@@ -50,35 +50,17 @@ test.describe('پذیرش مشروط به درمان — قفل جلسات تا 
     try {
       await test.step('ثبت‌نام و ورود دانشجو', async () => {
         const phone = e2eUniquePhone(testInfo, 0)
-        await page.goto('/register', { waitUntil: 'domcontentloaded' })
-        await page.getByRole('heading', { name: 'ثبت‌نام دانشجو' }).waitFor({ state: 'visible' })
-        const res = await waitForResponseAfterAction(
-          page,
-          (r) => r.url().includes('public/register') && r.request().method() !== 'OPTIONS',
-          async () => {
-            await page.getByTestId('register-input-full_name_fa').fill(fullName)
-            await page.getByTestId('register-input-phone').fill(phone)
-            await page.getByTestId('register-input-national_code').fill(E2E_VALID_NATIONAL_CODE)
-            await page.getByTestId('register-submit').click()
-          },
-          { timeout: 60_000, label: 'POST public/register' },
-        )
-        expect(res.status()).toBe(200)
-        const body = (await res.json()) as { username: string; initial_password: string }
+        const body = await e2eRegisterStudentViaApi(request, {
+          full_name_fa: fullName,
+          phone,
+        })
         username = body.username
         password = body.initial_password
-        await expect
-          .poll(async () => page.getByTestId('register-success').isVisible(), {
-            timeout: 25_000,
-            intervals: [200, 400, 800],
-          })
-          .toBe(true)
 
         await retryStep(
           'login',
           async () => {
-            await page.goto('/login', { waitUntil: 'domcontentloaded' })
-            await page.getByTestId('login-tab-password').click()
+            await page.goto('/login?staff=1', { waitUntil: 'domcontentloaded' })
             await page.getByTestId('login-challenge-answer').waitFor({ state: 'visible', timeout: 25_000 })
             const startedAtMs = Date.now()
             const loginResPromise = page.waitForResponse(
@@ -101,7 +83,7 @@ test.describe('پذیرش مشروط به درمان — قفل جلسات تا 
             if (meBody.user_id) userIdForCleanup = meBody.user_id
             await expect
               .poll(
-                async () => page.getByRole('heading', { name: 'پنل دانشجو' }).isVisible(),
+                async () => page.getByRole('heading', { name: 'پنل آموزشی' }).isVisible(),
                 { timeout: 30_000, intervals: [200, 500, 1000] },
               )
               .toBe(true)
@@ -142,7 +124,7 @@ test.describe('پذیرش مشروط به درمان — قفل جلسات تا 
 
       await test.step('دانشجو: تلاش برای «پرداخت جلسات» — قفل تا آغاز درمان (مسیر حضور در جلسات)', async () => {
         await page.goto('/panel/portal/student', { waitUntil: 'domcontentloaded' })
-        await expect(page.getByRole('heading', { name: 'پنل دانشجو' })).toBeVisible({ timeout: 30_000 })
+        await expect(page.getByRole('heading', { name: 'پنل آموزشی' })).toBeVisible({ timeout: 30_000 })
 
         const payBtn = page.getByRole('button', { name: 'پرداخت جلسات' })
         await payBtn.waitFor({ state: 'visible' })
@@ -151,7 +133,8 @@ test.describe('پذیرش مشروط به درمان — قفل جلسات تا 
         const therapyTitle = (await payBtn.getAttribute('title')) || ''
         expect(therapyTitle, 'انتظار توضیح قفل مربوط به آغاز درمان آموزشی').toMatch(/درمان/)
 
-        const sessionsTab = page.locator('.tab-bar .tab-item').filter({ hasText: 'جلسات آنلاین' })
+        await page.getByTestId('student-portal-group-learning').click()
+        const sessionsTab = page.locator('.student-portal-nav-sub .tab-item').filter({ hasText: 'جلسات آنلاین' })
         await sessionsTab.click()
         await expect(page.getByRole('heading', { name: 'جلسات آنلاین درمان' })).toBeVisible()
         /* بدون جلسهٔ زمان‌بندی‌شده، ورود به کلاس آنلاین وجود ندارد (غیبت خودکار در بک‌اند با زمان‌بندی جلسات تست واحد می‌شود) */
@@ -165,7 +148,7 @@ test.describe('پذیرش مشروط به درمان — قفل جلسات تا 
 
       await test.step('دانشجو: دسترسی به پرداخت جلسات باز می‌شود', async () => {
         await page.reload({ waitUntil: 'domcontentloaded' })
-        await expect(page.getByRole('heading', { name: 'پنل دانشجو' })).toBeVisible({ timeout: 30_000 })
+        await expect(page.getByRole('heading', { name: 'پنل آموزشی' })).toBeVisible({ timeout: 30_000 })
         const payBtn = page.getByRole('button', { name: 'پرداخت جلسات' })
         await expect
           .poll(async () => payBtn.isEnabled(), { timeout: 20_000, intervals: [300, 600, 1200] })

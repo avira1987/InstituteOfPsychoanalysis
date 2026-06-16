@@ -11,71 +11,183 @@
       "edit_deadline": "24:00",
       "evaluation_sla_days": 3,
       "site_manager_sla_days": 2,
-      "reminder_sms_at_hours": [45, 48],
+      "reminder_sms_at_hours": [
+        45,
+        48
+      ],
       "reminder_sms_except_block": 5
     }
   },
   "states": [
-    {"code": "session_scheduled", "name_fa": "جلسه برنامه‌ریزی شده", "type": "initial", "assigned_role": "system"},
-    {"code": "recording_closed", "name_fa": "ثبت بسته (وقفه یا کنسلی)", "type": "terminal", "assigned_role": "system"},
-    {"code": "auto_absence_unpaid", "name_fa": "غیبت خودکار (پرداخت نشده)", "type": "terminal", "assigned_role": "system"},
-    {"code": "supervisor_recording", "name_fa": "ثبت حضور/غیاب توسط سوپروایزر", "type": "intermediate", "assigned_role": "supervisor"},
-    {"code": "site_manager_pending", "name_fa": "در انتظار پیگیری مسئول سایت", "type": "intermediate", "assigned_role": "site_manager", "sla_days": 2, "on_sla_breach_event": "site_manager_sla_breach"},
-    {"code": "deputy_escalated", "name_fa": "اسکیت به معاون مدیر آموزش", "type": "terminal", "assigned_role": "deputy_education"},
-    {"code": "session_completed", "name_fa": "جلسه تکمیل (+۱ ساعت به بلوک فعلی)", "type": "terminal", "assigned_role": "system"},
-    {"code": "absence_recorded", "name_fa": "غیبت ثبت شد", "type": "intermediate", "assigned_role": "system"},
-    {"code": "evaluation_pending", "name_fa": "در انتظار تکمیل فرم ارزیابی (۵۰ ساعت)", "type": "intermediate", "assigned_role": "supervisor", "sla_days": 3, "on_sla_breach_event": "evaluation_sla_breach"},
-    {"code": "evaluation_completed", "name_fa": "ارزیابی تکمیل شد", "type": "terminal", "assigned_role": "system"},
-    {"code": "evaluation_sla_breach", "name_fa": "عدم تکمیل فرم در ۳ روز — تخلف", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "session_scheduled",
+      "name_fa": "جلسه برنامه‌ریزی شده",
+      "type": "initial",
+      "assigned_role": "system"
+    },
+    {
+      "code": "recording_closed",
+      "name_fa": "ثبت بسته (وقفه یا کنسلی)",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "auto_absence_unpaid",
+      "name_fa": "غیبت خودکار (پرداخت نشده)",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "supervisor_recording",
+      "name_fa": "ثبت حضور/غیاب توسط سوپروایزر",
+      "type": "intermediate",
+      "assigned_role": "supervisor",
+      "metadata": {
+        "operator_task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+        "operator_short_fa": "ثبت حضور/غیاب توسط سوپروایزر"
+      }
+    },
+    {
+      "code": "site_manager_pending",
+      "name_fa": "در انتظار پیگیری مسئول سایت",
+      "type": "intermediate",
+      "assigned_role": "site_manager",
+      "sla_days": 2,
+      "on_sla_breach_event": "site_manager_sla_breach",
+      "metadata": {
+        "operator_task_fa": "بررسی درخواست و ثبت تصمیم.",
+        "operator_short_fa": "در انتظار پیگیری مسئول سایت"
+      }
+    },
+    {
+      "code": "deputy_escalated",
+      "name_fa": "اسکیت به معاون مدیر آموزش",
+      "type": "terminal",
+      "assigned_role": "deputy_education",
+      "metadata": {
+        "operator_task_fa": "بررسی پرونده و تأیید یا ارجاع.",
+        "operator_short_fa": "اسکیت به معاون مدیر آموزش"
+      }
+    },
+    {
+      "code": "session_completed",
+      "name_fa": "جلسه تکمیل (+۱ ساعت به بلوک فعلی)",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "absence_recorded",
+      "name_fa": "غیبت ثبت شد",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "evaluation_pending",
+      "name_fa": "در انتظار تکمیل فرم ارزیابی (۵۰ ساعت)",
+      "type": "intermediate",
+      "assigned_role": "supervisor",
+      "sla_days": 3,
+      "on_sla_breach_event": "evaluation_sla_breach",
+      "metadata": {
+        "operator_task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+        "operator_short_fa": "در انتظار تکمیل فرم ارزیابی (۵۰ ساعت)"
+      }
+    },
+    {
+      "code": "evaluation_completed",
+      "name_fa": "ارزیابی تکمیل شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "evaluation_sla_breach",
+      "name_fa": "عدم تکمیل فرم در ۳ روز — تخلف",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
       "from": "session_scheduled",
       "to": "recording_closed",
       "trigger": "session_time_reached",
-      "conditions": ["session_cancelled"],
-      "description_fa": "جلسه کنسل شده — بسته شدن ثبت"
+      "conditions": [
+        "session_cancelled"
+      ],
+      "description_fa": "جلسه کنسل شده — بسته شدن ثبت",
+      "required_role": "system"
     },
     {
       "from": "session_scheduled",
       "to": "recording_closed",
       "trigger": "session_time_reached",
-      "conditions": ["student_on_supervision_leave"],
+      "conditions": [
+        "student_on_supervision_leave"
+      ],
       "priority": 2,
-      "description_fa": "دانشجو در وقفه سوپرویژن — بسته شدن ثبت"
+      "description_fa": "دانشجو در وقفه سوپرویژن — بسته شدن ثبت",
+      "required_role": "system"
     },
     {
       "from": "session_scheduled",
       "to": "auto_absence_unpaid",
       "trigger": "session_time_reached",
-      "conditions": ["supervision_session_not_paid"],
+      "conditions": [
+        "supervision_session_not_paid"
+      ],
       "description_fa": "پرداخت نشده — غیبت خودکار",
       "actions": [
-        {"type": "record_absence_auto"},
-        {"type": "start_process", "process_code": "fee_determination", "payload": {"context": "supervision", "reason": "unpaid_absence"}}
-      ]
+        {
+          "type": "record_absence_auto"
+        },
+        {
+          "type": "start_process",
+          "process_code": "fee_determination",
+          "payload": {
+            "context": "supervision",
+            "reason": "unpaid_absence"
+          }
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "session_scheduled",
       "to": "supervisor_recording",
       "trigger": "session_time_reached",
-      "conditions": ["supervision_session_paid", "student_not_on_supervision_leave", "session_not_cancelled"],
+      "conditions": [
+        "supervision_session_paid",
+        "student_not_on_supervision_leave",
+        "session_not_cancelled"
+      ],
       "description_fa": "پرداخت شده — نمایش حاضر/غایب به سوپروایزر",
       "actions": [
-        {"type": "send_45_48_reminder_if_applicable"}
-      ]
+        {
+          "type": "send_45_48_reminder_if_applicable"
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "supervisor_recording",
       "to": "session_completed",
       "trigger": "student_present",
       "required_role": "supervisor",
-      "conditions": ["at_49th_supervision_session"],
+      "conditions": [
+        "at_49th_supervision_session"
+      ],
       "description_fa": "حضور (جلسه ۴۹) — +۱ ساعت، باز کردن قفل پرداخت جلسه ۵۰",
       "actions": [
-        {"type": "record_supervision_attendance", "status": "present"},
-        {"type": "add_hour_to_supervision_block"},
-        {"type": "unlock_payment_for_50th_session"}
+        {
+          "type": "record_supervision_attendance",
+          "status": "present"
+        },
+        {
+          "type": "add_hour_to_supervision_block"
+        },
+        {
+          "type": "unlock_payment_for_50th_session"
+        }
       ]
     },
     {
@@ -83,14 +195,28 @@
       "to": "evaluation_pending",
       "trigger": "student_present",
       "required_role": "supervisor",
-      "conditions": ["at_49th_supervision_session"],
+      "conditions": [
+        "at_49th_supervision_session"
+      ],
       "description_fa": "حضور (جلسه ۴۹→۵۰) — +۱ ساعت، قفل شمارنده، الزام فرم ارزیابی",
       "actions": [
-        {"type": "record_supervision_attendance", "status": "present"},
-        {"type": "add_hour_to_supervision_block"},
-        {"type": "lock_block_counter"},
-        {"type": "display_evaluation_warning_to_supervisor"},
-        {"type": "create_evaluation_task", "form": "ارزیابی دانشجو بعد از 50 ساعت سوپرویژن فردی"}
+        {
+          "type": "record_supervision_attendance",
+          "status": "present"
+        },
+        {
+          "type": "add_hour_to_supervision_block"
+        },
+        {
+          "type": "lock_block_counter"
+        },
+        {
+          "type": "display_evaluation_warning_to_supervisor"
+        },
+        {
+          "type": "create_evaluation_task",
+          "form": "ارزیابی دانشجو بعد از 50 ساعت سوپرویژن فردی"
+        }
       ]
     },
     {
@@ -98,11 +224,18 @@
       "to": "session_completed",
       "trigger": "student_present",
       "required_role": "supervisor",
-      "conditions": ["not_at_48_or_49_supervision_session"],
+      "conditions": [
+        "not_at_48_or_49_supervision_session"
+      ],
       "description_fa": "حضور (جلسات ۱–۴۷) — +۱ ساعت",
       "actions": [
-        {"type": "record_supervision_attendance", "status": "present"},
-        {"type": "add_hour_to_supervision_block"}
+        {
+          "type": "record_supervision_attendance",
+          "status": "present"
+        },
+        {
+          "type": "add_hour_to_supervision_block"
+        }
       ]
     },
     {
@@ -112,9 +245,26 @@
       "required_role": "supervisor",
       "description_fa": "غیبت — ارجاع به تعیین تکلیف هزینه",
       "actions": [
-        {"type": "record_supervision_attendance", "status": "absent"},
-        {"type": "start_process", "process_code": "fee_determination", "payload": {"context": "supervision"}, "run_if": "session_not_cancelled"}
+        {
+          "type": "record_supervision_attendance",
+          "status": "absent"
+        },
+        {
+          "type": "start_process",
+          "process_code": "fee_determination",
+          "payload": {
+            "context": "supervision"
+          },
+          "run_if": "session_not_cancelled"
+        }
       ]
+    },
+    {
+      "from": "absence_recorded",
+      "to": "session_completed",
+      "trigger": "absence_fee_started",
+      "description_fa": "فرایند تعیین تکلیف هزینه آغاز شد — بستن مسیر غیبت",
+      "required_role": "system"
     },
     {
       "from": "supervisor_recording",
@@ -122,8 +272,16 @@
       "trigger": "supervisor_did_not_record",
       "description_fa": "سوپروایزر ثبت نکرد — هشدار به مسئول سایت",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "supervision_attendance_followup_required", "recipients": ["site_manager"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "supervision_attendance_followup_required",
+          "recipients": [
+            "site_manager"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "site_manager_pending",
@@ -138,8 +296,16 @@
       "trigger": "site_manager_sla_breach",
       "description_fa": "۲ روز بدون پیگیری — اسکیت به معاون",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "supervision_site_manager_delay", "recipients": ["deputy_education"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "supervision_site_manager_delay",
+          "recipients": [
+            "deputy_education"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "evaluation_pending",
@@ -148,7 +314,13 @@
       "required_role": "supervisor",
       "description_fa": "فرم ارزیابی تکمیل شد",
       "actions": [
-        {"type": "record_evaluation_completion", "metadata": {"supervisor_name": "current", "completion_date": "now"}}
+        {
+          "type": "record_evaluation_completion",
+          "metadata": {
+            "supervisor_name": "current",
+            "completion_date": "now"
+          }
+        }
       ]
     },
     {
@@ -157,8 +329,16 @@
       "trigger": "evaluation_sla_breach",
       "description_fa": "۳ روز بدون تکمیل فرم — گزارش تخلف",
       "actions": [
-        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "supervision_evaluation_not_submitted", "title_fa": "عدم تکمیل فرم ارزیابی ۵۰ ساعت سوپرویژن"}}
-      ]
+        {
+          "type": "start_process",
+          "process_code": "violation_registration",
+          "payload": {
+            "reason": "supervision_evaluation_not_submitted",
+            "title_fa": "عدم تکمیل فرم ارزیابی ۵۰ ساعت سوپرویژن"
+          }
+        }
+      ],
+      "required_role": "system"
     }
   ]
 }

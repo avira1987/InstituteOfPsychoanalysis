@@ -8,50 +8,125 @@
     "initial_state": "eligibility_check"
   },
   "states": [
-    {"code": "eligibility_check", "name_fa": "بررسی صلاحیت ثبت‌نام", "type": "initial", "assigned_role": "system"},
-    {"code": "therapy_check_failed", "name_fa": "توقف — شرط درمان برآورده نشده", "type": "terminal", "assigned_role": "system", "ui_hint": "popup_message"},
-    {"code": "suspension_check_failed", "name_fa": "توقف — دانشجو تعلیق شده", "type": "terminal", "assigned_role": "system", "ui_hint": "popup_message"},
-    {"code": "course_selection", "name_fa": "انتخاب دروس ترم دوم", "type": "intermediate", "assigned_role": "student"},
-    {"code": "payment_method", "name_fa": "انتخاب روش پرداخت", "type": "intermediate", "assigned_role": "student"},
-    {"code": "payment_processing", "name_fa": "در حال پرداخت", "type": "intermediate", "assigned_role": "student"},
-    {"code": "registration_complete", "name_fa": "ثبت‌نام نهایی — دروس ثبت و لینک کلاس فعال (اقساط باز یا تسویهٔ در حال انجام)", "type": "intermediate", "assigned_role": "system"},
-    {"code": "installment_overdue", "name_fa": "قسط معوق — بلاک حضور و غیاب", "type": "intermediate", "assigned_role": "system"},
-    {"code": "term2_registration_closed", "name_fa": "پایان فرایند ثبت‌نام ترم دوم — تسویهٔ مالی تکمیل‌شده", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "eligibility_check",
+      "name_fa": "بررسی صلاحیت ثبت‌نام",
+      "type": "initial",
+      "assigned_role": "system"
+    },
+    {
+      "code": "therapy_check_failed",
+      "name_fa": "توقف — شرط درمان برآورده نشده",
+      "type": "terminal",
+      "assigned_role": "system",
+      "ui_hint": "popup_message"
+    },
+    {
+      "code": "suspension_check_failed",
+      "name_fa": "توقف — دانشجو تعلیق شده",
+      "type": "terminal",
+      "assigned_role": "system",
+      "ui_hint": "popup_message"
+    },
+    {
+      "code": "course_selection",
+      "name_fa": "انتخاب دروس ترم دوم",
+      "type": "intermediate",
+      "assigned_role": "student"
+    },
+    {
+      "code": "payment_method",
+      "name_fa": "انتخاب روش پرداخت",
+      "type": "intermediate",
+      "assigned_role": "student"
+    },
+    {
+      "code": "payment_processing",
+      "name_fa": "در حال پرداخت",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+      }
+    },
+    {
+      "code": "registration_complete",
+      "name_fa": "ثبت‌نام نهایی — دروس ثبت و لینک کلاس فعال (اقساط باز یا تسویهٔ در حال انجام)",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "installment_overdue",
+      "name_fa": "قسط معوق — بلاک حضور و غیاب",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "term2_registration_closed",
+      "name_fa": "پایان فرایند ثبت‌نام ترم دوم — تسویهٔ مالی تکمیل‌شده",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
       "from": "eligibility_check",
       "to": "therapy_check_failed",
       "trigger": "eligibility_check_result",
-      "conditions": ["admission_type == 'conditional_therapy'", "no_active_therapist_registered"],
+      "conditions": [
+        "admission_type == 'conditional_therapy'",
+        "no_active_therapist_registered"
+      ],
       "description_fa": "دانشجو مشروط به درمان بوده اما درمانگر فعال ثبت نکرده — نمایش پیام خطا",
       "actions": [
-        {"type": "show_popup", "message_fa": "برای ثبت‌نام ترم دوم ابتدا باید درمان شخصی خود را آغاز و درمانگر فعال ثبت کنید."}
-      ]
+        {
+          "type": "show_popup",
+          "message_fa": "برای ثبت‌نام ترم دوم ابتدا باید درمان شخصی خود را آغاز و درمانگر فعال ثبت کنید."
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "eligibility_check",
       "to": "suspension_check_failed",
       "trigger": "eligibility_check_result",
-      "conditions": ["student_suspended"],
+      "conditions": [
+        "student_suspended"
+      ],
       "description_fa": "دانشجو تعلیق از آموزش دارد — نمایش پیام خطا",
       "actions": [
-        {"type": "show_popup", "message_fa": "به دلیل تعلیق از آموزش، امکان ثبت‌نام در ترم جدید وجود ندارد."}
-      ]
+        {
+          "type": "show_popup",
+          "message_fa": "به دلیل تعلیق از آموزش، امکان ثبت‌نام در ترم جدید وجود ندارد."
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "eligibility_check",
       "to": "course_selection",
       "trigger": "eligibility_check_result",
-      "conditions": ["eligible_for_registration"],
+      "conditions": [
+        "eligible_for_registration"
+      ],
       "description_fa": "صلاحیت تایید شد — نمایش دروس مجاز بر اساس نوع پذیرش",
       "actions": [
-        {"type": "load_available_courses", "logic": {
-          "single_course": {"allowed": ["تئوری روانکاوی ۲"]},
-          "full_or_conditional": {"allowed": "all_term_2_courses"},
-          "failed_prerequisite_rule": "درس مردودی ترم ۱ به هم‌نیاز تبدیل شده و در لیست دروس قابل اخذ نمایش داده می‌شود"
-        }}
-      ]
+        {
+          "type": "load_available_courses",
+          "logic": {
+            "single_course": {
+              "allowed": [
+                "تئوری روانکاوی ۲"
+              ]
+            },
+            "full_or_conditional": {
+              "allowed": "all_term_2_courses"
+            },
+            "failed_prerequisite_rule": "درس مردودی ترم ۱ به هم‌نیاز تبدیل شده و در لیست دروس قابل اخذ نمایش داده می‌شود"
+          }
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "course_selection",
@@ -66,52 +141,100 @@
       "trigger": "payment_method_selected",
       "required_role": "student",
       "description_fa": "روش پرداخت انتخاب شد — هدایت به درگاه پرداخت",
-      "constraints": ["single_course_students_cash_only"]
+      "constraints": [
+        "single_course_students_cash_only"
+      ]
     },
     {
       "from": "payment_processing",
       "to": "registration_complete",
       "trigger": "payment_completed",
       "priority": 9,
-      "conditions": ["term2_installment_payment"],
+      "conditions": [
+        "term2_installment_payment"
+      ],
       "description_fa": "قسط اول (اقساطی) موفق — ثبت‌نام نهایی؛ نمونه تا تسویهٔ اقساط زنده می‌ماند",
       "actions": [
-        {"type": "register_courses_in_portal"},
-        {"type": "create_online_class_links", "description_fa": "ایجاد لینک کلاس آنلاین در LMS"},
-        {"type": "schedule_installment_reminders", "condition": "payment_method == 'installment'", "description_fa": "برنامه‌ریزی یادآوری اقساط: پیامک ۱ هفته قبل از سررسید هر قسط"},
-        {"type": "notification", "notification_type": "sms", "template": "registration_confirmed_term2", "recipients": ["student"]},
-        {"type": "merge_instance_context", "mode": "initial_payment"}
-      ]
+        {
+          "type": "register_courses_in_portal"
+        },
+        {
+          "type": "create_online_class_links",
+          "description_fa": "ایجاد لینک کلاس آنلاین در LMS"
+        },
+        {
+          "type": "schedule_installment_reminders",
+          "condition": "payment_method == 'installment'",
+          "description_fa": "برنامه‌ریزی یادآوری اقساط: پیامک ۱ هفته قبل از سررسید هر قسط"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "registration_confirmed_term2",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "merge_instance_context",
+          "mode": "initial_payment"
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "payment_processing",
       "to": "term2_registration_closed",
       "trigger": "payment_completed",
       "priority": 10,
-      "conditions": ["term2_cash_payment"],
+      "conditions": [
+        "term2_cash_payment"
+      ],
       "description_fa": "پرداخت نقدی یکجا — ثبت‌نام نهایی و بستن فرایند",
       "actions": [
-        {"type": "register_courses_in_portal"},
-        {"type": "create_online_class_links", "description_fa": "ایجاد لینک کلاس آنلاین در LMS"},
-        {"type": "notification", "notification_type": "sms", "template": "registration_confirmed_term2", "recipients": ["student"]}
-      ]
+        {
+          "type": "register_courses_in_portal"
+        },
+        {
+          "type": "create_online_class_links",
+          "description_fa": "ایجاد لینک کلاس آنلاین در LMS"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "registration_confirmed_term2",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "payment_processing",
       "to": "payment_processing",
       "trigger": "payment_failed",
-      "description_fa": "پرداخت ناموفق — بازگشت برای تلاش مجدد"
+      "description_fa": "پرداخت ناموفق — بازگشت برای تلاش مجدد",
+      "required_role": "system"
     },
     {
       "from": "registration_complete",
       "to": "installment_overdue",
       "trigger": "installment_due_date_passed",
-      "conditions": ["installment_not_paid"],
+      "conditions": [
+        "installment_not_paid"
+      ],
       "description_fa": "قسط معوق — بلاک ثبت حضور و غیاب",
       "actions": [
-        {"type": "block_attendance_registration"},
-        {"type": "notify_instructor", "message_fa": "امکان ثبت حضور برای این دانشجو به دلیل عدم تسویه بدهی شهریه وجود ندارد"}
-      ]
+        {
+          "type": "block_attendance_registration"
+        },
+        {
+          "type": "notify_instructor",
+          "message_fa": "امکان ثبت حضور برای این دانشجو به دلیل عدم تسویه بدهی شهریه وجود ندارد"
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "installment_overdue",
@@ -119,16 +242,24 @@
       "trigger": "overdue_installment_paid",
       "description_fa": "قسط معوق پرداخت شد — رفع بلاک حضور و غیاب و به‌روزرسانی شمارندهٔ اقساط",
       "actions": [
-        {"type": "unblock_attendance_registration"},
-        {"type": "merge_instance_context", "mode": "installment_paid"}
-      ]
+        {
+          "type": "unblock_attendance_registration"
+        },
+        {
+          "type": "merge_instance_context",
+          "mode": "installment_paid"
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "registration_complete",
       "to": "term2_registration_closed",
       "trigger": "finalize_term2_registration",
       "required_role": "system",
-      "conditions": ["term2_ready_for_close"],
+      "conditions": [
+        "term2_ready_for_close"
+      ],
       "description_fa": "پس از تسویهٔ آخرین قسط (یا مسیر اقساطی با شمارندهٔ صفر)، بستن نمونهٔ فرایند"
     }
   ],
@@ -165,22 +296,45 @@
           "label_fa": "روش پرداخت",
           "type": "radio",
           "options": [
-            {"value": "cash", "label_fa": "پرداخت نقدی (یکجا)"},
-            {"value": "installment", "label_fa": "پرداخت اقساطی"}
+            {
+              "value": "cash",
+              "label_fa": "پرداخت نقدی (یکجا)"
+            },
+            {
+              "value": "installment",
+              "label_fa": "پرداخت اقساطی"
+            }
           ],
           "required": true,
           "note_fa": "دانشجویان تک‌درس فقط مجاز به پرداخت نقدی هستند",
-          "restricted_when": {"admission_type": "single_course", "allowed_values": ["cash"]}
+          "restricted_when": {
+            "admission_type": "single_course",
+            "allowed_values": [
+              "cash"
+            ]
+          }
         },
         {
           "name": "installment_count",
           "label_fa": "تعداد اقساط",
           "type": "select",
           "options": [
-            {"value": 1, "label_fa": "۱ قسط (پرداخت یکجا)"},
-            {"value": 2, "label_fa": "۲ قسط"},
-            {"value": 3, "label_fa": "۳ قسط"},
-            {"value": 4, "label_fa": "۴ قسط"}
+            {
+              "value": 1,
+              "label_fa": "۱ قسط (پرداخت یکجا)"
+            },
+            {
+              "value": 2,
+              "label_fa": "۲ قسط"
+            },
+            {
+              "value": 3,
+              "label_fa": "۳ قسط"
+            },
+            {
+              "value": 4,
+              "label_fa": "۴ قسط"
+            }
           ],
           "visible_when": "payment_method == 'installment'",
           "required_when": "payment_method == 'installment'"
@@ -202,9 +356,18 @@
       "installment_schedule_table": {
         "label_fa": "جدول زمان‌بندی اقساط",
         "columns": [
-          {"name": "installment_number", "label_fa": "شماره قسط"},
-          {"name": "due_date", "label_fa": "تاریخ سررسید"},
-          {"name": "amount", "label_fa": "مبلغ (ریال)"}
+          {
+            "name": "installment_number",
+            "label_fa": "شماره قسط"
+          },
+          {
+            "name": "due_date",
+            "label_fa": "تاریخ سررسید"
+          },
+          {
+            "name": "amount",
+            "label_fa": "مبلغ (ریال)"
+          }
         ]
       },
       "submit_label_fa": "پرداخت"

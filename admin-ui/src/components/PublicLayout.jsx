@@ -119,9 +119,9 @@ export default function PublicLayout() {
             </div>
             <div className="pub-footer-col">
               <h4>خدمات</h4>
-              <Link to="/register">ثبت‌نام دانشجو</Link>
-              <Link to="/login">ورود به سامانه</Link>
-              <Link to="/register">شرایط پذیرش</Link>
+              <Link to="/login">ورود یا ثبت‌نام با موبایل</Link>
+              <Link to="/login">ورود و ثبت‌نام با موبایل</Link>
+              <Link to="/guide">شرایط و راهنما</Link>
             </div>
             <div className="pub-footer-col">
               <h4>تماس با ما</h4>

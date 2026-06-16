@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.engine import StateMachineEngine
-from app.meta.seed import load_process
+from app.meta.seed import load_process, load_rules
 
 
 @pytest.mark.asyncio
@@ -19,6 +19,7 @@ class TestTherapyEarlyTerminationFlow:
         process_file = processes_dir / "therapy_early_termination.json"
         assert process_file.exists()
 
+        await load_rules(db_session)
         await load_process(db_session, process_file)
         await db_session.commit()
 
@@ -36,10 +37,11 @@ class TestTherapyEarlyTerminationFlow:
         assert instance.is_completed is False
 
     async def test_therapy_early_termination_flow_to_restart_completed(
-        self, db_session: AsyncSession, sample_student, sample_user
+        self, db_session: AsyncSession, sample_student, sample_user, sample_student_user
     ):
         """جریان: reason_selection → awaiting_student_restart → restart_completed."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_rules(db_session)
         await load_process(db_session, processes_dir / "therapy_early_termination.json")
         await db_session.commit()
 
@@ -56,17 +58,18 @@ class TestTherapyEarlyTerminationFlow:
             instance_id=instance.id,
             trigger_event="reason_submitted",
             actor_id=sample_user.id,
-            actor_role="admin",
+            actor_role="therapist",
+            payload={"termination_reason_code": 1},
         )
         await db_session.commit()
-        assert result.success is True
+        assert result.success is True, result.error
         assert result.to_state == "awaiting_student_restart"
 
         result = await engine.execute_transition(
             instance_id=instance.id,
             trigger_event="student_restarted_therapy",
-            actor_id=sample_user.id,
-            actor_role="admin",
+            actor_id=sample_student_user.id,
+            actor_role="student",
         )
         await db_session.commit()
         assert result.success is True

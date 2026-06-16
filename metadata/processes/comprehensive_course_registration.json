@@ -6,7 +6,9 @@
     "number": 35,
     "description": "فرایند چندمرحله‌ای ثبت‌نام در دوره جامع شامل: بررسی پرونده توسط کمیته نظارت، بررسی معدل توسط مسئول اجرایی و تصمیم مسئول علمی کمیته پیشرفت، بارگذاری گزارش تجربه شخصی، زمان‌بندی و پرداخت مصاحبه، برگزاری مصاحبه و اعلام نتیجه (پذیرش / رد قطعی / رد با پیشنهاد)، و نهایتاً ثبت‌نام و پرداخت دروس ترم ۳ برای پذیرفته‌شدگان. دلایل رد محرمانه و فقط در پورتال پذیرش ثبت می‌شود.",
     "initial_state": "application_submitted",
-    "prerequisites": ["all_10_introductory_courses_passed"],
+    "prerequisites": [
+      "all_10_introductory_courses_passed"
+    ],
     "interview_document_template": {
       "source": "Dr. Moradi",
       "font": "B Nazanin",
@@ -19,22 +21,127 @@
     }
   },
   "states": [
-    {"code": "application_submitted", "name_fa": "ثبت درخواست ورود به دوره جامع", "type": "initial", "assigned_role": "student"},
-    {"code": "supervision_committee_review", "name_fa": "بررسی پرونده توسط کمیته نظارت", "type": "intermediate", "assigned_role": "supervision_committee", "sla_days": 2},
-    {"code": "supervision_rejected", "name_fa": "رد توسط کمیته نظارت", "type": "terminal", "assigned_role": "system"},
-    {"code": "executive_review", "name_fa": "بررسی پرونده و معدل توسط مسئول اجرایی کمیته پیشرفت", "type": "intermediate", "assigned_role": "progress_committee", "sla_days": 2},
-    {"code": "scientific_review", "name_fa": "تصمیم‌گیری مسئول علمی کمیته پیشرفت", "type": "intermediate", "assigned_role": "progress_committee", "sla_days": 2},
-    {"code": "scientific_rejected", "name_fa": "رد توسط مسئول علمی کمیته پیشرفت", "type": "terminal", "assigned_role": "system"},
-    {"code": "document_upload", "name_fa": "بارگذاری گزارش تجربه شخصی", "type": "intermediate", "assigned_role": "student"},
-    {"code": "interview_scheduled", "name_fa": "انتخاب زمان مصاحبه", "type": "intermediate", "assigned_role": "student"},
-    {"code": "interview_payment", "name_fa": "پرداخت هزینه مصاحبه", "type": "intermediate", "assigned_role": "student"},
-    {"code": "interview_completed", "name_fa": "مصاحبه انجام شده — در انتظار نتیجه", "type": "intermediate", "assigned_role": "progress_committee"},
-    {"code": "result_accepted", "name_fa": "پذیرفته شده", "type": "intermediate", "assigned_role": "system"},
-    {"code": "result_rejected", "name_fa": "رد قطعی", "type": "terminal", "assigned_role": "system"},
-    {"code": "result_rejected_with_suggestion", "name_fa": "رد همراه با پیشنهاد", "type": "terminal", "assigned_role": "system"},
-    {"code": "course_display", "name_fa": "نمایش دروس ترم ۳ (اول جامع)", "type": "intermediate", "assigned_role": "student"},
-    {"code": "payment", "name_fa": "پرداخت شهریه (نقدی یا اقساط)", "type": "intermediate", "assigned_role": "student"},
-    {"code": "registration_complete", "name_fa": "ثبت‌نام نهایی انجام شد", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "application_submitted",
+      "name_fa": "ثبت درخواست ورود به دوره جامع",
+      "type": "initial",
+      "assigned_role": "student"
+    },
+    {
+      "code": "supervision_committee_review",
+      "name_fa": "بررسی پرونده توسط کمیته نظارت",
+      "type": "intermediate",
+      "assigned_role": "supervision_committee",
+      "sla_days": 2,
+      "metadata": {
+        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
+        "operator_short_fa": "بررسی پرونده توسط کمیته نظارت"
+      }
+    },
+    {
+      "code": "supervision_rejected",
+      "name_fa": "رد توسط کمیته نظارت",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "executive_review",
+      "name_fa": "بررسی پرونده و معدل توسط مسئول اجرایی کمیته پیشرفت",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "sla_days": 2,
+      "metadata": {
+        "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
+        "operator_short_fa": "بررسی پرونده و معدل توسط مسئول اجرایی کمیته پیشرفت"
+      }
+    },
+    {
+      "code": "scientific_review",
+      "name_fa": "تصمیم‌گیری مسئول علمی کمیته پیشرفت",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "sla_days": 2,
+      "metadata": {
+        "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
+        "operator_short_fa": "تصمیم‌گیری مسئول علمی کمیته پیشرفت"
+      }
+    },
+    {
+      "code": "scientific_rejected",
+      "name_fa": "رد توسط مسئول علمی کمیته پیشرفت",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "document_upload",
+      "name_fa": "بارگذاری گزارش تجربه شخصی",
+      "type": "intermediate",
+      "assigned_role": "student"
+    },
+    {
+      "code": "interview_scheduled",
+      "name_fa": "انتخاب زمان مصاحبه",
+      "type": "intermediate",
+      "assigned_role": "student"
+    },
+    {
+      "code": "interview_payment",
+      "name_fa": "پرداخت هزینه مصاحبه",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+      }
+    },
+    {
+      "code": "interview_completed",
+      "name_fa": "مصاحبه انجام شده — در انتظار نتیجه",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "metadata": {
+        "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
+        "operator_short_fa": "مصاحبه انجام شده — در انتظار نتیجه"
+      }
+    },
+    {
+      "code": "result_accepted",
+      "name_fa": "پذیرفته شده",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "result_rejected",
+      "name_fa": "رد قطعی",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "result_rejected_with_suggestion",
+      "name_fa": "رد همراه با پیشنهاد",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "course_display",
+      "name_fa": "نمایش دروس ترم ۳ (اول جامع)",
+      "type": "intermediate",
+      "assigned_role": "student"
+    },
+    {
+      "code": "payment",
+      "name_fa": "پرداخت شهریه (نقدی یا اقساط)",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+      }
+    },
+    {
+      "code": "registration_complete",
+      "name_fa": "ثبت‌نام نهایی انجام شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
@@ -42,10 +149,19 @@
       "to": "supervision_committee_review",
       "trigger": "application_submitted",
       "required_role": "student",
-      "conditions": ["all_10_introductory_courses_passed"],
+      "conditions": [
+        "all_10_introductory_courses_passed"
+      ],
       "description_fa": "دانشجو درخواست ورود به دوره جامع را ثبت کرد — ارسال به کمیته نظارت",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "comprehensive_application_received", "recipients": ["supervision_committee"]}
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "comprehensive_application_received",
+          "recipients": [
+            "supervision_committee"
+          ]
+        }
       ]
     },
     {
@@ -55,7 +171,14 @@
       "required_role": "supervision_committee",
       "description_fa": "کمیته نظارت پرونده را تایید کرد — ارسال به مسئول اجرایی کمیته پیشرفت",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "file_forwarded_to_executive", "recipients": ["progress_committee"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "file_forwarded_to_executive",
+          "recipients": [
+            "progress_committee"
+          ]
+        }
       ]
     },
     {
@@ -65,7 +188,14 @@
       "required_role": "supervision_committee",
       "description_fa": "کمیته نظارت پرونده را رد کرد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "comprehensive_application_rejected_supervision", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "comprehensive_application_rejected_supervision",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -74,8 +204,16 @@
       "trigger": "supervision_sla_breach",
       "description_fa": "۲ روز بدون بررسی — اطلاع به معاون مدیر آموزش",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "supervision_review_sla_breach", "recipients": ["deputy_education"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "supervision_review_sla_breach",
+          "recipients": [
+            "deputy_education"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "executive_review",
@@ -84,8 +222,17 @@
       "required_role": "progress_committee",
       "description_fa": "مسئول اجرایی پرونده و معدل را بررسی و نظر مشورتی ثبت کرد — ارسال به مسئول علمی",
       "actions": [
-        {"type": "store_executive_advisory_opinion"},
-        {"type": "notification", "notification_type": "sms", "template": "file_forwarded_to_scientific", "recipients": ["progress_committee"]}
+        {
+          "type": "store_executive_advisory_opinion"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "file_forwarded_to_scientific",
+          "recipients": [
+            "progress_committee"
+          ]
+        }
       ]
     },
     {
@@ -94,8 +241,16 @@
       "trigger": "executive_sla_breach",
       "description_fa": "۲ روز بدون بررسی — اطلاع به معاون مدیر آموزش",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "executive_review_sla_breach", "recipients": ["deputy_education"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "executive_review_sla_breach",
+          "recipients": [
+            "deputy_education"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "scientific_review",
@@ -104,8 +259,22 @@
       "required_role": "progress_committee",
       "description_fa": "مسئول علمی تایید کرد — دانشجو باید گزارش تجربه شخصی بارگذاری کند",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "approved_upload_documents", "recipients": ["student"]},
-        {"type": "notification", "notification_type": "in_app", "template": "approved_upload_documents", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "approved_upload_documents",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "approved_upload_documents",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -115,7 +284,14 @@
       "required_role": "progress_committee",
       "description_fa": "مسئول علمی پرونده را رد کرد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "comprehensive_application_rejected_scientific", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "comprehensive_application_rejected_scientific",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -125,7 +301,14 @@
       "required_role": "progress_committee",
       "description_fa": "مسئول علمی درخواست مدرک ثبت‌نام ترم ۴ کارشناسی ارشد کرد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "proof_of_enrollment_required", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "proof_of_enrollment_required",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -134,8 +317,16 @@
       "trigger": "scientific_sla_breach",
       "description_fa": "۲ روز بدون تصمیم — نمایش هشدار در پورتال کمیته پیشرفت",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "scientific_review_sla_breach", "recipients": ["progress_committee"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "scientific_review_sla_breach",
+          "recipients": [
+            "progress_committee"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "document_upload",
@@ -157,12 +348,16 @@
       "trigger": "interview_payment_confirmed",
       "description_fa": "پرداخت هزینه مصاحبه تایید شد — ارسال اطلاعیه مصاحبه",
       "actions": [
-        {"type": "show_payment_confirmation"},
+        {
+          "type": "show_payment_confirmation"
+        },
         {
           "type": "notification",
           "notification_type": "sms",
           "template": "interview_scheduled_student_online",
-          "recipients": ["student"],
+          "recipients": [
+            "student"
+          ],
           "condition": "interview_type == 'online'",
           "message_fa": "مصاحبه آنلاین شما در تاریخ {interview_date} ساعت {interview_time} برگزار می‌شود. لینک: {interview_link}"
         },
@@ -170,29 +365,47 @@
           "type": "notification",
           "notification_type": "sms",
           "template": "interview_scheduled_student_in_person",
-          "recipients": ["student"],
+          "recipients": [
+            "student"
+          ],
           "condition": "interview_type == 'in_person'",
-          "message_fa": "مصاحبه حضوری شما در تاریخ {interview_date} ساعت {interview_time} در محل انستیتو برگزار می‌شود."
+          "message_fa": "مصاحبه حضوری شما در تاریخ {interview_date} ساعت {interview_time} در {interview_location} برگزار می‌شود."
         },
         {
           "type": "notification",
           "notification_type": "sms",
           "template": "interview_scheduled_interviewer",
-          "recipients": ["progress_committee"]
+          "recipients": [
+            "interviewer"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "interview_booking_confirmed_interviewer",
+          "recipients": [
+            "interviewer"
+          ]
         },
         {
           "type": "share_document_with_interviewer",
           "document": "personal_experience_report",
-          "recipients": ["progress_committee"]
+          "recipients": [
+            "progress_committee"
+          ]
         },
         {
           "type": "schedule_reminder",
           "reminder_offset_hours": 2,
           "notification_type": "sms",
           "template": "interview_reminder_2h",
-          "recipients": ["student", "progress_committee"]
+          "recipients": [
+            "student",
+            "progress_committee"
+          ]
         }
-      ]
+      ],
+      "required_role": "system"
     },
     {
       "from": "interview_payment",
@@ -200,21 +413,31 @@
       "trigger": "interview_payment_failed",
       "description_fa": "پرداخت ناموفق — تلاش مجدد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "payment_rejected", "recipients": ["student"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "payment_rejected",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "interview_completed",
       "to": "result_accepted",
       "trigger": "interview_result_accepted",
-      "required_role": "progress_committee",
+      "required_role": "interviewer",
       "description_fa": "نتیجه مصاحبه: پذیرش — شرایط الزامی ابلاغ می‌شود",
       "actions": [
         {
           "type": "notification",
           "notification_type": "sms",
           "template": "comprehensive_accepted",
-          "recipients": ["student"],
+          "recipients": [
+            "student"
+          ],
           "message_fa": "نتیجه مصاحبه: پذیرفته شدید. شرایط: درمان شخصی حداقل ۲ بار در هفته الزامی است. تمامی دروس ترم الزامی می‌باشد. ثبت‌نام برای شما فعال شد."
         }
       ]
@@ -223,15 +446,20 @@
       "from": "interview_completed",
       "to": "result_rejected",
       "trigger": "interview_result_rejected",
-      "required_role": "progress_committee",
+      "required_role": "interviewer",
       "description_fa": "نتیجه مصاحبه: رد قطعی — دلایل محرمانه فقط در پورتال پذیرش ذخیره می‌شود",
       "actions": [
-        {"type": "store_rejection_reason_confidential", "storage": "admissions_portal_only"},
+        {
+          "type": "store_rejection_reason_confidential",
+          "storage": "admissions_portal_only"
+        },
         {
           "type": "notification",
           "notification_type": "sms",
           "template": "comprehensive_rejected_definitive",
-          "recipients": ["student"]
+          "recipients": [
+            "student"
+          ]
         }
       ]
     },
@@ -239,15 +467,20 @@
       "from": "interview_completed",
       "to": "result_rejected_with_suggestion",
       "trigger": "interview_result_rejected_with_suggestion",
-      "required_role": "progress_committee",
+      "required_role": "interviewer",
       "description_fa": "نتیجه مصاحبه: رد همراه با پیشنهاد (متن دکتر مرادی) — دلایل محرمانه",
       "actions": [
-        {"type": "store_rejection_reason_confidential", "storage": "admissions_portal_only"},
+        {
+          "type": "store_rejection_reason_confidential",
+          "storage": "admissions_portal_only"
+        },
         {
           "type": "notification",
           "notification_type": "sms",
           "template": "comprehensive_rejected_with_suggestion",
-          "recipients": ["student"],
+          "recipients": [
+            "student"
+          ],
           "message_source": "Dr. Moradi predefined text"
         }
       ]
@@ -258,8 +491,12 @@
       "trigger": "registration_opened",
       "description_fa": "سیستم تمام دروس ترم ۳ (اولین ترم جامع) را نمایش می‌دهد — تمامی دروس الزامی",
       "actions": [
-        {"type": "load_term3_courses", "mandatory": true}
-      ]
+        {
+          "type": "load_term3_courses",
+          "mandatory": true
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "course_display",
@@ -274,11 +511,30 @@
       "trigger": "tuition_payment_confirmed",
       "description_fa": "پرداخت شهریه تایید شد — ثبت‌نام نهایی، ایجاد لینک‌های آنلاین در LMS",
       "actions": [
-        {"type": "register_student_in_courses"},
-        {"type": "create_lms_course_links"},
-        {"type": "notification", "notification_type": "sms", "template": "registration_complete", "recipients": ["student"]},
-        {"type": "notification", "notification_type": "in_app", "template": "registration_complete", "recipients": ["student"]}
-      ]
+        {
+          "type": "register_student_in_courses"
+        },
+        {
+          "type": "create_lms_course_links"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "registration_complete",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "registration_complete",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "payment",
@@ -286,8 +542,16 @@
       "trigger": "tuition_payment_failed",
       "description_fa": "پرداخت ناموفق — تلاش مجدد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "payment_rejected", "recipients": ["student"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "payment_rejected",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     }
   ],
   "forms": [
@@ -298,29 +562,84 @@
       "confidential": true,
       "note": "دلایل رد محرمانه است و فقط در پورتال پذیرش ذخیره می‌شود — هرگز به دانشجو نمایش داده نمی‌شود",
       "fields": [
-        {"code": "student_name", "label_fa": "نام دانشجو", "type": "text", "readonly": true, "auto_filled": true},
-        {"code": "interview_date", "label_fa": "تاریخ مصاحبه", "type": "date", "readonly": true, "auto_filled": true},
-        {"code": "interview_type", "label_fa": "نوع مصاحبه", "type": "select", "options": ["آنلاین", "حضوری"], "readonly": true, "auto_filled": true},
+        {
+          "code": "student_name",
+          "label_fa": "نام دانشجو",
+          "type": "text",
+          "readonly": true,
+          "auto_filled": true
+        },
+        {
+          "code": "interview_date",
+          "label_fa": "تاریخ مصاحبه",
+          "type": "date",
+          "readonly": true,
+          "auto_filled": true
+        },
+        {
+          "code": "interview_type",
+          "label_fa": "نوع مصاحبه",
+          "type": "select",
+          "options": [
+            "آنلاین",
+            "حضوری"
+          ],
+          "readonly": true,
+          "auto_filled": true
+        },
         {
           "code": "result",
           "label_fa": "نتیجه مصاحبه",
           "type": "select",
           "required": true,
           "options": [
-            {"value": "accepted", "label_fa": "پذیرش"},
-            {"value": "rejected_definitive", "label_fa": "رد قطعی"},
-            {"value": "rejected_with_suggestion", "label_fa": "رد همراه با پیشنهاد"}
+            {
+              "value": "accepted",
+              "label_fa": "پذیرش"
+            },
+            {
+              "value": "rejected_definitive",
+              "label_fa": "رد قطعی"
+            },
+            {
+              "value": "rejected_with_suggestion",
+              "label_fa": "رد همراه با پیشنهاد"
+            }
           ]
         },
-        {"code": "evaluation_notes", "label_fa": "توضیحات ارزیابی", "type": "textarea", "required": true, "confidential": true},
-        {"code": "rejection_reason", "label_fa": "دلیل رد (محرمانه)", "type": "textarea", "required_if": "result != 'accepted'", "confidential": true, "visible_to": ["admissions_portal"]},
-        {"code": "suggestion_text", "label_fa": "متن پیشنهاد (در صورت رد با پیشنهاد)", "type": "textarea", "required_if": "result == 'rejected_with_suggestion'", "source": "Dr. Moradi predefined text"}
+        {
+          "code": "evaluation_notes",
+          "label_fa": "توضیحات ارزیابی",
+          "type": "textarea",
+          "required": true,
+          "confidential": true
+        },
+        {
+          "code": "rejection_reason",
+          "label_fa": "دلیل رد (محرمانه)",
+          "type": "textarea",
+          "required_if": "result != 'accepted'",
+          "confidential": true,
+          "visible_to": [
+            "admissions_portal"
+          ]
+        },
+        {
+          "code": "suggestion_text",
+          "label_fa": "متن پیشنهاد (در صورت رد با پیشنهاد)",
+          "type": "textarea",
+          "required_if": "result == 'rejected_with_suggestion'",
+          "source": "Dr. Moradi predefined text"
+        }
       ]
     }
   ],
   "payment_config": {
     "tuition": {
-      "methods": ["cash", "installments"],
+      "methods": [
+        "cash",
+        "installments"
+      ],
       "max_installments": 4,
       "installment_schedule": {
         "first": "at_registration",

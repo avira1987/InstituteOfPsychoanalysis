@@ -27,6 +27,7 @@ SUPPORTED_ROLES: list[str] = [
     "staff",
     "finance",
     "site_manager",
+    "interviewer",
     "progress_committee",
     "education_committee",
     "supervision_committee",
@@ -76,6 +77,7 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
             user.full_name_fa = user.full_name_fa or full_name_fa
             user.role = role
             user.hashed_password = get_password_hash(password)
+            user.portal_password_plain = password
             user.is_active = True
         else:
             user = User(
@@ -83,6 +85,7 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
                 username=username,
                 email=email,
                 hashed_password=get_password_hash(password),
+                portal_password_plain=password,
                 full_name_fa=full_name_fa,
                 role=role,
                 is_active=True,
@@ -116,6 +119,7 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
             user.full_name_fa = full_name_fa
             user.role = "staff"
             user.hashed_password = get_password_hash(DEFAULT_PASSWORD)
+            user.portal_password_plain = DEFAULT_PASSWORD
             user.is_active = True
         else:
             user = User(
@@ -123,6 +127,7 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
                 username=username,
                 email=email,
                 hashed_password=get_password_hash(DEFAULT_PASSWORD),
+                portal_password_plain=DEFAULT_PASSWORD,
                 full_name_fa=full_name_fa,
                 role="staff",
                 is_active=True,

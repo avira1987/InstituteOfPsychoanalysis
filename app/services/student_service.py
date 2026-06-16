@@ -2,6 +2,7 @@
 
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import select, func
@@ -18,6 +19,8 @@ EXPECTED_REGISTRATION_CODE = {
     "introductory": "introductory_course_registration",
     "comprehensive": "comprehensive_course_registration",
 }
+
+REGISTRATION_PROCESS_CODES = frozenset(EXPECTED_REGISTRATION_CODE.values())
 
 # مقادیر فرم پذیرش در metadata با برچسب فارسی هم‌نام با ثبت‌نام عمومی (کدهای انگلیسی) هستند
 _EDUCATION_CODE_TO_FA = {
@@ -57,6 +60,33 @@ def _admission_form_seed_context(user: User, student: Student) -> dict:
     nc = extra.get("national_code")
     if nc is not None and str(nc).strip():
         out["national_code"] = str(nc).strip()
+    hp = extra.get("home_phone")
+    if hp is not None and str(hp).strip():
+        out["home_phone"] = str(hp).strip()
+    wp = extra.get("work_phone")
+    if wp is not None and str(wp).strip():
+        out["work_phone"] = str(wp).strip()
+    for key in (
+        "first_name_fa",
+        "last_name_fa",
+        "age",
+        "birth_certificate_number",
+        "birth_date",
+        "residence_city",
+        "home_address",
+        "work_address",
+        "had_psychotherapy",
+        "used_psychiatric_meds",
+        "psychiatric_hospitalization_history",
+        "has_work_permit",
+        "has_university_degree",
+        "course_participation_mode",
+        "referral_source",
+        "referral_inviter_name",
+    ):
+        val = extra.get(key)
+        if val is not None and str(val).strip():
+            out[key] = str(val).strip()
     return out
 
 
@@ -152,6 +182,86 @@ class StudentService:
         extra["primary_instance_id"] = str(instance_id)
         student.extra_data = extra
         flag_modified(student, "extra_data")
+
+    async def change_registration_course_type(
+        self,
+        student: Student,
+        new_course_type: str,
+        actor: User,
+        reason: Optional[str] = None,
+    ) -> dict:
+        """
+        تغییر نوع دورهٔ انتخاب‌شده در فرم اولیهٔ ثبت‌نام (آشنایی / جامع).
+
+        فرایند ثبت‌نام نادرستِ در جریان لغو می‌شود و مسیر ثبت‌نام متناسب با دورهٔ جدید
+        به primary_instance وصل یا از نو شروع می‌شود.
+        """
+        new_ct = (new_course_type or "").strip().lower()
+        if new_ct not in ("introductory", "comprehensive"):
+            raise ValueError("نوع دوره باید «آشنایی» (introductory) یا «جامع» (comprehensive) باشد.")
+
+        old_ct = (student.course_type or "").strip().lower()
+        if old_ct == new_ct:
+            return {
+                "changed": False,
+                "course_type": new_ct,
+                "previous_course_type": old_ct,
+                "cancelled_instance_ids": [],
+            }
+
+        stmt = select(ProcessInstance).where(
+            ProcessInstance.student_id == student.id,
+            ProcessInstance.process_code.in_(REGISTRATION_PROCESS_CODES),
+            ProcessInstance.is_completed.is_(True),
+        )
+        if (await self.db.execute(stmt)).scalars().first():
+            raise ValueError(
+                "ثبت‌نام یکی از دوره‌ها قبلاً تکمیل شده؛ تغییر نوع دوره از این مسیر مجاز نیست."
+            )
+
+        old_process = EXPECTED_REGISTRATION_CODE.get(old_ct)
+        cancelled_ids: list[str] = []
+        if old_process:
+            active_old = await self.db.execute(
+                select(ProcessInstance).where(
+                    ProcessInstance.student_id == student.id,
+                    ProcessInstance.process_code == old_process,
+                    ProcessInstance.is_completed.is_(False),
+                    ProcessInstance.is_cancelled.is_(False),
+                )
+            )
+            for inst in active_old.scalars().all():
+                inst.is_cancelled = True
+                cancelled_ids.append(str(inst.id))
+
+        student.course_type = new_ct
+        extra = dict(StateMachineEngine._as_mapping(student.extra_data))
+        extra.pop("primary_instance_id", None)
+        history = list(extra.get("course_type_change_history") or [])
+        history.append(
+            {
+                "at": datetime.now(timezone.utc).isoformat(),
+                "from": old_ct,
+                "to": new_ct,
+                "by_user_id": str(actor.id),
+                "by_role": (actor.role or "").strip().lower() or None,
+                "reason": (reason or "").strip() or None,
+                "cancelled_instances": cancelled_ids,
+            }
+        )
+        extra["course_type_change_history"] = history[-20:]
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+        await self.db.flush()
+
+        await self.ensure_primary_registration_path(student, actor)
+
+        return {
+            "changed": True,
+            "course_type": new_ct,
+            "previous_course_type": old_ct,
+            "cancelled_instance_ids": cancelled_ids,
+        }
 
     async def start_initial_process_for_student(self, student: Student, actor: User):
         """

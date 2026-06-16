@@ -18,6 +18,7 @@ from app.database import get_db
 from app.api.auth import require_role
 from app.models.operational_models import User, FinancialRecord, Student
 from app.services.installment_settings_service import get_installment_policy, update_installment_policy
+from app.services.financial_program_defaults_service import get_effective_financial_program_defaults, update_financial_program_defaults
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/finance", tags=["Finance"])
@@ -157,6 +158,37 @@ async def finance_patch_installment_settings(
         term2_installment_gap_days=body.term2_installment_gap_days,
         installment_count_options=body.installment_count_options,
     )
+
+
+class FinancialProgramDefaultsPatch(BaseModel):
+    """به‌روزرسانی جزئی پیش‌فرض‌های مالی کلاس/دوره/جلسات."""
+
+    registration_interview_fee_rial: Optional[int] = None
+    registration_tuition_invoice_toman: Optional[float] = None
+    start_therapy_first_session_fee_rial: Optional[int] = None
+    extra_session_fee_rial: Optional[int] = None
+    default_therapy_session_fee_toman: Optional[float] = None
+    class_session_fee_toman: Optional[float] = None
+    course_session_fee_toman: Optional[float] = None
+
+
+@router.get("/program-defaults")
+async def finance_get_program_defaults(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("finance")),
+):
+    """پیش‌فرض‌های مالی ثبت‌نام، درمان جلسه‌ای و مرجع مبلغ برای کلاس/دوره."""
+    return await get_effective_financial_program_defaults(db)
+
+
+@router.patch("/program-defaults")
+async def finance_patch_program_defaults(
+    body: FinancialProgramDefaultsPatch,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("finance")),
+):
+    """ذخیرهٔ پیش‌فرض‌های مالی (فقط فیلدهای ارسال‌شده)."""
+    return await update_financial_program_defaults(db, body.model_dump(exclude_unset=True))
 
 
 @router.get("/transactions")

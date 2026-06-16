@@ -95,13 +95,14 @@ def build_student_guidance(
     n_trans = len(transitions or [])
     has_forms = len(student_forms) > 0
     has_student_work = n_trans > 0 or has_forms
+    student_or_applicant = role in ("student", "applicant")
 
     task_fa = ""
     if not done and st:
         custom_task = str(meta.get("student_task_fa") or "").strip()
         if custom_task:
             task_fa = custom_task
-        elif role == "student" and has_student_work:
+        elif student_or_applicant and has_student_work:
             if has_forms and not step_form_locked:
                 task_fa = (
                     "فرم‌های همین صفحه را تکمیل و ثبت کنید؛ بعد از ثبت، اگر دکمهٔ اقدام بعدی "
@@ -122,12 +123,12 @@ def build_student_guidance(
                     "اطلاعات این مرحله قبلاً ثبت شده است؛ اگر دکمهٔ مرحلهٔ بعد را می‌بینید همان را بزنید؛ "
                     "در غیر این صورت منتظر اقدام اداری بمانید."
                 )
-        elif role == "student" and not has_student_work:
+        elif student_or_applicant and not has_student_work:
             task_fa = (
                 "در این لحظه کاری از داخل پنل برای شما پیش‌بینی نشده؛ اگر پیامی دریافت کردید طبق آن عمل کنید؛ "
                 "در غیر این صورت بعداً همین صفحه را تازه کنید."
             )
-        elif role and role != "student":
+        elif role and role not in ("student", "applicant"):
             task_fa = (
                 "در این مرحله اقدام مستقیم از پنل شما لازم نیست؛ منتظر بررسی یا اقدام همکاران بمانید و "
                 "بعداً همین صفحه را تازه کنید."

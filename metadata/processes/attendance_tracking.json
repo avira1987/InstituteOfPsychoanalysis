@@ -7,55 +7,157 @@
     "initial_state": "session_scheduled"
   },
   "states": [
-    {"code": "session_scheduled", "name_fa": "جلسه برنامه‌ریزی شده", "type": "initial", "assigned_role": "system"},
-    {"code": "recording_closed", "name_fa": "ثبت بسته شده", "type": "terminal", "assigned_role": "system", "metadata": {"reason": "وقفه یا کنسلی"}},
-    {"code": "auto_absence_unpaid", "name_fa": "غیبت خودکار (پرداخت نشده)", "type": "terminal", "assigned_role": "system"},
-    {"code": "therapist_recording", "name_fa": "ثبت حضور و غیاب توسط درمانگر", "type": "intermediate", "assigned_role": "therapist"},
-    {"code": "site_manager_pending", "name_fa": "در انتظار پیگیری مسئول سایت", "type": "intermediate", "assigned_role": "site_manager", "sla_hours": 48, "on_sla_breach_event": "site_manager_sla_breach"},
-    {"code": "deputy_escalated", "name_fa": "اسکیت به معاون مدیر آموزش", "type": "terminal", "assigned_role": "deputy_education"},
-    {"code": "session_completed", "name_fa": "جلسه تکمیل شد (+۱ ساعت)", "type": "terminal", "assigned_role": "system"},
-    {"code": "absence_recorded", "name_fa": "غیبت ثبت شد", "type": "intermediate", "assigned_role": "system"},
-    {"code": "excused_absence", "name_fa": "غیبت موجه", "type": "terminal", "assigned_role": "system"},
-    {"code": "unexcused_absence", "name_fa": "غیبت غیرموجه", "type": "terminal", "assigned_role": "system"},
-    {"code": "quota_exceeded", "name_fa": "سهمیه غیبت تمام شد", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "session_scheduled",
+      "name_fa": "جلسه برنامه‌ریزی شده",
+      "type": "initial",
+      "assigned_role": "system"
+    },
+    {
+      "code": "recording_closed",
+      "name_fa": "ثبت بسته شده",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "reason": "وقفه یا کنسلی"
+      }
+    },
+    {
+      "code": "auto_absence_unpaid",
+      "name_fa": "غیبت خودکار (پرداخت نشده)",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "therapist_recording",
+      "name_fa": "ثبت حضور و غیاب توسط درمانگر",
+      "type": "intermediate",
+      "assigned_role": "therapist",
+      "metadata": {
+        "operator_task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+        "operator_short_fa": "ثبت حضور و غیاب توسط درمانگر"
+      }
+    },
+    {
+      "code": "site_manager_pending",
+      "name_fa": "در انتظار پیگیری مسئول سایت",
+      "type": "intermediate",
+      "assigned_role": "site_manager",
+      "sla_hours": 48,
+      "on_sla_breach_event": "site_manager_sla_breach",
+      "metadata": {
+        "operator_task_fa": "بررسی درخواست و ثبت تصمیم.",
+        "operator_short_fa": "در انتظار پیگیری مسئول سایت"
+      }
+    },
+    {
+      "code": "deputy_escalated",
+      "name_fa": "اسکیت به معاون مدیر آموزش",
+      "type": "terminal",
+      "assigned_role": "deputy_education",
+      "metadata": {
+        "operator_task_fa": "بررسی پرونده و تأیید یا ارجاع.",
+        "operator_short_fa": "اسکیت به معاون مدیر آموزش"
+      }
+    },
+    {
+      "code": "session_completed",
+      "name_fa": "جلسه تکمیل شد (+۱ ساعت)",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "absence_recorded",
+      "name_fa": "غیبت ثبت شد",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "excused_absence",
+      "name_fa": "غیبت موجه",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "unexcused_absence",
+      "name_fa": "غیبت غیرموجه",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "quota_exceeded",
+      "name_fa": "سهمیه غیبت تمام شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
       "from": "session_scheduled",
       "to": "recording_closed",
       "trigger": "session_time_reached",
-      "conditions": ["student_on_leave"],
-      "description_fa": "دانشجو در وقفه — بسته شدن امکان ثبت"
+      "conditions": [
+        "student_on_leave"
+      ],
+      "description_fa": "دانشجو در وقفه — بسته شدن امکان ثبت",
+      "required_role": "system"
     },
     {
       "from": "session_scheduled",
       "to": "recording_closed",
       "trigger": "session_time_reached",
-      "conditions": ["session_cancelled"],
+      "conditions": [
+        "session_cancelled"
+      ],
       "priority": 9,
-      "description_fa": "جلسه کنسل شده — بسته شدن امکان ثبت"
+      "description_fa": "جلسه کنسل شده — بسته شدن امکان ثبت",
+      "required_role": "system"
     },
     {
       "from": "session_scheduled",
       "to": "auto_absence_unpaid",
       "trigger": "session_time_reached",
-      "conditions": ["session_not_paid"],
+      "conditions": [
+        "session_not_paid"
+      ],
       "description_fa": "پرداخت نشده — غیبت خودکار و تعیین تکلیف هزینه",
       "actions": [
-        {"type": "record_absence_auto"},
-        {"type": "start_process", "process_code": "fee_determination", "payload": {"reason": "unpaid_absence"}}
-      ]
+        {
+          "type": "record_absence_auto"
+        },
+        {
+          "type": "start_process",
+          "process_code": "fee_determination",
+          "payload": {
+            "reason": "unpaid_absence"
+          }
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "session_scheduled",
       "to": "therapist_recording",
       "trigger": "session_time_reached",
-      "conditions": ["session_paid", "student_not_on_leave", "session_not_cancelled"],
+      "conditions": [
+        "session_paid",
+        "student_not_on_leave",
+        "session_not_cancelled"
+      ],
       "priority": 1,
       "description_fa": "پرداخت شده و جلسه فعال — نمایش دکمه‌های حاضر/غایب به درمانگر",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "session_reminder", "recipients": ["student", "therapist"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "session_reminder",
+          "recipients": [
+            "student",
+            "therapist"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "therapist_recording",
@@ -64,8 +166,13 @@
       "required_role": "therapist",
       "description_fa": "حضور — +۱ ساعت به فیلد مناسب (۱x/۲x/مجموع)",
       "actions": [
-        {"type": "record_attendance", "status": "present"},
-        {"type": "add_hour_by_course_and_weekly_sessions"}
+        {
+          "type": "record_attendance",
+          "status": "present"
+        },
+        {
+          "type": "add_hour_by_course_and_weekly_sessions"
+        }
       ]
     },
     {
@@ -81,8 +188,16 @@
       "trigger": "therapist_did_not_record",
       "description_fa": "درمانگر ثبت نکرد — هشدار به مسئول سایت",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "attendance_followup_required", "recipients": ["site_manager"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "attendance_followup_required",
+          "recipients": [
+            "site_manager"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "site_manager_pending",
@@ -97,43 +212,94 @@
       "trigger": "site_manager_sla_breach",
       "description_fa": "۲ روز بدون پیگیری — اسکیت به معاون",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "attendance_site_manager_delay", "recipients": ["deputy_education"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "attendance_site_manager_delay",
+          "recipients": [
+            "deputy_education"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "absence_recorded",
       "to": "excused_absence",
       "trigger": "absence_excused",
-      "conditions": ["absence_is_excused"],
+      "conditions": [
+        "absence_is_excused"
+      ],
       "description_fa": "غیبت موجه",
       "actions": [
-        {"type": "record_attendance", "status": "absent_excused"}
-      ]
+        {
+          "type": "record_attendance",
+          "status": "absent_excused"
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "absence_recorded",
       "to": "unexcused_absence",
       "trigger": "absence_unexcused",
-      "conditions": ["absence_is_unexcused", "absence_quota_not_exceeded"],
+      "conditions": [
+        "absence_is_unexcused",
+        "absence_quota_not_exceeded"
+      ],
       "description_fa": "غیبت غیرموجه — سهمیه باقی مانده",
       "actions": [
-        {"type": "record_attendance", "status": "absent_unexcused"},
-        {"type": "start_process", "process_code": "fee_determination"},
-        {"type": "notification", "notification_type": "sms", "template": "absence_recorded", "recipients": ["student"]}
-      ]
+        {
+          "type": "record_attendance",
+          "status": "absent_unexcused"
+        },
+        {
+          "type": "start_process",
+          "process_code": "fee_determination"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "absence_recorded",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "absence_recorded",
       "to": "quota_exceeded",
       "trigger": "absence_unexcused",
-      "conditions": ["absence_is_unexcused", "absence_quota_exceeded"],
+      "conditions": [
+        "absence_is_unexcused",
+        "absence_quota_exceeded"
+      ],
       "description_fa": "غیبت غیرموجه — سهمیه تمام شد",
       "actions": [
-        {"type": "record_attendance", "status": "absent_unexcused"},
-        {"type": "start_process", "process_code": "fee_determination"},
-        {"type": "notify_committee"},
-        {"type": "notification", "notification_type": "sms", "template": "quota_exceeded", "recipients": ["student", "admin"]}
-      ]
+        {
+          "type": "record_attendance",
+          "status": "absent_unexcused"
+        },
+        {
+          "type": "start_process",
+          "process_code": "fee_determination"
+        },
+        {
+          "type": "notify_committee"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "quota_exceeded",
+          "recipients": [
+            "student",
+            "admin"
+          ]
+        }
+      ],
+      "required_role": "system"
     }
   ]
 }

@@ -72,7 +72,7 @@ export const CONTEXT_KEY_LABELS = {
   bachelor_degree: 'مدرک کارشناسی / پزشکی عمومی',
   master_degree: 'مدرک کارشناسی ارشد',
   latest_certificate: 'آخرین مدرک تحصیلی',
-  digital_commitment: 'تعهدنامه دیجیتال (کد پیامکی)',
+  digital_commitment: 'پذیرش قوانین انستیتو',
   selected_timeslot: 'زمان مصاحبه انتخاب‌شده',
 }
 

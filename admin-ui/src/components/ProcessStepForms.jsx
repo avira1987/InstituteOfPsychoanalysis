@@ -1,13 +1,89 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { filterFormsForStudent, validateStepForms } from '../utils/processFormsStudent'
-import { processExecApi } from '../services/api'
+import { processExecApi, studentApi } from '../services/api'
 import { resolveUploadPublicUrl, parseStepFileUploadValue } from '../utils/uploadPublicUrl'
 import {
   resolveCheckboxListOptions,
   normalizeSelectedCoursesValue,
 } from '../utils/resolveCourseFieldOptions'
 
-function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUploadError, contextData, lockedInPartialMode }) {
+function TherapistSelectField({ id, field, value, onChange, disabled }) {
+  const [options, setOptions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    studentApi
+      .therapists()
+      .then(res => {
+        if (!active) return
+        setOptions(Array.isArray(res.data) ? res.data : [])
+        setError(null)
+      })
+      .catch(() => {
+        if (!active) return
+        setError('دریافت فهرست درمانگران ممکن نشد؛ می‌توانید شناسه را دستی وارد کنید.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const label = (
+    <span className="psf-label">{field.label_fa || field.name}{field.required ? ' *' : ''}</span>
+  )
+
+  if (error) {
+    return (
+      <label className="psf-field" htmlFor={id}>
+        {label}
+        <p className="psf-hint psf-hint--warn">{error}</p>
+        <input
+          id={id}
+          type="text"
+          className="psf-input"
+          dir="ltr"
+          value={value ?? ''}
+          onChange={e => onChange(e.target.value)}
+          disabled={disabled}
+        />
+      </label>
+    )
+  }
+
+  return (
+    <label className="psf-field" htmlFor={id}>
+      {label}
+      {field.description_fa && <p className="psf-hint">{field.description_fa}</p>}
+      <select
+        id={id}
+        className="psf-input"
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled || loading}
+        data-testid="pf-therapist-select"
+      >
+        <option value="">{loading ? 'در حال بارگذاری…' : '— درمانگر را انتخاب کنید —'}</option>
+        {options.map(opt => (
+          <option key={opt.id} value={opt.id}>{opt.label_fa}</option>
+        ))}
+      </select>
+      {!loading && options.length === 0 && (
+        <p className="psf-hint psf-hint--warn">
+          درمانگری برای انتخاب ثبت نشده است؛ با پذیرش هماهنگ کنید.
+        </p>
+      )}
+    </label>
+  )
+}
+
+function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUploadError, contextData, lockedInPartialMode, fileUploadBlocked }) {
   const t = field.type || 'text'
   const name = field.name
   const id = `pf-${name}`
@@ -28,6 +104,18 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
           rows={3}
         />
       </label>
+    )
+  }
+
+  if (t === 'therapist_select') {
+    return (
+      <TherapistSelectField
+        id={id}
+        field={field}
+        value={value}
+        onChange={onChange}
+        disabled={disabled || locked}
+      />
     )
   }
 
@@ -100,6 +188,30 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
   }
 
   if (t === 'checkbox') {
+    const href = field.rules_link_href
+    const linkText = field.rules_link_label_fa || 'قوانین انستیتو'
+    const isExternal = typeof href === 'string' && /^https?:\/\//i.test(href)
+    const labelSpan = href ? (
+      <span>
+        {isExternal ? (
+          <a href={href} target="_blank" rel="noopener noreferrer" className="psf-inline-link">
+            {linkText}
+          </a>
+        ) : (
+          <Link to={href} className="psf-inline-link">
+            {linkText}
+          </Link>
+        )}
+        {' '}
+        را مطالعه کرده و می‌پذیرم.
+        {field.required ? ' *' : ''}
+      </span>
+    ) : (
+      <span>
+        {field.label_fa || name}
+        {field.required ? ' *' : ''}
+      </span>
+    )
     return (
       <label className="psf-field psf-check">
         <input
@@ -108,7 +220,7 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
           onChange={e => onChange(e.target.checked)}
           disabled={disabled || locked}
         />
-        <span>{field.label_fa || name}{field.required ? ' *' : ''}</span>
+        {labelSpan}
       </label>
     )
   }
@@ -118,6 +230,55 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
     const src = parsed.url ? resolveUploadPublicUrl(parsed.url) : ''
     const showImage = parsed.url && parsed.mime.startsWith('image/')
     const showPdf = parsed.url && parsed.mime === 'application/pdf'
+    const readOnlyPreview = disabled && !locked && !!(parsed.url || parsed.fileName || parsed.isLocalPlaceholder)
+
+    if (disabled && !locked && !readOnlyPreview) {
+      return (
+        <div className="psf-field">
+          <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
+          <p className="muted" style={{ fontSize: '0.85rem', marginTop: 0 }}>—</p>
+        </div>
+      )
+    }
+
+    if (readOnlyPreview) {
+      return (
+        <div className="psf-field">
+          <span className="psf-label">{field.label_fa || name}</span>
+          <p className="psf-hint" style={{ color: '#64748b', marginTop: 0 }}>
+            فقط مشاهده — امکان بارگذاری مجدد در این حالت وجود ندارد.
+          </p>
+          {parsed.isLocalPlaceholder && (
+            <p className="psf-hint psf-hint--warn">فقط نام فایل محلی ثبت شده بود.</p>
+          )}
+          {!parsed.url && !parsed.isLocalPlaceholder && <p className="muted" style={{ fontSize: '0.85rem' }}>—</p>}
+          {showImage && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <a href={src} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={src}
+                  alt=""
+                  style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                />
+              </a>
+            </div>
+          )}
+          {showPdf && (
+            <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline" style={{ marginTop: '0.5rem' }}>
+              باز کردن PDF
+            </a>
+          )}
+          {parsed.url && !showImage && !showPdf && (
+            <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline" style={{ marginTop: '0.5rem' }}>
+              باز کردن فایل
+            </a>
+          )}
+          {parsed.fileName && (
+            <span className="psf-file-name" style={{ display: 'block', marginTop: '0.35rem' }}>{parsed.fileName}</span>
+          )}
+        </div>
+      )
+    }
 
     if (locked) {
       return (
@@ -158,6 +319,7 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
       )
     }
 
+    const blockedByRules = !!fileUploadBlocked && !locked
     return (
       <div className="psf-field">
         <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
@@ -187,7 +349,7 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
               onUploadError?.(typeof d === 'string' ? d : 'خطا در آپلود فایل')
             }
           }}
-          disabled={disabled}
+          disabled={disabled || blockedByRules}
         />
         {showImage && (
           <div style={{ marginTop: '0.5rem' }}>
@@ -218,36 +380,6 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
           onChange={e => onChange(e.target.value)}
           disabled={disabled || locked}
           dir="ltr"
-        />
-      </label>
-    )
-  }
-
-  if (t === 'sms_verification') {
-    if (locked) {
-      const ok = value != null && String(value).trim() !== ''
-      return (
-        <div className="psf-field">
-          <span className="psf-label">{field.label_fa || name}</span>
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: ok ? '#15803d' : '#64748b' }}>
-            {ok ? 'تعهدنامه با کد پیامکی ثبت شده است؛ برای این مرحله نیازی به ورود مجدد کد نیست.' : '—'}
-          </p>
-        </div>
-      )
-    }
-    return (
-      <label className="psf-field" htmlFor={id}>
-        <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
-        {field.description_fa && <p className="psf-hint">{field.description_fa}</p>}
-        <input
-          id={id}
-          type="text"
-          className="psf-input"
-          dir="ltr"
-          placeholder="کد تأیید"
-          value={value ?? ''}
-          onChange={e => onChange(e.target.value)}
-          disabled={disabled}
         />
       </label>
     )
@@ -393,6 +525,11 @@ export default function ProcessStepForms({
   const resubmitSet = partialMode ? new Set(resubmitFieldNames) : null
   const lockedInPartial = (fieldName) => partialMode && resubmitSet && !resubmitSet.has(fieldName)
 
+  const flatFields = list.flatMap(form => form.fields || [])
+  const rulesGateField = flatFields.find(f => f.type === 'checkbox' && f.rules_link_href)
+  const gateKey = rulesGateField?.name
+  const uploadsBlockedByRules = !!(gateKey && !values?.[gateKey])
+
   const leadText = partialMode
     ? 'مدارک تأییدشده در زیر برای مرور شما مانده‌اند؛ فقط مواردی که پذیرش برای اصلاح اعلام کرده دوباره بارگذاری کنید؛ سپس «ثبت اطلاعات این مرحله» را بزنید.'
     : hasAvailableTransitions
@@ -415,6 +552,11 @@ export default function ProcessStepForms({
         <div className="psf-warning" role="alert">
           {uploadErr}
         </div>
+      )}
+      {uploadsBlockedByRules && (
+        <p className="psf-hint psf-hint--warn" style={{ marginTop: 0 }}>
+          ابتدا بالای همین فرم، پذیرش قوانین انستیتو را با تیک زدن تأیید کنید؛ سپس بارگذاری فایل فعال می‌شود.
+        </p>
       )}
       {list.map(form => {
         const fields = form.fields || []
@@ -443,6 +585,7 @@ export default function ProcessStepForms({
                   onUploadError={msg => setUploadErr(msg || null)}
                   contextData={contextData}
                   lockedInPartialMode={lockedInPartial(field.name)}
+                  fileUploadBlocked={uploadsBlockedByRules}
                 />
               ))}
             </div>

@@ -1,0 +1,77 @@
+{
+  "source": "melipayamak_panel_approved_patterns",
+  "note": "ارسال با BaseServiceNumber: فیلد text = مقادیر به ترتیب متغیرهای {0},{1},... با جداکننده ;",
+  "count": 10,
+  "patterns": [
+    {
+      "bodyId": 447750,
+      "title": "مصاحبه تا 30 دیگر",
+      "templateText": "کاربر گرامی، {0}؛ مصاحبه شما تا 30 دقیقه‌ی دیگر شروع میشود؛ جهت دریافت لینک مصاحبه، به لینک زیر مراجعه کنید. lms.psychoanalysis.ir",
+      "variablePlaceholders": ["0"],
+      "variableCount": 1
+    },
+    {
+      "bodyId": 447752,
+      "title": "پرداخت مبلغ برای رزرو نوبت مصاحبه",
+      "templateText": "مبلغ {0} ریال توسط کاربر {1} برای رزرو نوبت مصاحبه پرداخت شد. انستیتو روانکاوی تهران lms.psychoanalysis.ir",
+      "variablePlaceholders": ["0", "1"],
+      "variableCount": 2
+    },
+    {
+      "bodyId": 447759,
+      "title": "ارسال تاییدیه تاریخ مصاحبه",
+      "templateText": "کاربر گرامی، {0}؛ مصاحبه شما به تاریخ {1} و ساعت {2}، با موفقیت رزرو شد. انستیتو روانکاوی تهران lms.psychoanalysis.ir",
+      "variablePlaceholders": ["0", "1", "2"],
+      "variableCount": 3
+    },
+    {
+      "bodyId": 447765,
+      "title": "دقیقه قبل مصاحبه 30",
+      "templateText": "مصاحبه کننده گرامی؛ مصاحبه شما با کاربر {0}، تا 30 دقیقه‌ی دیگر شروع میشود؛ جهت دریافت لینک مصاحبه، به پورتال مراجعه کنید. انستیتو روانکاوی تهران lms.psychoanalysis.ir",
+      "variablePlaceholders": ["0"],
+      "variableCount": 1
+    },
+    {
+      "bodyId": 447766,
+      "title": "رد اطلاعات پذیرش",
+      "templateText": "کاربر گرامی، {0}؛ اطلاعات پذیرش شما رد شد. جهت بررسی دلیل و ویرایش فرم، به پورتال ثبت نام مراجعه بفرمایید. انستیتو روانکاوی تهران lms.psychoanalysis.ir",
+      "variablePlaceholders": ["0"],
+      "variableCount": 1
+    },
+    {
+      "bodyId": 449667,
+      "title": "کد ورود با موبایل",
+      "templateText": "کد ورود: {0} میباشد. انستیتو روانکاوری تهران",
+      "variablePlaceholders": ["0"],
+      "variableCount": 1
+    },
+    {
+      "bodyId": 447769,
+      "title": "تایید اطلاعات پذیرش",
+      "templateText": "کاربر گرامی، {0}؛ اطلاعات پذیرش شما تایید شد. جهت ادامه به پورتال ثبت نام مراجعه بفرمایید. انستیتو روانکاوی تهران lms.psychoanalysis.ir",
+      "variablePlaceholders": ["0"],
+      "variableCount": 1
+    },
+    {
+      "bodyId": 447770,
+      "title": "لینک ورود به کلاس",
+      "templateText": "عزیز؛ کلاس شما، تا 30 دقیقه‌ی دیگر شروع میشود؛ جهت دریافت لینک کلاس، به {0} lms.psychoanalysis.ir پورتال مراجعه کنید. انستیتو روانکاوی تهران",
+      "variablePlaceholders": ["0"],
+      "variableCount": 1
+    },
+    {
+      "bodyId": 447772,
+      "title": "اقدام در پروفایل",
+      "templateText": "عزیز؛ جهت اقدام ادامه فرایند آموزش نیاز به ورود به پروفایل کاربری دارید، به پورتال {0} lms.psychoanalysis.ir مراجعه کنید. انستیتو روانکاوی تهران",
+      "variablePlaceholders": ["0"],
+      "variableCount": 1
+    },
+    {
+      "bodyId": 450373,
+      "title": "خوش‌آمد ورود بدون پیامک (نام کاربری و رمز)",
+      "templateText": "متن تأییدشده در پنل ملی‌پیامک؛ معمولاً {0}=نام کاربری (موبایل)، {1}=رمز عددی. در صورت ترposed بودن در پنل، ترتیب slots در sms_template_pattern_map.json را اصلاح کنید.",
+      "variablePlaceholders": ["0", "1"],
+      "variableCount": 2
+    }
+  ]
+}

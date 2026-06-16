@@ -1,0 +1,108 @@
+"""زنجیرهٔ خودکار مراحل فرایند ۳۱ پس از ترنزیشن‌های کلیدی."""
+
+from __future__ import annotations
+
+import logging
+import uuid
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy.orm.attributes import flag_modified
+
+from app.core.engine import StateMachineEngine
+from app.models.operational_models import ProcessInstance, Student, User
+from sqlalchemy import select
+
+logger = logging.getLogger(__name__)
+
+_INTRO_ADMISSION_RESULT_STATES = frozenset({
+    "result_conditional_therapy",
+    "result_single_course",
+    "result_full_admission",
+})
+
+_INTRO_COURSE_LABEL = "دوره آشنایی کاربردی با روانکاوی معاصر"
+
+
+def _ctx(instance: ProcessInstance) -> dict:
+    return StateMachineEngine._as_mapping(instance.context_data)
+
+
+def _set_deadlines(ctx: dict, *, hours: int = 48, payment_days: int = 14) -> dict:
+    now = datetime.now(timezone.utc)
+    out = dict(ctx)
+    dl = (now + timedelta(hours=hours)).date().isoformat()
+    pay_dl = (now + timedelta(days=payment_days)).date().isoformat()
+    out.setdefault("documents_upload_deadline", dl)
+    out.setdefault("registration_payment_deadline", pay_dl)
+    out.setdefault("course_label", _INTRO_COURSE_LABEL)
+    out.setdefault("term_label", out.get("term_label") or "ترم جاری")
+    return out
+
+
+async def _resolve_system_actor_id(db) -> uuid.UUID:
+    r = await db.execute(select(User.id).where(User.role == "admin").limit(1))
+    row = r.scalars().first()
+    if row:
+        return row
+    r = await db.execute(select(User.id).limit(1))
+    row = r.scalars().first()
+    return row if row else uuid.uuid4()
+
+
+async def _student_user_id(db, instance: ProcessInstance) -> uuid.UUID | None:
+    st = await db.get(Student, instance.student_id)
+    if st and st.user_id:
+        return st.user_id
+    return None
+
+
+async def chain_introductory_registration_after_transition(
+    db,
+    engine: StateMachineEngine,
+    instance: ProcessInstance,
+    to_state: str,
+    actor_id: uuid.UUID,
+) -> None:
+    """پس از نتیجهٔ پذیرش: دعوت خودکار به بارگذاری مدارک؛ پس از ایجاد حساب: ورود به انتخاب درس."""
+    if instance.process_code != "introductory_course_registration":
+        return
+
+    if to_state in _INTRO_ADMISSION_RESULT_STATES:
+        ctx = _set_deadlines(_ctx(instance))
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        await db.flush()
+
+        sys_id = await _resolve_system_actor_id(db)
+        result = await engine.execute_transition(
+            instance.id,
+            "proceed_to_documents",
+            sys_id,
+            "system",
+            None,
+        )
+        if not result.success:
+            logger.warning(
+                "introductory auto proceed_to_documents failed instance=%s: %s",
+                instance.id,
+                result.error,
+            )
+        return
+
+    if to_state == "credentials_created":
+        stu_uid = await _student_user_id(db, instance)
+        if not stu_uid:
+            return
+        result = await engine.execute_transition(
+            instance.id,
+            "student_logged_in",
+            stu_uid,
+            "student",
+            {"lms_login": True},
+        )
+        if not result.success:
+            logger.warning(
+                "introductory auto student_logged_in failed instance=%s: %s",
+                instance.id,
+                result.error,
+            )

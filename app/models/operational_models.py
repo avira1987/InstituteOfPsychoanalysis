@@ -6,8 +6,8 @@ These models store the *runtime data* for active process instances and student r
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Text, Integer, Boolean, DateTime, Float, ForeignKey,
-    Index, Date, text,
+    Column, String, Text, Integer, BigInteger, Boolean, DateTime, Time, Float,
+    ForeignKey, Index, Date, text, UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -26,6 +26,8 @@ class User(Base):
     username = Column(String(100), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=True)
     hashed_password = Column(String(255), nullable=False)
+    # رمز ورود با نام کاربری (مسیر «ورود پرسنل»)؛ متن ساده فقط برای نمایش ادمین/کارمند
+    portal_password_plain = Column(String(128), nullable=True)
     full_name_fa = Column(String(255), nullable=True)
     full_name_en = Column(String(255), nullable=True)
     role = Column(String(50), nullable=False, default="student")  # admin, staff, finance, therapist, student, …
@@ -39,7 +41,14 @@ class User(Base):
     alocom_agent_user_id = Column(Integer, nullable=True)
 
     # Relationships
-    student_profile = relationship("Student", back_populates="user", uselist=False, foreign_keys="[Student.user_id]")
+    # DB: students.user_id → users.id ON DELETE CASCADE — بدون passive_deletes، ORM سعی می‌کند user_id را NULL کند و خطای NOT NULL می‌دهد.
+    student_profile = relationship(
+        "Student",
+        back_populates="user",
+        uselist=False,
+        foreign_keys="[Student.user_id]",
+        passive_deletes=True,
+    )
 
 
 class Student(Base):
@@ -132,12 +141,14 @@ class TherapySession(Base):
     amount = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
     meeting_url = Column(Text, nullable=True)
+    host_meeting_url = Column(Text, nullable=True)
     meeting_provider = Column(String(50), nullable=True)  # manual, skyroom, voicoom, alocom
     links_unlocked = Column(Boolean, default=False, nullable=False)
     instructor_score = Column(Float, nullable=True)
     instructor_comment = Column(Text, nullable=True)
     alocom_event_id = Column(String(80), nullable=True, index=True)
     session_starts_at = Column(DateTime(timezone=True), nullable=True)
+    link_reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
@@ -178,11 +189,72 @@ class PaymentPending(Base):
 
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
     authority = Column(String(255), nullable=False)  # ResNum / orderId (same as SendToken ResNum)
-    gateway_track_id = Column(String(255), nullable=True)  # SEP token, Zibal trackId, mock authority
+    gateway_track_id = Column(String(255), nullable=True)  # SEP token, Zibal trackId, Zarinpal authority, mock
+    gateway_provider = Column(String(32), nullable=True)  # zibal | zarinpal | saman | mock (verify در callback)
     instance_id = Column(UUID, ForeignKey("process_instances.id", ondelete="CASCADE"), nullable=False)
     student_id = Column(UUID, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class PaymentGatewayReceipt(Base):
+    """رسید درگاه (زیبال: refNumber) — یکتا برای جلوگیری از دوبار ثبت مالی/ریپلی."""
+
+    __tablename__ = "payment_gateway_receipts"
+    __table_args__ = (
+        UniqueConstraint("provider", "gateway_ref", name="uq_pgr_provider_ref"),
+        Index("ix_pgr_student_id", "student_id"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    provider = Column(String(32), nullable=False)
+    gateway_ref = Column(String(128), nullable=False)
+    authority = Column(String(255), nullable=True)
+    amount_rial = Column(BigInteger, nullable=False)
+    student_id = Column(UUID, ForeignKey("students.id", ondelete="SET NULL"), nullable=True)
+    process_instance_id = Column(UUID, ForeignKey("process_instances.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class NotificationOutbox(Base):
+    """Durable SMS/notification queue with retry."""
+
+    __tablename__ = "notification_outbox"
+    __table_args__ = (
+        Index("ix_notif_outbox_status", "status"),
+        Index("ix_notif_outbox_next_retry", "next_retry_at"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    channel = Column(String(20), nullable=False, default="sms")
+    recipient = Column(String(32), nullable=False)
+    message = Column(Text, nullable=False)
+    template_key = Column(String(120), nullable=True)
+    status = Column(String(20), nullable=False, default="pending")
+    retry_count = Column(Integer, nullable=False, default=0)
+    max_retries = Column(Integer, nullable=False, default=5)
+    last_error = Column(Text, nullable=True)
+    context_json = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    next_retry_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class FailedAction(Base):
+    """Post-transition actions that failed — for operator retry."""
+
+    __tablename__ = "failed_actions"
+    __table_args__ = (Index("ix_failed_actions_instance", "instance_id"),)
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    instance_id = Column(UUID, ForeignKey("process_instances.id", ondelete="CASCADE"), nullable=False)
+    action_type = Column(String(100), nullable=False)
+    action_payload = Column(JSONB, nullable=True)
+    error_message = Column(Text, nullable=True)
+    retry_count = Column(Integer, nullable=False, default=0)
+    resolved = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class FinancialRecord(Base):
@@ -250,6 +322,35 @@ class LoginChallenge(Base):
     )
 
 
+class InterviewSlotRecurringRule(Base):
+    """الگوی هفتگی برای ساخت خودکار اسلات مصاحبه (فقط مصاحبه‌گر)."""
+
+    __tablename__ = "interview_slot_recurring_rules"
+    __table_args__ = (
+        Index("ix_interview_slot_rr_interviewer", "interviewer_user_id"),
+        Index("ix_interview_slot_rr_active", "is_active"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    interviewer_user_id = Column(UUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # weekdays به‌قرار تقویم میلادی محلی تهران — همان weekday پایتون: دوشنبه=0 … یکشنبه=6
+    days_of_week = Column(JSONB, nullable=False)
+    start_local_time = Column(Time(timezone=False), nullable=False)
+    end_local_time = Column(Time(timezone=False), nullable=False)
+    course_type = Column(String(50), nullable=True)
+    mode = Column(String(20), nullable=False, default="online")
+    location_fa = Column(String(500), nullable=True)
+    meeting_link = Column(Text, nullable=True)
+    label_fa = Column(String(255), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default=text("true"))
+    # چند روز رو به جلو اسلات قطعی می‌سازد (هر بار اجرای job)
+    horizon_days = Column(Integer, nullable=False, default=21, server_default=text("21"))
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+    interviewer = relationship("User", foreign_keys=[interviewer_user_id])
+
+
 class InterviewSlot(Base):
     """زمان‌های قابل رزرو برای مصاحبهٔ پذیرش؛ پس از تخصیص تا پایان مصاحبه برای دیگران آزاد نمی‌شود."""
 
@@ -257,19 +358,37 @@ class InterviewSlot(Base):
     __table_args__ = (
         Index("ix_interview_slots_starts", "starts_at"),
         Index("ix_interview_slots_assigned_student", "assigned_student_id"),
+        Index(
+            "uq_interview_slot_rule_generated_start",
+            "generated_from_rule_id",
+            "starts_at",
+            unique=True,
+            postgresql_where=text("generated_from_rule_id IS NOT NULL"),
+        ),
     )
 
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
     starts_at = Column(DateTime(timezone=True), nullable=False)
     ends_at = Column(DateTime(timezone=True), nullable=False)
     course_type = Column(String(50), nullable=True)  # introductory | comprehensive | None = هر دو
-    mode = Column(String(20), nullable=False, default="in_person")  # in_person | online
+    mode = Column(String(20), nullable=False, default="online")  # in_person | online
     location_fa = Column(String(500), nullable=True)
     meeting_link = Column(Text, nullable=True)
+    host_meeting_link = Column(Text, nullable=True)
+    interviewer_meeting_link = Column(Text, nullable=True)
+    alocom_event_id = Column(String(80), nullable=True, index=True)
     label_fa = Column(String(255), nullable=True)
     created_by = Column(UUID, ForeignKey("users.id"), nullable=True)
+    interviewer_user_id = Column(UUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    generated_from_rule_id = Column(
+        UUID, ForeignKey("interview_slot_recurring_rules.id", ondelete="SET NULL"), nullable=True
+    )
     assigned_student_id = Column(UUID, ForeignKey("students.id", ondelete="SET NULL"), nullable=True)
     assigned_instance_id = Column(UUID, ForeignKey("process_instances.id", ondelete="SET NULL"), nullable=True)
+    # تا تأیید پرداخت مصاحبه: اگر الان از این زمان گذشت، اسلات آزاد و فرایند عقب کشیده می‌شود.
+    booking_payment_deadline_at = Column(DateTime(timezone=True), nullable=True)
+    # اگر فعال باشد دانشجو می‌تواند قبل از پنجرهٔ ۳۰ دقیقه‌ای وارد جلسهٔ آنلاین شود.
+    student_join_open = Column(Boolean, default=False, nullable=False, server_default="false")
     reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
@@ -362,3 +481,39 @@ class SiteSetting(Base):
     key = Column(String(100), primary_key=True)
     value_json = Column(JSONB, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+
+class SmsSimulationOutbox(Base):
+    """پیامک شبیه‌سازی‌شده هنگام SMS_PROVIDER=log — برای نمایش پاپ‌آپ تست در پنل."""
+
+    __tablename__ = "sms_simulation_outbox"
+    __table_args__ = (
+        Index("ix_sms_sim_outbox_phone", "phone"),
+        Index("ix_sms_sim_outbox_created", "created_at"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    phone = Column(String(15), nullable=False)
+    message = Column(Text, nullable=False)
+    kind = Column(String(32), nullable=False)  # otp | notification | pattern | free_text
+    template_key = Column(String(120), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class SmsSimulationDismissal(Base):
+    """بستن پاپ‌آپ توسط کاربر — هر کاربر فقط پیامک به شمارهٔ خودش را می‌بیند."""
+
+    __tablename__ = "sms_simulation_dismissals"
+    __table_args__ = (
+        Index("ix_sms_sim_dismiss_user", "user_id"),
+    )
+
+    sms_id = Column(
+        UUID,
+        ForeignKey("sms_simulation_outbox.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id = Column(UUID, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    dismissed_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+

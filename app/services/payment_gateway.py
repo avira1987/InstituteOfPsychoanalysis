@@ -1,9 +1,10 @@
 """Payment Gateway - Pluggable payment processing.
 
 Providers:
-  - "mock"   → development (always succeeds)
-  - "saman"  → Saman (SEP) via sep.shaparak.ir (amounts in Rials)
-  - "zibal"  → Zibal via gateway.zibal.ir
+  - "mock"     → development (always succeeds)
+  - "saman"    → Saman (SEP) via sep.shaparak.ir (amounts in Rials)
+  - "zibal"    → Zibal via gateway.zibal.ir
+  - "zarinpal" → Zarinpal REST v4 (api.zarinpal.com)
 
 Configure via .env (never commit real secrets):
   PAYMENT_PROVIDER=saman
@@ -11,15 +12,20 @@ Configure via .env (never commit real secrets):
   SEP_PASSWORD=<optional per merchant doc>
   PAYMENT_CALLBACK_URL=https://yourdomain.com/api/payment/callback
 
-  # or for Zibal:
+  # Zibal:
   PAYMENT_PROVIDER=zibal
   ZIBAL_MERCHANT=your_merchant_id
+
+  # Zarinpal:
+  PAYMENT_PROVIDER=zarinpal
+  ZARINPAL_MERCHANT_ID=<merchant_uuid>
+  ZARINPAL_SANDBOX=false
 """
 
 import uuid
 import logging
 from typing import Optional
-from app.config import get_settings
+from app.config import effective_payment_callback_url, get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -28,13 +34,14 @@ settings = get_settings()
 class PaymentRequest:
     def __init__(self, amount: int, description: str, callback_url: str = "",
                  student_id: Optional[str] = None, reference_id: Optional[str] = None,
-                 mobile: Optional[str] = None):
+                 mobile: Optional[str] = None, provider: Optional[str] = None):
         self.amount = amount
         self.description = description
-        self.callback_url = callback_url or settings.PAYMENT_CALLBACK_URL
+        self.callback_url = (callback_url or effective_payment_callback_url()).strip()
         self.student_id = student_id
         self.reference_id = reference_id
         self.mobile = mobile
+        self.provider = (provider or "").strip().lower() or None
 
 
 class PaymentResponse:
@@ -58,24 +65,35 @@ class PaymentResponse:
 
 # ─── Public API ──────────────────────────────────────────────────
 
+def _resolve_provider(request_or_override: Optional[str]) -> str:
+    p = (request_or_override or settings.PAYMENT_PROVIDER or "mock").strip().lower()
+    return p if p else "mock"
+
+
 async def create_payment(request: PaymentRequest) -> PaymentResponse:
-    provider = settings.PAYMENT_PROVIDER or "mock"
+    provider = _resolve_provider(request.provider)
     if provider == "saman":
         return await _saman_create(request)
     elif provider == "zibal":
         return await _zibal_create(request)
+    elif provider == "zarinpal":
+        return await _zarinpal_create(request)
     else:
         return _mock_create(request)
 
 
-async def verify_payment(authority: str, amount: int) -> PaymentResponse:
-    provider = settings.PAYMENT_PROVIDER or "mock"
-    if provider == "saman":
+async def verify_payment(authority: str, amount: int, provider: Optional[str] = None) -> PaymentResponse:
+    p = _resolve_provider(provider)
+    if p == "saman":
         return await _saman_verify(authority, amount)
-    elif provider == "zibal":
+    elif p == "zibal":
         return await _zibal_verify(authority, amount)
+    elif p == "zarinpal":
+        return await _zarinpal_verify(authority, amount)
     else:
-        return _mock_verify(authority, amount)
+        if settings.DEBUG:
+            return _mock_verify(authority, amount)
+        return PaymentResponse(success=False, error="Payment provider not configured")
 
 
 # ─── Mock ────────────────────────────────────────────────────────
@@ -105,8 +123,10 @@ async def _saman_create(request: PaymentRequest) -> PaymentResponse:
     """
     terminal_id = settings.SEP_TERMINAL_ID
     if not terminal_id:
-        logger.warning("SEP_TERMINAL_ID not set, falling back to mock")
-        return _mock_create(request)
+        if settings.DEBUG:
+            logger.warning("SEP_TERMINAL_ID not set, falling back to mock (DEBUG only)")
+            return _mock_create(request)
+        return PaymentResponse(success=False, error="SEP_TERMINAL_ID is not configured")
 
     try:
         import httpx
@@ -126,12 +146,20 @@ async def _saman_create(request: PaymentRequest) -> PaymentResponse:
 
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.post(token_url, json=payload)
-            data = resp.json()
+            try:
+                data = resp.json()
+            except Exception:
+                body = (resp.text or "")[:800]
+                logger.error(f"[SEP] Non-JSON from SendToken: status={resp.status_code} body={body!r}")
+                return PaymentResponse(
+                    success=False,
+                    error=f"پاسخ غیرمنتظره از سپ (کد {resp.status_code})",
+                )
 
             status = data.get("status")
-            token = data.get("token", "")
-
-            if status == 1 and token:
+            token = str(data.get("token") or data.get("Token") or "").strip()
+            ok = bool(token) and (status == 1 or str(status) == "1")
+            if ok:
                 payment_url = f"https://sep.shaparak.ir/OnlinePG/OnlinePG?Token={token}"
                 logger.info(f"[SEP] Token obtained: {token[:20]}...")
                 return PaymentResponse(success=True, authority=token, payment_url=payment_url)
@@ -152,7 +180,9 @@ async def _saman_verify(ref_num: str, amount: int) -> PaymentResponse:
     """Saman SEP: VerifyTransaction after callback."""
     terminal_id = settings.SEP_TERMINAL_ID
     if not terminal_id:
-        return _mock_verify(ref_num, amount)
+        if settings.DEBUG:
+            return _mock_verify(ref_num, amount)
+        return PaymentResponse(success=False, error="SEP_TERMINAL_ID is not configured")
 
     try:
         import httpx
@@ -192,21 +222,44 @@ async def _saman_verify(ref_num: str, amount: int) -> PaymentResponse:
 # ─── Zibal ───────────────────────────────────────────────────────
 
 def _zibal_base_url() -> str:
-    """Return Zibal API base URL (sandbox or production)."""
-    if getattr(settings, "ZIBAL_SANDBOX", True):
-        return "https://sandbox.zibal.ir"
+    """همیشه host اصلی IPG؛ حالت تست با فیلد sandbox در JSON (نه زیردامنه sandbox که اغلب timeout/مسدود است)."""
     return "https://gateway.zibal.ir"
+
+
+def _zibal_humanize_error(raw: str) -> str:
+    """پیام‌های رایج API زیبال به متن قابل‌فهم برای اپراتور."""
+    if not raw or not str(raw).strip():
+        return "خطای نامشخص از درگاه زیبال"
+    s = str(raw).strip()
+    low = s.lower()
+    if "invalid ip" in low:
+        return (
+            "IP سروری که بک‌اند روی آن به اینترنت وصل است در پنل زیبال مجاز نیست. "
+            "در my.zibal.ir → تنظیمات / محدودیت IP، IP عمومی همین سرور را اضافه کنید "
+            "(همان IPای که زیبال در خطا نشان می‌دهد). تا آن زمان پرداخت از سرور رد می‌شود. "
+            f"[%s]" % s
+        )
+    if "invalid merchant" in low or "result=104" in low:
+        return (
+            "کد مرچنت (ZIBAL_MERCHANT) در زیبال شناخته نشد یا برای این محیط فعال نیست؛ "
+            "در my.zibal.ir مرچنت و حالت سندباکس/واقعی را چک کنید. "
+            f"[%s]" % s
+        )
+    return s
 
 
 async def _zibal_create(request: PaymentRequest) -> PaymentResponse:
     """Zibal: POST to /v1/request → get trackId → redirect."""
     merchant = settings.ZIBAL_MERCHANT
     if not merchant:
-        logger.warning("ZIBAL_MERCHANT not set, falling back to mock")
-        return _mock_create(request)
+        logger.warning("ZIBAL_MERCHANT not set")
+        return PaymentResponse(
+            success=False,
+            error="درگاه زیبال روی سرور تنظیم نشده؛ متغیر ZIBAL_MERCHANT را در محیط اجرا قرار دهید.",
+        )
 
     base = _zibal_base_url()
-    is_sandbox = "sandbox" in base
+    is_sandbox = bool(getattr(settings, "ZIBAL_SANDBOX", False))
 
     try:
         import httpx
@@ -224,7 +277,19 @@ async def _zibal_create(request: PaymentRequest) -> PaymentResponse:
             if is_sandbox:
                 payload["sandbox"] = True
             resp = await client.post(url, json=payload)
-            data = resp.json()
+            if resp.status_code and resp.status_code >= 400:
+                body = (resp.text or "")[:500]
+                logger.error(f"[ZIBAL] request HTTP {resp.status_code}: {body!r}")
+                return PaymentResponse(
+                    success=False,
+                    error=f"خطای ارتباط با درگاه (HTTP {resp.status_code})",
+                )
+            try:
+                data = resp.json()
+            except Exception:
+                body = (resp.text or "")[:800]
+                logger.error(f"[ZIBAL] request non-JSON: {body!r}")
+                return PaymentResponse(success=False, error="پاسخ نامعتبر از درگاه زیبال")
             result = data.get("result")
             track_id = str(data.get("trackId", ""))
 
@@ -235,21 +300,23 @@ async def _zibal_create(request: PaymentRequest) -> PaymentResponse:
             else:
                 error_msg = data.get("message", f"result={result}")
                 logger.error(f"[ZIBAL] Error: {error_msg}")
-                return PaymentResponse(success=False, error=error_msg)
+                return PaymentResponse(success=False, error=_zibal_humanize_error(str(error_msg)))
 
     except ImportError:
         logger.error("httpx not installed. Run: pip install httpx")
         return PaymentResponse(success=False, error="httpx not installed")
     except Exception as e:
         logger.error(f"[ZIBAL] Exception: {e}")
-        return PaymentResponse(success=False, error=str(e))
+        return PaymentResponse(success=False, error=_zibal_humanize_error(str(e)))
 
 
 async def _zibal_verify(track_id: str, amount: int) -> PaymentResponse:
     """Zibal: POST to /v1/verify with trackId."""
     merchant = settings.ZIBAL_MERCHANT
     if not merchant:
-        return _mock_verify(track_id, amount)
+        if settings.DEBUG:
+            return _mock_verify(track_id, amount)
+        return PaymentResponse(success=False, error="ZIBAL_MERCHANT is not configured")
 
     base = _zibal_base_url()
 
@@ -258,22 +325,186 @@ async def _zibal_verify(track_id: str, amount: int) -> PaymentResponse:
         url = f"{base}/v1/verify"
 
         async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(url, json={
+            verify_body: dict = {
                 "merchant": merchant,
                 "trackId": int(track_id) if track_id.isdigit() else track_id,
-            })
-            data = resp.json()
+            }
+            if bool(getattr(settings, "ZIBAL_SANDBOX", False)):
+                verify_body["sandbox"] = True
+            resp = await client.post(
+                url,
+                json=verify_body,
+            )
+            if resp.status_code and resp.status_code >= 400:
+                body = (resp.text or "")[:500]
+                logger.error(f"[ZIBAL] verify HTTP {resp.status_code}: {body!r}")
+                return PaymentResponse(
+                    success=False,
+                    authority=track_id,
+                    error=f"خطای ارتباط با درگاه (HTTP {resp.status_code})",
+                )
+            try:
+                data = resp.json()
+            except Exception:
+                body = (resp.text or "")[:800]
+                logger.error(f"[ZIBAL] verify non-JSON: {body!r}")
+                return PaymentResponse(
+                    success=False, authority=track_id, error="پاسخ نامعتبر از verify زیبال"
+                )
             result = data.get("result")
+            order_id = str(data.get("orderId", "") or "").strip()
 
-            if result == 100:
-                ref_number = str(data.get("refNumber", ""))
-                logger.info(f"[ZIBAL] Verified: trackId={track_id}, refNumber={ref_number}")
-                return PaymentResponse(success=True, authority=track_id, ref_id=ref_number)
-            else:
+            def _zibal_amount_match() -> bool:
+                try:
+                    paid = int(data.get("amount", -1) or -1)
+                except (TypeError, ValueError):
+                    return False
+                return paid == int(amount)
+
+            if result not in (100, 201):
                 error_msg = data.get("message", f"result={result}")
                 logger.error(f"[ZIBAL] Verify error: {error_msg}")
                 return PaymentResponse(success=False, authority=track_id, error=error_msg)
 
+            if not _zibal_amount_match():
+                logger.error(
+                    f"[ZIBAL] amount mismatch: expected_rial={amount} response={data.get('amount')!r}"
+                )
+                return PaymentResponse(
+                    success=False,
+                    authority=track_id,
+                    error="عدم تطابق مبلغ تایید با سفارش",
+                )
+
+            ref_number = str(data.get("refNumber", "") or "").strip()
+            if not ref_number:
+                logger.error(f"[ZIBAL] missing refNumber in verify response: keys={list(data.keys())}")
+                return PaymentResponse(
+                    success=False, authority=track_id, error="refNumber خالی در پاسخ تایید"
+                )
+            logger.info(
+                f"[ZIBAL] Verified: trackId={track_id}, refNumber={ref_number[:16]}… orderId={order_id!r}"
+            )
+            return PaymentResponse(success=True, authority=track_id, ref_id=ref_number)
+
     except Exception as e:
         logger.error(f"[ZIBAL] Verify exception: {e}")
         return PaymentResponse(success=False, authority=track_id, error=str(e))
+
+
+# ─── Zarinpal (REST v4) ──────────────────────────────────────────
+
+def _zarinpal_api_base() -> str:
+    if getattr(settings, "ZARINPAL_SANDBOX", False):
+        return "https://sandbox.zarinpal.com"
+    return "https://api.zarinpal.com"
+
+
+def _zarinpal_pay_base() -> str:
+    if getattr(settings, "ZARINPAL_SANDBOX", False):
+        return "https://sandbox.zarinpal.com"
+    return "https://www.zarinpal.com"
+
+
+async def _zarinpal_create(request: PaymentRequest) -> PaymentResponse:
+    """Zarinpal v4: POST pg/v4/payment/request.json → authority → StartPay."""
+    merchant = getattr(settings, "ZARINPAL_MERCHANT_ID", "") or ""
+    if not merchant:
+        logger.warning("ZARINPAL_MERCHANT_ID not set")
+        return PaymentResponse(
+            success=False,
+            error="درگاه زرین‌پال روی سرور تنظیم نشده؛ متغیر ZARINPAL_MERCHANT_ID را در محیط اجرا قرار دهید.",
+        )
+
+    api_base = _zarinpal_api_base()
+    pay_base = _zarinpal_pay_base()
+
+    try:
+        import httpx
+        url = f"{api_base}/pg/v4/payment/request.json"
+        payload: dict = {
+            "merchant_id": merchant,
+            "amount": request.amount,
+            "callback_url": request.callback_url,
+            "description": request.description[:255] if request.description else "پرداخت",
+        }
+        if request.mobile:
+            payload["metadata"] = {"mobile": request.mobile}
+
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.post(url, json=payload)
+            body = resp.json()
+            errors = body.get("errors") or []
+            if errors:
+                err = errors[0] if isinstance(errors, list) and errors else str(errors)
+                logger.error(f"[ZARINPAL] request errors: {err}")
+                return PaymentResponse(success=False, error=str(err))
+            data = body.get("data") or {}
+            code = data.get("code")
+            authority = str(data.get("authority", "") or "").strip()
+            if code == 100 and authority:
+                payment_url = f"{pay_base}/pg/StartPay/{authority}"
+                logger.info(f"[ZARINPAL] Created: authority={authority[:24]}…")
+                return PaymentResponse(success=True, authority=authority, payment_url=payment_url)
+            msg = data.get("message", f"code={code}")
+            logger.error(f"[ZARINPAL] Error: {msg}")
+            return PaymentResponse(success=False, error=str(msg))
+
+    except ImportError:
+        logger.error("httpx not installed. Run: pip install httpx")
+        return PaymentResponse(success=False, error="httpx not installed")
+    except Exception as e:
+        logger.error(f"[ZARINPAL] Exception: {e}")
+        return PaymentResponse(success=False, error=str(e))
+
+
+async def _zarinpal_verify(authority: str, amount: int) -> PaymentResponse:
+    """Zarinpal v4: POST pg/v4/payment/verify.json."""
+    merchant = getattr(settings, "ZARINPAL_MERCHANT_ID", "") or ""
+    if not merchant:
+        if settings.DEBUG:
+            return _mock_verify(authority, amount)
+        return PaymentResponse(success=False, error="ZARINPAL_MERCHANT_ID is not configured")
+
+    api_base = _zarinpal_api_base()
+    url = f"{api_base}/pg/v4/payment/verify.json"
+
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.post(
+                url,
+                json={
+                    "merchant_id": merchant,
+                    "amount": amount,
+                    "authority": authority,
+                },
+            )
+            body = resp.json()
+            data = body.get("data") or {}
+            code = data.get("code")
+            errors = body.get("errors") or []
+
+            if code == 100:
+                ref_raw = data.get("ref_id")
+                ref_id = str(ref_raw) if ref_raw is not None else ""
+                logger.info(f"[ZARINPAL] Verified: authority={authority[:20]}… ref_id={ref_id}")
+                return PaymentResponse(success=True, authority=authority, ref_id=ref_id)
+            if code == 101:
+                ref_raw = data.get("ref_id")
+                if ref_raw is not None:
+                    ref_id = str(ref_raw)
+                    logger.info(f"[ZARINPAL] Already verified (101): ref_id={ref_id}")
+                    return PaymentResponse(success=True, authority=authority, ref_id=ref_id)
+
+            if errors:
+                err = errors[0] if isinstance(errors, list) and errors else str(errors)
+                logger.error(f"[ZARINPAL] Verify error: {err}")
+                return PaymentResponse(success=False, authority=authority, error=str(err))
+            msg = data.get("message", f"code={code}")
+            logger.error(f"[ZARINPAL] Verify failed: {msg}")
+            return PaymentResponse(success=False, authority=authority, error=str(msg))
+
+    except Exception as e:
+        logger.error(f"[ZARINPAL] Verify exception: {e}")
+        return PaymentResponse(success=False, authority=authority, error=str(e))

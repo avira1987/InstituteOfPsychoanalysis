@@ -1,10 +1,11 @@
 {
-  "version": "2.0",
-  "last_updated": "2026-04-02",
+  "version": "2.1",
+  "last_updated": "2026-06-10",
   "description": "وضعیت فنی نسبت به اتوماسیون — هم‌خوان با کد (ActionHandler، SLA، calendar_triggers، موتور)",
   "architecture_notes": {
     "transition_actions": "اکشن‌های تعریف‌شده روی ترنزیشن‌ها توسط app/services/action_handler.py اجرا می‌شوند (مستقیم از StateMachineEngine پس از apply_transition).",
-    "lms_actions": "اکشن‌های نام‌گذاری‌شده «LMS» یا بدون سامانهٔ واقعی: لاگ در context_data.integration_events، اختیاری POST به LMS_INTEGRATION_WEBHOOK_URL، و ui_hints برای فرانت.",
+    "workflow_services": "۶۹ اکشنی که پیش‌تر به استاب لاگ‌محور _handle_external_integration می‌رفتند، اکنون به سرویس‌های واقعی در app/services/workflow/ واگذار می‌شوند (A: portal_notifications, B: lms_service, C: document_service, D: evaluation_records, E: capacity_service, F: calendar_service, G: registration_gate, H: role_promotion, I: termination_records). این سرویس‌ها حالت واقعی را روی Student.extra_data / ProcessInstance.context_data و ستون‌های واقعی (مثل User.role, is_active) می‌نویسند؛ نیازی به مهاجرت اسکیما نیست. ممیزی در context_data.integration_events حفظ شده است.",
+    "lms_actions": "اکشن‌های «LMS» اکنون توسط app/services/workflow/lms_service.py روی Student.extra_data['lms'] (enrolled_courses, course_links, track_progress, access_flags, supervision_blocks, attendance_enabled, online_links, pause_dates) اعمال می‌شوند؛ POST به LMS_INTEGRATION_WEBHOOK_URL همچنان اختیاری و افزایه است.",
     "multi_branch_triggers": "اگر چند ترنزیشن با یک trigger_event وجود دارد، موتور اولین شاخه‌ای را اجرا می‌کند که قوانینش pass شود (به‌ترتیب priority).",
     "sla_days_in_json": "فیلد sla_days در JSON فرایند هنگام seed به sla_hours (×۲۴) تبدیل می‌شود."
   },
@@ -17,16 +18,22 @@
     "تست سطح B: یک ترنزیشن موفق از state اول (با initial_context/fixture و mock AttendanceService) — tests/processes/test_all_processes_level_b.py؛ process_merged_to_one استثناء بدون ترنزیشن.",
     "تست سطح C: حداقل ترنزیشن دوم از state پس از گام اول یا رسیدن به ترمینال — tests/processes/test_all_processes_level_c.py.",
     "تست پوشش اکشن‌ها: همهٔ نوع اکشن‌های transitions در ActionHandler ثبت و با DB لودشدهٔ فرایندها اجراپذیر — tests/processes/test_metadata_actions_coverage.py؛ یکپارچگی یال/قانون — tests/processes/test_metadata_graph_integrity.py.",
-    "تریگرهای تقویمی: installment_due_date_passed (ترم دوم آشنایی) + therapist_did_not_record پس از مهلت؛ قانون installment_not_paid با calendar_today و next_installment_due_at؛ tests/services/test_calendar_triggers.py."
+    "تریگرهای تقویمی: installment_due_date_passed (ترم دوم آشنایی) + therapist_did_not_record پس از مهلت؛ قانون installment_not_paid با calendar_today و next_installment_due_at؛ tests/services/test_calendar_triggers.py.",
+    "ثبت‌نام آشنایی/جامع پس از پرداخت مصاحبه: غنی‌سازی context از InterviewSlot (لینک الوکام/محل)، resolve applicant و interviewer، شرط روی اکشن notification، نمایش لینک برای مصاحبه‌گر پس از تأیید پرداخت، اعلان زنگوله؛ tests/services/test_interview_notification_enrichment.py."
   ],
   "resolved_demo_2026_04": [
     "دادهٔ دمو: ensure_demo_role_users (همهٔ نقش‌های پورتال + demo_interviewer / demo_admissions / demo_applicant) همراه seed ماتریس/سناریو.",
     "سناریوهای صریح: چهار شاخهٔ ثبت‌نام آشنایی + چهار شاخهٔ intro_second_semester (توقف درمانگر/تعلیق، نقدی، قسط اول) با actor_id غیرادمین در ترنزیشن‌های مصاحبه/پذیرش."
   ],
+  "resolved_workflow_refactor_2026_06": [
+    "Stub-to-Service: تمام ۶۹ اکشن استاب (که به _handle_external_integration می‌رفتند) به ۹ سرویس واقعی در app/services/workflow/ منتقل شدند؛ هیچ اکشنی در ActionHandler._registry دیگر به استاب لاگ‌محور نگاشت نمی‌شود.",
+    "۲۳ فرایندی که پیش‌تر فقط نیمه‌عملیاتی بودند (شامل committees_review، supervision_block_transition، introductory_course_registration، ta_to_instructor_auto، supervision_interruption، therapy_interruption و ...) اکنون اکشن‌هایشان حالت واقعی و قابل‌کوئری می‌نویسند.",
+    "تست‌ها: tests/services/test_workflow_services.py (۱۸ تست واحد برای سرویس‌های A–I) + به‌روزرسانی tests/services/test_action_handler.py؛ کل tests/processes (۳۲۹ تست) سبز است."
+  ],
   "remaining_gaps": [
     {
       "area": "LMS / سامانه بیرونی",
-      "detail": "اثر واقعی روی LMS (کلاس، تقویم، لینک زنده) بدون قرارداد API و وب‌هوک پر شده نیست؛ تا آن زمان integration_events کافی است."
+      "detail": "حالت داخلی LMS اکنون روی Student.extra_data['lms'] به‌صورت واقعی نوشته می‌شود. همگام‌سازی دوطرفه با یک LMS بیرونی واقعی (کلاس/تقویم/لینک زنده) همچنان به قرارداد API و وب‌هوک پرشده نیاز دارد؛ POST به LMS_INTEGRATION_WEBHOOK_URL افزایهٔ اختیاری است."
     },
     {
       "area": "تریگرهای تقویمی",

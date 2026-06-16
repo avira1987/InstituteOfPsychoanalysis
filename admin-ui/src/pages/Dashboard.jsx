@@ -2,25 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { dashboardApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-
-const portalByRole = {
-  student: { path: '/panel/portal/student', label: 'پنل دانشجو', icon: '🎓' },
-  therapist: { path: '/panel/portal/therapist', label: 'پنل درمانگر', icon: '💊' },
-  supervisor: { path: '/panel/portal/supervisor', label: 'پنل سوپروایزر', icon: '👁️' },
-  staff: { path: '/panel/portal/staff', label: 'پنل کارمند', icon: '🏢' },
-  site_manager: { path: '/panel/portal/site-manager', label: 'پنل مسئول سایت', icon: '🏗️' },
-  progress_committee: { path: '/panel/portal/committee', label: 'پنل کمیته', icon: '📋' },
-  education_committee: { path: '/panel/portal/committee', label: 'پنل کمیته', icon: '📋' },
-  supervision_committee: { path: '/panel/portal/committee', label: 'پنل کمیته', icon: '📋' },
-  specialized_commission: { path: '/panel/portal/committee', label: 'پنل کمیته', icon: '📋' },
-  therapy_committee_chair: { path: '/panel/portal/committee', label: 'پنل کمیته', icon: '📋' },
-  therapy_committee_executor: { path: '/panel/portal/committee', label: 'پنل کمیته', icon: '📋' },
-  deputy_education: { path: '/panel/portal/committee', label: 'پنل کمیته', icon: '📋' },
-  monitoring_committee_officer: { path: '/panel/portal/committee', label: 'پنل کمیته', icon: '📋' },
-}
+import PrimaryAdminOperatorFollowup from '../components/PrimaryAdminOperatorFollowup'
+import { canManageInterviewSlots, interviewSlotsManagePath } from '../utils/interviewSlotAccess'
+import { getPortalHomeHref, getPortalQuickLink } from '../utils/portalRoleHome'
+import { staffLanesForPortalRole } from '../utils/portalStaffLanes'
+import { committeeKindsForPortalRole } from '../utils/portalCommitteeKinds'
 
 function PortalQuickLink({ role, navigate }) {
-  const portal = role ? portalByRole[role] : null
+  const portal = role ? getPortalQuickLink(role) : null
   if (!portal) return null
   return (
     <button type="button" className="btn btn-primary" onClick={() => navigate(portal.path)}>
@@ -94,7 +83,7 @@ export default function Dashboard() {
     const u = user?.role
     const items = []
     if (u === 'student') {
-      items.push({ key: 'student', icon: '🎓', label: 'پنل دانشجو', hint: 'پرونده، فرایندها و تکالیف', onClick: () => navigate('/panel/portal/student') })
+      items.push({ key: 'student', icon: '🎓', label: 'پنل آموزشی', hint: 'مسیر، فرایندها و کلاس', onClick: () => navigate('/panel/portal/student') })
     }
     if (u === 'therapist' || u === 'admin') {
       items.push({ key: 'therapist', icon: '💊', label: 'پنل درمانگر', hint: 'جلسات و پرونده‌های درمانی', onClick: () => navigate('/panel/portal/therapist') })
@@ -103,13 +92,59 @@ export default function Dashboard() {
       items.push({ key: 'supervisor', icon: '👁️', label: 'پنل سوپروایزر', hint: 'سوپرویژن و بازخورد', onClick: () => navigate('/panel/portal/supervisor') })
     }
     if (u === 'staff' || u === 'admin') {
-      items.push({ key: 'staff', icon: '🏢', label: 'پنل کارمند', hint: 'کارتابل و امور اداری', onClick: () => navigate('/panel/portal/staff') })
+      for (const lane of staffLanesForPortalRole(u)) {
+        items.push({
+          key: `staff-${lane.id}`,
+          icon: lane.icon,
+          label: lane.label,
+          hint: lane.subtitle,
+          onClick: () => navigate(`${lane.path}?tab=pending`),
+        })
+      }
+    }
+    if (u === 'interviewer') {
+      items.push({
+        key: 'staff-admissions',
+        icon: '📥',
+        label: 'پنل پذیرش',
+        hint: 'ثبت نتیجهٔ مصاحبه و اسلات',
+        onClick: () => navigate('/panel/portal/staff/admissions?tab=pending'),
+      })
     }
     if (u === 'site_manager' || u === 'admin') {
       items.push({ key: 'site', icon: '🏗️', label: 'پنل مسئول سایت', hint: 'هماهنگی و برنامه‌ریزی', onClick: () => navigate('/panel/portal/site-manager') })
     }
-    if (['progress_committee', 'education_committee', 'supervision_committee', 'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor', 'deputy_education', 'monitoring_committee_officer', 'admin'].includes(u)) {
-      items.push({ key: 'committee', icon: '📋', label: 'پنل کمیته', hint: 'جلسات و تصمیمات کمیته', onClick: () => navigate('/panel/portal/committee') })
+    if (['progress_committee', 'education_committee', 'supervision_committee', 'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor', 'deputy_education', 'monitoring_committee_officer'].includes(u)) {
+      const kind = committeeKindsForPortalRole(u)[0]
+      if (kind) {
+        items.push({
+          key: 'committee',
+          icon: '📋',
+          label: kind.label,
+          hint: 'جلسات و تصمیمات کمیته',
+          onClick: () => navigate(`${kind.path}?tab=reviews`),
+        })
+      }
+    }
+    if (u === 'admin') {
+      for (const kind of committeeKindsForPortalRole('admin')) {
+        items.push({
+          key: `committee-${kind.id}`,
+          icon: '📋',
+          label: kind.label,
+          hint: 'پنل کمیته',
+          onClick: () => navigate(`${kind.path}?tab=reviews`),
+        })
+      }
+    }
+    if (canManageInterviewSlots(u)) {
+      items.push({
+        key: 'interview-slots',
+        icon: '📅',
+        label: 'وقت مصاحبه',
+        hint: 'تعریف، ویرایش و رزروهای مصاحبه',
+        onClick: () => navigate(interviewSlotsManagePath),
+      })
     }
     if (u === 'admin' || u === 'staff') {
       items.push({ key: 'students', icon: '👨‍🎓', label: 'ردیابی دانشجو', hint: 'جستجو و وضعیت دانشجویان', onClick: () => navigate('/panel/students') })
@@ -137,6 +172,25 @@ export default function Dashboard() {
           <p className="page-subtitle">
             خوش آمدید، {user?.full_name_fa || user?.username} | نمای کلی سیستم اتوماسیون آموزشی
           </p>
+        </div>
+      </div>
+
+      {/* دسترسی سریع: برای همه نمایش داده می‌شود؛ دکمه‌ها بر اساس نقش کاربر فیلتر می‌شوند */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">دسترسی سریع</h3>
+            <p className="card-subtitle">میانبرهای پرکاربرد بر اساس نقش شما</p>
+          </div>
+        </div>
+        <div className="quick-actions-grid">
+          {quickActions.map((a) => (
+            <button key={a.key} type="button" className="quick-action-btn" onClick={a.onClick}>
+              <span className="quick-action-icon">{a.icon}</span>
+              <span className="quick-action-label">{a.label}</span>
+              <span className="quick-action-hint">{a.hint}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -184,6 +238,8 @@ export default function Dashboard() {
         </div>
       )}
 
+      {user?.role === 'admin' && <PrimaryAdminOperatorFollowup />}
+
       {user?.role !== 'admin' && (
         <div className="dashboard-grid">
           <div className="card">
@@ -199,25 +255,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* دسترسی سریع: برای همه نمایش داده می‌شود؛ دکمه‌ها بر اساس نقش کاربر فیلتر می‌شوند */}
-      <div className="card" style={{ marginTop: '1.5rem' }}>
-        <div className="card-header">
-          <div>
-            <h3 className="card-title">دسترسی سریع</h3>
-            <p className="card-subtitle">میانبرهای پرکاربرد بر اساس نقش شما</p>
-          </div>
-        </div>
-        <div className="quick-actions-grid">
-          {quickActions.map((a) => (
-            <button key={a.key} type="button" className="quick-action-btn" onClick={a.onClick}>
-              <span className="quick-action-icon">{a.icon}</span>
-              <span className="quick-action-label">{a.label}</span>
-              <span className="quick-action-hint">{a.hint}</span>
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }

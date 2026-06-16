@@ -8,14 +8,18 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
+from app.api.auth import get_password_hash
 from app.meta.seed import load_process, load_rules
-from app.models.operational_models import ProcessInstance
+from app.models.operational_models import ProcessInstance, TherapySession, User
 from app.services.action_handler import ActionHandler
+from app.services.attendance_tracking_sync import SYSTEM_ACTOR_ID
 
 from tests.processes.test_all_processes_level_a_smoke import _process_json_paths
 
@@ -81,6 +85,20 @@ async def test_each_metadata_action_type_executes_successfully(
     sample_user,
 ):
     """یک بار اجرای هر نوع اکشن؛ نمونهٔ جدا برای جلوگیری از تداخل حالت."""
+    # ensure_attendance_instance_for_session با این actor شروع می‌کند — باید در users وجود داشته باشد
+    if await db_with_all_process_definitions.get(User, SYSTEM_ACTOR_ID) is None:
+        db_with_all_process_definitions.add(
+            User(
+                id=SYSTEM_ACTOR_ID,
+                username="system_actor",
+                email="system_actor@local.test",
+                hashed_password=get_password_hash("unused"),
+                full_name_fa="سیستم",
+                role="admin",
+            )
+        )
+        await db_with_all_process_definitions.commit()
+
     handler = ActionHandler(db_with_all_process_definitions)
     action_types = sorted(_metadata_action_types())
     ctx = {
@@ -89,13 +107,30 @@ async def test_each_metadata_action_type_executes_successfully(
         "amount": 500_000.0,
         "weekly_sessions": 2,
     }
-    base_ctx_data = {
-        **ctx,
-        "session_credit_balance": 1_000_000.0,
-        "selected_sessions": [],
-    }
 
     for action_type in action_types:
+        sample_student.weekly_sessions = 2
+        flag_modified(sample_student, "weekly_sessions")
+        ts_id = uuid.uuid4()
+        db_with_all_process_definitions.add(
+            TherapySession(
+                id=ts_id,
+                student_id=sample_student.id,
+                therapist_id=sample_user.id,
+                session_date=date.today() + timedelta(days=7),
+                status="scheduled",
+                is_extra=False,
+                payment_status="pending",
+            )
+        )
+        await db_with_all_process_definitions.commit()
+
+        base_ctx_data = {
+            **ctx,
+            "session_credit_balance": 1_000_000.0,
+            "selected_sessions": [str(ts_id)],
+            "remaining_sessions_after_reduction": 1,
+        }
         iid = uuid.uuid4()
         inst = ProcessInstance(
             id=iid,

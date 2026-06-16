@@ -1,16 +1,27 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { processExecApi, studentApi } from '../services/api'
+import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
+import { processExecApi, studentApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
-import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 import PopupToast from '../components/PopupToast'
-import InterviewSlotsAdmin from '../components/InterviewSlotsAdmin'
-import InterviewBookingsPanel from '../components/InterviewBookingsPanel'
 import DocumentsReviewPanel from '../components/DocumentsReviewPanel'
+import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
+import OperatorFollowupSection from '../components/OperatorFollowupSection'
+import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
+import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
+import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+
+const SITE_MANAGER_DEEP_LINK_TABS = [
+  'dashboard',
+  'alerts',
+  'pending',
+  'documentsReview',
+  'overview',
+]
 
 const siteManagerReviewStates = [
   'site_manager_review', 'site_manager_followup', 'pending_site_manager',
@@ -19,7 +30,7 @@ const siteManagerReviewStates = [
 
 export default function SiteManagerPortal() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('pending')
   const [allStudents, setAllStudents] = useState([])
   const [pendingActions, setPendingActions] = useState([])
   const [attendanceAlerts, setAttendanceAlerts] = useState([])
@@ -30,6 +41,8 @@ export default function SiteManagerPortal() {
   const [decisionNotes, setDecisionNotes] = useState('')
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
+  const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
+  const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -40,9 +53,14 @@ export default function SiteManagerPortal() {
 
   const loadData = async () => {
     try {
-      const studentsRes = await studentApi.list().catch(() => ({ data: [] }))
+      const [studentsRes, followupRes] = await Promise.all([
+        studentApi.list().catch(() => ({ data: [] })),
+        panelApi.myOperatorFollowup().catch(() => ({ data: {} })),
+      ])
       const students = studentsRes.data || []
       setAllStudents(students)
+      setOperatorFollowupItems(followupRes.data?.items || [])
+      setOperatorReadinessAlerts(followupRes.data?.readiness_alerts || [])
 
       const pending = []
       const alerts = []
@@ -99,6 +117,13 @@ export default function SiteManagerPortal() {
     }
   }
 
+  usePortalInstanceDeepLink({
+    loading,
+    setActiveTab,
+    viewInstance,
+    allowedTabs: SITE_MANAGER_DEEP_LINK_TABS,
+  })
+
   const triggerTransition = async (transition) => {
     if (!selectedInstance) return
     const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
@@ -144,17 +169,21 @@ export default function SiteManagerPortal() {
   }
 
   const tabs = [
+    { id: 'pending', label: `کارهای من (${pendingActions.length})`, icon: '📥' },
     { id: 'dashboard', label: 'داشبورد', icon: '📊' },
     { id: 'alerts', label: `هشدارها (${attendanceAlerts.length})`, icon: '🔔' },
-    { id: 'pending', label: `پیگیری‌ها (${pendingActions.length})`, icon: '📋' },
     { id: 'documentsReview', label: `بررسی مدارک (${documentReviewQueue.length})`, icon: '📎' },
-    { id: 'interviewSlots', label: 'اسلات مصاحبه', icon: '📅' },
     { id: 'overview', label: 'نمای کلی', icon: '👁️' },
   ]
 
   return (
     <div>
       <PopupToast toast={toast} />
+
+      <ResolvedProcessHistoryBanner
+        instanceDetail={instanceDetail}
+        availableTransitions={availableTransitions}
+      />
 
       <div className="page-header">
         <div>
@@ -164,6 +193,14 @@ export default function SiteManagerPortal() {
           </p>
         </div>
       </div>
+
+      <OperatorPortalReminderBanner portalPath="/panel/portal/site-manager" pendingTab="pending" />
+
+      <OperatorFollowupSection
+        items={operatorFollowupItems}
+        readinessAlerts={operatorReadinessAlerts}
+        inboxTitle="پرونده‌های باز مرتبط با نقش شما"
+      />
 
       <div className="tab-bar">
         {tabs.map(tab => (
@@ -239,8 +276,6 @@ export default function SiteManagerPortal() {
               </div>
             </div>
           </div>
-
-          <PanelRoleActionQueue />
 
           <div className="dashboard-grid">
             {/* Attendance Alerts */}
@@ -369,6 +404,9 @@ export default function SiteManagerPortal() {
             decisionNotes={decisionNotes}
             setDecisionNotes={setDecisionNotes}
             triggerTransition={triggerTransition}
+            user={user}
+            showToast={showToast}
+            onRefreshInstance={() => viewInstance(selectedInstance)}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
           />}
         </div>
@@ -418,16 +456,12 @@ export default function SiteManagerPortal() {
             decisionNotes={decisionNotes}
             setDecisionNotes={setDecisionNotes}
             triggerTransition={triggerTransition}
+            user={user}
+            showToast={showToast}
+            onRefreshInstance={() => viewInstance(selectedInstance)}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
           />}
         </div>
-      )}
-
-      {activeTab === 'interviewSlots' && (
-        <>
-          <InterviewSlotsAdmin showToast={showToast} />
-          <InterviewBookingsPanel showToast={showToast} />
-        </>
       )}
 
       {activeTab === 'documentsReview' && (
@@ -493,6 +527,9 @@ export default function SiteManagerPortal() {
                 decisionNotes={decisionNotes}
                 setDecisionNotes={setDecisionNotes}
                 triggerTransition={triggerTransition}
+                user={user}
+                showToast={showToast}
+                onRefreshInstance={() => viewInstance(selectedInstance)}
                 onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
               />
             </div>
@@ -503,7 +540,7 @@ export default function SiteManagerPortal() {
   )
 }
 
-function ActionPanel({ instanceDetail, availableTransitions, decisionNotes, setDecisionNotes, triggerTransition, onClose }) {
+function ActionPanel({ instanceDetail, availableTransitions, decisionNotes, setDecisionNotes, triggerTransition, user, showToast, onRefreshInstance, onClose }) {
   return (
     <div className="card">
       <div className="card-header">
@@ -524,10 +561,28 @@ function ActionPanel({ instanceDetail, availableTransitions, decisionNotes, setD
         </div>
       </div>
 
+      <OperatorInstanceGuidanceBlock
+        instanceDetail={instanceDetail}
+        portalRole={user?.role}
+        availableTransitions={availableTransitions}
+      />
+
       <InstanceContextSummary
         contextData={instanceDetail.context_data}
         history={instanceDetail.history}
         title="پرونده و سابقه (قبل از اقدام)"
+      />
+
+      <OperatorStepFormsSection
+        instanceId={instanceDetail.instance_id}
+        processCode={instanceDetail.process_code}
+        currentState={instanceDetail.current_state}
+        contextData={instanceDetail.context_data}
+        isCompleted={instanceDetail.is_completed}
+        isCancelled={instanceDetail.is_cancelled}
+        role={user?.role}
+        showToast={showToast}
+        onUpdated={() => onRefreshInstance?.()}
       />
 
       {availableTransitions.length > 0 && (

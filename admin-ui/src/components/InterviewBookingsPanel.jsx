@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { interviewSlotsApi } from '../services/api'
+import { interviewSlotsApi, processExecApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { JALAALI_MONTHS_FA, utcIsoToShamsiTehran } from '../utils/shamsiDateTime'
+import OnlineMeetingJoinCta from './OnlineMeetingJoinCta'
+import InterviewSlotRescheduleModal from './InterviewSlotRescheduleModal'
 
 function formatSlotShamsi(iso) {
   if (!iso) return '—'
@@ -18,12 +20,29 @@ function formatSlotShamsi(iso) {
 }
 
 /**
- * فهرست اسلات‌های رزروشده با مشخصات دانشجو — برای مصاحبه‌گر و دفتر.
+ * فهرست وقت‌های رزروشده با مشخصات دانشجو — برای مصاحبه‌گر و دفتر.
  */
 export default function InterviewBookingsPanel({ showToast }) {
   const [bookings, setBookings] = useState([])
   const [includePast, setIncludePast] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [advancingId, setAdvancingId] = useState(null)
+  const [togglingJoinId, setTogglingJoinId] = useState(null)
+  const [rescheduleSlot, setRescheduleSlot] = useState(null)
+
+  const toggleStudentJoinOpen = async (slot, nextOpen) => {
+    setTogglingJoinId(slot.id)
+    try {
+      await interviewSlotsApi.manageUpdate(slot.id, { student_join_open: nextOpen })
+      showToast?.(nextOpen ? 'ورود دانشجو به جلسه فعال شد.' : 'ورود زودهنگام دانشجو غیرفعال شد.')
+      load()
+    } catch (err) {
+      const d = err.response?.data?.detail
+      showToast?.(typeof d === 'string' ? d : 'تغییر وضعیت ورود ناموفق بود.', 'error')
+    } finally {
+      setTogglingJoinId(null)
+    }
+  }
 
   const load = () => {
     setLoading(true)
@@ -38,12 +57,42 @@ export default function InterviewBookingsPanel({ showToast }) {
     load()
   }, [includePast])
 
+  const advanceInterviewCompleted = async (instanceId) => {
+    if (!instanceId) return
+    setAdvancingId(instanceId)
+    try {
+      const res = await processExecApi.trigger(instanceId, {
+        trigger_event: 'interview_time_reached',
+        payload: {},
+      })
+      if (res.data?.success) {
+        showToast?.(`مرحله به «${labelState(res.data.to_state)}» رفت`)
+        load()
+      } else {
+        showToast?.(res.data?.error || 'انتقال انجام نشد', 'error')
+      }
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast?.(typeof d === 'string' ? d : 'خطا در ثبت برگزاری مصاحبه', 'error')
+    } finally {
+      setAdvancingId(null)
+    }
+  }
+
   return (
     <div className="card" style={{ marginBottom: '1.5rem' }}>
+      {rescheduleSlot ? (
+        <InterviewSlotRescheduleModal
+          slot={rescheduleSlot}
+          onClose={() => setRescheduleSlot(null)}
+          onSaved={load}
+          showToast={showToast}
+        />
+      ) : null}
       <div className="card-header">
         <h3 className="card-title">رزروهای وقت مصاحبه</h3>
         <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', maxWidth: '42rem' }}>
-          دانشجویانی که از اسلات‌های آزاد یک زمان را انتخاب کرده‌اند؛ زمان‌ها به‌وقت ایران و تقویم شمسی نمایش داده می‌شوند.
+          دانشجویانی که وقت را انتخاب کرده‌اند؛ شامل نام، تماس، وضعیت فرایند و اقدام «ثبت برگزاری». برای تعریف/حذف بازهٔ آزاد به «فهرست وقت‌ها» بروید.
         </p>
       </div>
       <div style={{ padding: '0 1.25rem 1.25rem' }}>
@@ -68,8 +117,10 @@ export default function InterviewBookingsPanel({ showToast }) {
                   <th>دوره</th>
                   <th>حضور</th>
                   <th>مکان / لینک</th>
+                  <th>ورود دانشجو</th>
                   <th>فرایند</th>
                   <th>مرحله</th>
+                  <th>اقدام</th>
                 </tr>
               </thead>
               <tbody>
@@ -77,8 +128,30 @@ export default function InterviewBookingsPanel({ showToast }) {
                   const s = row.slot
                   const st = row.student
                   const ins = row.instance
+                  const canAdvanceInterview =
+                    ins?.process_code === 'introductory_course_registration'
+                    && ins?.current_state === 'interview_payment_confirmed'
+                  const canReschedule = !s.booking_payment_deadline_at
                   const loc = s.mode === 'online'
-                    ? (s.meeting_link || '—')
+                    ? (
+                      <OnlineMeetingJoinCta
+                        compact
+                        mode="online"
+                        meetingLink={s.meeting_link}
+                        meetingLinkOpenAt={s.meeting_link_open_at}
+                        meetingLinkIsVisible={s.meeting_link_is_visible}
+                        startsAt={s.starts_at}
+                        studentJoinOpen={!!s.student_join_open}
+                        label="ورود به مصاحبه"
+                        allowStaffCopy
+                        preparing={!s.meeting_link && !s.booking_payment_deadline_at}
+                        preparingText={
+                          s.booking_payment_deadline_at
+                            ? 'پس از پرداخت دانشجو، لینک آنلاین تولید می‌شود.'
+                            : 'لینک آنلاین در حال آماده‌سازی است.'
+                        }
+                      />
+                      )
                     : (s.location_fa || '—')
                   return (
                     <tr key={s.id}>
@@ -90,15 +163,65 @@ export default function InterviewBookingsPanel({ showToast }) {
                       <td>{st.course_type === 'comprehensive' ? 'جامع' : st.course_type === 'introductory' ? 'آشنایی' : (st.course_type || '—')}</td>
                       <td>{s.mode === 'online' ? 'آنلاین' : 'حضوری'}</td>
                       <td style={{ fontSize: '0.78rem', maxWidth: '12rem', wordBreak: 'break-word' }} dir={s.mode === 'online' ? 'ltr' : 'rtl'}>{loc}</td>
+                      <td>
+                        {s.mode === 'online' && !s.booking_payment_deadline_at ? (
+                          <label
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', cursor: togglingJoinId === s.id ? 'wait' : 'pointer' }}
+                            title="با فعال‌سازی، دانشجو می‌تواند قبل از ۳۰ دقیقه مانده به مصاحبه وارد جلسه شود."
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!s.student_join_open}
+                              disabled={togglingJoinId === s.id}
+                              onChange={(e) => toggleStudentJoinOpen(s, e.target.checked)}
+                            />
+                            {s.student_join_open ? 'باز' : 'بسته'}
+                          </label>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td>{ins ? labelProcess(ins.process_code) : '—'}</td>
                       <td>{ins ? labelState(ins.current_state) : '—'}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {canReschedule ? (
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            onClick={() => setRescheduleSlot(s)}
+                          >
+                            تغییر زمان
+                          </button>
+                        ) : null}
+                        {canAdvanceInterview && ins?.id ? (
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            data-testid={`booking-advance-interview-${ins.id}`}
+                            disabled={advancingId === ins.id}
+                            onClick={() => advanceInterviewCompleted(ins.id)}
+                            style={canReschedule ? { marginTop: '0.35rem' } : undefined}
+                          >
+                            {advancingId === ins.id
+                              ? 'در حال ثبت…'
+                              : 'ثبت برگزاری مصاحبه'}
+                          </button>
+                        ) : (
+                          !canReschedule ? '—' : null
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
             {!bookings.length && (
-              <p className="muted" style={{ marginTop: '0.5rem' }}>رزرو فعالی ثبت نشده است.</p>
+              <p className="muted" style={{ marginTop: '0.5rem', fontSize: '0.88rem', lineHeight: 1.65 }}>
+                رزرو فعالی ثبت نشده است.
+                {!includePast && (
+                  <> برای زمان‌هایی که بازهٔ مصاحبه‌شان گذشته، گزینهٔ «نمایش گذشته» را فعال کنید.</>
+                )}
+              </p>
             )}
           </div>
         )}

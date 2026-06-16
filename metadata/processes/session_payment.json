@@ -61,7 +61,12 @@
         "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
       }
     },
-    {"code": "payment_confirmed", "name_fa": "پرداخت تایید شد", "type": "terminal", "assigned_role": "system"},
+    {
+      "code": "payment_confirmed",
+      "name_fa": "پرداخت تایید شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
     {
       "code": "payment_failed",
       "name_fa": "پرداخت ناموفق",
@@ -71,7 +76,12 @@
         "student_task_fa": "می‌توانید دوباره تلاش کنید یا در صورت نیاز با پشتیبانی تماس بگیرید."
       }
     },
-    {"code": "session_suspended", "name_fa": "جلسات معلق", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "session_suspended",
+      "name_fa": "جلسات معلق",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
@@ -86,10 +96,14 @@
       "to": "awaiting_payment",
       "trigger": "payment_selection_submitted",
       "required_role": "student",
-      "conditions": ["payment_selection_valid"],
+      "conditions": [
+        "payment_selection_valid"
+      ],
       "description_fa": "انتخاب تسویه بدهی (در صورت وجود) و جلسات آتی — هدایت به درگاه",
       "actions": [
-        {"type": "generate_payment_invoice"}
+        {
+          "type": "generate_payment_invoice"
+        }
       ]
     },
     {
@@ -98,8 +112,16 @@
       "trigger": "selection_invalid",
       "description_fa": "در صورت بدهی، انتخاب فقط جلسات آینده مجاز نیست",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "debt_settlement_required", "recipients": ["student"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "debt_settlement_required",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "awaiting_payment",
@@ -107,13 +129,31 @@
       "trigger": "payment_successful",
       "description_fa": "پرداخت موفق — صفر کردن بدهی، افزودن به بستانکاری، تخصیص به جلسات",
       "actions": [
-        {"type": "zero_debt_if_paid"},
-        {"type": "add_to_credit_balance"},
-        {"type": "allocate_credit_to_sessions"},
-        {"type": "unlock_session_links"},
-        {"type": "unlock_attendance_registration"},
-        {"type": "notification", "notification_type": "sms", "template": "payment_confirmed", "recipients": ["student"]}
-      ]
+        {
+          "type": "zero_debt_if_paid"
+        },
+        {
+          "type": "add_to_credit_balance"
+        },
+        {
+          "type": "allocate_credit_to_sessions"
+        },
+        {
+          "type": "unlock_session_links"
+        },
+        {
+          "type": "unlock_attendance_registration"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "payment_confirmed",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "awaiting_payment",
@@ -121,8 +161,16 @@
       "trigger": "payment_unsuccessful",
       "description_fa": "پرداخت ناموفق — امکان تلاش مجدد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "payment_rejected", "recipients": ["student"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "payment_rejected",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "payment_failed",
@@ -131,19 +179,40 @@
       "required_role": "student",
       "description_fa": "تلاش مجدد پرداخت",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "payment_retry", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "payment_retry",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
       "from": "payment_failed",
       "to": "session_suspended",
       "trigger": "max_retries_exceeded",
-      "conditions": ["payment_max_retries_exceeded"],
+      "conditions": [
+        "payment_max_retries_exceeded"
+      ],
       "description_fa": "تعداد تلاش بیش از حد — تعلیق جلسات",
       "actions": [
-        {"type": "suspend_sessions"},
-        {"type": "notification", "notification_type": "sms", "template": "sessions_suspended", "recipients": ["student", "therapist", "admin"]}
-      ]
+        {
+          "type": "suspend_sessions"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "sessions_suspended",
+          "recipients": [
+            "student",
+            "therapist",
+            "admin"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "awaiting_payment",
@@ -151,8 +220,16 @@
       "trigger": "payment_timeout",
       "description_fa": "مهلت پرداخت تمام شد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "payment_overdue", "recipients": ["student"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "payment_overdue",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     }
   ]
 }

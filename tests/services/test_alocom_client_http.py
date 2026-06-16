@@ -13,9 +13,9 @@ def alocom_settings(monkeypatch):
         ALOCOM_USERNAME = "agent_u"
         ALOCOM_PASSWORD = "agent_p"
         ALOCOM_PATH_LOGIN = "/api/v1/auth/login"
-        ALOCOM_PATH_CREATE_EVENT = "/api/v1/agent/event/store"
-        ALOCOM_PATH_REGISTER_IN_EVENT = "/api/v1/agent/event/{event_id}/register-user"
-        ALOCOM_PATH_CREATE_USER = "/api/v1/agent/users/store"
+        ALOCOM_PATH_CREATE_EVENT = "/api/v1/agents/events"
+        ALOCOM_PATH_REGISTER_IN_EVENT = "/api/v1/agents/events/{event_id}/enroll-user-with-token"
+        ALOCOM_PATH_CREATE_USER = "/api/v1/agents/users"
 
     monkeypatch.setattr("app.services.alocom_client.get_settings", lambda: S())
 
@@ -26,7 +26,7 @@ async def test_login_and_create_event(alocom_settings):
     respx.post("https://pnlapi.test/api/v1/auth/login").mock(
         return_value=respx.MockResponse(200, json={"data": {"token": "tok_test_1"}})
     )
-    respx.post("https://pnlapi.test/api/v1/agent/event/store").mock(
+    respx.post("https://pnlapi.test/api/v1/agents/events").mock(
         return_value=respx.MockResponse(
             200,
             json={

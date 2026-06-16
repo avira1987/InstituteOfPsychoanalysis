@@ -33,6 +33,9 @@ anistito_local.dump
 .coverage
 htmlcov/
 
+# Generated audit reports (run scripts/audit_operator_student_visibility.py)
+reports/operator_student_visibility_audit.json
+
 # Node / Admin UI
 node_modules/
 admin-ui/node_modules/

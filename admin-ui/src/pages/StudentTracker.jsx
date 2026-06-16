@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { studentApi, processExecApi, processApi, userApi } from '../services/api'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { notesPayload } from '../utils/decisionPayload'
@@ -6,8 +7,12 @@ import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/pro
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import PopupToast from '../components/PopupToast'
+import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
+import OperatorCourseSelectionEditor from '../components/OperatorCourseSelectionEditor'
+import RegistrationCourseTypeEditor from '../components/RegistrationCourseTypeEditor'
 
 export default function StudentTracker() {
+  const [searchParams] = useSearchParams()
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -83,6 +88,22 @@ export default function StudentTracker() {
       console.error('Failed to load status:', err)
     }
   }
+
+  /** لینک عمیق از داشبورد مدیر اصلی: ?student_id=&instance_id= */
+  useEffect(() => {
+    const sid = searchParams.get('student_id')
+    const iid = searchParams.get('instance_id')
+    if (!sid) return
+    let cancelled = false
+    ;(async () => {
+      await loadStudentInstances(sid)
+      if (cancelled || !iid) return
+      await loadInstanceStatus(iid)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams])
 
   const handleTrigger = async (instanceId, transition) => {
     const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
@@ -181,6 +202,11 @@ export default function StudentTracker() {
   return (
     <div>
       <PopupToast toast={toast} />
+
+      <ResolvedProcessHistoryBanner
+        instanceDetail={instanceStatus}
+        availableTransitions={availableTransitions}
+      />
 
       {/* Error display */}
       {error && (
@@ -398,6 +424,22 @@ export default function StudentTracker() {
               <button type="button" className="modal-close" onClick={closeStudentDetail} aria-label="بستن">&times;</button>
             </div>
             <div className="modal-body" style={{ paddingTop: 0 }}>
+              {selectedStudent && (
+                <RegistrationCourseTypeEditor
+                  studentId={selectedStudent}
+                  initialCourseType={
+                    students.find((s) => s.id === selectedStudent)?.course_type || 'introductory'
+                  }
+                  showToast={showToast}
+                  compact
+                  onSaved={() => {
+                    loadStudents()
+                    if (instanceStatus?.instance_id) {
+                      loadInstanceStatus(instanceStatus.instance_id)
+                    }
+                  }}
+                />
+              )}
               <div className="card" style={{ marginBottom: '1.5rem', boxShadow: 'none', border: '1px solid var(--border)' }}>
                 <div className="card-header" style={{ paddingTop: '0.75rem' }}>
                   <h3 className="card-title" style={{ fontSize: '1rem' }}>لیست فرایندها</h3>
@@ -452,6 +494,17 @@ export default function StudentTracker() {
                       </span>
                     </div>
                   </div>
+
+                  <OperatorCourseSelectionEditor
+                    instanceId={instanceStatus.instance_id}
+                    processCode={instanceStatus.process_code}
+                    currentState={instanceStatus.current_state}
+                    contextData={instanceStatus.context_data}
+                    isCompleted={instanceStatus.is_completed}
+                    isCancelled={instanceStatus.is_cancelled}
+                    showToast={showToast}
+                    onUpdated={() => loadInstanceStatus(instanceStatus.instance_id)}
+                  />
 
                   <InstanceContextSummary
                     contextData={instanceStatus.context_data}

@@ -9,11 +9,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.auth import get_current_user
 from app.config import get_settings
 from app.database import get_db
 from app.models.operational_models import User, Student, ProcessInstance, SupportTicket, TicketComment
+from app.meta.student_step_forms import apply_unlock_to_context
 
 router = APIRouter(prefix="/api/tickets", tags=["Tickets"])
 
@@ -32,6 +34,7 @@ VALID_CATEGORIES = frozenset({
     "process_general",
     "data_correction",
     "access_request",
+    "process_edit_request",
     "other",
 })
 
@@ -118,6 +121,8 @@ class TicketCreate(BaseModel):
     student_id: Optional[str] = None
     process_instance_id: Optional[str] = None
     extra_context: Optional[dict[str, Any]] = None
+    # دانشجو بدون رکورد Student: فقط با تأیید صریح در UI
+    acknowledge_no_student_profile: bool = False
 
 
 class TicketPatch(BaseModel):
@@ -128,6 +133,13 @@ class TicketPatch(BaseModel):
 
 class CommentCreate(BaseModel):
     body: str = Field(..., min_length=1, max_length=8000)
+
+
+class ProcessEditDecisionRequest(BaseModel):
+    decision: str = Field(..., description="approve | reject | forward")
+    reason: Optional[str] = None
+    forward_assignee_id: Optional[str] = None
+    state_code: Optional[str] = None
 
 
 def _ticket_dict(
@@ -289,27 +301,48 @@ async def create_ticket(
 
     if current_user.role == "student":
         sid = await _student_profile_id(db, current_user.id)
-        if not sid:
-            raise HTTPException(status_code=400, detail="پروفایل دانشجو یافت نشد؛ با پشتیبانی تماس بگیرید")
-        student_uuid = sid
-        if body.student_id and str(body.student_id).strip():
-            try:
-                claimed = uuid.UUID(str(body.student_id).strip())
-            except ValueError:
-                raise HTTPException(status_code=400, detail="شناسهٔ دانشجو نامعتبر است")
-            if claimed != student_uuid:
-                raise HTTPException(status_code=400, detail="فقط می‌توانید درخواست مربوط به خودتان ثبت کنید")
-        if body.process_instance_id and str(body.process_instance_id).strip():
-            try:
-                proc_uuid = uuid.UUID(str(body.process_instance_id).strip())
-            except ValueError:
-                raise HTTPException(status_code=400, detail="شناسهٔ نمونهٔ فرایند نامعتبر است")
-            pr = await db.execute(select(ProcessInstance).where(ProcessInstance.id == proc_uuid))
-            pi = pr.scalars().first()
-            if not pi:
-                raise HTTPException(status_code=400, detail="نمونهٔ فرایند یافت نشد")
-            if pi.student_id != student_uuid:
-                raise HTTPException(status_code=400, detail="این نمونهٔ فرایند متعلق به شما نیست")
+        if sid:
+            student_uuid = sid
+            if body.student_id and str(body.student_id).strip():
+                try:
+                    claimed = uuid.UUID(str(body.student_id).strip())
+                except ValueError:
+                    raise HTTPException(status_code=400, detail="شناسهٔ دانشجو نامعتبر است")
+                if claimed != student_uuid:
+                    raise HTTPException(status_code=400, detail="فقط می‌توانید درخواست مربوط به خودتان ثبت کنید")
+            if body.process_instance_id and str(body.process_instance_id).strip():
+                try:
+                    proc_uuid = uuid.UUID(str(body.process_instance_id).strip())
+                except ValueError:
+                    raise HTTPException(status_code=400, detail="شناسهٔ نمونهٔ فرایند نامعتبر است")
+                pr = await db.execute(select(ProcessInstance).where(ProcessInstance.id == proc_uuid))
+                pi = pr.scalars().first()
+                if not pi:
+                    raise HTTPException(status_code=400, detail="نمونهٔ فرایند یافت نشد")
+                if pi.student_id != student_uuid:
+                    raise HTTPException(status_code=400, detail="این نمونهٔ فرایند متعلق به شما نیست")
+        elif body.acknowledge_no_student_profile:
+            student_uuid = None
+            if body.student_id and str(body.student_id).strip():
+                raise HTTPException(
+                    status_code=400,
+                    detail="بدون پروفایل دانشجویی نمی‌توانید شناسهٔ دانشجو بفرستید.",
+                )
+            if body.process_instance_id and str(body.process_instance_id).strip():
+                raise HTTPException(
+                    status_code=400,
+                    detail="بدون پروفایل دانشجویی نمی‌توانید نمونهٔ فرایند بفرستید.",
+                )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "هنوز پروفایل دانشجویی شما در سامانه ثبت نشده است. "
+                    "ابتدا از پنل، فرم «تکمیل ثبت‌نام دانشجو» را ارسال کنید. "
+                    "اگر به‌دلیل خطای کد ملی یا شمارهٔ موبایل نمی‌توانید ثبت کنید، "
+                    "در همین صفحه تیکت جدید بسازید و گزینهٔ «ثبت درخواست بدون پروفایل دانشجویی» را تیک بزنید."
+                ),
+            )
     else:
         if body.student_id and str(body.student_id).strip():
             try:
@@ -332,6 +365,10 @@ async def create_ticket(
             if student_uuid and pi.student_id != student_uuid:
                 raise HTTPException(status_code=400, detail="نمونهٔ فرایند با دانشجوی انتخاب‌شده هم‌خوان نیست")
 
+    ticket_merged: dict[str, Any] = dict(body.extra_context or {})
+    if current_user.role == "student" and student_uuid is None and body.acknowledge_no_student_profile:
+        ticket_merged["no_student_profile_at_create"] = True
+
     now = datetime.now(timezone.utc)
     ticket = SupportTicket(
         id=uuid.uuid4(),
@@ -344,7 +381,7 @@ async def create_ticket(
         assignee_id=assignee_uuid,
         student_id=student_uuid,
         process_instance_id=proc_uuid,
-        extra_context=body.extra_context,
+        extra_context=ticket_merged if ticket_merged else None,
         created_at=now,
         updated_at=now,
     )
@@ -512,6 +549,107 @@ async def patch_ticket(
         scr = await db.execute(select(Student.student_code).where(Student.id == ticket.student_id))
         scode = scr.scalar_one_or_none()
     return _ticket_dict(ticket, student_code=scode)
+
+
+@router.post("/{ticket_id}/process-edit-decision")
+async def process_edit_decision(
+    ticket_id: str,
+    body: ProcessEditDecisionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    tid = uuid.UUID(ticket_id)
+    result = await db.execute(select(SupportTicket).where(SupportTicket.id == tid))
+    ticket = result.scalars().first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="تیکت یافت نشد")
+    if ticket.category != "process_edit_request":
+        raise HTTPException(status_code=400, detail="این اقدام فقط برای درخواست ویرایش فرایند مجاز است")
+    if not (_is_admin(current_user) or ticket.assignee_id == current_user.id):
+        raise HTTPException(status_code=403, detail="فقط مسئول تیکت یا مدیر می‌تواند تصمیم نهایی ثبت کند")
+
+    decision = (body.decision or "").strip().lower()
+    if decision not in {"approve", "reject", "forward"}:
+        raise HTTPException(status_code=400, detail="decision must be approve | reject | forward")
+
+    actor_name = _display_name(current_user)
+    now = datetime.now(timezone.utc)
+
+    if decision == "forward":
+        if not body.forward_assignee_id:
+            raise HTTPException(status_code=400, detail="برای ارجاع، شناسهٔ مسئول جدید الزامی است")
+        new_aid = uuid.UUID(body.forward_assignee_id)
+        ar = await db.execute(select(User).where(User.id == new_aid, User.is_active.is_(True)))
+        nu = ar.scalars().first()
+        if not nu or nu.role == "student":
+            raise HTTPException(status_code=400, detail="مسئول جدید معتبر نیست")
+        old_user = None
+        if ticket.assignee_id:
+            old_user = (await db.execute(select(User).where(User.id == ticket.assignee_id))).scalars().first()
+        old_name = _display_name(old_user)
+        ticket.assignee_id = new_aid
+        ticket.status = "in_progress"
+        ticket.updated_at = now
+        await _append_system_comment(
+            db,
+            tid,
+            f"ارجاع درخواست ویرایش توسط «{actor_name}»: از «{old_name}» به «{_display_name(nu)}».",
+        )
+        await db.flush()
+        await db.refresh(ticket, ["requester", "assignee"])
+        return _ticket_dict(ticket)
+
+    if decision == "approve":
+        if not ticket.process_instance_id:
+            raise HTTPException(status_code=400, detail="این تیکت نمونهٔ فرایند ندارد")
+        pr = await db.execute(select(ProcessInstance).where(ProcessInstance.id == ticket.process_instance_id))
+        inst = pr.scalars().first()
+        if not inst:
+            raise HTTPException(status_code=404, detail="نمونهٔ فرایند یافت نشد")
+
+        ctx = dict(inst.context_data or {})
+        state_code = (
+            (body.state_code or "").strip()
+            or str((ticket.extra_context or {}).get("state_code") or "").strip()
+            or inst.current_state_code
+        )
+        if not state_code:
+            raise HTTPException(status_code=400, detail="state_code نامعتبر است")
+        inst.context_data = apply_unlock_to_context(ctx, state_code)
+        flag_modified(inst, "context_data")
+
+        ticket.status = "resolved"
+        ticket.updated_at = now
+        note = (body.reason or "").strip()
+        await _append_system_comment(
+            db,
+            tid,
+            (
+                f"درخواست ویرایش توسط «{actor_name}» تأیید شد؛ "
+                f"ویرایش مرحله «{state_code}» برای دانشجو باز شد."
+                + (f" توضیح: {note}" if note else "")
+            ),
+        )
+        await db.flush()
+        await db.refresh(ticket, ["requester", "assignee"])
+        return _ticket_dict(ticket)
+
+    # reject
+    ticket.status = "closed"
+    ticket.closed_at = now
+    ticket.updated_at = now
+    note = (body.reason or "").strip()
+    await _append_system_comment(
+        db,
+        tid,
+        "درخواست ویرایش توسط «{}» رد شد.{}".format(
+            actor_name,
+            f" دلیل: {note}" if note else "",
+        ),
+    )
+    await db.flush()
+    await db.refresh(ticket, ["requester", "assignee"])
+    return _ticket_dict(ticket)
 
 
 @router.post("/{ticket_id}/comments", status_code=201)

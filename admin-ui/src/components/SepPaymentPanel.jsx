@@ -1,5 +1,22 @@
 import React, { useCallback, useState } from 'react'
 import { paymentApi } from '../services/api'
+import { resolvePaymentUrl } from '../utils/resolvePaymentUrl'
+
+function formatPaymentRequestError(err) {
+  if (err.code === 'ECONNABORTED' || err.message?.includes?.('timeout')) {
+    return 'زمان انتظار تمام شد؛ بک‌اند در دسترس نیست یا درگاه پاسخ نداد. پورت API (معمولاً ۸۰۰۰) و VITE_PROXY_TARGET را بررسی کنید.'
+  }
+  if (err.response == null) {
+    return 'اتصال به سرور برقرار نشد (شبکه یا آدرس API). اگر با npm run dev روی پورت ۵۱۷۳ هستید، uvicorn باید روی همان دامنه از طریق پروکسی در دسترس باشد.'
+  }
+  const d = err.response?.data?.detail
+  if (typeof d === 'string') return d
+  if (Array.isArray(d)) {
+    return d.map((x) => (typeof x === 'string' ? x : x.msg || JSON.stringify(x))).join(' ')
+  }
+  if (d && typeof d === 'object') return JSON.stringify(d)
+  return err.message || 'خطا در اتصال به درگاه'
+}
 
 function formatRial(n) {
   try {
@@ -10,7 +27,7 @@ function formatRial(n) {
 }
 
 /**
- * پنل مشترک پرداخت درگاه سپ (سامان) — مبلغ به ریال مطابق شاپرک.
+ * پرداخت آنلاین — درگاه زیبال. مبلغ به ریال.
  */
 export default function SepPaymentPanel({
   instanceId,
@@ -22,40 +39,51 @@ export default function SepPaymentPanel({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
-  const logoSrc = `${base}/sep-saman-logo.png`
+  const logoSrc = `${base}/logo.png`
 
-  const goPay = useCallback(async () => {
-    setError(null)
-    if (!instanceId || !studentId || !amountRial || amountRial < 1000) {
-      setError('اطلاعات پرداخت ناقص است؛ صفحه را تازه کنید یا با پشتیبانی تماس بگیرید.')
-      return
-    }
-    const referenceId =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID().replace(/-/g, '').slice(0, 16)
-        : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`.slice(0, 16)
-    setLoading(true)
-    try {
-      const { data } = await paymentApi.create({
-        amount: Math.round(Number(amountRial)),
-        description,
-        student_id: studentId,
-        instance_id: instanceId,
-        reference_id: referenceId,
-        mobile: mobile || undefined,
-      })
-      if (data?.success && data.payment_url) {
-        window.location.href = data.payment_url
+  const goPay = useCallback(
+    async (gateway = 'zibal') => {
+      setError(null)
+      if (!instanceId || !studentId || !amountRial || amountRial < 1000) {
+        setError('اطلاعات پرداخت ناقص است؛ صفحه را تازه کنید یا با پشتیبانی تماس بگیرید.')
         return
       }
-      setError(data?.detail || 'پاسخ درگاه نامعتبر بود')
-    } catch (e) {
-      const d = e.response?.data?.detail
-      setError(typeof d === 'string' ? d : e.message || 'خطا در اتصال به درگاه')
-    } finally {
-      setLoading(false)
-    }
-  }, [amountRial, description, instanceId, mobile, studentId])
+      const referenceId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+          : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`.slice(0, 16)
+      setLoading(true)
+      try {
+        const { data } = await paymentApi.create({
+          amount: Math.round(Number(amountRial)),
+          description,
+          student_id: studentId,
+          instance_id: instanceId,
+          reference_id: referenceId,
+          mobile: mobile || undefined,
+          gateway,
+        })
+        if (data?.success && data.payment_url) {
+          const url = resolvePaymentUrl(data.payment_url)
+          setLoading(false)
+          window.location.assign(url)
+          return
+        }
+        setError(
+          data?.detail ||
+            (data?.success && !data?.payment_url
+              ? 'آدرس درگاه از سرور نیامد.'
+              : 'پاسخ درگاه نامعتبر بود'),
+        )
+      } catch (e) {
+        console.error('[SepPaymentPanel] payment/create', e)
+        setError(formatPaymentRequestError(e))
+      } finally {
+        setLoading(false)
+      }
+    },
+    [amountRial, description, instanceId, mobile, studentId],
+  )
 
   if (amountRial == null || Number(amountRial) < 1000) {
     return (
@@ -93,15 +121,15 @@ export default function SepPaymentPanel({
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <img
           src={logoSrc}
-          alt="درگاه پرداخت اینترنتی سپ بانک سامان"
+          alt=""
           style={{ maxHeight: '52px', width: 'auto', objectFit: 'contain' }}
         />
         <div style={{ flex: '1 1 12rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>پرداخت از طریق درگاه سپ</h3>
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.88rem', color: '#64748b', lineHeight: 1.6 }}>
-            پرداخت امن اینترنتی به‌پرداخت ملت (سپ). پس از کلیک، به صفحهٔ بانک هدایت می‌شوید.
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>پرداخت آنلاین (زیبال)</h3>
+          <p className="sep-payment-desc" style={{ margin: '0.35rem 0 0', fontSize: '0.88rem', lineHeight: 1.6 }}>
+            پس از زدن دکمه، به صفحهٔ امن <strong>درگاه زیبال</strong> هدایت می‌شوید.
           </p>
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.95rem', fontWeight: 600 }}>
+          <p className="sep-payment-amount" style={{ margin: '0.5rem 0 0', fontSize: '0.95rem', fontWeight: 600 }}>
             مبلغ قابل پرداخت:{' '}
             <span dir="ltr" style={{ unicodeBidi: 'embed' }}>
               {formatRial(amountRial)}
@@ -115,15 +143,23 @@ export default function SepPaymentPanel({
           {error}
         </p>
       )}
-      <div style={{ marginTop: '1rem' }}>
+      <div
+        style={{
+          marginTop: '1rem',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
+          alignItems: 'center',
+        }}
+      >
         <button
           type="button"
           className="btn btn-primary"
           disabled={loading}
-          onClick={goPay}
-          data-testid="sep-payment-submit"
+          onClick={() => goPay('zibal')}
+          data-testid="sep-payment-submit-zibal"
         >
-          {loading ? 'در حال اتصال…' : 'ورود به درگاه پرداخت'}
+          {loading ? 'در حال اتصال…' : 'پرداخت با درگاه زیبال'}
         </button>
       </div>
     </div>

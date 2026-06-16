@@ -4,7 +4,21 @@ import os
 
 # قبل از هر import از app که get_settings() را صدا می‌زند — تست‌ها نباید به SMS واقعی بروند
 os.environ["SMS_PROVIDER"] = "log"
+os.environ["SMS_SIMULATION_UI"] = "true"
 os.environ["OTP_RESTRICT_TO_STUDENT_PHONES"] = "false"
+# پرداخت: mock + اجازه برای تست کال‌بک با سایر الگوها
+os.environ["PAYMENT_PROVIDER"] = "mock"
+os.environ["PAYMENT_ZIBAL_ONLY"] = "false"
+
+# PostgreSQL تست — باید قبل از import app.database باشد تا موتور اپ و فیکسچر db_engine به یک DB وصل شوند
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://anistito:anistito@127.0.0.1:5432/anistito_test",
+)
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+os.environ["DATABASE_URL_SYNC"] = TEST_DATABASE_URL.replace(
+    "postgresql+asyncpg://", "postgresql://"
+)
 
 import uuid
 import asyncio
@@ -18,15 +32,73 @@ from app.database import Base
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
 from app.models.operational_models import User, Student, ProcessInstance
 from app.models.audit_models import AuditLog
+import app.models.dynamic_forms  # noqa: F401 — form_responses به process_instances وابسته است؛ بدون این، drop_all ترتیب اشتباه می‌گیرد
+
+# یک‌بار روی میزبان: CREATE DATABASE anistito_test OWNER anistito;
+# TEST_DATABASE_URL / DATABASE_URL را برای override ست کنید. PYTEST_SKIP_DROP_ALL=1 از drop جلوگیری می‌کند.
 
 
-# PostgreSQL — همان دیتابیس پروژه روی داکر (پورت 5432 روی میزبان). پیش‌فرض: anistito
-# TEST_DATABASE_URL را فقط در صورت نیاز به DB دیگر ست کنید.
-# پایان جلسهٔ pytest به‌طور پیش‌فرض drop_all می‌زند؛ برای حفظ دادهٔ محلی: PYTEST_SKIP_DROP_ALL=1
-TEST_DATABASE_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://anistito:anistito@127.0.0.1:5432/anistito",
-)
+def pytest_sessionstart(session):
+    """ستون‌های اخیر مدل بدون اجرای alembic روی DB تست (مثلاً تست‌های module-scoped با TestClient)."""
+    url = os.environ.get("DATABASE_URL_SYNC", "")
+    if "postgresql" not in (url or "").lower():
+        return
+    try:
+        from sqlalchemy import create_engine, text
+
+        eng = create_engine(url)
+        with eng.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS portal_password_plain VARCHAR(128)"
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS sms_simulation_outbox (
+                        id VARCHAR(36) NOT NULL PRIMARY KEY,
+                        phone VARCHAR(15) NOT NULL,
+                        message TEXT NOT NULL,
+                        kind VARCHAR(32) NOT NULL,
+                        template_key VARCHAR(120),
+                        created_at TIMESTAMPTZ NOT NULL
+                    )
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS sms_simulation_dismissals (
+                        sms_id VARCHAR(36) NOT NULL,
+                        user_id VARCHAR(36) NOT NULL,
+                        dismissed_at TIMESTAMPTZ NOT NULL,
+                        PRIMARY KEY (sms_id, user_id),
+                        FOREIGN KEY (sms_id) REFERENCES sms_simulation_outbox(id) ON DELETE CASCADE,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_sms_sim_outbox_phone ON sms_simulation_outbox (phone)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_sms_sim_outbox_created ON sms_simulation_outbox (created_at)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_sms_sim_dismiss_user ON sms_simulation_dismissals (user_id)"
+                )
+            )
+        eng.dispose()
+    except Exception:
+        pass
 
 
 @pytest.fixture(scope="session")
@@ -40,6 +112,9 @@ def event_loop():
 @pytest_asyncio.fixture
 async def db_engine():
     """Create a test database engine."""
+    from app.api.auth import get_password_hash
+    from app.services.attendance_tracking_sync import SYSTEM_ACTOR_ID
+
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -55,6 +130,31 @@ async def db_engine():
                 "ON payment_pending (gateway_track_id)"
             )
         )
+        await conn.execute(
+            text(
+                "ALTER TABLE payment_pending ADD COLUMN IF NOT EXISTS gateway_provider VARCHAR(32)"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS portal_password_plain VARCHAR(128)"
+            )
+        )
+    # state_history و سرویس‌های تقویم به این کاربر سیستمی ارجاع می‌دهند
+    seed_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with seed_factory() as session:
+        if await session.get(User, SYSTEM_ACTOR_ID) is None:
+            session.add(
+                User(
+                    id=SYSTEM_ACTOR_ID,
+                    username="system_actor",
+                    email="system_actor@local.test",
+                    hashed_password=get_password_hash("unused"),
+                    full_name_fa="سیستم",
+                    role="admin",
+                )
+            )
+            await session.commit()
     yield engine
     skip_drop = os.environ.get("PYTEST_SKIP_DROP_ALL", "").lower() in ("1", "true", "yes")
     if not skip_drop:
@@ -77,12 +177,13 @@ async def db_session(db_engine):
 
 @pytest_asyncio.fixture
 async def sample_user(db_session: AsyncSession):
-    """Create a sample admin user."""
+    """Create a sample admin user (ایمیل/نام کاربری یکتا تا با PYTEST_SKIP_DROP_ALL یا دیتابیس کثیف تداخل نگیرد)."""
     from app.api.auth import get_password_hash
+    suid = uuid.uuid4().hex[:12]
     user = User(
         id=uuid.uuid4(),
-        username="admin_test",
-        email="admin@test.com",
+        username=f"admin_test_{suid}",
+        email=f"admin_{suid}@test.com",
         hashed_password=get_password_hash("testpass"),
         full_name_fa="مدیر تست",
         role="admin",
@@ -94,12 +195,13 @@ async def sample_user(db_session: AsyncSession):
 
 @pytest_asyncio.fixture
 async def sample_student_user(db_session: AsyncSession):
-    """Create a sample student user."""
+    """Create a sample student user (یکتا برای جلوگیری از UniqueViolation روی users_email_key)."""
     from app.api.auth import get_password_hash
+    suid = uuid.uuid4().hex[:12]
     user = User(
         id=uuid.uuid4(),
-        username="student_test",
-        email="student@test.com",
+        username=f"student_test_{suid}",
+        email=f"student_{suid}@test.com",
         hashed_password=get_password_hash("testpass"),
         full_name_fa="دانشجوی تست",
         role="student",
@@ -115,7 +217,7 @@ async def sample_student(db_session: AsyncSession, sample_student_user: User):
     student = Student(
         id=uuid.uuid4(),
         user_id=sample_student_user.id,
-        student_code="STU-001",
+        student_code=f"STU-{uuid.uuid4().hex[:8].upper()}",
         course_type="comprehensive",
         is_intern=False,
         term_count=3,

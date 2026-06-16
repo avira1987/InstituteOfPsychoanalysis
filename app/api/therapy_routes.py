@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.auth import get_current_user, require_role
 from app.models.operational_models import User, Student, TherapySession
+from app.services.alocom_provision import refresh_therapy_session_alocom_links
 from app.services.attendance_service import AttendanceService
 from app.services.attendance_tracking_sync import apply_therapy_attendance_via_process
 
@@ -60,8 +61,13 @@ class TherapySessionPatch(BaseModel):
     )
 
 
-def _to_out(s: TherapySession) -> dict:
+def _to_out(s: TherapySession, *, viewer: Optional[User] = None) -> dict:
     starts = s.session_starts_at.isoformat() if getattr(s, "session_starts_at", None) else None
+    meeting_url = s.meeting_url
+    if viewer and viewer.role in ("therapist", "admin", "staff"):
+        host = getattr(s, "host_meeting_url", None)
+        if (host or "").strip():
+            meeting_url = host
     return {
         "id": str(s.id),
         "student_id": str(s.student_id),
@@ -70,7 +76,7 @@ def _to_out(s: TherapySession) -> dict:
         "session_number": s.session_number,
         "status": s.status,
         "payment_status": s.payment_status,
-        "meeting_url": s.meeting_url,
+        "meeting_url": meeting_url,
         "meeting_provider": s.meeting_provider,
         "links_unlocked": bool(s.links_unlocked),
         "instructor_score": s.instructor_score,
@@ -97,7 +103,12 @@ async def list_my_sessions(
     rows = r2.scalars().all()
     out = []
     for s in rows:
-        d = _to_out(s)
+        if s.meeting_provider == "alocom" and s.links_unlocked:
+            try:
+                await refresh_therapy_session_alocom_links(db, s)
+            except Exception:
+                logger.exception("refresh_therapy_session_alocom_links failed session=%s", s.id)
+        d = _to_out(s, viewer=current_user)
         if not s.links_unlocked:
             d["meeting_url"] = None
             d["meeting_provider"] = None
@@ -118,7 +129,16 @@ async def list_for_therapist(
         .order_by(TherapySession.session_date.desc())
     )
     r = await db.execute(q)
-    return [_to_out(s) for s in r.scalars().all()]
+    rows = r.scalars().all()
+    out = []
+    for s in rows:
+        if s.meeting_provider == "alocom":
+            try:
+                await refresh_therapy_session_alocom_links(db, s)
+            except Exception:
+                logger.exception("refresh therapist therapy link failed session=%s", s.id)
+        out.append(_to_out(s, viewer=current_user))
+    return out
 
 
 @router.get("/for-student/{student_id}", response_model=list[TherapySessionOut])
@@ -189,4 +209,4 @@ async def patch_session(
         str(current_user.id),
         list(body.model_dump(exclude_unset=True).keys()),
     )
-    return _to_out(s)
+    return _to_out(s, viewer=current_user)

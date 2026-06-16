@@ -14,7 +14,8 @@
 هشدار: به‌طور پیش‌فرض برای هر سناریوی «قابل اجرا» یک پیامک واقعی به همان شماره می‌رود.
 کد خروج 0 اگر حداقل یک ارسال موفق باشد، وگرن 1.
 
-مقادیر حساس را می‌توانید در همین فایل، در MANUAL_SMS_TEST_CONFIG بگذارید (هر فیلد خالی = همان مقدار از .env).
+مقادیر حساس را می‌توانید در همین فایل، در MANUAL_SMS_TEST_CONFIG بگذارید (هر فیلد خالی = همان مقدار از
+app.config.ENV_FILE_PATH یعنی معمولاً .env ریشهٔ پروژه).
 این فایل را با رمز/API واقعی commit نکنید.
 
 اگر پاسخ API «موفق» است اما پیام به گوشی نمی‌رسد: تأخیر اپراتور، فیلتر/بلک‌لیست، یا گزارش تحویل را
@@ -38,7 +39,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # =============================================================================
 # پیکربندی تست ملی‌پیامک — اینجا user/pass/API/خط/شماره را قرار دهید.
-# هر مقدار خالی ("") یعنی از فایل .env در روت پروژه خوانده می‌شود.
+# هر مقدار خالی ("") یعنی از فایل env پروژه (app.config.ENV_FILE_PATH) خوانده می‌شود.
 # =============================================================================
 MANUAL_SMS_TEST_CONFIG: dict[str, str] = {
     # نام کاربری پنل ملی‌پیامک (مثال پروژه؛ می‌توانید خالی بگذارید تا از .env بیاید)
@@ -192,7 +193,7 @@ def main() -> int:
         default="",
         help=(
             "فقط یک سناریو (نام انگلیسی): send_sms | send_otp_sms | rest_SendSMS | rest_SendOtp | "
-            "console_only | rest_password_only | rest_apikey_as_password"
+            "rest_BaseServiceNumber | console_only | rest_password_only | rest_apikey_as_password"
         ),
     )
     args = parser.parse_args()
@@ -209,12 +210,15 @@ def main() -> int:
     if not args.no_force_provider:
         os.environ["SMS_PROVIDER"] = "mellipayamak"
 
-    from app.config import get_settings
+    from app.config import ENV_FILE_PATH, PROJECT_ROOT, get_settings
 
     get_settings.cache_clear()
     base = get_settings()
 
     phone = args.phone.strip()
+    print("ریشهٔ پروژه (PROJECT_ROOT):", PROJECT_ROOT)
+    print("مسیر فایل env تنظیمات (ENV_FILE_PATH):", ENV_FILE_PATH)
+    print("فایل env وجود دارد:", ENV_FILE_PATH.is_file())
     print("شماره تست:", phone)
     if applied_from_file:
         print("اعمال‌شده از همین فایل (MANUAL_SMS_TEST_CONFIG):", ", ".join(applied_from_file))
@@ -225,6 +229,7 @@ def main() -> int:
     print("SMS_PASSWORD:", _mask_secret(base.SMS_PASSWORD, 2))
     print("SMS_API_KEY:", _mask_secret(base.SMS_API_KEY, 4))
     print("SMS_PROVIDER (پس از اجبار اسکریپت):", base.SMS_PROVIDER)
+    print("SMS_OTP_PATTERN_BODY_ID:", getattr(base, "SMS_OTP_PATTERN_BODY_ID", 0))
 
     ts = int(time.time())
     body_sms = f"Anistito manual [{ts}]"
@@ -359,12 +364,34 @@ def main() -> int:
 
     scenarios.append(("REST با APIKey به‌جای password (SMS_PASSWORD خالی)", "rest_apikey_as_password", mk7))
 
+    def mk8() -> Callable[[], Awaitable[dict[str, Any]]]:
+        sg = _reload_sms_gateway()
+        bid = int(getattr(sg.settings, "SMS_OTP_PATTERN_BODY_ID", 0) or 0)
+
+        async def run():
+            if bid <= 0:
+                return {
+                    "success": False,
+                    "skipped": True,
+                    "reason": "در .env مقدار SMS_OTP_PATTERN_BODY_ID > 0 بگذارید (پترن کد ورود؛ text فقط همان کد با ;)",
+                }
+            # پترن کد ورود: فیلد text = مقدار {0}؛ نه متن آزمایشی send_sms
+            return await sg._send_mellipayamak_rest_base_service_number(  # noqa: SLF001
+                phone,
+                otp_code,
+                bid,
+            )
+
+        return run
+
+    scenarios.append(("REST مستقیم BaseServiceNumber (پترن خط اشتراکی)", "rest_BaseServiceNumber", mk8))
+
     only = (args.only or "").strip()
     if only:
         scenarios = [s for s in scenarios if s[1] == only]
         if not scenarios:
             allowed = (
-                "send_sms, send_otp_sms, rest_SendSMS, rest_SendOtp, "
+                "send_sms, send_otp_sms, rest_SendSMS, rest_SendOtp, rest_BaseServiceNumber, "
                 "console_only, rest_password_only, rest_apikey_as_password"
             )
             print("نام سناریوی نامعتبر:", only)

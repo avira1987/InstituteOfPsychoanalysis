@@ -1,7 +1,23 @@
 """Application configuration loaded from environment variables."""
 
-from pydantic_settings import BaseSettings
+import os
 from functools import lru_cache
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# مسیر بارگذاری .env برای pydantic-settings (SMS، درگاه پرداخت، DB، …):
+# - پیش‌فرض: `<ریشهٔ مخزن>/.env`
+# - جایگزین: متغیر محیطی ANISTITO_ENV_FILE (مسیر مطلق یا نسبت به cwd هنگام استارت)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_env_override = (os.environ.get("ANISTITO_ENV_FILE") or "").strip()
+if _env_override:
+    ENV_FILE_PATH = Path(_env_override).expanduser().resolve()
+else:
+    ENV_FILE_PATH = _PROJECT_ROOT / ".env"
+
+PROJECT_ROOT = _PROJECT_ROOT
+_ENV_FILE_FOR_SETTINGS = ENV_FILE_PATH if ENV_FILE_PATH.is_file() else None
 
 
 class Settings(BaseSettings):
@@ -9,6 +25,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "Tehran Institute of Psychoanalysis - انستیتو روانکاوری تهران"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
+    # اگر false باشد در استارت API فقط Alembic اسکیما را مدیریت می‌کند (بدون create_all)
+    INIT_DB_ON_STARTUP: bool = True
     APP_BASE_URL: str = "https://lms.psychoanalysis.ir/anistito"  # ریدایرکت بعد از کال‌بک پرداخت، لینک SMS، …
     # مسیر نسب به APP_BASE_URL؛ پس از بازگشت از درگاه به این صفحه هدایت می‌شود
     PAYMENT_RETURN_PATH: str = "/panel/portal/student"
@@ -17,6 +35,11 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://anistito:anistito@localhost:5432/anistito"
     DATABASE_URL_SYNC: str = "postgresql://anistito:anistito@localhost:5432/anistito"
     DATABASE_ECHO: bool = False
+    # روی VPSهای کوچک (۲ گیگ RAM) مقادیر کم‌تر؛ هر اتصال PG حافظه می‌گیرد و رشد بی‌حد cache در همان hostها OOM می‌دهد.
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_RECYCLE_SECONDS: int = 1800
+    DB_POOL_TIMEOUT_SECONDS: int = 30
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -25,30 +48,55 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production-use-a-real-secret-key"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    LOGIN_RATE_LIMIT_COUNT: int = 10
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 600
 
-    # SMS
-    SMS_PROVIDER: str = "log"  # "log" | "mellipayamak" | "kavenegar"
+    # SMS — مقادیر از ENV_FILE_PATH (پیش‌فرض `.env` ریشهٔ مخزن) یا متغیرهای محیطی سیستم / Docker
+    SMS_PROVIDER: str = "log"  # "log" | "mellipayamak"
+    # وقتی SMS_PROVIDER=log؛ ذخیرهٔ متن در DB و polling پنل برای پاپ‌آپ تست (با mellipayamak بی‌اثر)
+    SMS_SIMULATION_UI: bool = True
+    # پاپ‌آپ «همه پیامک‌های شبیه‌سازی‌شده به هر گیرنده» برای نقش‌های غیردانشجو (طبق POPUP_WATCHER_ROLES)، قابل خاموش با false
+    SMS_SIMULATION_POPUP_SHOW_ALL: bool = True
+    # خالی = تمام نقش‌ها به جز student؛ یا admin,staff,finance
+    SMS_SIMULATION_POPUP_WATCHER_ROLES: str = ""
+    # با SMS_PROVIDER=mellipayamak هم متن را در outbox بگذار تا پاپ‌آپ تست همان لحظه/پولینگ کار کند
+    SMS_SIMULATION_MIRROR_REAL_SEND: bool = True
     SMS_API_KEY: str = ""
     # Melipayamak: rest.payamak-panel.com با SMS_USERNAME (نام کاربری پنل، اغلب موبایل ۱۰ رقمی مثل 9032054361)
     # + SMS_PASSWORD یا همان APIKey پنل در SMS_API_KEY به‌جای password؛ فقط SMS_API_KEY بدون username → console.melipayamak.com
     SMS_USERNAME: str = ""
     SMS_PASSWORD: str = ""  # رمز وب‌سرویس پنل؛ اگر خالی باشد sms_gateway از SMS_API_KEY به‌عنوان password استفاده می‌کند
     SMS_LINE_NUMBER: str = ""  # شماره خط برای mellipayamak (مثال: 3000xxxx)
+    # خط خدماتی اشتراکی — پیامک پترن (SendByBaseNumber2 / REST BaseServiceNumber)، مستند ملی‌پیامک
+    # https://www.melipayamak.com/api/sendbybasenumber2/ — نگاشت قالب‌ها: metadata/sms_template_pattern_map.json
+    SMS_PATTERN_BODY_ID: int = 0  # legacy؛ دیگر در مسیر ارسال متن آزاد استفاده نمی‌شود
+    # کد پترن «کد ورود» در پنل؛ 0 = فقط SendOtp رسمی. پیش‌فرض: همان پترن تأییدشده در melipayamak_patterns.json
+    SMS_OTP_PATTERN_BODY_ID: int = 449667
 
     # ورود با پیامک (دانشجو) — کد OTP فقط برای مسیر /api/auth/otp/*
     # اگر true باشد فقط شماره‌هایی که در DB به‌عنوان کاربر فعال با نقش student ثبت شده‌اند کد می‌گیرند (ثبت‌نام اولیه باید از قبل انجام شده باشد).
     OTP_RESTRICT_TO_STUDENT_PHONES: bool = False
-    # اگر true باشد، پاسخ request OTP فیلد dev_code می‌گیرد تا روی UI تست شود — در production حتماً false بگذارید.
-    OTP_SHOW_CODE_IN_UI: bool = True
+    # اگر true باشد، پاسخ request OTP فیلدهای dev_code/dev_hint می‌گیرد — در production معمولاً false.
+    OTP_SHOW_CODE_IN_UI: bool = False
+    # پس از اولین ورود موفق دانشجو با OTP: تولید رمز ساده، ذخیره در portal_password_plain و ارسال پیامک خوش‌آمد
+    # ارسال واقعی با پترن ملی‌پیامک bodyId=450373 و کلید student_portal_welcome_credentials در metadata/sms_template_pattern_map.json
+    STUDENT_FIRST_LOGIN_WELCOME_SMS: bool = True
 
     # Email
     EMAIL_SMTP_HOST: str = ""
     EMAIL_SMTP_PORT: int = 587
     EMAIL_FROM: str = "noreply@anistito.ir"
 
-    # Payment (مبلغ API پرداخت به ریال برای سپ/زیبال؛ دفتر کل داخلی به تومان)
-    PAYMENT_PROVIDER: str = "mock"  # "mock" | "saman" | "zibal"
+    # Payment (مبلغ API پرداخت به ریال برای سپ/زیبال/زرین‌پال؛ دفتر کل داخلی به تومان)
+    PAYMENT_PROVIDER: str = "mock"  # "mock" | "saman" | "zibal" | "zarinpal"
     PAYMENT_CALLBACK_URL: str = "http://localhost:3000/api/payment/callback"
+    # اگر True: فقط درگاه زیبال (و mock برای توسعه) — سپ/زرین‌پال در API غیرفعال
+    PAYMENT_ZIBAL_ONLY: bool = True
+    # حالت تست: اگر True، اتصال به درگاه واقعی به‌طور موقت غیرفعال می‌شود و پرداخت
+    # بلافاصله «موفق» فرض شده تا کل جریان فرایند در سامانه قابل تست باشد.
+    # هیچ کدِ درگاهی حذف نمی‌شود؛ برای بازگرداندن درگاه واقعی فقط این مقدار را False کنید
+    # (یا متغیر محیطی PAYMENT_TEST_BYPASS را بردارید).
+    PAYMENT_TEST_BYPASS: bool = False
 
     # Saman (SEP) Payment Gateway
     SEP_TERMINAL_ID: str = ""
@@ -58,6 +106,10 @@ class Settings(BaseSettings):
     ZIBAL_MERCHANT: str = ""
     ZIBAL_SANDBOX: bool = True  # use sandbox.zibal.ir for testing
 
+    # Zarinpal Payment Gateway (REST v4 — merchant_id در پنل زرین‌پال)
+    ZARINPAL_MERCHANT_ID: str = ""
+    ZARINPAL_SANDBOX: bool = False  # True → sandbox.zarinpal.com
+
     # SLA Monitoring
     SLA_CHECK_INTERVAL_SECONDS: int = 300
 
@@ -65,11 +117,19 @@ class Settings(BaseSettings):
     CALENDAR_TRIGGERS_ENABLED: bool = True
     CALENDAR_TRIGGER_INTERVAL_SECONDS: int = 300
 
+    # اسلات خودکار از الگوی هفتگی مصاحبه‌گر — حداکثر روز پیش‌نگر در هر Rule
+    INTERVIEW_RECURRING_MAX_HORIZON_DAYS: int = 60
+
     # یادآوری پیامکی مصاحبهٔ پذیرش — چند ساعت قبل از شروع اسلات رزروشده
     INTERVIEW_REMINDER_HOURS_BEFORE: float = 2.0
+    # چند دقیقه قبل از شروع مصاحبه که لینک آنلاین برای دانشجو/مصاحبه‌گر قابل مشاهده شود
+    INTERVIEW_ONLINE_LINK_VISIBLE_MINUTES_BEFORE: int = 30
 
     # یادآوری پرداخت جلسات درمان — چند ساعت قبل از پایان مهلت SLA (awaiting_payment)
     SESSION_PAYMENT_REMINDER_HOURS_BEFORE_DEADLINE: float = 24.0
+
+    # یادآوری پیامکی لینک جلسهٔ درمان آنلاین (الوکام) — چند دقیقه قبل از شروع جلسه
+    THERAPY_SESSION_LINK_REMINDER_MINUTES_BEFORE: int = 30
 
     # مرخصی آموزشی: زمان‌بندی یادآوری بازگشت و مهلت ثبت‌نام (پس از فعال‌سازی وقفه در فرایند)
     EDUCATIONAL_LEAVE_RETURN_REMINDER_OFFSET_DAYS: int = 90
@@ -90,9 +150,9 @@ class Settings(BaseSettings):
     ALOCOM_DEFAULT_AGENT_SERVICE_ID: int = 0  # 0 = باید در بدنهٔ درخواست یا متادیتا بیاید
     # مسیرهای نسبی نسبت به ALOCOM_API_BASE (در صورت تفاوت نسخه API قابل تنظیم)
     ALOCOM_PATH_LOGIN: str = "/api/v1/auth/login"
-    ALOCOM_PATH_CREATE_EVENT: str = "/api/v1/agent/event/store"
-    ALOCOM_PATH_REGISTER_IN_EVENT: str = "/api/v1/agent/event/{event_id}/register-user"
-    ALOCOM_PATH_CREATE_USER: str = "/api/v1/agent/users/store"
+    ALOCOM_PATH_CREATE_EVENT: str = "/api/v1/agents/events"
+    ALOCOM_PATH_REGISTER_IN_EVENT: str = "/api/v1/agents/events/{event_id}/enroll-user-with-token"
+    ALOCOM_PATH_CREATE_USER: str = "/api/v1/agents/users"
     # اگر True و خطای شبکه/API، به رفتار قبلی (ui_hints + وب‌هوک) برمی‌گردد
     ALOCOM_FALLBACK_TO_UI_HINTS: bool = True
 
@@ -105,17 +165,48 @@ class Settings(BaseSettings):
     # جلسه اضافی درمان آموزشی (ریال) — هم‌تراز DEFAULT_EXTRA_SESSION_FEE به تومان در PaymentService
     EXTRA_SESSION_FEE_RIAL: int = 7_500_000
 
+    # ثبت‌نام آشنایی/جامع: اگر در context مبلغ ثبت نباشد، UI و درگاه از این مقادیر استفاده می‌کنند
+    REGISTRATION_INTERVIEW_FEE_RIAL: int = 5_000_000
+    # شهریه نهایی در فاکتور داخلی (تومان) — payment_amount_rial = این × 10
+    REGISTRATION_TUITION_INVOICE_TOMAN: float = 120_000_000.0
+
     # تیکتینگ: نام کاربری مسئول اولیهٔ واحد (دریافت همهٔ تیکت‌ها و ارجاع به فرد مورد نیاز). اگر خالی باشد اولین کاربر staff فعال.
     TICKET_TRIAGE_USERNAME: str = ""
+
+    # مدیر اصلی سایت: صندوق پیگیری اپراتورها و سایر قابلیت‌های فقط مالک — هم‌نام با users.username
+    PRIMARY_SITE_ADMIN_USERNAME: str = "admin"
 
     # دمو: اگر true و جدول students خالی باشد، همان دیتابیس API با دادهٔ دمو پر می‌شود (بدون نیاز به اسکریپت روی میزبان)
     SEED_DEMO_ON_STARTUP: bool = False
     # اگر true باشد پس از سناریوها، ماتریس کامل فرایندها هم در پس‌زمینه اجرا می‌شود (چند دقیقه)
     SEED_DEMO_FULL_MATRIX: bool = False
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    # اسلات مصاحبه: پس از انتخوسط دانشجو، مهلت تکمیل پرداخت (دقیقه)؛ بعد از آن اسلات برای دیگران آزاد می‌شود.
+    INTERVIEW_BOOKING_PAYMENT_DEADLINE_MINUTES: int = 10
+    # نمای راهنما — حداکثر مدت«نگهداری پیش‌پرداخت»؛ منطق آزادسازی بر اساس مهلت پرداخت بالاست.
+    INTERVIEW_BOOKING_SOFT_RESERVE_MINUTES: int = 60
+
+    model_config = SettingsConfigDict(
+        env_file=_ENV_FILE_FOR_SETTINGS,
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def effective_payment_callback_url(s: Settings | None = None) -> str:
+    """آدرس کال‌بک درگاه: اگر PAYMENT_CALLBACK هنوز localhost باشد اما APP_BASE_URL پروduction باشد، از APP_BASE_URL ساخته می‌شود (شایع‌ترین علت اختلال سپ پس از SSL)."""
+    st = s or get_settings()
+    raw = (st.PAYMENT_CALLBACK_URL or "").strip()
+    base = (st.APP_BASE_URL or "").strip().rstrip("/")
+    if raw and ("localhost" in raw or "127.0.0.1" in raw) and base.startswith("https://"):
+        return f"{base}/api/payment/callback"
+    if raw:
+        return raw
+    if base:
+        return f"{base}/api/payment/callback"
+    return "http://localhost:3000/api/payment/callback"

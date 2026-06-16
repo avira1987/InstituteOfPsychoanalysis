@@ -10,12 +10,55 @@
     "automated": true
   },
   "states": [
-    {"code": "end_of_term_check", "name_fa": "بررسی پایان ترم", "type": "initial", "assigned_role": "system"},
-    {"code": "conditions_not_met", "name_fa": "شرایط احراز نشد", "type": "terminal", "assigned_role": "system"},
-    {"code": "upgrade_applied", "name_fa": "ارتقا خودکار اعمال شد", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "end_of_term_check",
+      "name_fa": "بررسی پایان ترم",
+      "type": "initial",
+      "assigned_role": "system"
+    },
+    {
+      "code": "conditions_not_met",
+      "name_fa": "شرایط احراز نشد",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "upgrade_applied",
+      "name_fa": "ارتقا خودکار اعمال شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
-    {"from": "end_of_term_check", "to": "conditions_not_met", "trigger": "conditions_failed", "description_fa": "رتبه دستیار هیئت علمی ندارد یا ۲ بار پاس نکرده"},
-    {"from": "end_of_term_check", "to": "upgrade_applied", "trigger": "conditions_met", "description_fa": "حذف از کمک‌مدرسین، اضافه به مدرسین، Unlock درس بعدی، SMS", "actions": [{"type": "move_ta_to_instructor"}, {"type": "unlock_next_course_in_track"}, {"type": "notification", "notification_type": "sms", "template": "ta_to_instructor_auto_congrats", "recipients": ["student"]}]}
+    {
+      "from": "end_of_term_check",
+      "to": "conditions_not_met",
+      "trigger": "conditions_failed",
+      "description_fa": "رتبه دستیار هیئت علمی ندارد یا ۲ بار پاس نکرده",
+      "required_role": "student"
+    },
+    {
+      "from": "end_of_term_check",
+      "to": "upgrade_applied",
+      "trigger": "conditions_met",
+      "description_fa": "حذف از کمک‌مدرسین، اضافه به مدرسین، Unlock درس بعدی، SMS",
+      "actions": [
+        {
+          "type": "move_ta_to_instructor"
+        },
+        {
+          "type": "unlock_next_course_in_track"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "ta_to_instructor_auto_congrats",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "student"
+    }
   ]
 }

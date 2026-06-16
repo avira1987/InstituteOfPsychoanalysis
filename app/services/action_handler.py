@@ -19,11 +19,23 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.operational_models import (
     Student, User, ProcessInstance, TherapySession, FinancialRecord, AttendanceRecord,
+    InterviewSlot,
 )
 from app.services.notification_service import notification_service
 from app.services.payment_service import PaymentService
 from app.services.attendance_service import AttendanceService
 from app.services.external_integration import append_integration_event, notify_integration
+from app.services.workflow import (
+    portal_notifications as _svc_portal,
+    lms_service as _svc_lms,
+    document_service as _svc_document,
+    evaluation_records as _svc_evaluation,
+    capacity_service as _svc_capacity,
+    termination_records as _svc_termination,
+    calendar_service as _svc_calendar,
+    registration_gate as _svc_gate,
+    role_promotion as _svc_role,
+)
 from app.config import get_settings
 from app.services.alocom_client import AlocomAPIError
 from app.services.alocom_provision import provision_therapy_session_alocom
@@ -31,6 +43,8 @@ from app.services.attendance_tracking_sync import (
     cancel_attendance_instances_for_therapy_session_ids,
     ensure_attendance_instance_for_session,
 )
+from app.services.financial_program_defaults_service import get_effective_financial_program_defaults
+from app.services.interview_slot_service import enrich_interview_notification_context
 
 logger = logging.getLogger(__name__)
 
@@ -260,6 +274,18 @@ class ActionHandler:
             except Exception as e:
                 results.append({"action": action_type, "success": False, "error": str(e)})
                 logger.error(f"Action FAIL: {action_type} | instance={instance.id} | {e}", exc_info=True)
+                try:
+                    from app.services.failed_action_service import record_failed_action
+
+                    await record_failed_action(
+                        self.db,
+                        instance,
+                        action_type,
+                        action if isinstance(action, dict) else None,
+                        str(e),
+                    )
+                except Exception:
+                    logger.exception("Failed to persist failed_action for %s", action_type)
         return results
 
     async def _dispatch(
@@ -284,13 +310,20 @@ class ActionHandler:
         recipients = action.get("recipients", [])
 
         notif_context = await self._build_notification_context(instance, context)
+        if not self._notification_action_condition_matches(action, notif_context):
+            return "skipped_condition"
 
+        msg_override = (action.get("template_text_fa") or action.get("template_text") or "").strip() or None
         sent = []
         for role in recipients:
             contact = await self._resolve_contact(role, instance, ntype)
             if contact:
                 result = await notification_service.send_notification(
-                    ntype, template, contact, notif_context,
+                    ntype,
+                    template,
+                    contact,
+                    notif_context,
+                    message_override=msg_override,
                 )
                 sent.append(f"{role}:{contact}:{result.success}")
             else:
@@ -309,6 +342,18 @@ class ActionHandler:
         if code == "session_not_cancelled":
             return merged.get("session_cancelled") is not True
         return True
+
+    @staticmethod
+    def _notification_action_condition_matches(action: dict, notif_context: dict) -> bool:
+        raw = (action.get("condition") or "").strip()
+        if not raw:
+            return True
+        if "==" not in raw:
+            return True
+        left, right = raw.split("==", 1)
+        key = left.strip()
+        expect = right.strip().strip("'").strip('"')
+        return str(notif_context.get(key)) == str(expect)
 
     async def _merge_fee_determination_initial_payload(
         self,
@@ -508,12 +553,12 @@ class ActionHandler:
         """قبل از درگاه: مبلغ ریال و تاریخ/ساعت توافق‌شده در context برای UI و ثبت بعدی."""
         if instance.process_code != "extra_session":
             return "skip_not_extra_session"
-        settings = get_settings()
+        fd = await get_effective_financial_program_defaults(self.db)
+        fee_rial = int(fd["extra_session_fee_rial"])
+        fee_toman = float(fd["extra_session_fee_toman"])
         ctx = _as_mapping(instance.context_data)
         merged = {**ctx, **(context or {})}
         d, st = _resolve_extra_session_datetime(merged)
-        fee_rial = int(getattr(settings, "EXTRA_SESSION_FEE_RIAL", 7_500_000))
-        fee_toman = await self.payment.calculate_session_fee(instance.student_id, session_type="extra")
         ctx["payment_amount_rial"] = fee_rial
         ctx["invoice_amount"] = float(fee_toman)
         ctx["agreed_session_date"] = d.isoformat()
@@ -530,7 +575,8 @@ class ActionHandler:
         session_date, session_starts_at = _resolve_extra_session_datetime(merged)
         student = await self._get_student(instance.student_id)
         therapist_id = student.therapist_id if student else None
-        fee = float(await self.payment.calculate_session_fee(instance.student_id, session_type="extra"))
+        fdxs = await get_effective_financial_program_defaults(self.db)
+        fee = float(fdxs["extra_session_fee_toman"])
         sid = uuid.uuid4()
         note_parts = [
             "جلسه اضافی درمان آموزشی",
@@ -718,9 +764,14 @@ class ActionHandler:
             if msg:
                 msg = msg.replace("{new_weekly}", str(new_weekly)).replace("{old_weekly}", str(old_ws))
                 try:
-                    await notification_service.send_sms(str(phone).strip(), msg)
+                    await notification_service.send_sms(
+                        str(phone).strip(),
+                        msg,
+                        template_key="therapy_session_reduction_completed",
+                        context={},
+                    )
                 except Exception:
-                    logger.exception("therapy_session_reduction SMS send failed")
+                    pass
 
         return f"therapy_sessions_cancelled={len(cancelled_ids)} new_weekly={new_weekly}"
 
@@ -932,7 +983,8 @@ class ActionHandler:
             n_sessions = max(1, int(raw_sessions)) if raw_sessions is not None else 1
         except (TypeError, ValueError):
             n_sessions = 1
-        per = float(self.payment.DEFAULT_SESSION_FEE)
+        fd_inv = await get_effective_financial_program_defaults(self.db)
+        per = float(fd_inv.get("default_therapy_session_fee_toman") or self.payment.DEFAULT_SESSION_FEE)
         computed = per * float(n_sessions)
         if context.get("amount") is not None:
             try:
@@ -968,7 +1020,8 @@ class ActionHandler:
         return f"zero_debt_cleared rows={getattr(result, 'rowcount', None)}"
 
     async def _handle_allocate_credit_to_sessions(self, action: dict, instance: ProcessInstance, context: dict):
-        fee = float(self.payment.DEFAULT_SESSION_FEE)
+        fd_c = await get_effective_financial_program_defaults(self.db)
+        fee = float(fd_c.get("default_therapy_session_fee_toman") or self.payment.DEFAULT_SESSION_FEE)
         ctx = _as_mapping(instance.context_data)
         balance = float(ctx.get("session_credit_balance", 0))
         if balance <= 0:
@@ -1225,10 +1278,10 @@ class ActionHandler:
         r = await self.db.execute(select(User.id).where(User.role == "admin").limit(1))
         row = r.scalars().first()
         if row:
-            return row[0]
+            return row
         r = await self.db.execute(select(User.id).limit(1))
         row = r.scalars().first()
-        return row[0] if row else uuid.uuid4()
+        return row if row else uuid.uuid4()
 
     async def _handle_apply_start_therapy_session_schedule(
         self, action: dict, instance: ProcessInstance, context: dict
@@ -1338,8 +1391,8 @@ class ActionHandler:
                 instance.id,
             )
 
-        settings = get_settings()
-        fee = int(getattr(settings, "START_THERAPY_FIRST_SESSION_FEE_RIAL", 10_000_000))
+        fd_st = await get_effective_financial_program_defaults(self.db)
+        fee = int(fd_st["start_therapy_first_session_fee_rial"])
         if merged.get("payment_amount_rial") is not None:
             try:
                 fee = int(merged["payment_amount_rial"])
@@ -1787,13 +1840,48 @@ class ActionHandler:
         flag_modified(instance, "context_data")
         return f"create_online_class_links_ok event_id={detail.get('alocom_event_id')}"
 
+    # ─── Workflow service delegations (Services A–I) ─────────────
+    # These replace the legacy log-only _handle_external_integration stub with
+    # real, domain-mutating behavior implemented in app/services/workflow/.
+
+    async def _handle_svc_portal(self, action: dict, instance: ProcessInstance, context: dict):
+        return await _svc_portal.handle(self.db, instance, action, context)
+
+    async def _handle_svc_lms(self, action: dict, instance: ProcessInstance, context: dict):
+        return await _svc_lms.handle(self.db, instance, action, context)
+
+    async def _handle_svc_document(self, action: dict, instance: ProcessInstance, context: dict):
+        return await _svc_document.handle(self.db, instance, action, context)
+
+    async def _handle_svc_evaluation(self, action: dict, instance: ProcessInstance, context: dict):
+        return await _svc_evaluation.handle(self.db, instance, action, context)
+
+    async def _handle_svc_capacity(self, action: dict, instance: ProcessInstance, context: dict):
+        return await _svc_capacity.handle(self.db, instance, action, context)
+
+    async def _handle_svc_termination(self, action: dict, instance: ProcessInstance, context: dict):
+        return await _svc_termination.handle(self.db, instance, action, context)
+
+    async def _handle_svc_calendar(self, action: dict, instance: ProcessInstance, context: dict):
+        return await _svc_calendar.handle(self.db, instance, action, context)
+
+    async def _handle_svc_gate(self, action: dict, instance: ProcessInstance, context: dict):
+        return await _svc_gate.handle(self.db, instance, action, context)
+
+    async def _handle_svc_role(self, action: dict, instance: ProcessInstance, context: dict):
+        return await _svc_role.handle(self.db, instance, action, context)
+
     async def _handle_external_integration(self, action: dict, instance: ProcessInstance, context: dict):
         """یکپارچه‌سازی LMS/وب‌هوک + راهنمای UI؛ برای اکشن‌های «ثبت در LMS» و مشابه."""
         name = action.get("type", "unknown")
         detail = {k: v for k, v in action.items() if k != "type"}
         append_integration_event(instance, name, {"detail": detail, "context_keys": list((context or {}).keys())})
         ctx = _as_mapping(instance.context_data)
-        ctx.setdefault("ui_hints", []).append({"action": name, "detail": detail})
+        hint = {"action": name, "detail": detail}
+        hints = ctx.setdefault("ui_hints", [])
+        # از تکرار همان راهنمای UI هنگام اجرای مجدد ترنزیشن جلوگیری کن
+        if hint not in hints:
+            hints.append(hint)
         instance.context_data = ctx
         flag_modified(instance, "context_data")
         webhook = await notify_integration(
@@ -1951,9 +2039,31 @@ class ActionHandler:
         if not student:
             return None
 
-        if role == "student":
+        if role in ("student", "applicant"):
             user = await self._get_user(student.user_id)
             return user.phone or user.email if user else None
+
+        if role == "interviewer":
+            merged = _as_mapping(instance.context_data)
+            iuid = merged.get("interviewer_user_id")
+            if iuid:
+                try:
+                    user = await self._get_user_direct(uuid.UUID(str(iuid)))
+                    return user.phone or user.email if user else None
+                except (ValueError, TypeError):
+                    pass
+            stmt = (
+                select(InterviewSlot.interviewer_user_id)
+                .where(InterviewSlot.assigned_instance_id == instance.id)
+                .where(InterviewSlot.interviewer_user_id.isnot(None))
+                .limit(1)
+            )
+            r = await self.db.execute(stmt)
+            row = r.scalars().first()
+            if row is not None:
+                user = await self._get_user_direct(row)
+                return user.phone or user.email if user else None
+            return None
 
         if role == "supervisor" and student.supervisor_id:
             user = await self._get_user_direct(student.supervisor_id)
@@ -2022,6 +2132,40 @@ class ActionHandler:
                             notif_ctx["therapist_name"] = th_user.full_name_fa or "درمانگر"
                     except (ValueError, TypeError):
                         pass
+
+        if instance.process_code in (
+            "introductory_course_registration",
+            "comprehensive_course_registration",
+        ):
+            slot_extra = await enrich_interview_notification_context(self.db, instance)
+            if slot_extra:
+                notif_ctx = {**notif_ctx, **slot_extra}
+            if instance.process_code == "introductory_course_registration":
+                notif_ctx.setdefault(
+                    "course_label",
+                    "دوره آشنایی کاربردی با روانکاوی معاصر",
+                )
+                notif_ctx.setdefault("term_label", notif_ctx.get("term_label") or "ترم جاری")
+                notif_ctx.setdefault(
+                    "deadline",
+                    notif_ctx.get("registration_payment_deadline")
+                    or notif_ctx.get("documents_upload_deadline")
+                    or notif_ctx.get("documents_correction_deadline")
+                    or notif_ctx.get("lms_login_deadline")
+                    or "—",
+                )
+                notif_ctx.setdefault("username", notif_ctx.get("portal_username") or "")
+                notif_ctx.setdefault(
+                    "password",
+                    notif_ctx.get("portal_password_display") or "",
+                )
+                raw_def = notif_ctx.get("deficiency_list")
+                if not raw_def and notif_ctx.get("__documents_resubmit_fields"):
+                    labels = notif_ctx.get("__document_field_labels_fa") or {}
+                    lines = []
+                    for i, fname in enumerate(notif_ctx["__documents_resubmit_fields"], 1):
+                        lines.append(f"{i}- {labels.get(fname) or fname}")
+                    notif_ctx["deficiency_list"] = "\n".join(lines) if lines else "—"
 
         return notif_ctx
 
@@ -2128,108 +2272,111 @@ class ActionHandler:
         "record_result_in_student_portal": _handle_unlock_student_portal_flag,
         "ensure_therapist_slots_freed": _handle_release_therapist_slots,
 
-        "send_unlock_to_lms": _handle_external_integration,
-        "unlock_student_therapist_selection": _handle_external_integration,
-        "record_commission_result": _handle_external_integration,
-        "store_nezarat_recommendation": _handle_external_integration,
-        "generate_termination_letter": _handle_external_integration,
-        "register_new_supervision_block_in_lms": _handle_external_integration,
-        "enable_attendance_for_new_supervisor": _handle_external_integration,
-        "create_online_link_50th": _handle_external_integration,
-        "enable_attendance_for_current_supervisor_50th": _handle_external_integration,
-        "display_available_supervisor_slots": _handle_external_integration,
-        "display_mandatory_message": _handle_external_integration,
-        "apply_24h_rule_for_start_date": _handle_external_integration,
-        "display_calculated_start_date": _handle_external_integration,
+        "send_unlock_to_lms": _handle_svc_lms,
+        "unlock_student_therapist_selection": _handle_svc_lms,
+        "record_commission_result": _handle_svc_evaluation,
+        "store_nezarat_recommendation": _handle_svc_evaluation,
+        "generate_termination_letter": _handle_svc_document,
+        "register_new_supervision_block_in_lms": _handle_svc_lms,
+        "enable_attendance_for_new_supervisor": _handle_svc_lms,
+        "create_online_link_50th": _handle_svc_lms,
+        "enable_attendance_for_current_supervisor_50th": _handle_svc_lms,
+        "display_available_supervisor_slots": _handle_svc_portal,
+        "display_mandatory_message": _handle_svc_portal,
+        "apply_24h_rule_for_start_date": _handle_svc_calendar,
+        "display_calculated_start_date": _handle_svc_portal,
         "cancel_supervision_session": _handle_cancel_session,
         "add_supervision_credit_if_paid": _handle_add_credit,
         "register_supervision_makeup_session": _handle_register_makeup,
         "enable_attendance_registration": _handle_unlock_attendance_registration,
         "release_supervisor_slot": _handle_release_supervisor_slot,
         "move_supervisor_to_past_list": _handle_move_supervisor_to_past_list,
-        "record_interruption_dates": _handle_external_integration,
-        "monitor_return_at_end_date": _handle_external_integration,
+        "record_interruption_dates": _handle_svc_calendar,
+        "monitor_return_at_end_date": _handle_svc_calendar,
         "run_patient_referral": _handle_run_patient_referral,
-        "move_ta_to_instructor": _handle_external_integration,
-        "upgrade_rank_to_assistant_faculty": _handle_external_integration,
-        "unlock_next_course_in_track": _handle_external_integration,
-        "publish_courses_to_website": _handle_external_integration,
-        "publish_academic_calendar_to_profiles": _handle_external_integration,
-        "show_popup": _handle_external_integration,
-        "load_available_courses": _handle_external_integration,
-        "register_courses_in_portal": _handle_external_integration,
+        "move_ta_to_instructor": _handle_svc_role,
+        "upgrade_rank_to_assistant_faculty": _handle_svc_role,
+        "unlock_next_course_in_track": _handle_svc_lms,
+        "publish_courses_to_website": _handle_svc_lms,
+        "publish_academic_calendar_to_profiles": _handle_svc_calendar,
+        "show_popup": _handle_svc_portal,
+        "load_available_courses": _handle_svc_lms,
+        "register_courses_in_portal": _handle_svc_lms,
         "create_online_class_links": _handle_create_online_class_links,
-        "schedule_installment_reminders": _handle_external_integration,
+        "schedule_installment_reminders": _handle_svc_portal,
         "block_attendance_registration": _handle_block_attendance,
-        "notify_instructor": _handle_external_integration,
+        "notify_instructor": _handle_svc_portal,
         "unblock_attendance_registration": _handle_unlock_attendance_registration,
 
-        "record_commission_result_in_student_portal": _handle_external_integration,
-        "record_evaluation_completion": _handle_external_integration,
-        "lock_block_counter": _handle_external_integration,
-        "display_evaluation_warning_to_supervisor": _handle_external_integration,
-        "create_evaluation_task": _handle_external_integration,
+        "record_commission_result_in_student_portal": _handle_svc_evaluation,
+        "record_evaluation_completion": _handle_svc_evaluation,
+        "lock_block_counter": _handle_svc_evaluation,
+        "display_evaluation_warning_to_supervisor": _handle_svc_portal,
+        "create_evaluation_task": _handle_svc_evaluation,
         "suspend_class_registration": _handle_block_class_access,
         "revoke_intern_status": _handle_revoke_intern_status,
         "set_leave_return_schedule": _handle_set_leave_return_schedule,
         "warn_if": _handle_warn_if,
 
         # نام‌های اضافهٔ متادیتا (هم‌ارز یا استاب یکپارچه‌سازی)
-        "add_ta_score": _handle_external_integration,
-        "apply_electronic_signature_and_seal": _handle_external_integration,
-        "archive_letter_in_student_file": _handle_external_integration,
-        "block_future_applications": _handle_external_integration,
-        "block_future_enrollment": _handle_external_integration,
-        "block_next_term_registration": _handle_external_integration,
+        "add_ta_score": _handle_svc_evaluation,
+        "apply_electronic_signature_and_seal": _handle_svc_document,
+        "archive_letter_in_student_file": _handle_svc_document,
+        "block_future_applications": _handle_svc_gate,
+        "block_future_enrollment": _handle_svc_gate,
+        "block_next_term_registration": _handle_svc_gate,
         "cancel_all_future_sessions": _handle_delete_future_appointments,
-        "create_education_committee_task": _handle_external_integration,
+        "create_education_committee_task": _handle_svc_evaluation,
         "sync_extra_session_reenter_fields": _handle_sync_extra_session_reenter_fields,
         "prepare_extra_session_payment": _handle_prepare_extra_session_payment,
         "create_extra_session_record": _handle_create_extra_session_record,
         "note_extra_session_calendar": _handle_note_extra_session_calendar,
         "add_extra_session_therapy_hours": _handle_add_extra_session_therapy_hours,
-        "create_lms_course_links": _handle_external_integration,
-        "create_user_account": _handle_external_integration,
+        "create_lms_course_links": _handle_svc_lms,
+        "create_user_account": _handle_svc_role,
         "deduct_credit_if_has": _handle_deduct_credit_session,
-        "display_error_message": _handle_external_integration,
-        "display_meeting_in_portal": _handle_external_integration,
-        "display_rejection_explanations": _handle_external_integration,
-        "enable_pdf_export": _handle_external_integration,
-        "generate_certificate": _handle_external_integration,
-        "generate_cumulative_transcript": _handle_external_integration,
-        "generate_decline_list": _handle_external_integration,
-        "generate_pdf_export": _handle_external_integration,
-        "generate_term_transcript": _handle_external_integration,
-        "increase_intern_capacity": _handle_external_integration,
-        "load_term3_courses": _handle_external_integration,
-        "log_sla_breach_in_portals": _handle_external_integration,
-        "move_to_past_lists": _handle_external_integration,
+        "display_error_message": _handle_svc_portal,
+        "display_meeting_in_portal": _handle_svc_portal,
+        "display_rejection_explanations": _handle_svc_portal,
+        "enable_pdf_export": _handle_svc_document,
+        "generate_certificate": _handle_svc_document,
+        "generate_cumulative_transcript": _handle_svc_document,
+        "generate_decline_list": _handle_svc_document,
+        "generate_pdf_export": _handle_svc_document,
+        "generate_term_transcript": _handle_svc_document,
+        "increase_intern_capacity": _handle_svc_capacity,
+        "load_term3_courses": _handle_svc_lms,
+        "log_sla_breach_in_portals": _handle_svc_portal,
+        "move_to_past_lists": _handle_svc_capacity,
         "process_refund": _handle_process_refund_action,
         "reactivate_class_registration": _handle_reactivate_class_registration,
-        "record_accounting": _handle_external_integration,
-        "record_pause_dates_in_lms": _handle_external_integration,
-        "record_termination_date": _handle_external_integration,
-        "record_termination_in_student_portal": _handle_external_integration,
+        "record_accounting": _handle_svc_termination,
+        "record_pause_dates_in_lms": _handle_svc_lms,
+        "record_termination_date": _handle_svc_termination,
+        "record_termination_in_student_portal": _handle_svc_termination,
         "refer_to_violation_registration": _handle_refer_to_violation_registration,
-        "register_in_calendar": _handle_external_integration,
-        "register_student_in_courses": _handle_external_integration,
+        "register_in_calendar": _handle_svc_calendar,
+        "register_student_in_courses": _handle_svc_lms,
+        "record_lms_links_placed": _handle_svc_lms,
+        "build_class_attendance_list": _handle_svc_lms,
+        "register_lesson_teaching_assistants": _handle_svc_lms,
         "release_supervisor_slots": _handle_release_slots,
         "reset_therapy_sessions": _handle_reset_therapy_sessions,
-        "retain_patients": _handle_external_integration,
-        "retain_supervisor": _handle_external_integration,
-        "retain_therapist_and_supervisor": _handle_external_integration,
-        "revoke_student_access": _handle_external_integration,
-        "schedule_reminder": _handle_external_integration,
-        "scheduled_notification": _handle_external_integration,
-        "send_to_dashboard": _handle_external_integration,
-        "send_to_progress_committee": _handle_external_integration,
-        "share_document_with_interviewer": _handle_external_integration,
-        "show_payment_confirmation": _handle_external_integration,
-        "store_executive_advisory_opinion": _handle_external_integration,
-        "store_rejection_reason_confidential": _handle_external_integration,
-        "unblock_next_term_registration": _handle_external_integration,
+        "retain_patients": _handle_svc_capacity,
+        "retain_supervisor": _handle_svc_capacity,
+        "retain_therapist_and_supervisor": _handle_svc_capacity,
+        "revoke_student_access": _handle_svc_role,
+        "schedule_reminder": _handle_svc_portal,
+        "scheduled_notification": _handle_svc_portal,
+        "send_to_dashboard": _handle_svc_portal,
+        "send_to_progress_committee": _handle_svc_portal,
+        "share_document_with_interviewer": _handle_svc_portal,
+        "show_payment_confirmation": _handle_svc_portal,
+        "store_executive_advisory_opinion": _handle_svc_evaluation,
+        "store_rejection_reason_confidential": _handle_svc_evaluation,
+        "unblock_next_term_registration": _handle_svc_gate,
         "update_schedule": _handle_update_therapy_schedule,
         "update_therapist": _handle_update_therapist,
-        "update_total_hours": _handle_external_integration,
-        "upload_certificate_to_portal": _handle_external_integration,
+        "update_total_hours": _handle_svc_lms,
+        "upload_certificate_to_portal": _handle_svc_document,
     }

@@ -30,6 +30,12 @@ export function getStudentTransitionButtonMain(transition, transitionCount) {
   if (te === 'student_confirmed_with_violation' && ts === 'reduction_with_violation') {
     return 'تأیید نهایی با علم به تخلف و اعمال کاهش'
   }
+  if (te === 'student_logged_in' && ts === 'course_selection') {
+    return 'ورود به سامانه و شروع انتخاب درس'
+  }
+  if (te === 'enrolled' && ts === 'links_created') {
+    return 'ثبت‌نام در درس و فعال‌سازی کلاس'
+  }
   const next = labelState(transition?.to_state)
   if (transitionCount > 1) {
     return `ادامه به «${next}»`

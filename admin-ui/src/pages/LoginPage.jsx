@@ -1,17 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { authApi } from '../services/api'
 import { getSiteLogoUrl } from '../utils/siteLogo'
+import { getPortalHomeHref } from '../utils/portalRoleHome'
 
 const LOGIN_TAB_KEY = 'login_tab'
 const LOGIN_ERROR_KEY = 'login_error'
 const LOGIN_ERROR_FROM_PASSWORD_KEY = 'login_error_from_password'
+const OTP_STUDENT_ONBOARDING_KEY = 'otp_student_onboarding'
 
-function getInitialTab() {
+function getInitialTab(staffMode) {
+  if (staffMode) return 'password'
+  /* ورود عمومی همیشه پیامک؛ session تب «رمز» برای /login بدون staff اعمال نمی‌شود */
   try {
     const saved = sessionStorage.getItem(LOGIN_TAB_KEY)
-    if (saved === 'otp' || saved === 'password') return saved
+    if (saved === 'otp') return 'otp'
   } catch (_) {}
   return 'otp'
 }
@@ -25,8 +29,10 @@ function getInitialError() {
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const staffMode = searchParams.get('staff') === '1'
   const { user, login, loginWithToken } = useAuth()
-  const [tab, setTab] = useState(getInitialTab)
+  const [tab, setTab] = useState(() => getInitialTab(staffMode))
   const [phone, setPhone] = useState('')
   const [otpSent, setOtpSent] = useState(false)
   const [otpCode, setOtpCode] = useState(['', '', '', '', '', ''])
@@ -39,15 +45,26 @@ export default function LoginPage() {
   const [challengeLoading, setChallengeLoading] = useState(false)
   const [error, setError] = useState(getInitialError)
   const [loading, setLoading] = useState(false)
-  const [devCode, setDevCode] = useState('')
-  const [devHint, setDevHint] = useState('')
+  const [otpWelcomeMessage, setOtpWelcomeMessage] = useState('')
+  const [pendingOtpToken, setPendingOtpToken] = useState(null)
+  const [pendingOtpUser, setPendingOtpUser] = useState(null)
   const otpRefs = useRef([])
+  /** جلوگیری از دو درخواست verify هم‌زمان؛ نتیجهٔ دوم اغلب «کد منقضی» است چون اولین درخواست کد را مصرف می‌کند. */
+  const otpVerifyLockRef = useRef(false)
+  const otpSubmitInFlightRef = useRef(false)
 
   useEffect(() => {
     if (timer <= 0) return
     const interval = setInterval(() => setTimer(t => t - 1), 1000)
     return () => clearInterval(interval)
   }, [timer])
+
+  useEffect(() => {
+    if (staffMode) {
+      setTab('password')
+      try { sessionStorage.setItem(LOGIN_TAB_KEY, 'password') } catch (_) {}
+    }
+  }, [staffMode])
 
   // وقتی تب ورود با رمز عبور از sessionStorage بازیابی شده، چالش را بگیر
   useEffect(() => {
@@ -56,15 +73,15 @@ export default function LoginPage() {
     }
   }, [tab])
 
-  // اگر خطا از فرم ورود با رمز عبور بود و تب به پیامک رفته، همیشه تب را به ورود با رمز عبور برگردان
   useEffect(() => {
+    if (!staffMode) return
     try {
       if (sessionStorage.getItem(LOGIN_ERROR_FROM_PASSWORD_KEY) && tab === 'otp') {
         setTab('password')
         sessionStorage.setItem(LOGIN_TAB_KEY, 'password')
       }
     } catch (_) {}
-  }, [tab, error])
+  }, [tab, error, staffMode])
 
   // ریدایرکت به پنل بعد از ورود؛ ترجیحاً بر اساس /api/auth/home (خانه نقش)،
   // و در صورت عدم دسترسی، به‌صورت پیش‌فرض بر اساس نقش کاربر.
@@ -73,13 +90,20 @@ export default function LoginPage() {
 
     const doRedirect = async () => {
       try {
+        if (sessionStorage.getItem(OTP_STUDENT_ONBOARDING_KEY) === '1') {
+          sessionStorage.removeItem(OTP_STUDENT_ONBOARDING_KEY)
+          navigate('/panel/complete-registration', { replace: true })
+          return
+        }
+      } catch (_) {}
+
+      try {
         const res = await authApi.home()
         const target = res.data?.redirect_url
-          || (user.role === 'student' ? '/panel/portal/student' : '/panel')
+          || getPortalHomeHref(user.role)
         navigate(target, { replace: true })
       } catch {
-        const fallback = user.role === 'student' ? '/panel/portal/student' : '/panel'
-        navigate(fallback, { replace: true })
+        navigate(getPortalHomeHref(user.role), { replace: true })
       }
     }
 
@@ -90,7 +114,7 @@ export default function LoginPage() {
     return (
       <div className="login-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <div className="loading-spinner" style={{ width: 40, height: 40 }} />
-        <span style={{ marginRight: '0.75rem' }}>در حال انتقال به پنل...</span>
+        <span style={{ marginRight: '0.75rem' }}>در حال انتقال...</span>
       </div>
     )
   }
@@ -100,28 +124,12 @@ export default function LoginPage() {
     if (otpSent) return
     setLoading(true)
     setError('')
-    setDevCode('')
-    setDevHint('')
     try {
       const res = await authApi.otpRequest(phone)
       setOtpSent(true)
       setTimer(120)
-      const rawCode = res.data?.dev_code != null ? String(res.data.dev_code).replace(/\D/g, '').slice(0, 6) : ''
-      if (rawCode.length === 6) {
-        setDevCode(rawCode)
-        setDevHint(res.data?.dev_hint || '')
-        setOtpCode(rawCode.split(''))
-        setTimeout(() => otpRefs.current[5]?.focus(), 100)
-        // وقتی سرور کد را در پاسخ برمی‌گرداند، همان کد در همین صفحه است؛ ورود را تکمیل می‌کنیم
-        setTimeout(() => {
-          submitOTP(rawCode)
-        }, 150)
-      } else {
-        setDevCode('')
-        setDevHint('')
-        setOtpCode(['', '', '', '', '', ''])
-        setTimeout(() => otpRefs.current[0]?.focus(), 100)
-      }
+      setOtpCode(['', '', '', '', '', ''])
+      setTimeout(() => otpRefs.current[0]?.focus(), 100)
     } catch (err) {
       setError(err.response?.data?.detail || 'خطا در ارسال کد. لطفاً دوباره تلاش کنید.')
     } finally {
@@ -181,21 +189,56 @@ export default function LoginPage() {
     }
   }
 
+  const completeOtpLogin = async (token, userPayload) => {
+    if (userPayload?.is_new && userPayload?.role === 'student') {
+      try {
+        sessionStorage.setItem(OTP_STUDENT_ONBOARDING_KEY, '1')
+      } catch (_) {}
+    }
+    setOtpWelcomeMessage('')
+    setPendingOtpToken(null)
+    setPendingOtpUser(null)
+    await loginWithToken(token)
+  }
+
   const submitOTP = async (code) => {
+    const digits = String(code || '').replace(/\D/g, '')
+    if (digits.length !== 6) return
+    if (otpVerifyLockRef.current || otpSubmitInFlightRef.current) return
+    otpVerifyLockRef.current = true
+    otpSubmitInFlightRef.current = true
     setLoading(true)
     setError('')
+    let holdVerifyLock = false
     try {
-      const res = await authApi.otpVerify(phone, code)
+      const res = await authApi.otpVerify(phone, digits)
       if (res.data.access_token) {
-        await loginWithToken(res.data.access_token)
-        // ریدایرکت بعد از ورود در useEffect بر اساس /api/auth/home انجام می‌شود.
+        const u = res.data.user
+        const welcome = (res.data.welcome_message || '').trim()
+        if (welcome) {
+          holdVerifyLock = true
+          setPendingOtpToken(res.data.access_token)
+          setPendingOtpUser(u || null)
+          setOtpWelcomeMessage(welcome)
+          return
+        }
+        await completeOtpLogin(res.data.access_token, u)
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'کد وارد شده صحیح نیست.')
+      const detail = err.response?.data?.detail
+      setError(
+        typeof detail === 'string' && detail.trim()
+          ? detail
+          : 'کد وارد شده صحیح نیست. اگر چند پیامک دارید فقط **آخرین** کد را وارد کنید.'
+      )
       setOtpCode(['', '', '', '', '', ''])
       otpRefs.current[0]?.focus()
     } finally {
       setLoading(false)
+      otpSubmitInFlightRef.current = false
+      if (!holdVerifyLock) {
+        otpVerifyLockRef.current = false
+      }
     }
   }
 
@@ -240,9 +283,12 @@ export default function LoginPage() {
   const handleResend = () => {
     setOtpCode(['', '', '', '', '', ''])
     setOtpSent(false)
-    setDevCode('')
-    setDevHint('')
     setError('')
+    setOtpWelcomeMessage('')
+    setPendingOtpToken(null)
+    setPendingOtpUser(null)
+    otpVerifyLockRef.current = false
+    otpSubmitInFlightRef.current = false
   }
 
   return (
@@ -251,47 +297,23 @@ export default function LoginPage() {
         <div className="login-brand-logo-wrap">
           <img src={getSiteLogoUrl()} alt="" className="login-brand-logo site-logo-img" width={200} height={80} />
         </div>
-        <h2 className="login-title">انستیتو روانکاوی تهران</h2>
-        <p className="login-subtitle">Tehran Institute of Psychoanalysis</p>
+        <h2 className="login-title">
+          {staffMode ? 'ورود پرسنل و مدیران' : 'ورود و ثبت‌نام با موبایل'}
+        </h2>
+        <p className="login-subtitle">
+          {staffMode
+            ? 'Tehran Institute of Psychoanalysis — staff sign-in'
+            : 'Tehran Institute of Psychoanalysis'}
+        </p>
 
-        {/* Tab Switch */}
-        <div className="otp-tabs">
-          <button
-            className={`otp-tab ${tab === 'otp' ? 'active' : ''}`}
-            onClick={() => {
-              setTab('otp')
-              setError('')
-              try {
-                sessionStorage.setItem(LOGIN_TAB_KEY, 'otp')
-                sessionStorage.removeItem(LOGIN_ERROR_KEY)
-                sessionStorage.removeItem(LOGIN_ERROR_FROM_PASSWORD_KEY)
-              } catch (_) {}
-            }}
-          >
-            ورود با پیامک
-          </button>
-          <button
-            type="button"
-            data-testid="login-tab-password"
-            className={`otp-tab ${tab === 'password' ? 'active' : ''}`}
-            onClick={() => {
-              setTab('password')
-              setError('')
-              try { sessionStorage.setItem(LOGIN_TAB_KEY, 'password') } catch (_) {}
-              fetchLoginChallenge()
-            }}
-          >
-            ورود با رمز عبور
-          </button>
-        </div>
-
-        {/* OTP Tab */}
-        {tab === 'otp' && (
+        {!staffMode && (
           <>
             <form onSubmit={handleRequestOTP}>
               <div className="form-group">
-                <label className="form-label">شماره موبایل</label>
+                <label className="form-label" htmlFor="login-otp-phone">شماره موبایل</label>
                 <input
+                  id="login-otp-phone"
+                  data-testid="login-otp-phone"
                   className="form-input"
                   type="tel"
                   value={phone}
@@ -319,7 +341,7 @@ export default function LoginPage() {
                     disabled={loading}
                     style={{ width: '100%', justifyContent: 'center', padding: '0.75rem' }}
                   >
-                    {loading ? 'در حال ارسال...' : 'ارسال کد تأیید'}
+                    {loading ? 'در حال ارسال...' : 'ارسال کد پیامکی'}
                   </button>
                 </>
               )}
@@ -327,49 +349,63 @@ export default function LoginPage() {
 
             {otpSent && (
               <div>
-                <p style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-                  کد یکبارمصرف ارسال‌شده به <strong style={{ direction: 'ltr', display: 'inline-block' }}>{phone}</strong> را در همین صفحه وارد کنید
-                </p>
-                {devCode && (
+                {otpWelcomeMessage && pendingOtpToken && (
                   <div
-                    className="alert"
-                    role="status"
-                    style={{
-                      background: 'linear-gradient(135deg, var(--bg-muted) 0%, var(--bg-card) 100%)',
-                      border: '2px solid var(--primary)',
-                      borderRadius: '0.75rem',
-                      marginBottom: '1rem',
-                      padding: '1rem',
-                      textAlign: 'center',
-                      direction: 'ltr',
-                    }}
+                    className="alert alert-success"
+                    style={{ marginBottom: '1rem', textAlign: 'right', lineHeight: 1.7, fontSize: '0.92rem' }}
                   >
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', direction: 'rtl' }}>
-                      کد یکبارمصرف (نمایش در همین صفحه)
-                    </div>
-                    <strong style={{ fontSize: '1.75rem', letterSpacing: '0.45em', fontVariantNumeric: 'tabular-nums' }}>{devCode}</strong>
-                    {devHint && (
-                      <div style={{ marginTop: '0.6rem', fontSize: '0.78rem', letterSpacing: 'normal', direction: 'rtl', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                        {devHint}
-                      </div>
-                    )}
+                    <div style={{ marginBottom: '0.75rem' }}>{otpWelcomeMessage}</div>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ width: '100%', justifyContent: 'center' }}
+                      disabled={loading}
+                      onClick={async () => {
+                        setLoading(true)
+                        try {
+                          await completeOtpLogin(pendingOtpToken, pendingOtpUser)
+                        } finally {
+                          setLoading(false)
+                        }
+                      }}
+                    >
+                      ادامه و ورود به پنل
+                    </button>
                   </div>
                 )}
-                <div className="otp-input-group" onPaste={handleOtpPaste}>
-                  {otpCode.map((digit, i) => (
-                    <input
-                      key={i}
-                      ref={el => otpRefs.current[i] = el}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(i, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      autoFocus={i === 0}
-                    />
-                  ))}
-                </div>
+                {!otpWelcomeMessage && (
+                  <>
+                    <p style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                      کد یکبارمصرف ارسال‌شده به <strong style={{ direction: 'ltr', display: 'inline-block' }}>{phone}</strong> را وارد کنید
+                    </p>
+                    <p
+                      style={{
+                        textAlign: 'center',
+                        fontSize: '0.82rem',
+                        color: 'var(--text-light)',
+                        marginBottom: '0.75rem',
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      اگر پیامک دیر رسید یا «ارسال مجدد» زدید، فقط کد <strong>آخرین</strong> پیامک را وارد کنید؛ کدهای قبلی دیگر معتبر نیستند.
+                    </p>
+                    <div className="otp-input-group" onPaste={handleOtpPaste}>
+                      {otpCode.map((digit, i) => (
+                        <input
+                          key={i}
+                          ref={el => otpRefs.current[i] = el}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpChange(i, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                          autoFocus={i === 0}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
 
@@ -379,33 +415,44 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                <div className="otp-timer">
-                  {timer > 0 ? (
-                    <span>ارسال مجدد تا <strong>{Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}</strong></span>
-                  ) : (
-                    <button className="otp-resend" onClick={handleResend}>
-                      ارسال مجدد کد
-                    </button>
-                  )}
-                </div>
+                {!otpWelcomeMessage && (
+                  <>
+                    <div className="otp-timer">
+                      {timer > 0 ? (
+                        <span>ارسال مجدد تا <strong>{Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}</strong></span>
+                      ) : (
+                        <button className="otp-resend" onClick={handleResend}>
+                          ارسال مجدد کد
+                        </button>
+                      )}
+                    </div>
 
-                <button
-                  onClick={handleResend}
-                  style={{
-                    display: 'block', margin: '1rem auto 0', background: 'none', border: 'none',
-                    color: 'var(--text-light)', fontSize: '0.82rem', cursor: 'pointer'
-                  }}
-                >
-                  تغییر شماره موبایل
-                </button>
+                    <button
+                      onClick={handleResend}
+                      style={{
+                        display: 'block', margin: '1rem auto 0', background: 'none', border: 'none',
+                        color: 'var(--text-light)', fontSize: '0.82rem', cursor: 'pointer'
+                      }}
+                    >
+                      تغییر شماره موبایل
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </>
         )}
 
-        {/* Password Tab */}
-        {tab === 'password' && (
-          <form onSubmit={handlePasswordLogin}>
+        {staffMode && (
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-light)', textAlign: 'center', marginBottom: '1rem' }}>
+            <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 500 }}>
+              ← ورود دانشجو و ثبت‌نام با شماره موبایل
+            </Link>
+          </p>
+        )}
+
+        {staffMode && (
+          <form onSubmit={handlePasswordLogin} data-testid="login-staff-password-form">
             <div className="form-group">
               <label className="form-label">نام کاربری</label>
               <input
@@ -480,11 +527,22 @@ export default function LoginPage() {
           </form>
         )}
 
-        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-          <Link to="/register" style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 500 }}>
-            هنوز ثبت‌نام نکرده‌اید؟ ثبت‌نام دانشجو
-          </Link>
-        </div>
+        {!staffMode && (
+          <div style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.82rem' }}>
+            <span style={{ color: 'var(--text-light)' }}>اولین بار است؟ </span>
+            <span style={{ color: 'var(--text-secondary)' }}>
+              همان شماره را وارد کنید؛ پس از کد، فرم ثبت‌نام باز می‌شود.
+            </span>
+          </div>
+        )}
+
+        {!staffMode && (
+          <div style={{ textAlign: 'center', marginTop: '0.85rem', fontSize: '0.82rem' }}>
+            <Link to="/login?staff=1" style={{ color: 'var(--text-light)' }}>
+              ورود پرسنل و مدیران (نام کاربری و رمز عبور)
+            </Link>
+          </div>
+        )}
 
         <div style={{ textAlign: 'center', marginTop: '1rem' }}>
           <Link to="/" style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>

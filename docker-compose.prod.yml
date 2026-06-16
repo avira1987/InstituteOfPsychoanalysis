@@ -1,36 +1,43 @@
 # Production compose - API serves built admin-ui (no separate admin-ui container)
 # Redis maps to 6380 to avoid conflict with host Redis on 6379
+#
+# سقف منابع برای میزبان VPS با حدود ۲ گیگ RAM (مجموع ~1.6G < سقف ماشین تا فضای کافی برای کرنل/آپاچی بماند).
+# روی Docker Engine استاندالون این سقف‌ها cgroup سخت تولید می‌کنند (`mem_limit`/`cpus`).
+# برای مهاجرت به Swarm/Kubernetes هم همین مقادیر را در `deploy.resources.limits` بگذارید.
 services:
   db:
     image: postgres:16-alpine
     container_name: anistito-db
     environment:
-      POSTGRES_USER: anistito
-      POSTGRES_PASSWORD: anistito
-      POSTGRES_DB: anistito
+      POSTGRES_USER: ${POSTGRES_USER:-anistito}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-anistito}
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # محدودسازی حافظهٔ خود Postgres داخل کانتینر (با mem_limit هم‌خط) — جلوی رشد cache و work_mem
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=384MB"
+      - "-c"
+      - "work_mem=8MB"
+      - "-c"
+      - "maintenance_work_mem=64MB"
+      - "-c"
+      - "max_connections=80"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U anistito"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
-  redis:
-    image: redis:7-alpine
-    container_name: anistito-redis
-    ports:
-      - "6380:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+    mem_limit: 640m
+    memswap_limit: 640m
+    cpus: 1.0
   api:
     build:
       context: .
@@ -41,30 +48,44 @@ services:
         # رزرو برای اسکریپت‌های بیلد سفارشی (ایمیج فعلی از APT در Dockerfile استفاده نمی‌کند)
         PIP_PROXY: ${PIP_PROXY:-}
     container_name: anistito-api
+    # DNS مرکز‌دادهٔ برخی مشتریان دامنهٔ payamak-panel را REFUSE می‌کند → خطای name resolution برای ملی‌پیامک.
+    # IP را در صورت تغییر CDN با `python -c "import socket; print(socket.gethostbyname('rest.payamak-panel.com'))"` از شبکهٔ دیگر به‌روز کنید.
+    extra_hosts:
+      - "rest.payamak-panel.com:46.245.77.196"
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://anistito:anistito@db:5432/anistito
-      DATABASE_URL_SYNC: postgresql://anistito:anistito@db:5432/anistito
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-anistito}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-anistito}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-anistito}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-anistito}
       DEBUG: "false"
-      SECRET_KEY: anistito-prod-secret-change-me
+      INIT_DB_ON_STARTUP: "false"
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      # 1 = بدون repair_alembic و بدون alembic upgrade (اسکیمای دیتابیس دست‌نخورده می‌ماند)
+      SKIP_ALEMBIC_UPGRADE: ${SKIP_ALEMBIC_UPGRADE:-0}
       # پرداخت سپ: در فایل .env کنار همین compose تنظیم کنید؛
       # PAYMENT_PROVIDER=saman، SEP_TERMINAL_ID، SEP_PASSWORD (در صورت نیاز)،
       # PAYMENT_CALLBACK_URL=<همان دامنهٔ عمومی>/api/payment/callback، APP_BASE_URL برای ریدایرکت پس از کال‌بک
     ports:
       - "3000:3000"
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/health/ready', timeout=5)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
+    mem_limit: 768m
+    memswap_limit: 768m
+    cpus: 1.5
     command: >
       sh -c "python /app/scripts/wait_for_db.py &&
-             python /app/scripts/repair_alembic_if_empty_schema.py &&
-             alembic upgrade head &&
+             if [ \"$$SKIP_ALEMBIC_UPGRADE\" = \"1\" ]; then echo '[api] SKIP_ALEMBIC_UPGRADE=1 — بدون اجرای alembic'; else python /app/scripts/repair_alembic_if_empty_schema.py && alembic upgrade head; fi &&
              uvicorn app.main:app --host 0.0.0.0 --port 3000 --log-level warning"
 volumes:
   postgres_data:
-  redis_data:
+  uploads_data:

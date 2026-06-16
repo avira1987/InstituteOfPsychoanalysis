@@ -1,9 +1,12 @@
 import React, { useState, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { authApi, getAvatarUrl } from '../services/api'
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const nfAck = searchParams.get('nf') === '1' && !searchParams.get('instance_id')
   const [fullNameFa, setFullNameFa] = useState(user?.full_name_fa ?? '')
   const [fullNameEn, setFullNameEn] = useState(user?.full_name_en ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
@@ -25,6 +28,8 @@ export default function ProfilePage() {
     }
   }, [user])
 
+  const phoneLocked = Boolean((user?.phone ?? '').trim())
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setMessage({ type: '', text: '' })
@@ -42,7 +47,9 @@ export default function ProfilePage() {
         full_name_fa: fullNameFa || null,
         full_name_en: fullNameEn || null,
         email: email || null,
-        phone: phone || null,
+      }
+      if (!phoneLocked) {
+        data.phone = phone || null
       }
       if (newPassword) {
         data.password = newPassword
@@ -105,6 +112,29 @@ export default function ProfilePage() {
           <p className="page-subtitle">اطلاعات شخصی و عکس پروفایل خود را مدیریت کنید.</p>
         </div>
       </div>
+
+      {nfAck ? (
+        <div className="notification-history-banner" style={{ marginBottom: '1rem' }}>
+          <div className="notification-history-banner-inner">
+            <p className="notification-history-banner-title">پیگیری اعلان</p>
+            <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.88rem', lineHeight: 1.55 }}>
+              اگر این اعلان مربوط به آمادگی نقش شما (مثل تعریف وقت مصاحبه یا جلسات برنامه‌ریزی‌شده) بوده، احتمالاً شرایط در سیستم برطرف شده است. در صورت نیاز تنظیمات همین صفحه یا پنل نقش خود را بررسی کنید.
+            </p>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              style={{ marginTop: '0.65rem' }}
+              onClick={() => {
+                const next = new URLSearchParams(searchParams)
+                next.delete('nf')
+                setSearchParams(next, { replace: true })
+              }}
+            >
+              بستن
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="profile-grid">
         {/* کارت عکس پروفایل */}
@@ -208,14 +238,25 @@ export default function ProfilePage() {
             </div>
             <div>
               <label className="form-label">شماره تماس</label>
-              <input
-                type="tel"
-                className="form-input"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="۰۹۱۲۳۴۵۶۷۸۹"
-                dir="ltr"
-              />
+              {phoneLocked ? (
+                <>
+                  <div className="form-input form-input-display-only" dir="ltr" aria-readonly="true">
+                    {(user?.phone ?? '').trim() || '—'}
+                  </div>
+                  <p style={{ fontSize: '0.85rem', marginTop: '0.35rem', color: 'var(--text-secondary)' }}>
+                    شماره موبایل پس از ثبت‌نام قابل تغییر نیست.
+                  </p>
+                </>
+              ) : (
+                <input
+                  type="tel"
+                  className="form-input"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="۰۹۱۲۳۴۵۶۷۸۹"
+                  dir="ltr"
+                />
+              )}
             </div>
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '0.5rem' }}>
               <h4 style={{ fontSize: '0.95rem', marginBottom: '0.75rem', color: 'var(--text-secondary)' }}>

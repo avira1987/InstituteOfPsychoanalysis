@@ -1,0 +1,2337 @@
+{
+  "source_matrix": "metadata\\sms_pattern_coverage_matrix.json",
+  "generated_note_fa": "هر ردیف یک پترن پیشنهادی برای ایجاد در پنل ملی‌پیامک است.",
+  "row_count": 114,
+  "gaps": [
+    {
+      "row_index": 1,
+      "template_key": "absence_recorded",
+      "suggested_panel_pattern_title_fa": "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب) — غیبت؛ ثبت‌شده",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «absence_recorded» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "process_names_fa": [
+        "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)"
+      ],
+      "current_free_text_sms_in_code": "غیبت غیرموجه شما ثبت و هزینه محاسبه شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 2,
+      "template_key": "academic_calendar_published",
+      "suggested_panel_pattern_title_fa": "فرایند آماده‌سازی ترم پاییز — آموزشی؛ تقویم؛ منتشر شده",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «academic_calendar_published» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (all_active_students). فرایندهای مرتبط شامل «فرایند آماده‌سازی ترم پاییز» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "all_active_students"
+      ],
+      "process_codes": [
+        "fall_semester_preparation"
+      ],
+      "process_names_fa": [
+        "فرایند آماده‌سازی ترم پاییز"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 3,
+      "template_key": "attendance_site_manager_delay",
+      "suggested_panel_pattern_title_fa": "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب) — حضور و غیاب؛ سایت؛ مسئول؛ تأخیر",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «attendance_site_manager_delay» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (deputy_education). فرایندهای مرتبط شامل «تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "deputy_education"
+      ],
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "process_names_fa": [
+        "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)"
+      ],
+      "current_free_text_sms_in_code": "مسئول سایت در پیگیری وضعیت جلسه درمان آموزشی بدون ثبت حضور یا غیاب اهمال کرده است.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 4,
+      "template_key": "certificate_ready_for_download",
+      "suggested_panel_pattern_title_fa": "فرایند خاتمه دوره آشنایی — گواهی؛ آماده؛ دریافت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «certificate_ready_for_download» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند خاتمه دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "introductory_course_completion"
+      ],
+      "process_names_fa": [
+        "فرایند خاتمه دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 5,
+      "template_key": "change_rejected",
+      "suggested_panel_pattern_title_fa": "مدیریت تغییرات درمان آموزشی — تغییر؛ رد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «change_rejected» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «مدیریت تغییرات درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "process_names_fa": [
+        "مدیریت تغییرات درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درخواست تغییر درمان شما رد شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 6,
+      "template_key": "committee_sla_breach",
+      "suggested_panel_pattern_title_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها — کمیته؛ SLA؛ تخطی از مهلت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «committee_sla_breach» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (deputy_education). فرایندهای مرتبط شامل «مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "deputy_education"
+      ],
+      "process_codes": [
+        "educational_leave"
+      ],
+      "process_names_fa": [
+        "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها"
+      ],
+      "current_free_text_sms_in_code": "معاون محترم مدیر آموزش، کمیته پیشرفت موظف بوده است که در طی 7 روز جلسه‌ای را با دانشجوی متقاضی وقفه در کلاس‌ها تنظیم کند، اما چنین اقدامی صورت نگرفته است.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 7,
+      "template_key": "comprehensive_accepted",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام در دوره جامع — جامع؛ پذیرش",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «comprehensive_accepted» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند ثبت‌نام در دوره جامع» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام در دوره جامع"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 8,
+      "template_key": "comprehensive_course_invitation",
+      "suggested_panel_pattern_title_fa": "فرایند خاتمه دوره آشنایی — جامع؛ درس؛ دعوت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «comprehensive_course_invitation» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند خاتمه دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "introductory_course_completion"
+      ],
+      "process_names_fa": [
+        "فرایند خاتمه دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 9,
+      "template_key": "comprehensive_rejected_with_suggestion",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام در دوره جامع — جامع؛ رد؛ پیشنهاد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «comprehensive_rejected_with_suggestion» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند ثبت‌نام در دوره جامع» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام در دوره جامع"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 10,
+      "template_key": "debt_settlement_required",
+      "suggested_panel_pattern_title_fa": "پرداخت برای جلسات آتی درمان آموزشی — بدهی؛ تسویه؛ الزامی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «debt_settlement_required» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «پرداخت برای جلسات آتی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "session_payment"
+      ],
+      "process_names_fa": [
+        "پرداخت برای جلسات آتی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، به دلیل وجود بدهی، لطفاً تسویه بدهی را همراه با جلسات آتی انتخاب کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 11,
+      "template_key": "documents_deficiency_list",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام دوره آشنایی — مدارک؛ نواقص؛ فهرست",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «documents_deficiency_list» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (applicant). فرایندهای مرتبط شامل «فرایند ثبت‌نام دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "applicant"
+      ],
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 12,
+      "template_key": "education_termination_notice",
+      "suggested_panel_pattern_title_fa": "بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب) — آموزش؛ خاتمه؛ اطلاع‌رسانی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «education_termination_notice» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "committees_review"
+      ],
+      "process_names_fa": [
+        "بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، نتیجه بررسی کمیته آموزش در خصوص پرونده قطع زودرس درمان آموزشی به اطلاع شما می‌رسد. لطفاً به پورتال مراجعه کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 13,
+      "template_key": "extra_session_alternative_proposed",
+      "suggested_panel_pattern_title_fa": "برگزاری جلسه اضافی درمان آموزشی — اضافی؛ جلسه؛ زمان جایگزین؛ پیشنهادی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «extra_session_alternative_proposed» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «برگزاری جلسه اضافی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "extra_session"
+      ],
+      "process_names_fa": [
+        "برگزاری جلسه اضافی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درمانگر زمان پیشنهادی دیگری دارد. لطفاً به پورتال مراجعه کرده و تاریخ و ساعت را تایید یا اصلاح کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 14,
+      "template_key": "extra_session_approved_payment",
+      "suggested_panel_pattern_title_fa": "برگزاری جلسه اضافی درمان آموزشی — اضافی؛ جلسه؛ تأیید؛ پرداخت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «extra_session_approved_payment» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «برگزاری جلسه اضافی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "extra_session"
+      ],
+      "process_names_fa": [
+        "برگزاری جلسه اضافی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درخواست جلسه اضافی شما تایید شد. لطفاً برای پرداخت به پورتال مراجعه کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 15,
+      "template_key": "extra_session_cancelled",
+      "suggested_panel_pattern_title_fa": "برگزاری جلسه اضافی درمان آموزشی — اضافی؛ جلسه؛ لغو",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «extra_session_cancelled» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (student، therapist). فرایندهای مرتبط شامل «برگزاری جلسه اضافی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "process_codes": [
+        "extra_session"
+      ],
+      "process_names_fa": [
+        "برگزاری جلسه اضافی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "جلسه اضافی لغو شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 16,
+      "template_key": "extra_session_confirmed",
+      "suggested_panel_pattern_title_fa": "برگزاری جلسه اضافی درمان آموزشی — اضافی؛ جلسه؛ قطعی شدن",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «extra_session_confirmed» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (student، therapist). فرایندهای مرتبط شامل «برگزاری جلسه اضافی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "process_codes": [
+        "extra_session"
+      ],
+      "process_names_fa": [
+        "برگزاری جلسه اضافی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "جلسه اضافی درمان تایید و برنامه‌ریزی شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 17,
+      "template_key": "extra_session_payment_timeout",
+      "suggested_panel_pattern_title_fa": "برگزاری جلسه اضافی درمان آموزشی — اضافی؛ جلسه؛ پرداخت؛ اتمام مهلت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «extra_session_payment_timeout» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «برگزاری جلسه اضافی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "extra_session"
+      ],
+      "process_names_fa": [
+        "برگزاری جلسه اضافی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "مهلت پرداخت جلسه اضافی تمام شد. جلسه لغو شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 18,
+      "template_key": "extra_session_rejected",
+      "suggested_panel_pattern_title_fa": "برگزاری جلسه اضافی درمان آموزشی — اضافی؛ جلسه؛ رد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «extra_session_rejected» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «برگزاری جلسه اضافی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "extra_session"
+      ],
+      "process_names_fa": [
+        "برگزاری جلسه اضافی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درخواست جلسه اضافی رد شد. درمانگر امکان برگزاری جلسه اضافه را ندارد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 19,
+      "template_key": "extra_session_request",
+      "suggested_panel_pattern_title_fa": "برگزاری جلسه اضافی درمان آموزشی — اضافی؛ جلسه؛ درخواست",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «extra_session_request» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (therapist). فرایندهای مرتبط شامل «برگزاری جلسه اضافی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "therapist"
+      ],
+      "process_codes": [
+        "extra_session"
+      ],
+      "process_names_fa": [
+        "برگزاری جلسه اضافی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درخواست جلسه اضافی از سوی دانشجو ثبت شده. لطفاً بررسی فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 20,
+      "template_key": "extra_supervision_confirmed",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن — اضافی؛ سوپرویژن؛ قطعی شدن",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «extra_supervision_confirmed» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (student، supervisor). فرایندهای مرتبط شامل «درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "student",
+        "supervisor"
+      ],
+      "process_codes": [
+        "extra_supervision_session"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن"
+      ],
+      "current_free_text_sms_in_code": "جلسه اضافی سوپرویژن: روز {day} ساعت {time} تاریخ {date}. انستیتو روانکاوی تهران.",
+      "code_placeholder_names": [
+        "day",
+        "time",
+        "date"
+      ],
+      "variable_mapping_note_fa": "{0} ← {day} (نام متغیر در کد)؛ {1} ← {time} (نام متغیر در کد)؛ {2} ← {date} (نام متغیر در کد)"
+    },
+    {
+      "row_index": 21,
+      "template_key": "extra_supervision_rejected",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن — اضافی؛ سوپرویژن؛ رد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «extra_supervision_rejected» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "extra_supervision_session"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، پیرو درخواست شما برای برگزاری جلسه اضافی سوپروژن فردی، متاسفانه سوپروایزر شما اعلام کرده است که امکان برگزاری جلسه اضافی را ندارد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 22,
+      "template_key": "extra_supervision_request",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن — اضافی؛ سوپرویژن؛ درخواست",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «extra_supervision_request» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (supervisor). فرایندهای مرتبط شامل «درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "process_codes": [
+        "extra_supervision_session"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن"
+      ],
+      "current_free_text_sms_in_code": "درخواست جلسه اضافی سوپرویژن از سوی دانشجو ثبت شده. لطفاً در پورتال بررسی فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 23,
+      "template_key": "file_forwarded_to_executive",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام در دوره جامع — پرونده؛ ارجاع؛ اجرایی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «file_forwarded_to_executive» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (progress_committee). فرایندهای مرتبط شامل «فرایند ثبت‌نام در دوره جامع» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "progress_committee"
+      ],
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام در دوره جامع"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 24,
+      "template_key": "file_forwarded_to_scientific",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام در دوره جامع — پرونده؛ ارجاع؛ علمی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «file_forwarded_to_scientific» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (progress_committee). فرایندهای مرتبط شامل «فرایند ثبت‌نام در دوره جامع» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "progress_committee"
+      ],
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام در دوره جامع"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 25,
+      "template_key": "intern_2term_referral_started",
+      "suggested_panel_pattern_title_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها — انترن؛ دو ترمی؛ ارجاع؛ آغاز",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «intern_2term_referral_started» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (monitoring_committee_officer). فرایندهای مرتبط شامل «مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "monitoring_committee_officer"
+      ],
+      "process_codes": [
+        "educational_leave"
+      ],
+      "process_names_fa": [
+        "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها"
+      ],
+      "current_free_text_sms_in_code": "فرایند ارجاع بیماران انترن به درمانگران دیگر برای دانشجوی وقفه ۲ ترمی آغاز شد. لطفاً در پورتال کمیته نظارت بررسی فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 26,
+      "template_key": "intern_hours_increase_deferred",
+      "suggested_panel_pattern_title_fa": "اضافه شدن حداکثر ساعت‌های ارائه درمان انترن — انترن؛ ساعت؛ افزایش؛ تعویق",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «intern_hours_increase_deferred» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «اضافه شدن حداکثر ساعت‌های ارائه درمان انترن» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "intern_hours_increase"
+      ],
+      "process_names_fa": [
+        "اضافه شدن حداکثر ساعت‌های ارائه درمان انترن"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 27,
+      "template_key": "intern_hours_increased",
+      "suggested_panel_pattern_title_fa": "اضافه شدن حداکثر ساعت‌های ارائه درمان انترن — انترن؛ ساعت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «intern_hours_increased» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «اضافه شدن حداکثر ساعت‌های ارائه درمان انترن» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "intern_hours_increase"
+      ],
+      "process_names_fa": [
+        "اضافه شدن حداکثر ساعت‌های ارائه درمان انترن"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 28,
+      "template_key": "internship_12month_interview",
+      "suggested_panel_pattern_title_fa": "۱۲ ماه پس از گذشت قبولی به صورت مشروط در انترنی — کارآموزی؛ مصاحبه",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «internship_12month_interview» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (progress_project، progress_scientific، student). فرایندهای مرتبط شامل «۱۲ ماه پس از گذشت قبولی به صورت مشروط در انترنی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "progress_project",
+        "progress_scientific",
+        "student"
+      ],
+      "process_codes": [
+        "internship_12month_conditional_review"
+      ],
+      "process_names_fa": [
+        "۱۲ ماه پس از گذشت قبولی به صورت مشروط در انترنی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 29,
+      "template_key": "internship_started",
+      "suggested_panel_pattern_title_fa": "مشورت و تعیین آمادگی برای آغاز انترنی — کارآموزی؛ آغاز",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «internship_started» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (student، supervisor). فرایندهای مرتبط شامل «مشورت و تعیین آمادگی برای آغاز انترنی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "student",
+        "supervisor"
+      ],
+      "process_codes": [
+        "internship_readiness_consultation"
+      ],
+      "process_names_fa": [
+        "مشورت و تعیین آمادگی برای آغاز انترنی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 30,
+      "template_key": "interview_details_interviewer",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام دوره آشنایی — مصاحبه؛ جزئیات",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «interview_details_interviewer» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (interviewer). فرایندهای مرتبط شامل «فرایند ثبت‌نام دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "interviewer"
+      ],
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 31,
+      "template_key": "leave_approved",
+      "suggested_panel_pattern_title_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها — مرخصی آموزشی؛ تأیید",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «leave_approved» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "educational_leave"
+      ],
+      "process_names_fa": [
+        "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، درخواست مرخصی آموزشی شما تایید شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 32,
+      "template_key": "leave_approved_intern_1",
+      "suggested_panel_pattern_title_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها — مرخصی آموزشی؛ تأیید؛ انترن",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «leave_approved_intern_1» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "educational_leave"
+      ],
+      "process_names_fa": [
+        "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی انترن گرامی، مرخصی ۱ ترمی شما تایید شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 33,
+      "template_key": "leave_approved_intern_2_warning",
+      "suggested_panel_pattern_title_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها — مرخصی آموزشی؛ تأیید؛ انترن؛ هشدار",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «leave_approved_intern_2_warning» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "educational_leave"
+      ],
+      "process_names_fa": [
+        "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها"
+      ],
+      "current_free_text_sms_in_code": "هشدار: با تایید وقفه ۲ ترمی، وضعیت انترنی شما لغو خواهد شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 34,
+      "template_key": "leave_rejected",
+      "suggested_panel_pattern_title_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها — مرخصی آموزشی؛ رد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «leave_rejected» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "educational_leave"
+      ],
+      "process_names_fa": [
+        "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، درخواست مرخصی آموزشی شما رد شد. لطفاً با دفتر تماس بگیرید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 35,
+      "template_key": "leave_rejected_committee_alert",
+      "suggested_panel_pattern_title_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها — مرخصی آموزشی؛ رد؛ کمیته؛ اعلان",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «leave_rejected_committee_alert» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (monitoring_committee_officer). فرایندهای مرتبط شامل «مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "monitoring_committee_officer"
+      ],
+      "process_codes": [
+        "educational_leave"
+      ],
+      "process_names_fa": [
+        "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها"
+      ],
+      "current_free_text_sms_in_code": "گزارش عدم تایید وقفه در کلاس‌ها ثبت شد. لطفاً در پورتال کمیته نظارت بررسی فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 36,
+      "template_key": "lms_credentials",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام دوره آشنایی — ورود به سامانه",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «lms_credentials» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (applicant). فرایندهای مرتبط شامل «فرایند ثبت‌نام دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "applicant"
+      ],
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 37,
+      "template_key": "makeup_session_proposed",
+      "suggested_panel_pattern_title_fa": "کنسل کردن جلسه از سوی درمانگر آموزشی — جبرانی؛ جلسه؛ پیشنهادی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «makeup_session_proposed» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «کنسل کردن جلسه از سوی درمانگر آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "therapist_session_cancellation"
+      ],
+      "process_names_fa": [
+        "کنسل کردن جلسه از سوی درمانگر آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درمانگر آموزشی تاریخ و ساعت جلسه جبرانی پیشنهاد کرده است. لطفاً در پورتال تایید یا اصلاح فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 38,
+      "template_key": "meeting_scheduled_sms",
+      "suggested_panel_pattern_title_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها — جلسه؛ زمان‌بندی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «meeting_scheduled_sms» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "educational_leave"
+      ],
+      "process_names_fa": [
+        "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها"
+      ],
+      "current_free_text_sms_in_code": "زمان جلسه کمیته پیشرفت برای درخواست وقفه تعیین شد.\n{meeting_summary_fa}\nلطفاً به پورتال مراجعه کنید.",
+      "code_placeholder_names": [
+        "meeting_summary_fa"
+      ],
+      "variable_mapping_note_fa": "{0} ← {meeting_summary_fa} (نام متغیر در کد)"
+    },
+    {
+      "row_index": 39,
+      "template_key": "mentor_sessions_registered",
+      "suggested_panel_pattern_title_fa": "ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس — جلسات",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «mentor_sessions_registered» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (instructor، teaching_assistant). فرایندهای مرتبط شامل «ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "instructor",
+        "teaching_assistant"
+      ],
+      "process_codes": [
+        "mentor_private_sessions"
+      ],
+      "process_names_fa": [
+        "ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس"
+      ],
+      "current_free_text_sms_in_code": "تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس ثبت شد. جزئیات در پورتال.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 40,
+      "template_key": "next_term_registration_deadline",
+      "suggested_panel_pattern_title_fa": "فرایند پایان ترم‌های دوره جامع — بعدی؛ ترم؛ ثبت‌نام؛ مهلت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «next_term_registration_deadline» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند پایان ترم‌های دوره جامع» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "comprehensive_term_end"
+      ],
+      "process_names_fa": [
+        "فرایند پایان ترم‌های دوره جامع"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 41,
+      "template_key": "next_term_registration_open",
+      "suggested_panel_pattern_title_fa": "فرایند پایان ترم‌های دوره آشنایی — بعدی؛ ترم؛ ثبت‌نام؛ شروع",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «next_term_registration_open» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (eligible_students). فرایندهای مرتبط شامل «فرایند پایان ترم‌های دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "eligible_students"
+      ],
+      "process_codes": [
+        "introductory_term_end"
+      ],
+      "process_names_fa": [
+        "فرایند پایان ترم‌های دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 42,
+      "template_key": "non_registration_meeting_invite_sms",
+      "suggested_panel_pattern_title_fa": "عدم ثبت‌نام دانشجو برای ترم بعد — ثبت‌نام؛ جلسه؛ دعوت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «non_registration_meeting_invite_sms» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «عدم ثبت‌نام دانشجو برای ترم بعد» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "student_non_registration"
+      ],
+      "process_names_fa": [
+        "عدم ثبت‌نام دانشجو برای ترم بعد"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 43,
+      "template_key": "patient_referral_notice",
+      "suggested_panel_pattern_title_fa": "ارجاع بیماران انترن به درمانگران دیگر — بیمار؛ ارجاع؛ اطلاع‌رسانی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «patient_referral_notice» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «ارجاع بیماران انترن به درمانگران دیگر» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "patient_referral"
+      ],
+      "process_names_fa": [
+        "ارجاع بیماران انترن به درمانگران دیگر"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 44,
+      "template_key": "payment_confirmed",
+      "suggested_panel_pattern_title_fa": "پرداخت برای جلسات آتی درمان آموزشی — پرداخت؛ قطعی شدن",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «payment_confirmed» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «پرداخت برای جلسات آتی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "session_payment"
+      ],
+      "process_names_fa": [
+        "پرداخت برای جلسات آتی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "پرداخت شما تایید شد. جلسات فعال است.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 45,
+      "template_key": "payment_overdue",
+      "suggested_panel_pattern_title_fa": "پرداخت برای جلسات آتی درمان آموزشی — پرداخت؛ معوق",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «payment_overdue» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «پرداخت برای جلسات آتی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "session_payment"
+      ],
+      "process_names_fa": [
+        "پرداخت برای جلسات آتی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "پرداخت شما عقب افتاده. لطفاً هرچه زودتر اقدام کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 46,
+      "template_key": "payment_rejected",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام در دوره جامع — پرداخت؛ رد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «payment_rejected» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند ثبت‌نام در دوره جامع، برگزاری جلسه اضافی درمان آموزشی، پرداخت برای جلسات آتی درمان آموزشی، آغاز درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "comprehensive_course_registration",
+        "extra_session",
+        "session_payment",
+        "start_therapy"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام در دوره جامع",
+        "برگزاری جلسه اضافی درمان آموزشی",
+        "پرداخت برای جلسات آتی درمان آموزشی",
+        "آغاز درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "پرداخت شما تایید نشد. لطفاً مجدداً تلاش کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 47,
+      "template_key": "payment_retry",
+      "suggested_panel_pattern_title_fa": "پرداخت برای جلسات آتی درمان آموزشی — پرداخت؛ تلاش مجدد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «payment_retry» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «پرداخت برای جلسات آتی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "session_payment"
+      ],
+      "process_names_fa": [
+        "پرداخت برای جلسات آتی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "لطفاً پرداخت را مجدداً انجام دهید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 48,
+      "template_key": "proof_of_enrollment_required",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام در دوره جامع — مدرک تحصیلی؛ نام‌نویسی؛ الزامی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «proof_of_enrollment_required» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند ثبت‌نام در دوره جامع» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام در دوره جامع"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 49,
+      "template_key": "quota_exceeded",
+      "suggested_panel_pattern_title_fa": "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب) — سهمیه؛ پایان",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «quota_exceeded» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (admin، student). فرایندهای مرتبط شامل «تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "admin",
+        "student"
+      ],
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "process_names_fa": [
+        "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)"
+      ],
+      "current_free_text_sms_in_code": "اخطار: سهمیه غیبت مجاز سالانه شما تمام شده است.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 50,
+      "template_key": "registration_complete",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام در دوره جامع — ثبت‌نام؛ تکمیل",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «registration_complete» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند ثبت‌نام در دوره جامع» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "comprehensive_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام در دوره جامع"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 51,
+      "template_key": "registration_confirmed_term2",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام دانشجو برای ترم دوم دوره آشنایی — ثبت‌نام؛ قطعی شدن",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «registration_confirmed_term2» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند ثبت‌نام دانشجو برای ترم دوم دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "intro_second_semester_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام دانشجو برای ترم دوم دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 52,
+      "template_key": "required_documents_list",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام دوره آشنایی — الزامی؛ مدارک؛ فهرست",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «required_documents_list» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (applicant). فرایندهای مرتبط شامل «فرایند ثبت‌نام دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "applicant"
+      ],
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 53,
+      "template_key": "result_conditional_therapy",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام دوره آشنایی — نتیجه؛ مشروط؛ درمان آموزشی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «result_conditional_therapy» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (applicant). فرایندهای مرتبط شامل «فرایند ثبت‌نام دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "applicant"
+      ],
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 54,
+      "template_key": "result_full_admission",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام دوره آشنایی — نتیجه؛ کامل",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «result_full_admission» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (applicant). فرایندهای مرتبط شامل «فرایند ثبت‌نام دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "applicant"
+      ],
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 55,
+      "template_key": "result_single_course",
+      "suggested_panel_pattern_title_fa": "فرایند ثبت‌نام دوره آشنایی — نتیجه؛ تک‌درس؛ درس",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «result_single_course» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (applicant). فرایندهای مرتبط شامل «فرایند ثبت‌نام دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "applicant"
+      ],
+      "process_codes": [
+        "introductory_course_registration"
+      ],
+      "process_names_fa": [
+        "فرایند ثبت‌نام دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 56,
+      "template_key": "return_reminder",
+      "suggested_panel_pattern_title_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها — بازگشت؛ یادآوری",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «return_reminder» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "educational_leave"
+      ],
+      "process_names_fa": [
+        "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها"
+      ],
+      "current_free_text_sms_in_code": "یادآوری: مهلت بازگشت از مرخصی آموزشی شما نزدیک است. لطفاً اقدام فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 57,
+      "template_key": "schedule_changed",
+      "suggested_panel_pattern_title_fa": "مدیریت تغییرات درمان آموزشی — schedule changed",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «schedule_changed» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (student، therapist). فرایندهای مرتبط شامل «مدیریت تغییرات درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "process_names_fa": [
+        "مدیریت تغییرات درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "ساعت جلسات درمان با موفقیت تغییر یافت.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 58,
+      "template_key": "session_reminder",
+      "suggested_panel_pattern_title_fa": "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب) — جلسه؛ یادآوری",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «session_reminder» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (student، therapist). فرایندهای مرتبط شامل «تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "process_codes": [
+        "attendance_tracking"
+      ],
+      "process_names_fa": [
+        "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)"
+      ],
+      "current_free_text_sms_in_code": "یادآوری: جلسه درمان آموزشی شما در ساعت آینده برگزار می‌شود.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 59,
+      "template_key": "sessions_suspended",
+      "suggested_panel_pattern_title_fa": "پرداخت برای جلسات آتی درمان آموزشی — جلسات؛ تعلیق",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «sessions_suspended» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (admin، student، therapist). فرایندهای مرتبط شامل «پرداخت برای جلسات آتی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "admin",
+        "student",
+        "therapist"
+      ],
+      "process_codes": [
+        "session_payment"
+      ],
+      "process_names_fa": [
+        "پرداخت برای جلسات آتی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "جلسات درمان به دلیل عدم پرداخت معلق شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 60,
+      "template_key": "student_declined_makeup",
+      "suggested_panel_pattern_title_fa": "کنسل کردن جلسه از سوی درمانگر آموزشی — دانشجو؛ انصراف؛ جبرانی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «student_declined_makeup» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (therapist). فرایندهای مرتبط شامل «کنسل کردن جلسه از سوی درمانگر آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "therapist"
+      ],
+      "process_codes": [
+        "therapist_session_cancellation"
+      ],
+      "process_names_fa": [
+        "کنسل کردن جلسه از سوی درمانگر آموزشی"
+      ],
+      "current_free_text_sms_in_code": "دانشجو قصد برگزاری جلسه جبرانی را ندارد. جلسه لغو شده تلقی می‌گردد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 61,
+      "template_key": "student_declined_supervision_makeup",
+      "suggested_panel_pattern_title_fa": "کنسل کردن جلسه از سوی سوپروایزر — دانشجو؛ انصراف؛ سوپرویژن؛ جبرانی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «student_declined_supervision_makeup» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (supervisor). فرایندهای مرتبط شامل «کنسل کردن جلسه از سوی سوپروایزر» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "process_names_fa": [
+        "کنسل کردن جلسه از سوی سوپروایزر"
+      ],
+      "current_free_text_sms_in_code": "دانشجو قصد برگزاری جلسه جبرانی سوپرویژن را ندارد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 62,
+      "template_key": "student_supervision_counter_proposal",
+      "suggested_panel_pattern_title_fa": "کنسل کردن جلسه از سوی سوپروایزر — دانشجو؛ سوپرویژن؛ پیشنهاد متقابل؛ پیشنهاد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «student_supervision_counter_proposal» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (supervisor). فرایندهای مرتبط شامل «کنسل کردن جلسه از سوی سوپروایزر» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "process_names_fa": [
+        "کنسل کردن جلسه از سوی سوپروایزر"
+      ],
+      "current_free_text_sms_in_code": "دانشجو تاریخ و ساعت پیشنهادی جلسه جبرانی سوپرویژن را رد کرده و زمان جدید پیشنهاد داده. لطفاً پورتال را بررسی کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 63,
+      "template_key": "supervision_block_transition_complete",
+      "suggested_panel_pattern_title_fa": "مدیریت تغییرات سوپرویژن فردی (آغاز مجدد، تغییر سوپروایزر، تغییر ساعت) — سوپرویژن؛ بلوک؛ انتقال؛ تکمیل",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «supervision_block_transition_complete» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (new_supervisor، student). فرایندهای مرتبط شامل «مدیریت تغییرات سوپرویژن فردی (آغاز مجدد، تغییر سوپروایزر، تغییر ساعت)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "new_supervisor",
+        "student"
+      ],
+      "process_codes": [
+        "supervision_block_transition"
+      ],
+      "process_names_fa": [
+        "مدیریت تغییرات سوپرویژن فردی (آغاز مجدد، تغییر سوپروایزر، تغییر ساعت)"
+      ],
+      "current_free_text_sms_in_code": "سوپرویژن فردی جدید: روز {day} ساعت {time} با {supervisor_name}. تاریخ آغاز: {start_date}. انستیتو روانکاوی تهران.",
+      "code_placeholder_names": [
+        "day",
+        "time",
+        "supervisor_name",
+        "start_date"
+      ],
+      "variable_mapping_note_fa": "{0} ← {day} (نام متغیر در کد)؛ {1} ← {time} (نام متغیر در کد)؛ {2} ← {supervisor_name} (نام متغیر در کد)؛ {3} ← {start_date} (نام متغیر در کد)"
+    },
+    {
+      "row_index": 64,
+      "template_key": "supervision_interruption_meeting_invite",
+      "suggested_panel_pattern_title_fa": "فرایند وقفه در سوپرویژن فردی توسط دانشجو — سوپرویژن؛ وقفه؛ جلسه؛ دعوت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «supervision_interruption_meeting_invite» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند وقفه در سوپرویژن فردی توسط دانشجو» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "supervision_interruption"
+      ],
+      "process_names_fa": [
+        "فرایند وقفه در سوپرویژن فردی توسط دانشجو"
+      ],
+      "current_free_text_sms_in_code": "جزئیات جلسه بررسی درخواست وقفه سوپرویژن فردی در پورتال شما موجود است. لطفاً مراجعه فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 65,
+      "template_key": "supervision_makeup_proposed",
+      "suggested_panel_pattern_title_fa": "کنسل کردن جلسه از سوی سوپروایزر — سوپرویژن؛ جبرانی؛ پیشنهادی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «supervision_makeup_proposed» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «کنسل کردن جلسه از سوی سوپروایزر» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "process_names_fa": [
+        "کنسل کردن جلسه از سوی سوپروایزر"
+      ],
+      "current_free_text_sms_in_code": "سوپروایزر شما تاریخ و ساعت جلسه جبرانی سوپرویژن پیشنهاد کرده است. لطفاً در پورتال تایید یا اصلاح فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 66,
+      "template_key": "supervision_session_increase_rejected",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن — سوپرویژن؛ جلسه؛ افزایش؛ رد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «supervision_session_increase_rejected» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "supervision_session_increase"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، پیرو درخواست شما برای اضافه کردن جلسات هفتگی سوپروژن فردی، متاسفانه سوپروایزر شما اعلام کرده است که امکان اضافه کردن جلسات هفتگی را ندارد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 67,
+      "template_key": "supervision_session_increase_request",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن — سوپرویژن؛ جلسه؛ افزایش؛ درخواست",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «supervision_session_increase_request» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (supervisor). فرایندهای مرتبط شامل «درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "supervisor"
+      ],
+      "process_codes": [
+        "supervision_session_increase"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن"
+      ],
+      "current_free_text_sms_in_code": "درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن فردی ثبت شده. لطفاً در پورتال بررسی فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 68,
+      "template_key": "supervision_session_reduction_approved",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن — سوپرویژن؛ جلسه؛ کاهش؛ تأیید",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «supervision_session_reduction_approved» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "supervision_session_reduction"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن"
+      ],
+      "current_free_text_sms_in_code": "درخواست کاهش جلسات سوپرویژن شما تایید شد. روز و ساعات برگزاری جدید در پورتال ثبت شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 69,
+      "template_key": "supervision_session_reduction_multi",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن — سوپرویژن؛ جلسه؛ کاهش؛ چندگانه",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «supervision_session_reduction_multi» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (student، supervisor). فرایندهای مرتبط شامل «درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "student",
+        "supervisor"
+      ],
+      "process_codes": [
+        "supervision_session_reduction"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن"
+      ],
+      "current_free_text_sms_in_code": "موضوع: کاهش تعداد جلسات هفتگی سوپرویژن فردی. {student_name} جلسه هفتگی خود در روز {day} و ساعت {time} را از برنامه جلسات هفتگی سوپرویژن فردی خود حذف کرده است.",
+      "code_placeholder_names": [
+        "student_name",
+        "day",
+        "time"
+      ],
+      "variable_mapping_note_fa": "{0} ← {student_name} (نام متغیر در کد)؛ {1} ← {day} (نام متغیر در کد)؛ {2} ← {time} (نام متغیر در کد)"
+    },
+    {
+      "row_index": 70,
+      "template_key": "supervision_session_reduction_rejected",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن — سوپرویژن؛ جلسه؛ کاهش؛ رد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «supervision_session_reduction_rejected» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "supervision_session_reduction"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن"
+      ],
+      "current_free_text_sms_in_code": "درخواست کاهش توالی جلسات سوپرویژن شما رد شد. لطفاً توضیحات سوپروایزر را در پورتال ببینید و روز و ساعت دیگری ثبت کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 71,
+      "template_key": "supervision_terminated_notice",
+      "suggested_panel_pattern_title_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی — سوپرویژن؛ خاتمه؛ اطلاع‌رسانی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «supervision_terminated_notice» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "process_names_fa": [
+        "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 72,
+      "template_key": "supervisor_cancellation_no_makeup",
+      "suggested_panel_pattern_title_fa": "کنسل کردن جلسه از سوی سوپروایزر — سوپروایزر؛ لغو؛ عدم؛ جبرانی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «supervisor_cancellation_no_makeup» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «کنسل کردن جلسه از سوی سوپروایزر» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "supervisor_session_cancellation"
+      ],
+      "process_names_fa": [
+        "کنسل کردن جلسه از سوی سوپروایزر"
+      ],
+      "current_free_text_sms_in_code": "جلسه سوپرویژن فردی شما توسط سوپروایزر لغو شد. امکان برگزاری جلسه جبرانی وجود ندارد. در صورت پرداخت قبلی، یک جلسه به حساب بستانکاری شما اضافه شده است.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 73,
+      "template_key": "ta_approved_commitment",
+      "suggested_panel_pattern_title_fa": "ارتقا به کمک‌مدرس — کمک‌مدرس؛ تأیید",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_approved_commitment» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «ارتقا به کمک‌مدرس» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "upgrade_to_ta"
+      ],
+      "process_names_fa": [
+        "ارتقا به کمک‌مدرس"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 74,
+      "template_key": "ta_blog_ready_for_review",
+      "suggested_panel_pattern_title_fa": "ثبت محتوای وبلاگ از محتوای درسی (کمک‌مدرس) — کمک‌مدرس؛ وبلاگ؛ آماده",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_blog_ready_for_review» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (instructor). فرایندهای مرتبط شامل «ثبت محتوای وبلاگ از محتوای درسی (کمک‌مدرس)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "instructor"
+      ],
+      "process_codes": [
+        "ta_blog_content"
+      ],
+      "process_names_fa": [
+        "ثبت محتوای وبلاگ از محتوای درسی (کمک‌مدرس)"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 75,
+      "template_key": "ta_consultation_reminder",
+      "suggested_panel_pattern_title_fa": "شناسایی، تشویق و مشورت آموزشی به دانشجویان (کمک‌مدرس) — کمک‌مدرس؛ مشاوره؛ یادآوری",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_consultation_reminder» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (teaching_assistant). فرایندهای مرتبط شامل «شناسایی، تشویق و مشورت آموزشی به دانشجویان (کمک‌مدرس)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "teaching_assistant"
+      ],
+      "process_codes": [
+        "ta_student_consultation"
+      ],
+      "process_names_fa": [
+        "شناسایی، تشویق و مشورت آموزشی به دانشجویان (کمک‌مدرس)"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 76,
+      "template_key": "ta_eligibility_approved",
+      "suggested_panel_pattern_title_fa": "ارتقا به کمک‌مدرس — کمک‌مدرس؛ تأیید",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_eligibility_approved» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «ارتقا به کمک‌مدرس» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "upgrade_to_ta"
+      ],
+      "process_names_fa": [
+        "ارتقا به کمک‌مدرس"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 77,
+      "template_key": "ta_essay_ready_for_review",
+      "suggested_panel_pattern_title_fa": "آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس (کمک‌مدرس) — کمک‌مدرس؛ مقاله؛ آماده",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_essay_ready_for_review» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (instructor). فرایندهای مرتبط شامل «آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس (کمک‌مدرس)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "instructor"
+      ],
+      "process_codes": [
+        "ta_essay_upload"
+      ],
+      "process_names_fa": [
+        "آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس (کمک‌مدرس)"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 78,
+      "template_key": "ta_interview_scheduled",
+      "suggested_panel_pattern_title_fa": "ارتقا به کمک‌مدرس — کمک‌مدرس؛ مصاحبه؛ زمان‌بندی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_interview_scheduled» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (course_committee_project، course_committee_scientific، student). فرایندهای مرتبط شامل «ارتقا به کمک‌مدرس» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "course_committee_project",
+        "course_committee_scientific",
+        "student"
+      ],
+      "process_codes": [
+        "upgrade_to_ta"
+      ],
+      "process_names_fa": [
+        "ارتقا به کمک‌مدرس"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 79,
+      "template_key": "ta_questions_ready_for_review",
+      "suggested_panel_pattern_title_fa": "ثبت ۳ سوال تستی‌مفهومی بعد از هر جلسه کلاس (کمک‌مدرس) — کمک‌مدرس؛ پرسش‌ها؛ آماده",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_questions_ready_for_review» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (instructor). فرایندهای مرتبط شامل «ثبت ۳ سوال تستی‌مفهومی بعد از هر جلسه کلاس (کمک‌مدرس)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "instructor"
+      ],
+      "process_codes": [
+        "ta_conceptual_questions"
+      ],
+      "process_names_fa": [
+        "ثبت ۳ سوال تستی‌مفهومی بعد از هر جلسه کلاس (کمک‌مدرس)"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 80,
+      "template_key": "ta_to_assistant_faculty_congrats",
+      "suggested_panel_pattern_title_fa": "ارتقا رتبه تحلیل دانشجو از کمک‌مدرس به دستیار هیئت علمی — کمک‌مدرس؛ دستیار؛ هیئت علمی؛ تبریک",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_to_assistant_faculty_congrats» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «ارتقا رتبه تحلیل دانشجو از کمک‌مدرس به دستیار هیئت علمی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "ta_to_assistant_faculty"
+      ],
+      "process_names_fa": [
+        "ارتقا رتبه تحلیل دانشجو از کمک‌مدرس به دستیار هیئت علمی"
+      ],
+      "current_free_text_sms_in_code": "تبریک! رتبه شما به دستیار هیئت علمی ارتقا یافت.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 81,
+      "template_key": "ta_to_instructor_auto_congrats",
+      "suggested_panel_pattern_title_fa": "تبدیل کمک‌مدرس به مدرس در هر درس (خودکار) — کمک‌مدرس؛ مدرس؛ خودکار؛ تبریک",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_to_instructor_auto_congrats» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «تبدیل کمک‌مدرس به مدرس در هر درس (خودکار)» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "ta_to_instructor_auto"
+      ],
+      "process_names_fa": [
+        "تبدیل کمک‌مدرس به مدرس در هر درس (خودکار)"
+      ],
+      "current_free_text_sms_in_code": "تبریک! شما به عنوان مدرس در درس {course_name} منصوب شدید.",
+      "code_placeholder_names": [
+        "course_name"
+      ],
+      "variable_mapping_note_fa": "{0} ← {course_name} (نام متغیر در کد)"
+    },
+    {
+      "row_index": 82,
+      "template_key": "ta_track_completion_committee_notify",
+      "suggested_panel_pattern_title_fa": "خاتمه کمک‌مدرس برای هر رسته — کمک‌مدرس؛ رسته؛ خاتمه رسته؛ کمیته؛ اطلاع",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_track_completion_committee_notify» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (course_committee_scientific). فرایندهای مرتبط شامل «خاتمه کمک‌مدرس برای هر رسته» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "course_committee_scientific"
+      ],
+      "process_codes": [
+        "ta_track_completion"
+      ],
+      "process_names_fa": [
+        "خاتمه کمک‌مدرس برای هر رسته"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 83,
+      "template_key": "ta_track_completion_congrats",
+      "suggested_panel_pattern_title_fa": "خاتمه کمک‌مدرس برای هر رسته — کمک‌مدرس؛ رسته؛ خاتمه رسته؛ تبریک",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_track_completion_congrats» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «خاتمه کمک‌مدرس برای هر رسته» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "ta_track_completion"
+      ],
+      "process_names_fa": [
+        "خاتمه کمک‌مدرس برای هر رسته"
+      ],
+      "current_free_text_sms_in_code": "تبریک! رسته کمک‌مدرس شما با موفقیت خاتمه یافت.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 84,
+      "template_key": "ta_track_meeting_scheduled",
+      "suggested_panel_pattern_title_fa": "تغییر یا اضافه کردن رسته کمک‌مدرس — کمک‌مدرس؛ رسته؛ جلسه؛ زمان‌بندی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «ta_track_meeting_scheduled» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (course_committee_scientific، student). فرایندهای مرتبط شامل «تغییر یا اضافه کردن رسته کمک‌مدرس» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "course_committee_scientific",
+        "student"
+      ],
+      "process_codes": [
+        "ta_track_change"
+      ],
+      "process_names_fa": [
+        "تغییر یا اضافه کردن رسته کمک‌مدرس"
+      ],
+      "current_free_text_sms_in_code": "زمان جلسه کمیته دروس برای تغییر/اضافه رسته کمک‌مدرس تعیین شد. لطفاً به پورتال مراجعه کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 85,
+      "template_key": "therapist_cancellation_no_makeup",
+      "suggested_panel_pattern_title_fa": "کنسل کردن جلسه از سوی درمانگر آموزشی — درمانگر؛ لغو؛ عدم؛ جبرانی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapist_cancellation_no_makeup» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «کنسل کردن جلسه از سوی درمانگر آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "therapist_session_cancellation"
+      ],
+      "process_names_fa": [
+        "کنسل کردن جلسه از سوی درمانگر آموزشی"
+      ],
+      "current_free_text_sms_in_code": "جلسه درمان آموزشی توسط درمانگر آموزشی لغو شد. امکان برگزاری جلسه جبرانی وجود ندارد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 86,
+      "template_key": "therapist_changed",
+      "suggested_panel_pattern_title_fa": "مدیریت تغییرات درمان آموزشی — درمانگر",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapist_changed» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (student، therapist). فرایندهای مرتبط شامل «مدیریت تغییرات درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "process_names_fa": [
+        "مدیریت تغییرات درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درمانگر شما با موفقیت تغییر یافت.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 87,
+      "template_key": "therapist_declined",
+      "suggested_panel_pattern_title_fa": "آغاز درمان آموزشی — درمانگر؛ انصراف",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapist_declined» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «آغاز درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "start_therapy"
+      ],
+      "process_names_fa": [
+        "آغاز درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درمانگر انتخابی پذیرفته نشد. لطفاً درمانگر دیگری انتخاب کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 88,
+      "template_key": "therapy_already_used",
+      "suggested_panel_pattern_title_fa": "آغاز درمان آموزشی — درمان آموزشی؛ قبلاً؛ استفاده شده",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_already_used» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «آغاز درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "start_therapy"
+      ],
+      "process_names_fa": [
+        "آغاز درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، شما قبلاً از این فرایند برای شروع درمان آموزشی استفاده کرده‌اید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 89,
+      "template_key": "therapy_completion_conditions_not_met",
+      "suggested_panel_pattern_title_fa": "تکمیل و خاتمه درمان آموزشی — درمان آموزشی؛ خاتمه رسته؛ شرایط",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_completion_conditions_not_met» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «تکمیل و خاتمه درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "therapy_completion"
+      ],
+      "process_names_fa": [
+        "تکمیل و خاتمه درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "شرایط خاتمه درمان هنوز کامل نیست. جزئیات ساعات در پورتال بخش همین فرایند را ببینید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 90,
+      "template_key": "therapy_completion_success",
+      "suggested_panel_pattern_title_fa": "تکمیل و خاتمه درمان آموزشی — درمان آموزشی؛ خاتمه رسته؛ موفقیت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_completion_success» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «تکمیل و خاتمه درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "therapy_completion"
+      ],
+      "process_names_fa": [
+        "تکمیل و خاتمه درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درمان آموزشی با موفقیت تکمیل و خاتمه یافت.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 91,
+      "template_key": "therapy_condition_block",
+      "suggested_panel_pattern_title_fa": "فرایند پایان ترم‌های دوره آشنایی — درمان آموزشی؛ شرط؛ بلوک",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_condition_block» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «فرایند پایان ترم‌های دوره آشنایی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "introductory_term_end"
+      ],
+      "process_names_fa": [
+        "فرایند پایان ترم‌های دوره آشنایی"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی محترم\nموضوع: شرط ثبت نام در ترم دوم\nطبق توافق قبلی در مورد پذیرش شما، می بایست وارد درمان شخصی شوید. لطفا از فرایند «آغاز درمان آموزشی» در پورتال اقدام بفرمایید.\nبخش پذیرش ۰۹۱۲۲۲۰۶۷۹۶",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 92,
+      "template_key": "therapy_early_termination_standard",
+      "suggested_panel_pattern_title_fa": "بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب) — درمان آموزشی؛ زودرس؛ خاتمه؛ استاندارد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_early_termination_standard» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)، بررسی کمیسیون تخصصی (زیرفرایند الف)، قطع زودرس درمان آموزشی توسط درمانگر آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "committees_review",
+        "specialized_commission_review",
+        "therapy_early_termination"
+      ],
+      "process_names_fa": [
+        "بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)",
+        "بررسی کمیسیون تخصصی (زیرفرایند الف)",
+        "قطع زودرس درمان آموزشی توسط درمانگر آموزشی"
+      ],
+      "current_free_text_sms_in_code": "موضوع: تغییر درمانگر آموزشی. دانشجوی گرامی، با توجه به قطع زودرس درمان آموزشی توسط درمانگر آموزشی تان، لازم است تا ۵ روز از تاریخ دریافت این پیام از فرایند «آغاز دوباره درمان آموزشی یا تغییر زمان یا تغییر درمانگر آموزشی در دوره آشنایی یا جامع» درمانگر آموزشی جدیدی را برای خود انتخاب فرمایید. موفق باشید. انستیتو روانکاوی تهران",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 93,
+      "template_key": "therapy_eligible",
+      "suggested_panel_pattern_title_fa": "آغاز درمان آموزشی — درمان آموزشی؛ واجد شرایط",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_eligible» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «آغاز درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "start_therapy"
+      ],
+      "process_names_fa": [
+        "آغاز درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، شما واجد شرایط شروع درمان آموزشی هستید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 94,
+      "template_key": "therapy_ineligible",
+      "suggested_panel_pattern_title_fa": "آغاز درمان آموزشی — درمان آموزشی؛ غیرمؤهل",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_ineligible» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «آغاز درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "start_therapy"
+      ],
+      "process_names_fa": [
+        "آغاز درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "متأسفانه شرایط شروع درمان آموزشی فراهم نیست.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 95,
+      "template_key": "therapy_interruption_meeting",
+      "suggested_panel_pattern_title_fa": "وقفه در درمان آموزشی توسط دانشجو — درمان آموزشی؛ وقفه؛ جلسه",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_interruption_meeting» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «وقفه در درمان آموزشی توسط دانشجو» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "therapy_interruption"
+      ],
+      "process_names_fa": [
+        "وقفه در درمان آموزشی توسط دانشجو"
+      ],
+      "current_free_text_sms_in_code": "جزئیات جلسه بررسی درخواست وقفه درمان آموزشی در پورتال و ایمیل شما موجود است. لطفاً مراجعه فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 96,
+      "template_key": "therapy_restart_approved",
+      "suggested_panel_pattern_title_fa": "مدیریت تغییرات درمان آموزشی — درمان آموزشی؛ آغاز مجدد؛ تأیید",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_restart_approved» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (student، therapist). فرایندهای مرتبط شامل «مدیریت تغییرات درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "student",
+        "therapist"
+      ],
+      "process_codes": [
+        "therapy_changes"
+      ],
+      "process_names_fa": [
+        "مدیریت تغییرات درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درخواست آغاز مجدد درمان شما تایید شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 97,
+      "template_key": "therapy_scheduled_student",
+      "suggested_panel_pattern_title_fa": "آغاز درمان آموزشی — درمان آموزشی؛ زمان‌بندی؛ دانشجو",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_scheduled_student» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «آغاز درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "start_therapy"
+      ],
+      "process_names_fa": [
+        "آغاز درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی\nموضوع: زمان‌بندی آغاز درمان آموزشی\nبه اطلاع می‌رساند که وقت شما برای درمان آموزشی با آقای/خانم ...، روز... ساعت... و روز... ساعت... با تاریخ آغاز... ثبت شده است.\nمسئول هماهنگی‌ها ۰۲۱۲۲۷۲۸۰۰۰ داخلی ۱",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 98,
+      "template_key": "therapy_scheduled_therapist",
+      "suggested_panel_pattern_title_fa": "آغاز درمان آموزشی — درمان آموزشی؛ زمان‌بندی؛ درمانگر",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_scheduled_therapist» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (therapist). فرایندهای مرتبط شامل «آغاز درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "therapist"
+      ],
+      "process_codes": [
+        "start_therapy"
+      ],
+      "process_names_fa": [
+        "آغاز درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درمانگر آموزشی محترم\nموضوع: آغاز درمان آموزشی دانشجو\nبه اطلاع می‌رساند که آقای/خانم ... دانشجوی دوره... درخواست آغاز درمان آموزشی خود را با شما در روز... ساعت... و روز... ساعت... و تاریخ آغاز... ثبت کرده‌اند.\nمسئول هماهنگی‌ها ۰۲۱۲۲۷۲۸۰۰ داخلی ۱",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 99,
+      "template_key": "therapy_session_increase_alternative",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی — درمان آموزشی؛ جلسه؛ افزایش؛ زمان جایگزین",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_session_increase_alternative» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "therapy_session_increase"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درمانگر آموزشی زمان پیشنهادی دیگری دارد. لطفاً به پورتال مراجعه کرده و روز و ساعت را تایید یا اصلاح کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 100,
+      "template_key": "therapy_session_increase_rejected",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی — درمان آموزشی؛ جلسه؛ افزایش؛ رد",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_session_increase_rejected» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "therapy_session_increase"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، درمانگر آموزشی شما در حال حاضر امکان افزایش جلسات هفتگی را ندارد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 101,
+      "template_key": "therapy_session_increase_request",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی — درمان آموزشی؛ جلسه؛ افزایش؛ درخواست",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_session_increase_request» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (therapist). فرایندهای مرتبط شامل «درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "therapist"
+      ],
+      "process_codes": [
+        "therapy_session_increase"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی ثبت شده. لطفاً در پورتال بررسی فرمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 102,
+      "template_key": "therapy_session_reduction_blocked",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی — درمان آموزشی؛ جلسه؛ کاهش؛ مسدود",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_session_reduction_blocked» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "therapy_session_reduction"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "کاهش جلسات از این مسیر فقط با حداقل ۲ جلسه/هفته ممکن است. برای وقفه از فرایند وقفهٔ درمان استفاده کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 103,
+      "template_key": "therapy_session_reduction_violation_warning",
+      "suggested_panel_pattern_title_fa": "درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی — درمان آموزشی؛ جلسه؛ کاهش؛ تخلف؛ هشدار",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_session_reduction_violation_warning» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "therapy_session_reduction"
+      ],
+      "process_names_fa": [
+        "درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "هشدار انستیتو: کاهش به ۱ جلسه/هفته پیش از تکمیل ساعات، تخلف آموزشی است. ادامه را در پورتال تأیید کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 104,
+      "template_key": "therapy_terminated_notice",
+      "suggested_panel_pattern_title_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی — درمان آموزشی؛ خاتمه؛ اطلاع‌رسانی",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «therapy_terminated_notice» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "process_names_fa": [
+        "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، با ابراز تاسف در مورد قطع شدن درمان آموزشی تان به اطلاع می‌رسانیم که با توجه به اهمیت چنین رخدادی لازم می‌دانیم با شما در آینده‌ای نزدیک تماس بگیریم. با احترام کمیته درمان آموزشی و سوپرویژن.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 105,
+      "template_key": "tuition_payment_to_accounting",
+      "suggested_panel_pattern_title_fa": "آغاز ترم‌های دوره جامع — شهریه؛ پرداخت؛ حسابداری",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «tuition_payment_to_accounting» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …) (accounting). فرایندهای مرتبط شامل «آغاز ترم‌های دوره جامع» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "staff",
+      "audience_fa": "کارمندان (استاد، درمانگر، سوپروایزر، مسئول دفتر، کمیته و …)",
+      "recipient_roles": [
+        "accounting"
+      ],
+      "process_codes": [
+        "comprehensive_term_start"
+      ],
+      "process_names_fa": [
+        "آغاز ترم‌های دوره جامع"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 106,
+      "template_key": "unannounced_absence_option1_sms",
+      "suggested_panel_pattern_title_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی — بدون اعلام قبلی؛ غیبت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «unannounced_absence_option1_sms» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "process_names_fa": [
+        "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، به واسطه اینکه حداقل دو جلسه غیبت بدون اعلام کنسلی در درمان آموزشی خود داشته‌اید، یادآوری می‌شود اگر قصد غیبت دارید فرایند «کنسل کردن جلسات درمان آموزشی» را تکمیل کنید. اگر غیبت‌ها بیش از سه هفته باشند، فرایند «وقفه موقت» را تکمیل نمایید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 107,
+      "template_key": "unannounced_absence_option3_sms",
+      "suggested_panel_pattern_title_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی — بدون اعلام قبلی؛ غیبت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «unannounced_absence_option3_sms» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "process_names_fa": [
+        "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی گرامی، به واسطه ابهامی که در مورد ادامه درمان آموزشی شما به دلیل ۲ جلسه غیبت بدون اعلام کنسلی به وجود آمده، زمان جلسات شما در لیست وقت‌های آزاد قرار گرفته است. در صورت تمایل به برگشت، از فرایند «آغاز درمان آموزشی» در پورتال استفاده کنید.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 108,
+      "template_key": "unannounced_absence_reminder",
+      "suggested_panel_pattern_title_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی — بدون اعلام قبلی؛ غیبت؛ یادآوری",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «unannounced_absence_reminder» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "unannounced_absence_reaction"
+      ],
+      "process_names_fa": [
+        "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "دانشجوی محترم، شما باید غیبت خود را در جلسه درمان آموزشی مورخ {session_date} در پورتال خود مطابق فرایند کنسل کردن جلسات درمان آموزشی ثبت می‌کردید. لطفاً در صورت غیبت در جلسات آتی قبل از برگزاری جلسات این فرایند را در پورتال خود اجرا کنید.",
+      "code_placeholder_names": [
+        "session_date"
+      ],
+      "variable_mapping_note_fa": "{0} ← {session_date} (نام متغیر در کد)"
+    },
+    {
+      "row_index": 109,
+      "template_key": "unannounced_supervision_absence_reminder",
+      "suggested_panel_pattern_title_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی — بدون اعلام قبلی؛ سوپرویژن؛ غیبت؛ یادآوری",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «unannounced_supervision_absence_reminder» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "process_names_fa": [
+        "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 110,
+      "template_key": "unannounced_supervision_option1_sms",
+      "suggested_panel_pattern_title_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی — بدون اعلام قبلی؛ سوپرویژن",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «unannounced_supervision_option1_sms» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "process_names_fa": [
+        "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 111,
+      "template_key": "unannounced_supervision_option3_sms",
+      "suggested_panel_pattern_title_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی — بدون اعلام قبلی؛ سوپرویژن",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «unannounced_supervision_option3_sms» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (student). فرایندهای مرتبط شامل «واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "student"
+      ],
+      "process_codes": [
+        "unannounced_supervision_absence_reaction"
+      ],
+      "process_names_fa": [
+        "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 112,
+      "template_key": "violation_no_return",
+      "suggested_panel_pattern_title_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها — تخلف؛ عدم؛ بازگشت",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «violation_no_return» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (monitoring_committee_officer، student). فرایندهای مرتبط شامل «مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "monitoring_committee_officer",
+        "student"
+      ],
+      "process_codes": [
+        "educational_leave"
+      ],
+      "process_names_fa": [
+        "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها"
+      ],
+      "current_free_text_sms_in_code": "اخطار: عدم بازگشت از مرخصی آموزشی. تخلف ثبت شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 113,
+      "template_key": "week9_block",
+      "suggested_panel_pattern_title_fa": "آغاز درمان آموزشی — هفته نهم؛ بلوک",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «week9_block» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: هم‌زمان دانشجو و کارمند مرتبط (admin، student). فرایندهای مرتبط شامل «آغاز درمان آموزشی» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "mixed",
+      "audience_fa": "هم‌زمان دانشجو و کارمند مرتبط",
+      "recipient_roles": [
+        "admin",
+        "student"
+      ],
+      "process_codes": [
+        "start_therapy"
+      ],
+      "process_names_fa": [
+        "آغاز درمان آموزشی"
+      ],
+      "current_free_text_sms_in_code": "اخطار: مهلت هفته نهم آغاز درمان آموزشی تمام شده و دسترسی کلاس مسدود شد.",
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    },
+    {
+      "row_index": 114,
+      "template_key": "winter_calendar_published",
+      "suggested_panel_pattern_title_fa": "فرایند آماده‌سازی ترم زمستان — زمستان؛ تقویم؛ منتشر شده",
+      "gap_description_fa": "در سامانهٔ انستیتو برای کلید پیامکی «winter_calendar_published» هنوز پترن تأییدشده‌ای در ملی‌پیامک در نگاشت فعلی در نظر گرفته نشده است. گیرندگان این پیام طبق فرایند: دانشجو یا متقاضی (all_active_fall_students). فرایندهای مرتبط شامل «فرایند آماده‌سازی ترم زمستان» است. برای ارسال از خط خدماتی اشتراکی باید متن همسان در پنل ملی‌پیامک به‌صورت پترن با متغیرهای {0}، {1}، … ثبت و تأیید شود؛ سپس bodyId در برنامه یا تنظیمات نگاشت شود.",
+      "audience_code": "student_applicant",
+      "audience_fa": "دانشجو یا متقاضی",
+      "recipient_roles": [
+        "all_active_fall_students"
+      ],
+      "process_codes": [
+        "winter_semester_preparation"
+      ],
+      "process_names_fa": [
+        "فرایند آماده‌سازی ترم زمستان"
+      ],
+      "current_free_text_sms_in_code": null,
+      "code_placeholder_names": [],
+      "variable_mapping_note_fa": "در صورت نیاز متغیر با {0}، {1}، … طبق قوانین پنل تعریف شود."
+    }
+  ]
+}

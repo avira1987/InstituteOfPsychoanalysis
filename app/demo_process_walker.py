@@ -67,6 +67,10 @@ LEVEL_B_INITIAL_CONTEXT: dict[str, dict[str, Any]] = {
         "student_on_leave": False,
         "consecutive_unannounced_count": 1,
     },
+    "lesson_start_per_term": {
+        "lms": {"available_courses": ["theory_psychoanalysis_2", "skills_lab_1"]},
+        "selected_courses": ["theory_psychoanalysis_2"],
+    },
 }
 
 # هم‌تراز tests/processes/test_all_processes_level_c.py

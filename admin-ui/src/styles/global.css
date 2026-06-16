@@ -1,5 +1,4 @@
-/* ─── Vazirmatn Font ─────────────────────────────────────────── */
-@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
+/* Vazirmatn از @fontsource-variable/vazirmatn در main.jsx باندل می‌شود (بدون CDN بیرونی). */
 
 /* ─── CSS Variables ──────────────────────────────────────────── */
 :root {
@@ -157,6 +156,226 @@ input, select, textarea { font-family: inherit; }
   margin-top: 0.2rem;
   line-height: 1.35;
   letter-spacing: 0.02em;
+}
+
+.sidebar-brand-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.sidebar-brand-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+/* ─── زنگوله اعلان ───────────────────────────────────────────── */
+.notification-bell-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.notification-bell-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.notification-bell-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.notification-bell-btn--mobile {
+  background: var(--surface, #f8fafc);
+  color: var(--text, #0f172a);
+  border-color: var(--border);
+}
+
+.notification-bell-icon {
+  font-size: 1.15rem;
+}
+
+.notification-bell-badge {
+  position: absolute;
+  top: -4px;
+  inset-inline-end: -4px;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.15rem;
+  text-align: center;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.notification-bell-dropdown {
+  display: flex;
+  flex-direction: column;
+  max-height: min(70vh, 420px);
+  background: var(--surface, #fff);
+  color: var(--text, #0f172a);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.15);
+  overflow: hidden;
+}
+
+/* خارج از گرهٔ والد؛ موقعیت با JS + fixed تا overflow-x/layout بریده نکند */
+.notification-bell-dropdown--portal {
+  max-height: min(75vh, 440px);
+  box-sizing: border-box;
+}
+
+.notification-bell-dropdown-head {
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  font-size: 0.88rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.notification-bell-dropdown-foot {
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--border);
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.notification-bell-all-btn {
+  width: 100%;
+}
+
+.notification-bell-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.notification-bell-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+
+.notification-bell-item:hover {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.notification-bell-item-title {
+  font-weight: 600;
+}
+
+.notification-bell-item-summary {
+  font-size: 0.8rem;
+  color: var(--muted, #64748b);
+  line-height: 1.45;
+}
+
+.notification-bell-empty {
+  padding: 1rem;
+  font-size: 0.88rem;
+}
+
+.notifications-page-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notifications-page-row {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  overflow: hidden;
+}
+
+.notifications-page-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.15rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.notifications-page-link:hover {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.notifications-page-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.notifications-page-summary {
+  font-size: 0.86rem;
+  color: var(--muted, #64748b);
+  line-height: 1.5;
+}
+
+.notification-history-banner {
+  margin-bottom: 1.25rem;
+}
+
+.notification-history-banner-inner {
+  padding: 1rem 1.15rem;
+  border-radius: 10px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.notification-history-banner-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.notification-history-list {
+  margin: 0.5rem 0 0;
+  padding: 0 1rem 0 0;
+  list-style: disc;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.notification-history-step {
+  font-weight: 600;
+}
+
+.notification-history-meta {
+  display: block;
+  color: var(--muted, #64748b);
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
 }
 
 .sidebar-nav {
@@ -366,8 +585,11 @@ input, select, textarea { font-family: inherit; }
 .finance-panel__body {
   padding: 0 1.25rem 1.25rem;
 }
-.finance-panel__body .stats-grid {
-  margin-bottom: 0;
+.finance-panel.finance-panel--static.card {
+  padding: 1.25rem;
+}
+.finance-panel.finance-panel--static .finance-panel__body {
+  padding: 0;
 }
 
 /* ─── Stats Grid ────────────────────────────────────────────── */
@@ -459,81 +681,114 @@ tr:hover td {
   background: var(--bg);
 }
 
-/* مدیریت کاربران: جدول فشرده، بدون اسکرول افقی صفحه */
+/* مدیریت کاربران: اسکرول افقی داخل کارت تا ستون عملیات بریده نشود */
+.user-management-page {
+  min-width: 0;
+}
+
+.user-mgmt-table-scroll-hint {
+  display: none;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin: 0 0 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg-muted);
+  border-radius: var(--radius);
+}
+
+@media (max-width: 1100px) {
+  .user-mgmt-table-scroll-hint {
+    display: block;
+  }
+}
+
 .user-management-table-wrap {
-  overflow-x: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
   width: 100%;
   max-width: 100%;
+  margin: 0 -0.25rem;
+  padding: 0 0.25rem;
+  scrollbar-gutter: stable;
 }
 
 .user-management-card {
-  overflow: hidden;
+  overflow: visible;
+  min-width: 0;
 }
 
 table.table-users {
-  table-layout: fixed;
-  width: 100%;
-  font-size: 0.72rem;
+  table-layout: auto;
+  width: max(100%, 920px);
+  min-width: 920px;
+  font-size: 0.8rem;
 }
 
 table.table-users th,
 table.table-users td {
-  padding: 0.3rem 0.4rem;
-  font-size: 0.72rem;
-  line-height: 1.25;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
   vertical-align: middle;
   word-break: break-word;
 }
 
 table.table-users th {
-  padding: 0.35rem 0.4rem;
-  font-size: 0.65rem;
+  padding: 0.5rem 0.55rem;
+  font-size: 0.72rem;
   letter-spacing: 0;
   text-transform: none;
   font-weight: 700;
   color: var(--text);
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 table.table-users th:nth-child(1),
 table.table-users td:nth-child(1) {
-  width: 9%;
+  min-width: 6.5rem;
 }
 
 table.table-users th:nth-child(2),
 table.table-users td:nth-child(2) {
-  width: 12%;
+  min-width: 5rem;
 }
 
 table.table-users th:nth-child(3),
 table.table-users td:nth-child(3) {
-  width: 10%;
+  min-width: 4.5rem;
 }
 
 table.table-users th:nth-child(4),
 table.table-users td:nth-child(4) {
-  width: 21%;
+  min-width: 8rem;
 }
 
 table.table-users th:nth-child(5),
 table.table-users td:nth-child(5) {
-  width: 10%;
+  min-width: 6.5rem;
 }
 
 table.table-users th:nth-child(6),
 table.table-users td:nth-child(6) {
-  width: 7%;
+  min-width: 5rem;
 }
 
 table.table-users th:nth-child(7),
 table.table-users td:nth-child(7) {
-  width: 8%;
+  min-width: 4rem;
 }
 
 table.table-users th:nth-child(8),
 table.table-users td:nth-child(8) {
-  width: 23%;
+  min-width: 5.5rem;
+}
+
+table.table-users th:nth-child(9),
+table.table-users td:nth-child(9) {
+  min-width: 13.5rem;
 }
 
 table.table-users .table-users-cell-ellipsis {
@@ -554,13 +809,19 @@ table.table-users .table-users-cell-date {
 .user-mgmt-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.2rem;
+  gap: 0.35rem;
   align-items: center;
   justify-content: flex-start;
 }
 
 .user-mgmt-actions .btn {
   flex: 0 0 auto;
+}
+
+table.table-users .table-users-cell-actions {
+  vertical-align: top;
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
 }
 
 .badge-tight {
@@ -714,6 +975,40 @@ table.table-users td.table-users-empty {
   line-height: 1.2;
 }
 
+/* ─── Student Step Review Contrast Fix ─────────────────────── */
+.student-process-step-review {
+  margin-top: 1rem;
+  padding: 1rem 1.15rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+.student-process-step-review .student-review-text {
+  color: #0f172a !important;
+}
+.student-process-step-review .student-review-subtext {
+  color: #334155 !important;
+}
+.student-process-step-review .student-review-btn {
+  font-weight: 700;
+}
+.student-process-step-review .student-review-btn-outline {
+  border: 1px solid #475569 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+.student-process-step-review .student-review-btn-outline:disabled {
+  opacity: 0.55;
+  color: #475569 !important;
+  border-color: #94a3b8 !important;
+}
+.student-process-step-review .student-review-btn-primary {
+  border: 1px solid #1d4ed8 !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
 /* ─── Badges ────────────────────────────────────────────────── */
 .badge {
   display: inline-flex;
@@ -756,6 +1051,15 @@ table.table-users td.table-users-empty {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* مقدار فقط‌خواندنی (مثلاً شماره موبایل بعد از ثبت‌نام) — شبیه input اما بدون ورود متن */
+.form-input.form-input-display-only {
+  background: #f1f5f9;
+  color: var(--text-secondary);
+  cursor: default;
+  user-select: text;
+  box-sizing: border-box;
 }
 
 /* ─── Page Header ───────────────────────────────────────────── */
@@ -1590,6 +1894,143 @@ table.table-users td.table-users-empty {
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* ─── پیامک شبیه‌سازی‌شده (تست) ───────────────────────────────── */
+.simulated-sms-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10060;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 1rem 1rem;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease;
+}
+
+.simulated-sms-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 1.25rem 1.35rem;
+  animation: slideUp 0.25s ease;
+}
+
+.simulated-sms-close {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.simulated-sms-close:hover {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.simulated-sms-queue-badge {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: rgba(59, 130, 246, 0.12);
+  border-radius: 999px;
+}
+
+.simulated-sms-title {
+  font-size: 1.08rem;
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+  padding-left: 2.5rem;
+}
+
+.simulated-sms-sub {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: 0 0 0.85rem;
+  line-height: 1.5;
+}
+
+.simulated-sms-meta {
+  margin: 0 0 0.85rem;
+  font-size: 0.82rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.simulated-sms-meta div {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.simulated-sms-meta dt {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.simulated-sms-meta dd {
+  margin: 0;
+}
+
+.simulated-sms-body {
+  border-top: 1px solid var(--border);
+  padding-top: 0.85rem;
+}
+
+.simulated-sms-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.simulated-sms-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  background: var(--bg);
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius);
+  direction: rtl;
+}
+
+.simulated-sms-dev-hint {
+  position: fixed;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10050;
+  max-width: min(520px, calc(100vw - 2rem));
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius);
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
 /* ─── Alert ────────────────────────────────────────────────── */
 .alert {
   padding: 0.75rem 1rem;
@@ -1739,6 +2180,345 @@ table.table-users td.table-users-empty {
   color: var(--primary);
   border-bottom-color: var(--primary);
   font-weight: 600;
+}
+
+/* ─── Student portal — grouped nav + dashboard density ─────── */
+.student-portal-nav {
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-white, #fff);
+}
+
+.student-portal-nav-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg, #f9fafb);
+}
+
+.student-portal-nav-group-btn {
+  flex: 1 1 min(7.5rem, 100%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.student-portal-nav-group-btn:hover {
+  color: var(--primary);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.student-portal-nav-group-btn.active {
+  color: var(--primary);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.student-portal-nav-group-icon {
+  font-size: 1.05rem;
+}
+
+.student-portal-nav .student-portal-nav-sub.tab-bar {
+  margin-bottom: 0;
+  padding: 0.2rem 0.35rem 0;
+}
+
+.student-portal-nav-sub {
+  padding-top: 0.15rem;
+}
+
+.student-portal-alert-stack {
+  margin: 1.25rem 0;
+}
+
+.student-portal-section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 0 0 0.65rem;
+  padding: 0 0.1rem;
+}
+
+.student-portal-alert-item {
+  margin-bottom: 0.75rem;
+}
+
+.student-portal-alert-item:last-child {
+  margin-bottom: 0;
+}
+
+.student-portal-alert-card {
+  margin-bottom: 0;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+
+.student-portal-alert-card--success {
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%);
+}
+
+.student-portal-alert-card--info {
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%);
+}
+
+.student-portal-alert-card--neutral {
+  border: 1px solid rgba(120, 113, 108, 0.35);
+  background: linear-gradient(135deg, rgba(250, 250, 249, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%);
+}
+
+.student-portal-alert-card-title {
+  display: block;
+}
+
+.student-portal-alert-card-title--success {
+  color: #047857;
+}
+
+.student-portal-alert-card-title--info {
+  color: #1d4ed8;
+}
+
+.student-portal-alert-card-title--neutral {
+  color: #44403c;
+}
+
+.student-portal-alert-card-p {
+  margin: 0.45rem 0 0;
+}
+
+.student-portal-alert-overflow {
+  margin-top: 0.35rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated, var(--bg));
+  overflow: hidden;
+}
+
+.student-portal-alert-overflow-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.student-portal-alert-overflow-summary::-webkit-details-marker {
+  display: none;
+}
+
+.student-portal-alert-overflow-body {
+  padding: 0 0.75rem 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.student-next-step-strip {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.92) 0%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.student-next-step-strip-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.02em;
+  margin-bottom: 0.35rem;
+}
+
+.student-next-step-strip-text {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.student-dashboard-process-hint {
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border);
+  background: var(--bg-elevated, var(--bg));
+}
+
+.student-dashboard-process-hint-text {
+  margin: 0 0 0.65rem;
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
+.student-dashboard-process-hint-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.student-requests-card-header {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.student-requests-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.student-profile-summary-card .card-header {
+  padding-bottom: 0.5rem;
+}
+
+.student-profile-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem 1rem;
+  padding: 0 1.25rem 1.15rem;
+}
+
+.student-profile-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.student-profile-summary-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.student-profile-summary-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: right;
+  color: var(--text);
+}
+
+button.student-profile-summary-value {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--primary);
+}
+
+button.student-profile-summary-value.link-like:hover {
+  text-decoration: underline;
+}
+
+.student-quick-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.student-new-request-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.student-new-request-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: right;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.student-new-request-item-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.student-new-request-item-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.student-new-request-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.student-dashboard-stats-compact {
+  gap: 0.75rem;
+  margin-bottom: 0;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.student-dashboard-stats-compact .stat-card {
+  padding: 0.65rem 0.85rem;
+}
+
+.student-dashboard-stats-compact .stat-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+}
+
+.student-dashboard-stats-compact .stat-value {
+  font-size: 1.05rem;
+}
+
+.student-dashboard-stats-compact .stat-label {
+  font-size: 0.78rem;
+}
+
+.student-dashboard-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.student-dashboard-meta-hint {
+  font-size: 0.82rem;
 }
 
 /* ─── Inline Form ──────────────────────────────────────────── */
@@ -3080,6 +3860,10 @@ table.table-users td.table-users-empty {
   margin-bottom: 1.25rem;
 }
 
+.pub-form-group-full {
+  width: 100%;
+}
+
 .pub-form-group label {
   display: block;
   font-size: 0.88rem;
@@ -3132,6 +3916,53 @@ table.table-users td.table-users-empty {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+.pub-form-section-title {
+  margin: 1.75rem 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+.pub-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.pub-radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.student-registration-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.student-registration-profile-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.student-registration-profile-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.student-registration-profile-value {
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 /* ─── OTP Login Styles ──────────────────────────────────────── */
@@ -4128,12 +4959,15 @@ table.table-users td.table-users-empty {
   font-weight: 800;
   margin: 0 0 0.35rem;
   line-height: 1.35;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.35);
 }
 
 .quest-sub {
   font-size: 0.88rem;
-  opacity: 0.88;
   margin: 0;
+  color: #cbd5e1;
+  opacity: 1;
 }
 
 /* راهنمای فرایند برای دانشجو (داخل کارت مسیر) */
@@ -4207,6 +5041,349 @@ table.table-users td.table-users-empty {
   line-height: 1.78;
 }
 
+/* متن راهنما روی کارت مسیر (پس‌زمینه تیره): رنگ صریح برای کنتراست WCAG */
+.quest-card .spg .spg-text {
+  color: #f8fafc;
+  opacity: 1;
+}
+
+.quest-card .spg .spg-label {
+  color: #e2e8f0;
+  opacity: 0.96;
+}
+
+.quest-card .spg-block--task .spg-text--task-primary {
+  color: #fffbeb;
+  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.45);
+}
+
+.quest-card .spg-details .spg-text,
+.quest-card .spg-details .spg-label {
+  color: #e2e8f0;
+  opacity: 0.98;
+}
+
+.quest-card .spg-details-summary {
+  color: #f1f5f9;
+}
+
+/* بلوک «منتظر مرکز» و عنوان وقت مصاحبه داخل کارت مسیر */
+.quest-card .quest-staff-wait {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.75rem;
+  padding: 0.9rem 1.05rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-right: 4px solid #64748b;
+  font-size: 0.9rem;
+  line-height: 1.78;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.quest-card .quest-staff-wait-title {
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  color: #0f172a;
+  font-size: 0.88rem;
+}
+
+.quest-card .quest-staff-wait-title span {
+  font-weight: 600;
+  color: #334155;
+}
+
+.quest-card .quest-staff-wait p {
+  margin: 0;
+  color: #1e293b;
+  font-size: 0.88rem;
+}
+
+.quest-card .quest-interview-slot-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.quest-card .quest-interview-slot-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: #f1f5f9;
+  letter-spacing: 0.01em;
+}
+
+/*
+ * کارت روشن InterviewSlotPicker داخل .quest-card — والد color روشن دارد؛
+ * بدون isolation رنگ متن روی پس‌زمینه سفید دیده نمی‌شود.
+ */
+.quest-card .interview-slot-picker {
+  isolation: isolate;
+  color: #0f172a;
+}
+
+.quest-card .interview-slot-picker .card-title,
+.quest-card .interview-slot-picker .interview-slot-picker-title {
+  color: #0f172a;
+}
+
+.quest-card .interview-slot-picker .interview-slot-picker-body,
+.quest-card .interview-slot-picker .interview-slot-picker-loading,
+.quest-card .interview-slot-picker .interview-slot-picker-lead {
+  color: #334155;
+}
+
+.quest-card .interview-slot-picker .interview-slot-picker-lead {
+  opacity: 1;
+}
+
+.quest-card .interview-slot-picker .interview-slot-picker-slot-main {
+  color: #0f172a;
+}
+
+.quest-card .interview-slot-picker .interview-slot-picker-slot-meta {
+  color: #64748b;
+}
+
+/* کارت جزئیات مصاحبه پس از پرداخت — پس‌زمینه روشن داخل .quest-card */
+.quest-card .interview-paid-booking {
+  isolation: isolate;
+  color: #1e293b;
+}
+
+.quest-card .interview-paid-booking .card-title {
+  color: #15803d;
+}
+
+/* دکمهٔ برجستهٔ ورود به جلسهٔ آنلاین (مصاحبه / الوکام) */
+.online-meeting-join-cta {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.online-meeting-join-cta--compact {
+  margin-top: 0.35rem;
+}
+
+.online-meeting-join-cta__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.online-meeting-join-cta__copy-btn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.online-meeting-join-cta__copy-btn--compact {
+  padding: 0.35rem 0.55rem;
+  font-size: 0.74rem;
+}
+
+.online-meeting-join-cta__copy-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.online-meeting-join-cta__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 22rem;
+  padding: 0.85rem 1.25rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: not-allowed;
+  background: #e2e8f0;
+  color: #64748b;
+  box-shadow: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.online-meeting-join-cta--compact .online-meeting-join-cta__btn {
+  max-width: 100%;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.88rem;
+}
+
+.online-meeting-join-cta__btn--active {
+  cursor: pointer;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
+}
+
+.online-meeting-join-cta__btn--active:hover {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.45);
+  color: #fff;
+}
+
+.online-meeting-join-cta__icon {
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.online-meeting-join-cta__hint {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.online-meeting-join-cta__hint--success {
+  color: #15803d;
+}
+
+.online-meeting-join-cta__hint--warn {
+  color: #b45309;
+}
+
+.online-meeting-join-cta__location-label {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin-left: 0.35rem;
+}
+
+.online-meeting-join-cta__location {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.quest-card .online-meeting-join-cta__hint {
+  color: #475569;
+}
+
+.quest-card .online-meeting-join-cta__hint--success {
+  color: #15803d;
+}
+
+/* پنل پرداخت (زیبال/زرین‌پال) — پس‌زمینه روشن داخل .quest-card؛ بدون reset، متن از والد #e0e7ff می‌گیرد و کنتراست صفر است */
+.quest-card .sep-payment-panel {
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+  color: #0f172a;
+}
+
+.quest-card .sep-payment-panel h3 {
+  color: #0f172a;
+}
+
+.quest-card .sep-payment-panel .sep-payment-desc {
+  color: #334155;
+}
+
+.quest-card .sep-payment-panel .sep-payment-desc strong {
+  color: #0f172a;
+}
+
+.quest-card .sep-payment-panel .sep-payment-amount {
+  color: #0f172a;
+}
+
+/* دکمه outline برای پس‌زمینه روشن — غلبه بر .quest-card .btn-outline */
+.quest-card .sep-payment-panel .btn-outline {
+  color: #3730a3 !important;
+  border-color: #a5b4fc !important;
+  background: #ffffff !important;
+}
+
+.quest-card .sep-payment-panel .btn-outline:hover:not(:disabled) {
+  background: #eef2ff !important;
+  border-color: #818cf8 !important;
+  color: #312e81 !important;
+}
+
+.quest-card .sep-payment-panel--warn {
+  isolation: isolate;
+  color: #78350f;
+}
+
+.quest-card .sep-payment-panel--warn strong {
+  color: #92400e;
+}
+
+.spg-details {
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+}
+
+.spg--light .spg-details {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated, var(--bg));
+}
+
+.spg-details-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
+  user-select: none;
+}
+
+.spg-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.spg-details-summary::after {
+  content: '';
+  display: inline-block;
+  margin-inline-end: 0.35rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  vertical-align: middle;
+  opacity: 0.65;
+}
+
+.spg-details[open] .spg-details-summary::after {
+  transform: rotate(135deg);
+  margin-bottom: -0.1rem;
+}
+
+.spg--light .spg-details-summary {
+  color: var(--text);
+}
+
+.spg-details-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0 0.75rem 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.spg--light .spg-details-inner {
+  border-top-color: var(--border);
+}
+
 .quest-desc {
   font-size: 0.9rem;
   opacity: 0.9;
@@ -4274,13 +5451,276 @@ table.table-users td.table-users-empty {
 .quest-current-label {
   display: block;
   font-size: 0.72rem;
-  opacity: 0.75;
   margin-bottom: 0.25rem;
+  color: #cbd5e1;
+  opacity: 0.98;
 }
 
 .quest-current-value {
   font-size: 1.05rem;
   color: #fef08a;
+}
+
+.student-sms-history {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-lg);
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 4px solid rgba(59, 130, 246, 0.65);
+}
+
+.student-sms-history--process-tab {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-right: 4px solid var(--primary);
+}
+
+.student-sms-history-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.student-sms-history-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.student-sms-history-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.student-sms-history-toggle:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.student-sms-history-toggle-icon {
+  font-size: 0.65rem;
+  opacity: 0.85;
+}
+
+.student-sms-history--process-tab .student-sms-history-toggle {
+  border-color: var(--border);
+  background: #f1f5f9;
+  color: var(--text-secondary);
+}
+
+.student-sms-history--process-tab .student-sms-history-toggle:hover {
+  background: #e2e8f0;
+}
+
+.student-sms-history-list--latest {
+  margin-bottom: 0;
+}
+
+.student-sms-history-older {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.student-sms-history--process-tab .student-sms-history-older {
+  border-top-color: var(--border);
+}
+
+.student-sms-history-older-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.student-sms-history--process-tab .student-sms-history-older-label {
+  color: var(--text-secondary);
+}
+
+.student-sms-history-older-scroll {
+  margin: 0;
+}
+
+.student-sms-history-older-scroll--limited {
+  max-height: min(28rem, 52vh);
+  overflow-y: auto;
+  padding-left: 0.15rem;
+  scrollbar-width: thin;
+}
+
+.student-sms-history-older-scroll--limited::-webkit-scrollbar {
+  width: 6px;
+}
+
+.student-sms-history-older-scroll--limited::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+}
+
+.student-sms-history-more-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.65rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: #bfdbfe;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.student-sms-history-more-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.student-sms-history--process-tab .student-sms-history-more-btn {
+  border-color: #cbd5e1;
+  color: var(--primary);
+}
+
+.student-sms-history--process-tab .student-sms-history-more-btn:hover {
+  background: #f1f5f9;
+}
+
+.student-sms-history-item--latest {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.student-sms-history-item-subject {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  margin-bottom: 0.35rem;
+}
+
+.student-sms-history--process-tab .student-sms-history-item-subject {
+  color: var(--text-secondary);
+}
+
+.quest-card .student-sms-history-toggle {
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.quest-card .student-sms-history-more-btn {
+  color: #bfdbfe;
+}
+
+.student-sms-history--process-tab .student-sms-history-title {
+  color: var(--text);
+}
+
+.student-sms-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.student-sms-history-item {
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.student-sms-history--process-tab .student-sms-history-item {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.student-sms-history-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.student-sms-history-item-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.student-sms-history--process-tab .student-sms-history-item-label {
+  color: var(--text-secondary);
+}
+
+.student-sms-history-item-when {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.student-sms-history--process-tab .student-sms-history-item-when {
+  color: #64748b;
+}
+
+.student-sms-history-message {
+  margin: 0;
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 0.75rem 0.85rem;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  direction: rtl;
+}
+
+.student-sms-history--process-tab .student-sms-history-message {
+  background: #ffffff;
+  color: #1e293b;
+}
+
+/* کارت تیره quest-card — متن روشن والد روی باکس سفید کنtrast صفر می‌سازد */
+.quest-card .student-sms-history {
+  color: #e2e8f0;
+}
+
+.quest-card .student-sms-history-title {
+  color: #f1f5f9;
+}
+
+.quest-card .student-sms-history-item-label {
+  color: #e2e8f0;
+}
+
+.quest-card .student-sms-history-item-when {
+  color: #94a3b8;
+}
+
+.quest-card .student-sms-history-message {
+  color: #0f172a;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.quest-card .student-sms-history-item {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .quest-actions-title {
@@ -4768,6 +6208,17 @@ select.psf-input:focus {
   height: 1.05rem;
   accent-color: var(--primary);
   flex-shrink: 0;
+}
+
+.psf-inline-link {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.psf-inline-link:hover {
+  color: var(--primary-hover, #2563eb);
 }
 
 .psf-file {
@@ -5395,4 +6846,81 @@ select.psf-input:focus {
   margin-top: 0.85rem;
   padding-top: 1rem;
   border-top: 1px dashed var(--border);
+}
+
+/* صندوق پیگیری مدیر اصلی — ردیف تمام‌عرض قابل کلیک */
+.operator-followup-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.operator-followup-list li {
+  margin-bottom: 0.45rem;
+}
+
+.operator-followup-row-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-white);
+  transition: var(--transition);
+}
+
+.operator-followup-row-link:hover {
+  border-color: var(--primary-light);
+  background: var(--primary-light);
+  box-shadow: var(--shadow);
+}
+
+.operator-followup-title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.operator-followup-meta {
+  display: inline;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+}
+
+.operator-followup-dest {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--primary);
+}
+
+/* یادآوری کارتابل در پنل‌های اپراتور */
+.operator-portal-reminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--primary-light, #eff6ff);
+  font-size: 0.9rem;
+}
+
+.operator-portal-reminder-text {
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.operator-portal-reminder-link {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.operator-portal-reminder-link:hover {
+  text-decoration: underline;
 }

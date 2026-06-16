@@ -60,6 +60,39 @@ export function resolveCheckboxListOptions(field, contextData) {
     }
   }
 
+  if (src === 'lms_available_courses') {
+    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
+    const lms = ctx.lms && typeof ctx.lms === 'object' ? ctx.lms : {}
+    const raw =
+      lms.available_courses ||
+      lms.enrolled_courses ||
+      ctx.available_courses ||
+      ctx.selected_courses ||
+      []
+    const codes = Array.isArray(raw) ? raw : []
+    const options = codes
+      .filter(x => x != null && String(x).trim() !== '')
+      .map(code => {
+        const s = String(code)
+        return { value: s, label_fa: s }
+      })
+    const maxSelect =
+      typeof field?.max_select === 'number' && field.max_select > 0
+        ? field.max_select
+        : field?.max_select === 1 || field?.maxSelect === 1
+          ? 1
+          : null
+    return {
+      options,
+      maxSelect,
+      hint:
+        options.length === 0
+          ? 'هنوز درسی در پروندهٔ آموزشی شما ثبت نشده؛ پس از ثبت‌نام ترم یا با پذیرش هماهنگ کنید.'
+          : null,
+      useFallback: options.length === 0,
+    }
+  }
+
   if (src === 'therapy_reduction_upcoming_sessions') {
     const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const raw = ctx.upcoming_therapy_sessions

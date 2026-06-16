@@ -26,7 +26,9 @@
       "sla_hours": 48,
       "metadata": {
         "student_short_fa": "منتظر تصمیم درمانگر",
-        "student_task_fa": "درمانگر در حال بررسی زمان پیشنهادی شماست؛ پس از اعلام نتیجه همین صفحه را تازه کنید. در صورت پیشنهاد زمان جدید، پیامک دریافت می‌کنید."
+        "student_task_fa": "درمانگر در حال بررسی زمان پیشنهادی شماست؛ پس از اعلام نتیجه همین صفحه را تازه کنید. در صورت پیشنهاد زمان جدید، پیامک دریافت می‌کنید.",
+        "operator_task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+        "operator_short_fa": "بررسی و تصمیم درمانگر"
       }
     },
     {
@@ -113,7 +115,10 @@
     {
       "title_fa": "جزئیات تصمیم درمانگر (در صورت پیشنهاد جایگزین)",
       "used_in_state": "therapist_review",
-      "visible_to": ["therapist", "admin"],
+      "visible_to": [
+        "therapist",
+        "admin"
+      ],
       "fields": [
         {
           "name": "therapist_alternative_date",
@@ -136,10 +141,19 @@
       "to": "therapist_review",
       "trigger": "day_time_entered",
       "required_role": "student",
-      "conditions": ["comprehensive_course_only"],
+      "conditions": [
+        "comprehensive_course_only"
+      ],
       "description_fa": "دانشجو روز و ساعت جلسه جدید را وارد کرد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "therapy_session_increase_request", "recipients": ["therapist"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_session_increase_request",
+          "recipients": [
+            "therapist"
+          ]
+        }
       ]
     },
     {
@@ -149,8 +163,18 @@
       "required_role": "therapist",
       "description_fa": "درمانگر زمان پیشنهادی را تایید کرد",
       "actions": [
-        {"type": "add_recurring_therapy_session", "weekly_increment": 1},
-        {"type": "notification", "notification_type": "in_app", "template": "therapy_session_increase_approved", "recipients": ["student"]}
+        {
+          "type": "add_recurring_therapy_session",
+          "weekly_increment": 1
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "therapy_session_increase_approved",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -160,7 +184,14 @@
       "required_role": "therapist",
       "description_fa": "درمانگر زمان را رد و پیشنهاد جایگزین داد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "therapy_session_increase_alternative", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_session_increase_alternative",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -170,8 +201,22 @@
       "required_role": "therapist",
       "description_fa": "درمانگر امکان افزایش جلسه را ندارد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "therapy_session_increase_rejected", "recipients": ["student"]},
-        {"type": "notification", "notification_type": "in_app", "template": "therapy_session_increase_rejected", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_session_increase_rejected",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "therapy_session_increase_rejected",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -181,8 +226,18 @@
       "required_role": "student",
       "description_fa": "دانشجو پیشنهاد درمانگر را تایید کرد",
       "actions": [
-        {"type": "add_recurring_therapy_session", "weekly_increment": 1},
-        {"type": "notification", "notification_type": "in_app", "template": "therapy_session_increase_approved", "recipients": ["student"]}
+        {
+          "type": "add_recurring_therapy_session",
+          "weekly_increment": 1
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "therapy_session_increase_approved",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -192,7 +247,14 @@
       "required_role": "student",
       "description_fa": "دانشجو روز و ساعت دیگری وارد کرد — بازگشت به درمانگر",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "therapy_session_increase_request", "recipients": ["therapist"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_session_increase_request",
+          "recipients": [
+            "therapist"
+          ]
+        }
       ]
     }
   ]

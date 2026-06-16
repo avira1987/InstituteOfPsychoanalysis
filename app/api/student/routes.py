@@ -18,6 +18,7 @@ from app.services.student_registration import (
     build_complete_registration_response,
     commit_registration_or_rollback,
     create_student_profile_for_user,
+    find_student_by_national_code,
 )
 from app.services.student_service import StudentService
 from app.services.student_tracker_summary import summarize_primary_path_for_student
@@ -27,6 +28,11 @@ from app.api.public_routes import (
     _validate_registration_data,
     _normalize_phone,
     validate_national_code_ir,
+)
+from app.services.student_registration_profile import (
+    StudentRegistrationProfileFields,
+    registration_profile_from_extra,
+    validate_registration_profile_fields,
 )
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
@@ -57,16 +63,26 @@ class StudentUpdate(BaseModel):
     )
 
 
-class CompleteStudentRegistrationBody(BaseModel):
+class CompleteStudentRegistrationBody(StudentRegistrationProfileFields):
     """تکمیل ثبت‌نام پس از ورود با OTP؛ شماره موبایل از حساب کاربری خوانده می‌شود."""
 
     full_name_fa: str = Field(..., min_length=1, description="نام و نام خانوادگی")
     national_code: str = Field(..., min_length=1, description="کد ملی")
-    email: Optional[str] = None
+    email: str = Field(..., min_length=1, description="ایمیل")
     education_level: Optional[str] = None
     field_of_study: Optional[str] = None
     course_type: Literal["introductory", "comprehensive"] = "introductory"
     motivation: Optional[str] = None
+
+
+class StudentRegistrationProfileUpdate(StudentRegistrationProfileFields):
+    """ویرایش فیلدهای تکمیلی ثبت‌نام (ادمین/کارمند)."""
+
+
+class RegistrationCourseTypeUpdate(BaseModel):
+    """تغییر نوع دورهٔ انتخاب‌شده در فرم اولیهٔ ثبت‌نام."""
+    course_type: Literal["introductory", "comprehensive"]
+    reason: Optional[str] = Field(None, max_length=2000)
 
 
 class StudentResponse(BaseModel):
@@ -169,7 +185,7 @@ def _student_to_response(s: Student, tracker: Optional[dict] = None) -> StudentR
 @router.get("", response_model=list[StudentResponse])
 async def list_students(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "staff", "therapist", "supervisor", "site_manager", "progress_committee", "education_committee", "supervision_committee", "specialized_commission", "therapy_committee_chair", "therapy_committee_executor", "deputy_education", "monitoring_committee_officer")),
+    current_user: User = Depends(require_role("admin", "staff", "interviewer", "therapist", "supervisor", "site_manager", "progress_committee", "education_committee", "supervision_committee", "specialized_commission", "therapy_committee_chair", "therapy_committee_executor", "deputy_education", "monitoring_committee_officer")),
     tracker_summary: bool = Query(False, description="پیشرفت تقریبی مسیر اصلی و اقدام معلق (دید دانشجو)"),
 ):
     """List all students (admin/staff/committee/therapist/supervisor)."""
@@ -182,6 +198,37 @@ async def list_students(
         if tracker_summary:
             tr = await summarize_primary_path_for_student(db, s)
         out.append(_student_to_response(s, tr))
+    return out
+
+
+class TherapistDirectoryEntry(BaseModel):
+    id: str
+    label_fa: str
+
+
+@router.get("/therapists", response_model=list[TherapistDirectoryEntry])
+async def list_therapists(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(
+        require_role("student", "admin", "staff", "interviewer", "supervisor", "site_manager")
+    ),
+):
+    """فهرست درمانگران آموزشی برای انتخاب توسط دانشجو (نام نمایشی + شناسه).
+
+    جایگزین ورود دستی UUID؛ دانشجو از یک فهرست کشویی درمانگر را برمی‌گزیند.
+    """
+    stmt = (
+        select(User)
+        .where(User.role == "therapist")
+        .order_by(User.full_name_fa.asc())
+    )
+    result = await db.execute(stmt)
+    therapists = result.scalars().all()
+    out: list[TherapistDirectoryEntry] = []
+    for u in therapists:
+        name = (u.full_name_fa or u.full_name_en or "").strip()
+        label = name or (u.phone or str(u.id))
+        out.append(TherapistDirectoryEntry(id=str(u.id), label_fa=label))
     return out
 
 
@@ -215,9 +262,26 @@ async def complete_student_registration(
         field_of_study=body.field_of_study,
         course_type=body.course_type,
         motivation=body.motivation,
+        **validate_registration_profile_fields(body),
     )
     _validate_registration_data(synth)
     nc = validate_national_code_ir(body.national_code or "")
+
+    existing_nc = await find_student_by_national_code(db, nc)
+    if existing_nc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "duplicate_national_id",
+                "message": (
+                    "این کد ملی قبلاً برای یک پروندهٔ دانشجویی دیگر ثبت شده است. "
+                    "کد ملی را بررسی کنید. "
+                    "اگر کد متعلق به شماست و با شمارهٔ موبایل دیگری وارد شده‌اید، "
+                    "از «تیکت‌ها و درخواست‌ها» درخواست دهید و هنگام ثبت تیکت، گزینهٔ "
+                    "«ثبت درخواست بدون پروفایل دانشجویی» را فعال کنید تا همکاران بررسی کنند."
+                ),
+            },
+        )
 
     email_value = (body.email or "").strip() or None
     if email_value:
@@ -238,6 +302,7 @@ async def complete_student_registration(
         motivation=body.motivation,
         national_code=nc,
         registration_source="otp_then_complete",
+        profile_extra=validate_registration_profile_fields(body),
     )
     try:
         await commit_registration_or_rollback(db)
@@ -318,11 +383,18 @@ async def get_student(
     current_user: User = Depends(get_current_user),
 ):
     """Get a student profile."""
-    stmt = select(Student).where(Student.id == uuid.UUID(student_id))
-    result = await db.execute(stmt)
-    student = result.scalars().first()
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
+    from app.core.resource_access import ensure_can_read_student
+    from app.core.audit import AuditLogger
+
+    student = await ensure_can_read_student(db, current_user, uuid.UUID(student_id))
+    audit = AuditLogger(db)
+    await audit.log(
+        action_type="pii_access",
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        actor_name=current_user.full_name_fa,
+        details={"resource": "student", "student_id": student_id},
+    )
 
     return StudentResponse(
         id=str(student.id),
@@ -379,3 +451,109 @@ async def update_student(
         weekly_sessions=student.weekly_sessions,
         extra_data=_extra_for_response(student.extra_data),
     )
+
+
+async def _student_for_user_id(db: AsyncSession, user_id: uuid.UUID) -> Student:
+    stmt = select(Student).where(Student.user_id == user_id)
+    student = (await db.execute(stmt)).scalars().first()
+    if not student:
+        raise HTTPException(status_code=404, detail="پروفایل دانشجویی یافت نشد.")
+    return student
+
+
+@router.get("/by-user/{user_id}/registration-profile")
+async def get_registration_profile_by_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff")),
+):
+    """اطلاعات تکمیلی ثبت‌نام دانشجو برای پنل ادمین."""
+    student = await _student_for_user_id(db, uuid.UUID(user_id))
+    extra = StateMachineEngine._as_mapping(student.extra_data)
+    user_stmt = select(User).where(User.id == uuid.UUID(user_id))
+    user = (await db.execute(user_stmt)).scalars().first()
+    return {
+        "student_id": str(student.id),
+        "user_id": user_id,
+        "course_type": student.course_type,
+        "email": user.email if user else None,
+        "education_level": extra.get("education_level"),
+        "field_of_study": extra.get("field_of_study"),
+        "motivation": extra.get("motivation"),
+        "national_code": extra.get("national_code"),
+        **registration_profile_from_extra(extra),
+    }
+
+
+async def _apply_registration_course_type_change(
+    db: AsyncSession,
+    student: Student,
+    body: RegistrationCourseTypeUpdate,
+    current_user: User,
+) -> dict:
+    service = StudentService(db)
+    try:
+        result = await service.change_registration_course_type(
+            student,
+            body.course_type,
+            current_user,
+            reason=body.reason,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.flush()
+    return {
+        "student_id": str(student.id),
+        "user_id": str(student.user_id),
+        **result,
+    }
+
+
+@router.patch("/{student_id}/registration-course-type")
+async def update_registration_course_type(
+    student_id: str,
+    body: RegistrationCourseTypeUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff")),
+):
+    """ادمین/مسئول پذیرش: تغییر نوع دورهٔ انتخاب‌شده در فرم اولیهٔ ثبت‌نام."""
+    stmt = select(Student).where(Student.id == uuid.UUID(student_id))
+    student = (await db.execute(stmt)).scalars().first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return await _apply_registration_course_type_change(db, student, body, current_user)
+
+
+@router.patch("/by-user/{user_id}/registration-course-type")
+async def update_registration_course_type_by_user(
+    user_id: str,
+    body: RegistrationCourseTypeUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff")),
+):
+    """همان تغییر نوع دوره، با شناسهٔ کاربر."""
+    student = await _student_for_user_id(db, uuid.UUID(user_id))
+    return await _apply_registration_course_type_change(db, student, body, current_user)
+
+
+@router.patch("/by-user/{user_id}/registration-profile")
+async def update_registration_profile_by_user(
+    user_id: str,
+    body: StudentRegistrationProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff")),
+):
+    """ویرایش اطلاعات تکمیلی ثبت‌نام دانشجو."""
+    student = await _student_for_user_id(db, uuid.UUID(user_id))
+    patch = validate_registration_profile_fields(body, require_all=False)
+    merged = dict(StateMachineEngine._as_mapping(student.extra_data))
+    merged.update(patch)
+    student.extra_data = merged
+    flag_modified(student, "extra_data")
+    await db.flush()
+    extra = StateMachineEngine._as_mapping(student.extra_data)
+    return {
+        "student_id": str(student.id),
+        "user_id": user_id,
+        **registration_profile_from_extra(extra),
+    }

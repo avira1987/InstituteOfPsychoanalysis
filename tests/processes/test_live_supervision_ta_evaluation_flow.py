@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.engine import StateMachineEngine
-from app.meta.seed import load_process
+from app.meta.seed import load_process, load_rules
 
 
 @pytest.mark.asyncio
@@ -19,6 +19,7 @@ class TestLiveSupervisionTaEvaluationFlow:
         process_file = processes_dir / "live_supervision_ta_evaluation.json"
         assert process_file.exists()
 
+        await load_rules(db_session)
         await load_process(db_session, process_file)
         await db_session.commit()
 
@@ -40,6 +41,7 @@ class TestLiveSupervisionTaEvaluationFlow:
     ):
         """سناریوی قبولی: session_18_completed → evaluation_computed → passed."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_rules(db_session)
         await load_process(db_session, processes_dir / "live_supervision_ta_evaluation.json")
         await db_session.commit()
 
@@ -49,6 +51,7 @@ class TestLiveSupervisionTaEvaluationFlow:
             student_id=sample_student.id,
             actor_id=sample_user.id,
             actor_role="system",
+            initial_context={"ta_final_score": 80},
         )
         await db_session.commit()
 
@@ -71,7 +74,7 @@ class TestLiveSupervisionTaEvaluationFlow:
             actor_role="system",
         )
         await db_session.commit()
-        assert result.success is True
+        assert result.success is True, result.error
         assert result.to_state == "passed"
 
         instance = await engine.get_process_instance(instance.id)

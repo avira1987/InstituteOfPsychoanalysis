@@ -62,7 +62,7 @@ export async function patchStudentAsAdmin(
 }
 
 /**
- * Soft-delete E2E user: requires admin (not staff) — matches DELETE /api/admin/users/{id}.
+ * Soft-delete E2E user: requires admin (not staff) — DELETE /api/admin/users/{id} (no permanent; use ?permanent=true for hard delete).
  * Safe to call when cleanup is best-effort (logs non-2xx, does not throw).
  */
 export async function deactivateUserAsAdmin(

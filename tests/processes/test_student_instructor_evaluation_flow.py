@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.engine import StateMachineEngine
-from app.meta.seed import load_process
+from app.meta.seed import load_process, load_rules
 
 
 @pytest.mark.asyncio
@@ -19,6 +19,7 @@ class TestStudentInstructorEvaluationFlow:
         process_file = processes_dir / "student_instructor_evaluation.json"
         assert process_file.exists()
 
+        await load_rules(db_session)
         await load_process(db_session, process_file)
         await db_session.commit()
 
@@ -40,6 +41,7 @@ class TestStudentInstructorEvaluationFlow:
     ):
         """سناریو: evaluation_open → evaluation_closed با trigger deadline_reached."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_rules(db_session)
         await load_process(db_session, processes_dir / "student_instructor_evaluation.json")
         await db_session.commit()
 
@@ -56,7 +58,7 @@ class TestStudentInstructorEvaluationFlow:
             instance_id=instance.id,
             trigger_event="deadline_reached",
             actor_id=sample_user.id,
-            actor_role="student",
+            actor_role="admin",
         )
         await db_session.commit()
 

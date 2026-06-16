@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "description": "قواعد تشخیص کمبود فرایند per-student — enabled را true کنید تا در صندوق (با include_gaps=true) بررسی شود.",
+  "rules": [
+    {
+      "id": "gap_intro_course_registration",
+      "title_fa": "دانشجوی دوره آشنایی بدون نمونه فرایند «ثبت‌نام دوره آشنایی»",
+      "enabled": false,
+      "expect": "missing_instance",
+      "process_code": "introductory_course_registration",
+      "student_filter": {
+        "course_type": "introductory"
+      }
+    },
+    {
+      "id": "gap_comprehensive_course_registration",
+      "title_fa": "دانشجوی دوره جامع بدون نمونه فرایند «ثبت‌نام دوره جامع»",
+      "enabled": false,
+      "expect": "missing_instance",
+      "process_code": "comprehensive_course_registration",
+      "student_filter": {
+        "course_type": "comprehensive"
+      }
+    }
+  ]
+}

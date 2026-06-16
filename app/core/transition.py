@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.meta_models import TransitionDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance, StateHistory
+from app.core.interview_result_access import is_interview_result_trigger
 from app.core.rule_engine import RuleEvaluator, RuleResult
 
 
@@ -95,18 +96,47 @@ class TransitionManager:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    def validate_role(self, transition: TransitionDefinition, actor_role: str) -> bool:
+    def validate_role(
+        self,
+        transition: TransitionDefinition,
+        actor_role: str,
+        trigger_event: str | None = None,
+    ) -> bool:
         """Check if the actor's role is authorized for this transition."""
         required = transition.required_role
-        if not required:
-            return True
+        te = trigger_event or transition.trigger_event
         # Allow admin to do everything
         if actor_role == "admin":
             return True
-        # Allow system transitions
-        if required == "system":
+        # ثبت نتیجهٔ مصاحبه: فقط مصاحبه‌گر (مالکیت در engine بررسی می‌شود) یا ادمین
+        if is_interview_result_trigger(te):
+            return actor_role == "interviewer"
+        # Legacy metadata: missing required_role used to mean «everyone» — that exposed
+        # system/webhook transitions (e.g. payment_successful) to the student portal.
+        if not required:
+            if actor_role == "student":
+                return False
             return True
+        # Callbacks/cron only (e.g. payment gateway uses actor_role="system")
+        if required == "system":
+            if actor_role == "system":
+                return True
+            if te == "interview_time_reached" and actor_role in (
+                "interviewer",
+                "staff",
+                "site_manager",
+                "deputy_education",
+            ):
+                return True
+            return False
         if actor_role == required:
+            return True
+        if required == "interviewer" and actor_role in (
+            "interviewer",
+            "staff",
+            "site_manager",
+            "deputy_education",
+        ):
             return True
         # متادیتای ثبت‌نام: «applicant» همان نقش دانشجو در پنل است
         if required == "applicant" and actor_role == "student":
@@ -124,6 +154,17 @@ class TransitionManager:
             "site_manager",
             "deputy_education",
         ):
+            return True
+        # آماده‌سازی ترم پاییز/زمستان (فرایند ۲۹ و ۳۰):
+        # نقش‌های متادیتا با نقش پنل «معاون آموزش» انجام می‌شوند.
+        if required in (
+            "deputy_education_director",
+            "course_committee_executive",
+            "scientific_officer_course_committee",
+        ) and actor_role == "deputy_education":
+            return True
+        # افسر علمی کمیته دروس در پنل کارمند هم در دسترس است.
+        if required == "scientific_officer_course_committee" and actor_role == "staff":
             return True
         return False
 

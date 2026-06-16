@@ -25,6 +25,8 @@ from app.models.operational_models import ProcessInstance, Student, User
 
 PROCESSES_DIR = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
 
+pytestmark = pytest.mark.e2e
+
 
 @pytest_asyncio.fixture
 async def journey_admin(db_session: AsyncSession) -> User:
@@ -135,15 +137,10 @@ async def test_student_admin_roundtrip_registration_therapy_and_intro_course_com
     await db_session.commit()
     assert r.success, r.error
 
-    r = await engine.execute_transition(
-        instance_id=reg.id,
-        trigger_event="proceed_to_documents",
-        actor_id=admin_id,
-        actor_role="admin",
-        payload=None,
+    reg = await engine.get_process_instance(reg.id)
+    assert reg.current_state_code == "documents_upload", (
+        "پس از نتیجهٔ پذیرش باید خودکار به بارگذاری مدارک برود"
     )
-    await db_session.commit()
-    assert r.success, r.error
 
     r = await engine.execute_transition(
         instance_id=reg.id,

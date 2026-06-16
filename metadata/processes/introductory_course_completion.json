@@ -8,12 +8,46 @@
     "initial_state": "all_courses_passed"
   },
   "states": [
-    {"code": "all_courses_passed", "name_fa": "قبولی در تمام دروس دوره آشنایی", "type": "initial", "assigned_role": "system"},
-    {"code": "invitation_sent", "name_fa": "ارسال دعوتنامه ثبت‌نام دوره جامع", "type": "intermediate", "assigned_role": "system"},
-    {"code": "certificate_draft_generated", "name_fa": "پیش‌نویس گواهی تولید شده", "type": "intermediate", "assigned_role": "system"},
-    {"code": "certificate_review", "name_fa": "بررسی و تایید کمیته نظارت", "type": "intermediate", "assigned_role": "supervision_committee"},
-    {"code": "certificate_approved", "name_fa": "گواهی تایید و در پورتال بارگذاری شده", "type": "intermediate", "assigned_role": "system"},
-    {"code": "process_complete", "name_fa": "فرایند تکمیل شد", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "all_courses_passed",
+      "name_fa": "قبولی در تمام دروس دوره آشنایی",
+      "type": "initial",
+      "assigned_role": "system"
+    },
+    {
+      "code": "invitation_sent",
+      "name_fa": "ارسال دعوتنامه ثبت‌نام دوره جامع",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "certificate_draft_generated",
+      "name_fa": "پیش‌نویس گواهی تولید شده",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "certificate_review",
+      "name_fa": "بررسی و تایید کمیته نظارت",
+      "type": "intermediate",
+      "assigned_role": "supervision_committee",
+      "metadata": {
+        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
+        "operator_short_fa": "بررسی و تایید کمیته نظارت"
+      }
+    },
+    {
+      "code": "certificate_approved",
+      "name_fa": "گواهی تایید و در پورتال بارگذاری شده",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "process_complete",
+      "name_fa": "فرایند تکمیل شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
@@ -26,10 +60,13 @@
           "type": "notification",
           "notification_type": "sms",
           "template": "comprehensive_course_invitation",
-          "recipients": ["student"],
+          "recipients": [
+            "student"
+          ],
           "message_fa": "دانشجوی گرامی موضوع: درخواست ورود به دوره جامع - به اطلاع میرساند که مهلت شما برای درخواست ورود به دوره جامع رواندرمانی تحلیلی در انستیتو روانکاوی تهران، تاریخ {deadline_date} می باشد."
         }
-      ]
+      ],
+      "required_role": "system"
     },
     {
       "from": "invitation_sent",
@@ -40,12 +77,20 @@
         {
           "type": "generate_certificate",
           "certificate_template": "introductory_completion",
-          "fields": ["student_name", "id_number", "national_code", "completion_date", "total_units", "total_hours"],
+          "fields": [
+            "student_name",
+            "id_number",
+            "national_code",
+            "completion_date",
+            "total_units",
+            "total_hours"
+          ],
           "hours_formula": "total_units * 13.5",
           "certificate_text_fa": "گواهی میشود جناب آقای/سرکار خانم {student_name} با شماره شناسنامه {id_number} و کد ملی {national_code} دوره یک ساله آشنایی کاربردی با رویکرد روانکاوی معاصر که شامل {total_units} واحد ({total_hours} ساعت) آموزش در دروس تئوری و تکنیک رواندرمانی تحلیلی می باشد را در تاریخ {completion_date} تکمیل کرده است.",
           "signed_by": "یاسمن اکرامی - مسئول علمی کمیته پیشرفت"
         }
-      ]
+      ],
+      "required_role": "system"
     },
     {
       "from": "certificate_draft_generated",
@@ -53,8 +98,16 @@
       "trigger": "draft_ready_for_review",
       "description_fa": "پیش‌نویس گواهی آماده بررسی کمیته نظارت",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "certificate_review_needed", "recipients": ["supervision_committee"]}
-      ]
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "certificate_review_needed",
+          "recipients": [
+            "supervision_committee"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "certificate_review",
@@ -63,8 +116,12 @@
       "required_role": "supervision_committee",
       "description_fa": "کمیته نظارت گواهی را تایید و مهر/امضای الکترونیکی زد",
       "actions": [
-        {"type": "apply_electronic_signature_and_seal"},
-        {"type": "upload_certificate_to_portal"}
+        {
+          "type": "apply_electronic_signature_and_seal"
+        },
+        {
+          "type": "upload_certificate_to_portal"
+        }
       ]
     },
     {
@@ -74,7 +131,14 @@
       "required_role": "supervision_committee",
       "description_fa": "کمیته نظارت اصلاحاتی درخواست کرد — بازگشت برای ویرایش پیش‌نویس",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "certificate_revision_requested", "recipients": ["admin"]}
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "certificate_revision_requested",
+          "recipients": [
+            "admin"
+          ]
+        }
       ]
     },
     {
@@ -87,16 +151,21 @@
           "type": "notification",
           "notification_type": "sms",
           "template": "certificate_ready_for_download",
-          "recipients": ["student"],
+          "recipients": [
+            "student"
+          ],
           "message_fa": "گواهی پایان دوره شما صادر و در پورتال آموزشی (LMS) آماده دانلود می‌باشد."
         },
         {
           "type": "notification",
           "notification_type": "in_app",
           "template": "certificate_ready_for_download",
-          "recipients": ["student"]
+          "recipients": [
+            "student"
+          ]
         }
-      ]
+      ],
+      "required_role": "system"
     }
   ]
 }

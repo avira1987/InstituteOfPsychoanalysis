@@ -39,15 +39,20 @@ services:
     container_name: anistito-api
     env_file:
       - .env
-    # این مقادیر بر متغیرهای هم‌نام در .env (env_file) اولویت دارند — hostname باید db باشد.
+    # SMS_* و سایر مقادیر از همین فایل (نسخهٔ روی دیسک کنار docker-compose.yml) بارگذاری می‌شوند؛
+    # مسیر جایگزین: در سرویس api متغیر ANISTITO_ENV_FILE را روی مسیر مطلق .env دیگر تنظیم کنید.
+    # فیلدهای environment زیر بر هم‌نام‌های env_file اولویت دارند — hostname دیتابیس باید db باشد.
     environment:
       DATABASE_URL: postgresql+asyncpg://anistito:anistito@db:5432/anistito
       DATABASE_URL_SYNC: postgresql://anistito:anistito@db:5432/anistito
       REDIS_URL: redis://redis:6379/0
       DEBUG: "true"
+      # Alembic در command زیر اسکیما را می‌سازد؛ create_all در استارت API نباید همزمان اجرا شود
+      INIT_DB_ON_STARTUP: "false"
       SECRET_KEY: change-me-in-production-use-a-real-secret-key
       APP_BASE_URL: https://lms.psychoanalysis.ir/anistito
       PAYMENT_CALLBACK_URL: https://lms.psychoanalysis.ir/anistito/api/payment/callback
+      # پرداخت: ZARINPAL_MERCHANT_ID و در صورت نیاز ZIBAL_MERCHANT را در فایل .env همین پوشه بگذارید (env_file)
       # دمو خودکار غیرفعال — برای پر کردن دستی دادهٔ دمو از اسکریپت‌ها یا API استفاده کنید
       SEED_DEMO_ON_STARTUP: "false"
       SEED_DEMO_FULL_MATRIX: "false"
@@ -70,10 +75,10 @@ services:
       sh -c "python /app/scripts/wait_for_db.py &&
              python /app/scripts/repair_alembic_if_empty_schema.py &&
              alembic upgrade head &&
-             uvicorn app.main:app --host 0.0.0.0 --port 3000 --log-level warning --reload"
+             uvicorn app.main:app --host 0.0.0.0 --port 3000 --log-level warning"
 
   # ─── بیلد فرانت در داکر: خروجی در ./admin-ui/dist (همان پوشه‌ای که api mount می‌کند)
-  # اجرا: docker compose --profile admin-ui-build run --rm admin-ui-build
+  # اجرا: docker compose --profile admin-ui-build run -T --rm admin-ui-build
   # یا: powershell ./scripts/build-admin-ui-docker.ps1  |  bash scripts/build-admin-ui-docker.sh
   # ایمیج API هم با Dockerfile چندمرحله‌ای admin-ui را داخل بیلد می‌سازد (نیازی به npm روی میزبان نیست).
   # پروفایل جدا تا `docker compose up` به‌طور پیش‌فرض node را pull نکند
@@ -88,6 +93,8 @@ services:
       NPM_CONFIG_FUND: "false"
     volumes:
       - ./admin-ui:/app
+      # import در portalRoleAccess.js: ../../../metadata → /metadata در کانتینر
+      - ./metadata:/metadata
       # node_modules میزبان (ویندوز) با باینری لینوکس داخل کانتینر قاطی نشود — EIO روی unlink esbuild
       - /app/node_modules
     command: sh -c "npm ci --no-audit && npm run build"

@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.engine import StateMachineEngine
-from app.meta.seed import load_process
+from app.meta.seed import load_process, load_rules
 
 
 @pytest.mark.asyncio
@@ -19,6 +19,7 @@ class TestLiveTherapyObservationCourseCompletionFlow:
         process_file = processes_dir / "live_therapy_observation_course_completion.json"
         assert process_file.exists()
 
+        await load_rules(db_session)
         await load_process(db_session, process_file)
         await db_session.commit()
 
@@ -40,6 +41,7 @@ class TestLiveTherapyObservationCourseCompletionFlow:
     ):
         """سناریوی نرمال: grades_entry → grades_locked با trigger grades_submitted."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_rules(db_session)
         await load_process(db_session, processes_dir / "live_therapy_observation_course_completion.json")
         await db_session.commit()
 
@@ -49,6 +51,7 @@ class TestLiveTherapyObservationCourseCompletionFlow:
             student_id=sample_student.id,
             actor_id=sample_user.id,
             actor_role="instructor",
+            initial_context={"grades_submitted_before_sla": True},
         )
         await db_session.commit()
 
@@ -60,7 +63,7 @@ class TestLiveTherapyObservationCourseCompletionFlow:
         )
         await db_session.commit()
 
-        assert result.success is True
+        assert result.success is True, result.error
         assert result.to_state == "grades_locked"
         instance = await engine.get_process_instance(instance.id)
         assert instance.current_state_code == "grades_locked"

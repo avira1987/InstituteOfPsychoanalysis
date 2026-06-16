@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "description_fa": "نگاشت نقش ورود (User.role) به کدهای assigned_role در JSON فرایندها برای نمایش راهنمای مراحل در پنل.",
+  "normalize_assigned_role_typo": {
+    "admission_officer": "admissions_officer"
+  },
+  "exclude_from_operator_catalog": [
+    "student",
+    "applicant",
+    "system"
+  ],
+  "portal_roles": {
+    "admin": {
+      "include_all_operator_assigned_roles": true
+    },
+    "staff": {
+      "assigned_roles": [
+        "admissions_officer",
+        "instructor",
+        "teaching_assistant",
+        "teaching_assistant_or_instructor",
+        "therapy_education_coordinator",
+        "course_committee",
+        "course_committee_scientific"
+      ]
+    },
+    "finance": {
+      "assigned_roles": [],
+      "note_fa": "عمداً خالی: وظایف مالی از داشبورد مالی و گزارش‌هاست؛ صندوق my-process-inbox برای این نقش نیز خالی می‌ماند."
+    },
+    "therapist": {
+      "assigned_roles": ["therapist"]
+    },
+    "supervisor": {
+      "assigned_roles": ["supervisor"]
+    },
+    "site_manager": {
+      "assigned_roles": ["site_manager"]
+    },
+    "interviewer": {
+      "assigned_roles": ["interviewer"]
+    },
+    "deputy_education": {
+      "assigned_roles": [
+        "deputy_education",
+        "deputy_education_director",
+        "scientific_officer_course_committee",
+        "course_committee_executive"
+      ]
+    },
+    "monitoring_committee_officer": {
+      "assigned_roles": ["monitoring_committee_officer"]
+    },
+    "progress_committee": {
+      "assigned_roles": ["progress_committee", "progress_committee_project", "progress_committee_scientific"]
+    },
+    "education_committee": {
+      "assigned_roles": ["education_committee"]
+    },
+    "supervision_committee": {
+      "assigned_roles": ["supervision_committee"]
+    },
+    "specialized_commission": {
+      "assigned_roles": ["specialized_commission"]
+    },
+    "therapy_committee_chair": {
+      "assigned_roles": ["therapy_committee_chair"]
+    },
+    "therapy_committee_executor": {
+      "assigned_roles": ["therapy_committee_executor"]
+    },
+    "student": {
+      "assigned_roles": []
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "description_fa": "نگاشت کلید تمپلیت اعلان (همان template در metadata فرایند / notification_service) به bodyId پترن تأییدشده و ترتیب متغیرها برای BaseServiceNumber (جداکننده ;). هم‌راستا با metadata/melipayamak_patterns.json و metadata/sms_pattern_coverage_matrix.json",
+  "mappings": {
+    "interview_details_applicant": { "bodyId": 447759, "slots": ["student_name", "interview_date", "interview_time"] },
+    "interview_scheduled_student_in_person": { "bodyId": 447759, "slots": ["student_name", "interview_date", "interview_time", "interview_location"] },
+    "interview_scheduled_student_online": { "bodyId": 447759, "slots": ["student_name", "interview_date", "interview_time", "interview_link"] },
+    "internship_interview_scheduled": { "bodyId": 447759, "slots": ["student_name", "interview_date", "interview_time"] },
+    "interview_confirmation_applicant": { "bodyId": 447759, "slots": ["student_name", "date", "time"] },
+    "interview_details_interviewer": { "bodyId": 447765, "slots": ["student_name"] },
+    "interview_scheduled_interviewer": { "bodyId": 447765, "slots": ["student_name", "interview_date", "interview_time", "interview_location_or_link"] },
+    "interview_confirmation_interviewer": { "bodyId": 447765, "slots": ["student_name"] },
+    "interview_reminder_applicant_inperson": { "bodyId": 447750, "slots": ["student_name"] },
+    "interview_reminder_applicant_online": { "bodyId": 447750, "slots": ["student_name"] },
+    "interview_reminder_interviewer_inperson": { "bodyId": 447765, "slots": ["student_name"] },
+    "interview_reminder_interviewer_online": { "bodyId": 447765, "slots": ["student_name"] },
+    "interview_reminder_applicant_inperson_calendar": { "bodyId": 447750, "slots": ["student_name"] },
+    "interview_reminder_2h": { "bodyId": 447750, "slots": ["student_name", "date", "time", "location_info"] },
+    "approved_upload_documents": { "bodyId": 447769, "slots": ["student_name"] },
+    "result_rejected": { "bodyId": 447766, "slots": ["student_name"] },
+    "comprehensive_application_rejected_scientific": { "bodyId": 447766, "slots": ["student_name"] },
+    "comprehensive_application_rejected_supervision": { "bodyId": 447766, "slots": ["student_name"] },
+    "comprehensive_rejected_definitive": { "bodyId": 447766, "slots": ["student_name"] },
+    "change_rejected": { "bodyId": 447766, "slots": ["student_name"] },
+    "live_supervision_session_confirmed": {
+      "bodyId": 447770,
+      "slots": ["portal_hint"],
+      "slot_defaults": { "portal_hint": "سوپرویژن زنده" }
+    },
+    "session_payment_sla_payment": { "bodyId": 447772, "slots": ["portal_hint"] },
+    "extra_session_sla_therapist": {
+      "bodyId": 447772,
+      "slots": ["portal_hint"],
+      "slot_defaults": { "portal_hint": "درمانگر" }
+    },
+    "extra_session_sla_payment": { "bodyId": 447772, "slots": ["portal_hint"] },
+    "therapy_session_increase_sla_therapist": {
+      "bodyId": 447772,
+      "slots": ["portal_hint"],
+      "slot_defaults": { "portal_hint": "درمانگر" }
+    },
+    "therapy_session_increase_reminder_student_response": { "bodyId": 447772, "slots": ["portal_hint"] },
+    "start_therapy_sla_therapist_pending": { "bodyId": 447772, "slots": ["portal_hint"] },
+    "start_therapy_sla_payment_pending": { "bodyId": 447772, "slots": ["portal_hint"] },
+    "therapy_session_reduction_completed": { "bodyId": 447772, "slots": ["portal_hint"] },
+    "interview_booking_payment_staff": { "bodyId": 447752, "slots": ["amount_rial", "payer_name"] },
+    "student_portal_welcome_credentials": { "bodyId": 450373, "slots": ["username", "password"] }
+  },
+  "slot_defaults": {
+    "portal_hint": "دانشجویی"
+  }
+}

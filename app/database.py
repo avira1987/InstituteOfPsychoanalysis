@@ -10,8 +10,10 @@ settings = get_settings()
 _engine_kwargs = {
     "echo": settings.DATABASE_ECHO,
     "pool_pre_ping": True,
-    "pool_size": 10,
-    "max_overflow": 20,
+    "pool_size": settings.DB_POOL_SIZE,
+    "max_overflow": settings.DB_MAX_OVERFLOW,
+    "pool_recycle": settings.DB_POOL_RECYCLE_SECONDS,
+    "pool_timeout": settings.DB_POOL_TIMEOUT_SECONDS,
 }
 
 engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
@@ -40,10 +42,72 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 
+async def apply_schema_safety_patches(conn) -> None:
+    """Idempotent column/table fixes when Alembic stamp drifted ahead of real schema."""
+    await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512)"))
+    await conn.execute(
+        text("ALTER TABLE ticket_comments ADD COLUMN IF NOT EXISTS kind VARCHAR(20) DEFAULT 'user'")
+    )
+    await conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS sms_simulation_outbox (
+                id VARCHAR(36) NOT NULL PRIMARY KEY,
+                phone VARCHAR(15) NOT NULL,
+                message TEXT NOT NULL,
+                kind VARCHAR(32) NOT NULL,
+                template_key VARCHAR(120),
+                created_at TIMESTAMPTZ NOT NULL
+            )
+            """
+        )
+    )
+    await conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS sms_simulation_dismissals (
+                sms_id VARCHAR(36) NOT NULL,
+                user_id VARCHAR(36) NOT NULL,
+                dismissed_at TIMESTAMPTZ NOT NULL,
+                PRIMARY KEY (sms_id, user_id),
+                FOREIGN KEY (sms_id) REFERENCES sms_simulation_outbox(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+            """
+        )
+    )
+    await conn.execute(
+        text("CREATE INDEX IF NOT EXISTS ix_sms_sim_outbox_phone ON sms_simulation_outbox (phone)")
+    )
+    await conn.execute(
+        text("CREATE INDEX IF NOT EXISTS ix_sms_sim_outbox_created ON sms_simulation_outbox (created_at)")
+    )
+    await conn.execute(
+        text("CREATE INDEX IF NOT EXISTS ix_sms_sim_dismiss_user ON sms_simulation_dismissals (user_id)")
+    )
+    await conn.execute(
+        text("ALTER TABLE interview_slots ADD COLUMN IF NOT EXISTS host_meeting_link TEXT")
+    )
+    await conn.execute(
+        text("ALTER TABLE interview_slots ADD COLUMN IF NOT EXISTS interviewer_meeting_link TEXT")
+    )
+    await conn.execute(
+        text("ALTER TABLE therapy_sessions ADD COLUMN IF NOT EXISTS host_meeting_url TEXT")
+    )
+    await conn.execute(
+        text(
+            "ALTER TABLE interview_slots ADD COLUMN IF NOT EXISTS student_join_open BOOLEAN NOT NULL DEFAULT false"
+        )
+    )
+
+
 async def init_db():
     """Create all tables (for development only; use Alembic in production)."""
     import asyncio
     import logging
+
+    import app.models.dynamic_forms  # noqa: F401 — ثبت جداول روی Base
+    import app.models.operational_models  # noqa: F401 — sms_simulation_outbox و …
 
     log = logging.getLogger(__name__)
     attempts = 8
@@ -62,9 +126,5 @@ async def init_db():
                 e,
             )
             await asyncio.sleep(2)
-    # Ensure avatar_url exists if migrations (e.g. 005) did not run (e.g. when 001 fails with DuplicateTable)
     async with engine.begin() as conn:
-        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512)"))
-        await conn.execute(
-            text("ALTER TABLE ticket_comments ADD COLUMN IF NOT EXISTS kind VARCHAR(20) DEFAULT 'user'")
-        )
+        await apply_schema_safety_patches(conn)

@@ -7,11 +7,44 @@
     "initial_state": "referral_triggered"
   },
   "states": [
-    {"code": "referral_triggered", "name_fa": "ارجاع راه‌اندازی شد", "type": "initial", "assigned_role": "system"},
-    {"code": "patients_listed", "name_fa": "لیست بیماران انترن ثبت شد", "type": "intermediate", "assigned_role": "monitoring_committee_officer"},
-    {"code": "therapists_assigned", "name_fa": "درمانگران جایگزین تخصیص یافتند", "type": "intermediate", "assigned_role": "monitoring_committee_officer"},
-    {"code": "notifications_sent", "name_fa": "اطلاع‌رسانی به بیماران و درمانگران انجام شد", "type": "intermediate", "assigned_role": "system"},
-    {"code": "closed", "name_fa": "ارجاع مختومه", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "referral_triggered",
+      "name_fa": "ارجاع راه‌اندازی شد",
+      "type": "initial",
+      "assigned_role": "system"
+    },
+    {
+      "code": "patients_listed",
+      "name_fa": "لیست بیماران انترن ثبت شد",
+      "type": "intermediate",
+      "assigned_role": "monitoring_committee_officer",
+      "metadata": {
+        "operator_task_fa": "بررسی گزارش و ثبت اقدام.",
+        "operator_short_fa": "لیست بیماران انترن ثبت شد"
+      }
+    },
+    {
+      "code": "therapists_assigned",
+      "name_fa": "درمانگران جایگزین تخصیص یافتند",
+      "type": "intermediate",
+      "assigned_role": "monitoring_committee_officer",
+      "metadata": {
+        "operator_task_fa": "بررسی گزارش و ثبت اقدام.",
+        "operator_short_fa": "درمانگران جایگزین تخصیص یافتند"
+      }
+    },
+    {
+      "code": "notifications_sent",
+      "name_fa": "اطلاع‌رسانی به بیماران و درمانگران انجام شد",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "closed",
+      "name_fa": "ارجاع مختومه",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
@@ -35,7 +68,14 @@
       "required_role": "monitoring_committee_officer",
       "description_fa": "ارسال اطلاع به بیماران و درمانگران",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "patient_referral_notice", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "patient_referral_notice",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {

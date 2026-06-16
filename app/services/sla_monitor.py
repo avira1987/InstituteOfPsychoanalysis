@@ -11,6 +11,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.meta_models import StateDefinition, ProcessDefinition
 from app.models.operational_models import ProcessInstance, User
@@ -50,62 +51,71 @@ class SLAMonitor:
         self._breaches: list[SLABreachInfo] = []
 
     async def check_sla_breaches(self, db: AsyncSession) -> list[SLABreachInfo]:
-        """Check all active instances for SLA breaches."""
+        """Check all active instances for SLA breaches (یک کوئری JOIN، بدون N+1)."""
         now = datetime.now(timezone.utc)
-        breaches = []
+        breaches: list[SLABreachInfo] = []
 
-        # Get all active (non-completed) instances
-        stmt = select(ProcessInstance).where(
-            ProcessInstance.is_completed == False,
-            ProcessInstance.is_cancelled == False,
+        stmt = (
+            select(ProcessInstance, ProcessDefinition, StateDefinition)
+            .select_from(ProcessInstance)
+            .join(
+                ProcessDefinition,
+                (ProcessDefinition.code == ProcessInstance.process_code)
+                & (ProcessDefinition.is_active.is_(True)),
+            )
+            .join(
+                StateDefinition,
+                (StateDefinition.process_id == ProcessDefinition.id)
+                & (StateDefinition.code == ProcessInstance.current_state_code),
+            )
+            .where(
+                ProcessInstance.is_completed.is_(False),
+                ProcessInstance.is_cancelled.is_(False),
+            )
         )
         result = await db.execute(stmt)
-        instances = result.scalars().all()
-
-        for instance in instances:
-            # Load the process definition
-            proc_stmt = select(ProcessDefinition).where(
-                ProcessDefinition.code == instance.process_code,
-                ProcessDefinition.is_active == True,
-            )
-            proc_result = await db.execute(proc_stmt)
-            process_def = proc_result.scalars().first()
-            if not process_def:
-                continue
-
-            # Load the current state definition
-            state_stmt = select(StateDefinition).where(
-                StateDefinition.process_id == process_def.id,
-                StateDefinition.code == instance.current_state_code,
-            )
-            state_result = await db.execute(state_stmt)
-            state_def = state_result.scalars().first()
+        for instance, _pd, state_def in result.all():
             if not state_def or not state_def.sla_hours:
                 continue
 
-            # Calculate elapsed time
             elapsed = now - instance.last_transition_at
             elapsed_hours = elapsed.total_seconds() / 3600
 
-            if elapsed_hours > state_def.sla_hours:
-                breach = SLABreachInfo(
-                    instance_id=str(instance.id),
-                    process_code=instance.process_code,
-                    state_code=instance.current_state_code,
-                    sla_hours=state_def.sla_hours,
-                    elapsed_hours=elapsed_hours,
-                    breach_event=state_def.on_sla_breach_event,
-                )
-                breaches.append(breach)
+            if elapsed_hours <= state_def.sla_hours:
+                continue
 
-                # Log the breach
-                logger.warning(
-                    f"SLA BREACH: Instance {instance.id} in state '{instance.current_state_code}' "
-                    f"has exceeded SLA of {state_def.sla_hours}h (elapsed: {elapsed_hours:.1f}h)"
-                )
+            breach = SLABreachInfo(
+                instance_id=str(instance.id),
+                process_code=instance.process_code,
+                state_code=instance.current_state_code,
+                sla_hours=state_def.sla_hours,
+                elapsed_hours=elapsed_hours,
+                breach_event=state_def.on_sla_breach_event,
+            )
+            breaches.append(breach)
 
-                # Send alert notifications
-                await self._handle_breach(breach, db)
+            ctx = dict(instance.context_data or {})
+            alerted = ctx.get("__sla_alerted_states")
+            if not isinstance(alerted, list):
+                alerted = []
+            state_key = instance.current_state_code
+            if state_key in alerted:
+                continue
+
+            alerted.append(state_key)
+            ctx["__sla_alerted_states"] = alerted
+            instance.context_data = ctx
+            flag_modified(instance, "context_data")
+
+            logger.info(
+                "SLA breach (first notify this state): instance=%s process=%s state=%s elapsed=%.1fh limit=%sh",
+                instance.id,
+                instance.process_code,
+                instance.current_state_code,
+                elapsed_hours,
+                state_def.sla_hours,
+            )
+            await self._handle_breach(breach, db)
 
         self._breaches = breaches
         return breaches

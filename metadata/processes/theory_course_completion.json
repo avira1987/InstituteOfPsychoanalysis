@@ -10,13 +10,50 @@
     "requires_form": true
   },
   "states": [
-    {"code": "grades_entry", "name_fa": "ثبت نمرات و ارزیابی کیفی", "type": "initial", "assigned_role": "instructor"},
-    {"code": "grades_locked", "name_fa": "نمرات قفل شد", "type": "terminal", "assigned_role": "system"},
-    {"code": "delay_reported", "name_fa": "تاخیر — گزارش به کمیته", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "grades_entry",
+      "name_fa": "ثبت نمرات و ارزیابی کیفی",
+      "type": "initial",
+      "assigned_role": "instructor",
+      "metadata": {
+        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
+        "operator_short_fa": "ثبت نمرات و ارزیابی کیفی"
+      }
+    },
+    {
+      "code": "grades_locked",
+      "name_fa": "نمرات قفل شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "delay_reported",
+      "name_fa": "تاخیر — گزارش به کمیته",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
-    {"from": "grades_entry", "to": "grades_locked", "trigger": "grades_submitted", "required_role": "instructor", "conditions": ["course_grades_submitted_in_time"], "description_fa": "ثبت نمرات — قفل"},
-    {"from": "grades_entry", "to": "delay_reported", "trigger": "sla_breach", "conditions": ["course_grades_sla_breach"], "description_fa": "گذشت مهلت — گزارش"}
+    {
+      "from": "grades_entry",
+      "to": "grades_locked",
+      "trigger": "grades_submitted",
+      "required_role": "instructor",
+      "conditions": [
+        "course_grades_submitted_in_time"
+      ],
+      "description_fa": "ثبت نمرات — قفل"
+    },
+    {
+      "from": "grades_entry",
+      "to": "delay_reported",
+      "trigger": "sla_breach",
+      "conditions": [
+        "course_grades_sla_breach"
+      ],
+      "description_fa": "گذشت مهلت — گزارش",
+      "required_role": "system"
+    }
   ],
   "forms": [
     {
@@ -24,7 +61,11 @@
       "name_fa": "ثبت نمرات دروس تئوری",
       "used_in_state": "grades_entry",
       "fields": [
-        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {
+          "name": "course_name",
+          "label_fa": "نام درس",
+          "type": "readonly"
+        },
         {
           "name": "students_grades",
           "label_fa": "لیست دانشجویان و نمرات",
@@ -35,7 +76,11 @@
             "grade"
           ]
         },
-        {"name": "qualitative_eval", "label_fa": "ارزیابی کیفی", "type": "textarea"}
+        {
+          "name": "qualitative_eval",
+          "label_fa": "ارزیابی کیفی",
+          "type": "textarea"
+        }
       ]
     }
   ]

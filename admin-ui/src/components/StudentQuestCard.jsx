@@ -1,21 +1,66 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { buildRoadmapStates } from '../utils/studentRoadmap'
-import { buildStudentGuidance } from '../utils/studentProcessGuidance'
+import { buildStudentGuidance, findStateDefinition } from '../utils/studentProcessGuidance'
 import ProcessStepForms from './ProcessStepForms'
+import InterviewSlotPicker, { InterviewPaidBookingSummary } from './InterviewSlotPicker'
 import StudentProcessGuidancePanel from './StudentProcessGuidancePanel'
 import {
   filterFormsForStudent,
   stepFormsBlockTransition,
   CTX_DOCUMENTS_RESUBMIT_FIELDS,
 } from '../utils/processFormsStudent'
-import { labelProcess, labelState } from '../utils/processDisplay'
+import { labelProcess, labelState, resolveStateDisplayLabel } from '../utils/processDisplay'
 import {
   STUDENT_TRANSITION_CTA_INTRO,
   getStudentTransitionButtonMain,
   getStudentTransitionButtonSub,
   getStudentTransitionTooltip,
 } from '../utils/studentTransitionCta'
+import { showStudentTransitionCta } from '../utils/studentTransitionCtaVisibility'
 import SepPaymentPanel from './SepPaymentPanel'
+import StudentProcessStepReview from './StudentProcessStepReview'
+import StudentSmsHistorySection from './StudentSmsHistorySection'
+
+const REGISTRATION_PROCESS_CODES = ['introductory_course_registration', 'comprehensive_course_registration']
+
+function hasRegistrationInterviewBooking(detail) {
+  const ctx = detail?.context_data || {}
+  return !!(ctx.selected_timeslot || ctx.interview_date)
+}
+
+/** نقش‌هایی که «منتظر اقدام همکار» برایشان بلوک جدا می‌گذاریم — نه system */
+const STAFF_HUMAN_ROLES = ['interviewer', 'admissions_officer', 'progress_committee', 'supervision_committee']
+
+const ASSIGNED_ROLE_LABELS_FA = {
+  interviewer: 'مصاحبه‌کننده',
+  admissions_officer: 'مسئول پذیرش',
+  system: 'سامانه / واحد آموزش',
+  progress_committee: 'کمیته پیشرفت',
+  supervision_committee: 'کمیته نظارت',
+  applicant: 'متقاضی',
+  student: 'دانشجو',
+}
+
+function resolveSepPaymentDescription(detail) {
+  const pc = detail?.process_code
+  const cs = detail?.current_state
+  if (pc === 'start_therapy' && cs === 'payment_pending') {
+    return 'پرداخت هزینه جلسه اول آغاز درمان آموزشی'
+  }
+  if (pc === 'extra_session' && cs === 'payment_required') {
+    return 'پرداخت جلسه اضافی درمان آموزشی'
+  }
+  if (cs === 'interview_payment') {
+    if (pc === 'comprehensive_course_registration') return 'پرداخت هزینه مصاحبهٔ دوره جامع'
+    if (pc === 'introductory_course_registration') return 'پرداخت هزینه مصاحبهٔ دوره آشنایی'
+  }
+  if (cs === 'payment' && REGISTRATION_PROCESS_CODES.includes(pc)) {
+    return pc === 'comprehensive_course_registration'
+      ? 'پرداخت شهریه دوره جامع'
+      : 'پرداخت شهریه دوره آشنایی'
+  }
+  return 'پرداخت جلسات درمان آموزشی'
+}
 
 /**
  * کارت «قدم بعد» — فرم‌های مرحله + فقط اقدامات مجاز از API انتقال + مسیر بازی‌گونه
@@ -38,7 +83,26 @@ export default function StudentQuestCard({
   studentId = null,
   /** پس از ثبت موفق فرم در سرور؛ تا باز شدن توسط مسئول فرم مخفی است */
   stepFormLocked = false,
+  /** introductory | comprehensive — برای رزرو وقت مصاحبه در مسیر ثبت‌نام */
+  courseType = null,
+  /** پس از رزرو وقت موفق */
+  onInterviewBooked = null,
+  /** کلید refetch تاریخچهٔ پیامک (مثلاً instance_id + current_state) */
+  smsRefreshKey = null,
 }) {
+  const [selectedTransitionIdx, setSelectedTransitionIdx] = useState(0)
+  const transitionList = transitions || []
+
+  useEffect(() => {
+    setSelectedTransitionIdx(0)
+  }, [detail?.instance_id, detail?.current_state])
+
+  useEffect(() => {
+    const n = transitionList.length
+    if (!n) return
+    setSelectedTransitionIdx((i) => (i >= n ? 0 : i))
+  }, [transitionList.length])
+
   const roadmapStates = definition ? buildRoadmapStates(definition) : []
   const curIdx = detail && roadmapStates.length
     ? roadmapStates.findIndex(s => s.code === detail.current_state)
@@ -49,9 +113,9 @@ export default function StudentQuestCard({
     ? Math.min(100, Math.round(((curIdx + 1) / roadmapStates.length) * 100))
     : 0
 
-  const currentStateLabel = roadmapStates.find(s => s.code === detail?.current_state)?.name_fa
-    || labelState(detail?.current_state)
-    || '—'
+  const currentStateMeta = roadmapStates.find(s => s.code === detail?.current_state)
+  const processCode = definition?.process?.code
+  const currentStateLabel = resolveStateDisplayLabel(detail?.current_state, currentStateMeta?.name_fa, processCode) || '—'
 
   const level = extraData?.gamification?.level
 
@@ -73,7 +137,12 @@ export default function StudentQuestCard({
           معمولاً پس از ثبت‌نام، مسیر ثبت‌نام دوره به‌صورت خودکار باز می‌شود. اگر این پیام را می‌بینید، با پشتیبانی یا بخش پذیرش تماس بگیرید.
         </p>
         {onOpenProcesses && (
-          <button type="button" className="btn btn-primary" onClick={onOpenProcesses}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            data-testid="student-quest-nav-processes-empty"
+            onClick={onOpenProcesses}
+          >
             رفتن به فرایندها
           </button>
         )}
@@ -99,11 +168,66 @@ export default function StudentQuestCard({
     stepFormLocked,
   })
 
+  const showLegacySep = detail?.current_state === 'awaiting_payment'
+    || detail?.current_state === 'payment_pending'
+    || (detail?.process_code === 'extra_session' && detail?.current_state === 'payment_required')
+
+  const hasInterviewBooking = hasRegistrationInterviewBooking(detail)
+  const showRegistrationSep = REGISTRATION_PROCESS_CODES.includes(detail?.process_code)
+    && (
+      detail?.current_state === 'interview_payment'
+      || detail?.current_state === 'payment'
+      || (detail?.current_state === 'interview_scheduled' && hasInterviewBooking)
+    )
+
+  const showSepPanel = !done && studentId && detail?.instance_id && (showLegacySep || showRegistrationSep)
+
+  const transitionListForCta = transitionList.filter((t) => {
+    if (
+      showSepPanel
+      && detail?.current_state === 'interview_scheduled'
+      && t.trigger_event === 'proceed_to_payment'
+    ) {
+      return false
+    }
+    return true
+  })
+
+  const showTransitionCta = showStudentTransitionCta({
+    transitions: transitionListForCta,
+    transitionBlocked,
+    detailDone: done,
+  })
+
+  const selectedTransition = transitionListForCta[selectedTransitionIdx] ?? transitionListForCta[0]
+
   const ctx = detail?.context_data || {}
   const paymentAmountRial =
     ctx.payment_amount_rial != null
       ? Number(ctx.payment_amount_rial)
       : Math.round(Number(ctx.invoice_amount || 0) * 10)
+
+  const stateDefForRole = definition && detail?.current_state
+    ? findStateDefinition(definition, detail.current_state)
+    : null
+  const assignMeta = stateDefForRole?.metadata || {}
+  const assignRole = stateDefForRole?.assigned_role
+  const studentLikeRole = assignRole === 'student' || assignRole === 'applicant'
+  const staffDepFa = (assignMeta.staff_dependency_fa || '').trim()
+  const showStaffWaitPanel = !done && stateDefForRole && !studentLikeRole && assignRole && (
+    staffDepFa
+    || (transitionList.length === 0 && STAFF_HUMAN_ROLES.includes(assignRole))
+  )
+
+  const showInterviewSlotInCard = !done && courseType && detail?.instance_id && onInterviewBooked && (
+    (detail.process_code === 'introductory_course_registration' && detail.current_state === 'application_submitted')
+    || (detail.process_code === 'comprehensive_course_registration' && detail.current_state === 'interview_scheduled')
+  )
+
+  const showInterviewPaidSummary = !done
+    && REGISTRATION_PROCESS_CODES.includes(detail?.process_code)
+    && hasRegistrationInterviewBooking(detail)
+    && !['application_submitted', 'interview_scheduled', 'interview_payment'].includes(detail?.current_state)
 
   return (
     <div className="quest-card" data-testid="student-quest-card">
@@ -123,6 +247,84 @@ export default function StudentQuestCard({
       </div>
 
       <StudentProcessGuidancePanel guidance={guidance} variant="quest" />
+
+      {!done && detail?.current_state === 'credentials_created' && ctx.portal_username && (
+        <div
+          className="quest-credentials-banner"
+          data-testid="student-quest-portal-credentials"
+          style={{
+            marginTop: '0.85rem',
+            padding: '1rem 1.25rem',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)',
+            borderRight: '4px solid #2563eb',
+            fontSize: '0.9rem',
+            lineHeight: 1.75,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>اطلاعات ورود به پرتال دانشجویی (LMS)</div>
+          <p style={{ margin: 0 }}>
+            مدارک شما تأیید شد. تا {ctx.lms_login_deadline || 'مهلت اعلام‌شده'} با مشخصات زیر وارد سامانه شوید و دروس را انتخاب کنید.
+          </p>
+          <p style={{ margin: '0.5rem 0 0', fontFamily: 'monospace', direction: 'ltr', textAlign: 'left' }}>
+            USERNAME: {ctx.portal_username}
+            <br />
+            PASSWORD: {ctx.portal_password_display || '—'}
+          </p>
+        </div>
+      )}
+
+      {showStaffWaitPanel && (
+        <div
+          className="quest-staff-wait"
+          data-testid="student-quest-staff-wait"
+          role="status"
+        >
+          <div className="quest-staff-wait-title">
+            اقدام بعدی در مرکز
+            {assignRole && (
+              <span>
+                {' '}
+                (
+                {ASSIGNED_ROLE_LABELS_FA[assignRole] || assignRole}
+                )
+              </span>
+            )}
+          </div>
+          <p>
+            {staffDepFa
+              || 'این مرحله توسط مرکز در حال پیگیری است؛ پس از به‌روزرسانی وضعیت، همین صفحه را تازه کنید. جزئیات در بخش «وظیفهٔ شما در این مرحله» بالاتر آمده است.'}
+          </p>
+        </div>
+      )}
+
+      {showInterviewSlotInCard && (
+        <div className="quest-interview-slot-wrap" data-testid="student-quest-interview-slot-picker" style={{ marginTop: '0.85rem' }}>
+          <p className="quest-interview-slot-title">
+            رزرو وقت مصاحبه
+          </p>
+          <InterviewSlotPicker
+            courseType={courseType}
+            instanceId={detail.instance_id}
+            onBooked={onInterviewBooked}
+          />
+        </div>
+      )}
+
+      {showInterviewPaidSummary && (
+        <InterviewPaidBookingSummary />
+      )}
+
+      {showRegistrationSep && (
+        <div data-testid="student-quest-sep-payment" style={{ marginTop: '0.85rem' }}>
+          <SepPaymentPanel
+            instanceId={detail.instance_id}
+            studentId={studentId}
+            amountRial={paymentAmountRial}
+            description={resolveSepPaymentDescription(detail)}
+          />
+        </div>
+      )}
 
       {!done && detail?.process_code === 'session_payment' && ['payment_due', 'payment_selection', 'awaiting_payment', 'payment_failed'].includes(detail?.current_state) && (() => {
         const c = detail?.context_data || {}
@@ -352,10 +554,10 @@ export default function StudentQuestCard({
               <div
                 key={st.code}
                 className={`quest-step ${isCurrent ? 'quest-step--current' : ''} ${past ? 'quest-step--past' : ''}`}
-                title={st.name_fa || labelState(st.code)}
+                title={resolveStateDisplayLabel(st.code, st.name_fa, processCode)}
               >
                 <span className="quest-step-num">{i + 1}</span>
-                <span className="quest-step-label">{st.name_fa || labelState(st.code)}</span>
+                <span className="quest-step-label">{resolveStateDisplayLabel(st.code, st.name_fa, processCode)}</span>
               </div>
             )
           })}
@@ -367,21 +569,19 @@ export default function StudentQuestCard({
         <strong className="quest-current-value">{currentStateLabel}</strong>
       </div>
 
-      {!done && (detail?.current_state === 'awaiting_payment' || detail?.current_state === 'payment_pending'
-        || (detail?.process_code === 'extra_session' && detail?.current_state === 'payment_required'))
-        && studentId && detail?.instance_id && (
-        <SepPaymentPanel
-          instanceId={detail.instance_id}
-          studentId={studentId}
-          amountRial={paymentAmountRial}
-          description={
-            detail?.process_code === 'start_therapy' && detail?.current_state === 'payment_pending'
-              ? 'پرداخت هزینه جلسه اول آغاز درمان آموزشی'
-              : detail?.process_code === 'extra_session' && detail?.current_state === 'payment_required'
-                ? 'پرداخت جلسه اضافی درمان آموزشی'
-              : 'پرداخت جلسات درمان آموزشی'
-          }
-        />
+      <StudentSmsHistorySection refreshKey={smsRefreshKey ?? `${detail?.instance_id || ''}-${detail?.current_state || ''}`} />
+
+      <StudentProcessStepReview detail={detail} definition={definition} />
+
+      {showSepPanel && !showRegistrationSep && (
+        <div data-testid="student-quest-sep-payment">
+          <SepPaymentPanel
+            instanceId={detail.instance_id}
+            studentId={studentId}
+            amountRial={paymentAmountRial}
+            description={resolveSepPaymentDescription(detail)}
+          />
+        </div>
       )}
 
       {!done && studentForms.length > 0 && stepFormLocked && (
@@ -408,17 +608,52 @@ export default function StudentQuestCard({
             onRegisterSubmit={onFormRegisterSubmit}
             contextData={detail?.context_data}
           />
+          {transitionBlocked && (transitions?.length || 0) > 0 && (
+            <p className="quest-block-hint" style={{ marginTop: '0.75rem' }}>
+              ابتدا فرم بالا را تکمیل کنید؛ سپس دکمهٔ ثبت مرحله در همین کارت ظاهر می‌شود.
+            </p>
+          )}
         </div>
       )}
 
-      {!done && transitions?.length > 0 && (
+      {!done && showTransitionCta && selectedTransition && (
         <div className="quest-actions">
           <p className="quest-actions-title">قدم بعد در مسیر</p>
           <p className="quest-cta-intro">{STUDENT_TRANSITION_CTA_INTRO}</p>
-          {transitionBlocked && (
-            <p className="quest-block-hint">
-              ابتدا فرم بالا را تکمیل کنید؛ سپس دکمهٔ ادامه فعال می‌شود.
-            </p>
+          {transitionListForCta.length > 1 && (
+            <div style={{ marginBottom: '0.85rem' }}>
+              <label
+                htmlFor="quest-transition-select"
+                style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}
+              >
+                انتخاب مسیر بعدی
+              </label>
+              <select
+                id="quest-transition-select"
+                data-testid="quest-transition-select"
+                className="quest-transition-select"
+                value={Math.min(selectedTransitionIdx, transitionListForCta.length - 1)}
+                onChange={(e) => setSelectedTransitionIdx(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  maxWidth: '100%',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.9rem',
+                  background: 'var(--bg)',
+                }}
+              >
+                {transitionListForCta.map((t, idx) => (
+                  <option key={`${t.trigger_event}-${t.to_state}-${idx}`} value={idx}>
+                    {labelState(t.to_state) !== '—' ? labelState(t.to_state) : (t.trigger_event || `مسیر ${idx + 1}`)}
+                  </option>
+                ))}
+              </select>
+              <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', lineHeight: 1.5 }}>
+                در صورت چند گزینه، ابتدا مرحلهٔ بعد را انتخاب کنید، سپس دکمهٔ زیر را بزنید.
+              </p>
+            </div>
           )}
           <p style={{ fontSize: '0.78rem', opacity: 0.88, marginBottom: '0.45rem', fontWeight: 600 }}>
             توضیح همراه اقدام (اختیاری)
@@ -431,32 +666,31 @@ export default function StudentQuestCard({
             dir="rtl"
           />
           <div className="quest-btn-row">
-            {transitions.map((t, idx) => (
-              <button
-                key={`${t.trigger_event}-${idx}`}
-                type="button"
-                data-testid={`quest-transition-${t.to_state || t.trigger_event || idx}`}
-                className="btn quest-cta"
-                disabled={transitionBlocked}
-                onClick={() => onTrigger(t)}
-                title={
-                  transitionBlocked
-                    ? 'فرم این مرحله را کامل کنید'
-                    : getStudentTransitionTooltip(t)
-                }
-              >
-                <span className="quest-cta-main">{getStudentTransitionButtonMain(t, transitions.length)}</span>
-                {t.to_state && (
-                  <span className="quest-cta-sub">{getStudentTransitionButtonSub(t)}</span>
-                )}
-              </button>
-            ))}
+            <button
+              type="button"
+              data-testid={`quest-transition-${selectedTransition.to_state || selectedTransition.trigger_event || selectedTransitionIdx}`}
+              className="btn quest-cta"
+              onClick={() => onTrigger(selectedTransition)}
+              title={getStudentTransitionTooltip(selectedTransition)}
+            >
+              <span className="quest-cta-main">
+                {getStudentTransitionButtonMain(selectedTransition, 1)}
+              </span>
+              {selectedTransition.to_state && (
+                <span className="quest-cta-sub">{getStudentTransitionButtonSub(selectedTransition)}</span>
+              )}
+            </button>
           </div>
         </div>
       )}
 
       <div className="quest-footer">
-        <button type="button" className="btn btn-outline btn-sm" onClick={onOpenProcesses}>
+        <button
+          type="button"
+          className="btn btn-outline btn-sm"
+          data-testid="student-quest-footer-processes"
+          onClick={onOpenProcesses}
+        >
           جزئیات کامل در «فرایندها»
         </button>
       </div>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { financeApi } from '../services/api'
-import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 
 const TYPE_LABELS = {
   payment: 'پرداخت',
@@ -23,10 +22,20 @@ function fmtDate(iso) {
   }
 }
 
-/** بخش جمع‌شونده؛ پیش‌فرض بسته — کاربر با کلیک عنوان باز می‌کند */
-function FinancePanel({ title, children }) {
+/** بخش جمع‌شونده؛ یا کارت ثابت (collapsible=false) برای تنظیماتی که باید همیشه دیده شوند */
+function FinancePanel({ title, children, defaultOpen = false, collapsible = true }) {
+  if (!collapsible) {
+    return (
+      <section className="card finance-panel finance-panel--static">
+        <h3 className="finance-panel__summary-title card-title" style={{ marginBottom: '1rem' }}>
+          {title}
+        </h3>
+        <div className="finance-panel__body">{children}</div>
+      </section>
+    )
+  }
   return (
-    <details className="card finance-panel">
+    <details className="card finance-panel" defaultOpen={defaultOpen}>
       <summary>
         <h3 className="finance-panel__summary-title card-title">{title}</h3>
         <span className="finance-panel__chevron" aria-hidden>
@@ -36,6 +45,15 @@ function FinancePanel({ title, children }) {
       <div className="finance-panel__body">{children}</div>
     </details>
   )
+}
+
+/** پیش‌فرض زمانی که API هنوز جواب نداده یا خطا باشد — هم‌سو با app/config */
+const FALLBACK_PROGRAM_FINANCIAL = {
+  registration_interview_fee_rial: '5000000',
+  registration_tuition_invoice_toman: '120000000',
+  start_therapy_first_session_fee_rial: '10000000',
+  extra_session_fee_rial: '7500000',
+  default_therapy_session_fee_toman: '500000',
 }
 
 export default function FinancialDashboard() {
@@ -63,6 +81,19 @@ export default function FinancialDashboard() {
   const [instSaving, setInstSaving] = useState(false)
   const [instLoaded, setInstLoaded] = useState(false)
   const [instUpdatedAt, setInstUpdatedAt] = useState(null)
+
+  const [progLoaded, setProgLoaded] = useState(false)
+  const [progSaving, setProgSaving] = useState(false)
+  const [progUpdatedAt, setProgUpdatedAt] = useState(null)
+  const [interviewRial, setInterviewRial] = useState('')
+  const [tuitionToman, setTuitionToman] = useState('')
+  const [therapyFirstRial, setTherapyFirstRial] = useState('')
+  const [extraRial, setExtraRial] = useState('')
+  const [therapySessionToman, setTherapySessionToman] = useState('')
+  const [classSessionToman, setClassSessionToman] = useState('')
+  const [courseSessionToman, setCourseSessionToman] = useState('')
+  const [extraSessionTomanHint, setExtraSessionTomanHint] = useState(null)
+  const [progSourcesNote, setProgSourcesNote] = useState('')
 
   const loadCore = useCallback(() => {
     setErr(null)
@@ -93,6 +124,130 @@ export default function FinancialDashboard() {
         setInstLoaded(true)
       })
   }, [])
+
+  useEffect(() => {
+    financeApi
+      .programFinancialDefaults()
+      .then((r) => {
+        const d = r.data || {}
+        setInterviewRial(String(d.registration_interview_fee_rial ?? ''))
+        setTuitionToman(String(d.registration_tuition_invoice_toman ?? ''))
+        setTherapyFirstRial(String(d.start_therapy_first_session_fee_rial ?? ''))
+        setExtraRial(String(d.extra_session_fee_rial ?? ''))
+        setTherapySessionToman(String(d.default_therapy_session_fee_toman ?? ''))
+        setClassSessionToman(
+          d.class_session_fee_toman != null && Number(d.class_session_fee_toman) > 0
+            ? String(d.class_session_fee_toman)
+            : '',
+        )
+        setCourseSessionToman(
+          d.course_session_fee_toman != null && Number(d.course_session_fee_toman) > 0
+            ? String(d.course_session_fee_toman)
+            : '',
+        )
+        setExtraSessionTomanHint(d.extra_session_fee_toman != null ? d.extra_session_fee_toman : null)
+        setProgUpdatedAt(d.updated_at || null)
+        setProgSourcesNote(typeof d.sources_note === 'string' ? d.sources_note : '')
+        setProgLoaded(true)
+      })
+      .catch(() => {
+        setInterviewRial(FALLBACK_PROGRAM_FINANCIAL.registration_interview_fee_rial)
+        setTuitionToman(FALLBACK_PROGRAM_FINANCIAL.registration_tuition_invoice_toman)
+        setTherapyFirstRial(FALLBACK_PROGRAM_FINANCIAL.start_therapy_first_session_fee_rial)
+        setExtraRial(FALLBACK_PROGRAM_FINANCIAL.extra_session_fee_rial)
+        setTherapySessionToman(FALLBACK_PROGRAM_FINANCIAL.default_therapy_session_fee_toman)
+        setClassSessionToman('')
+        setCourseSessionToman('')
+        setExtraSessionTomanHint(
+          Number(FALLBACK_PROGRAM_FINANCIAL.extra_session_fee_rial) / 10,
+        )
+        setProgSourcesNote('')
+        setProgLoaded(true)
+      })
+  }, [])
+
+  const saveProgramFinancialDefaults = async () => {
+    setErr(null)
+    setProgSaving(true)
+    try {
+      const parseIntSafe = (v) => {
+        const n = parseInt(String(v).replace(/[,\s،]/g, ''), 10)
+        return Number.isNaN(n) ? null : n
+      }
+      const parseFloatSafe = (v) => {
+        const s = String(v).replace(/[,\s،]/g, '').replace(/[^\d.-]/g, '')
+        const n = parseFloat(s)
+        return Number.isNaN(n) ? null : n
+      }
+      const ri1 = parseIntSafe(interviewRial)
+      const tuition = parseFloatSafe(tuitionToman)
+      const st = parseIntSafe(therapyFirstRial)
+      const ex = parseIntSafe(extraRial)
+      const th = parseFloatSafe(therapySessionToman)
+      if (ri1 == null || ri1 < 1000) {
+        setErr('هزینهٔ مصاحبه (ریال) باید حداقل ۱۰۰۰ باشد.')
+        return
+      }
+      if (tuition == null || tuition <= 0) {
+        setErr('مبلغ شهریه/فاکتور ثبت‌نام (تومان) را به‌درستی وارد کنید.')
+        return
+      }
+      if (st == null || st < 1000) {
+        setErr('مبلغ اولین جلسه درمان (ریال) باید حداقل ۱۰۰۰ باشد.')
+        return
+      }
+      if (ex == null || ex < 1000) {
+        setErr('مبلغ جلسه اضافه (ریال) باید حداقل ۱۰۰۰ باشد.')
+        return
+      }
+      if (th == null || th <= 0) {
+        setErr('پیش‌فرض هر جلسه درمان آموزشی (تومان) باید بزرگ‌تر از صفر باشد.')
+        return
+      }
+      const cl = String(classSessionToman).trim() === '' ? 0 : parseFloatSafe(classSessionToman)
+      const cr = String(courseSessionToman).trim() === '' ? 0 : parseFloatSafe(courseSessionToman)
+      if (cl == null || cl < 0) {
+        setErr('«پیش‌فرض هر جلسه کلاس» باید خالی یا عدد نامنفی باشد.')
+        return
+      }
+      if (cr == null || cr < 0) {
+        setErr('«پیش‌فرض هر جلسه دوره» باید خالی یا عدد نامنفی باشد.')
+        return
+      }
+      const r = await financeApi.patchProgramFinancialDefaults({
+        registration_interview_fee_rial: ri1,
+        registration_tuition_invoice_toman: tuition,
+        start_therapy_first_session_fee_rial: st,
+        extra_session_fee_rial: ex,
+        default_therapy_session_fee_toman: th,
+        class_session_fee_toman: cl,
+        course_session_fee_toman: cr,
+      })
+      const d = r.data || {}
+      setInterviewRial(String(d.registration_interview_fee_rial ?? ''))
+      setTuitionToman(String(d.registration_tuition_invoice_toman ?? ''))
+      setTherapyFirstRial(String(d.start_therapy_first_session_fee_rial ?? ''))
+      setExtraRial(String(d.extra_session_fee_rial ?? ''))
+      setTherapySessionToman(String(d.default_therapy_session_fee_toman ?? ''))
+      setClassSessionToman(
+        d.class_session_fee_toman != null && Number(d.class_session_fee_toman) > 0
+          ? String(d.class_session_fee_toman)
+          : '',
+      )
+      setCourseSessionToman(
+        d.course_session_fee_toman != null && Number(d.course_session_fee_toman) > 0
+          ? String(d.course_session_fee_toman)
+          : '',
+      )
+      setExtraSessionTomanHint(d.extra_session_fee_toman != null ? d.extra_session_fee_toman : null)
+      setProgUpdatedAt(d.updated_at || null)
+      setProgSourcesNote(typeof d.sources_note === 'string' ? d.sources_note : '')
+    } catch (e) {
+      setErr(e.response?.data?.detail || e.message)
+    } finally {
+      setProgSaving(false)
+    }
+  }
 
   const saveInstallmentSettings = async () => {
     setErr(null)
@@ -208,13 +363,12 @@ export default function FinancialDashboard() {
         <div>
           <h1 className="page-title">داشبورد مالی</h1>
           <p className="page-subtitle">
-            بررسی تراکنش‌ها، بدهی و بستانکاری، مانده دانشجویان و هم‌ترازی با حسابداری مراکز آموزشی — دسترسی فقط برای نقش
-            اپراتور مالی (مدیر سیستم به‌صورت سرپرست)
+            بررسی تراکنش‌ها، بدهی و بستانکاری، مانده دانشجویان و هم‌ترازی با حسابداری مراکز آموزشی؛ ویرایش{' '}
+            <strong>مبالغ پیش‌فرض ثبت‌نام، جلسات درمان/کلاس/دوره</strong> و <strong>تنظیمات اقساط</strong> در پنل‌های
+            بازشوندهٔ ابتدای همین صفحه — دسترسی فقط برای نقش اپراتور مالی (مدیر سیستم به‌صورت سرپرست)
           </p>
         </div>
       </div>
-
-      <PanelRoleActionQueue />
 
       {err && (
         <div className="card" style={{ borderColor: '#fca5a5', background: '#fef2f2', marginBottom: '1rem' }}>
@@ -223,7 +377,7 @@ export default function FinancialDashboard() {
       )}
 
       {instLoaded && (
-        <FinancePanel title="تنظیمات اقساط وب‌سایت">
+        <FinancePanel title="تنظیمات اقساط وب‌سایت" collapsible={false}>
           <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.7 }}>
             فاصلهٔ روز بین سررسید هر قسط (ترم دوم آشنایی و فرایندهایی که از «ادغام زمینهٔ اقساط» استفاده می‌کنند) و گزینه‌های
             مجاز تعداد اقساط برای نمایش در بخش عمومی (
@@ -271,6 +425,130 @@ export default function FinancialDashboard() {
                 </span>
               )}
             </div>
+          </div>
+        </FinancePanel>
+      )}
+
+      {progLoaded && (
+        <FinancePanel title="تنظیمات مالی: ثبت‌نام، جلسات درمان، کلاس و دورهٔ جلسه‌ای" collapsible={false}>
+          {progSourcesNote ? (
+            <p style={{ marginBottom: '1rem', fontSize: '0.82rem', color: 'var(--text-muted, #64748b)', lineHeight: 1.65 }}>
+              {progSourcesNote}
+            </p>
+          ) : null}
+          <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.75 }}>
+            این مقادیر برای <strong>پرداخت پیش‌فرض ثبت‌نام</strong> (مصاحبه و شهریه)، <strong>آغاز درمان آموزشی</strong>{' '}
+            و <strong>جلسه اضافه درمان</strong> استفاده می‌شوند. مبالغ پیش‌فرض هر جلسهٔ{' '}
+            <strong>کلاس</strong> و <strong>دورهٔ جلسه‌ای</strong> در زمینهٔ پرداخت جلسات درمان به‌صورت مرجع (راهنما) به
+            پنل دانشجو اضافه می‌شود؛ مبلغ واقعی هر فرایند ممکن است در همان فرایند ست شود.
+            {extraSessionTomanHint != null && (
+              <span>
+                {' '}
+                معادل تومانی جلسه اضافه از روی ریال:{' '}
+                <strong>{fmtMoney(extraSessionTomanHint)}</strong> تومان.
+              </span>
+            )}
+          </p>
+          <p style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
+            درگاه پرداخت مبلغ را به ریال می‌گیرد؛ فاکتور داخلی شهریه به تومان است.
+          </p>
+          <div
+            style={{
+              display: 'grid',
+              gap: '1rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              alignItems: 'flex-end',
+            }}
+          >
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">هزینه مصاحبه ثبت‌نام (ریال)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="numeric"
+                value={interviewRial}
+                onChange={(e) => setInterviewRial(e.target.value)}
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">شهریه / فاکتور ثبت‌نام (تومان)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="decimal"
+                value={tuitionToman}
+                onChange={(e) => setTuitionToman(e.target.value)}
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">اولین جلسه درمان آموزشی (ریال)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="numeric"
+                value={therapyFirstRial}
+                onChange={(e) => setTherapyFirstRial(e.target.value)}
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">جلسه اضافه درمان (ریال)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="numeric"
+                value={extraRial}
+                onChange={(e) => setExtraRial(e.target.value)}
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">پیش‌فرض هر جلسه درمان آموزشی (تومان)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="decimal"
+                value={therapySessionToman}
+                onChange={(e) => setTherapySessionToman(e.target.value)}
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">پیش‌فرض هر جلسه کلاس آموزشی (تومان، اختیاری)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="decimal"
+                value={classSessionToman}
+                onChange={(e) => setClassSessionToman(e.target.value)}
+                placeholder="خالی = بدون مرجع مبلغ"
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">پیش‌فرض هر جلسه دوره جلسه‌ای (تومان، اختیاری)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="decimal"
+                value={courseSessionToman}
+                onChange={(e) => setCourseSessionToman(e.target.value)}
+                placeholder="خالی = بدون مرجع مبلغ"
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginTop: '1rem' }}>
+            <button type="button" className="btn btn-primary" disabled={progSaving} onClick={saveProgramFinancialDefaults}>
+              {progSaving ? 'در حال ذخیره…' : 'ذخیرهٔ تنظیمات مالی برنامه'}
+            </button>
+            {progUpdatedAt && (
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                آخرین به‌روزرسانی: {fmtDate(progUpdatedAt)}
+              </span>
+            )}
           </div>
         </FinancePanel>
       )}

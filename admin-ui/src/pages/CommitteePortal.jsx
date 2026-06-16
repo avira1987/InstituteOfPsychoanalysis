@@ -1,89 +1,46 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { processExecApi, studentApi } from '../services/api'
+import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
+import { processExecApi, studentApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
+import { isDocumentReviewState } from '../utils/documentReviewStates'
+import {
+  isComprehensiveEvalTrigger,
+  validateInterviewEvaluationForm,
+  mergeInterviewEvaluationPayload,
+} from '../utils/interviewEvaluationPayload'
+import {
+  canSubmitInterviewResult,
+  filterInterviewResultTransitions,
+} from '../utils/interviewResultAccess'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
-import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 import PopupToast from '../components/PopupToast'
 import ProcessRollbackSection from '../components/ProcessRollbackSection'
-
-const roleConfig = {
-  progress_committee: {
-    title: 'پنل کمیته پیشرفت',
-    subtitle: 'بررسی مرخصی‌ها، تغییرات درمان و پیشرفت دانشجویان',
-    icon: '📈',
-    accentColor: 'var(--success)',
-    reviewKeywords: [
-      'committee_review', 'progress_committee', 'leave_review', 'progress_review', 'awaiting_committee',
-      'restart_review', 'therapist_change_review',
-    ],
-  },
-  education_committee: {
-    title: 'پنل کمیته آموزش',
-    subtitle: 'بررسی نهایی و صدور حکم ادامه یا توقف',
-    icon: '🎓',
-    accentColor: 'var(--primary)',
-    reviewKeywords: ['education_committee', 'education_review', 'final_verdict', 'continuation_review'],
-  },
-  supervision_committee: {
-    title: 'پنل کمیته نظارت',
-    subtitle: 'بررسی موارد انضباطی و ارائه توصیه‌ها',
-    icon: '🔍',
-    accentColor: 'var(--warning)',
-    reviewKeywords: ['supervision_committee', 'supervision_review', 'disciplinary_review'],
-  },
-  specialized_commission: {
-    title: 'پنل کمیسیون تخصصی',
-    subtitle: 'بررسی قطع زودرس درمان و تصمیم‌گیری صلاحیت',
-    icon: '⚖️',
-    accentColor: 'var(--danger)',
-    reviewKeywords: ['specialized_commission', 'commission_review', 'eligibility_review', 'early_termination'],
-  },
-  therapy_committee_chair: {
-    title: 'پنل مسئول کمیته درمان آموزشی',
-    subtitle: 'واگذاری پیگیری و مشاهده موارد عدم حضور',
-    icon: '🏥',
-    accentColor: 'var(--info)',
-    reviewKeywords: ['therapy_committee', 'chair_review', 'delegation', 'no_show'],
-  },
-  therapy_committee_executor: {
-    title: 'پنل مجری کمیته درمان آموزشی',
-    subtitle: 'پیگیری دانشجویان و ثبت گزارش',
-    icon: '📝',
-    accentColor: 'var(--primary)',
-    reviewKeywords: ['executor_review', 'followup', 'executor_report', 'definitive_stop'],
-  },
-  deputy_education: {
-    title: 'پنل معاون مدیر آموزش',
-    subtitle: 'مشاهده هشدارهای SLA و درخواست‌های مرخصی',
-    icon: '📊',
-    accentColor: 'var(--warning)',
-    reviewKeywords: ['deputy_review', 'sla_alert', 'escalation', 'deputy_education'],
-  },
-  monitoring_committee_officer: {
-    title: 'پنل مسئول کمیته نظارت',
-    subtitle: 'مشاهده هشدارهای تخلف و مدیریت ارجاع بیماران',
-    icon: '🛡️',
-    accentColor: 'var(--danger)',
-    reviewKeywords: ['monitoring', 'violation', 'referral', 'monitoring_committee'],
-  },
-}
-
-const defaultConfig = {
-  title: 'پنل کمیته',
-  subtitle: 'بررسی درخواست‌ها و تصمیم‌گیری',
-  icon: '📋',
-  accentColor: 'var(--primary)',
-  reviewKeywords: ['review', 'committee', 'pending', 'awaiting'],
-}
+import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
+import OperatorFollowupSection from '../components/OperatorFollowupSection'
+import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
+import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
+import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+import {
+  COMMITTEE_DEEP_LINK_TABS,
+  COMMITTEE_DEFAULT_CONFIG,
+  getCommitteeKindConfig,
+  getCommitteeKindPath,
+  getCommitteeRoleConfig,
+} from '../utils/portalCommitteeKinds'
 
 export default function CommitteePortal() {
+  const { kind: kindParam } = useParams()
+  const kind = kindParam || 'progress'
+  const kindMeta = getCommitteeKindConfig(kind)
+  const portalPath = getCommitteeKindPath(kind)
   const { user } = useAuth()
-  const config = roleConfig[user?.role] || defaultConfig
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const config = getCommitteeRoleConfig(user?.role) || COMMITTEE_DEFAULT_CONFIG
+  const [activeTab, setActiveTab] = useState('reviews')
   const [allStudents, setAllStudents] = useState([])
   const [pendingReviews, setPendingReviews] = useState([])
   const [allActiveInstances, setAllActiveInstances] = useState([])
@@ -101,6 +58,14 @@ export default function CommitteePortal() {
     committee_meeting_link: '',
     committee_meeting_location_fa: '',
   })
+  const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
+  const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
+  /** فرم ارزیابی مصاحبهٔ ورود به دوره جامع (محرمانه) — همراه تریگر نتیجه ارسال می‌شود */
+  const [interviewEval, setInterviewEval] = useState({
+    evaluation_notes: '',
+    rejection_reason: '',
+    suggestion_text: '',
+  })
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -111,9 +76,14 @@ export default function CommitteePortal() {
 
   const loadData = async () => {
     try {
-      const studentsRes = await studentApi.list().catch(() => ({ data: [] }))
+      const [studentsRes, followupRes] = await Promise.all([
+        studentApi.list().catch(() => ({ data: [] })),
+        panelApi.myOperatorFollowup().catch(() => ({ data: {} })),
+      ])
       const students = studentsRes.data || []
       setAllStudents(students)
+      setOperatorFollowupItems(followupRes.data?.items || [])
+      setOperatorReadinessAlerts(followupRes.data?.readiness_alerts || [])
 
       const pending = []
       const allActive = []
@@ -123,9 +93,11 @@ export default function CommitteePortal() {
           const instances = instRes.data?.instances || []
           for (const inst of instances) {
             if (!inst.is_completed && !inst.is_cancelled) {
+              // مراحل بررسی/تکمیل مدارک مخصوص پنل کارمند است و در پنل‌های کمیته نمایش داده نمی‌شود.
+              if (isDocumentReviewState(inst.current_state)) continue
               const enriched = { ...inst, student_code: s.student_code, student_id: s.id }
               allActive.push(enriched)
-              if (isWaitingForReview(inst.current_state)) {
+              if (isWaitingForReview(inst.current_state, inst.process_code)) {
                 pending.push(enriched)
               }
             }
@@ -141,9 +113,19 @@ export default function CommitteePortal() {
     }
   }
 
-  const isWaitingForReview = (state) => {
+  const isWaitingForReview = (state, processCode) => {
     if (!state) return false
-    return config.reviewKeywords.some(kw => state.includes(kw))
+    const keywordMatch = config.reviewKeywords.some((kw) => {
+      if (!state.includes(kw)) return false
+      if (kw === 'interview_completed' && processCode !== 'comprehensive_course_registration') {
+        return false
+      }
+      return true
+    })
+    if (!keywordMatch) return false
+    const kindRoles = kindMeta?.portalRoles || []
+    if (user?.role === 'admin' || kindRoles.includes(user?.role)) return true
+    return false
   }
 
   const viewInstance = async (instanceId) => {
@@ -173,10 +155,22 @@ export default function CommitteePortal() {
         committee_meeting_link: ctx.committee_meeting_link || '',
         committee_meeting_location_fa: ctx.committee_meeting_location_fa || '',
       })
+      setInterviewEval({
+        evaluation_notes: ctx.interview_evaluation_notes || '',
+        rejection_reason: ctx.interview_rejection_reason || '',
+        suggestion_text: ctx.interview_suggestion_text || '',
+      })
     } catch (err) {
       console.error('View error:', err)
     }
   }
+
+  usePortalInstanceDeepLink({
+    loading,
+    setActiveTab,
+    viewInstance,
+    allowedTabs: COMMITTEE_DEEP_LINK_TABS,
+  })
 
   const handleProcessRollback = async (reason) => {
     if (!selectedInstance) return
@@ -242,6 +236,17 @@ export default function CommitteePortal() {
         }
       }
       payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
+      if (
+        instanceDetail?.process_code === 'comprehensive_course_registration'
+        && isComprehensiveEvalTrigger(triggerEvent)
+      ) {
+        const evalError = validateInterviewEvaluationForm(interviewEval, triggerEvent)
+        if (evalError) {
+          showToast(evalError, 'error')
+          return
+        }
+        payload = mergeInterviewEvaluationPayload(payload, interviewEval, triggerEvent)
+      }
       if (toState) payload.to_state = toState
       const res = await processExecApi.trigger(selectedInstance, {
         trigger_event: triggerEvent,
@@ -268,16 +273,34 @@ export default function CommitteePortal() {
     )
   }
 
-  const tabs = [
-    { id: 'dashboard', label: 'داشبورد', icon: '📊' },
-    { id: 'reviews', label: `بررسی‌ها (${pendingReviews.length})`, icon: '📥' },
-    { id: 'all', label: 'همه فرایندها', icon: '🔄' },
-    { id: 'students', label: 'دانشجویان', icon: '👨‍🎓' },
-  ]
+  const tabs = useMemo(() => {
+    const base = [
+      { id: 'reviews', label: `کارهای من (${pendingReviews.length})`, icon: '📥' },
+      { id: 'dashboard', label: 'داشبورد', icon: '📊' },
+    ]
+    if (kindMeta?.showAllTab || user?.role === 'admin') {
+      base.push({ id: 'all', label: 'همه فرایندها', icon: '🔄' })
+    }
+    base.push({ id: 'students', label: 'دانشجویان', icon: '👨‍🎓' })
+    return base
+  }, [pendingReviews.length, kindMeta, user?.role])
+
+  const instanceContext = instanceDetail?.context_data || {}
+  const transitionsForActions = filterInterviewResultTransitions(
+    availableTransitions,
+    user,
+    instanceContext,
+  )
+  const canSubmitInterview = canSubmitInterviewResult(user, instanceContext)
 
   return (
     <div>
       <PopupToast toast={toast} />
+
+      <ResolvedProcessHistoryBanner
+        instanceDetail={instanceDetail}
+        availableTransitions={availableTransitions}
+      />
 
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -296,6 +319,18 @@ export default function CommitteePortal() {
           </div>
         </div>
       </div>
+
+      <OperatorPortalReminderBanner
+        portalPath={portalPath}
+        pendingTab="reviews"
+        actionLabel="رفتن به بررسی‌ها"
+      />
+
+      <OperatorFollowupSection
+        items={operatorFollowupItems}
+        readinessAlerts={operatorReadinessAlerts}
+        inboxTitle="پرونده‌های باز مرتبط با نقش شما"
+      />
 
       <div className="tab-bar">
         {tabs.map(tab => (
@@ -371,8 +406,6 @@ export default function CommitteePortal() {
               </div>
             </div>
           </div>
-
-          <PanelRoleActionQueue />
 
           <div className="dashboard-grid">
             <div className="card">
@@ -518,10 +551,28 @@ export default function CommitteePortal() {
                 </div>
               </div>
 
+              <OperatorInstanceGuidanceBlock
+                instanceDetail={instanceDetail}
+                portalRole={user?.role}
+                availableTransitions={availableTransitions}
+              />
+
               <InstanceContextSummary
                 contextData={instanceDetail.context_data}
                 history={instanceDetail.history}
                 title="پرونده و سابقه (قبل از تصمیم)"
+              />
+
+              <OperatorStepFormsSection
+                instanceId={selectedInstance}
+                processCode={instanceDetail.process_code}
+                currentState={instanceDetail.current_state}
+                contextData={instanceDetail.context_data}
+                isCompleted={instanceDetail.is_completed}
+                isCancelled={instanceDetail.is_cancelled}
+                role={user?.role}
+                showToast={showToast}
+                onUpdated={() => viewInstance(selectedInstance)}
               />
 
               {instanceDetail.process_code === 'educational_leave'
@@ -596,6 +647,56 @@ export default function CommitteePortal() {
                 </div>
               )}
 
+              {instanceDetail.process_code === 'comprehensive_course_registration'
+                && instanceDetail.current_state === 'interview_completed'
+                && canSubmitInterview
+                && transitionsForActions.some(t => isComprehensiveEvalTrigger(t.trigger_event)) && (
+                <div style={{
+                  padding: '1rem 1.25rem', marginBottom: '1.25rem', borderRadius: '10px',
+                  background: '#fef2f2', borderRight: '4px solid #dc2626',
+                }}>
+                  <h4 style={{ fontSize: '0.92rem', fontWeight: 700, marginBottom: '0.5rem', color: '#b91c1c' }}>
+                    فرم ارزیابی مصاحبهٔ ورود به دوره جامع (محرمانه)
+                  </h4>
+                  <p style={{ fontSize: '0.8rem', color: '#7f1d1d', marginBottom: '0.75rem', lineHeight: 1.65 }}>
+                    این فرم را پیش از ثبت نتیجه پر کنید. توضیحات ارزیابی و دلیل رد محرمانه است و فقط در پورتال پذیرش
+                    ذخیره می‌شود و هرگز به دانشجو نمایش داده نمی‌شود. سپس روی دکمهٔ نتیجهٔ موردنظر (پذیرش / رد قطعی /
+                    رد با پیشنهاد) کلیک کنید.
+                  </p>
+                  <label style={{ display: 'block', marginBottom: '0.6rem', fontSize: '0.85rem' }}>
+                    توضیحات ارزیابی (الزامی)
+                    <textarea
+                      className="psf-input psf-textarea"
+                      rows={3}
+                      style={{ width: '100%', marginTop: '0.35rem' }}
+                      value={interviewEval.evaluation_notes}
+                      onChange={e => setInterviewEval(prev => ({ ...prev, evaluation_notes: e.target.value }))}
+                    />
+                  </label>
+                  <label style={{ display: 'block', marginBottom: '0.6rem', fontSize: '0.85rem' }}>
+                    دلیل رد (محرمانه — الزامی در صورت رد)
+                    <textarea
+                      className="psf-input psf-textarea"
+                      rows={2}
+                      style={{ width: '100%', marginTop: '0.35rem' }}
+                      placeholder="فقط در صورت رد قطعی یا رد با پیشنهاد لازم است"
+                      value={interviewEval.rejection_reason}
+                      onChange={e => setInterviewEval(prev => ({ ...prev, rejection_reason: e.target.value }))}
+                    />
+                  </label>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem' }}>
+                    متن پیشنهاد (الزامی برای «رد همراه با پیشنهاد»)
+                    <textarea
+                      className="psf-input psf-textarea"
+                      rows={2}
+                      style={{ width: '100%', marginTop: '0.35rem' }}
+                      value={interviewEval.suggestion_text}
+                      onChange={e => setInterviewEval(prev => ({ ...prev, suggestion_text: e.target.value }))}
+                    />
+                  </label>
+                </div>
+              )}
+
               <ProcessRollbackSection
                 user={user}
                 instanceDetail={instanceDetail}
@@ -603,7 +704,7 @@ export default function CommitteePortal() {
                 busy={rollbackBusy}
               />
 
-              {availableTransitions.length > 0 && (
+              {transitionsForActions.length > 0 && (
                 <div style={{
                   padding: '1.25rem', background: 'var(--success-light)',
                   borderRadius: '10px', marginBottom: '1.5rem', borderRight: '4px solid var(--success)',
@@ -618,7 +719,7 @@ export default function CommitteePortal() {
                     hint="متن همراه همان دکمه‌ای که می‌زنید در پرونده ثبت می‌شود."
                   />
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {availableTransitions.map((t, idx) => {
+                    {transitionsForActions.map((t, idx) => {
                       const isApproval = t.trigger_event?.includes('approved') || t.trigger_event?.includes('confirm') || t.trigger_event?.includes('accept') || t.trigger_event?.includes('eligible')
                       const isReject = t.trigger_event?.includes('reject') || t.trigger_event?.includes('decline') || t.trigger_event?.includes('ineligible') || t.trigger_event?.includes('terminate')
                       return (
@@ -672,7 +773,7 @@ export default function CommitteePortal() {
                       <td style={{ fontWeight: 500 }}>{labelProcess(p.process_code)}</td>
                       <td>{formatStudentCodeDisplay(p.student_code)}</td>
                       <td>
-                        <span className={`badge ${isWaitingForReview(p.current_state) ? 'badge-warning' : 'badge-info'}`}>
+                        <span className={`badge ${isWaitingForReview(p.current_state, p.process_code) ? 'badge-warning' : 'badge-info'}`}>
                           {labelState(p.current_state)}
                         </span>
                       </td>

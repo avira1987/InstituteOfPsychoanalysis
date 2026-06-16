@@ -9,8 +9,8 @@ import {
   deactivateUserAsAdmin,
 } from './helpers/student-api'
 import { answerFromMathQuestion } from './helpers/challenge'
-import { buildE2eRunId, e2eFullName, e2eUniquePhone, E2E_VALID_NATIONAL_CODE } from './helpers/test-data'
-import { retryStep, waitForResponseAfterAction, warnIfSlow } from './helpers/waits'
+import { buildE2eRunId, e2eFullName, e2eRegisterStudentViaApi, e2eUniquePhone } from './helpers/test-data'
+import { retryStep, warnIfSlow } from './helpers/waits'
 import { toFaDigits } from './helpers/faDigits'
 
 async function waitForAuthToken(page: Page, timeout = 15_000) {
@@ -28,7 +28,8 @@ function logFailure(prefix: string, err: unknown, page: Page) {
 }
 
 async function openStudentProfileTab(page: Page) {
-  const tab = page.locator('.tab-bar .tab-item').filter({ hasText: 'پروفایل' })
+  await page.getByTestId('student-portal-group-account').click()
+  const tab = page.locator('.student-portal-nav-sub .tab-item').filter({ hasText: 'پروفایل' })
   await tab.waitFor({ state: 'visible' })
   await tab.click()
 }
@@ -63,56 +64,24 @@ test.describe('انستیتو — یکپارچگی UI و API (بدون mock)', (
     let userIdForCleanup: string | undefined
 
     try {
-      await test.step('ثبت‌نام از UI — انتظار پاسخ ۲۰۰ از public/register', async () => {
+      await test.step('ثبت‌نام از API — public/register', async () => {
         const maxAttempts = 3
-        let apiRegistered = false
         let lastErr: unknown
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
             const phone = e2eUniquePhone(testInfo, attempt)
-
-            await page.goto('/register', { waitUntil: 'domcontentloaded' })
-            await page.getByRole('heading', { name: 'ثبت‌نام دانشجو' }).waitFor({ state: 'visible' })
-
-            const res = await waitForResponseAfterAction(
-              page,
-              (r) => r.url().includes('public/register') && r.request().method() !== 'OPTIONS',
-              async () => {
-                await page.getByTestId('register-input-full_name_fa').fill(fullName)
-                await page.getByTestId('register-input-phone').fill(phone)
-                await page.getByTestId('register-input-national_code').fill(E2E_VALID_NATIONAL_CODE)
-                await page.getByTestId('register-submit').click()
-              },
-              { timeout: 60_000, label: 'POST public/register' },
-            )
-
-            expect(res.status()).toBe(200)
-            const body = (await res.json()) as {
-              student_code: string
-              username: string
-              initial_password: string
-            }
+            const body = await e2eRegisterStudentViaApi(request, {
+              full_name_fa: fullName,
+              phone,
+            })
             studentCode = body.student_code
             username = body.username
             password = body.initial_password
             expect(studentCode).toBeTruthy()
             expect(username).toBeTruthy()
-            apiRegistered = true
-
-            await expect
-              .poll(
-                async () => page.getByTestId('register-success').isVisible(),
-                { timeout: 25_000, intervals: [200, 400, 800] },
-              )
-              .toBe(true)
-            await expect(page.getByTestId('register-student-code')).toContainText(toFaDigits(studentCode))
             return
           } catch (e) {
             lastErr = e
-            if (apiRegistered) {
-              console.error('[E2E] register failed after successful API; not retrying to avoid duplicate users')
-              throw e
-            }
             if (attempt >= maxAttempts) {
               throw e
             }
@@ -128,8 +97,7 @@ test.describe('انستیتو — یکپارچگی UI و API (بدون mock)', (
         await retryStep(
           'login',
           async () => {
-            await page.goto('/login', { waitUntil: 'domcontentloaded' })
-            await page.getByTestId('login-tab-password').click()
+            await page.goto('/login?staff=1', { waitUntil: 'domcontentloaded' })
             await page.getByTestId('login-challenge-answer').waitFor({ state: 'visible', timeout: 25_000 })
 
             const startedAtMs = Date.now()
@@ -160,7 +128,7 @@ test.describe('انستیتو — یکپارچگی UI و API (بدون mock)', (
 
             await expect
               .poll(
-                async () => page.getByRole('heading', { name: 'پنل دانشجو' }).isVisible(),
+                async () => page.getByRole('heading', { name: 'پنل آموزشی' }).isVisible(),
                 { timeout: 30_000, intervals: [200, 500, 1000] },
               )
               .toBe(true)
@@ -189,7 +157,7 @@ test.describe('انستیتو — یکپارچگی UI و API (بدون mock)', (
         expect(r.status()).toBe(200)
         const j = (await r.json()) as { student_code: string }
         expect(j.student_code).toBe(studentCode)
-        await page.getByRole('heading', { name: 'پنل دانشجو' }).waitFor({ state: 'visible' })
+        await page.getByRole('heading', { name: 'پنل آموزشی' }).waitFor({ state: 'visible' })
       })
 
       await test.step('بارگذاری dashboard فرایند (در صورت وجود primary)', async () => {

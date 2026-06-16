@@ -9,14 +9,135 @@
     "trigger": "student_registers_for_course"
   },
   "states": [
-    {"code": "student_enrollment", "name_fa": "ثبت‌نام دانشجو در درس", "type": "initial", "assigned_role": "student"},
-    {"code": "links_created", "name_fa": "لینک آنلاین ایجاد و فعال", "type": "intermediate", "assigned_role": "system"},
-    {"code": "attendance_list_ready", "name_fa": "لیست حضور و غیاب آماده", "type": "intermediate", "assigned_role": "system"},
-    {"code": "lesson_active", "name_fa": "درس فعال — حضور توسط مدرس", "type": "terminal", "assigned_role": "instructor"}
+    {
+      "code": "student_enrollment",
+      "name_fa": "ثبت‌نام دانشجو در درس",
+      "type": "initial",
+      "assigned_role": "student",
+      "editable_anytime": true
+    },
+    {
+      "code": "links_created",
+      "name_fa": "لینک آنلاین ایجاد و فعال",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "attendance_list_ready",
+      "name_fa": "لیست حضور و غیاب آماده",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "lesson_active",
+      "name_fa": "درس فعال — حضور توسط مدرس",
+      "type": "terminal",
+      "assigned_role": "instructor",
+      "metadata": {
+        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
+        "operator_short_fa": "درس فعال — حضور توسط مدرس"
+      }
+    }
   ],
   "transitions": [
-    {"from": "student_enrollment", "to": "links_created", "trigger": "enrolled", "description_fa": "ایجاد لینک آنلاین برای همه دانشجویان"},
-    {"from": "links_created", "to": "attendance_list_ready", "trigger": "links_placed", "description_fa": "لیست حضور و غیاب تشکیل، کمک‌مدرسین از آماده‌سازی فراخوانی"},
-    {"from": "attendance_list_ready", "to": "lesson_active", "trigger": "ready", "description_fa": "حضور و غیاب آنلاین و دستی توسط مدرس"}
+    {
+      "from": "student_enrollment",
+      "to": "links_created",
+      "trigger": "enrolled",
+      "description_fa": "ثبت‌نام دانشجو — ایجاد لینک آنلاین برای همه",
+      "required_role": "student",
+      "actions": [
+        {
+          "type": "register_student_in_courses"
+        },
+        {
+          "type": "create_lms_course_links"
+        }
+      ]
+    },
+    {
+      "from": "links_created",
+      "to": "attendance_list_ready",
+      "trigger": "links_placed",
+      "description_fa": "لینک‌ها در پورتال دانشجو قرار گرفت — تشکیل لیست حضور",
+      "required_role": "system",
+      "actions": [
+        {
+          "type": "record_lms_links_placed"
+        }
+      ]
+    },
+    {
+      "from": "attendance_list_ready",
+      "to": "lesson_active",
+      "trigger": "ready",
+      "description_fa": "لیست کلاس و کمک‌مدرسین آماده — درس فعال",
+      "required_role": "system",
+      "actions": [
+        {
+          "type": "build_class_attendance_list"
+        },
+        {
+          "type": "register_lesson_teaching_assistants"
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "lesson_start_active",
+          "recipients": [
+            "student",
+            "instructor"
+          ]
+        }
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "code": "lesson_enrollment_form",
+      "name_fa": "ثبت‌نام در درس",
+      "used_in_state": "student_enrollment",
+      "note_fa": "لینک کلاس آنلاین برای همهٔ دانشجویان (حضوری و آنلاین) فعال می‌شود.",
+      "fields": [
+        {
+          "name": "selected_courses",
+          "label_fa": "درس مورد نظر",
+          "type": "checkbox_list",
+          "source": "lms_available_courses",
+          "required": true,
+          "max_select": 1
+        },
+        {
+          "name": "attendance_mode_note",
+          "label_fa": "نحوهٔ حضور",
+          "type": "readonly",
+          "default_fa": "در هر جلسه می‌توانید آنلاین یا حضوری شرکت کنید؛ لینک کلاس برای همه فعال می‌شود."
+        }
+      ],
+      "submit_label_fa": "ثبت درس انتخاب‌شده"
+    },
+    {
+      "code": "lesson_student_dashboard",
+      "name_fa": "دسترسی به کلاس",
+      "used_in_state": "lesson_active",
+      "fields": [
+        {
+          "name": "lesson_course_label",
+          "label_fa": "نام درس",
+          "type": "readonly"
+        },
+        {
+          "name": "online_class_link",
+          "label_fa": "لینک ورود به کلاس آنلاین",
+          "type": "readonly"
+        },
+        {
+          "name": "lesson_attendance_hint",
+          "label_fa": "حضور و غیاب",
+          "type": "readonly",
+          "default_fa": "وضعیت هر جلسه پس از ثبت توسط مدرس در همین پرونده به‌روز می‌شود."
+        }
+      ]
+    }
   ]
 }

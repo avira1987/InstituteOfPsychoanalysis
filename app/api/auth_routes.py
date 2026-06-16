@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 import random
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 
 logger = logging.getLogger(__name__)
 from fastapi.security import OAuth2PasswordRequestForm
@@ -24,10 +24,12 @@ from app.api.auth import (
     get_password_hash,
     get_current_user,
     require_role,
+    user_to_response,
     verify_password,
 )
 from pydantic import BaseModel
 from app.models.operational_models import User, LoginChallenge, Student
+from app.services.sms_gateway import normalize_ir_mobile
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -46,10 +48,14 @@ class LoginChallengeResponse(BaseModel):
 
 @router.post("/login", response_model=Token)
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate and get an access token."""
+    from app.middleware.login_rate_limit import check_login_rate_limit
+
+    check_login_rate_limit(request)
     if not form_data.username or not form_data.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -104,8 +110,15 @@ async def login_challenge(
 
 
 @router.post("/login-json", response_model=Token)
-async def login_json(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login_json(
+    request: Request,
+    body: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
     """Login with JSON body (alternative to form for debugging)."""
+    from app.middleware.login_rate_limit import check_login_rate_limit
+
+    check_login_rate_limit(request)
     if not body.username or not body.password:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     try:
@@ -167,29 +180,13 @@ async def register(
     """Register a new user (admin only)."""
     user = await create_user(db, user_data)
     await db.flush()
-    return UserResponse(
-        id=str(user.id),
-        username=user.username,
-        full_name_fa=user.full_name_fa,
-        role=user.role,
-        is_active=user.is_active,
-    )
+    return user_to_response(user)
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
     """Get current user profile."""
-    return UserResponse(
-        id=str(current_user.id),
-        username=current_user.username,
-        full_name_fa=current_user.full_name_fa,
-        full_name_en=current_user.full_name_en,
-        email=current_user.email,
-        phone=current_user.phone,
-        avatar_url=current_user.avatar_url,
-        role=current_user.role,
-        is_active=current_user.is_active,
-    )
+    return user_to_response(current_user)
 
 
 class UpdateProfileRequest(BaseModel):
@@ -212,7 +209,7 @@ async def update_me(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update current user's profile (name, email, phone, password)."""
+    """Update current user's profile (name, email, phone only if unset, password)."""
     if data.full_name_fa is not None:
         current_user.full_name_fa = data.full_name_fa
     if data.full_name_en is not None:
@@ -220,23 +217,22 @@ async def update_me(
     if data.email is not None:
         current_user.email = data.email
     if data.phone is not None:
-        current_user.phone = data.phone
+        normalized_new = normalize_ir_mobile(data.phone or "") or None
+        normalized_cur = normalize_ir_mobile(current_user.phone or "") or None
+        if normalized_cur:
+            if normalized_new != normalized_cur:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="شماره موبایل پس از ثبت‌نام قابل تغییر نیست.",
+                )
+        else:
+            current_user.phone = normalized_new
     if data.password:
         if not data.current_password or not verify_password(data.current_password, current_user.hashed_password):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رمز عبور فعلی نادرست است")
         current_user.hashed_password = get_password_hash(data.password)
     await db.commit()
-    return UserResponse(
-        id=str(current_user.id),
-        username=current_user.username,
-        full_name_fa=current_user.full_name_fa,
-        full_name_en=current_user.full_name_en,
-        email=current_user.email,
-        phone=current_user.phone,
-        avatar_url=current_user.avatar_url,
-        role=current_user.role,
-        is_active=current_user.is_active,
-    )
+    return user_to_response(current_user)
 
 
 @router.get("/home", response_model=HomeResponse)
@@ -249,30 +245,11 @@ async def get_home(
 
     This is used by the frontend to redirect users after login based on their role and state.
     """
-    # Default redirect for non-student roles
-    redirect_url = "/panel"
     primary_instance_id: str | None = None
 
-    # Resolve role-specific portal
-    role_portals = {
-        "student": "/panel/portal/student",
-        "therapist": "/panel/portal/therapist",
-        "supervisor": "/panel/portal/supervisor",
-        "staff": "/panel/portal/staff",
-        "site_manager": "/panel/portal/site-manager",
-        "progress_committee": "/panel/portal/committee",
-        "education_committee": "/panel/portal/committee",
-        "supervision_committee": "/panel/portal/committee",
-        "specialized_commission": "/panel/portal/committee",
-        "therapy_committee_chair": "/panel/portal/committee",
-        "therapy_committee_executor": "/panel/portal/committee",
-        "deputy_education": "/panel/portal/committee",
-        "monitoring_committee_officer": "/panel/portal/committee",
-        "finance": "/panel/finance",
-    }
+    from app.core.portal_role_home import redirect_url_for_role
 
-    if current_user.role in role_portals:
-        redirect_url = role_portals[current_user.role]
+    redirect_url = redirect_url_for_role(current_user.role)
 
     # For students, try to load primary_instance_id from their profile extra_data
     if current_user.role == "student":
@@ -328,17 +305,7 @@ async def upload_avatar(
     path.write_bytes(content)
     current_user.avatar_url = f"/uploads/avatars/{filename}"
     await db.commit()
-    return UserResponse(
-        id=str(current_user.id),
-        username=current_user.username,
-        full_name_fa=current_user.full_name_fa,
-        full_name_en=current_user.full_name_en,
-        email=current_user.email,
-        phone=current_user.phone,
-        avatar_url=current_user.avatar_url,
-        role=current_user.role,
-        is_active=current_user.is_active,
-    )
+    return user_to_response(current_user)
 
 
 class OTPRequestBody(BaseModel):

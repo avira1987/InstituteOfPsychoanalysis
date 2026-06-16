@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "description_fa": "مسیرهای UI/API جایگزین فرم متادیتا — برای ممیزی پذیرش مشتری بدون FAIL کاذب",
+  "auto_start_paths": {
+    "attendance_tracking": {
+      "backend": "app/services/attendance_tracking_sync.py",
+      "function": "ensure_attendance_instance_for_session",
+      "note_fa": "یک نمونه per TherapySession؛ تریگر session_time_reached در calendar_triggers"
+    },
+    "supervision_50h_completion": {
+      "backend": "app/services/calendar_triggers.py",
+      "trigger": "session_time_reached",
+      "note_fa": "هم‌تراز با attendance_tracking برای سوپرویژن"
+    },
+    "session_payment": {
+      "backend": "app/api/payment_routes.py",
+      "note_fa": "شروع از StudentPortal/SepPaymentPanel پس از جلسه درمانی"
+    },
+    "fee_determination": {
+      "backend": "app/services/fee_determination_runner.py",
+      "function": "sweep_stuck_fee_determination_triggered",
+      "note_fa": "فراخوانی از start_process والد (attendance/cancellation)"
+    },
+    "violation_registration": {
+      "backend": "app/services/action_handler.py",
+      "action": "start_process",
+      "note_fa": "زیرفرایند؛ از والد start_process می‌شود"
+    },
+    "patient_referral": {
+      "backend": "app/services/action_handler.py",
+      "action": "run_patient_referral",
+      "note_fa": "زیرفرایند؛ از educational_leave و سایر والدها"
+    }
+  },
+  "form_alternate_paths": {
+    "attendance_tracking": {
+      "states": ["therapist_recording", "site_manager_pending"],
+      "backend": "app/api/therapy_routes.py",
+      "frontend": "admin-ui/src/pages/TherapistPortal.jsx",
+      "mechanism": "apply_therapy_attendance_via_process + SiteManagerPortal triggerTransition"
+    },
+    "supervision_50h_completion": {
+      "states": ["therapist_recording", "supervisor_recording"],
+      "backend": "app/services/attendance_tracking_sync.py",
+      "frontend": "admin-ui/src/pages/SupervisorPortal.jsx",
+      "mechanism": "generic portal transitions"
+    },
+    "session_payment": {
+      "states": ["awaiting_payment", "payment_selection"],
+      "backend": "app/api/payment_routes.py",
+      "frontend": "admin-ui/src/components/SepPaymentPanel.jsx",
+      "mechanism": "gateway callback"
+    },
+    "committees_review": {
+      "states": ["committee_review", "deputy_review"],
+      "frontend": "admin-ui/src/pages/CommitteePortal.jsx",
+      "mechanism": "triggerTransition on pending instances"
+    },
+    "specialized_commission_review": {
+      "frontend": "admin-ui/src/pages/CommitteePortal.jsx",
+      "mechanism": "triggerTransition"
+    },
+    "extra_supervision_session": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard triggerTransition"
+    },
+    "introductory_course_completion": {
+      "backend": "app/services/workflow/lms_service.py",
+      "mechanism": "system/LMS actions; deputy portal SLA"
+    },
+    "lesson_start_per_term": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard + ProcessStepForms; system chain after enrolled"
+    },
+    "student_session_cancellation": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard"
+    },
+    "student_supervision_cancellation": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard"
+    },
+    "supervision_block_transition": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard + therapist portal"
+    },
+    "supervision_session_increase": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard"
+    },
+    "supervision_session_reduction": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard"
+    },
+    "ta_blog_content": {
+      "frontend": "admin-ui/src/pages/StaffPortal.jsx",
+      "mechanism": "staff portal transitions"
+    },
+    "ta_conceptual_questions": {
+      "frontend": "admin-ui/src/pages/StaffPortal.jsx",
+      "mechanism": "staff portal transitions"
+    },
+    "ta_essay_upload": {
+      "frontend": "admin-ui/src/pages/StaffPortal.jsx",
+      "mechanism": "staff portal transitions"
+    },
+    "therapist_session_cancellation": {
+      "frontend": "admin-ui/src/pages/TherapistPortal.jsx",
+      "mechanism": "triggerTransition"
+    },
+    "therapy_early_termination": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard"
+    },
+    "therapy_interruption": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard"
+    },
+    "unannounced_absence_reaction": {
+      "frontend": "admin-ui/src/pages/TherapistPortal.jsx",
+      "mechanism": "therapist + site_manager portals"
+    },
+    "unannounced_supervision_absence_reaction": {
+      "frontend": "admin-ui/src/pages/SupervisorPortal.jsx",
+      "mechanism": "supervisor + site_manager portals"
+    }
+  },
+  "partial_ui_paths": {
+    "introductory_course_registration": {
+      "role": "interviewer",
+      "issue_fa": "ثبت نتیجه مصاحبه در پنل مصاحبه‌گر کامل نیست",
+      "workaround_frontend": "admin-ui/src/pages/StaffPortal.jsx",
+      "workaround_note_fa": "InterviewerPortal لینک به staff pending"
+    },
+    "comprehensive_course_registration": {
+      "role": "interviewer",
+      "issue_fa": "ثبت نتیجه مصاحبه در پنل مصاحبه‌گر کامل نیست",
+      "workaround_frontend": "admin-ui/src/pages/StaffPortal.jsx",
+      "workaround_note_fa": "InterviewerPortal لینک به staff pending"
+    }
+  },
+  "exclude_from_score": [
+    "process_merged_to_one"
+  ],
+  "artifact_action_prefixes": [
+    "generate_",
+    "record_",
+    "upload_certificate",
+    "create_",
+    "add_hour",
+    "add_extra_session",
+    "add_supervision",
+    "merge_instance_context",
+    "set_student_status",
+    "notification",
+    "send_to_dashboard",
+    "publish_",
+    "register_",
+    "update_total_hours",
+    "move_",
+    "upgrade_",
+    "revoke_",
+    "deactivate_",
+    "apply_electronic_signature"
+  ],
+  "student_visibility_fields": [
+    "therapy_hours_progress_fa",
+    "therapy_started",
+    "extra_data.lms",
+    "extra_data.documents"
+  ],
+  "student_result_visibility": {
+    "attendance_tracking": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "field": "therapy_hours_progress_fa",
+      "note_fa": "ساعات درمان پس از record_attendance / add_hour در پروفایل"
+    },
+    "session_payment": {
+      "frontend": "admin-ui/src/components/SepPaymentPanel.jsx",
+      "note_fa": "تأیید پرداخت در callback"
+    },
+    "supervision_50h_completion": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "ساعات سوپرویژن در extra_data"
+    }
+  },
+  "calendar_triggers_documented": [
+    "payment_timeout",
+    "send_return_reminder",
+    "return_deadline_passed",
+    "session_time_reached",
+    "installment_due_date_passed",
+    "therapist_did_not_record"
+  ],
+  "role_portal_frontend": {
+    "student": "admin-ui/src/pages/StudentPortal.jsx",
+    "staff": "admin-ui/src/pages/StaffPortal.jsx",
+    "therapist": "admin-ui/src/pages/TherapistPortal.jsx",
+    "supervisor": "admin-ui/src/pages/SupervisorPortal.jsx",
+    "site_manager": "admin-ui/src/pages/SiteManagerPortal.jsx",
+    "interviewer": "admin-ui/src/pages/InterviewerPortal.jsx",
+    "deputy_education": "admin-ui/src/pages/CommitteePortal.jsx",
+    "progress_committee": "admin-ui/src/pages/CommitteePortal.jsx",
+    "education_committee": "admin-ui/src/pages/CommitteePortal.jsx",
+    "supervision_committee": "admin-ui/src/pages/CommitteePortal.jsx",
+    "specialized_commission": "admin-ui/src/pages/CommitteePortal.jsx",
+    "therapy_committee_chair": "admin-ui/src/pages/CommitteePortal.jsx",
+    "therapy_committee_executor": "admin-ui/src/pages/CommitteePortal.jsx",
+    "monitoring_committee_officer": "admin-ui/src/pages/CommitteePortal.jsx",
+    "admin": "admin-ui/src/pages/StaffPortal.jsx",
+    "finance": "admin-ui/src/pages/FinancialDashboard.jsx"
+  }
+}

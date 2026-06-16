@@ -35,10 +35,10 @@ class TestIntroductoryCourseRegistrationFlow:
         assert instance.current_state_code == "application_submitted"
         assert instance.is_completed is False
 
-    async def test_introductory_course_registration_has_transition_to_interview_scheduled(
+    async def test_introductory_student_portal_no_manual_timeslot_trigger(
         self, db_session: AsyncSession, sample_student, sample_user
     ):
-        """از application_submitted با trigger timeslot_selected به interview_scheduled می‌رود."""
+        """پورتال دانشجو نباید timeslot_selected را به‌صورت دستی ببیند — فقط مسیر رزرو اسلات."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
         await load_process(db_session, processes_dir / "introductory_course_registration.json")
         await db_session.commit()
@@ -54,15 +54,15 @@ class TestIntroductoryCourseRegistrationFlow:
 
         transitions = await engine.get_available_transitions(
             instance.id,
-            "applicant",
+            "student",
         )
         trigger_events = [t["trigger_event"] for t in transitions]
-        assert "timeslot_selected" in trigger_events
+        assert "timeslot_selected" not in trigger_events
 
     async def test_introductory_course_registration_transition_timeslot_selected(
         self, db_session: AsyncSession, sample_student, sample_user
     ):
-        """اجرای timeslot_selected باعث رفتن به interview_scheduled می‌شود."""
+        """اجرای timeslot_selected باعث رفتن مستقیم به interview_payment می‌شود."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
         await load_process(db_session, processes_dir / "introductory_course_registration.json")
         await db_session.commit()
@@ -86,6 +86,57 @@ class TestIntroductoryCourseRegistrationFlow:
 
         assert result.success is True
         assert result.from_state == "application_submitted"
-        assert result.to_state == "interview_scheduled"
+        assert result.to_state == "interview_payment"
         instance = await engine.get_process_instance(instance.id)
-        assert instance.current_state_code == "interview_scheduled"
+        assert instance.current_state_code == "interview_payment"
+
+    async def test_admission_result_auto_proceeds_to_documents_upload(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        """پس از ثبت نتیجهٔ پذیرش، سیستم خودکار به documents_upload و پیامک مدارک می‌رود."""
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_process(db_session, processes_dir / "introductory_course_registration.json")
+        await db_session.commit()
+
+        engine = StateMachineEngine(db_session)
+        instance = await engine.start_process(
+            process_code="introductory_course_registration",
+            student_id=sample_student.id,
+            actor_id=sample_user.id,
+            actor_role="applicant",
+        )
+        await db_session.commit()
+
+        for trigger, role in [
+            ("timeslot_selected", "applicant"),
+            ("payment_success", "system"),
+            ("interview_time_reached", "system"),
+        ]:
+            r = await engine.execute_transition(
+                instance_id=instance.id,
+                trigger_event=trigger,
+                actor_id=sample_user.id,
+                actor_role=role,
+                payload={"selected_timeslot": "2026-05-01T10:00:00"} if trigger == "timeslot_selected" else None,
+            )
+            await db_session.commit()
+            assert r.success, f"{trigger}: {getattr(r, 'error', None)}"
+
+        r = await engine.execute_transition(
+            instance_id=instance.id,
+            trigger_event="interview_result_submitted",
+            actor_id=sample_user.id,
+            actor_role="interviewer",
+            payload={
+                "interview_result": "full_admission",
+                "to_state": "result_full_admission",
+                "allowed_course_count": 3,
+            },
+        )
+        await db_session.commit()
+        assert r.success, r.error
+
+        instance = await engine.get_process_instance(instance.id)
+        assert instance.current_state_code == "documents_upload"
+        ctx = instance.context_data or {}
+        assert ctx.get("documents_upload_deadline")

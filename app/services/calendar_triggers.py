@@ -23,12 +23,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.core.engine import StateMachineEngine, InvalidTransitionError
 from app.models.meta_models import ProcessDefinition, StateDefinition
-from app.models.operational_models import ProcessInstance, InterviewSlot, Student, User
+from app.models.operational_models import ProcessInstance, InterviewSlot, Student, TherapySession, User
 from app.services.notification_service import notification_service
 from app.services.student_service import StudentService
+from app.services.interview_slot_service import (
+    advance_due_interview_interviews,
+    expire_interview_booking_payment_deadlines,
+)
+from app.services.interview_slot_recurring_generation import generate_interview_slots_from_recurring_rules
 from app.services.fee_determination_runner import sweep_stuck_fee_determination_triggered
 from app.services.attendance_tracking_sync import sync_all_open_attendance_instances_from_sessions
-from app.services.sms_gateway import send_sms, normalize_ir_mobile
+from app.services.sms_gateway import normalize_ir_mobile
 from sqlalchemy.orm.attributes import flag_modified
 
 logger = logging.getLogger(__name__)
@@ -131,13 +136,11 @@ async def _run_session_payment_sla_reminders(db: AsyncSession, now: datetime) ->
         phone = normalize_ir_mobile(user.phone or "")
         if not phone or len(phone) < 10:
             continue
-        msg = notification_service.get_template("session_payment_sla_payment", "sms")
-        if not msg:
-            continue
         try:
-            await send_sms(phone, msg)
-        except Exception as e:
-            logger.warning("session_payment SLA reminder SMS failed instance=%s: %s", instance.id, e)
+            await notification_service.send_notification(
+                "sms", "session_payment_sla_payment", phone, {}
+            )
+        except Exception:
             continue
         ctx["payment_sla_reminder_sent"] = now.isoformat()
         instance.context_data = ctx
@@ -450,13 +453,9 @@ async def _run_extra_session_sla_reminders(db: AsyncSession, now: datetime) -> l
                         phone = normalize_ir_mobile(th_user.phone or "")
             if not phone or len(phone) < 10:
                 continue
-            msg = notification_service.get_template(template_name, "sms")
-            if not msg:
-                continue
             try:
-                await send_sms(phone, msg)
-            except Exception as e:
-                logger.warning("extra_session SLA SMS failed instance=%s: %s", instance.id, e)
+                await notification_service.send_notification("sms", template_name, phone, {})
+            except Exception:
                 continue
             ctx[ctx_flag] = now.isoformat()
             instance.context_data = ctx
@@ -501,13 +500,11 @@ async def _run_therapy_session_increase_sla_reminders(db: AsyncSession, now: dat
         phone = normalize_ir_mobile(th_user.phone or "")
         if not phone or len(phone) < 10:
             continue
-        msg = notification_service.get_template("therapy_session_increase_sla_therapist", "sms")
-        if not msg:
-            continue
         try:
-            await send_sms(phone, msg)
-        except Exception as e:
-            logger.warning("therapy_session_increase SLA therapist SMS failed instance=%s: %s", instance.id, e)
+            await notification_service.send_notification(
+                "sms", "therapy_session_increase_sla_therapist", phone, {}
+            )
+        except Exception:
             continue
         ctx["therapy_session_increase_sla_therapist_sent"] = now.isoformat()
         instance.context_data = ctx
@@ -552,17 +549,11 @@ async def _run_therapy_session_increase_student_response_reminders(db: AsyncSess
         phone = normalize_ir_mobile(user.phone or "")
         if not phone or len(phone) < 10:
             continue
-        msg = notification_service.get_template("therapy_session_increase_reminder_student_response", "sms")
-        if not msg:
-            continue
         try:
-            await send_sms(phone, msg)
-        except Exception as e:
-            logger.warning(
-                "therapy_session_increase student_response reminder SMS failed instance=%s: %s",
-                instance.id,
-                e,
+            await notification_service.send_notification(
+                "sms", "therapy_session_increase_reminder_student_response", phone, {}
             )
+        except Exception:
             continue
         ctx["therapy_session_increase_reminder_student_sent"] = now.isoformat()
         instance.context_data = ctx
@@ -612,13 +603,9 @@ async def _run_start_therapy_sla_reminders(db: AsyncSession, now: datetime) -> l
             phone = normalize_ir_mobile(user.phone or "")
             if not phone or len(phone) < 10:
                 continue
-            msg = notification_service.get_template(template_name, "sms")
-            if not msg:
-                continue
             try:
-                await send_sms(phone, msg)
-            except Exception as e:
-                logger.warning("start_therapy SLA SMS failed instance=%s: %s", instance.id, e)
+                await notification_service.send_notification("sms", template_name, phone, {})
+            except Exception:
                 continue
             ctx[ctx_flag] = now.isoformat()
             instance.context_data = ctx
@@ -627,28 +614,162 @@ async def _run_start_therapy_sla_reminders(db: AsyncSession, now: datetime) -> l
     return out
 
 
+def _slot_starts_at_utc(slot: InterviewSlot) -> datetime:
+    st = slot.starts_at
+    if st.tzinfo is None:
+        st = st.replace(tzinfo=timezone.utc)
+    return st
+
+
+def _interview_reminder_templates(slot: InterviewSlot) -> tuple[str, str]:
+    """(قالب متقاضی، قالب مصاحبه‌گر) بر اساس آنلاین/حضوری."""
+    if slot.mode == "online":
+        return "interview_reminder_applicant_online", "interview_reminder_interviewer_online"
+    return "interview_reminder_applicant_inperson", "interview_reminder_interviewer_inperson"
+
+
+def _interview_reminder_sms_context(
+    slot: InterviewSlot,
+    student_user: User,
+) -> dict[str, str]:
+    st = _slot_starts_at_utc(slot)
+    name = (student_user.full_name_fa or "").strip() or "کاربر گرامی"
+    date_s = st.strftime("%Y-%m-%d")
+    time_s = st.strftime("%H:%M")
+    loc = (slot.location_fa or "").strip() or "انستیتو روانکاوی تهران"
+    link = (slot.meeting_link or "").strip()
+    loc_info = link if slot.mode == "online" else loc
+    return {
+        "student_name": name,
+        "applicant_name": name,
+        "interview_date": date_s,
+        "interview_time": time_s,
+        "date": date_s,
+        "time": time_s,
+        "interview_link": link,
+        "interview_location": loc,
+        "interview_location_or_link": loc_info,
+        "location_info": loc_info,
+    }
+
+
 async def _run_interview_slot_reminders(db: AsyncSession, now: datetime) -> list[dict]:
-    """یادآوری پیامکی قبل از زمان مصاحبه برای اسلات‌های رزروشده."""
+    """یادآوری پیامکی ~۲ ساعت قبل از مصاحبه برای متقاضی و مصاحبه‌گر (خط خدماتی / پترن)."""
     settings = get_settings()
     hours = float(getattr(settings, "INTERVIEW_REMINDER_HOURS_BEFORE", 2.0))
     delta = timedelta(hours=hours)
     stmt = select(InterviewSlot).where(
         InterviewSlot.assigned_student_id.isnot(None),
+        InterviewSlot.booking_payment_deadline_at.is_(None),
         InterviewSlot.reminder_sent_at.is_(None),
     )
     rows = (await db.execute(stmt)).scalars().all()
     out: list[dict] = []
+    tpl_student, tpl_interviewer = "", ""
     for slot in rows:
-        st = slot.starts_at
+        st = _slot_starts_at_utc(slot)
+        if st <= now:
+            continue
+        if now < st - delta:
+            continue
+        student = await db.get(Student, slot.assigned_student_id)
+        if not student:
+            continue
+        student_user = await db.get(User, student.user_id)
+        if not student_user:
+            continue
+        ctx = _interview_reminder_sms_context(slot, student_user)
+        tpl_student, tpl_interviewer = _interview_reminder_templates(slot)
+        sent_any = False
+
+        phone = normalize_ir_mobile(student_user.phone or "")
+        if phone and len(phone) >= 10:
+            try:
+                res = await notification_service.send_notification(
+                    "sms", tpl_student, phone, ctx,
+                )
+                if res.success:
+                    sent_any = True
+                else:
+                    logger.warning(
+                        "interview reminder applicant failed slot=%s phone=%s err=%s",
+                        slot.id,
+                        phone[:4] + "***",
+                        res.error,
+                    )
+            except Exception as e:
+                logger.warning("interview reminder applicant exception slot=%s: %s", slot.id, e)
+
+        iuid = getattr(slot, "interviewer_user_id", None)
+        if iuid:
+            iv_user = await db.get(User, iuid)
+            if iv_user:
+                iv_phone = normalize_ir_mobile(iv_user.phone or "")
+                if iv_phone and len(iv_phone) >= 10:
+                    try:
+                        res_iv = await notification_service.send_notification(
+                            "sms", tpl_interviewer, iv_phone, ctx,
+                        )
+                        if res_iv.success:
+                            sent_any = True
+                        else:
+                            logger.warning(
+                                "interview reminder interviewer failed slot=%s err=%s",
+                                slot.id,
+                                res_iv.error,
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            "interview reminder interviewer exception slot=%s: %s",
+                            slot.id,
+                            e,
+                        )
+
+        if sent_any:
+            slot.reminder_sent_at = now
+            out.append(
+                {
+                    "slot_id": str(slot.id),
+                    "student_id": str(student.id),
+                    "templates": [tpl_student, tpl_interviewer],
+                }
+            )
+    return out
+
+
+async def _run_therapy_session_link_reminders(db: AsyncSession, now: datetime) -> list[dict]:
+    """یادآوری پیامکی لینک جلسهٔ درمان آنلاین ~۳۰ دقیقه قبل از شروع برای دانشجو."""
+    settings = get_settings()
+    try:
+        minutes_before = int(
+            getattr(settings, "THERAPY_SESSION_LINK_REMINDER_MINUTES_BEFORE", 30)
+        )
+    except (TypeError, ValueError):
+        minutes_before = 30
+    delta = timedelta(minutes=max(1, minutes_before))
+    stmt = select(TherapySession).where(
+        TherapySession.status == "scheduled",
+        TherapySession.session_starts_at.isnot(None),
+        TherapySession.meeting_url.isnot(None),
+        TherapySession.link_reminder_sent_at.is_(None),
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    out: list[dict] = []
+    for session in rows:
+        link = (session.meeting_url or "").strip()
+        if not link:
+            continue
+        st = session.session_starts_at
+        if st is None:
+            continue
         if st.tzinfo is None:
             st = st.replace(tzinfo=timezone.utc)
         if st <= now:
             continue
-        send_at = st - delta
-        if now < send_at:
+        if now < st - delta:
             continue
-        student = await db.get(Student, slot.assigned_student_id)
-        if not student:
+        student = await db.get(Student, session.student_id)
+        if not student or not student.user_id:
             continue
         user = await db.get(User, student.user_id)
         if not user:
@@ -656,27 +777,28 @@ async def _run_interview_slot_reminders(db: AsyncSession, now: datetime) -> list
         phone = normalize_ir_mobile(user.phone or "")
         if not phone or len(phone) < 10:
             continue
+        ctx = {
+            "student_name": (user.full_name_fa or "").strip() or "کاربر گرامی",
+            "session_date": st.strftime("%Y-%m-%d"),
+            "session_time": st.strftime("%H:%M"),
+            "meeting_url": link,
+        }
         try:
-            from zoneinfo import ZoneInfo
-
-            local = st.astimezone(ZoneInfo("Asia/Tehran"))
-            time_fa = local.strftime("%Y-%m-%d %H:%M")
-            tz_note = "به وقت تهران"
-        except Exception:
-            time_fa = st.strftime("%Y-%m-%d %H:%M")
-            tz_note = "UTC"
-        msg = (
-            "یادآوری مصاحبه پذیرش انستیتو روانکاوی تهران\n"
-            f"زمان: {time_fa} ({tz_note})\n"
-            "لطفاً به موقع در محل یا لینک اعلام‌شده حاضر شوید."
-        )
-        try:
-            await send_sms(phone, msg)
+            res = await notification_service.send_notification(
+                "sms", "therapy_session_link_reminder", phone, ctx,
+            )
         except Exception as e:
-            logger.warning("interview reminder SMS failed slot=%s: %s", slot.id, e)
+            logger.warning("therapy session link reminder exception session=%s: %s", session.id, e)
             continue
-        slot.reminder_sent_at = now
-        out.append({"slot_id": str(slot.id), "student_id": str(student.id)})
+        if not getattr(res, "success", False):
+            logger.warning(
+                "therapy session link reminder failed session=%s err=%s",
+                session.id,
+                getattr(res, "error", None),
+            )
+            continue
+        session.link_reminder_sent_at = now
+        out.append({"session_id": str(session.id), "student_id": str(student.id)})
     return out
 
 
@@ -684,6 +806,18 @@ async def _run_session_payment_autostart_unpaid(db: AsyncSession) -> list[dict]:
     """باز کردن خودکار session_payment در صورت جلسات درمان بدون پرداخت و نبود نمونهٔ فعال."""
     svc = StudentService(db)
     return await svc.maybe_ensure_session_payment_for_unpaid_sessions()
+
+
+def _calendar_part_event_count(part: Any) -> int:
+    """تعداد رویدادهای یک بخش خلاصه — لیست یا dict با created_total."""
+    if isinstance(part, list):
+        return len(part)
+    if isinstance(part, dict):
+        try:
+            return int(part.get("created_total") or 0)
+        except (TypeError, ValueError):
+            return 0
+    return 0
 
 
 async def run_calendar_trigger_pass(db: AsyncSession) -> dict[str, Any]:
@@ -701,6 +835,10 @@ async def run_calendar_trigger_pass(db: AsyncSession) -> dict[str, Any]:
     inst2 = await _run_intro_second_semester_installment_due(db, today)
     th_att = await _run_attendance_therapist_not_recorded_deadline(db, now)
     interview_rem = await _run_interview_slot_reminders(db, now)
+    therapy_link_rem = await _run_therapy_session_link_reminders(db, now)
+    interview_booking_deadline = await expire_interview_booking_payment_deadlines(db, now=now)
+    interview_time_reached = await advance_due_interview_interviews(db, now=now)
+    interview_recurring_gen = await generate_interview_slots_from_recurring_rules(db, now=now)
     start_therapy_sla = await _run_start_therapy_sla_reminders(db, now)
     extra_session_sla = await _run_extra_session_sla_reminders(db, now)
     tsi_sla = await _run_therapy_session_increase_sla_reminders(db, now)
@@ -717,6 +855,10 @@ async def run_calendar_trigger_pass(db: AsyncSession) -> dict[str, Any]:
         inst2,
         th_att,
         interview_rem,
+        therapy_link_rem,
+        interview_booking_deadline,
+        interview_time_reached,
+        interview_recurring_gen,
         start_therapy_sla,
         extra_session_sla,
         tsi_sla,
@@ -735,12 +877,16 @@ async def run_calendar_trigger_pass(db: AsyncSession) -> dict[str, Any]:
         "installment_due_intro_second_semester": inst2,
         "therapist_did_not_record_attendance": th_att,
         "interview_slot_reminders": interview_rem,
+        "therapy_session_link_reminders": therapy_link_rem,
+        "interview_booking_payment_deadline_expiry": interview_booking_deadline,
+        "interview_time_reached_advance": interview_time_reached,
+        "interview_recurring_slot_generation": interview_recurring_gen,
         "start_therapy_sla_reminders": start_therapy_sla,
         "extra_session_sla_reminders": extra_session_sla,
         "therapy_session_increase_sla_reminders": tsi_sla,
         "therapy_session_increase_student_response_reminders": tsi_student,
         "fee_determination_stuck_sweep": fee_det_sweep,
-        "fired_total": sum(len(p) for p in parts),
+        "fired_total": sum(_calendar_part_event_count(p) for p in parts),
     }
 
 
@@ -760,7 +906,8 @@ class CalendarTriggerMonitor:
                         continue
                     async with db_factory() as db:
                         summary = await run_calendar_trigger_pass(db)
-                        if summary.get("fired_total"):
+                        rec_n = summary.get("interview_recurring_slot_generation", {}).get("created_total") or 0
+                        if summary.get("fired_total") or rec_n:
                             logger.info("Calendar triggers fired: %s", summary)
                         await db.commit()
                 except asyncio.CancelledError:

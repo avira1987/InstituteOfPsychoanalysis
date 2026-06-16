@@ -1,4 +1,4 @@
-import { PROCESS_LABELS_FA, STATE_LABELS_FA } from './processMetadataLabels'
+import { PROCESS_LABELS_FA, PROCESS_STATE_LABELS_FA, STATE_LABELS_FA } from './processMetadataLabels'
 import { toFaDigits } from './persianDigits'
 
 /** نقش کاربر در رابط کاربری فارسی */
@@ -37,6 +37,18 @@ export function labelProcess(code) {
 export function labelState(state) {
   if (state == null || state === '') return '—'
   return STATE_LABELS_FA[state] || state
+}
+
+/** برچسب نمایشی وضعیت: اول واژه‌نامهٔ مخصوص فرایند، بعد واژهٔ عمومی، بعد متادیتا. */
+export function resolveStateDisplayLabel(stateCode, metadataNameFa, processCode) {
+  if (processCode && PROCESS_STATE_LABELS_FA[processCode]?.[stateCode]) {
+    return PROCESS_STATE_LABELS_FA[processCode][stateCode]
+  }
+  if (stateCode && STATE_LABELS_FA[stateCode]) {
+    return STATE_LABELS_FA[stateCode]
+  }
+  if (metadataNameFa) return metadataNameFa
+  return labelState(stateCode)
 }
 
 /**

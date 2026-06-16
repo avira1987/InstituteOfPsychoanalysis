@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { ticketApi } from '../services/api'
+import { ticketApi, studentApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import PopupToast from '../components/PopupToast'
 
 const CATEGORY_LABELS = {
   profile_edit_unlock: 'باز کردن پروفایل / ویرایش مرحلهٔ ثبت‌شده',
+  process_edit_request: 'درخواست ویرایش مرحلهٔ فرایند',
   process_general: 'فرایند و مراحل',
   data_correction: 'اصلاح داده',
   access_request: 'دسترسی یا مجوز',
@@ -66,6 +67,8 @@ export default function TicketsPage() {
   const [directAssignAdmin, setDirectAssignAdmin] = useState(false)
   const [toast, setToast] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
+  /** null = در حال بررسی؛ فقط برای نقش دانشجو */
+  const [studentProfileExists, setStudentProfileExists] = useState(null)
   const [createForm, setCreateForm] = useState({
     title: '',
     description: '',
@@ -74,6 +77,7 @@ export default function TicketsPage() {
     assignee_id: '',
     student_id: '',
     process_instance_id: '',
+    acknowledgeNoProfile: false,
   })
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -118,8 +122,31 @@ export default function TicketsPage() {
   }, [loadAssignable])
 
   useEffect(() => {
+    if (!isStudent) {
+      setStudentProfileExists(null)
+      return
+    }
+    let cancelled = false
+    setStudentProfileExists(null)
+    studentApi
+      .me()
+      .then(() => {
+        if (!cancelled) setStudentProfileExists(true)
+      })
+      .catch((e) => {
+        if (cancelled) return
+        if (e.response?.status === 404) setStudentProfileExists(false)
+        else setStudentProfileExists(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isStudent])
+
+  useEffect(() => {
     if (!showCreate) return
     setDirectAssignAdmin(false)
+    setCreateForm((f) => ({ ...f, acknowledgeNoProfile: false }))
     ticketApi
       .triage()
       .then((r) => setTriageInfo(r.data))
@@ -150,6 +177,10 @@ export default function TicketsPage() {
       showToast('برای ارجاع مستقیم، مسئول را انتخاب کنید', 'error')
       return
     }
+    if (isStudent && studentProfileExists === false && !createForm.acknowledgeNoProfile) {
+      showToast('در صورت نداشتن پروفایل دانشجویی، گزینهٔ پایین فرم را تیک بزنید.', 'error')
+      return
+    }
     try {
       const payload = {
         title: createForm.title,
@@ -163,8 +194,11 @@ export default function TicketsPage() {
       if (!isStudent) {
         payload.student_id = createForm.student_id.trim() || null
         payload.process_instance_id = createForm.process_instance_id.trim() || null
-      } else if (createForm.process_instance_id.trim()) {
+      } else if (studentProfileExists !== false && createForm.process_instance_id.trim()) {
         payload.process_instance_id = createForm.process_instance_id.trim()
+      }
+      if (isStudent && studentProfileExists === false) {
+        payload.acknowledge_no_student_profile = !!createForm.acknowledgeNoProfile
       }
       await ticketApi.create(payload)
       showToast('تیکت ثبت شد و به مسئول واحد رسید')
@@ -177,6 +211,7 @@ export default function TicketsPage() {
         assignee_id: '',
         student_id: '',
         process_instance_id: '',
+        acknowledgeNoProfile: false,
       })
       loadList()
     } catch (err) {
@@ -217,6 +252,46 @@ export default function TicketsPage() {
     (isAdmin ||
       user.id === detail.assignee?.id ||
       (user.id === detail.requester?.id && !isStudent))
+
+  const canProcessEditDecision = !!(
+    detail &&
+    detail.category === 'process_edit_request' &&
+    (isAdmin || user?.id === detail.assignee?.id)
+  )
+
+  const handleProcessEditDecision = async (decision) => {
+    if (!detail) return
+    const reason = window.prompt(
+      decision === 'approve'
+        ? 'توضیح تایید (اختیاری):'
+        : decision === 'reject'
+          ? 'دلیل رد درخواست:'
+          : 'توضیح ارجاع (اختیاری):',
+    )
+    if (decision === 'reject' && !(reason || '').trim()) {
+      showToast('برای رد، دلیل لازم است', 'error')
+      return
+    }
+    const payload = { decision, reason: (reason || '').trim() || undefined }
+    if (decision === 'forward') {
+      if (!canReassign) {
+        showToast('شما مجاز به ارجاع نیستید', 'error')
+        return
+      }
+      const toId = window.prompt('شناسه مسئول جدید را وارد کنید (UUID):')
+      if (!toId || !toId.trim()) return
+      payload.forward_assignee_id = toId.trim()
+    }
+    try {
+      await ticketApi.processEditDecision(detail.id, payload)
+      showToast('اقدام ثبت شد')
+      const res = await ticketApi.get(detail.id)
+      setDetail(res.data)
+      loadList()
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'خطا در ثبت اقدام', 'error')
+    }
+  }
 
   return (
     <div className="page tickets-page" dir="rtl">
@@ -424,7 +499,36 @@ export default function TicketsPage() {
                     </div>
                   </>
                 )}
-                {isStudent && (
+                {isStudent && studentProfileExists === false && (
+                  <div
+                    className="ticket-form-section"
+                    style={{
+                      padding: '0.85rem 1rem',
+                      background: 'rgba(239, 246, 255, 0.95)',
+                      border: '1px solid rgba(59, 130, 246, 0.35)',
+                      borderRadius: '10px',
+                    }}
+                  >
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', cursor: 'pointer', lineHeight: 1.65 }}>
+                      <input
+                        type="checkbox"
+                        checked={createForm.acknowledgeNoProfile}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({ ...f, acknowledgeNoProfile: e.target.checked }))
+                        }
+                        style={{ marginTop: '0.25rem' }}
+                      />
+                      <span>
+                        <strong>ثبت درخواست بدون پروفایل دانشجویی:</strong>
+                        {' '}
+                        هنوز فرم تکمیل ثبت‌نام را ارسال نکرده‌ام یا با خطای کد ملی / شمارهٔ موبایل مواجه شده‌ام؛
+                        می‌خواهم این تیکت بدون اتصال به پروندهٔ دانشجویی ثبت شود تا واحد پشتیبانی بررسی کند.
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                {isStudent && studentProfileExists === true && (
                   <div className="ticket-form-section">
                     <span className="ticket-form-section-label">شناسهٔ نمونهٔ فرایند (اختیاری)</span>
                     <input
@@ -435,6 +539,12 @@ export default function TicketsPage() {
                       onChange={(e) => setCreateForm((f) => ({ ...f, process_instance_id: e.target.value }))}
                     />
                   </div>
+                )}
+
+                {isStudent && studentProfileExists === null && (
+                  <p className="muted" style={{ fontSize: '0.88rem' }}>
+                    در حال بررسی وضعیت پروفایل…
+                  </p>
                 )}
 
                 {isAdmin && (
@@ -481,7 +591,12 @@ export default function TicketsPage() {
               <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>
                 انصراف
               </button>
-              <button type="submit" form="ticket-create-form" className="btn btn-primary">
+              <button
+                type="submit"
+                form="ticket-create-form"
+                className="btn btn-primary"
+                disabled={isStudent && studentProfileExists === null}
+              >
                 ثبت تیکت
               </button>
             </div>
@@ -534,6 +649,23 @@ export default function TicketsPage() {
                       }}
                     >
                       {detail.description}
+                    </div>
+                  )}
+                  {detail.extra_context && (
+                    <div
+                      style={{
+                        marginBottom: '1rem',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        padding: '0.75rem 0.9rem',
+                        fontSize: '0.85rem',
+                      }}
+                    >
+                      <strong style={{ display: 'block', marginBottom: '0.35rem' }}>جزئیات ساختاری درخواست</strong>
+                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', direction: 'ltr' }}>
+                        {JSON.stringify(detail.extra_context, null, 2)}
+                      </pre>
                     </div>
                   )}
 
@@ -599,6 +731,23 @@ export default function TicketsPage() {
                       ))}
                     </div>
                   </div>
+
+                  {canProcessEditDecision && (
+                    <div style={{ marginTop: '1rem' }}>
+                      <span className="ticket-form-section-label">اقدام مسئول برای درخواست ویرایش</span>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                        <button type="button" className="btn btn-success btn-sm" onClick={() => handleProcessEditDecision('approve')}>
+                          تایید و بازکردن ویرایش
+                        </button>
+                        <button type="button" className="btn btn-danger btn-sm" onClick={() => handleProcessEditDecision('reject')}>
+                          رد درخواست
+                        </button>
+                        <button type="button" className="btn btn-outline btn-sm" onClick={() => handleProcessEditDecision('forward')}>
+                          ارجاع به همکار دیگر
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {canReassign && (
                     <div style={{ marginTop: '1rem' }}>

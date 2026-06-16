@@ -8,13 +8,13 @@ import json
 import uuid
 import logging
 from datetime import date, datetime, timezone
-from typing import Optional
+from typing import Optional, Tuple
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
-from app.models.operational_models import ProcessInstance, Student, StateHistory, TherapySession
+from app.models.operational_models import ProcessInstance, InterviewSlot, Student, StateHistory, TherapySession
 from app.core.rule_engine import RuleEvaluator
 from app.core.transition import TransitionManager, TransitionResult, TransitionError
 from app.core.event_bus import event_bus, Event
@@ -22,6 +22,13 @@ from app.core.audit import AuditLogger
 from app.services.attendance_service import AttendanceService
 from app.core.gamification import merge_gamification_into_extra
 from app.utils.date_utils import get_current_shamsi_year, get_current_term_week
+from app.core.interview_result_access import (
+    assert_can_submit_interview_result,
+    can_submit_interview_result,
+    is_interview_result_trigger,
+)
+from app.core.student_forbidden_triggers import STUDENT_FORBIDDEN_TRIGGER_EVENTS
+from app.models.operational_models import User
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +39,9 @@ _INTERVIEW_RESULT_BY_TO_STATE = {
     "result_full_admission": "full_admission",
     "rejected": "rejected",
 }
+
+# دانشجو/متقاضی فقط از رزرو اسلات (مسیر جدا)؛ نه با دکمهٔ trigger عمومی
+_REGISTRATION_INTERVIEW_BOOKING_TRIGGERS = frozenset({"timeslot_selected", "interview_time_selected"})
 
 
 class EngineError(Exception):
@@ -262,6 +272,17 @@ class StateMachineEngine:
             if ts and ts in _INTERVIEW_RESULT_BY_TO_STATE:
                 payload = {**payload, "interview_result": _INTERVIEW_RESULT_BY_TO_STATE[ts]}
 
+        if (
+            actor_role in ("student", "applicant")
+            and trigger_event == "proceed_to_payment"
+            and instance.process_code == "introductory_course_registration"
+            and instance.current_state_code == "interview_scheduled"
+        ):
+            if not await self._instance_has_registration_interview_booking(instance.id, instance.student_id):
+                raise InvalidTransitionError(
+                    "اول باید زمان مصاحبه را از همین صفحه رزرو کنید؛ وقت رزروشده به این مسیر وصل نشده است."
+                )
+
         # 2–3. همهٔ ترنزیشن‌های هم‌نام با trigger (به‌ترتیب priority)، تا اولین شاخه‌ای که قوانینش pass شود
         all_transitions = await self.transition_manager.find_transitions_for_state(
             process_def.id, current_state
@@ -333,8 +354,25 @@ class StateMachineEngine:
                         error=perr,
                     )
 
+        # 3b. DB ممکن است required_role قدیمی داشته باشد؛ لیست انحصاری «فقط system» در متادیتا را اعمال کن.
+        if actor_role == "student" and trigger_event in STUDENT_FORBIDDEN_TRIGGER_EVENTS:
+            raise UnauthorizedError(
+                f"Trigger '{trigger_event}' is not available for students (system/callback only)."
+            )
+
+        actor_user = await self.db.get(User, actor_id)
+        if actor_user and is_interview_result_trigger(trigger_event):
+            await assert_can_submit_interview_result(
+                self.db,
+                instance=instance,
+                user=actor_user,
+                trigger_event=trigger_event,
+            )
+
         # 4. Check RBAC
-        if not self.transition_manager.validate_role(transition, actor_role):
+        if not self.transition_manager.validate_role(
+            transition, actor_role, trigger_event=trigger_event
+        ):
             raise UnauthorizedError(
                 f"Role '{actor_role}' is not authorized to trigger '{trigger_event}' "
                 f"(requires '{transition.required_role}')"
@@ -375,6 +413,29 @@ class StateMachineEngine:
                 ctx.pop("__documents_resubmit_fields", None)
                 ctx.pop("__document_field_status", None)
                 ctx.pop("__document_field_rejection_notes", None)
+            elif (
+                trigger_event == "documents_rejected"
+                and instance.process_code == "introductory_course_registration"
+            ):
+                from datetime import timedelta
+                from app.meta.process_forms import get_process_forms
+
+                resubmit = ctx.get("__documents_resubmit_fields") or []
+                labels: dict[str, str] = {}
+                for form in get_process_forms(instance.process_code, "documents_upload"):
+                    for field in form.get("fields") or []:
+                        name = field.get("name")
+                        if name:
+                            labels[str(name)] = str(field.get("label_fa") or name)
+                lines = [
+                    f"{i}- {labels.get(str(fname), str(fname))}"
+                    for i, fname in enumerate(resubmit, 1)
+                ]
+                ctx["__document_field_labels_fa"] = labels
+                ctx["deficiency_list"] = "\n".join(lines) if lines else "—"
+                ctx["documents_correction_deadline"] = (
+                    datetime.now(timezone.utc) + timedelta(hours=48)
+                ).date().isoformat()
             instance.context_data = ctx
             flag_modified(instance, "context_data")
 
@@ -403,6 +464,14 @@ class StateMachineEngine:
                     "therapy_completion snapshot after transition failed (instance=%s)",
                     instance.id,
                 )
+
+        try:
+            await self.persist_registration_payment_defaults_if_needed(instance)
+        except Exception:
+            logger.exception(
+                "registration payment default context after transition failed (instance=%s)",
+                instance.id,
+            )
 
         # 6. Post-transition actions
         actions = _normalize_json_list(transition.actions)
@@ -475,6 +544,44 @@ class StateMachineEngine:
         )
 
         await self._update_hidden_progress(instance, transition.to_state_code)
+
+        if instance.process_code == "introductory_course_registration":
+            try:
+                from app.services.introductory_registration_chaining import (
+                    chain_introductory_registration_after_transition,
+                )
+
+                await chain_introductory_registration_after_transition(
+                    self.db,
+                    self,
+                    instance,
+                    transition.to_state_code,
+                    actor_id,
+                )
+                instance = await self.get_process_instance(instance_id)
+            except Exception:
+                logger.exception(
+                    "introductory registration chain failed (instance=%s)",
+                    instance.id,
+                )
+
+        if instance.process_code == "lesson_start_per_term":
+            try:
+                from app.services.lesson_start_chaining import chain_lesson_start_after_transition
+
+                await chain_lesson_start_after_transition(
+                    self.db,
+                    self,
+                    instance,
+                    transition.to_state_code,
+                    actor_id,
+                )
+                instance = await self.get_process_instance(instance_id)
+            except Exception:
+                logger.exception(
+                    "lesson_start chain failed (instance=%s)",
+                    instance.id,
+                )
 
         if (
             transition.to_state_code == "registration_complete"
@@ -588,30 +695,81 @@ class StateMachineEngine:
 
     # ─── Query Methods ──────────────────────────────────────────────
 
+    async def _instance_has_registration_interview_booking(
+        self,
+        instance_id: uuid.UUID,
+        student_id: uuid.UUID,
+    ) -> bool:
+        stmt = (
+            select(InterviewSlot.id)
+            .where(
+                InterviewSlot.assigned_instance_id == instance_id,
+                InterviewSlot.assigned_student_id == student_id,
+            )
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
     async def get_available_transitions(
         self,
         instance_id: uuid.UUID,
         actor_role: str,
+        actor_id: Optional[uuid.UUID] = None,
     ) -> list[dict]:
         """Get all transitions available from the current state for the given role."""
         instance = await self.get_process_instance(instance_id)
         process_def = await self.get_process_definition(instance.process_code)
+        actor_user = await self.db.get(User, actor_id) if actor_id else None
 
         transitions = await self.transition_manager.find_transitions_for_state(
             process_id=process_def.id,
             from_state_code=instance.current_state_code,
         )
 
+        portal_registration = actor_role in ("student", "applicant")
+        has_booked_slot = False
+        if portal_registration and (
+            instance.process_code == "introductory_course_registration"
+            and instance.current_state_code == "interview_scheduled"
+        ):
+            has_booked_slot = await self._instance_has_registration_interview_booking(
+                instance.id, instance.student_id
+            )
+
         available = []
         for t in transitions:
-            if self.transition_manager.validate_role(t, actor_role):
-                available.append({
-                    "trigger_event": t.trigger_event,
-                    "to_state": t.to_state_code,
-                    "required_role": t.required_role,
-                    "description": t.description_fa,
-                    "has_conditions": bool(t.condition_rules),
-                })
+            if actor_role == "student" and t.trigger_event in STUDENT_FORBIDDEN_TRIGGER_EVENTS:
+                continue
+            if portal_registration and t.trigger_event in _REGISTRATION_INTERVIEW_BOOKING_TRIGGERS:
+                continue
+            if (
+                portal_registration
+                and t.trigger_event == "proceed_to_payment"
+                and instance.process_code == "introductory_course_registration"
+                and instance.current_state_code == "interview_scheduled"
+                and not has_booked_slot
+            ):
+                continue
+            if not self.transition_manager.validate_role(
+                t, actor_role, trigger_event=t.trigger_event
+            ):
+                continue
+            if actor_user and is_interview_result_trigger(t.trigger_event):
+                allowed = await can_submit_interview_result(
+                    self.db,
+                    instance=instance,
+                    user=actor_user,
+                    trigger_event=t.trigger_event,
+                )
+                if not allowed:
+                    continue
+            available.append({
+                "trigger_event": t.trigger_event,
+                "to_state": t.to_state_code,
+                "required_role": t.required_role,
+                "description": t.description_fa,
+                "has_conditions": bool(t.condition_rules),
+            })
         return available
 
     async def get_instance_status(self, instance_id: uuid.UUID) -> dict:
@@ -630,6 +788,11 @@ class StateMachineEngine:
         ctx_out = self._as_mapping(instance.context_data)
         if instance.process_code == "session_payment":
             ctx_out = await self._merge_session_payment_financial_context(instance, ctx_out)
+        if instance.process_code in (
+            "introductory_course_registration",
+            "comprehensive_course_registration",
+        ):
+            ctx_out = await self._merge_registration_payment_context_for_status(instance, ctx_out)
         if instance.process_code == "therapy_completion":
             try:
                 fresh = await self._therapy_completion_resolved_fields(instance)
@@ -836,6 +999,92 @@ class StateMachineEngine:
             out["debt_settlement_included"] = False
         else:
             out["debt_settlement_included"] = bool(dsi)
+        try:
+            from app.services.financial_program_defaults_service import get_effective_financial_program_defaults
+
+            fd = await get_effective_financial_program_defaults(self.db)
+            c = fd.get("class_session_fee_toman") or 0
+            if float(c) > 0:
+                out["reference_class_session_fee_toman"] = float(c)
+            cr = fd.get("course_session_fee_toman") or 0
+            if float(cr) > 0:
+                out["reference_course_session_fee_toman"] = float(cr)
+            th = fd.get("default_therapy_session_fee_toman") or 0
+            if float(th) > 0:
+                out["reference_therapy_session_fee_toman"] = float(th)
+        except Exception:
+            logger.exception("session_payment reference fee hints failed (instance=%s)", instance.id)
+        return out
+
+    @staticmethod
+    def _apply_registration_payment_defaults_to_ctx(
+        process_code: str,
+        current_state: str,
+        ctx: dict,
+        *,
+        registration_interview_fee_rial: int,
+        registration_tuition_invoice_toman: float,
+    ) -> Tuple[dict, bool]:
+        """مبلغ پرداخت مصاحبه/شهریه اگر در context نباشد از پیش‌فرض‌های مالی سامانه پر می‌کند."""
+        if process_code not in ("introductory_course_registration", "comprehensive_course_registration"):
+            return ctx, False
+        if current_state not in ("interview_payment", "payment"):
+            return ctx, False
+
+        def _valid_rial(v) -> bool:
+            try:
+                return int(v) >= 1000
+            except (TypeError, ValueError):
+                return False
+
+        out = dict(ctx)
+        changed = False
+        if current_state == "interview_payment":
+            if not _valid_rial(out.get("payment_amount_rial")):
+                fee = int(registration_interview_fee_rial)
+                out["payment_amount_rial"] = fee
+                out["invoice_amount"] = float(fee) / 10.0
+                changed = True
+        elif current_state == "payment":
+            if not _valid_rial(out.get("payment_amount_rial")):
+                tom = float(registration_tuition_invoice_toman)
+                out["invoice_amount"] = tom
+                out["payment_amount_rial"] = int(round(tom * 10))
+                changed = True
+        return out, changed
+
+    async def persist_registration_payment_defaults_if_needed(self, instance: ProcessInstance) -> bool:
+        """پس از انتقال یا برای نمونهٔ قدیمی: ذخیرهٔ مبلغ در DB اگر خالی باشد."""
+        from app.services.financial_program_defaults_service import get_effective_financial_program_defaults
+
+        fd = await get_effective_financial_program_defaults(self.db)
+        ctx = dict(self._as_mapping(instance.context_data))
+        new_ctx, changed = self._apply_registration_payment_defaults_to_ctx(
+            instance.process_code,
+            instance.current_state_code,
+            ctx,
+            registration_interview_fee_rial=int(fd["registration_interview_fee_rial"]),
+            registration_tuition_invoice_toman=float(fd["registration_tuition_invoice_toman"]),
+        )
+        if changed:
+            instance.context_data = new_ctx
+            flag_modified(instance, "context_data")
+        return changed
+
+    async def _merge_registration_payment_context_for_status(
+        self, instance: ProcessInstance, merged: dict
+    ) -> dict:
+        """فقط برای پاسخ status/dashboard — بدون نوشتن DB."""
+        from app.services.financial_program_defaults_service import get_effective_financial_program_defaults
+
+        fd = await get_effective_financial_program_defaults(self.db)
+        out, _ = self._apply_registration_payment_defaults_to_ctx(
+            instance.process_code,
+            instance.current_state_code,
+            merged,
+            registration_interview_fee_rial=int(fd["registration_interview_fee_rial"]),
+            registration_tuition_invoice_toman=float(fd["registration_tuition_invoice_toman"]),
+        )
         return out
 
     async def _merge_therapy_session_reduction_instance_context(

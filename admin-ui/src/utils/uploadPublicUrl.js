@@ -44,7 +44,12 @@ export function parseStepFileUploadValue(val) {
     if (s.startsWith('/') || s.startsWith('http://') || s.startsWith('https://')) {
       return { url: s, mime: inferMimeFromUploadRef(s), fileName: null, isLocalPlaceholder: false }
     }
-    return { url: null, mime: '', fileName: s, isLocalPlaceholder: true }
+    // فقط رشته‌ای را «نام فایل محلی» در نظر بگیر که واقعاً پسوند فایل شناخته‌شده دارد؛
+    // در غیر این صورت یک مقدار متنی معمولی است (مثلاً scheduled_notification، sms و…).
+    if (inferMimeFromUploadRef(s)) {
+      return { url: null, mime: '', fileName: s, isLocalPlaceholder: true }
+    }
+    return empty
   }
   if (typeof val === 'object' && !Array.isArray(val)) {
     const rawUrl = val.url ?? val.public_url ?? val.href

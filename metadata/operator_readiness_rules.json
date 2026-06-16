@@ -1,0 +1,42 @@
+{
+  "version": "1",
+  "description_fa": "آستانه‌ها و فلگ‌های قواعد آمادگی نقش در صندوق پیگیری اپراتور (my-operator-followup).",
+  "defaults": {
+    "interviewer_min_free_slots": 1,
+    "therapist_max_students_scan": 2000,
+    "admin_max_operator_users_per_rule": 400
+  },
+  "rules": [
+    {
+      "id": "staff_interview_pool_free_slots",
+      "check": "interview_pool_free_slots",
+      "roles": ["staff"],
+      "enabled": true,
+      "params": {
+        "min_count": 1
+      },
+      "ui": {
+        "title_fa": "زمان آزاد مصاحبه تعریف نشده",
+        "detail_fa": "حداقل یک وقت آیندهٔ آزاد برای مصاحبه ثبت کنید تا دانشجویان بتوانند وقت بگیرند.",
+        "action_label_fa": "تعریف وقت مصاحبه",
+        "action_href": "/panel/portal/staff?tab=interviewSlots"
+      }
+    },
+    {
+      "id": "therapist_assigned_students_sessions",
+      "check": "therapist_future_sessions_for_assigned",
+      "roles": ["therapist"],
+      "enabled": true,
+      "params": {
+        "require_therapy_started": true,
+        "max_students_scan": 2000
+      },
+      "ui": {
+        "title_fa": "دانشجویان بدون جلسهٔ برنامه‌ریزی‌شده",
+        "detail_fa": "برای هر دانشجوی منتسب به شما که درمان آغاز شده، حداقل یک جلسهٔ درمان با وضعیت «برنامه‌ریزی‌شده» و تاریخ/زمان آینده ثبت کنید.",
+        "action_label_fa": "مدیریت جلسات",
+        "action_href": "/panel/portal/therapist?tab=sessions"
+      }
+    }
+  ]
+}

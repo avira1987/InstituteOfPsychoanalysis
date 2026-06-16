@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from app.core.engine import StateMachineEngine
+from app.services.forms.condition import field_visible as _unified_visible
 
 # کلیدهای رزرو در ProcessInstance.context_data (با __ تا با payload معمول تداخل نکند)
 CTX_SUBMITTED = "__student_forms_submitted_states"
@@ -29,7 +30,14 @@ def filter_forms_for_student(forms: list) -> list[dict]:
     return out
 
 
-def _field_required(field: dict, _values: dict) -> bool:
+def _field_required(field: dict, values: dict) -> bool:
+    # گزارهٔ شیئی required_if (فرم یکپارچه) اولویت دارد.
+    req_if = field.get("required_if")
+    if isinstance(req_if, dict):
+        from app.services.forms.condition import field_required as _unified_required
+
+        return _unified_required(field, values or {})
+    # عبارت رشته‌ای قدیمی required_when روی سرور الزام ایجاد نمی‌کند.
     if field.get("required_when"):
         return False
     return bool(field.get("required"))
@@ -67,6 +75,9 @@ def validate_student_step_forms(
                 continue
             if partial_set is not None and name not in partial_set:
                 continue
+            # فیلد نامرئی (show_if شیئی) را اعتبارسنجی نکن.
+            if not _unified_visible(field, vals):
+                continue
             if not _field_required(field, vals):
                 continue
             if t == "checkbox":
@@ -103,6 +114,76 @@ def collect_allowed_value_keys(forms: list) -> set[str]:
             if t in ("radio_list", "checkbox_list"):
                 keys.add(f"{name}_ack")
     return keys
+
+
+def operator_visible_forms(forms: list) -> list[dict]:
+    """فرم‌های مرحله برای اپراتور؛ برخلاف دانشجو فرم محرمانه/غیردانشجو هم دیده می‌شود."""
+    return [f for f in (forms or []) if isinstance(f, dict)]
+
+
+def validate_operator_step_forms(
+    forms: list,
+    values: dict,
+    context_data: Optional[dict] = None,
+) -> tuple[bool, list[str]]:
+    """اعتبارسنجی فرم‌های مرحله توسط اپراتور (بدون فیلتر دانشجو)."""
+    missing: list[str] = []
+    vals = values or {}
+    for form in operator_visible_forms(forms):
+        for field in form.get("fields") or []:
+            if not isinstance(field, dict):
+                continue
+            t = field.get("type") or "text"
+            name = field.get("name")
+            if not name:
+                continue
+            if not _unified_visible(field, vals):
+                continue
+            if not _field_required(field, vals):
+                continue
+            if t == "checkbox":
+                if field.get("required") and not vals.get(name):
+                    missing.append(field.get("label_fa") or name)
+                continue
+            if t in ("radio_list", "checkbox_list", "multi_select", "table", "date_range_list"):
+                raw = vals.get(name)
+                if isinstance(raw, list):
+                    if field.get("required") and len(raw) == 0:
+                        missing.append(field.get("label_fa") or name)
+                    continue
+                if field.get("required") and (raw is None or (isinstance(raw, str) and str(raw).strip() == "")):
+                    missing.append(field.get("label_fa") or name)
+                continue
+            if _is_empty(vals.get(name)):
+                missing.append(field.get("label_fa") or name)
+    return (len(missing) == 0, missing)
+
+
+def collect_operator_allowed_keys(forms: list) -> set[str]:
+    keys: set[str] = set()
+    for form in operator_visible_forms(forms):
+        for field in form.get("fields") or []:
+            if not isinstance(field, dict):
+                continue
+            name = field.get("name")
+            if not name:
+                continue
+            keys.add(name)
+            t = field.get("type") or "text"
+            if t in ("radio_list", "checkbox_list"):
+                keys.add(f"{name}_ack")
+    return keys
+
+
+def sanitize_operator_form_values(forms: list, values: dict) -> dict:
+    allowed = collect_operator_allowed_keys(forms)
+    out: dict = {}
+    for k, v in (values or {}).items():
+        if k.startswith("__"):
+            continue
+        if k in allowed:
+            out[k] = v
+    return out
 
 
 def documents_resubmit_field_names(context_data: Optional[object]) -> list[str]:

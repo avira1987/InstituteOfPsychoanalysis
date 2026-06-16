@@ -89,3 +89,31 @@ class TestFallSemesterPreparationFlow:
         assert result.to_state == "tuition_entry"
         instance = await engine.get_process_instance(instance.id)
         assert instance.current_state_code == "tuition_entry"
+
+    async def test_deputy_education_can_advance_calendar_step(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        """نقش پنل deputy_education باید بتواند مرحلهٔ course_committee_executive را جلو ببرد (RBAC فرایند ۲۹)."""
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+        await db_session.commit()
+
+        engine = StateMachineEngine(db_session)
+        instance = await engine.start_process(
+            process_code="fall_semester_preparation",
+            student_id=sample_student.id,
+            actor_id=sample_user.id,
+            actor_role="admin",
+        )
+        await db_session.commit()
+
+        # نقش پنل «معاون آموزش» به نقش متادیتای course_committee_executive نگاشت می‌شود.
+        result = await engine.execute_transition(
+            instance_id=instance.id,
+            trigger_event="calendar_submitted",
+            actor_id=sample_user.id,
+            actor_role="deputy_education",
+        )
+        await db_session.commit()
+        assert result.success is True
+        assert result.to_state == "tuition_entry"

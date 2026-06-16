@@ -26,8 +26,8 @@ export default function UploadedDocumentsReadonlyGrid({ fields, contextData, fie
         const raw = ctx[name]
         const st = fieldStatus && typeof fieldStatus === 'object' ? fieldStatus[name] : null
 
-        if (t === 'sms_verification') {
-          const ok = raw != null && String(raw).trim() !== ''
+        if (t === 'checkbox' && field.show_in_document_summary) {
+          const ok = !!raw
           return (
             <div
               key={name}
@@ -39,13 +39,8 @@ export default function UploadedDocumentsReadonlyGrid({ fields, contextData, fie
               }}
             >
               <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.35rem' }}>{label}</div>
-              {st && (
-                <span className={`badge ${st === 'rejected' ? 'badge-danger' : st === 'approved' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.72rem', marginBottom: '0.35rem', display: 'inline-block' }}>
-                  {st === 'approved' ? 'تأیید شده' : st === 'rejected' ? 'رد شده — نیاز به اصلاح' : st}
-                </span>
-              )}
               <p style={{ margin: 0, fontSize: '0.8rem', color: ok ? '#15803d' : '#64748b' }}>
-                {ok ? 'تعهدنامه با کد پیامکی ثبت شده است.' : 'هنوز ثبت نشده.'}
+                {ok ? 'پذیرش قوانین ثبت شده است.' : 'هنوز تأیید نشده.'}
               </p>
             </div>
           )
@@ -114,13 +109,18 @@ export default function UploadedDocumentsReadonlyGrid({ fields, contextData, fie
   )
 }
 
-/** فیلدهای فایل + تعهدنامه از آرایهٔ فرم‌های متادیتا */
+/** فیلدهای فایل و تأیید قوانین از آرایهٔ فرم‌های متادیتا */
 export function collectDocumentGalleryFields(forms) {
   const out = []
   for (const f of forms || []) {
     for (const field of f.fields || []) {
       const typ = field.type || ''
-      if ((typ === 'file_upload' || typ === 'sms_verification') && field.name) out.push(field)
+      if (
+        typ === 'file_upload'
+        || (typ === 'checkbox' && field.show_in_document_summary)
+      ) {
+        if (field.name) out.push(field)
+      }
     }
   }
   return out

@@ -16,14 +16,22 @@
       "name_fa": "انتخاب جلسه برای لغو",
       "type": "initial",
       "assigned_role": "supervisor",
-      "ui_hint": "نمایش تقویم جلسات ۴ هفته آینده — امکان انتخاب حداکثر ۱ جلسه"
+      "ui_hint": "نمایش تقویم جلسات ۴ هفته آینده — امکان انتخاب حداکثر ۱ جلسه",
+      "metadata": {
+        "operator_task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+        "operator_short_fa": "انتخاب جلسه برای لغو"
+      }
     },
     {
       "code": "makeup_choice",
       "name_fa": "انتخاب نوع کنسلی (جبرانی یا بدون جبرانی)",
       "type": "intermediate",
       "assigned_role": "supervisor",
-      "ui_hint": "دو گزینه رادیویی در زیر تاریخ جلسه انتخاب‌شده"
+      "ui_hint": "دو گزینه رادیویی در زیر تاریخ جلسه انتخاب‌شده",
+      "metadata": {
+        "operator_task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+        "operator_short_fa": "انتخاب نوع کنسلی (جبرانی یا بدون جبرانی)"
+      }
     },
     {
       "code": "cancelled_no_makeup",
@@ -43,14 +51,21 @@
       "name_fa": "بررسی پیشنهاد جایگزین دانشجو توسط سوپروایزر",
       "type": "intermediate",
       "assigned_role": "supervisor",
-      "ui_hint": "نمایش توضیحات دانشجو + فرم ثبت تاریخ/ساعت جدید"
+      "ui_hint": "نمایش توضیحات دانشجو + فرم ثبت تاریخ/ساعت جدید",
+      "metadata": {
+        "operator_task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+        "operator_short_fa": "بررسی پیشنهاد جایگزین دانشجو توسط سوپروایزر"
+      }
     },
     {
       "code": "payment_pending",
       "name_fa": "منتظر پرداخت برای جلسه جبرانی",
       "type": "intermediate",
       "assigned_role": "student",
-      "ui_hint": "حضور و غیاب قفل تا زمان تکمیل پرداخت"
+      "ui_hint": "حضور و غیاب قفل تا زمان تکمیل پرداخت",
+      "metadata": {
+        "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+      }
     },
     {
       "code": "makeup_confirmed",
@@ -63,7 +78,11 @@
       "code": "makeup_session_completed",
       "name_fa": "جلسه جبرانی برگزار شد — ساعات ثبت",
       "type": "terminal",
-      "assigned_role": "supervisor"
+      "assigned_role": "supervisor",
+      "metadata": {
+        "operator_task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+        "operator_short_fa": "جلسه جبرانی برگزار شد — ساعات ثبت"
+      }
     },
     {
       "code": "student_declined_makeup",
@@ -79,7 +98,10 @@
       "trigger": "session_selected",
       "required_role": "supervisor",
       "description_fa": "سوپروایزر یکی از جلسات ۴ هفته آینده را انتخاب کرد — نمایش گزینه‌های جبرانی",
-      "constraints": ["supervisor_cancel_max_one_session", "supervisor_cancel_session_within_4_weeks"]
+      "constraints": [
+        "supervisor_cancel_max_one_session",
+        "supervisor_cancel_session_within_4_weeks"
+      ]
     },
     {
       "from": "makeup_choice",
@@ -88,10 +110,29 @@
       "required_role": "supervisor",
       "description_fa": "سوپروایزر «امکان برگزاری جلسه جبرانی نیست» را انتخاب و تایید کرد",
       "actions": [
-        {"type": "cancel_supervision_session"},
-        {"type": "notification", "notification_type": "sms", "template": "supervisor_cancellation_no_makeup", "recipients": ["student"]},
-        {"type": "notification", "notification_type": "in_app", "template": "supervisor_cancellation_no_makeup", "recipients": ["student"]},
-        {"type": "add_supervision_credit_if_paid", "description_fa": "بررسی پرداخت — اگر دانشجو پرداخت کرده باشد: +۱ بستانکار"}
+        {
+          "type": "cancel_supervision_session"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "supervisor_cancellation_no_makeup",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "supervisor_cancellation_no_makeup",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "add_supervision_credit_if_paid",
+          "description_fa": "بررسی پرداخت — اگر دانشجو پرداخت کرده باشد: +۱ بستانکار"
+        }
       ]
     },
     {
@@ -101,8 +142,22 @@
       "required_role": "supervisor",
       "description_fa": "سوپروایزر «قصد برگزاری جلسه جبرانی دارم» را انتخاب و تاریخ/ساعت جبرانی ثبت کرد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "supervision_makeup_proposed", "recipients": ["student"]},
-        {"type": "notification", "notification_type": "in_app", "template": "supervision_makeup_proposed", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "supervision_makeup_proposed",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "supervision_makeup_proposed",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -110,12 +165,21 @@
       "to": "makeup_confirmed",
       "trigger": "student_confirmed",
       "required_role": "student",
-      "conditions": ["supervision_session_paid"],
+      "conditions": [
+        "supervision_session_paid"
+      ],
       "description_fa": "دانشجو تایید کرد — قبلاً برای جلسه کنسل‌شده پرداخت شده: ثبت در LMS، حضور و غیاب باز، لینک آنلاین فعال",
       "actions": [
-        {"type": "register_supervision_makeup_session"},
-        {"type": "enable_attendance_registration"},
-        {"type": "activate_online_session_link", "note": "حتی اگر جلسه حضوری باشد، لینک آنلاین باید فعال شود"}
+        {
+          "type": "register_supervision_makeup_session"
+        },
+        {
+          "type": "enable_attendance_registration"
+        },
+        {
+          "type": "activate_online_session_link",
+          "note": "حتی اگر جلسه حضوری باشد، لینک آنلاین باید فعال شود"
+        }
       ]
     },
     {
@@ -123,7 +187,9 @@
       "to": "payment_pending",
       "trigger": "student_confirmed",
       "required_role": "student",
-      "conditions": ["supervision_session_not_paid"],
+      "conditions": [
+        "supervision_session_not_paid"
+      ],
       "description_fa": "دانشجو تایید کرد — پرداخت نشده: حضور و غیاب قفل تا پرداخت. دانشجو موظف است تا قبل از جلسه پرداخت را انجام دهد."
     },
     {
@@ -132,10 +198,17 @@
       "trigger": "payment_completed",
       "description_fa": "پرداخت انجام شد — حضور و غیاب باز، لینک آنلاین فعال",
       "actions": [
-        {"type": "register_supervision_makeup_session"},
-        {"type": "enable_attendance_registration"},
-        {"type": "activate_online_session_link"}
-      ]
+        {
+          "type": "register_supervision_makeup_session"
+        },
+        {
+          "type": "enable_attendance_registration"
+        },
+        {
+          "type": "activate_online_session_link"
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "makeup_proposed",
@@ -144,8 +217,22 @@
       "required_role": "student",
       "description_fa": "دانشجو تاریخ/ساعت پیشنهادی را رد کرد و در توضیحات پیشنهاد جدید نوشت",
       "actions": [
-        {"type": "notification", "notification_type": "in_app", "template": "student_supervision_counter_proposal", "recipients": ["supervisor"]},
-        {"type": "notification", "notification_type": "sms", "template": "student_supervision_counter_proposal", "recipients": ["supervisor"]}
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "student_supervision_counter_proposal",
+          "recipients": [
+            "supervisor"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "student_supervision_counter_proposal",
+          "recipients": [
+            "supervisor"
+          ]
+        }
       ]
     },
     {
@@ -155,8 +242,22 @@
       "required_role": "supervisor",
       "description_fa": "سوپروایزر تاریخ/ساعت جدید ثبت کرد (یا پیشنهاد دانشجو را تایید و ثبت کرد) — بازگشت به گام ۱۱",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "supervision_makeup_proposed", "recipients": ["student"]},
-        {"type": "notification", "notification_type": "in_app", "template": "supervision_makeup_proposed", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "supervision_makeup_proposed",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "supervision_makeup_proposed",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -166,9 +267,26 @@
       "required_role": "student",
       "description_fa": "دانشجو «جلسه جبرانی نمی‌خواهم / زمانی را نتوانستیم هماهنگ کنیم» را انتخاب کرد",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "student_declined_supervision_makeup", "recipients": ["supervisor"]},
-        {"type": "notification", "notification_type": "in_app", "template": "student_declined_supervision_makeup", "recipients": ["supervisor"]},
-        {"type": "add_supervision_credit_if_paid", "description_fa": "بستانکار اگر دانشجو قبلاً پرداخت کرده باشد"}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "student_declined_supervision_makeup",
+          "recipients": [
+            "supervisor"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "student_declined_supervision_makeup",
+          "recipients": [
+            "supervisor"
+          ]
+        },
+        {
+          "type": "add_supervision_credit_if_paid",
+          "description_fa": "بستانکار اگر دانشجو قبلاً پرداخت کرده باشد"
+        }
       ]
     },
     {
@@ -178,8 +296,12 @@
       "required_role": "supervisor",
       "description_fa": "جلسه جبرانی برگزار شد — ثبت حضور و غیاب و ساعات مطابق فرایند تکمیل دوره‌های ۵۰ ساعته",
       "actions": [
-        {"type": "record_supervision_attendance"},
-        {"type": "add_hour_to_supervision_block"}
+        {
+          "type": "record_supervision_attendance"
+        },
+        {
+          "type": "add_hour_to_supervision_block"
+        }
       ],
       "sub_process_ref": "supervision_50h_completion"
     }
@@ -214,8 +336,14 @@
           "label_fa": "تعیین وضعیت جبرانی",
           "type": "radio",
           "options": [
-            {"value": "wants_makeup", "label_fa": "قصد برگزاری جلسه جبرانی دارم"},
-            {"value": "no_makeup", "label_fa": "امکان برگزاری جلسه جبرانی نیست"}
+            {
+              "value": "wants_makeup",
+              "label_fa": "قصد برگزاری جلسه جبرانی دارم"
+            },
+            {
+              "value": "no_makeup",
+              "label_fa": "امکان برگزاری جلسه جبرانی نیست"
+            }
           ],
           "required": true
         }
@@ -225,7 +353,10 @@
     {
       "code": "supervisor_makeup_time_form",
       "name_fa": "فرم ۲: تعیین زمان جلسه جبرانی",
-      "used_in_state": ["makeup_choice", "supervisor_review_counter"],
+      "used_in_state": [
+        "makeup_choice",
+        "supervisor_review_counter"
+      ],
       "displayed_when": "makeup_option == 'wants_makeup' OR بازگشت از سمت دانشجو",
       "fields": [
         {
@@ -254,9 +385,18 @@
           "label_fa": "سوپروایزر شما برای جلسه کنسل شده، تاریخ {proposed_date} و ساعت {proposed_time} را پیشنهاد داده است. لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
           "type": "radio",
           "options": [
-            {"value": "accept", "label_fa": "تایید تاریخ و ساعت جلسه"},
-            {"value": "counter_propose", "label_fa": "رد تاریخ و ساعت جلسه و پیشنهاد تاریخ و ساعتی دیگر توسط دانشجو"},
-            {"value": "decline", "label_fa": "جلسه جبرانی نمیخواهم/زمانی را نتوانسیم هماهنگ کنیم"}
+            {
+              "value": "accept",
+              "label_fa": "تایید تاریخ و ساعت جلسه"
+            },
+            {
+              "value": "counter_propose",
+              "label_fa": "رد تاریخ و ساعت جلسه و پیشنهاد تاریخ و ساعتی دیگر توسط دانشجو"
+            },
+            {
+              "value": "decline",
+              "label_fa": "جلسه جبرانی نمیخواهم/زمانی را نتوانسیم هماهنگ کنیم"
+            }
           ],
           "required": true
         },

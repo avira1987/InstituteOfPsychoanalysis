@@ -8,13 +8,27 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func
+from sqlalchemy import delete, select, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.api.auth import get_current_user, require_role, get_password_hash
-from app.models.operational_models import User, ProcessInstance
+from app.models.operational_models import (
+    User,
+    ProcessInstance,
+    Student,
+    StateHistory,
+    TherapySession,
+    Assignment,
+    FinancialRecord,
+    AttendanceRecord,
+    InterviewSlot,
+    BlogPost,
+    SupportTicket,
+    TicketComment,
+)
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
 from app.models.audit_models import AuditLog
 from app.core.audit import AuditLogger
@@ -890,14 +904,24 @@ async def sync_metadata_from_json(
         processes_added += 1
 
     await db.commit()
+
+    # 3. واردسازی فرم‌های متادیتا به جداول فرم یکپارچه (idempotent)
+    from app.services.forms.import_metadata_forms import import_all_metadata_forms
+
+    forms_result = await import_all_metadata_forms(db)
+    await db.commit()
+
     msg = []
     if rules_added:
         msg.append(f"{rules_added} قانون")
     if processes_added:
         msg.append(f"{processes_added} فرایند")
+    if forms_result.get("forms"):
+        msg.append(f"{forms_result['forms']} فرم")
     return {
         "added_rules": rules_added,
         "added_processes": processes_added,
+        "forms": forms_result,
         "message": f"اضافه شد: {', '.join(msg) or 'هیچ مورد جدیدی'}" if msg else "هیچ مورد جدیدی یافت نشد",
     }
 
@@ -959,6 +983,48 @@ async def seed_demo_matrix(
 
 # ─── User Management Endpoints ──────────────────────────────────
 
+
+def _national_code_from_extra_data(extra_data: Optional[dict]) -> Optional[str]:
+    if not extra_data or not isinstance(extra_data, dict):
+        return None
+    raw = extra_data.get("national_code")
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s or None
+
+
+async def _nullify_references_to_user(db: AsyncSession, user_id: uuid.UUID) -> None:
+    """پیش از حذف فیزیکی کاربر، FKهای بدون CASCADE را خالی می‌کند."""
+    from app.models.dynamic_forms import FormApprovalStep, FormResponse, FormTemplate
+
+    await db.execute(update(Student).where(Student.supervisor_id == user_id).values(supervisor_id=None))
+    await db.execute(update(Student).where(Student.therapist_id == user_id).values(therapist_id=None))
+    await db.execute(update(ProcessInstance).where(ProcessInstance.started_by == user_id).values(started_by=None))
+    await db.execute(update(StateHistory).where(StateHistory.actor_id == user_id).values(actor_id=None))
+    await db.execute(update(TherapySession).where(TherapySession.therapist_id == user_id).values(therapist_id=None))
+    await db.execute(update(Assignment).where(Assignment.created_by == user_id).values(created_by=None))
+    await db.execute(update(FinancialRecord).where(FinancialRecord.created_by == user_id).values(created_by=None))
+    await db.execute(update(InterviewSlot).where(InterviewSlot.created_by == user_id).values(created_by=None))
+    await db.execute(
+        update(InterviewSlot).where(InterviewSlot.interviewer_user_id == user_id).values(interviewer_user_id=None)
+    )
+    await db.execute(update(BlogPost).where(BlogPost.author_id == user_id).values(author_id=None))
+    await db.execute(update(SupportTicket).where(SupportTicket.assignee_id == user_id).values(assignee_id=None))
+    await db.execute(update(TicketComment).where(TicketComment.author_id == user_id).values(author_id=None))
+    await db.execute(update(FormTemplate).where(FormTemplate.created_by_id == user_id).values(created_by_id=None))
+    await db.execute(update(FormResponse).where(FormResponse.user_id == user_id).values(user_id=None))
+    await db.execute(update(FormApprovalStep).where(FormApprovalStep.acted_by_id == user_id).values(acted_by_id=None))
+
+
+async def _purge_rows_blocking_student_delete(db: AsyncSession, student_id: uuid.UUID) -> None:
+    """FKهای بدون ON DELETE CASCADE روی students.id — باید قبل از حذف کاربر پاک شوند."""
+    await db.execute(delete(AttendanceRecord).where(AttendanceRecord.student_id == student_id))
+    await db.execute(delete(TherapySession).where(TherapySession.student_id == student_id))
+    await db.execute(delete(FinancialRecord).where(FinancialRecord.student_id == student_id))
+    await db.flush()
+
+
 @router.get("/users")
 async def list_users(
     role: Optional[str] = Query(None),
@@ -972,9 +1038,9 @@ async def list_users(
         stmt = stmt.where(User.role == role)
     if is_active is not None:
         stmt = stmt.where(User.is_active == is_active)
-    stmt = stmt.order_by(User.created_at.desc())
+    stmt = stmt.order_by(User.created_at.desc()).options(selectinload(User.student_profile))
     result = await db.execute(stmt)
-    users = result.scalars().all()
+    users = result.scalars().unique().all()
     return [
         {
             "id": str(u.id),
@@ -984,6 +1050,9 @@ async def list_users(
             "full_name_en": u.full_name_en,
             "role": u.role,
             "phone": u.phone,
+            "national_code": _national_code_from_extra_data(
+                u.student_profile.extra_data if u.student_profile else None
+            ),
             "is_active": u.is_active,
             "created_at": u.created_at.isoformat() if u.created_at else None,
         }
@@ -1013,7 +1082,13 @@ async def update_user(
             setattr(user, key, value)
     if "password" in data and data.get("password"):
         user.hashed_password = get_password_hash(data["password"])
+        user.portal_password_plain = None
     await db.flush()
+    national_code = None
+    if (user.role or "").strip() == "student":
+        st_res = await db.execute(select(Student).where(Student.user_id == user.id))
+        st = st_res.scalars().first()
+        national_code = _national_code_from_extra_data(st.extra_data if st else None)
     return {
         "id": str(user.id),
         "username": user.username,
@@ -1022,6 +1097,7 @@ async def update_user(
         "full_name_en": user.full_name_en,
         "role": user.role,
         "phone": user.phone,
+        "national_code": national_code,
         "is_active": user.is_active,
     }
 
@@ -1048,22 +1124,42 @@ async def cancel_process_instance(
 
 
 @router.delete("/users/{user_id}")
-async def deactivate_user(
+async def delete_or_deactivate_user(
     user_id: str,
+    permanent: bool = Query(
+        False,
+        description="اگر true باشد ردیف کاربر از پایگاه داده حذف می‌شود (برگشت‌ناپذیر). پیش‌فرض: غیرفعال‌سازی.",
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin")),
 ):
-    """Deactivate a user."""
+    """غیرفعال‌سازی کاربر (پیش‌فرض) یا حذف دائمی با permanent=true."""
     if str(current_user.id) == user_id:
-        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
-    stmt = select(User).where(User.id == uuid.UUID(user_id))
+        raise HTTPException(status_code=400, detail="Cannot delete or deactivate your own account")
+    uid = uuid.UUID(user_id)
+    stmt = select(User).where(User.id == uid)
     result = await db.execute(stmt)
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    user.is_active = False
-    await db.flush()
-    return {"message": f"User '{user.username}' deactivated"}
+    if not permanent:
+        user.is_active = False
+        await db.flush()
+        return {"message": f"User '{user.username}' deactivated", "permanent": False}
+    try:
+        await _nullify_references_to_user(db, uid)
+        st_res = await db.execute(select(Student).where(Student.user_id == uid))
+        student_row = st_res.scalars().first()
+        if student_row:
+            await _purge_rows_blocking_student_delete(db, student_row.id)
+        await db.delete(user)
+        await db.flush()
+    except IntegrityError as e:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete user: related data still references this account. " + str(e.orig),
+        ) from e
+    return {"message": f"User '{user.username}' permanently deleted", "permanent": True}
 
 
 # ─── Test SMS (Dev) ───────────────────────────────────────────────
@@ -1080,6 +1176,7 @@ async def test_sms(
 ):
     """ارسال یک پیامک تستی برای اطمینان از عملکرد درگاه پیامکی."""
     from app.services.sms_gateway import send_sms
+
     result = await send_sms(req.phone, req.message)
     return {"success": result.get("success", False), "provider": result.get("provider", ""), "response": result}
 
@@ -1184,3 +1281,15 @@ def _rule_response(r: RuleDefinition) -> RuleResponse:
         parameters=_normalize_rule_json_optional_dict(r.parameters),
         error_message_fa=r.error_message_fa, is_active=r.is_active, version=r.version,
     )
+
+
+# ─── System resource snapshot (admin-only) ─────────────────────
+
+@router.get("/system/resource-snapshot")
+async def get_system_resource_snapshot(
+    current_user: User = Depends(require_role("admin")),
+):
+    """آخرین وضعیت منابع کانتینر/میزبان (RAM, CPU load, RSS, disk) — فقط ادمین."""
+    from app.services.system_resource_snapshot import collect_resource_snapshot
+
+    return collect_resource_snapshot()

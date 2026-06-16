@@ -24,57 +24,90 @@
         "student_task_fa": "ساعات درمان، بالینی و سوپرویژن را در باکس پایین با حدنصاب‌ها ببینید؛ اگر همهٔ شرایط احراز است، دکمهٔ «ادامه و ثبت مرحله» را بزنید؛ در غیر این صورت پس از تکمیل ساعات دوباره همین فرایند را اجرا کنید."
       }
     },
-    {"code": "conditions_not_met", "name_fa": "شرایط احراز نشده", "type": "terminal", "assigned_role": "system"},
-    {"code": "therapy_completed", "name_fa": "درمان تکمیل و خاتمه یافت", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "conditions_not_met",
+      "name_fa": "شرایط احراز نشده",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "therapy_completed",
+      "name_fa": "درمان تکمیل و خاتمه یافت",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
       "from": "initiated",
       "to": "conditions_not_met",
       "trigger": "process_link_clicked",
-      "conditions": ["completion_conditions_not_met"],
+      "conditions": [
+        "completion_conditions_not_met"
+      ],
       "description_fa": "یکی از شروط ۲۵۰/۷۵۰/۱۵۰ پاس نشد",
       "actions": [
         {
           "type": "notification",
           "notification_type": "in_app",
           "template": "therapy_completion_conditions_not_met",
-          "recipients": ["student"],
+          "recipients": [
+            "student"
+          ],
           "message_fa": "شرایط خاتمه احراز نشده است. وضعیت فعلی: [ساعات دانشجو] / [حدنصاب‌ها]."
         },
         {
           "type": "notification",
           "notification_type": "sms",
           "template": "therapy_completion_conditions_not_met",
-          "recipients": ["student"]
+          "recipients": [
+            "student"
+          ]
         }
-      ]
+      ],
+      "required_role": "student"
     },
     {
       "from": "initiated",
       "to": "therapy_completed",
       "trigger": "process_link_clicked",
-      "conditions": ["therapy_threshold_met", "clinical_threshold_met", "supervision_threshold_met"],
+      "conditions": [
+        "therapy_threshold_met",
+        "clinical_threshold_met",
+        "supervision_threshold_met"
+      ],
       "priority": 1,
       "description_fa": "همه شروط احراز شد — خاتمه درمان",
       "actions": [
-        {"type": "delete_future_therapy_appointments"},
-        {"type": "release_therapist_slots_to_available_sheet"},
-        {"type": "update_therapy_status", "status": "completed_terminated"},
+        {
+          "type": "delete_future_therapy_appointments"
+        },
+        {
+          "type": "release_therapist_slots_to_available_sheet"
+        },
+        {
+          "type": "update_therapy_status",
+          "status": "completed_terminated"
+        },
         {
           "type": "notification",
           "notification_type": "in_app",
           "template": "therapy_completion_success",
-          "recipients": ["student"],
+          "recipients": [
+            "student"
+          ],
           "message_fa": "درمان آموزشی با موفقیت تکمیل و خاتمه یافت."
         },
         {
           "type": "notification",
           "notification_type": "sms",
           "template": "therapy_completion_success",
-          "recipients": ["student"]
+          "recipients": [
+            "student"
+          ]
         }
-      ]
+      ],
+      "required_role": "student"
     }
   ]
 }

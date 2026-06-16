@@ -60,12 +60,24 @@ export default function InstanceContextSummary({
   contextData,
   history,
   forms,
+  /** هر عنصر: آرایهٔ فرم‌های یک وضعیت — برای برچسب فیلدهای مراحل قبلی در context */
+  extraLabelForms = null,
   title = 'پرونده و سابقه (قبل از تصمیم)',
   maxHeight = '240px',
   historyMaxHeight = '200px',
   showTechnicalContext = false,
 }) {
-  const fieldLabelMap = useMemo(() => buildFieldLabelMap(forms), [forms])
+  const fieldLabelMap = useMemo(() => {
+    const primary = buildFieldLabelMap(forms)
+    const extras = Array.isArray(extraLabelForms) ? extraLabelForms : []
+    for (const formList of extras) {
+      const m2 = buildFieldLabelMap(formList)
+      for (const [k, v] of m2) {
+        if (!primary.has(k)) primary.set(k, v)
+      }
+    }
+    return primary
+  }, [forms, extraLabelForms])
 
   const displayContext = useMemo(() => {
     if (showTechnicalContext && contextData && typeof contextData === 'object' && !Array.isArray(contextData)) {

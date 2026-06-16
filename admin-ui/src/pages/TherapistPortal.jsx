@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { processExecApi, studentApi, therapyApi, alocomApi } from '../services/api'
+import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
+import { processExecApi, studentApi, therapyApi, alocomApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
+import { isDocumentReviewState } from '../utils/documentReviewStates'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
-import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 import PopupToast from '../components/PopupToast'
+import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
+import OperatorFollowupSection from '../components/OperatorFollowupSection'
+import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
+import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+
+const THERAPIST_DEEP_LINK_TABS = ['dashboard', 'pending', 'students', 'sessions', 'active']
 
 const reviewStates = [
   'therapist_review', 'therapist_decision', 'awaiting_therapist',
@@ -16,7 +23,7 @@ const reviewStates = [
 
 export default function TherapistPortal() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('pending')
   const [allStudents, setAllStudents] = useState([])
   const [pendingActions, setPendingActions] = useState([])
   const [myActiveInstances, setMyActiveInstances] = useState([])
@@ -33,6 +40,8 @@ export default function TherapistPortal() {
   const [toast, setToast] = useState(null)
   const [studentSearch, setStudentSearch] = useState('')
   const [therapySessions, setTherapySessions] = useState([])
+  const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
+  const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -56,9 +65,14 @@ export default function TherapistPortal() {
 
   const loadData = async () => {
     try {
-      const studentsRes = await studentApi.list().catch(() => ({ data: [] }))
+      const [studentsRes, followupRes] = await Promise.all([
+        studentApi.list().catch(() => ({ data: [] })),
+        panelApi.myOperatorFollowup().catch(() => ({ data: {} })),
+      ])
       const students = studentsRes.data || []
       setAllStudents(students)
+      setOperatorFollowupItems(followupRes.data?.items || [])
+      setOperatorReadinessAlerts(followupRes.data?.readiness_alerts || [])
 
       const pending = []
       const allActive = []
@@ -68,6 +82,8 @@ export default function TherapistPortal() {
           const instances = instRes.data?.instances || []
           for (const inst of instances) {
             if (!inst.is_completed && !inst.is_cancelled) {
+              // مراحل بررسی/تکمیل مدارک مخصوص پنل کارمند است و در پنل درمانگر نمایش داده نمی‌شود.
+              if (isDocumentReviewState(inst.current_state)) continue
               allActive.push({ ...inst, student_code: s.student_code, student_id: s.id })
               if (isWaitingForTherapist(inst.current_state)) {
                 pending.push({ ...inst, student_code: s.student_code, student_id: s.id })
@@ -105,6 +121,13 @@ export default function TherapistPortal() {
       console.error('View error:', err)
     }
   }
+
+  usePortalInstanceDeepLink({
+    loading,
+    setActiveTab,
+    viewInstance,
+    allowedTabs: THERAPIST_DEEP_LINK_TABS,
+  })
 
   const triggerTransition = async (transition) => {
     if (!selectedInstance) return
@@ -171,8 +194,8 @@ export default function TherapistPortal() {
   })
 
   const tabs = [
+    { id: 'pending', label: `کارهای من (${pendingActions.length})`, icon: '📥' },
     { id: 'dashboard', label: 'داشبورد', icon: '📊' },
-    { id: 'pending', label: `درخواست‌ها (${pendingActions.length})`, icon: '📥' },
     { id: 'students', label: 'دانشجویان', icon: '👨‍🎓' },
     { id: 'sessions', label: 'جلسات آنلاین', icon: '🎥' },
     { id: 'active', label: 'فرایندها', icon: '🔄' },
@@ -182,6 +205,11 @@ export default function TherapistPortal() {
     <div>
       <PopupToast toast={toast} />
 
+      <ResolvedProcessHistoryBanner
+        instanceDetail={instanceDetail}
+        availableTransitions={availableTransitions}
+      />
+
       <div className="page-header">
         <div>
           <h1 className="page-title">پنل درمانگر</h1>
@@ -190,6 +218,14 @@ export default function TherapistPortal() {
           </p>
         </div>
       </div>
+
+      <OperatorPortalReminderBanner portalPath="/panel/portal/therapist" pendingTab="pending" />
+
+      <OperatorFollowupSection
+        items={operatorFollowupItems}
+        readinessAlerts={operatorReadinessAlerts}
+        inboxTitle="پرونده‌های باز مرتبط با نقش شما"
+      />
 
       <div className="tab-bar">
         {tabs.map(tab => (
@@ -265,8 +301,6 @@ export default function TherapistPortal() {
               </div>
             </div>
           </div>
-
-          <PanelRoleActionQueue />
 
           <div className="dashboard-grid">
             {/* Urgent Pending */}
@@ -387,6 +421,7 @@ export default function TherapistPortal() {
 
           {/* Detail Panel */}
           {instanceDetail &&           <InstanceDetailPanel
+            portalRole={user?.role}
             instanceDetail={instanceDetail}
             availableTransitions={availableTransitions}
             decisionNotes={decisionNotes}
@@ -508,6 +543,7 @@ export default function TherapistPortal() {
             )}
           </div>
           {instanceDetail && <InstanceDetailPanel
+            portalRole={user?.role}
             instanceDetail={instanceDetail}
             availableTransitions={availableTransitions}
             decisionNotes={decisionNotes}
@@ -687,6 +723,7 @@ function TherapistSessionsPanel({ sessions, onReload, showToast }) {
 }
 
 function InstanceDetailPanel({
+  portalRole,
   instanceDetail,
   availableTransitions,
   decisionNotes,
@@ -728,6 +765,12 @@ function InstanceDetailPanel({
           <div style={{ fontWeight: 500 }}>{instanceDetail.started_at ? new Date(instanceDetail.started_at).toLocaleDateString('fa-IR') : '-'}</div>
         </div>
       </div>
+
+      <OperatorInstanceGuidanceBlock
+        instanceDetail={instanceDetail}
+        portalRole={portalRole}
+        availableTransitions={availableTransitions}
+      />
 
       <InstanceContextSummary
         contextData={instanceDetail.context_data}

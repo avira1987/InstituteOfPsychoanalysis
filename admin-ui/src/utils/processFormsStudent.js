@@ -4,6 +4,9 @@ import {
   resolveCheckboxListOptions,
   normalizeSelectedCoursesValue,
 } from './resolveCourseFieldOptions'
+// منطق شرط‌ها یکپارچه است: همان ارزیاب شیئی فرم یکپارچه.
+import { fieldVisible as unifiedVisible, fieldRequired as unifiedRequired } from './formConditions'
+import { checkRules } from './unifiedFormValidation'
 
 export function filterFormsForStudent(forms) {
   if (!Array.isArray(forms)) return []
@@ -16,14 +19,15 @@ export function filterFormsForStudent(forms) {
   })
 }
 
+// شرط نمایش: show_if شیئی (در صورت وجود) ارزیابی می‌شود؛ visible_when رشته‌ای قدیمی نادیده گرفته می‌شود.
 function fieldVisible(field, values) {
-  if (!field.visible_when) return true
-  return true
+  return unifiedVisible(field, values)
 }
 
+// الزام: required_if شیئی (در صورت وجود)؛ وگرنه required ثابت. required_when رشته‌ای قدیمی = الزامی نیست.
 function fieldRequired(field, values) {
-  if (field.required_when) return false
-  return !!field.required
+  if (field.required_when && !field.required_if) return false
+  return unifiedRequired(field, values)
 }
 
 function isEmpty(v) {
@@ -85,7 +89,10 @@ export function validateStepForms(forms, values, opts = {}) {
       }
       if (isEmpty(values[field.name])) {
         missing.push(field.label_fa || field.name)
+        continue
       }
+      const ruleErr = checkRules(field, values[field.name])
+      if (ruleErr) missing.push(ruleErr)
     }
   }
   return { ok: missing.length === 0, missing }

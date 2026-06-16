@@ -12,9 +12,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from app.meta.operator_state_catalog import get_state_catalog_for_portal_role
+
 _DEFAULT_PROCESS_LABEL_FA = "فرایند ثبت‌شده در سامانه"
 
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"
 
 
 @lru_cache(maxsize=1)
@@ -320,6 +322,10 @@ ROLE_ACTION_PATTERNS: dict[str, list[str]] = {
         "پیگیری هشدارهای مربوط به حضور درمانگران و بستن پیگیری",
         "هماهنگی با درمانگر در صورت تکرار غیبت یا تأخیر در ثبت حضور",
     ],
+    "interviewer": [
+        "تعریف زمان‌های مصاحبه در پنل و پیگیری رزروها",
+        "ثبت نتیجه و ادامهٔ فرایند پذیرش از لینک صندوق اقدام یا پنل کارمند",
+    ],
     "deputy_education": [
         "پیگیری پرونده‌های با مرخصی طولانی یا تأخیر در کمیته‌ها",
         "در صورت نیاز، ارتقای موضوع به مدیران مربوطه",
@@ -356,7 +362,8 @@ ROLE_ACTION_PATTERNS: dict[str, list[str]] = {
 def get_panel_action_queue_for_role(role: str) -> dict[str, Any]:
     """
     صف اقدامات پیشنهادی برای نمایش در پنل نقش‌ها.
-    ترکیب الگوی نقش و فرایندهایی که در متادیتا به این نقش نیاز دارند.
+    الگوی نقش + مراحل واقعی فرایندها از metadata/processes (assigned_role) طبق portal_role_assigned_role_map.
+    اگر برای نقش نگاشت state نباشد، تا ۱۲ فرایند از INDEX (رفتار قبلی) به‌عنوان fallback.
     """
     items: list[dict[str, Any]] = []
     patterns = ROLE_ACTION_PATTERNS.get(role)
@@ -373,7 +380,26 @@ def get_panel_action_queue_for_role(role: str) -> dict[str, Any]:
             }
         )
 
-    if role != "admin":
+    state_rows = get_state_catalog_for_portal_role(role)
+    for i, row in enumerate(state_rows):
+        pn = row.get("process_name_fa") or row.get("process_code") or ""
+        sn = row.get("state_name_fa") or row.get("state_code") or ""
+        title_fa = f"{pn} — {sn}" if pn and sn else (pn or sn)
+        items.append(
+            {
+                "id": f"{role}_state_def_{i}",
+                "title_fa": title_fa,
+                "kind": "state_definition",
+                "process_code": row.get("process_code"),
+                "state_code": row.get("state_code"),
+                "process_name_fa": row.get("process_name_fa"),
+                "state_name_fa": row.get("state_name_fa"),
+                "assigned_role": row.get("assigned_role"),
+            }
+        )
+
+    registry_count = 0
+    if not state_rows and role != "admin":
         idx = _load_process_index_json()
         seen: set[str] = set()
         max_proc = 12
@@ -398,6 +424,7 @@ def get_panel_action_queue_for_role(role: str) -> dict[str, Any]:
                     "process_code": code,
                 }
             )
+            registry_count += 1
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -406,7 +433,8 @@ def get_panel_action_queue_for_role(role: str) -> dict[str, Any]:
         "stats": {
             "total": len(items),
             "pattern_count": len(patterns),
-            "registry_count": len([x for x in items if x.get("kind") == "registry_process"]),
+            "state_definition_count": len(state_rows),
+            "registry_count": registry_count,
         },
     }
 

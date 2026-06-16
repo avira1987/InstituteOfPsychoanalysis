@@ -25,7 +25,9 @@
       "sla_hours": 168,
       "metadata": {
         "student_short_fa": "بررسی کمیته پیشرفت",
-        "student_task_fa": "درخواست آغاز مجدد در کمیته پیشرفت در حال بررسی است؛ پس از اعلام نتیجه همین صفحه را تازه کنید."
+        "student_task_fa": "درخواست آغاز مجدد در کمیته پیشرفت در حال بررسی است؛ پس از اعلام نتیجه همین صفحه را تازه کنید.",
+        "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
+        "operator_short_fa": "بررسی آغاز مجدد"
       }
     },
     {
@@ -36,7 +38,9 @@
       "sla_hours": 168,
       "metadata": {
         "student_short_fa": "بررسی کمیته پیشرفت",
-        "student_task_fa": "درخواست تغییر درمانگر در کمیته پیشرفت در حال بررسی است؛ پس از تایید، درمانگر جدید را در مرحلهٔ بعد انتخاب می‌کنید."
+        "student_task_fa": "درخواست تغییر درمانگر در کمیته پیشرفت در حال بررسی است؛ پس از تایید، درمانگر جدید را در مرحلهٔ بعد انتخاب می‌کنید.",
+        "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
+        "operator_short_fa": "بررسی تغییر درمانگر"
       }
     },
     {
@@ -47,7 +51,9 @@
       "sla_hours": 72,
       "metadata": {
         "student_short_fa": "بررسی درمانگر",
-        "student_task_fa": "درمانگر در حال بررسی پیشنهاد شما برای ساعت جلسات است."
+        "student_task_fa": "درمانگر در حال بررسی پیشنهاد شما برای ساعت جلسات است.",
+        "operator_task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
+        "operator_short_fa": "بررسی تغییر ساعت"
       }
     },
     {
@@ -70,9 +76,24 @@
         "student_task_fa": "ساعت پیشنهادی توسط درمانگر را بررسی کنید؛ در صورت تایید، دکمهٔ ادامه را بزنید تا ساعت روی جلسات آینده ثبت شود."
       }
     },
-    {"code": "change_approved", "name_fa": "تغییر تایید شد", "type": "terminal", "assigned_role": "system"},
-    {"code": "change_rejected", "name_fa": "تغییر رد شد", "type": "terminal", "assigned_role": "system"},
-    {"code": "restart_activated", "name_fa": "آغاز مجدد فعال شد", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "change_approved",
+      "name_fa": "تغییر تایید شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "change_rejected",
+      "name_fa": "تغییر رد شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "restart_activated",
+      "name_fa": "آغاز مجدد فعال شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
@@ -80,21 +101,27 @@
       "to": "restart_review",
       "trigger": "request_submitted",
       "required_role": "student",
-      "conditions": ["change_type_is_restart"]
+      "conditions": [
+        "change_type_is_restart"
+      ]
     },
     {
       "from": "change_request",
       "to": "therapist_change_review",
       "trigger": "request_submitted",
       "required_role": "student",
-      "conditions": ["change_type_is_therapist"]
+      "conditions": [
+        "change_type_is_therapist"
+      ]
     },
     {
       "from": "change_request",
       "to": "schedule_change_review",
       "trigger": "request_submitted",
       "required_role": "student",
-      "conditions": ["change_type_is_schedule"]
+      "conditions": [
+        "change_type_is_schedule"
+      ]
     },
     {
       "from": "restart_review",
@@ -102,8 +129,18 @@
       "trigger": "restart_approved",
       "required_role": "progress_committee",
       "actions": [
-        {"type": "reset_therapy_sessions"},
-        {"type": "notification", "notification_type": "sms", "template": "therapy_restart_approved", "recipients": ["student", "therapist"]}
+        {
+          "type": "reset_therapy_sessions"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_restart_approved",
+          "recipients": [
+            "student",
+            "therapist"
+          ]
+        }
       ]
     },
     {
@@ -112,7 +149,14 @@
       "trigger": "restart_rejected",
       "required_role": "progress_committee",
       "actions": [
-        {"type": "notification", "notification_type": "sms", "template": "change_rejected", "recipients": ["student"]}
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "change_rejected",
+          "recipients": [
+            "student"
+          ]
+        }
       ]
     },
     {
@@ -133,8 +177,18 @@
       "trigger": "new_therapist_confirmed",
       "required_role": "student",
       "actions": [
-        {"type": "update_therapist"},
-        {"type": "notification", "notification_type": "sms", "template": "therapist_changed", "recipients": ["student", "therapist"]}
+        {
+          "type": "update_therapist"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapist_changed",
+          "recipients": [
+            "student",
+            "therapist"
+          ]
+        }
       ]
     },
     {
@@ -155,8 +209,18 @@
       "trigger": "new_schedule_confirmed",
       "required_role": "student",
       "actions": [
-        {"type": "update_schedule"},
-        {"type": "notification", "notification_type": "sms", "template": "schedule_changed", "recipients": ["student", "therapist"]}
+        {
+          "type": "update_schedule"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "schedule_changed",
+          "recipients": [
+            "student",
+            "therapist"
+          ]
+        }
       ]
     }
   ],
@@ -172,9 +236,18 @@
           "type": "radio",
           "required": true,
           "options": [
-            {"value": "restart", "label_fa": "آغاز مجدد درمان (حذف جلسات آینده و شروع مجدد طبق مقررات)"},
-            {"value": "therapist_change", "label_fa": "تغییر درمانگر آموزشی"},
-            {"value": "schedule_change", "label_fa": "تغییر ساعت جلسات"}
+            {
+              "value": "restart",
+              "label_fa": "آغاز مجدد درمان (حذف جلسات آینده و شروع مجدد طبق مقررات)"
+            },
+            {
+              "value": "therapist_change",
+              "label_fa": "تغییر درمانگر آموزشی"
+            },
+            {
+              "value": "schedule_change",
+              "label_fa": "تغییر ساعت جلسات"
+            }
           ]
         },
         {
@@ -215,7 +288,10 @@
           "type": "radio",
           "required": true,
           "options": [
-            {"value": "yes", "label_fa": "تایید می‌کنم"}
+            {
+              "value": "yes",
+              "label_fa": "تایید می‌کنم"
+            }
           ]
         }
       ]

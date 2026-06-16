@@ -9,19 +9,111 @@
     "trigger": "ta_passed_course_twice"
   },
   "states": [
-    {"code": "auto_or_manual_trigger", "name_fa": "شروع خودکار یا دستی", "type": "initial", "assigned_role": "system"},
-    {"code": "already_assistant", "name_fa": "قبلاً دستیار هیئت علمی", "type": "terminal", "assigned_role": "system"},
-    {"code": "supervision_review", "name_fa": "بررسی کمیته نظارت", "type": "intermediate", "assigned_role": "supervision_committee"},
-    {"code": "supervision_rejected", "name_fa": "رد — لینک دستی برای ترم‌های بعد", "type": "terminal", "assigned_role": "system"},
-    {"code": "upgrade_applied", "name_fa": "ارتقا اعمال شد", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "auto_or_manual_trigger",
+      "name_fa": "شروع خودکار یا دستی",
+      "type": "initial",
+      "assigned_role": "system"
+    },
+    {
+      "code": "already_assistant",
+      "name_fa": "قبلاً دستیار هیئت علمی",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "supervision_review",
+      "name_fa": "بررسی کمیته نظارت",
+      "type": "intermediate",
+      "assigned_role": "supervision_committee",
+      "metadata": {
+        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
+        "operator_short_fa": "بررسی کمیته نظارت"
+      }
+    },
+    {
+      "code": "supervision_rejected",
+      "name_fa": "رد — لینک دستی برای ترم‌های بعد",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "upgrade_applied",
+      "name_fa": "ارتقا اعمال شد",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
-    {"from": "auto_or_manual_trigger", "to": "already_assistant", "trigger": "already_has_rank", "description_fa": "فرد قبلاً دستیار هیئت علمی است"},
-    {"from": "auto_or_manual_trigger", "to": "supervision_review", "trigger": "request_sent", "description_fa": "درخواست به کمیته نظارت"},
-    {"from": "supervision_review", "to": "supervision_rejected", "trigger": "rejected", "required_role": "supervision_committee", "description_fa": "رد — پیام ثابت + لینک دستی فعال"},
-    {"from": "supervision_review", "to": "upgrade_applied", "trigger": "approved", "required_role": "supervision_committee", "description_fa": "حذف از کمک‌مدرسین، اضافه به مدرسین، ارتقا رتبه، Unlock درس بعدی، SMS", "actions": [{"type": "move_ta_to_instructor"}, {"type": "upgrade_rank_to_assistant_faculty"}, {"type": "unlock_next_course_in_track"}, {"type": "notification", "notification_type": "sms", "template": "ta_to_assistant_faculty_congrats", "recipients": ["student"]}]}
+    {
+      "from": "auto_or_manual_trigger",
+      "to": "already_assistant",
+      "trigger": "already_has_rank",
+      "description_fa": "فرد قبلاً دستیار هیئت علمی است",
+      "required_role": "system"
+    },
+    {
+      "from": "auto_or_manual_trigger",
+      "to": "supervision_review",
+      "trigger": "request_sent",
+      "description_fa": "درخواست به کمیته نظارت",
+      "required_role": "system"
+    },
+    {
+      "from": "supervision_review",
+      "to": "supervision_rejected",
+      "trigger": "rejected",
+      "required_role": "supervision_committee",
+      "description_fa": "رد — پیام ثابت + لینک دستی فعال"
+    },
+    {
+      "from": "supervision_review",
+      "to": "upgrade_applied",
+      "trigger": "approved",
+      "required_role": "supervision_committee",
+      "description_fa": "حذف از کمک‌مدرسین، اضافه به مدرسین، ارتقا رتبه، Unlock درس بعدی، SMS",
+      "actions": [
+        {
+          "type": "move_ta_to_instructor"
+        },
+        {
+          "type": "upgrade_rank_to_assistant_faculty"
+        },
+        {
+          "type": "unlock_next_course_in_track"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "ta_to_assistant_faculty_congrats",
+          "recipients": [
+            "student"
+          ]
+        }
+      ]
+    }
   ],
   "forms": [
-    {"code": "ta_to_assistant_review", "name_fa": "بررسی ارتقا به دستیار هیئت علمی", "used_in_state": "supervision_review", "fields": [{"name": "result", "type": "radio", "options": [{"value": "approve", "label_fa": "تایید صلاحیت"}, {"value": "reject", "label_fa": "رد صلاحیت"}]}]}
+    {
+      "code": "ta_to_assistant_review",
+      "name_fa": "بررسی ارتقا به دستیار هیئت علمی",
+      "used_in_state": "supervision_review",
+      "fields": [
+        {
+          "name": "result",
+          "type": "radio",
+          "options": [
+            {
+              "value": "approve",
+              "label_fa": "تایید صلاحیت"
+            },
+            {
+              "value": "reject",
+              "label_fa": "رد صلاحیت"
+            }
+          ]
+        }
+      ]
+    }
   ]
 }

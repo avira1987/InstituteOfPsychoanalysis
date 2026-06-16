@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import json
+import uuid
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -20,7 +22,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.engine import StateMachineEngine
 from app.meta.seed import load_process, load_rules
-from app.models.operational_models import Student
+from app.models.operational_models import Student, TherapySession
 from app.services.attendance_service import AttendanceService
 
 from tests.processes.test_all_processes_level_a_smoke import (
@@ -62,7 +64,15 @@ LEVEL_C_CONTEXT_MERGE_AFTER_STEP1: dict[str, dict[str, Any]] = {
     "supervision_block_transition": {"selected_supervision_weekly_count": 1},
     "supervision_session_reduction": {"supervision_remaining_after_reduction": 2},
     "therapy_changes": {"change_type": "therapist_change"},
-    "therapy_session_reduction": {"remaining_sessions_after_reduction": 3},
+    "therapy_session_reduction": {
+        "remaining_sessions_after_reduction": 1,
+        "therapy_hours_2x": 0,
+        "therapy_threshold": 250,
+        "clinical_hours": 0,
+        "clinical_threshold": 750,
+        "supervision_hours": 0,
+        "supervision_threshold": 150,
+    },
 }
 
 
@@ -208,6 +218,34 @@ async def test_process_level_c_second_transition_or_terminal_after_first(
         instance.context_data = ctx
         flag_modified(instance, "context_data")
         await db_session.commit()
+
+    if code == "therapy_session_reduction":
+        ts_id = uuid.uuid4()
+        db_session.add(
+            TherapySession(
+                id=ts_id,
+                student_id=sample_student_level_c.id,
+                therapist_id=sample_user.id,
+                session_date=date.today() + timedelta(days=14),
+                status="scheduled",
+                is_extra=False,
+                payment_status="pending",
+            )
+        )
+        await db_session.commit()
+        result2 = await engine.execute_transition(
+            instance_id=instance.id,
+            trigger_event="sessions_selected",
+            actor_id=sample_user.id,
+            actor_role="admin",
+            payload={
+                "remaining_sessions_after_reduction": 1,
+                "selected_sessions": [str(ts_id)],
+            },
+        )
+        await db_session.commit()
+        assert result2.success, result2.error or "success=False"
+        return
 
     cur = instance.current_state_code
     rows2 = _initial_state_transitions_sorted(data, cur)

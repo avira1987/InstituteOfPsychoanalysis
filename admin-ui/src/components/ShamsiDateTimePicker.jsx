@@ -15,9 +15,15 @@ export function addMinutesToShamsiParts(parts, deltaMinutes) {
 }
 
 /**
- * @param {{ label: string, value: ShamsiParts, onChange: (v: ShamsiParts) => void, idPrefix?: string }} props
+ * @param {{ label: string, value: ShamsiParts, onChange: (v: ShamsiParts) => void, idPrefix?: string, compact?: boolean }} props
  */
-export default function ShamsiDateTimePicker({ label, value, onChange, idPrefix = 'shamsi' }) {
+export default function ShamsiDateTimePicker({
+  label,
+  value,
+  onChange,
+  idPrefix = 'shamsi',
+  compact = false,
+}) {
   const { jy, jm, jd, hour, minute } = value
   const maxDay = useMemo(() => jalaaliMonthLength(jy, jm), [jy, jm])
 
@@ -43,18 +49,27 @@ export default function ShamsiDateTimePicker({ label, value, onChange, idPrefix 
 
   return (
     <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-      <legend style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.88rem', fontWeight: 600 }}>
+      <legend
+        style={{
+          display: 'block',
+          marginBottom: compact ? '0.2rem' : '0.35rem',
+          fontSize: compact ? '0.82rem' : '0.88rem',
+          fontWeight: 600,
+        }}
+      >
         {label}
       </legend>
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(7.5rem, 1fr))',
-          gap: '0.5rem',
+          gridTemplateColumns: compact
+            ? 'repeat(5, minmax(3.75rem, 1fr))'
+            : 'repeat(auto-fill, minmax(7.5rem, 1fr))',
+          gap: compact ? '0.3rem' : '0.5rem',
           alignItems: 'end',
         }}
       >
-        <label style={{ fontSize: '0.8rem' }}>
+        <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
           سال شمسی
           <select
             id={`${idPrefix}-y`}
@@ -68,7 +83,7 @@ export default function ShamsiDateTimePicker({ label, value, onChange, idPrefix 
             ))}
           </select>
         </label>
-        <label style={{ fontSize: '0.8rem' }}>
+        <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
           ماه
           <select
             id={`${idPrefix}-m`}
@@ -82,7 +97,7 @@ export default function ShamsiDateTimePicker({ label, value, onChange, idPrefix 
             ))}
           </select>
         </label>
-        <label style={{ fontSize: '0.8rem' }}>
+        <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
           روز
           <select
             id={`${idPrefix}-d`}
@@ -96,7 +111,7 @@ export default function ShamsiDateTimePicker({ label, value, onChange, idPrefix 
             ))}
           </select>
         </label>
-        <label style={{ fontSize: '0.8rem' }}>
+        <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
           ساعت
           <input
             id={`${idPrefix}-h`}
@@ -110,7 +125,7 @@ export default function ShamsiDateTimePicker({ label, value, onChange, idPrefix 
             onChange={(e) => setPart({ hour: Math.min(23, Math.max(0, parseInt(e.target.value, 10) || 0)) })}
           />
         </label>
-        <label style={{ fontSize: '0.8rem' }}>
+        <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
           دقیقه
           <input
             id={`${idPrefix}-min`}
@@ -125,9 +140,15 @@ export default function ShamsiDateTimePicker({ label, value, onChange, idPrefix 
           />
         </label>
       </div>
+      {!compact ? (
       <p className="muted" style={{ fontSize: '0.72rem', margin: '0.35rem 0 0' }}>
         زمان به‌وقت رسمی ایران (۳۰+۳) ثبت می‌شود.
       </p>
+      ) : (
+        <p className="muted" style={{ fontSize: '0.68rem', margin: '0.2rem 0 0', lineHeight: 1.35 }}>
+          ایران (۳۰+۳).
+        </p>
+      )}
     </fieldset>
   )
 }

@@ -22,13 +22,13 @@ export default function HomePage() {
               انستیتو <span>روانکاوی</span> تهران
             </h1>
             <p className="pub-hero-desc">
-              سامانه جامع مدیریت آموزشی انستیتو روانکاوی تهران. ثبت‌نام، پیگیری فرآیندها،
-              مدیریت جلسات درمانی و سوپرویژن به صورت آنلاین و یکپارچه. ورود با کد یکبار مصرف پیامکی
-              و پنل نقش‌محور برای دانشجو، کادر و کمیته‌ها.
+              سامانه جامع مدیریت آموزشی انستیتو روانکاوی تهران. برای ورود یا ثبت‌نام، فقط شماره موبایل
+              خود را وارد کنید؛ پس از کد پیامکی، در صورت عضویت قبلی به پنل می‌روید و در غیر این صورت
+              فرم ثبت‌نام نمایش داده می‌شود. پیگیری فرآیندها، جلسات و سوپرویژن در پنل نقش‌محور.
             </p>
             <div className="pub-hero-actions">
-              <Link to="/register" className="pub-hero-btn primary">
-                ثبت‌نام دانشجو
+              <Link to="/login" className="pub-hero-btn primary">
+                ورود یا ثبت‌نام با موبایل
               </Link>
               <Link to="/guide" className="pub-hero-btn outline">
                 راهنمای سامانه
@@ -126,17 +126,20 @@ export default function HomePage() {
       {/* ─── Steps ─── */}
       <section className="pub-section" style={{ background: 'var(--bg)', paddingTop: '2rem' }}>
         <div className="pub-section-header">
-          <div className="pub-section-badge">مراحل ثبت‌نام</div>
+          <div className="pub-section-badge">شروع با موبایل</div>
           <h2>چگونه شروع کنیم؟</h2>
-          <p>فرآیند ساده ثبت‌نام و شروع دوره آموزشی</p>
+          <p>ورود و ثبت‌نام از یک مسیر: شماره موبایل و کد پیامکی، سپس در صورت نیاز تکمیل فرم</p>
         </div>
 
         <div className="pub-steps">
           <div className="pub-step">
             <div className="pub-step-num">۱</div>
             <div className="pub-step-content">
-              <h3>ثبت‌نام اولیه</h3>
-              <p>فرم ثبت‌نام آنلاین را تکمیل کنید. اطلاعات شخصی و تحصیلی خود را وارد نمایید.</p>
+              <h3>ورود با شماره موبایل</h3>
+              <p>
+                از صفحه ورود، شماره موبایل را وارد کنید و کد پیامکی را تأیید کنید. اگر عضو سامانه نیستید،
+                بلافاصله فرم ثبت‌نام اولیه برایتان باز می‌شود.
+              </p>
             </div>
           </div>
 
@@ -170,9 +173,9 @@ export default function HomePage() {
       <section className="pub-section">
         <div className="pub-cta">
           <h2>آماده شروع هستید؟</h2>
-          <p>همین حالا ثبت‌نام کنید و وارد دنیای روانکاوی شوید</p>
-          <Link to="/register" className="pub-cta-btn">
-            ثبت‌نام دانشجو
+          <p>با همان شماره موبایل وارد شوید؛ عضو که بودید به پنل می‌روید، نبودید فرم ثبت‌نام را تکمیل کنید</p>
+          <Link to="/login" className="pub-cta-btn">
+            ورود یا ثبت‌نام با موبایل
           </Link>
         </div>
       </section>

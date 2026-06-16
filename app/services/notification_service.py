@@ -145,6 +145,9 @@ TEMPLATES = {
     "payment_confirmed": {
         "sms": "پرداخت شما تایید شد. جلسات فعال است.",
     },
+    "therapy_session_link_reminder": {
+        "sms": "دانشجوی گرامی، جلسهٔ درمان شما در تاریخ {session_date} ساعت {session_time} آغاز می‌شود. لینک ورود به جلسه:\n{meeting_url}",
+    },
     "payment_overdue": {
         "sms": "پرداخت شما عقب افتاده. لطفاً هرچه زودتر اقدام کنید.",
     },
@@ -416,6 +419,9 @@ TEMPLATES = {
     "interview_reminder_2h": {
         "sms": "یادآوری: دو ساعت دیگر وقت مصاحبه شما در تاریخ {date} ساعت {time} می باشد. {location_info}",
     },
+    "interview_booking_confirmed_interviewer": {
+        "in_app": "مصاحبه پذیرش با {student_name} در تاریخ {interview_date} ساعت {interview_time}. {interview_detail_tail}",
+    },
     "admission_result_conditional": {
         "sms": "متقاضی گرامی\nموضوع: پذیرش در دوره آشنایی\nمفتخریم که به اطلاعتان برسانیم که شما پذیرفته شده اید.\nشرایط: ثبت نام در ترم دوم مشروط به آغاز درمان شخصی حداقل یک بار در هفته قبل از آغاز ترم دوم.\nمهلت ثبت نام و پرداخت شهریه تا {deadline}.\nکمیته پذیرش انستیتو روانکاوی تهران",
     },
@@ -427,6 +433,167 @@ TEMPLATES = {
     },
     "admission_result_rejected": {
         "sms": "متقاضی گرامی\nموضوع: پذیرش در دوره آشنایی\nبا کمال تاسف به اطلاع جنابعالی میرسانیم که در فرایند پذیرش پذیرفته نشده اید.\nاز صمیم قلب آرزوی موفقیت شما را داریم.\nکمیته پذیرش انستیتو روانکاوی تهران",
+    },
+    # ─── فرایند ۳۱: ثبت‌نام دوره آشنایی (کلیدهای template در metadata/processes) ───
+    "interview_scheduled_student_online": {
+        "sms": (
+            "متقاضی محترم\nموضوع: وقت مصاحبه دوره آشنایی\n"
+            "وقت شما برای مصاحبه پذیرش در {course_label} در انستیتو روانکاوی تهران "
+            "به تاریخ {interview_date} ساعت {interview_time} ثبت گردید.\n"
+            "مصاحبه شما در لینک زیر صورت میگیرد: {interview_link}\n"
+            "موفق باشید\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "interview_scheduled_student_in_person": {
+        "sms": (
+            "متقاضی محترم\nموضوع: وقت مصاحبه دوره آشنایی\n"
+            "وقت شما برای مصاحبه پذیرش در {course_label} در انستیتو روانکاوی تهران "
+            "به تاریخ {interview_date} ساعت {interview_time} ثبت گردید.\n"
+            "مصاحبه شما بصورت حضوری در مکان انستیتو برگزار خواهد شد\n"
+            "موفق باشید\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "interview_scheduled_interviewer_online": {
+        "sms": (
+            "هیئت علمی محترم انستیتو روانکاوی تهران\nموضوع: وقت مصاحبه دوره آشنایی\n"
+            "باطلاع میرسانیم در تاریخ {interview_date} ساعت {interview_time} مصاحبه با "
+            "آقای/ خانم {student_name} برای ورود به دوره برنامه ریزی شده است.\n"
+            "مصاحبه شما در لینک زیر صورت میگیرد: {interview_link}\n"
+            "با تشکر\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "interview_scheduled_interviewer_inperson": {
+        "sms": (
+            "هیئت علمی محترم انستیتو روانکاوی تهران\nموضوع: وقت مصاحبه دوره آشنایی\n"
+            "باطلاع میرسانیم در تاریخ {interview_date} ساعت {interview_time} مصاحبه با "
+            "آقای/ خانم {student_name} برای ورود به دوره برنامه ریزی شده است.\n"
+            "مصاحبه شما بصورت حضوری در مکان انستیتو برگزار خواهد شد\n"
+            "با تشکر\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "interview_scheduled_interviewer": {
+        "sms": (
+            "هیئت علمی محترم انستیتو روانکاوی تهران\nموضوع: وقت مصاحبه دوره آشنایی\n"
+            "باطلاع میرسانیم در تاریخ {interview_date} ساعت {interview_time} مصاحبه با "
+            "آقای/ خانم {student_name} برای ورود به دوره برنامه ریزی شده است.\n"
+            "{interview_location_or_link}\nبا تشکر\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "interview_reminder_applicant_online": {
+        "sms": (
+            "متقاضی محترم\nموضوع: یادآوری مصاحبه دوره آشنایی\n"
+            "یادآوری میشود که دو ساعت دیگر وقت شما برای مصاحبه پذیرش در {course_label} "
+            "در انستیتو روانکاوی تهران به تاریخ {interview_date} ساعت {interview_time} می باشد.\n"
+            "مصاحبه شما در لینک زیر صورت میگیرد: {interview_link}\n"
+            "موفق باشید\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "interview_reminder_applicant_inperson": {
+        "sms": (
+            "متقاضی محترم\nموضوع: یادآوری مصاحبه دوره آشنایی\n"
+            "یادآوری میشود که دو ساعت دیگر وقت شما برای مصاحبه پذیرش در {course_label} "
+            "در انستیتو روانکاوی تهران به تاریخ {interview_date} ساعت {interview_time} می باشد.\n"
+            "مصاحبه شما بصورت حضوری در مکان انستیتو برگزار خواهد شد\n"
+            "موفق باشید\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "interview_reminder_interviewer_online": {
+        "sms": (
+            "هیئت علمی محترم انستیتو روانکاوی تهران\nموضوع: یادآوری مصاحبه دوره آشنایی\n"
+            "یادآوری میشود که دو ساعت دیگر وقت مصاحبه شما در تاریخ {interview_date} ساعت {interview_time} "
+            "با آقای/ خانم {student_name} برای ورود به دوره آشنایی می باشد.\n"
+            "مصاحبه شما در لینک زیر صورت میگیرد: {interview_link}\n"
+            "با تشکر\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "interview_reminder_interviewer_inperson": {
+        "sms": (
+            "هیئت علمی محترم انستیتو روانکاوی تهران\nموضوع: یادآوری مصاحبه دوره آشنایی\n"
+            "یادآوری میشود که دو ساعت دیگر وقت مصاحبه شما در تاریخ {interview_date} ساعت {interview_time} "
+            "با آقای/ خانم {student_name} برای ورود به دوره آشنایی می باشد.\n"
+            "مصاحبه شما بصورت حضوری در مکان انستیتو برگزار خواهد شد\n"
+            "با تشکر\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "result_conditional_therapy": {
+        "sms": (
+            "متقاضی گرامی\nموضوع: پذیرش در دوره آشنایی\nبا سلام\n"
+            "مفتخریم که به اطلاعتان برسانیم که شما در فرایند پذیرش به {course_label} "
+            "برای {term_label} پذیرفته شده اید.\n"
+            "شرایط ثبت نام از این قرارند:\n"
+            "— ثبت نام شما در ترم دوم مشروط است به آغاز درمان شخصی خود بصورت حداقل یک بار در هفته "
+            "در انستیتو قبل از آغاز ترم دوم این دوره.\n"
+            "— شما می توانید برای هر تعداد یا تمام دروس این ترم ثبت نام بفرمایید.\n"
+            "مهلت ثبت نام و پرداخت شهریه تا {deadline} می باشد.\n"
+            "موفق باشید\nکمیته پذیرش انستیتو روانکاوی تهران"
+        ),
+    },
+    "result_single_course": {
+        "sms": (
+            "متقاضی گرامی\nموضوع: پذیرش در دوره آشنایی\nبا سلام\n"
+            "مفتخریم که به اطلاعتان برسانیم که شما در فرایند پذیرش به {course_label} "
+            "برای {term_label} پذیرفته شده اید.\n"
+            "شرایط ثبت نام از این قرارند:\n"
+            "— شما میتوانید برای تک درس تئوری روانکاوی (۱): اصول بنیادین روانکاوی ثبت نام بفرمایید.\n"
+            "مهلت ثبت نام و پرداخت شهریه تا {deadline} می باشد.\n"
+            "موفق باشید\nکمیته پذیرش انستیتو روانکاوی تهران"
+        ),
+    },
+    "result_full_admission": {
+        "sms": (
+            "متقاضی گرامی\nموضوع: پذیرش در دوره آشنایی\nبا سلام\n"
+            "مفتخریم که به اطلاعتان برسانیم که شما در فرایند پذیرش به {course_label} "
+            "برای {term_label} پذیرفته شده اید.\n"
+            "شرایط ثبت نام از این قرارند:\n"
+            "— شما می توانید برای هر تعداد یا تمام دروس این ترم ثبت نام بفرمایید.\n"
+            "مهلت ثبت نام و پرداخت شهریه تا {deadline} می باشد.\n"
+            "موفق باشید\nکمیته پذیرش انستیتو روانکاوی تهران"
+        ),
+    },
+    "result_rejected": {
+        "sms": (
+            "متقاضی گرامی\nموضوع: پذیرش در دوره آشنایی\nبا سلام و احترام\n"
+            "با کمال تاسف مجبوریم بعد از تامل زیاد به اطلاع جنابعالی برسانیم که شما در فرایند پذیرش به "
+            "{course_label} برای {term_label} پذیرفته نشده اید.\n"
+            "نظرما این است که شما را به پیگیری برای کار تحلیلی با رویکرد نظری دیگری در مرکز آموزشی دیگری "
+            "یا رویکرد درمانی متفاوتی تشویق کنیم.\n"
+            "از صمیم قلب آرزوی موفقیت شما را داریم.\n"
+            "کمیته پذیرش انستیتو روانکاوی تهران"
+        ),
+    },
+    "required_documents_list": {
+        "sms": (
+            "متقاضی محترم\nموضوع: بارگزاری مدارک\n"
+            "لطفا تا تاریخ {deadline} (۲ روز پس از ثبت نتیجه مصاحبه) مدارک زیر را در سایت ثبت نام انستیتو "
+            "بارگزاری فرمایید تا پس از تایید بخش پذیرش، مرحله ثبت نام خود را تکمیل کنید:\n"
+            "۱- تصویر صفحه اول شناسنامه\n"
+            "۲- تصویر پشت و روی کارت ملی\n"
+            "۳- تصویر مدرک کارشناسی یا پزشکی\n"
+            "۴- تصویر مدرک ارشد (اگر ارشد را تکمیل کرده اید)\n"
+            "۵- تصویر آخرین گواهی تحصیلی\n"
+            "با تشکر\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "documents_deficiency_list": {
+        "sms": (
+            "متقاضی محترم\nموضوع: اصلاح و یا تکمیل مدارک مورد نیاز برای ثبت نام در دوره آشنایی\n"
+            "تا تاریخ {deadline} (۲ روز پس از دریافت این پیام) مهلت دارید که وارد سایت انستیتو روانکاوی تهران شوید "
+            "و بارگزاری های لازم زیر را انجام دهید.\n"
+            "لطفا مدارک زیر را دوباره بارگزاری کنید:\n"
+            "{deficiency_list}\n"
+            "با تشکر\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "lms_credentials": {
+        "sms": (
+            "متقاضی محترم\nموضوع: پرتال دانشجویی و ثبت نام\n"
+            "مدارک بارگزاری شده توسط شما مورد تایید بخش پذیرش است. درسهای قابل ثبت نام برای شما تعیین شدند. "
+            "تا تاریخ {deadline} مهلت دارید که با اطلاعات زیر وارد پرتال دانشجویی خود در LMS انستیتو روانکاوی تهران شوید "
+            "و مرحله ثبت نام را تکمیل فرمایید:\n"
+            "USERNAME: {username}\n"
+            "PASSWORD: {password}\n"
+            "موفق باشید\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
     },
     "document_upload_request": {
         "sms": "متقاضی محترم\nموضوع: بارگزاری مدارک\nلطفا تا تاریخ {deadline} مدارک لازم را در سایت ثبت نام انستیتو بارگزاری فرمایید.\nبخش پذیرش ۰۹۱۲۲۲۰۶۷۹۶",
@@ -479,6 +646,42 @@ TEMPLATES = {
 }
 
 
+def _apply_template_context(message: str, context: Optional[dict]) -> str:
+    if not message or not context:
+        return message or ""
+    out = message
+    for key, value in context.items():
+        out = out.replace(f"{{{key}}}", str(value))
+    return out
+
+
+def resolve_sms_message_body(
+    template_name: str,
+    context: Optional[dict] = None,
+    *,
+    message_override: Optional[str] = None,
+) -> str:
+    """متن نمایشی پیامک برای ارسال و پاپ‌آپ — از override، TEMPLATES، یا پترن."""
+    ctx = dict(context or {})
+    if message_override and str(message_override).strip():
+        return _apply_template_context(str(message_override).strip(), ctx)
+    message = TEMPLATES.get(template_name, {}).get("sms") or ""
+    if message:
+        return _apply_template_context(message, ctx)
+    from app.services.sms_process_template_texts import get_process_sms_fallback
+
+    proc_text = get_process_sms_fallback(template_name)
+    if proc_text:
+        return _apply_template_context(proc_text, ctx)
+    from app.services.sms_template_pattern_map import resolve_sms_pattern_for_template
+
+    pat = resolve_sms_pattern_for_template(template_name, ctx)
+    if pat:
+        _, ptext = pat
+        return f"پترن [{template_name}]: {ptext}"
+    return f"پیامک [{template_name}]"
+
+
 class NotificationService:
     """Service for sending notifications via SMS, Email, etc."""
 
@@ -496,16 +699,49 @@ class NotificationService:
             return template.get("in_app")
         return None
 
-    async def send_sms(self, phone: str, message: str) -> NotificationResult:
-        """Send an SMS message via the configured gateway."""
+    async def send_sms(
+        self,
+        phone: str,
+        message: str,
+        *,
+        template_key: Optional[str] = None,
+        context: Optional[dict] = None,
+    ) -> NotificationResult:
+        """ارسال پیامک؛ نگاشت پترن در sms_gateway.send_sms (خط خدماتی / BaseServiceNumber) اعمال می‌شود."""
         from app.services.sms_gateway import send_sms as gateway_send
-        gateway_result = await gateway_send(phone, message)
+
+        gateway_result = await gateway_send(
+            phone,
+            message,
+            template_key=template_key,
+            context=context,
+        )
+        log_msg = message or (
+            f"melipayamak template={template_key}" if template_key else message
+        )
         success = gateway_result.get("success", False)
+        if not success:
+            try:
+                from app.database import async_session_factory
+                from app.services.notification_outbox_service import enqueue_notification
+
+                async with async_session_factory() as db:
+                    await enqueue_notification(
+                        db,
+                        recipient=phone,
+                        message=message or log_msg,
+                        template_key=template_key,
+                        context=context,
+                    )
+                    await db.commit()
+                logger.info("SMS failed — queued to outbox for retry: %s", phone)
+            except Exception:
+                logger.exception("Failed to enqueue SMS to outbox")
         result = NotificationResult(
             success=success,
             notification_type="sms",
             recipient=phone,
-            message=message,
+            message=log_msg,
             error="" if success else gateway_result.get("error", "unknown"),
         )
         self._sent_log.append(result)
@@ -529,10 +765,27 @@ class NotificationService:
         template_name: str,
         recipient_contact: str,
         context: Optional[dict] = None,
+        *,
+        message_override: Optional[str] = None,
     ) -> NotificationResult:
         """Send a notification using a template."""
+        from app.services.sms_template_pattern_map import resolve_sms_pattern_for_template
+        from app.services.sms_gateway import send_sms as gateway_send
+
+        ctx = dict(context or {})
+        sms_pattern = None
+        if notification_type == "sms":
+            sms_pattern = resolve_sms_pattern_for_template(template_name, ctx)
+
         message = self.get_template(template_name, notification_type)
-        if not message:
+        if notification_type == "sms":
+            message = resolve_sms_message_body(
+                template_name, ctx, message_override=message_override
+            )
+        elif message and ctx:
+            message = _apply_template_context(message, ctx)
+
+        if not message and notification_type != "sms":
             return NotificationResult(
                 success=False,
                 notification_type=notification_type,
@@ -540,13 +793,28 @@ class NotificationService:
                 error=f"Template '{template_name}' not found for type '{notification_type}'",
             )
 
-        # Simple template variable replacement
-        if context:
-            for key, value in context.items():
-                message = message.replace(f"{{{key}}}", str(value))
-
         if notification_type == "sms":
-            return await self.send_sms(recipient_contact, message)
+            gateway_result = await gateway_send(
+                recipient_contact,
+                message or "",
+                template_key=template_name,
+                context=ctx,
+            )
+            success = gateway_result.get("success", False)
+            if sms_pattern:
+                bid, _ = sms_pattern
+                log_msg = message or f"melipayamak_pattern bodyId={bid} template={template_name}"
+            else:
+                log_msg = message or ""
+            result = NotificationResult(
+                success=success,
+                notification_type="sms",
+                recipient=recipient_contact,
+                message=log_msg,
+                error="" if success else gateway_result.get("error", "unknown"),
+            )
+            self._sent_log.append(result)
+            return result
         elif notification_type == "email":
             subject = TEMPLATES.get(template_name, {}).get("email_subject", "Notification")
             return await self.send_email(recipient_contact, subject, message)

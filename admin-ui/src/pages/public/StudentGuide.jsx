@@ -85,6 +85,18 @@ export default function StudentGuide() {
         </p>
       </div>
 
+      {/* ─── قوانین انستیتو (لینک از فرم آپلود مدارک) ─── */}
+      <section id="institute-rules" className="pub-section" style={{ scrollMarginTop: '5rem' }}>
+        <div className="pub-section-header">
+          <div className="pub-section-badge">📜 قوانین و مقررات</div>
+          <h2>قوانین و مقررات انستیتو</h2>
+          <p style={{ maxWidth: '48rem', lineHeight: 1.75 }}>
+            پیش از بارگذاری مدارک در مسیر ثبت‌نام، لازم است ضمن مطالعهٔ کامل آیین‌نامه‌ها و قوانین آموزشی، پذیرش خود را در همان فرم اعلام کنید.
+            متن رسمی و به‌روز قوانین را از منابع اعلام‌شده توسط انستیتو (وب‌سایت، دفترچهٔ دوره یا بخشنامه‌ها) پیگیری کنید؛ این بخش نقطهٔ مرجع برای لینک از سامانه است.
+          </p>
+        </div>
+      </section>
+
       {/* ─── Guide Sections ─── */}
       {GUIDE_SECTIONS.map((section, sIdx) => (
         <section key={sIdx} className="pub-section" style={{ paddingBottom: sIdx < GUIDE_SECTIONS.length - 1 ? '1rem' : undefined }}>
@@ -140,10 +152,10 @@ export default function StudentGuide() {
       <section className="pub-section" style={{ paddingTop: 0 }}>
         <div className="pub-cta">
           <h2>آماده ثبت‌نام هستید؟</h2>
-          <p>با تکمیل فرم ثبت‌نام، اولین قدم را بردارید — یا پیش از آن نمای کلی مسیر را ببینید</p>
+          <p>با شماره موبایل وارد شوید؛ در صورت نبود حساب، فرم ثبت‌نام باز می‌شود — یا پیش از آن مسیر تحصیلی را ببینید</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'center' }}>
-            <Link to="/register" className="pub-cta-btn">
-              شروع ثبت‌نام
+            <Link to="/login" className="pub-cta-btn">
+              ورود یا ثبت‌نام با موبایل
             </Link>
             <Link to="/student-lifecycle" className="pub-cta-btn" style={{ background: 'transparent', border: '2px solid currentColor' }}>
               مسیر تحصیلی و نقش‌ها

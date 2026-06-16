@@ -1,17 +1,49 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { processExecApi, studentApi, userApi, auditApi, assignmentApi, therapyApi, alocomApi } from '../services/api'
+import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
+import { processExecApi, studentApi, userApi, auditApi, assignmentApi, therapyApi, alocomApi, panelApi } from '../services/api'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
+import {
+  mergeInterviewResultFormPayload,
+} from '../utils/interviewResultPayload'
+import {
+  canSubmitInterviewResult,
+  filterInterviewResultTransitions,
+} from '../utils/interviewResultAccess'
 import { notesPayload } from '../utils/decisionPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
-import PanelRoleActionQueue from '../components/PanelRoleActionQueue'
 import PopupToast from '../components/PopupToast'
+import InterviewSlotRecurringRules from '../components/InterviewSlotRecurringRules'
 import InterviewSlotsAdmin from '../components/InterviewSlotsAdmin'
 import InterviewBookingsPanel from '../components/InterviewBookingsPanel'
 import DocumentsReviewPanel from '../components/DocumentsReviewPanel'
 import ProcessRollbackSection from '../components/ProcessRollbackSection'
+import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
+import OperatorFollowupSection from '../components/OperatorFollowupSection'
+import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
+import OperatorCourseSelectionEditor from '../components/OperatorCourseSelectionEditor'
+import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
+import {
+  buildStaffTabsForLane,
+  getStaffLaneConfig,
+  getStaffLanePath,
+  stateMatchesStaffLane,
+} from '../utils/portalStaffLanes'
+
+const STAFF_DEEP_LINK_TABS = [
+  'dashboard',
+  'pending',
+  'students',
+  'processes',
+  'interviewSlots',
+  'documentsReview',
+  'onlineClasses',
+  'activity',
+]
 
 const staffReviewStates = [
   'staff_review', 'staff_verification', 'pending_staff',
@@ -20,17 +52,27 @@ const staffReviewStates = [
 ]
 
 export default function StaffPortal() {
+  const { lane: laneParam } = useParams()
+  const lane = laneParam || 'admissions'
+  const laneConfig = getStaffLaneConfig(lane) || getStaffLaneConfig('admissions')
+  const portalPath = getStaffLanePath(lane)
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState('pending')
   const [allStudents, setAllStudents] = useState([])
   const [allUsers, setAllUsers] = useState([])
   const [pendingActions, setPendingActions] = useState([])
+  const [processInboxItems, setProcessInboxItems] = useState([])
+  const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
   const [allActiveInstances, setAllActiveInstances] = useState([])
   const [recentLogs, setRecentLogs] = useState([])
   const [selectedInstance, setSelectedInstance] = useState(null)
   const [instanceDetail, setInstanceDetail] = useState(null)
   const [availableTransitions, setAvailableTransitions] = useState([])
   const [decisionNotes, setDecisionNotes] = useState('')
+  const [interviewResultForm, setInterviewResultForm] = useState({
+    interviewer_notes: '',
+  })
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [unlockFormsBusy, setUnlockFormsBusy] = useState(false)
@@ -49,6 +91,10 @@ export default function StaffPortal() {
   }
 
   useEffect(() => { loadData() }, [])
+
+  useEffect(() => {
+    setInterviewResultForm({ interviewer_notes: '' })
+  }, [selectedInstance, instanceDetail?.current_state])
 
   const loadData = async () => {
     try {
@@ -71,14 +117,44 @@ export default function StaffPortal() {
           for (const inst of instances) {
             if (!inst.is_completed && !inst.is_cancelled) {
               allActive.push({ ...inst, student_code: s.student_code, student_id: s.id })
-              if (isWaitingForStaff(inst.current_state)) {
+              if (isWaitingForStaff(inst.current_state, inst.process_code)) {
                 pending.push({ ...inst, student_code: s.student_code, student_id: s.id })
               }
             }
           }
         } catch { /* skip */ }
       }
-      setPendingActions(pending)
+
+      let inboxItems = []
+      try {
+        const inboxRes = await panelApi.myOperatorFollowup()
+        inboxItems = inboxRes.data?.items || []
+        setProcessInboxItems(inboxItems)
+        setOperatorReadinessAlerts(inboxRes.data?.readiness_alerts || [])
+      } catch {
+        setProcessInboxItems([])
+        setOperatorReadinessAlerts([])
+      }
+
+      const inboxProcess = inboxItems.filter((i) => i.kind === 'process')
+      const ordered = []
+      const seen = new Set()
+      for (const i of inboxProcess) {
+        ordered.push({
+          id: i.instance_id,
+          student_id: i.student_id,
+          student_code: i.student_code,
+          current_state: i.state_code,
+          process_code: i.process_code,
+          is_completed: false,
+          is_cancelled: false,
+        })
+        seen.add(i.instance_id)
+      }
+      for (const p of pending) {
+        if (!seen.has(p.id)) ordered.push(p)
+      }
+      setPendingActions(ordered)
       setAllActiveInstances(allActive)
     } catch (err) {
       console.error('Load error:', err)
@@ -87,10 +163,8 @@ export default function StaffPortal() {
     }
   }
 
-  const isWaitingForStaff = (state) => {
-    if (!state) return false
-    return staffReviewStates.some(rs => state.includes(rs)) ||
-           state.includes('staff') || state.includes('payment') || state.includes('office')
+  const isWaitingForStaff = (state, processCode) => {
+    return stateMatchesStaffLane(state, lane, processCode)
   }
 
   const viewInstance = async (instanceId) => {
@@ -106,6 +180,18 @@ export default function StaffPortal() {
       console.error('View error:', err)
     }
   }
+
+  usePortalInstanceDeepLink({
+    loading,
+    setActiveTab,
+    viewInstance,
+    allowedTabs: laneConfig?.tabIds || STAFF_DEEP_LINK_TABS,
+  })
+
+  useEffect(() => {
+    const sid = searchParams.get('student_id')
+    if (sid) setNewAssignment(prev => ({ ...prev, student_id: sid }))
+  }, [searchParams])
 
   const unlockStudentFormsForInstance = async () => {
     if (!selectedInstance) return
@@ -150,6 +236,12 @@ export default function StaffPortal() {
     try {
       let payload = notesPayload(decisionNotes)
       payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
+      payload = mergeInterviewResultFormPayload(
+        payload,
+        interviewResultForm,
+        toState,
+        triggerEvent,
+      )
       if (toState) payload.to_state = toState
       const res = await processExecApi.trigger(selectedInstance, {
         trigger_event: triggerEvent,
@@ -209,6 +301,14 @@ export default function StaffPortal() {
     [allActiveInstances],
   )
 
+  const tabs = useMemo(
+    () => buildStaffTabsForLane(lane, {
+      pending: pendingActions.length,
+      documentsReview: documentReviewQueue.length,
+    }),
+    [lane, pendingActions.length, documentReviewQueue.length],
+  )
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem' }}>
@@ -225,29 +325,31 @@ export default function StaffPortal() {
     return s.student_code?.includes(studentSearch) || s.course_type?.includes(studentSearch)
   })
 
-  const tabs = [
-    { id: 'dashboard', label: 'داشبورد', icon: '📊' },
-    { id: 'pending', label: `وظایف (${pendingActions.length})`, icon: '📥' },
-    { id: 'documentsReview', label: `بررسی مدارک (${documentReviewQueue.length})`, icon: '📎' },
-    { id: 'students', label: 'دانشجویان', icon: '👨‍🎓' },
-    { id: 'processes', label: 'فرایندها', icon: '🔄' },
-    { id: 'interviewSlots', label: 'اسلات مصاحبه', icon: '📅' },
-    { id: 'onlineClasses', label: 'کلاس آنلاین', icon: '🖥️' },
-    { id: 'activity', label: 'فعالیت‌ها', icon: '📝' },
-  ]
-
   return (
     <div>
       <PopupToast toast={toast} />
 
+      <ResolvedProcessHistoryBanner
+        instanceDetail={instanceDetail}
+        availableTransitions={availableTransitions}
+      />
+
       <div className="page-header">
         <div>
-          <h1 className="page-title">پنل کارمند دفتر</h1>
+          <h1 className="page-title">{laneConfig?.title || 'پنل کارمند'}</h1>
           <p className="page-subtitle">
-            {user?.full_name_fa || user?.username} | مدیریت دانشجویان و پرداخت‌ها
+            {user?.full_name_fa || user?.username} | {laneConfig?.subtitle || 'مدیریت دانشجویان'}
           </p>
         </div>
       </div>
+
+      <OperatorPortalReminderBanner portalPath={portalPath} pendingTab="pending" />
+
+      <OperatorFollowupSection
+        items={processInboxItems}
+        readinessAlerts={operatorReadinessAlerts}
+        inboxTitle="صندوق اقدام (پرونده‌های باز شما)"
+      />
 
       <div className="tab-bar">
         {tabs.map(tab => (
@@ -323,8 +425,6 @@ export default function StaffPortal() {
               </div>
             </div>
           </div>
-
-          <PanelRoleActionQueue />
 
           <div className="card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-header">
@@ -506,12 +606,16 @@ export default function StaffPortal() {
             availableTransitions={availableTransitions}
             decisionNotes={decisionNotes}
             setDecisionNotes={setDecisionNotes}
+            interviewResultForm={interviewResultForm}
+            setInterviewResultForm={setInterviewResultForm}
             triggerTransition={triggerTransition}
             onUnlockStudentForms={unlockStudentFormsForInstance}
             unlockFormsBusy={unlockFormsBusy}
             onRollback={handleProcessRollback}
             rollbackBusy={rollbackBusy}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
+            showToast={showToast}
+            onRefreshInstance={() => viewInstance(selectedInstance)}
           />}
         </div>
       )}
@@ -658,9 +762,9 @@ export default function StaffPortal() {
                         {formatStudentCodeDisplay(p.student_code)} | {labelState(p.current_state)}
                       </div>
                     </div>
-                    <span className={`badge ${isWaitingForStaff(p.current_state) ? 'badge-warning' : 'badge-info'}`}
+                    <span className={`badge ${isWaitingForStaff(p.current_state, p.process_code) ? 'badge-warning' : 'badge-info'}`}
                       style={{ fontSize: '0.65rem' }}>
-                      {isWaitingForStaff(p.current_state) ? 'منتظر شما' : 'در جریان'}
+                      {isWaitingForStaff(p.current_state, p.process_code) ? 'منتظر شما' : 'در جریان'}
                     </span>
                   </button>
                 ))}
@@ -673,18 +777,23 @@ export default function StaffPortal() {
             availableTransitions={availableTransitions}
             decisionNotes={decisionNotes}
             setDecisionNotes={setDecisionNotes}
+            interviewResultForm={interviewResultForm}
+            setInterviewResultForm={setInterviewResultForm}
             triggerTransition={triggerTransition}
             onUnlockStudentForms={unlockStudentFormsForInstance}
             unlockFormsBusy={unlockFormsBusy}
             onRollback={handleProcessRollback}
             rollbackBusy={rollbackBusy}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
+            showToast={showToast}
+            onRefreshInstance={() => viewInstance(selectedInstance)}
           />}
         </div>
       )}
 
       {activeTab === 'interviewSlots' && (
         <>
+          <InterviewSlotRecurringRules showToast={showToast} />
           <InterviewSlotsAdmin showToast={showToast} />
           <InterviewBookingsPanel showToast={showToast} />
         </>
@@ -956,13 +1065,34 @@ function DetailPanel({
   availableTransitions,
   decisionNotes,
   setDecisionNotes,
+  interviewResultForm,
+  setInterviewResultForm,
   triggerTransition,
   onUnlockStudentForms,
   unlockFormsBusy,
   onRollback,
   rollbackBusy,
   onClose,
+  showToast,
+  onRefreshInstance,
 }) {
+  const isIntroReg = instanceDetail.process_code === 'introductory_course_registration'
+  const instanceContext = instanceDetail.context_data || {}
+  const transitionsForActions = filterInterviewResultTransitions(
+    availableTransitions,
+    user,
+    instanceContext,
+  )
+  const showInterviewAdvance =
+    isIntroReg && instanceDetail.current_state === 'interview_payment_confirmed'
+  const showInterviewResultForm =
+    isIntroReg
+    && instanceDetail.current_state === 'interview_completed'
+    && canSubmitInterviewResult(user, instanceContext)
+  const interviewTimeReachedTransition = availableTransitions.find(
+    (t) => t.trigger_event === 'interview_time_reached',
+  )
+
   return (
     <div className="card">
       <div className="card-header">
@@ -1000,6 +1130,39 @@ function DetailPanel({
         </div>
       </div>
 
+      <OperatorInstanceGuidanceBlock
+        instanceDetail={instanceDetail}
+        portalRole={user?.role}
+        availableTransitions={availableTransitions}
+      />
+
+      <OperatorCourseSelectionEditor
+        instanceId={instanceDetail.instance_id}
+        processCode={instanceDetail.process_code}
+        currentState={instanceDetail.current_state}
+        contextData={instanceDetail.context_data}
+        isCompleted={instanceDetail.is_completed}
+        isCancelled={instanceDetail.is_cancelled}
+        showToast={showToast}
+        onUpdated={(ctx) => {
+          if (ctx && onRefreshInstance) onRefreshInstance()
+        }}
+      />
+
+      <OperatorStepFormsSection
+        instanceId={instanceDetail.instance_id}
+        processCode={instanceDetail.process_code}
+        currentState={instanceDetail.current_state}
+        contextData={instanceDetail.context_data}
+        isCompleted={instanceDetail.is_completed}
+        isCancelled={instanceDetail.is_cancelled}
+        role={user?.role}
+        showToast={showToast}
+        onUpdated={(ctx) => {
+          if (ctx && onRefreshInstance) onRefreshInstance()
+        }}
+      />
+
       <InstanceContextSummary
         contextData={instanceDetail.context_data}
         history={instanceDetail.history}
@@ -1015,7 +1178,75 @@ function DetailPanel({
         />
       )}
 
-      {availableTransitions.length > 0 && (
+      {showInterviewAdvance && (
+        <div
+          style={{
+            padding: '1rem 1.25rem',
+            marginBottom: '1.25rem',
+            background: '#eff6ff',
+            borderRadius: '10px',
+            borderRight: '4px solid #2563eb',
+          }}
+        >
+          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#1e40af' }}>
+            ثبت برگزاری مصاحبه
+          </h4>
+          <p style={{ fontSize: '0.85rem', lineHeight: 1.65, margin: '0 0 0.75rem', color: '#334155' }}>
+            پس از برگزاری مصاحبه (یا برای تست بدون انتظار تا زمان قرار)، این دکمه را بزنید تا مرحلهٔ ثبت نتیجه برای مصاحبه‌گر باز شود.
+            اگر زمان مصاحبه گذشته باشد، سامانه نیز به‌صورت خودکار این مرحله را جلو می‌برد.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            data-testid="staff-advance-interview-completed"
+            disabled={!interviewTimeReachedTransition}
+            onClick={() => {
+              if (interviewTimeReachedTransition) {
+                triggerTransition(interviewTimeReachedTransition)
+              }
+            }}
+          >
+            ثبت برگزاری مصاحبه و باز کردن ثبت نتیجه
+          </button>
+        </div>
+      )}
+
+      {showInterviewResultForm && (
+        <div
+          style={{
+            padding: '1rem 1.25rem',
+            marginBottom: '1.25rem',
+            background: '#faf5ff',
+            borderRadius: '10px',
+            borderRight: '4px solid #7c3aed',
+          }}
+        >
+          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.75rem', color: '#5b21b6' }}>
+            فرم محرمانهٔ نتیجهٔ مصاحبه
+          </h4>
+          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 0.85rem', lineHeight: 1.6 }}>
+            قبل از زدن یکی از دکمه‌های نتیجه در پایین، در صورت نیاز یادداشت را ثبت کنید.
+          </p>
+          <label style={{ display: 'block', fontSize: '0.88rem' }}>
+            <span style={{ fontWeight: 600 }}>یادداشت مصاحبه‌گر (اختیاری)</span>
+            <textarea
+              className="form-input"
+              rows={3}
+              style={{ width: '100%', marginTop: '0.35rem' }}
+              dir="rtl"
+              value={interviewResultForm.interviewer_notes}
+              onChange={(e) =>
+                setInterviewResultForm((prev) => ({
+                  ...prev,
+                  interviewer_notes: e.target.value,
+                }))
+              }
+            />
+          </label>
+        </div>
+      )}
+
+      {transitionsForActions.length > 0 && (
         <div style={{
           padding: '1.25rem', background: 'var(--info-light)',
           borderRadius: '10px', marginBottom: '1.5rem', borderRight: '4px solid var(--info)',
@@ -1028,7 +1259,9 @@ function DetailPanel({
             hint="متن همراه همان دکمه‌ای که می‌زنید در پرونده ثبت می‌شود."
           />
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {availableTransitions.map((t, idx) => {
+            {transitionsForActions
+              .filter((t) => !(showInterviewAdvance && t.trigger_event === 'interview_time_reached'))
+              .map((t, idx) => {
               const isApproval = t.trigger_event?.includes('approved') || t.trigger_event?.includes('confirm') || t.trigger_event?.includes('verified')
               const isReject = t.trigger_event?.includes('reject') || t.trigger_event?.includes('decline')
               return (

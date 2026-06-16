@@ -11,18 +11,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.gzip import GZipMiddleware
 
 from app.config import get_settings
-from app.database import init_db, async_session_factory
+from app.database import init_db, async_session_factory, apply_schema_safety_patches, engine
 from app.services.sla_monitor import sla_monitor
 from app.services.calendar_triggers import calendar_trigger_monitor
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
+# ثبت مدل‌های فرم داینامیک روی metadata (بدون وابستگی چرخه‌ای با operational_models)
+import app.models.dynamic_forms  # noqa: F401
+
 
 async def _ensure_admin_user(db):
-    """Ensure admin user exists with correct password (admin/admin123)."""
+    """Ensure admin user exists. Password reset to admin123 only in DEBUG mode."""
     from sqlalchemy import select
     from app.models.operational_models import User
     from app.api.auth import get_password_hash, verify_password
@@ -30,28 +34,54 @@ async def _ensure_admin_user(db):
     result = await db.execute(select(User).where(User.username == "admin"))
     admin = result.scalars().first()
     if admin:
-        # Admin exists - verify password works; if not, reset to admin123
-        try:
-            ok = admin.hashed_password and verify_password("admin123", admin.hashed_password)
-        except Exception:
-            ok = False
-        if not ok:
-            admin.hashed_password = get_password_hash("admin123")
-            admin.is_active = True
-            await db.commit()
-            logger.debug("Admin password reset to admin123 (previous hash was invalid)")
+        if settings.DEBUG:
+            try:
+                ok = admin.hashed_password and verify_password("admin123", admin.hashed_password)
+            except Exception:
+                ok = False
+            if not ok:
+                admin.hashed_password = get_password_hash("admin123")
+                admin.is_active = True
+                await db.commit()
+                logger.warning("DEBUG: admin password reset to admin123")
+        return
+    admin = User(
+        id=uuid.uuid4(),
+        username="admin",
+        email="admin@anistito.ir",
+        hashed_password=get_password_hash("admin123"),
+        full_name_fa="مدیر سیستم",
+        role="admin",
+    )
+    db.add(admin)
+    await db.commit()
+    if settings.DEBUG:
+        logger.warning("DEBUG: default admin created (username=admin, password=admin123)")
     else:
-        admin = User(
-            id=uuid.uuid4(),
-            username="admin",
-            email="admin@anistito.ir",
-            hashed_password=get_password_hash("admin123"),
-            full_name_fa="مدیر سیستم",
-            role="admin",
+        logger.warning("Default admin user created — set password immediately via secure channel")
+
+
+async def _ensure_system_actor_user(db):
+    """کاربر سیستمی (SYSTEM_ACTOR_ID) که started_by/state_history و سرویس‌های تقویم به آن ارجاع می‌دهند."""
+    import uuid
+    from app.models.operational_models import User
+    from app.api.auth import get_password_hash
+
+    system_actor_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    existing = await db.get(User, system_actor_id)
+    if existing is None:
+        db.add(
+            User(
+                id=system_actor_id,
+                username="system_actor",
+                email="system_actor@local",
+                hashed_password=get_password_hash("unused"),
+                full_name_fa="سیستم",
+                role="admin",
+            )
         )
-        db.add(admin)
         await db.commit()
-        logger.debug("Default admin created: username=admin, password=admin123")
+        logger.debug("System actor user created: id=%s", system_actor_id)
 
 
 async def _seed_if_empty():
@@ -64,6 +94,8 @@ async def _seed_if_empty():
     async with async_session_factory() as db:
         # Always ensure admin user exists (create or fix password)
         await _ensure_admin_user(db)
+        # Always ensure the system actor user exists (FK target for system-initiated processes)
+        await _ensure_system_actor_user(db)
 
         # Check if process definitions exist
         result = await db.execute(select(func.count(ProcessDefinition.id)))
@@ -165,8 +197,35 @@ async def _maybe_seed_demo_financial_if_empty():
 async def lifespan(app: FastAPI):
     """Application lifespan - startup and shutdown events."""
     logging.basicConfig(level=logging.INFO)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
     # Startup
-    await init_db()
+    from app.core.production_guards import validate_production_settings
+
+    validate_production_settings(settings)
+    if settings.INIT_DB_ON_STARTUP and settings.DEBUG:
+        await init_db()
+    elif settings.INIT_DB_ON_STARTUP and not settings.DEBUG:
+        logger.info("INIT_DB_ON_STARTUP skipped in production — use Alembic migrations only")
+    else:
+        # Docker / production: Alembic owns DDL; apply only idempotent safety patches.
+        try:
+            async with engine.begin() as conn:
+                await apply_schema_safety_patches(conn)
+        except Exception as e:
+            logger.warning("schema safety patches skipped (DB not ready yet): %s", e)
+    from app.services import sms_simulation_service as sms_sim
+
+    if sms_sim.simulation_recording_enabled():
+        logger.info(
+            "SMS simulation ON — popups active (SMS_PROVIDER=log, SMS_SIMULATION_UI=true)"
+        )
+    else:
+        logger.info(
+            "SMS simulation OFF — no dev popups (SMS_PROVIDER=%s, SMS_SIMULATION_UI=%s)",
+            settings.SMS_PROVIDER,
+            getattr(settings, "SMS_SIMULATION_UI", True),
+        )
     await _seed_if_empty()
     await _maybe_auto_seed_demo_after_empty_db()
     await _maybe_seed_demo_financial_if_empty()
@@ -185,6 +244,14 @@ async def lifespan(app: FastAPI):
     )
     app.state.calendar_trigger_task = cal_task
     logger.info("Calendar trigger loop started (background)")
+
+    from app.services.notification_outbox_service import notification_outbox_worker
+
+    outbox_task = asyncio.create_task(
+        notification_outbox_worker.start_loop(async_session_factory, interval_seconds=60)
+    )
+    app.state.notification_outbox_task = outbox_task
+    logger.info("Notification outbox worker started (background)")
 
     yield
 
@@ -211,16 +278,36 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.debug("Calendar trigger task exit: %s", e)
 
+    from app.services.notification_outbox_service import notification_outbox_worker
+
+    notification_outbox_worker.stop()
+    t_out = getattr(app.state, "notification_outbox_task", None)
+    if t_out and not t_out.done():
+        t_out.cancel()
+        try:
+            await t_out
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.debug("Notification outbox task exit: %s", e)
+
 
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="سیستم اتوماسیون آموزشی متادیتا-محور - Meta-Driven Educational Automation System",
     lifespan=lifespan,
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None,
 )
 
 # Strip /anistito prefix when behind Apache proxy (ProxyPass /anistito -> backend)
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.middleware.sms_simulation_capture import SmsSimulationCaptureMiddleware
+from app.middleware.login_rate_limit import LoginRateLimitMiddleware
+from app.middleware.uploads_auth import UploadsAuthMiddleware
 
 class StripPathPrefixMiddleware(BaseHTTPMiddleware):
     """Strip /anistito prefix and normalize trailing slashes to avoid 307 redirects behind proxy."""
@@ -261,6 +348,9 @@ _origins, _cors_cred = _cors_origins_and_credentials()
 
 # ترتیب: اولین add = بیرونی‌ترین؛ مسیر /anistito باید قبل از CORS و هدرها اصلاح شود.
 app.add_middleware(StripPathPrefixMiddleware)
+app.add_middleware(LoginRateLimitMiddleware)
+app.add_middleware(UploadsAuthMiddleware)
+app.add_middleware(SmsSimulationCaptureMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -269,6 +359,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# بیرونی‌ترین لایه: فشرده‌سازی پاسخ (JS/CSS/HTML بزرگ — سبک‌تر روی شبکهٔ اینترنت)
+app.add_middleware(GZipMiddleware, minimum_size=800, compresslevel=6)
 
 # ─── Register Routers ──────────────────────────────────────────
 
@@ -287,6 +379,7 @@ from app.api.reports_routes import router as reports_router
 from app.api.panel_routes import router as panel_router
 from app.api.interview_slots_routes import router as interview_slots_router
 from app.api.alocom_routes import router as alocom_router
+from app.api.dynamic_form_routes import router as dynamic_forms_router, nav_router as portal_nav_dynamic_router
 
 app.include_router(auth_router)
 app.include_router(process_router)
@@ -301,6 +394,8 @@ app.include_router(assignment_router)
 app.include_router(ticket_router)
 app.include_router(reports_router)
 app.include_router(panel_router)
+app.include_router(dynamic_forms_router)
+app.include_router(portal_nav_dynamic_router)
 app.include_router(interview_slots_router)
 app.include_router(alocom_router)
 
@@ -312,8 +407,25 @@ if UPLOAD_DIR.exists() or True:  # mount anyway so uploads can be created at run
 
 
 @app.get("/health")
-async def health_check():
+async def health_liveness():
     return {"status": "healthy", "version": settings.APP_VERSION}
+
+
+@app.get("/health/ready")
+async def health_readiness():
+    """Readiness: DB ping + optional migration head check."""
+    from sqlalchemy import text
+    from app.database import async_session_factory
+
+    try:
+        async with async_session_factory() as db:
+            await db.execute(text("SELECT 1"))
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "db": False, "error": str(e)[:200]},
+        )
+    return {"status": "healthy", "db": True, "version": settings.APP_VERSION}
 
 
 @app.get("/debug/process-count")
@@ -337,6 +449,8 @@ if ADMIN_UI_DIR.exists():
     _assets = ADMIN_UI_DIR / "assets"
     if _assets.is_dir():
         app.mount("/assets", StaticFiles(directory=str(_assets)), name="static-assets")
+        # بیلد Vite با base=/anistito/ — بدون Apache، مستقیم به همین مسیر هم سرو شود
+        app.mount("/anistito/assets", StaticFiles(directory=str(_assets)), name="static-assets-anistito")
 
     _index = ADMIN_UI_DIR / "index.html"
 

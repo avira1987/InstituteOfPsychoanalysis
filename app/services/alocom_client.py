@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import secrets
 from typing import Any, Optional
 
 import httpx
@@ -67,10 +68,25 @@ def _extract_event_id_and_link(data: dict) -> tuple[Optional[str], Optional[str]
 
 def _extract_register_link(data: dict) -> Optional[str]:
     d = _unwrap_data(data)
-    for key in ("eventLink", "event_link", "link", "url"):
+    for key in (
+        "eventLink",
+        "event_link",
+        "link",
+        "url",
+        "alocom_link",
+        "alocomLink",
+        "join_link",
+        "joinLink",
+    ):
         v = d.get(key)
         if isinstance(v, str) and v.startswith("http"):
             return v
+    event = d.get("event")
+    if isinstance(event, dict):
+        for key in ("alocom_link", "alocomLink", "eventLink", "event_link", "link", "url"):
+            v = event.get(key)
+            if isinstance(v, str) and v.startswith("http"):
+                return v
     return None
 
 
@@ -157,12 +173,14 @@ class AlocomClient:
         status: int = 1,
         cellphone: Optional[str] = None,
         email: Optional[str] = None,
+        password: Optional[str] = None,
     ) -> dict:
         body: dict[str, Any] = {
-            "name": name or "User",
-            "surname": surname or "-",
+            "name": name or "کاربر سامانه",
+            "surname": surname or "آنالیستو",
             "username": username,
             "status": int(status),
+            "password": password or secrets.token_urlsafe(16),
         }
         if cellphone:
             body["cellphone"] = cellphone
@@ -179,14 +197,17 @@ class AlocomClient:
         surname: str,
         username: str,
         role: str,
+        cellphone: Optional[str] = None,
     ) -> dict:
         path = self.settings.ALOCOM_PATH_REGISTER_IN_EVENT.format(event_id=event_id)
         body = {
-            "name": name or "User",
-            "surname": surname or "-",
+            "name": name or "کاربر سامانه",
+            "surname": surname or "آنالیستو",
             "username": username,
             "role": role,
         }
+        if cellphone:
+            body["cellphone"] = cellphone
         async with httpx.AsyncClient(timeout=60.0) as client:
             return await self._post_json(client, path, body)
 

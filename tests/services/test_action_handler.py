@@ -227,9 +227,10 @@ class TestActionHandlerTherapyLifecycle:
         assert "live_supervision_ta_evaluation" in gb
         assert gb["live_supervision_ta_evaluation"]["total_score"] == 80
 
-    async def test_external_integration_logs_events_without_webhook(
+    async def test_send_unlock_to_lms_sets_real_lms_flag_and_audit(
         self, db_session: AsyncSession, sample_student: Student
     ):
+        """send_unlock_to_lms اکنون پرچم واقعی LMS را ست می‌کند و رویداد ممیزی ثبت می‌کند."""
         instance = ProcessInstance(
             id=uuid.uuid4(),
             process_code="specialized_commission_review",
@@ -248,13 +249,14 @@ class TestActionHandlerTherapyLifecycle:
         await db_session.commit()
 
         assert results[0]["success"] is True
+        # رفتار واقعی: پرچم دسترسی LMS روی دانشجو ست می‌شود
+        await db_session.refresh(sample_student)
+        flags = (sample_student.extra_data or {}).get("lms", {}).get("access_flags", {})
+        assert flags.get("lms_unlocked") is True
+        # ممیزی همچنان در integration_events حفظ می‌شود
         await db_session.refresh(instance)
         ev = instance.context_data.get("integration_events") or []
-        assert len(ev) >= 1
-        assert ev[-1]["action"] == "send_unlock_to_lms"
-        assert "skipped" in str(results[0].get("detail", "")) or "integration=" in str(
-            results[0].get("detail", "")
-        )
+        assert ev and ev[-1]["action"] == "send_unlock_to_lms"
 
     async def test_merge_initial_payment_sets_next_installment_due_term2(
         self, db_session: AsyncSession, sample_student: Student

@@ -1,40 +1,45 @@
-import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import React, { lazy, Suspense } from 'react'
+import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 
 import Layout from './components/Layout'
 import PublicLayout from './components/PublicLayout'
 
-import Dashboard from './pages/Dashboard'
-import ProcessEditor from './pages/ProcessEditor'
-import ProcessListPage from './pages/ProcessListPage'
-import RuleManager from './pages/RuleManager'
-import StudentTracker from './pages/StudentTracker'
-import AuditViewer from './pages/AuditViewer'
-import GuidePage from './pages/GuidePage'
-import LoginPage from './pages/LoginPage'
-import UserManagement from './pages/UserManagement'
-import StudentPortal from './pages/StudentPortal'
-import TherapistPortal from './pages/TherapistPortal'
-import SupervisorPortal from './pages/SupervisorPortal'
-import StaffPortal from './pages/StaffPortal'
-import SiteManagerPortal from './pages/SiteManagerPortal'
-import CommitteePortal from './pages/CommitteePortal'
-import InterviewerPortal from './pages/InterviewerPortal'
-import ProfilePage from './pages/ProfilePage'
-import FinancialDashboard from './pages/FinancialDashboard'
-import ReportsHubPage from './pages/ReportsHubPage'
-import TicketsPage from './pages/TicketsPage'
-
 import { getRouterBasename } from './utils/routerBasename'
 import { canAccessReportsHub } from './utils/reportsAccess'
-import HomePage from './pages/public/HomePage'
-import BlogList from './pages/public/BlogList'
-import BlogPost from './pages/public/BlogPost'
-import StudentGuide from './pages/public/StudentGuide'
-import StudentLifecycleMatrix from './pages/public/StudentLifecycleMatrix'
-import StudentRegistration from './pages/public/StudentRegistration'
-import CompleteStudentRegistration from './pages/CompleteStudentRegistration'
+import { getCommitteeHomePathForRole, getPortalHomeHref, getPortalHomePath } from './utils/portalRoleHome'
+import { canAccessStaffLane } from './utils/portalStaffLanes'
+import { canAccessCommitteeKind } from './utils/portalCommitteeKinds'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const ProcessEditor = lazy(() => import('./pages/ProcessEditor'))
+const ProcessListPage = lazy(() => import('./pages/ProcessListPage'))
+const RuleManager = lazy(() => import('./pages/RuleManager'))
+const StudentTracker = lazy(() => import('./pages/StudentTracker'))
+const AuditViewer = lazy(() => import('./pages/AuditViewer'))
+const GuidePage = lazy(() => import('./pages/GuidePage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const UserManagement = lazy(() => import('./pages/UserManagement'))
+const StudentPortal = lazy(() => import('./pages/StudentPortal'))
+const TherapistPortal = lazy(() => import('./pages/TherapistPortal'))
+const SupervisorPortal = lazy(() => import('./pages/SupervisorPortal'))
+const StaffPortal = lazy(() => import('./pages/StaffPortal'))
+const SiteManagerPortal = lazy(() => import('./pages/SiteManagerPortal'))
+const CommitteePortal = lazy(() => import('./pages/CommitteePortal'))
+const InterviewerPortal = lazy(() => import('./pages/InterviewerPortal'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+const FinancialDashboard = lazy(() => import('./pages/FinancialDashboard'))
+const ReportsHubPage = lazy(() => import('./pages/ReportsHubPage'))
+const TicketsPage = lazy(() => import('./pages/TicketsPage'))
+const DynamicFormsAdmin = lazy(() => import('./pages/DynamicFormsAdmin'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const SystemResourcesPage = lazy(() => import('./pages/SystemResourcesPage'))
+const HomePage = lazy(() => import('./pages/public/HomePage'))
+const BlogList = lazy(() => import('./pages/public/BlogList'))
+const BlogPost = lazy(() => import('./pages/public/BlogPost'))
+const StudentGuide = lazy(() => import('./pages/public/StudentGuide'))
+const StudentLifecycleMatrix = lazy(() => import('./pages/public/StudentLifecycleMatrix'))
+const CompleteStudentRegistration = lazy(() => import('./pages/CompleteStudentRegistration'))
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -115,12 +120,14 @@ function RequireStudentRole({ children }) {
   return children
 }
 
-/** برای دانشجو صفحهٔ اول پنل = پنل دانشجو؛ اپراتور مالی = داشبورد مالی؛ برای بقیه = داشبورد */
+/** برای دانشجو/مالی/مصاحبه‌گر/اپراتور = پنل نقش؛ admin = داشبورد */
 function PanelIndex() {
   const { user } = useAuth()
-  if (user?.role === 'student') return <Navigate to="/panel/portal/student" replace />
-  if (user?.role === 'finance') return <Navigate to="/panel/finance" replace />
-  if (user?.role === 'interviewer') return <Navigate to="/panel/portal/interviewer" replace />
+  if (!user?.role) return <Dashboard />
+  const homePath = getPortalHomePath(user.role)
+  if (homePath && user.role !== 'admin') {
+    return <Navigate to={getPortalHomeHref(user.role)} replace />
+  }
   return <Dashboard />
 }
 
@@ -142,6 +149,15 @@ function RequireFinanceRole({ children }) {
   return children
 }
 
+/** صفحات فقط مدیر سیستم (مثل منابع سرور) */
+function RequireAdminRole({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'admin') return <Navigate to="/panel" replace />
+  return children
+}
+
 /** گزارشات: مدیر سیستم، کارمند دفتر (مدیر داخلی)، معاون آموزش، مسئول کمیته نظارت، مالی */
 function RequireReportsRole({ children }) {
   const { user, loading } = useAuth()
@@ -151,9 +167,44 @@ function RequireReportsRole({ children }) {
   return children
 }
 
+function RequireStaffLane({ children }) {
+  const { user, loading } = useAuth()
+  const { lane } = useParams()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  if (!lane || !canAccessStaffLane(user.role, lane)) {
+    return <Navigate to={getPortalHomeHref(user.role)} replace />
+  }
+  return children
+}
+
+function RequireCommitteeKind({ children }) {
+  const { user, loading } = useAuth()
+  const { kind } = useParams()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  if (!kind || !canAccessCommitteeKind(user.role, kind)) {
+    return <Navigate to={getPortalHomeHref(user.role)} replace />
+  }
+  return children
+}
+
+function CommitteeHomeRedirect() {
+  const { user, loading } = useAuth()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  const path = getCommitteeHomePathForRole(user.role)
+  return <Navigate to={`${path}?tab=reviews`} replace />
+}
+
+function StaffLegacyRedirect() {
+  return <Navigate to="/panel/portal/staff/admissions" replace />
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
+      <Suspense fallback={panelLoading()}>
       <Routes>
         {/* ─── Public Pages ─── */}
         <Route element={<PublicLayout />}>
@@ -163,7 +214,7 @@ export default function App() {
           <Route path="guide" element={<StudentGuide />} />
           <Route path="processes-info" element={<Navigate to="/student-lifecycle" replace />} />
           <Route path="student-lifecycle" element={<StudentLifecycleMatrix />} />
-          <Route path="register" element={<StudentRegistration />} />
+          <Route path="register" element={<Navigate to="/login" replace />} />
         </Route>
 
         {/* ─── Login ─── */}
@@ -181,6 +232,7 @@ export default function App() {
           <Route index element={<PanelIndex />} />
           <Route path="processes" element={<ProcessListPage />} />
           <Route path="processes/:processId" element={<ProcessEditor />} />
+          <Route path="dynamic-forms" element={<DynamicFormsAdmin />} />
           <Route path="rules" element={<RuleManager />} />
           <Route path="students" element={<StudentTracker />} />
           <Route path="users" element={<UserManagement />} />
@@ -196,6 +248,15 @@ export default function App() {
           <Route path="automation-reports" element={<Navigate to="/panel/reports" replace />} />
           <Route path="reports/automation" element={<Navigate to="/panel/reports" replace />} />
           <Route path="tickets" element={<TicketsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route
+            path="system-resources"
+            element={
+              <RequireAdminRole>
+                <SystemResourcesPage />
+              </RequireAdminRole>
+            }
+          />
           <Route
             path="finance"
             element={
@@ -222,7 +283,15 @@ export default function App() {
           />
           <Route path="portal/therapist" element={<TherapistPortal />} />
           <Route path="portal/supervisor" element={<SupervisorPortal />} />
-          <Route path="portal/staff" element={<StaffPortal />} />
+          <Route path="portal/staff" element={<StaffLegacyRedirect />} />
+          <Route
+            path="portal/staff/:lane"
+            element={
+              <RequireStaffLane>
+                <StaffPortal />
+              </RequireStaffLane>
+            }
+          />
           <Route
             path="portal/interviewer"
             element={
@@ -232,7 +301,15 @@ export default function App() {
             }
           />
           <Route path="portal/site-manager" element={<SiteManagerPortal />} />
-          <Route path="portal/committee" element={<CommitteePortal />} />
+          <Route path="portal/committee" element={<CommitteeHomeRedirect />} />
+          <Route
+            path="portal/committee/:kind"
+            element={
+              <RequireCommitteeKind>
+                <CommitteePortal />
+              </RequireCommitteeKind>
+            }
+          />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="guide" element={<GuidePage />} />
         </Route>
@@ -240,6 +317,7 @@ export default function App() {
         {/* ─── Fallback ─── */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </ErrorBoundary>
   )
 }

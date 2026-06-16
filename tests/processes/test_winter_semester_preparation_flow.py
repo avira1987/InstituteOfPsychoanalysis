@@ -73,3 +73,30 @@ class TestWinterSemesterPreparationFlow:
         instance = await engine.get_process_instance(instance.id)
         assert instance.current_state_code == "published"
         assert instance.is_completed is True
+
+    async def test_deputy_education_can_review_license_step(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        """نقش پنل deputy_education باید بتواند license_reviewed را اجرا کند (RBAC فرایند ۳۰)."""
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_process(db_session, processes_dir / "winter_semester_preparation.json")
+        await db_session.commit()
+
+        engine = StateMachineEngine(db_session)
+        instance = await engine.start_process(
+            process_code="winter_semester_preparation",
+            student_id=sample_student.id,
+            actor_id=sample_user.id,
+            actor_role="admin",
+        )
+        await db_session.commit()
+
+        result = await engine.execute_transition(
+            instance_id=instance.id,
+            trigger_event="license_reviewed",
+            actor_id=sample_user.id,
+            actor_role="deputy_education",
+        )
+        await db_session.commit()
+        assert result.success is True
+        assert result.to_state == "course_list_review"
