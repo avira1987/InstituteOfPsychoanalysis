@@ -192,6 +192,21 @@ export const systemApi = {
   resourceSnapshot: () => api.get('admin/system/resource-snapshot'),
 }
 
+/** تقویم آموزشی و اتوماسیون زمان‌محور */
+export const schedulerApi = {
+  getActiveCalendar: () => api.get('admin/academic-calendar/active'),
+  saveActiveCalendar: (data) => api.put('admin/academic-calendar/active', data),
+  getAutomationIndex: () => api.get('admin/scheduler/automation-index'),
+  runPass: () => api.post('admin/scheduler/run-pass', {}, { timeout: 120000 }),
+  getDailyOverdueRuns: (limit = 30) => api.get('admin/scheduler/daily-overdue-runs', { params: { limit } }),
+  runDailyOverdue: () => api.post('admin/scheduler/run-daily-overdue', {}, { timeout: 120000 }),
+}
+
+export const semesterPrepApi = {
+  getStatus: () => api.get('admin/semester-prep/status'),
+  start: (processCode) => api.post('admin/semester-prep/start', { process_code: processCode }),
+}
+
 // ─── Dashboard ─────────────────────────────────────────────────
 export const dashboardApi = {
   stats: () => api.get('admin/dashboard/stats'),
@@ -233,8 +248,13 @@ export const processExecApi = {
   definitions: () => api.get('process/definitions'),
   getDefinition: (code) => api.get(`process/definitions/${code}`),
   /** متادیتای فرم‌ها برای یک وضعیت (مثلاً documents_upload) — برای گالری مدارک در پروفایل */
-  getProcessFormsForState: (processCode, state) =>
-    api.get(`process/definitions/${processCode}/forms`, { params: state ? { state } : {} }),
+  getProcessFormsForState: (processCode, state, instanceId) =>
+    api.get(`process/definitions/${processCode}/forms`, {
+      params: {
+        ...(state ? { state } : {}),
+        ...(instanceId ? { instance_id: instanceId } : {}),
+      },
+    }),
   start: (data) => api.post('process/start', data),
   trigger: (instanceId, data) => api.post(`process/${instanceId}/trigger`, data),
   /** بازگشت به مرحلهٔ قبل (ادمین، معاون آموزش، کارمند) */

@@ -360,11 +360,30 @@ async def get_process_definition(
 async def get_process_forms_for_state(
     process_code: str,
     state: Optional[str] = Query(None, description="Filter forms by used_in_state (e.g. current state)"),
+    instance_id: Optional[str] = Query(None, description="Optional instance for pre_filled_from merge"),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Get form metadata for a process (for rendering in UI). Optional state filter for current state forms (BUILD_TODO § ز)."""
     forms = get_process_forms(process_code, state_code=state)
-    return {"process_code": process_code, "state": state, "forms": forms}
+    suggested_context: dict = {}
+    if instance_id and state:
+        try:
+            iid = uuid.UUID(instance_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="instance_id نامعتبر")
+        inst = await db.get(ProcessInstance, iid)
+        if inst and inst.process_code == process_code:
+            from app.services.semester_prep_service import apply_pre_filled_fields
+
+            base_ctx = StateMachineEngine._as_mapping(inst.context_data)
+            suggested_context = await apply_pre_filled_fields(db, process_code, state, base_ctx)
+    return {
+        "process_code": process_code,
+        "state": state,
+        "forms": forms,
+        "suggested_context": suggested_context,
+    }
 
 
 @router.post("/start", response_model=ProcessInstanceResponse)
@@ -897,11 +916,21 @@ async def register_operator_step_forms(
     if not forms:
         raise HTTPException(status_code=400, detail="برای این مرحله فرمی تعریف نشده است.")
 
-    ok, missing = validate_operator_step_forms(forms, request.form_values or {}, instance.context_data or {})
+    from app.services.semester_prep_service import apply_pre_filled_fields
+
+    merged_ctx = await apply_pre_filled_fields(
+        db, instance.process_code, state, StateMachineEngine._as_mapping(instance.context_data)
+    )
+    form_values = dict(request.form_values or {})
+    for k, v in merged_ctx.items():
+        if form_values.get(k) in (None, "", []) and v not in (None, "", []):
+            form_values[k] = v
+
+    ok, missing = validate_operator_step_forms(forms, form_values, instance.context_data or {})
     if not ok:
         raise HTTPException(status_code=400, detail={"error": "validation_failed", "missing": missing})
 
-    sanitized = sanitize_operator_form_values(forms, request.form_values or {})
+    sanitized = sanitize_operator_form_values(forms, form_values)
     ctx = apply_register_to_context(instance.context_data or {}, state, sanitized)
     instance.context_data = ctx
     flag_modified(instance, "context_data")

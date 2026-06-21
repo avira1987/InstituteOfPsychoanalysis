@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { auditApi } from '../services/api'
 import { labelProcess, labelState, labelTriggerEvent } from '../utils/processDisplay'
 import { buildAuditSummary, formatActorLine } from '../utils/auditDisplay'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import AuditDetailsHuman from '../components/AuditDetailsHuman'
 
 const ACTION_FILTER_OPTIONS = [
@@ -123,7 +124,7 @@ export default function AuditViewer() {
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">زمان ثبت</span>
-                  <span>{viewDetails.timestamp ? new Date(viewDetails.timestamp).toLocaleString('fa-IR', { dateStyle: 'long', timeStyle: 'short' }) : '—'}</span>
+                  <span>{viewDetails.timestamp ? formatShamsiTehran(viewDetails.timestamp) : '—'}</span>
                 </div>
               </div>
 
@@ -235,7 +236,7 @@ export default function AuditViewer() {
                     <tr key={log.id}>
                       <td style={{ whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
                         {log.timestamp
-                          ? new Date(log.timestamp).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' })
+                          ? formatShamsiTehran(log.timestamp)
                           : '—'}
                       </td>
                       <td><span className={`badge ${at.cls}`}>{at.label}</span></td>

@@ -1,37 +1,12 @@
 import React, { useEffect, useState } from 'react'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 
 export function formatMeetingTimeTehran(iso) {
-  if (!iso) return '—'
-  try {
-    const d = new Date(iso)
-    return d.toLocaleString('fa-IR', {
-      timeZone: 'Asia/Tehran',
-      weekday: 'short',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
+  return formatShamsiTehran(iso)
 }
 
 function formatOpenTimeTehran(iso) {
-  if (!iso) return '—'
-  try {
-    const d = new Date(iso)
-    return d.toLocaleString('fa-IR', {
-      timeZone: 'Asia/Tehran',
-      hour: '2-digit',
-      minute: '2-digit',
-      month: 'long',
-      day: 'numeric',
-    })
-  } catch {
-    return iso
-  }
+  return formatShamsiTehran(iso)
 }
 
 async function copyTextToClipboard(text) {

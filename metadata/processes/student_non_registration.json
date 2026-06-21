@@ -189,5 +189,15 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "batch_start",
+    "completion_role": "supervision_committee",
+    "triggers": [
+      {
+        "event": "registration_deadline_passed",
+        "source": "InstituteCalendar"
+      }
+    ]
+  }
 }

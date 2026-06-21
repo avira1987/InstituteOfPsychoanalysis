@@ -135,5 +135,23 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "milestone",
+    "completion_role": "supervision_committee",
+    "triggers": [
+      {
+        "event": "intern_month_milestone_reached",
+        "months": [
+          4,
+          7,
+          12,
+          16,
+          20,
+          24,
+          28
+        ]
+      }
+    ]
+  }
 }

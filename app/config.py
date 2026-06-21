@@ -117,6 +117,16 @@ class Settings(BaseSettings):
     CALENDAR_TRIGGERS_ENABLED: bool = True
     CALENDAR_TRIGGER_INTERVAL_SECONDS: int = 300
 
+    # موتور چک روزانه کارهای عقب‌افتاده — SMS + نوتیفیکیشن پنل
+    DAILY_OVERDUE_CHECK_ENABLED: bool = True
+    DAILY_OVERDUE_CHECK_LOCAL_HOUR: int = 8
+    DAILY_OVERDUE_CHECK_TZ: str = "Asia/Tehran"
+
+    # پروندهٔ عملیاتی انستیتو برای فرایندهای نهادی (آماده‌سازی ترم)
+    INSTITUTE_OPERATIONAL_STUDENT_CODE: str = "INST-OPS"
+    # شروع خودکار آماده‌سازی زمستان N روز قبل از winter_start_date (از context پاییز)
+    WINTER_PREP_AUTO_START_DAYS_BEFORE: int = 30
+
     # اسلات خودکار از الگوی هفتگی مصاحبه‌گر — حداکثر روز پیش‌نگر در هر Rule
     INTERVIEW_RECURRING_MAX_HORIZON_DAYS: int = 60
 

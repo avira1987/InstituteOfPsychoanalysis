@@ -20,7 +20,7 @@
 - [x] امضای دیجیتال تعهدنامه با `sms_verification` + OTP
 - [x] نمایش USERNAME/PASSWORD در پورتال پس از `credentials_created`
 - [x] مسدودسازی ثبت‌نام مجدد با `future_applications_blocked` در ثبت عمومی
-- [ ] تریگر تقویمی اقساط ترم اول (`installment_due_date_passed`) به context زمان‌دار واقعی دانشجو وابسته است
+- [x] تریگر تقویمی اقساط (`installment_due_date_passed`) via `process_scheduler.dispatch_installment_overdue`
 
 ## وابستگی‌ها (sub_process_refs)
 - ندارد (مستقل)

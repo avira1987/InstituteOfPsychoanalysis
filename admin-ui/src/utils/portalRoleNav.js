@@ -1,7 +1,7 @@
 import { STAFF_LANES, staffLanesForPortalRole } from './portalStaffLanes'
 import { COMMITTEE_KINDS, committeeKindsForPortalRole } from './portalCommitteeKinds'
 
-/** ابزارهای فنی — فقط admin */
+/** ابزارهای فنی — فقط admin (به‌جز automation-scheduler که staff/deputy هم می‌بینند) */
 export const ADMIN_ONLY_PATHS = new Set([
   '/panel/processes',
   '/panel/rules',
@@ -48,10 +48,30 @@ const SHARED_NAV = [
     priority: 42,
   },
   { path: '/panel/users', label: 'مدیریت کاربران', icon: '👥', roles: ['admin'], priority: 21.5 },
+  {
+    path: '/panel/semester-prep',
+    label: 'آماده‌سازی ترم',
+    icon: '📅',
+    roles: ['admin', 'deputy_education'],
+    priority: 45.2,
+  },
+  {
+    path: '/panel/automation-scheduler',
+    label: 'اتوماسیون زمان‌محور',
+    icon: '⏱️',
+    roles: ['admin', 'staff', 'deputy_education'],
+    priority: 45.5,
+  },
   { path: '/panel/finance', label: 'داشبورد مالی', icon: '💵', roles: ['admin', 'finance'], priority: 50 },
   { path: '/panel/profile', label: 'پروفایل من', icon: '👤', priority: 85 },
   { path: '/panel/guide', label: 'راهنمای جامع', icon: '📖', priority: 90 },
 ]
+
+export const SCHEDULER_AUTOMATION_ROLES = ['admin', 'staff', 'deputy_education']
+
+export function canViewSchedulerAutomation(portalRole) {
+  return portalRole === 'admin' || SCHEDULER_AUTOMATION_ROLES.includes(portalRole)
+}
 
 function staffLaneNavItems(portalRole) {
   return staffLanesForPortalRole(portalRole).map((lane) => ({

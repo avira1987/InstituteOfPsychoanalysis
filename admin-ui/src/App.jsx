@@ -1,4 +1,5 @@
-import React, { lazy, Suspense } from 'react'
+import React, { Suspense } from 'react'
+import { lazyWithRetry as lazy } from './utils/lazyWithRetry'
 import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 
@@ -34,6 +35,8 @@ const TicketsPage = lazy(() => import('./pages/TicketsPage'))
 const DynamicFormsAdmin = lazy(() => import('./pages/DynamicFormsAdmin'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const SystemResourcesPage = lazy(() => import('./pages/SystemResourcesPage'))
+const AutomationSchedulerPage = lazy(() => import('./pages/AutomationSchedulerPage'))
+const SemesterPrepPage = lazy(() => import('./pages/SemesterPrepPage'))
 const HomePage = lazy(() => import('./pages/public/HomePage'))
 const BlogList = lazy(() => import('./pages/public/BlogList'))
 const BlogPost = lazy(() => import('./pages/public/BlogPost'))
@@ -158,6 +161,16 @@ function RequireAdminRole({ children }) {
   return children
 }
 
+/** تقویم و اتوماسیون زمان‌محور — مشاهده برای staff/deputy؛ ویرایش فقط admin در خود صفحه */
+function RequireSchedulerViewRole({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  const ok = ['admin', 'staff', 'deputy_education'].includes(user.role)
+  if (!ok) return <Navigate to="/panel" replace />
+  return children
+}
+
 /** گزارشات: مدیر سیستم، کارمند دفتر (مدیر داخلی)، معاون آموزش، مسئول کمیته نظارت، مالی */
 function RequireReportsRole({ children }) {
   const { user, loading } = useAuth()
@@ -255,6 +268,22 @@ export default function App() {
               <RequireAdminRole>
                 <SystemResourcesPage />
               </RequireAdminRole>
+            }
+          />
+          <Route
+            path="semester-prep"
+            element={
+              <RequireSchedulerViewRole>
+                <SemesterPrepPage />
+              </RequireSchedulerViewRole>
+            }
+          />
+          <Route
+            path="automation-scheduler"
+            element={
+              <RequireSchedulerViewRole>
+                <AutomationSchedulerPage />
+              </RequireSchedulerViewRole>
             }
           />
           <Route

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { financeApi } from '../services/api'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 
 const TYPE_LABELS = {
   payment: 'پرداخت',
@@ -14,12 +15,7 @@ function fmtMoney(n) {
 }
 
 function fmtDate(iso) {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' })
-  } catch {
-    return iso
-  }
+  return formatShamsiTehran(iso)
 }
 
 /** بخش جمع‌شونده؛ یا کارت ثابت (collapsible=false) برای تنظیماتی که باید همیشه دیده شوند */

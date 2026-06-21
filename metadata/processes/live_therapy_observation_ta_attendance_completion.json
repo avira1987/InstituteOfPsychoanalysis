@@ -18,7 +18,8 @@
       "metadata": {
         "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
         "operator_short_fa": "ثبت نمرات و ارزیابی"
-      }
+      },
+      "sla_days": 7
     },
     {
       "code": "grades_locked",
@@ -78,5 +79,17 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "instance_sla",
+    "completion_role": "instructor",
+    "sla_state": "grades_entry",
+    "sla_days": 7,
+    "triggers": [
+      {
+        "event": "sla_breach",
+        "actor_role": "system"
+      }
+    ]
+  }
 }

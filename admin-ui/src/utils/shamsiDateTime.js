@@ -54,6 +54,63 @@ export function defaultShamsiTehranNow() {
   return utcIsoToShamsiTehran(new Date().toISOString()) || { jy: 1403, jm: 1, jd: 1, hour: 9, minute: 0 }
 }
 
+/**
+ * @param {string | null | undefined} isoDate YYYY-MM-DD
+ * @returns {{ jy: number, jm: number, jd: number } | null}
+ */
+export function isoDateToShamsiParts(isoDate) {
+  if (!isoDate) return null
+  const s = String(isoDate).slice(0, 10)
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!m) return null
+  const gy = parseInt(m[1], 10)
+  const gm = parseInt(m[2], 10)
+  const gd = parseInt(m[3], 10)
+  if ([gy, gm, gd].some((x) => Number.isNaN(x))) return null
+  const { jy, jm, jd } = toJalaali(gy, gm, gd)
+  return { jy, jm, jd }
+}
+
+/**
+ * @returns {string} YYYY-MM-DD (Gregorian)
+ */
+export function shamsiDateToIsoDate(jy, jm, jd) {
+  const { gy, gm, gd } = toGregorian(jy, jm, jd)
+  return `${gy}-${pad2(gm)}-${pad2(gd)}`
+}
+
+/** @returns {{ jy: number, jm: number, jd: number }} */
+export function defaultShamsiDate() {
+  const now = utcIsoToShamsiTehran(new Date().toISOString())
+  if (now) return { jy: now.jy, jm: now.jm, jd: now.jd }
+  return { jy: 1403, jm: 1, jd: 1 }
+}
+
+/**
+ * @param {string | null | undefined} iso ISO date or datetime
+ * @param {{ dateOnly?: boolean, includeMonthName?: boolean }} [opts]
+ * @returns {string}
+ */
+export function formatShamsiTehran(iso, opts = {}) {
+  const { dateOnly = false, includeMonthName = true } = opts
+  if (!iso) return '—'
+  const p = dateOnly ? isoDateToShamsiParts(iso) : utcIsoToShamsiTehran(iso)
+  if (!p) {
+    try {
+      return new Date(iso).toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' })
+    } catch {
+      return String(iso)
+    }
+  }
+  const mon = includeMonthName ? JALAALI_MONTHS_FA[p.jm - 1] || '' : ''
+  const dateStr = `${p.jy}/${pad2(p.jm)}/${pad2(p.jd)}`
+  if (dateOnly || p.hour == null) {
+    return mon ? `${dateStr} (${mon})` : dateStr
+  }
+  const timeStr = `${pad2(p.hour)}:${pad2(p.minute)}`
+  return mon ? `${dateStr} ${timeStr} (${mon})` : `${dateStr} ${timeStr}`
+}
+
 export { isValidJalaaliDate, jalaaliMonthLength, toGregorian, toJalaali }
 
 export const JALAALI_MONTHS_FA = [

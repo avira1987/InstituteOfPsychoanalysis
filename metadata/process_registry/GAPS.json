@@ -1,13 +1,14 @@
 {
-  "version": "2.1",
-  "last_updated": "2026-06-10",
-  "description": "وضعیت فنی نسبت به اتوماسیون — هم‌خوان با کد (ActionHandler، SLA، calendar_triggers، موتور)",
+  "version": "2.2",
+  "last_updated": "2026-06-20",
+  "description": "وضعیت فنی نسبت به اتوماسیون — هم‌خوان با کد (ActionHandler، SLA، calendar_triggers، process_scheduler، موتور)",
   "architecture_notes": {
     "transition_actions": "اکشن‌های تعریف‌شده روی ترنزیشن‌ها توسط app/services/action_handler.py اجرا می‌شوند (مستقیم از StateMachineEngine پس از apply_transition).",
     "workflow_services": "۶۹ اکشنی که پیش‌تر به استاب لاگ‌محور _handle_external_integration می‌رفتند، اکنون به سرویس‌های واقعی در app/services/workflow/ واگذار می‌شوند (A: portal_notifications, B: lms_service, C: document_service, D: evaluation_records, E: capacity_service, F: calendar_service, G: registration_gate, H: role_promotion, I: termination_records). این سرویس‌ها حالت واقعی را روی Student.extra_data / ProcessInstance.context_data و ستون‌های واقعی (مثل User.role, is_active) می‌نویسند؛ نیازی به مهاجرت اسکیما نیست. ممیزی در context_data.integration_events حفظ شده است.",
     "lms_actions": "اکشن‌های «LMS» اکنون توسط app/services/workflow/lms_service.py روی Student.extra_data['lms'] (enrolled_courses, course_links, track_progress, access_flags, supervision_blocks, attendance_enabled, online_links, pause_dates) اعمال می‌شوند؛ POST به LMS_INTEGRATION_WEBHOOK_URL همچنان اختیاری و افزایه است.",
     "multi_branch_triggers": "اگر چند ترنزیشن با یک trigger_event وجود دارد، موتور اولین شاخه‌ای را اجرا می‌کند که قوانینش pass شود (به‌ترتیب priority).",
-    "sla_days_in_json": "فیلد sla_days در JSON فرایند هنگام seed به sla_hours (×۲۴) تبدیل می‌شود."
+    "sla_days_in_json": "فیلد sla_days در JSON فرایند هنگام seed به sla_hours (×۲۴) تبدیل می‌شود.",
+    "process_scheduler": "app/services/process_scheduler.py در هر دور calendar_triggers اجرا می‌شود؛ فهرست متادیتا در metadata/scheduled_automation_index.json."
   },
   "resolved_from_v1": [
     "violation_registration و patient_referral در metadata/processes تعریف و در seed لود می‌شوند.",
@@ -30,14 +31,25 @@
     "۲۳ فرایندی که پیش‌تر فقط نیمه‌عملیاتی بودند (شامل committees_review، supervision_block_transition، introductory_course_registration، ta_to_instructor_auto، supervision_interruption، therapy_interruption و ...) اکنون اکشن‌هایشان حالت واقعی و قابل‌کوئری می‌نویسند.",
     "تست‌ها: tests/services/test_workflow_services.py (۱۸ تست واحد برای سرویس‌های A–I) + به‌روزرسانی tests/services/test_action_handler.py؛ کل tests/processes (۳۲۹ تست) سبز است."
   ],
+  "resolved_scheduled_automation_2026_06": [
+    "process_scheduler.py: scheduled_reminders، installment_overdue (۳ فرایند ثبت‌نام)، generic_sla_triggers، academic_term_batch (InstituteCalendar)، student_milestones، start_therapy_week9، lms_session_hooks.",
+    "InstituteCalendar model + migration 030 + admin API GET/PUT /api/admin/academic-calendar/active.",
+    "publish_academic_calendar_to_profiles اکنون تقویم فعال را upsert و term_start_date را روی دانشجویان sync می‌کند.",
+    "metadata/scheduled_automation_index.json + بلوک scheduled_automation در ۲۶ فرایند دسته ۳.",
+    "tests/services/test_process_scheduler.py"
+  ],
+  "resolved_semester_prep_2026_06": [
+    "Institute anchor INST-OPS + semester_prep_service (شروع idempotent پاییز/زمستان).",
+    "API و UI آماده‌سازی ترم + dispatch_semester_prep_starts (۱۵–۲۰ فروردین و پنجره زمستان).",
+    "فرم winter_marketing_campaign_form + pre_filled_from از context پاییز.",
+    "daily_overdue_check: semester_prep_sla، prep_calendar_deadline، role resolver، PanelTaskReminder چندرôle.",
+    "institute_calendar_service: نگاشت fall_start_date و registration_payment_window_*.",
+    "tests/services/test_semester_prep_service.py"
+  ],
   "remaining_gaps": [
     {
       "area": "LMS / سامانه بیرونی",
       "detail": "حالت داخلی LMS اکنون روی Student.extra_data['lms'] به‌صورت واقعی نوشته می‌شود. همگام‌سازی دوطرفه با یک LMS بیرونی واقعی (کلاس/تقویم/لینک زنده) همچنان به قرارداد API و وب‌هوک پرشده نیاز دارد؛ POST به LMS_INTEGRATION_WEBHOOK_URL افزایهٔ اختیاری است."
-    },
-    {
-      "area": "تریگرهای تقویمی",
-      "detail": "اقساط ترم دوم (installment_due_date_passed) و مهلت ثبت درمانگر (therapist_did_not_record) در calendar_triggers پیاده شده‌اند. TA/انترن و سایر سناریوهای خاص هنوز ممکن است نیاز به context زمان‌دار یا توسعهٔ جدا داشته باشند — docs/CALENDAR_TRIGGERS_FA.md."
     },
     {
       "area": "قوانین و دادهٔ واقعی",

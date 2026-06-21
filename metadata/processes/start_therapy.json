@@ -327,5 +327,15 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "calendar_date",
+    "completion_role": "student",
+    "triggers": [
+      {
+        "event": "week9_deadline_exceeded",
+        "when": "current_week_gte_9"
+      }
+    ]
+  }
 }

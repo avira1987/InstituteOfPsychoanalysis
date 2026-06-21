@@ -25,6 +25,7 @@ import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBa
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import OperatorCourseSelectionEditor from '../components/OperatorCourseSelectionEditor'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import {
@@ -849,7 +850,7 @@ export default function StaffPortal() {
                       <td style={{ fontSize: '0.82rem' }}>{log.to_state ? labelState(log.to_state) : '-'}</td>
                       <td style={{ fontSize: '0.82rem' }}>{log.actor_name || log.actor_role || '-'}</td>
                       <td style={{ fontSize: '0.78rem', color: '#6b7280' }}>
-                        {new Date(log.timestamp).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' })}
+                        {formatShamsiTehran(log.timestamp)}
                       </td>
                     </tr>
                   ))}

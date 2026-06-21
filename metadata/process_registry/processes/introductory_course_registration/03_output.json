@@ -514,7 +514,7 @@
       "to": "payment",
       "trigger": "courses_selected",
       "required_role": "student",
-      "description_fa": "داشج درس را اتخاب  تاد کرد  دات ب پرداخت",
+      "description_fa": "دانشجو دروس را انتخاب و تایید کرد — هدایت به پرداخت شهریه",
       "constraints": [
         "courses_within_admission_type_limit"
       ]

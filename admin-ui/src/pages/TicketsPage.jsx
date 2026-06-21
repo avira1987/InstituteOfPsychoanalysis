@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { ticketApi, studentApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import PopupToast from '../components/PopupToast'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 
 const CATEGORY_LABELS = {
   profile_edit_unlock: 'باز کردن پروفایل / ویرایش مرحلهٔ ثبت‌شده',
@@ -47,11 +48,7 @@ function formatUser(u) {
 
 function formatDateTime(iso) {
   if (!iso) return ''
-  try {
-    return new Date(iso).toLocaleString('fa-IR', { dateStyle: 'medium', timeStyle: 'short' })
-  } catch {
-    return iso
-  }
+  return formatShamsiTehran(iso)
 }
 
 export default function TicketsPage() {

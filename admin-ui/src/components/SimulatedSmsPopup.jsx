@@ -3,19 +3,13 @@ import { createPortal } from 'react-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { panelApi } from '../services/api'
 import { getSmsTemplateLabel } from '../utils/smsTemplateLabels'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 
 /** @typedef {{ id: string, phone: string, message: string, kind?: string, template_key?: string | null, created_at?: string | null }} SimSmsEntry */
 
 function formatWhen(iso) {
   if (!iso) return ''
-  try {
-    const d = new Date(iso)
-    return Number.isFinite(d.valueOf())
-      ? d.toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' })
-      : ''
-  } catch (_) {
-    return ''
-  }
+  return formatShamsiTehran(iso)
 }
 
 /**

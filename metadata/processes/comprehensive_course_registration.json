@@ -653,5 +653,23 @@
         "template": "installment_due_reminder"
       }
     }
+  },
+  "scheduled_automation": {
+    "mode": "reminder_queue",
+    "completion_role": "student",
+    "context_required": [
+      "next_installment_due_at"
+    ],
+    "triggers": [
+      {
+        "event": "installment_due_date_passed",
+        "when": {
+          "state": "registration_complete",
+          "context_field": "next_installment_due_at",
+          "op": "lte_today"
+        },
+        "actor_role": "system"
+      }
+    ]
   }
 }

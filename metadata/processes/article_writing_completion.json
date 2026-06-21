@@ -24,7 +24,8 @@
       "code": "class_closed_student",
       "name_fa": "کلاس بسته شد - مهلت ۸ روزه درخواست دفاع",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "sla_days": 8
     },
     {
       "code": "instructor_eval_pending",
@@ -34,7 +35,8 @@
       "metadata": {
         "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
         "operator_short_fa": "منتظر فرم ارزیابی مدرس (۴ روز)"
-      }
+      },
+      "sla_days": 4
     },
     {
       "code": "completed_to_defense",
@@ -154,5 +156,21 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "instance_sla",
+    "completion_role": "student",
+    "triggers": [
+      {
+        "event": "sla_breach",
+        "state": "class_closed_student",
+        "sla_days": 8
+      },
+      {
+        "event": "sla_breach",
+        "state": "instructor_eval_pending",
+        "sla_days": 4
+      }
+    ]
+  }
 }

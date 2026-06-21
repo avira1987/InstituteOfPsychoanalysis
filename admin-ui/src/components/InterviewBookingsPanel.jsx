@@ -1,22 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { interviewSlotsApi, processExecApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
-import { JALAALI_MONTHS_FA, utcIsoToShamsiTehran } from '../utils/shamsiDateTime'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import OnlineMeetingJoinCta from './OnlineMeetingJoinCta'
 import InterviewSlotRescheduleModal from './InterviewSlotRescheduleModal'
 
 function formatSlotShamsi(iso) {
-  if (!iso) return '—'
-  const p = utcIsoToShamsiTehran(iso)
-  if (!p) {
-    try {
-      return new Date(iso).toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' })
-    } catch {
-      return iso
-    }
-  }
-  const mon = JALAALI_MONTHS_FA[p.jm - 1] || ''
-  return `${p.jy}/${String(p.jm).padStart(2, '0')}/${String(p.jd).padStart(2, '0')} ${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')} (${mon})`
+  return formatShamsiTehran(iso)
 }
 
 /**

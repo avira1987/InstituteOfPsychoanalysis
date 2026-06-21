@@ -50,6 +50,7 @@ class TestServiceAPortalNotifications:
         await db_session.refresh(sample_student)
         rems = [r for r in (sample_student.extra_data or {}).get("scheduled_reminders", []) if r["type"] == "installment"]
         assert len(rems) == 4
+        assert all(r.get("installment_due_at") for r in rems)
 
     async def test_send_to_dashboard_appends_feed(self, db_session, sample_student):
         instance = await _make_instance(db_session, sample_student)

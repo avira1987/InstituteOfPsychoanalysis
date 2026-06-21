@@ -142,5 +142,15 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "milestone",
+    "completion_role": "supervision_committee",
+    "triggers": [
+      {
+        "event": "conditional_intern_enters_month_12",
+        "when": "intern_month_gte_12"
+      }
+    ]
+  }
 }

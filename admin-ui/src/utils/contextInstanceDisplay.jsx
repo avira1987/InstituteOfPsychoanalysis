@@ -1,5 +1,6 @@
 import { PROCESS_LABELS_FA, STATE_LABELS_FA } from './processMetadataLabels'
 import { parseStepFileUploadValue, resolveUploadPublicUrl } from './uploadPublicUrl'
+import { formatShamsiTehran } from './shamsiDateTime'
 
 /** برچسب‌های ثابت برای کلیدهای رایج در context_data */
 export const CONTEXT_KEY_LABELS = {
@@ -140,11 +141,8 @@ function formatIsoMaybe(s) {
   if (typeof s !== 'string') return s
   const t = Date.parse(s)
   if (Number.isNaN(t)) return s
-  try {
-    return new Date(s).toLocaleString('fa-IR', { dateStyle: 'medium', timeStyle: 'short' })
-  } catch {
-    return s
-  }
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(s.slice(0, 10)) && !s.includes('T')
+  return formatShamsiTehran(s, { dateOnly })
 }
 
 function looksLikeIso(s) {

@@ -138,5 +138,15 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "batch_start",
+    "completion_role": "student",
+    "triggers": [
+      {
+        "event": "term_registration_window",
+        "source": "InstituteCalendar"
+      }
+    ]
+  }
 }

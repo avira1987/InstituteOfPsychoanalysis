@@ -4,6 +4,16 @@ import { fieldVisible, fieldRequired } from '../utils/formConditions'
 import { filterSchemaForRole } from '../utils/unifiedFormValidation'
 import { resolveUploadPublicUrl, parseStepFileUploadValue } from '../utils/uploadPublicUrl'
 import { studentApi } from '../services/api'
+import ShamsiDatePicker from './ShamsiDatePicker'
+import ShamsiDateTimePicker from './ShamsiDateTimePicker'
+import {
+  defaultShamsiDate,
+  defaultShamsiTehranNow,
+  isoDateToShamsiParts,
+  shamsiDateTimeToUtcIso,
+  shamsiDateToIsoDate,
+  utcIsoToShamsiTehran,
+} from '../utils/shamsiDateTime'
 
 // انتخاب درمانگر — منبع پویا
 function TherapistSelect({ id, field, value, onChange, disabled }) {
@@ -224,6 +234,46 @@ function EditableTableField({ field, value, onChange, disabled }) {
 }
 
 // فهرست بازه‌های تاریخ — هر مورد { start, end }.
+function ShamsiDateFieldBridge({ value, onChange, disabled, idPrefix }) {
+  const parts = useMemo(() => isoDateToShamsiParts(value) || defaultShamsiDate(), [value])
+  const handleChange = (next) => {
+    try {
+      onChange(shamsiDateToIsoDate(next.jy, next.jm, next.jd))
+    } catch {
+      onChange('')
+    }
+  }
+  return (
+    <ShamsiDatePicker
+      value={parts}
+      onChange={handleChange}
+      disabled={disabled}
+      idPrefix={idPrefix}
+      compact
+    />
+  )
+}
+
+function ShamsiDateTimeFieldBridge({ value, onChange, disabled, idPrefix }) {
+  const parts = useMemo(() => utcIsoToShamsiTehran(value) || defaultShamsiTehranNow(), [value])
+  const handleChange = (next) => {
+    try {
+      onChange(shamsiDateTimeToUtcIso(next.jy, next.jm, next.jd, next.hour, next.minute))
+    } catch {
+      onChange('')
+    }
+  }
+  return (
+    <ShamsiDateTimePicker
+      value={parts}
+      onChange={handleChange}
+      disabled={disabled}
+      idPrefix={idPrefix}
+      compact
+    />
+  )
+}
+
 function DateRangeListField({ value, onChange, disabled }) {
   const ranges = Array.isArray(value) ? value : []
   const setPart = (idx, key, v) => onChange(ranges.map((r, i) => (i === idx ? { ...r, [key]: v } : r)))
@@ -234,9 +284,19 @@ function DateRangeListField({ value, onChange, disabled }) {
       {ranges.map((r, idx) => (
         <div key={idx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="muted" style={{ fontSize: '0.8rem' }}>از</span>
-          <input type="date" dir="ltr" className="psf-input form-input" value={r?.start ?? ''} disabled={disabled} onChange={(e) => setPart(idx, 'start', e.target.value)} />
+          <ShamsiDateFieldBridge
+            value={r?.start ?? ''}
+            disabled={disabled}
+            idPrefix={`range-${idx}-start`}
+            onChange={(v) => setPart(idx, 'start', v)}
+          />
           <span className="muted" style={{ fontSize: '0.8rem' }}>تا</span>
-          <input type="date" dir="ltr" className="psf-input form-input" value={r?.end ?? ''} disabled={disabled} onChange={(e) => setPart(idx, 'end', e.target.value)} />
+          <ShamsiDateFieldBridge
+            value={r?.end ?? ''}
+            disabled={disabled}
+            idPrefix={`range-${idx}-end`}
+            onChange={(v) => setPart(idx, 'end', v)}
+          />
           {!disabled && <button type="button" className="btn btn-sm btn-outline" onClick={() => removeRange(idx)}>حذف</button>}
         </div>
       ))}
@@ -391,10 +451,10 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
 
   if (t === 'date' || t === 'date_picker') {
     return (
-      <label className="psf-field" htmlFor={id}>
+      <div className="psf-field">
         {labelEl}
-        <input id={id} type="date" dir="ltr" className="psf-input form-input" value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
-      </label>
+        <ShamsiDateFieldBridge value={value ?? ''} onChange={onChange} disabled={disabled} idPrefix={id} />
+      </div>
     )
   }
 
@@ -436,8 +496,18 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
     )
   }
 
-  // text | email | tel | datetime fallback
-  const inputType = t === 'email' ? 'email' : t === 'tel' ? 'tel' : t === 'datetime' ? 'datetime-local' : 'text'
+  if (t === 'datetime') {
+    return (
+      <div className="psf-field">
+        {labelEl}
+        {field.description_fa && <p className="psf-hint">{field.description_fa}</p>}
+        <ShamsiDateTimeFieldBridge value={value ?? ''} onChange={onChange} disabled={disabled} idPrefix={id} />
+      </div>
+    )
+  }
+
+  // text | email | tel fallback
+  const inputType = t === 'email' ? 'email' : t === 'tel' ? 'tel' : 'text'
   const dir = field.dir === 'ltr' || inputType !== 'text' ? 'ltr' : 'rtl'
   return (
     <label className="psf-field" htmlFor={id}>

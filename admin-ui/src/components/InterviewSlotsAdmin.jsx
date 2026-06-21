@@ -5,18 +5,14 @@ import InterviewSlotRescheduleModal from './InterviewSlotRescheduleModal'
 import OnlineMeetingJoinCta from './OnlineMeetingJoinCta'
 import {
   defaultShamsiTehranNow,
+  formatShamsiTehran,
   isValidJalaaliDate,
-  JALAALI_MONTHS_FA,
   shamsiDateTimeToUtcIso,
   utcIsoToShamsiTehran,
 } from '../utils/shamsiDateTime'
 
 function formatSlotAdmin(iso) {
-  if (!iso) return '—'
-  const p = utcIsoToShamsiTehran(iso)
-  if (!p) return iso
-  const mon = JALAALI_MONTHS_FA[p.jm - 1] || ''
-  return `${p.jy}/${String(p.jm).padStart(2, '0')}/${String(p.jd).padStart(2, '0')} ${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')} (${mon})`
+  return formatShamsiTehran(iso)
 }
 
 export default function InterviewSlotsAdmin({ showToast, onCapacityChanged }) {

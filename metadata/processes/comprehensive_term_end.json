@@ -259,5 +259,15 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "batch_start",
+    "completion_role": "system",
+    "triggers": [
+      {
+        "event": "all_grades_entered",
+        "when": "lms.grades_pending_lte_0"
+      }
+    ]
+  }
 }

@@ -23,6 +23,12 @@ import ProcessRollbackSection from '../components/ProcessRollbackSection'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
+import ShamsiDateTimePicker from '../components/ShamsiDateTimePicker'
+import {
+  defaultShamsiTehranNow,
+  shamsiDateTimeToUtcIso,
+  utcIsoToShamsiTehran,
+} from '../utils/shamsiDateTime'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
 import {
@@ -53,7 +59,7 @@ export default function CommitteePortal() {
   const [rollbackBusy, setRollbackBusy] = useState(false)
   /** فیلدهای جلسه مرخصی آموزشی — همراه تریگر committee_set_meeting به API فرستاده می‌شود */
   const [leaveMeeting, setLeaveMeeting] = useState({
-    committee_meeting_at: '',
+    committee_meeting_at: defaultShamsiTehranNow(),
     committee_meeting_mode: 'in_person',
     committee_meeting_link: '',
     committee_meeting_location_fa: '',
@@ -138,19 +144,9 @@ export default function CommitteePortal() {
       setInstanceDetail(statusRes.data)
       setAvailableTransitions(transRes.data?.transitions || [])
       const ctx = statusRes.data?.context_data || {}
-      const iso = ctx.committee_meeting_at
-      let localDt = ''
-      if (typeof iso === 'string' && iso.length >= 10) {
-        try {
-          const d = new Date(iso)
-          if (!Number.isNaN(d.getTime())) {
-            const pad = n => String(n).padStart(2, '0')
-            localDt = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-          }
-        } catch { /* ignore */ }
-      }
+      const meetingParts = utcIsoToShamsiTehran(ctx.committee_meeting_at) || defaultShamsiTehranNow()
       setLeaveMeeting({
-        committee_meeting_at: localDt,
+        committee_meeting_at: meetingParts,
         committee_meeting_mode: ctx.committee_meeting_mode === 'online' ? 'online' : 'in_person',
         committee_meeting_link: ctx.committee_meeting_link || '',
         committee_meeting_location_fa: ctx.committee_meeting_location_fa || '',
@@ -202,7 +198,7 @@ export default function CommitteePortal() {
         instanceDetail?.process_code === 'educational_leave'
         && triggerEvent === 'committee_set_meeting'
       ) {
-        if (!leaveMeeting.committee_meeting_at || !String(leaveMeeting.committee_meeting_at).trim()) {
+        if (!leaveMeeting.committee_meeting_at?.jy) {
           showToast('تاریخ و ساعت جلسه را مشخص کنید.', 'error')
           return
         }
@@ -217,12 +213,8 @@ export default function CommitteePortal() {
         }
         let iso = ''
         try {
-          const d = new Date(leaveMeeting.committee_meeting_at)
-          if (Number.isNaN(d.getTime())) {
-            showToast('تاریخ و ساعت جلسه معتبر نیست.', 'error')
-            return
-          }
-          iso = d.toISOString()
+          const p = leaveMeeting.committee_meeting_at
+          iso = shamsiDateTimeToUtcIso(p.jy, p.jm, p.jd, p.hour, p.minute)
         } catch {
           showToast('تاریخ و ساعت جلسه معتبر نیست.', 'error')
           return
@@ -265,14 +257,6 @@ export default function CommitteePortal() {
     }
   }
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem' }}>
-        <div className="loading-spinner" />
-      </div>
-    )
-  }
-
   const tabs = useMemo(() => {
     const base = [
       { id: 'reviews', label: `کارهای من (${pendingReviews.length})`, icon: '📥' },
@@ -284,6 +268,14 @@ export default function CommitteePortal() {
     base.push({ id: 'students', label: 'دانشجویان', icon: '👨‍🎓' })
     return base
   }, [pendingReviews.length, kindMeta, user?.role])
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem' }}>
+        <div className="loading-spinner" />
+      </div>
+    )
+  }
 
   const instanceContext = instanceDetail?.context_data || {}
   const transitionsForActions = filterInterviewResultTransitions(
@@ -588,16 +580,12 @@ export default function CommitteePortal() {
                   <p style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '0.75rem', lineHeight: 1.65 }}>
                     پیش از زدن دکمهٔ ثبت جلسه، همهٔ موارد زیر را پر کنید؛ پس از انتقال، در پورتال دانشجو و پیامک نمایش داده می‌شود.
                   </p>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                    تاریخ و ساعت جلسه (محلی مرورگر)
-                    <input
-                      type="datetime-local"
-                      className="psf-input"
-                      style={{ width: '100%', marginTop: '0.35rem' }}
-                      value={leaveMeeting.committee_meeting_at}
-                      onChange={e => setLeaveMeeting(prev => ({ ...prev, committee_meeting_at: e.target.value }))}
-                    />
-                  </label>
+                  <ShamsiDateTimePicker
+                    label="تاریخ و ساعت جلسه (وقت ایران)"
+                    idPrefix="committee-meeting"
+                    value={leaveMeeting.committee_meeting_at}
+                    onChange={(v) => setLeaveMeeting((prev) => ({ ...prev, committee_meeting_at: v }))}
+                  />
                   <div style={{ marginBottom: '0.5rem' }}>
                     <span style={{ fontSize: '0.85rem', display: 'block', marginBottom: '0.35rem' }}>نحوهٔ برگزاری</span>
                     <label style={{ marginLeft: '1rem' }}>

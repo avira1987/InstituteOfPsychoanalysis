@@ -781,5 +781,15 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "instance_sla",
+    "completion_role": "staff",
+    "triggers": [
+      {
+        "event": "sla_expired",
+        "actor_role": "system"
+      }
+    ]
+  }
 }

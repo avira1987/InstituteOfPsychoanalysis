@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "description_fa": "فهرست مرکزی اتوماسیون زمان‌محور فرایندهای دسته ۳ — هم‌تراز با process_scheduler.py",
+  "processes": {
+    "introductory_course_registration": {
+      "mode": "reminder_queue",
+      "completion_role": "student",
+      "context_required": ["next_installment_due_at"],
+      "triggers": [
+        {
+          "event": "installment_due_date_passed",
+          "when": {
+            "state": "registration_complete",
+            "context_field": "next_installment_due_at",
+            "op": "lte_today"
+          },
+          "actor_role": "system"
+        }
+      ]
+    },
+    "comprehensive_course_registration": {
+      "mode": "reminder_queue",
+      "completion_role": "student",
+      "context_required": ["next_installment_due_at"],
+      "triggers": [
+        {
+          "event": "installment_due_date_passed",
+          "when": {
+            "state": "registration_complete",
+            "context_field": "next_installment_due_at",
+            "op": "lte_today"
+          },
+          "actor_role": "system"
+        }
+      ]
+    },
+    "intro_second_semester_registration": {
+      "mode": "reminder_queue",
+      "completion_role": "student",
+      "context_required": ["next_installment_due_at", "pending_installments_remaining"],
+      "triggers": [
+        {
+          "event": "installment_due_date_passed",
+          "when": {
+            "state": "registration_complete",
+            "context_field": "next_installment_due_at",
+            "op": "lte_today"
+          },
+          "actor_role": "system"
+        }
+      ]
+    },
+    "theory_course_completion": {
+      "mode": "instance_sla",
+      "completion_role": "instructor",
+      "sla_state": "grades_entry",
+      "sla_days": 7,
+      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+    },
+    "skills_course_completion": {
+      "mode": "instance_sla",
+      "completion_role": "instructor",
+      "sla_state": "grades_entry",
+      "sla_days": 7,
+      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+    },
+    "group_supervision_course_completion": {
+      "mode": "instance_sla",
+      "completion_role": "instructor",
+      "sla_state": "grades_entry",
+      "sla_days": 7,
+      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+    },
+    "film_observation_course_completion": {
+      "mode": "instance_sla",
+      "completion_role": "instructor",
+      "sla_state": "grades_entry",
+      "sla_days": 7,
+      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+    },
+    "live_supervision_course_completion": {
+      "mode": "instance_sla",
+      "completion_role": "instructor",
+      "sla_state": "grades_entry",
+      "sla_days": 7,
+      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+    },
+    "live_therapy_observation_course_completion": {
+      "mode": "instance_sla",
+      "completion_role": "instructor",
+      "sla_state": "grades_entry",
+      "sla_days": 7,
+      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+    },
+    "film_observation_ta_attendance_completion": {
+      "mode": "instance_sla",
+      "completion_role": "instructor",
+      "sla_state": "grades_entry",
+      "sla_days": 7,
+      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+    },
+    "live_therapy_observation_ta_attendance_completion": {
+      "mode": "instance_sla",
+      "completion_role": "instructor",
+      "sla_state": "grades_entry",
+      "sla_days": 7,
+      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+    },
+    "article_writing_completion": {
+      "mode": "instance_sla",
+      "completion_role": "student",
+      "triggers": [
+        { "event": "sla_breach", "state": "class_closed_student", "sla_days": 8 },
+        { "event": "sla_breach", "state": "instructor_eval_pending", "sla_days": 4 }
+      ]
+    },
+    "ta_student_consultation": {
+      "mode": "milestone",
+      "completion_role": "teaching_assistant",
+      "triggers": [
+        { "event": "reminder_sent", "when": "session_5_or_10_or_15_ended" },
+        { "event": "deadline_passed", "state": "ta_form_fill", "sla_days": 4 }
+      ]
+    },
+    "fall_semester_preparation": {
+      "mode": "instance_sla",
+      "completion_role": "staff",
+      "triggers": [{ "event": "sla_expired", "actor_role": "system" }]
+    },
+    "winter_semester_preparation": {
+      "mode": "instance_sla",
+      "completion_role": "staff",
+      "triggers": [{ "event": "sla_expired", "actor_role": "system" }]
+    },
+    "start_therapy": {
+      "mode": "calendar_date",
+      "completion_role": "student",
+      "triggers": [{ "event": "week9_deadline_exceeded", "when": "current_week_gte_9" }]
+    },
+    "student_non_registration": {
+      "mode": "batch_start",
+      "completion_role": "supervision_committee",
+      "triggers": [{ "event": "registration_deadline_passed", "source": "InstituteCalendar" }]
+    },
+    "student_instructor_evaluation": {
+      "mode": "calendar_date",
+      "completion_role": "student",
+      "triggers": [
+        { "event": "evaluation_open", "source": "InstituteCalendar.evaluation_open_at" },
+        { "event": "deadline_reached", "source": "InstituteCalendar.evaluation_close_at" }
+      ]
+    },
+    "introductory_term_end": {
+      "mode": "batch_start",
+      "completion_role": "system",
+      "triggers": [{ "event": "all_instructor_grades_entered", "when": "lms.grades_pending_lte_0" }]
+    },
+    "comprehensive_term_end": {
+      "mode": "batch_start",
+      "completion_role": "system",
+      "triggers": [{ "event": "all_grades_entered", "when": "lms.grades_pending_lte_0" }]
+    },
+    "comprehensive_term_start": {
+      "mode": "batch_start",
+      "completion_role": "student",
+      "triggers": [{ "event": "term_registration_window", "source": "InstituteCalendar" }]
+    },
+    "lesson_start_per_term": {
+      "mode": "calendar_date",
+      "completion_role": "student",
+      "triggers": [{ "event": "term_start_lesson", "when": "term_start_date_lte_today" }]
+    },
+    "intern_hours_increase": {
+      "mode": "milestone",
+      "completion_role": "supervision_committee",
+      "triggers": [{ "event": "intern_month_milestone_reached", "months": [4, 7, 12, 16, 20, 24, 28] }]
+    },
+    "internship_12month_conditional_review": {
+      "mode": "milestone",
+      "completion_role": "supervision_committee",
+      "triggers": [{ "event": "conditional_intern_enters_month_12", "when": "intern_month_gte_12" }]
+    },
+    "ta_to_instructor_auto": {
+      "mode": "milestone",
+      "completion_role": "system",
+      "triggers": [{ "event": "end_of_term_ta_evaluation_done", "when": "lms.end_of_term_ta_evaluation_done" }]
+    },
+    "mentor_private_sessions": {
+      "mode": "milestone",
+      "completion_role": "instructor",
+      "triggers": [{ "event": "session_2_started_without_registration", "when": "lms.session_2_started" }]
+    },
+    "class_attendance": {
+      "mode": "calendar_date",
+      "completion_role": "instructor",
+      "triggers": [{ "event": "session_time_reached", "context_field": "session_date" }]
+    },
+    "_daily_overdue_check": {
+      "mode": "daily_overdue_digest",
+      "completion_role": "mixed",
+      "description_fa": "موتور چک روزانه ساعت ۸ تهران — SMS + اعلان پنل برای کارهای عقب‌افتاده (شامل آماده‌سازی ترم)",
+      "triggers": [{ "event": "daily_overdue_check", "when": "tehran_hour_gte_8_once_per_day" }]
+    }
+  },
+  "scheduler_passes": {
+    "semester_prep_starts": {
+      "description_fa": "شروع خودکار fall_semester_preparation (۱۵–۲۰ فروردین) و winter_semester_preparation (پنجره قبل از winter_start_date)",
+      "handler": "dispatch_semester_prep_starts"
+    }
+  }
+}

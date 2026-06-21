@@ -7,6 +7,7 @@ import { canManageInterviewSlots, interviewSlotsManagePath } from '../utils/inte
 import { getPortalHomeHref, getPortalQuickLink } from '../utils/portalRoleHome'
 import { staffLanesForPortalRole } from '../utils/portalStaffLanes'
 import { committeeKindsForPortalRole } from '../utils/portalCommitteeKinds'
+import { canViewSchedulerAutomation } from '../utils/portalRoleNav'
 
 function PortalQuickLink({ role, navigate }) {
   const portal = role ? getPortalQuickLink(role) : null
@@ -154,6 +155,15 @@ export default function Dashboard() {
         label: 'گزارشات',
         hint: 'چارچوب گزارش‌ها و قواعد رسمی',
         onClick: () => navigate('/panel/reports'),
+      })
+    }
+    if (canViewSchedulerAutomation(u)) {
+      items.push({
+        key: 'automation-scheduler',
+        icon: '⏱️',
+        label: 'اتوماسیون زمان‌محور',
+        hint: 'تقویم ترم، فرایندهای زمان‌دار و اجرای دستی',
+        onClick: () => navigate('/panel/automation-scheduler'),
       })
     }
     if (u === 'admin') {

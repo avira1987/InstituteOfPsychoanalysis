@@ -96,3 +96,21 @@ def test_winter_license_visible_if_field_not_required_when_hidden():
     # وضعیت «بدون تغییر» → فیلد شماره جدید لازم نیست.
     ok, _ = validate_operator_step_forms(forms, {"license_status": "بدون تغییر"}, {})
     assert ok is True
+
+
+def test_winter_marketing_campaign_form_exists():
+    forms = get_process_forms("winter_semester_preparation", state_code="marketing_campaign")
+    codes = {f.get("code") for f in forms}
+    assert "winter_marketing_campaign_form" in codes
+    marketing_form = next(f for f in forms if f.get("code") == "winter_marketing_campaign_form")
+    field_names = {fld.get("name") for fld in marketing_form.get("fields") or []}
+    assert "marketing_confirmed" in field_names
+
+
+def test_winter_course_list_pre_filled_from_metadata():
+    forms = get_process_forms("winter_semester_preparation", state_code="course_list_review")
+    review_form = next(f for f in forms if f.get("code") == "winter_course_list_review_form")
+    courses_field = next(
+        fld for fld in review_form.get("fields") or [] if fld.get("name") == "courses"
+    )
+    assert courses_field.get("pre_filled_from") == "fall_semester_preparation.course_list_form"

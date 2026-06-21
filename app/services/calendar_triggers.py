@@ -844,6 +844,10 @@ async def run_calendar_trigger_pass(db: AsyncSession) -> dict[str, Any]:
     tsi_sla = await _run_therapy_session_increase_sla_reminders(db, now)
     tsi_student = await _run_therapy_session_increase_student_response_reminders(db, now)
     fee_det_sweep = await sweep_stuck_fee_determination_triggered(db)
+    from app.services.process_scheduler import run_process_scheduler_pass
+
+    scheduler = await run_process_scheduler_pass(db)
+    inst_all = (scheduler.get("installment_overdue") or []) + (inst2 or [])
     parts = [
         payment,
         session_pay_rem,
@@ -852,7 +856,7 @@ async def run_calendar_trigger_pass(db: AsyncSession) -> dict[str, Any]:
         leave_d,
         att,
         sup50,
-        inst2,
+        inst_all,
         th_att,
         interview_rem,
         therapy_link_rem,
@@ -864,7 +868,21 @@ async def run_calendar_trigger_pass(db: AsyncSession) -> dict[str, Any]:
         tsi_sla,
         tsi_student,
         fee_det_sweep,
+        scheduler.get("scheduled_reminders") or [],
+        scheduler.get("generic_sla_triggers") or [],
+        scheduler.get("academic_term_batch") or [],
+        scheduler.get("student_milestones") or [],
+        scheduler.get("start_therapy_week9") or [],
+        scheduler.get("lms_session_hooks") or [],
     ]
+    fired = sum(_calendar_part_event_count(p) for p in parts)
+    daily_overdue = None
+    try:
+        from app.services.daily_overdue_check_service import maybe_run_daily_overdue_check
+
+        daily_overdue = await maybe_run_daily_overdue_check(db)
+    except Exception as e:
+        logger.warning("daily_overdue_check hook failed: %s", e)
     return {
         "at": now.isoformat(),
         "payment_timeout": payment,
@@ -874,7 +892,7 @@ async def run_calendar_trigger_pass(db: AsyncSession) -> dict[str, Any]:
         "return_deadline_passed": leave_d,
         "session_time_reached_attendance": att,
         "session_time_reached_supervision_50h": sup50,
-        "installment_due_intro_second_semester": inst2,
+        "installment_due_intro_second_semester": inst_all,
         "therapist_did_not_record_attendance": th_att,
         "interview_slot_reminders": interview_rem,
         "therapy_session_link_reminders": therapy_link_rem,
@@ -886,7 +904,9 @@ async def run_calendar_trigger_pass(db: AsyncSession) -> dict[str, Any]:
         "therapy_session_increase_sla_reminders": tsi_sla,
         "therapy_session_increase_student_response_reminders": tsi_student,
         "fee_determination_stuck_sweep": fee_det_sweep,
-        "fired_total": sum(_calendar_part_event_count(p) for p in parts),
+        **scheduler,
+        "fired_total": fired,
+        "daily_overdue_check": daily_overdue,
     }
 
 

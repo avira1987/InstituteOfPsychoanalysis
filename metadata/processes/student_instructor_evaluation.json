@@ -78,5 +78,19 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "calendar_date",
+    "completion_role": "student",
+    "triggers": [
+      {
+        "event": "evaluation_open",
+        "source": "InstituteCalendar.evaluation_open_at"
+      },
+      {
+        "event": "deadline_reached",
+        "source": "InstituteCalendar.evaluation_close_at"
+      }
+    ]
+  }
 }

@@ -60,5 +60,15 @@
       ],
       "required_role": "student"
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "milestone",
+    "completion_role": "system",
+    "triggers": [
+      {
+        "event": "end_of_term_ta_evaluation_done",
+        "when": "lms.end_of_term_ta_evaluation_done"
+      }
+    ]
+  }
 }

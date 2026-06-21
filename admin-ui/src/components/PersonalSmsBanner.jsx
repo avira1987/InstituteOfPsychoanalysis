@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { panelApi } from '../services/api'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 
 /**
  * بنر inline آخرین پیامک شخصی — برای پورتال‌هایی که پروندهٔ باز ندارند (بدون پاپ‌آپ).
@@ -31,14 +32,7 @@ export default function PersonalSmsBanner() {
 
   let when = ''
   if (entry.created_at) {
-    try {
-      when = new Date(entry.created_at).toLocaleString('fa-IR', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-      })
-    } catch (_) {
-      when = ''
-    }
+    when = formatShamsiTehran(entry.created_at)
   }
 
   return (

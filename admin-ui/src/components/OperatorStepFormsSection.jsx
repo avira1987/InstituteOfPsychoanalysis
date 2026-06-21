@@ -45,9 +45,9 @@ function buildCoursesFinalizedFromDraft(courses) {
   }))
 }
 
-function buildInitialValues(forms, contextData, processCode, currentState) {
+function buildInitialValues(forms, contextData, processCode, currentState, suggestedContext) {
   const names = collectFieldNames(forms)
-  const ctx = contextData || {}
+  const ctx = { ...(suggestedContext || {}), ...(contextData || {}) }
   const init = {}
   names.forEach((n) => {
     if (ctx[n] !== undefined) init[n] = ctx[n]
@@ -66,13 +66,23 @@ function buildInitialValues(forms, contextData, processCode, currentState) {
   return init
 }
 
-function FallSemesterStepper({ currentState }) {
-  const idx = FALL_SEMESTER_STEPS.findIndex((s) => s.code === currentState)
+/** گام‌های فرایند ۳۰ — قبل از انتشار */
+const WINTER_SEMESTER_STEPS = [
+  { code: 'license_check', label: 'بررسی پروانه' },
+  { code: 'course_list_review', label: 'بازبینی لیست دروس زمستان' },
+  { code: 'course_finalization', label: 'نهایی‌سازی مکان و مدرسین' },
+  { code: 'marketing_campaign', label: 'کمپین بازاریابی زمستان' },
+  { code: 'interviewer_assignment', label: 'تعیین مصاحبه‌کنندگان' },
+  { code: 'interview_scheduling', label: 'زمان‌بندی مصاحبه‌ها' },
+]
+
+function SemesterPrepStepper({ steps, currentState, testId = 'semester-prep-stepper' }) {
+  const idx = steps.findIndex((s) => s.code === currentState)
   if (idx < 0) return null
 
   return (
     <div
-      data-testid="fall-semester-stepper"
+      data-testid={testId}
       style={{
         marginBottom: '1rem',
         padding: '0.75rem 0',
@@ -80,7 +90,7 @@ function FallSemesterStepper({ currentState }) {
       }}
     >
       <div style={{ display: 'flex', gap: '0.35rem', minWidth: 'max-content', alignItems: 'flex-start' }}>
-        {FALL_SEMESTER_STEPS.map((step, i) => {
+        {steps.map((step, i) => {
           const done = i < idx
           const active = i === idx
           const bg = active ? '#2563eb' : done ? '#dbeafe' : '#f1f5f9'
@@ -114,6 +124,26 @@ function FallSemesterStepper({ currentState }) {
   )
 }
 
+function FallSemesterStepper({ currentState }) {
+  return (
+    <SemesterPrepStepper
+      steps={FALL_SEMESTER_STEPS}
+      currentState={currentState}
+      testId="fall-semester-stepper"
+    />
+  )
+}
+
+function WinterSemesterStepper({ currentState }) {
+  return (
+    <SemesterPrepStepper
+      steps={WINTER_SEMESTER_STEPS}
+      currentState={currentState}
+      testId="winter-semester-stepper"
+    />
+  )
+}
+
 export default function OperatorStepFormsSection({
   instanceId,
   processCode,
@@ -127,6 +157,7 @@ export default function OperatorStepFormsSection({
 }) {
   const supported = SUPPORTED_PROCESSES.has(processCode)
   const isFall = processCode === 'fall_semester_preparation'
+  const isWinter = processCode === 'winter_semester_preparation'
   const [forms, setForms] = useState([])
   const [values, setValues] = useState({})
   const [loading, setLoading] = useState(false)
@@ -145,7 +176,7 @@ export default function OperatorStepFormsSection({
     let active = true
     setLoading(true)
     processExecApi
-      .getProcessFormsForState(processCode, currentState)
+      .getProcessFormsForState(processCode, currentState, instanceId)
       .then((res) => {
         if (!active) return
         const list = Array.isArray(res.data?.forms)
@@ -153,8 +184,9 @@ export default function OperatorStepFormsSection({
           : Array.isArray(res.data)
             ? res.data
             : []
+        const suggested = res.data?.suggested_context || {}
         setForms(list)
-        setValues(buildInitialValues(list, contextData, processCode, currentState))
+        setValues(buildInitialValues(list, contextData, processCode, currentState, suggested))
       })
       .catch(() => active && setForms([]))
       .finally(() => active && setLoading(false))
@@ -196,7 +228,8 @@ export default function OperatorStepFormsSection({
   }
   if (!forms.length && currentState !== 'interview_scheduling') return null
 
-  const showSlotsAdmin = isFall && currentState === 'interview_scheduling'
+  const showSlotsAdmin =
+    (isFall || isWinter) && currentState === 'interview_scheduling'
 
   return (
     <div
@@ -210,6 +243,7 @@ export default function OperatorStepFormsSection({
       data-testid="operator-step-forms-section"
     >
       {isFall && <FallSemesterStepper currentState={currentState} />}
+      {isWinter && <WinterSemesterStepper currentState={currentState} />}
 
       <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#1e40af' }}>
         فرم این مرحله
@@ -218,7 +252,7 @@ export default function OperatorStepFormsSection({
         اطلاعات این مرحله را پر و ثبت کنید؛ سپس دکمهٔ اقدام (پایین) را برای پیشروی فرایند بزنید.
       </p>
 
-      {isFall && (
+      {(isFall || isWinter) && (
         <FallSemesterPrepReadonlySummary currentState={currentState} contextData={contextData} />
       )}
 

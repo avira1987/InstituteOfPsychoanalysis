@@ -191,7 +191,14 @@
     "return_deadline_passed",
     "session_time_reached",
     "installment_due_date_passed",
-    "therapist_did_not_record"
+    "therapist_did_not_record",
+    "scheduled_reminders",
+    "installment_overdue",
+    "generic_sla_triggers",
+    "academic_term_batch",
+    "student_milestones",
+    "start_therapy_week9",
+    "lms_session_hooks"
   ],
   "role_portal_frontend": {
     "student": "admin-ui/src/pages/StudentPortal.jsx",

@@ -228,6 +228,17 @@ class StateMachineEngine:
                     instance.id,
                 )
 
+        try:
+            from app.services.manual_process_start_notification import notify_manual_process_started
+
+            await notify_manual_process_started(self.db, instance, process_def)
+        except Exception:
+            logger.exception(
+                "process start SMS failed (instance=%s process=%s)",
+                instance.id,
+                process_code,
+            )
+
         logger.info(f"Started process '{process_code}' for student {student_id}, instance={instance.id}")
         return instance
 

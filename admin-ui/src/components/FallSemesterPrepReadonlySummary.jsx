@@ -1,4 +1,10 @@
 import React from 'react'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
+
+function formatDateDisplay(value) {
+  if (!value) return null
+  return formatShamsiTehran(value, { dateOnly: true })
+}
 
 function Row({ label, value }) {
   if (value == null || value === '') return null
@@ -37,6 +43,7 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
     'tuition_entry',
     'license_check',
     'course_list_creation',
+    'course_list_review',
     'course_finalization',
     'marketing_campaign',
     'interviewer_assignment',
@@ -46,17 +53,24 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
   const showTuition = [
     'license_check',
     'course_list_creation',
+    'course_list_review',
     'course_finalization',
     'marketing_campaign',
     'interviewer_assignment',
     'interview_scheduling',
   ].includes(currentState)
 
-  const showCourses = ['course_finalization', 'marketing_campaign', 'interviewer_assignment', 'interview_scheduling'].includes(
+  const showCourses = [
+    'course_finalization',
+    'course_list_review',
+    'marketing_campaign',
+    'interviewer_assignment',
+    'interview_scheduling',
+  ].includes(currentState)
+
+  const showFinalized = ['marketing_campaign', 'interviewer_assignment', 'interview_scheduling'].includes(
     currentState,
   )
-
-  const showFinalized = ['marketing_campaign', 'interviewer_assignment', 'interview_scheduling'].includes(currentState)
 
   const showInterviewers = currentState === 'interview_scheduling'
 
@@ -77,23 +91,23 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
         خلاصهٔ مراحل قبلی (فقط مشاهده)
       </div>
 
-      {showCalendar && (
+      {showCalendar && ctx.fall_start_date && (
         <div style={{ marginBottom: '0.65rem' }}>
           <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>تقویم آموزشی</div>
-          <Row label="پاییز" value={ctx.fall_start_date && ctx.fall_end_date ? `${ctx.fall_start_date} تا ${ctx.fall_end_date}` : null} />
-          <Row label="زمستان" value={ctx.winter_start_date && ctx.winter_end_date ? `${ctx.winter_start_date} تا ${ctx.winter_end_date}` : null} />
+          <Row label="پاییز" value={ctx.fall_start_date && ctx.fall_end_date ? `${formatDateDisplay(ctx.fall_start_date)} تا ${formatDateDisplay(ctx.fall_end_date)}` : null} />
+          <Row label="زمستان" value={ctx.winter_start_date && ctx.winter_end_date ? `${formatDateDisplay(ctx.winter_start_date)} تا ${formatDateDisplay(ctx.winter_end_date)}` : null} />
           <Row
             label="ثبت‌نام/پرداخت"
             value={
               ctx.registration_payment_window_start && ctx.registration_payment_window_end
-                ? `${ctx.registration_payment_window_start} تا ${ctx.registration_payment_window_end}`
+                ? `${formatDateDisplay(ctx.registration_payment_window_start)} تا ${formatDateDisplay(ctx.registration_payment_window_end)}`
                 : null
             }
           />
         </div>
       )}
 
-      {showTuition && (
+      {showTuition && ctx.per_unit_cost_introductory != null && (
         <div style={{ marginBottom: '0.65rem' }}>
           <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>شهریه و مصاحبه</div>
           <Row label="واحد آشنایی" value={ctx.per_unit_cost_introductory != null ? `${ctx.per_unit_cost_introductory} ریال` : null} />
@@ -124,7 +138,7 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
             label="جامع"
             value={
               Array.isArray(ctx.comprehensive_interviewers)
-                ? `${ctx.comprehensive_interviewers.join('، ')} (${ctx.comprehensive_date_range_start || '—'} تا ${ctx.comprehensive_date_range_end || '—'})`
+                ? `${ctx.comprehensive_interviewers.join('، ')} (${formatDateDisplay(ctx.comprehensive_date_range_start) || '—'} تا ${formatDateDisplay(ctx.comprehensive_date_range_end) || '—'})`
                 : null
             }
           />
@@ -132,7 +146,7 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
             label="آشنایی"
             value={
               Array.isArray(ctx.introductory_interviewers)
-                ? `${ctx.introductory_interviewers.join('، ')} (${ctx.introductory_date_range_start || '—'} تا ${ctx.introductory_date_range_end || '—'})`
+                ? `${ctx.introductory_interviewers.join('، ')} (${formatDateDisplay(ctx.introductory_date_range_start) || '—'} تا ${formatDateDisplay(ctx.introductory_date_range_end) || '—'})`
                 : null
             }
           />

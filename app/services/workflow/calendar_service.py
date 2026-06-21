@@ -12,6 +12,7 @@ Replaces the log-only stub for date-rule computation and calendar publishing.
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -88,11 +89,33 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
         return "calendar_event_registered"
 
     if action_type == "publish_academic_calendar_to_profiles":
+        from app.services.institute_calendar_service import publish_calendar_from_instance_context
+
+        ic = C.instance_ctx(instance)
+        merged = {**ic, **ctx}
+        actor_raw = ctx.get("published_by") or ctx.get("actor_id")
+        published_by = None
+        if actor_raw:
+            try:
+                published_by = uuid.UUID(str(actor_raw))
+            except (TypeError, ValueError):
+                published_by = None
+        cal = await publish_calendar_from_instance_context(
+            db, instance, merged, published_by=published_by
+        )
         extra["academic_calendar_published"] = True
         extra["academic_calendar_published_at"] = C.now_iso()
+        if cal.term_start_date:
+            extra["term_start_date"] = cal.term_start_date.isoformat()
+        if cal.term_end_date:
+            extra["term_end_date"] = cal.term_end_date.isoformat()
         C.commit_student_extra(student, extra)
-        C.record_event(instance, action_type, {"published": True})
-        return "academic_calendar_published"
+        C.record_event(
+            instance,
+            action_type,
+            {"published": True, "term_code": cal.term_code},
+        )
+        return f"academic_calendar_published term={cal.term_code}"
 
     if action_type == "monitor_return_at_end_date":
         end = ctx.get("interruption_end_date") or ctx.get("end_date") or ctx.get("return_date")

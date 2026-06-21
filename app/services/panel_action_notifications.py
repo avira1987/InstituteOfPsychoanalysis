@@ -12,6 +12,7 @@ from sqlalchemy.orm import aliased
 
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance, Student, User, InterviewSlot
+from app.services.panel_task_reminders import load_active_panel_reminders
 from app.services.operator_readiness import compute_operator_readiness_alerts
 from app.services.portal_role_inbox import build_portal_role_process_inbox
 from app.core.portal_role_home import (
@@ -75,6 +76,31 @@ def notification_action_path(item: dict[str, Any]) -> str:
         if ap:
             return ap if ap.startswith("/") else "/" + ap.lstrip("/")
         return "/panel/portal/interviewer"
+    if kind == "daily_overdue":
+        ap = (item.get("action_path") or "").strip()
+        if ap:
+            return ap if ap.startswith("/") else "/" + ap.lstrip("/")
+        return "/panel/notifications"
+    if kind == "semester_prep_sla":
+        instance_id = item.get("instance_id")
+        student_id = item.get("student_id")
+        code = (item.get("responsible_role_code") or "").strip().lower()
+        base = {"instance_id": instance_id, "student_id": student_id, "tab": "reviews"}
+        if code == "site_manager":
+            return _path_query("/panel/portal/site-manager", {**base, "tab": "pending"})
+        if code in _COMMITTEE_ROLES or code in (
+            "deputy_education_director",
+            "course_committee_executive",
+            "scientific_officer_course_committee",
+        ):
+            return _path_query(
+                committee_kind_path(committee_kind_for_assigned_role(code or "deputy_education")),
+                base,
+            )
+        if code in _STAFF_LIKE or code == "admissions_officer":
+            lane = staff_lane_for_assigned_role(code or "admissions_officer")
+            return _path_query(staff_lane_path(lane), {**base, "tab": "pending"})
+        return _path_query("/panel/semester-prep", {})
 
     instance_id = item.get("instance_id")
     student_id = item.get("student_id")
@@ -352,10 +378,14 @@ async def build_action_notifications(
     process_limit: int = 120,
     scan_cap: int = 600,
 ) -> dict[str, Any]:
+    persisted = await load_active_panel_reminders(db, user.id, limit=50)
     if (user.role or "").strip().lower() == "student":
         r = await db.execute(select(Student).where(Student.user_id == user.id))
         student = r.scalars().first()
         if not student:
+            if persisted:
+                page = persisted[offset : offset + max(limit, 0)]
+                return {"items": page, "total": len(persisted)}
             return {"items": [], "total": 0}
         rows = await _student_pending_notification_sources(db, user, scan_cap=min(scan_cap, 2000))
         all_items: list[dict[str, Any]] = []
@@ -380,6 +410,12 @@ async def build_action_notifications(
                 all_items.append(n)
         for ib in await _upcoming_paid_interview_slot_notifications(db, user):
             all_items.append(ib)
+
+    if persisted:
+        seen_ids = {i.get("notification_id") for i in all_items}
+        for p in persisted:
+            if p.get("notification_id") not in seen_ids:
+                all_items.insert(0, p)
 
     all_items.sort(key=lambda x: x.get("sort_at") or "", reverse=True)
     total = len(all_items)

@@ -110,5 +110,20 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "milestone",
+    "completion_role": "teaching_assistant",
+    "triggers": [
+      {
+        "event": "reminder_sent",
+        "when": "session_5_or_10_or_15_ended"
+      },
+      {
+        "event": "deadline_passed",
+        "state": "ta_form_fill",
+        "sla_days": 4
+      }
+    ]
+  }
 }

@@ -16,6 +16,7 @@ from app.services.nav_pending_counts import compute_nav_pending_counts
 from app.services.operator_followup_inbox import build_operator_followup_inbox_full
 from app.services.operator_readiness import compute_operator_readiness_alerts
 from app.services.panel_action_notifications import build_action_notifications
+from app.services.panel_task_reminders import dismiss_panel_task_reminder, load_active_panel_reminders
 from app.services.portal_role_inbox import build_portal_role_process_inbox
 from app.services import sms_simulation_service
 
@@ -152,6 +153,20 @@ async def panel_action_notifications(
         process_limit=process_limit,
         scan_cap=scan_cap,
     )
+
+
+@router.post("/task-reminders/{reminder_id}/dismiss")
+async def panel_dismiss_task_reminder(
+    reminder_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """بستن نوتیفیکیشن ثبت‌شده (مثلاً یادآوری روزانه کار عقب‌افتاده)."""
+    ok = await dismiss_panel_task_reminder(db, reminder_id=reminder_id, user_id=user.id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="reminder not found")
+    await db.commit()
+    return {"ok": True}
 
 
 @router.get("/simulated-sms")

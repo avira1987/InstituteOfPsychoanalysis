@@ -28,6 +28,7 @@ from app.models.operational_models import (
     BlogPost,
     SupportTicket,
     TicketComment,
+    InstituteCalendar,
 )
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
 from app.models.audit_models import AuditLog
@@ -1293,3 +1294,181 @@ async def get_system_resource_snapshot(
     from app.services.system_resource_snapshot import collect_resource_snapshot
 
     return collect_resource_snapshot()
+
+
+# ─── Academic calendar (InstituteCalendar) ───────────────────
+
+
+class AcademicCalendarBody(BaseModel):
+    term_code: str
+    term_start_date: Optional[str] = None
+    term_end_date: Optional[str] = None
+    registration_open_at: Optional[str] = None
+    registration_deadline_at: Optional[str] = None
+    evaluation_open_at: Optional[str] = None
+    evaluation_close_at: Optional[str] = None
+
+
+class AcademicCalendarResponse(BaseModel):
+    id: str
+    term_code: str
+    is_active: bool
+    term_start_date: Optional[str] = None
+    term_end_date: Optional[str] = None
+    registration_open_at: Optional[str] = None
+    registration_deadline_at: Optional[str] = None
+    evaluation_open_at: Optional[str] = None
+    evaluation_close_at: Optional[str] = None
+    published_at: Optional[str] = None
+
+
+def _calendar_to_response(cal: InstituteCalendar) -> AcademicCalendarResponse:
+    return AcademicCalendarResponse(
+        id=str(cal.id),
+        term_code=cal.term_code,
+        is_active=bool(cal.is_active),
+        term_start_date=cal.term_start_date.isoformat() if cal.term_start_date else None,
+        term_end_date=cal.term_end_date.isoformat() if cal.term_end_date else None,
+        registration_open_at=cal.registration_open_at.isoformat() if cal.registration_open_at else None,
+        registration_deadline_at=cal.registration_deadline_at.isoformat() if cal.registration_deadline_at else None,
+        evaluation_open_at=cal.evaluation_open_at.isoformat() if cal.evaluation_open_at else None,
+        evaluation_close_at=cal.evaluation_close_at.isoformat() if cal.evaluation_close_at else None,
+        published_at=cal.published_at.isoformat() if cal.published_at else None,
+    )
+
+
+@router.get("/academic-calendar/active", response_model=Optional[AcademicCalendarResponse])
+async def get_active_academic_calendar(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff")),
+):
+    from app.services.institute_calendar_service import get_active_calendar
+
+    cal = await get_active_calendar(db)
+    return _calendar_to_response(cal) if cal else None
+
+
+@router.put("/academic-calendar/active", response_model=AcademicCalendarResponse)
+async def upsert_active_academic_calendar(
+    body: AcademicCalendarBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    from app.services.institute_calendar_service import (
+        calendar_payload_from_context,
+        upsert_active_calendar,
+        sync_term_dates_to_students,
+    )
+
+    payload = calendar_payload_from_context(body.model_dump())
+    cal = await upsert_active_calendar(db, payload=payload, published_by=current_user.id)
+    await sync_term_dates_to_students(db, cal)
+    await db.commit()
+    await db.refresh(cal)
+    return _calendar_to_response(cal)
+
+
+# ─── Semester preparation (institute workflows) ───────────────
+
+
+class SemesterPrepStartBody(BaseModel):
+    process_code: str
+
+
+@router.get("/semester-prep/status")
+async def get_semester_prep_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "deputy_education", "staff")),
+):
+    from app.services.semester_prep_service import build_prep_status
+
+    return await build_prep_status(db)
+
+
+@router.post("/semester-prep/start")
+async def start_semester_prep(
+    body: SemesterPrepStartBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "deputy_education")),
+):
+    from app.services.semester_prep_service import (
+        FALL_PREP,
+        WINTER_PREP,
+        build_prep_status,
+        ensure_fall_prep_started,
+        ensure_winter_prep_started,
+    )
+
+    code = (body.process_code or "").strip()
+    if code not in (FALL_PREP, WINTER_PREP):
+        raise HTTPException(status_code=400, detail="process_code نامعتبر")
+    try:
+        if code == FALL_PREP:
+            result = await ensure_fall_prep_started(
+                db, actor_id=current_user.id, actor_role=current_user.role
+            )
+        else:
+            result = await ensure_winter_prep_started(
+                db, actor_id=current_user.id, actor_role=current_user.role
+            )
+        await db.commit()
+        return {"start": result, "status": await build_prep_status(db)}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ─── Process scheduler (automation) ─────────────────────────
+
+
+@router.get("/scheduler/automation-index")
+async def get_scheduler_automation_index(
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education")),
+):
+    """فهرست متادیتای فرایندهای زمان‌محور (دسته ۳)."""
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[3] / "metadata" / "scheduled_automation_index.json"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="scheduled_automation_index.json not found")
+    with path.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+@router.post("/scheduler/run-pass")
+async def run_scheduler_pass_manual(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    """اجرای دستی یک دور process_scheduler + calendar_triggers (برای تست/اپراتور)."""
+    from app.services.calendar_triggers import run_calendar_trigger_pass
+
+    summary = await run_calendar_trigger_pass(db)
+    await db.commit()
+    return summary
+
+
+@router.get("/scheduler/daily-overdue-runs")
+async def get_daily_overdue_runs(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education")),
+    limit: int = Query(30, ge=1, le=100),
+):
+    """گزارش اجراهای موتور چک روزانه کارهای عقب‌افتاده."""
+    from app.services.daily_overdue_check_service import list_daily_overdue_runs
+
+    runs = await list_daily_overdue_runs(db, limit=limit)
+    return {"runs": runs}
+
+
+@router.post("/scheduler/run-daily-overdue")
+async def run_daily_overdue_manual(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    """اجرای دستی موتور چک روزانه (تست / اپراتور)."""
+    from app.services.daily_overdue_check_service import run_daily_overdue_check_pass
+
+    summary = await run_daily_overdue_check_pass(db, triggered_by="manual", force=True)
+    await db.commit()
+    return summary

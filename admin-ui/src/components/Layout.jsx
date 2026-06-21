@@ -100,7 +100,13 @@ export default function Layout() {
     })
     let merged
     if (dynamicNavMergeMode === 'replace') {
-      merged = dyn.length > 0 ? [...dyn] : [...filtered]
+      // منوی داینامیک فقط جایگزین آیتم‌های هم‌مسیر می‌شود؛ منوی اصلی (داشبورد، اتوماسیون، …) حفظ می‌ماند
+      if (dyn.length > 0) {
+        const dynPaths = new Set(dyn.map((d) => d.path))
+        merged = [...filtered.filter((f) => !dynPaths.has(f.path)), ...dyn]
+      } else {
+        merged = [...filtered]
+      }
     } else if (dynamicNavMergeMode === 'prepend') {
       merged = [...dyn, ...filtered]
     } else {

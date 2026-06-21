@@ -21,7 +21,7 @@ from app.models.operational_models import (
     Student, User, ProcessInstance, TherapySession, FinancialRecord, AttendanceRecord,
     InterviewSlot,
 )
-from app.services.notification_service import notification_service
+from app.services.notification_service import TEMPLATES, notification_service
 from app.services.payment_service import PaymentService
 from app.services.attendance_service import AttendanceService
 from app.services.external_integration import append_integration_event, notify_integration
@@ -315,12 +315,22 @@ class ActionHandler:
 
         msg_override = (action.get("template_text_fa") or action.get("template_text") or "").strip() or None
         sent = []
+        effective_template = template
+        if ntype == "in_app" and template.startswith("sla_warning_") and template not in TEMPLATES:
+            effective_template = "sla_warning_non_blocking"
+            if not notif_context.get("warning_message"):
+                notif_context = {
+                    **notif_context,
+                    "warning_message": msg_override
+                    or action.get("warning_message_fa")
+                    or f"هشدار مهلت: {template}",
+                }
         for role in recipients:
             contact = await self._resolve_contact(role, instance, ntype)
             if contact:
                 result = await notification_service.send_notification(
                     ntype,
-                    template,
+                    effective_template,
                     contact,
                     notif_context,
                     message_override=msg_override,
@@ -2079,6 +2089,20 @@ class ActionHandler:
             result = await self.db.execute(stmt)
             user = result.scalars().first()
             return user.phone or user.email if user else None
+
+        from app.services.process_role_user_resolver import resolve_contact_for_assigned_role
+
+        if role in (
+            "deputy_education_director",
+            "course_committee_executive",
+            "scientific_officer_course_committee",
+            "admissions_officer",
+            "staff",
+            "admin",
+        ):
+            contact = await resolve_contact_for_assigned_role(self.db, role)
+            if contact:
+                return contact
 
         ctx = _as_mapping(instance.context_data)
         if role == "new_supervisor" and ctx.get("new_supervisor_id"):

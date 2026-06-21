@@ -109,5 +109,15 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "milestone",
+    "completion_role": "instructor",
+    "triggers": [
+      {
+        "event": "session_2_started_without_registration",
+        "when": "lms.session_2_started"
+      }
+    ]
+  }
 }

@@ -447,6 +447,38 @@
       ]
     },
     {
+      "code": "winter_marketing_campaign_form",
+      "name_fa": "فرم تأیید شروع کمپین بازاریابی زمستان",
+      "used_in_state": "marketing_campaign",
+      "fields": [
+        {
+          "name": "marketing_confirmed",
+          "label_fa": "شروع تبلیغات پذیرش زمستان تأیید می‌شود",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "name": "marketing_channels",
+          "label_fa": "کانال‌های اطلاع‌رسانی",
+          "type": "multi_select",
+          "required": false,
+          "options": [
+            "سایت",
+            "اینستاگرام",
+            "پیامک",
+            "خبرنامه",
+            "سایر"
+          ]
+        },
+        {
+          "name": "marketing_notes",
+          "label_fa": "یادداشت برای مدیر مارکتینگ",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
       "code": "winter_interviewer_assignment_form",
       "name_fa": "فرم تعیین مصاحبه‌کنندگان زمستان",
       "used_in_state": "interviewer_assignment",
@@ -537,5 +569,15 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "instance_sla",
+    "completion_role": "staff",
+    "triggers": [
+      {
+        "event": "sla_expired",
+        "actor_role": "system"
+      }
+    ]
+  }
 }

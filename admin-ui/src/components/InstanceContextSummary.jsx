@@ -12,17 +12,15 @@ import {
   formatInterviewResultDisplay,
   formatContextStringForDisplay,
 } from '../utils/contextInstanceDisplay'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import { filterContextForOperators } from '../utils/operatorContextFilter'
 
 function formatIsoMaybe(s) {
   if (typeof s !== 'string') return s
   const t = Date.parse(s)
   if (Number.isNaN(t)) return s
-  try {
-    return new Date(s).toLocaleString('fa-IR', { dateStyle: 'medium', timeStyle: 'short' })
-  } catch {
-    return s
-  }
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(s.slice(0, 10)) && !s.includes('T')
+  return formatShamsiTehran(s, { dateOnly })
 }
 
 function formatScalar(value) {

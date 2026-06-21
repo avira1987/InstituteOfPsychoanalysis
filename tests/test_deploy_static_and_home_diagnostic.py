@@ -126,6 +126,25 @@ async def test_asset_from_index_is_reachable():
 
 
 @pytest.mark.asyncio
+async def test_missing_asset_chunk_returns_404_not_spa_html():
+    """chunk قدیمی بعد از rebuild نباید index.html برگرداند (باعث خطای import ماژول می‌شود)."""
+    import app.main as main_mod
+    from app.main import app
+
+    if not main_mod.ADMIN_UI_DIR.exists():
+        pytest.skip("بدون dist")
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.get("/assets/StudentPortal-OLD_HASH_DOES_NOT_EXIST.js")
+
+    assert r.status_code == 404, f"انتظار 404 برای asset ناموجود؛ گرفت {r.status_code}"
+    ctype = (r.headers.get("content-type") or "").lower()
+    assert "text/html" not in ctype, (
+        f"asset ناموجود نباید HTML SPA برگرداند؛ content-type={ctype!r}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_api_auth_home_exists_and_shape_for_admin():
     """
     /api/auth/home باید ۲۰۰ و فیلدهای لازم را بدهد (بدون نیاز به DB برای نقش ادمین).

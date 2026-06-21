@@ -500,6 +500,86 @@ class SmsSimulationOutbox(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
+class InstituteCalendar(Base):
+    """تقویم آموزشی فعال انستیتو — منبع تاریخ ترم، ثبت‌نام و ارزیابی."""
+
+    __tablename__ = "institute_calendars"
+    __table_args__ = (
+        Index("ix_institute_calendars_active", "is_active"),
+        Index("ix_institute_calendars_term_code", "term_code"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    term_code = Column(String(50), unique=True, nullable=False)
+    is_active = Column(Boolean, default=False, nullable=False, server_default=text("false"))
+    term_start_date = Column(Date, nullable=True)
+    term_end_date = Column(Date, nullable=True)
+    registration_open_at = Column(DateTime(timezone=True), nullable=True)
+    registration_deadline_at = Column(DateTime(timezone=True), nullable=True)
+    evaluation_open_at = Column(DateTime(timezone=True), nullable=True)
+    evaluation_close_at = Column(DateTime(timezone=True), nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=True)
+    published_by = Column(UUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    source_process_instance_id = Column(
+        UUID, ForeignKey("process_instances.id", ondelete="SET NULL"), nullable=True
+    )
+    extra_data = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+
+class PanelTaskReminder(Base):
+    """نوتیفیکیشن ثبت‌شدهٔ پنل — مثلاً یادآوری روزانه کار عقب‌افتاده."""
+
+    __tablename__ = "panel_task_reminders"
+    __table_args__ = (
+        Index("ix_panel_task_reminders_user", "user_id"),
+        Index("ix_panel_task_reminders_run_date", "run_date_tehran"),
+        UniqueConstraint("fingerprint", name="uq_panel_task_reminders_fingerprint"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    kind = Column(String(50), nullable=False, default="daily_overdue")
+    title_fa = Column(String(500), nullable=False)
+    summary_fa = Column(Text, nullable=True)
+    action_path = Column(String(1024), nullable=False)
+    instance_id = Column(UUID, ForeignKey("process_instances.id", ondelete="SET NULL"), nullable=True)
+    student_id = Column(UUID, ForeignKey("students.id", ondelete="SET NULL"), nullable=True)
+    process_code = Column(String(100), nullable=True)
+    state_code = Column(String(100), nullable=True)
+    responsible_role_code = Column(String(50), nullable=True)
+    source = Column(String(50), nullable=False, default="daily_overdue_check")
+    run_date_tehran = Column(Date, nullable=False)
+    sms_sent_at = Column(DateTime(timezone=True), nullable=True)
+    fingerprint = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    dismissed_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
+class DailyOverdueRunLog(Base):
+    """گزارش اجرای موتور چک روزانه کارهای عقب‌افتاده."""
+
+    __tablename__ = "daily_overdue_run_logs"
+    __table_args__ = (
+        Index("ix_daily_overdue_run_logs_date", "run_date_tehran"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    run_date_tehran = Column(Date, nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    tasks_found = Column(Integer, default=0, nullable=False)
+    sms_sent = Column(Integer, default=0, nullable=False)
+    notifications_created = Column(Integer, default=0, nullable=False)
+    skipped_dedup = Column(Integer, default=0, nullable=False)
+    errors_json = Column(JSONB, nullable=True)
+    triggered_by = Column(String(20), nullable=False, default="scheduler")
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
 class SmsSimulationDismissal(Base):
     """بستن پاپ‌آپ توسط کاربر — هر کاربر فقط پیامک به شمارهٔ خودش را می‌بیند."""
 

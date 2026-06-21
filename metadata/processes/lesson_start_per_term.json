@@ -139,5 +139,15 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "calendar_date",
+    "completion_role": "student",
+    "triggers": [
+      {
+        "event": "term_start_lesson",
+        "when": "term_start_date_lte_today"
+      }
+    ]
+  }
 }

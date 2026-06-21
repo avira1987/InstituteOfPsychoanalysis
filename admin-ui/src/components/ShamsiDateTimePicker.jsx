@@ -23,6 +23,7 @@ export default function ShamsiDateTimePicker({
   onChange,
   idPrefix = 'shamsi',
   compact = false,
+  disabled = false,
 }) {
   const { jy, jm, jd, hour, minute } = value
   const maxDay = useMemo(() => jalaaliMonthLength(jy, jm), [jy, jm])
@@ -76,6 +77,7 @@ export default function ShamsiDateTimePicker({
             className="psf-input"
             style={{ width: '100%', marginTop: '0.2rem' }}
             value={jy}
+            disabled={disabled}
             onChange={(e) => setPart({ jy: parseInt(e.target.value, 10) })}
           >
             {years.map((y) => (
@@ -90,6 +92,7 @@ export default function ShamsiDateTimePicker({
             className="psf-input"
             style={{ width: '100%', marginTop: '0.2rem' }}
             value={jm}
+            disabled={disabled}
             onChange={(e) => setPart({ jm: parseInt(e.target.value, 10) })}
           >
             {JALAALI_MONTHS_FA.map((name, i) => (
@@ -104,6 +107,7 @@ export default function ShamsiDateTimePicker({
             className="psf-input"
             style={{ width: '100%', marginTop: '0.2rem' }}
             value={Math.min(jd, maxDay)}
+            disabled={disabled}
             onChange={(e) => setPart({ jd: parseInt(e.target.value, 10) })}
           >
             {days.map((d) => (
@@ -122,6 +126,7 @@ export default function ShamsiDateTimePicker({
             style={{ width: '100%', marginTop: '0.2rem' }}
             dir="ltr"
             value={hour}
+            disabled={disabled}
             onChange={(e) => setPart({ hour: Math.min(23, Math.max(0, parseInt(e.target.value, 10) || 0)) })}
           />
         </label>
@@ -136,6 +141,7 @@ export default function ShamsiDateTimePicker({
             style={{ width: '100%', marginTop: '0.2rem' }}
             dir="ltr"
             value={minute}
+            disabled={disabled}
             onChange={(e) => setPart({ minute: Math.min(59, Math.max(0, parseInt(e.target.value, 10) || 0)) })}
           />
         </label>

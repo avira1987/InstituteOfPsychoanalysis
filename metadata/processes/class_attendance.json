@@ -97,5 +97,15 @@
         }
       ]
     }
-  ]
+  ],
+  "scheduled_automation": {
+    "mode": "calendar_date",
+    "completion_role": "instructor",
+    "triggers": [
+      {
+        "event": "session_time_reached",
+        "context_field": "session_date"
+      }
+    ]
+  }
 }

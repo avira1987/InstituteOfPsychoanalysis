@@ -96,6 +96,10 @@ async def _seed_if_empty():
         await _ensure_admin_user(db)
         # Always ensure the system actor user exists (FK target for system-initiated processes)
         await _ensure_system_actor_user(db)
+        from app.services.institute_operational_anchor import ensure_institute_operational_student
+
+        await ensure_institute_operational_student(db)
+        await db.commit()
 
         # Check if process definitions exist
         result = await db.execute(select(func.count(ProcessDefinition.id)))
@@ -454,10 +458,20 @@ if ADMIN_UI_DIR.exists():
 
     _index = ADMIN_UI_DIR / "index.html"
 
+    def _spa_index_response():
+        response = FileResponse(str(_index))
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return response
+
+    def _is_static_asset_path(path: str) -> bool:
+        if "/assets/" in path:
+            return True
+        return path.endswith((".js", ".css", ".woff2", ".woff", ".png", ".ico", ".svg", ".map"))
+
     @app.get("/")
     async def serve_spa_root():
         # پشت Apache معمولاً همین «/» است؛ دسترسی مستقیم /anistito/ هم با middleware به اینجا می‌رسد
-        return FileResponse(str(_index))
+        return _spa_index_response()
 
     # فایل‌های استاتیک و مسیرهای SPA
     @app.get("/{filename}")
@@ -469,14 +483,15 @@ if ADMIN_UI_DIR.exists():
         if file_path.exists() and file_path.is_file():
             return FileResponse(str(file_path))
         # برای مسیرهای SPA (login و ...)، index.html را برگردان
-        return FileResponse(str(_index))
+        return _spa_index_response()
 
-    # fallback برای 404ها (به جز API)
+    # fallback برای 404ها (به جز API و فایل‌های استاتیک بیلد)
     @app.exception_handler(404)
     async def spa_fallback(request, exc):
-        if request.url.path.startswith("/api"):
+        path = request.url.path
+        if path.startswith("/api") or _is_static_asset_path(path):
             return JSONResponse(status_code=404, content={"detail": "Not Found"})
-        return FileResponse(str(_index))
+        return _spa_index_response()
 else:
     # اگر build فرانت موجود نباشد
     @app.get("/")
