@@ -8,6 +8,45 @@
     "triggered_by": "therapy_early_termination",
     "trigger_condition": "termination_reason_3"
   },
+  "forms": [
+    {
+      "code": "commission_decision",
+      "title_fa": "بررسی و رأی کمیسیون تخصصی",
+      "description_fa": "پرونده و جلسه با دانشجو را بررسی کنید؛ فرم را ثبت کنید، سپس دکمهٔ تأیید یا رد صلاحیت را بزنید.",
+      "used_in_state": "commission_review",
+      "visible_to": [
+        "specialized_commission",
+        "admin",
+        "staff"
+      ],
+      "fields": [
+        {
+          "name": "termination_reason_display",
+          "label_fa": "علت قطع درمان (گزارش درمانگر)",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "termination_note_display",
+          "label_fa": "توضیحات درمانگر",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "commission_meeting_notes_fa",
+          "label_fa": "یادداشت جلسه با دانشجو",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "name": "commission_opinion_fa",
+          "label_fa": "نظر تخصصی کمیسیون (محرمانه)",
+          "type": "textarea",
+          "required": true
+        }
+      ]
+    }
+  ],
   "states": [
     {
       "code": "commission_review",

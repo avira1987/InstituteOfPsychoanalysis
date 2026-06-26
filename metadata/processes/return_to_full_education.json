@@ -45,7 +45,12 @@
       "to": "clinical_roles_selection",
       "trigger": "request_submitted",
       "required_role": "student",
-      "description_fa": "ارسال درخواست"
+      "description_fa": "ارسال درخواست",
+      "actions": [
+        {
+          "type": "record_return_request"
+        }
+      ]
     },
     {
       "from": "clinical_roles_selection",

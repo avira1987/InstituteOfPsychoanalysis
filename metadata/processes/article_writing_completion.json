@@ -76,7 +76,12 @@
       "to": "instructor_eval_pending",
       "trigger": "defense_requested",
       "required_role": "student",
-      "description_fa": "درخواست دفاع ثبت شد"
+      "description_fa": "درخواست دفاع ثبت شد",
+      "actions": [
+        {
+          "type": "record_article_milestone"
+        }
+      ]
     },
     {
       "from": "class_closed_student",

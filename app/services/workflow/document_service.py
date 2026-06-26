@@ -86,18 +86,25 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
             "created_at": C.now_iso(),
             "signed": False,
             "archived": False,
-            "portal_visible": False,
-            "export_enabled": doc_type == "pdf_export",
+            "portal_visible": doc_type in ("term_transcript", "cumulative_transcript", "pdf_export"),
+            "export_enabled": doc_type in ("term_transcript", "cumulative_transcript", "pdf_export"),
         }
-        doc["url"] = f"/documents/{doc['id']}"
+        doc["url"] = f"/api/process/student/{instance.student_id}/documents/{doc['id']}"
         docs.append(doc)
         result = f"document_created type={doc_type} id={doc['id']}"
 
     elif action_type == "enable_pdf_export":
-        target = _latest_doc(docs)
-        if target:
-            target["export_enabled"] = True
-            result = f"pdf_export_enabled id={target['id']}"
+        exportable = [
+            d
+            for d in docs
+            if d.get("type") in ("term_transcript", "cumulative_transcript", "pdf_export", "certificate")
+        ]
+        if exportable:
+            for d in exportable:
+                d["export_enabled"] = True
+                if d.get("type") in ("term_transcript", "cumulative_transcript", "pdf_export"):
+                    d["portal_visible"] = True
+            result = f"pdf_export_enabled n={len(exportable)}"
         else:
             extra["pdf_export_enabled"] = True
             result = "pdf_export_enabled global"

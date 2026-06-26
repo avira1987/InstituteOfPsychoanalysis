@@ -839,6 +839,50 @@ async def _apply_payment_success_transition(
                 logger.exception("[PAYMENT] comp_reg tuition_payment_confirmed failed: %s", e)
                 return False
 
+    if inst.process_code == "supervision_block_transition":
+        if inst.current_state_code == "slot_selected":
+            try:
+                await engine.execute_transition(
+                    instance_id=instance_id,
+                    trigger_event="payment_success_new_block_first",
+                    actor_id=system_actor_id,
+                    actor_role="system",
+                    payload=payload,
+                )
+                logger.info(
+                    "[PAYMENT] supervision_block_transition payment_success_new_block_first instance_id=%s ref=%s",
+                    instance_id,
+                    ref_id,
+                )
+                return True
+            except Exception as e:
+                logger.exception(
+                    "[PAYMENT] supervision_block_transition payment_success_new_block_first failed: %s",
+                    e,
+                )
+                return False
+        if inst.current_state_code == "new_block_first_paid":
+            try:
+                await engine.execute_transition(
+                    instance_id=instance_id,
+                    trigger_event="payment_success_50th",
+                    actor_id=system_actor_id,
+                    actor_role="system",
+                    payload=payload,
+                )
+                logger.info(
+                    "[PAYMENT] supervision_block_transition payment_success_50th instance_id=%s ref=%s",
+                    instance_id,
+                    ref_id,
+                )
+                return True
+            except Exception as e:
+                logger.exception(
+                    "[PAYMENT] supervision_block_transition payment_success_50th failed: %s",
+                    e,
+                )
+                return False
+
     return False
 
 

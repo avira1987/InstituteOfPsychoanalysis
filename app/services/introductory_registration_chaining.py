@@ -49,13 +49,6 @@ async def _resolve_system_actor_id(db) -> uuid.UUID:
     return row if row else uuid.uuid4()
 
 
-async def _student_user_id(db, instance: ProcessInstance) -> uuid.UUID | None:
-    st = await db.get(Student, instance.student_id)
-    if st and st.user_id:
-        return st.user_id
-    return None
-
-
 async def chain_introductory_registration_after_transition(
     db,
     engine: StateMachineEngine,
@@ -63,11 +56,21 @@ async def chain_introductory_registration_after_transition(
     to_state: str,
     actor_id: uuid.UUID,
 ) -> None:
-    """پس از نتیجهٔ پذیرش: دعوت خودکار به بارگذاری مدارک؛ پس از ایجاد حساب: ورود به انتخاب درس."""
+    """پس از نتیجهٔ پذیرش: دعوت خودکار به بارگذاری مدارک (فقط وقتی gate باز است)."""
     if instance.process_code != "introductory_course_registration":
         return
 
     if to_state in _INTRO_ADMISSION_RESULT_STATES:
+        from app.services.registration_readiness_service import check_intro_registration_gate
+
+        gate = await check_intro_registration_gate(db)
+        if not gate.allowed:
+            logger.info(
+                "introductory proceed_to_documents deferred (gate closed) instance=%s",
+                instance.id,
+            )
+            return
+
         ctx = _set_deadlines(_ctx(instance))
         instance.context_data = ctx
         flag_modified(instance, "context_data")
@@ -84,25 +87,6 @@ async def chain_introductory_registration_after_transition(
         if not result.success:
             logger.warning(
                 "introductory auto proceed_to_documents failed instance=%s: %s",
-                instance.id,
-                result.error,
-            )
-        return
-
-    if to_state == "credentials_created":
-        stu_uid = await _student_user_id(db, instance)
-        if not stu_uid:
-            return
-        result = await engine.execute_transition(
-            instance.id,
-            "student_logged_in",
-            stu_uid,
-            "student",
-            {"lms_login": True},
-        )
-        if not result.success:
-            logger.warning(
-                "introductory auto student_logged_in failed instance=%s: %s",
                 instance.id,
                 result.error,
             )

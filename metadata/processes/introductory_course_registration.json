@@ -590,6 +590,11 @@
         "admissions_officer",
         "admin"
       ],
+      "editable_by": [
+        "interviewer",
+        "admissions_officer",
+        "admin"
+      ],
       "note_fa": "این فرم محرمانه است و برای دانشجو قابل مشاهده نیست",
       "fields": [
         {
@@ -645,6 +650,10 @@
       "code": "documents_upload_form",
       "name_fa": "فرم آپلود مدارک",
       "used_in_state": "documents_upload",
+      "editable_by": [
+        "admissions_officer",
+        "admin"
+      ],
       "note_fa": "لطفاً مدارک زیر را با کیفیت خوانا و واضح بارگذاری کنید. فرمت‌های مجاز: تصویر یا PDF.",
       "fields": [
         {

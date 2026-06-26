@@ -74,12 +74,12 @@ def parse_sop_steps(sop_path: Path) -> list[dict[str, str]]:
         text = section_m.group(1)
     steps: list[dict[str, str]] = []
     for m in re.finditer(
-        r"^[\s]*([۰-۹0-9]+)\)\s*(.+?)\s*$",
+        r"^(\s{0,2})([۰-۹0-9]+)\)\s*(.+?)\s*$",
         text,
         re.MULTILINE,
     ):
-        num = m.group(1).translate(_PERSIAN_DIGITS)
-        title = m.group(2).strip()
+        num = m.group(2).translate(_PERSIAN_DIGITS)
+        title = m.group(3).strip()
         if len(title) < 3 or len(title) > 120:
             continue
         steps.append({"num": num, "title": title})
@@ -107,6 +107,16 @@ def _metadata_tokens(pj: dict) -> set[str]:
                 for k, v in a.items():
                     if k in ("type", "process_code", "template") and v:
                         tokens.add(str(v).lower())
+    for f in pj.get("forms") or []:
+        for key in ("code", "name_fa"):
+            v = f.get(key)
+            if v:
+                tokens.add(str(v).lower())
+        for field in f.get("fields") or []:
+            for key in ("name", "label_fa"):
+                v = field.get(key)
+                if v:
+                    tokens.add(str(v).lower())
     return tokens
 
 
@@ -127,6 +137,9 @@ _SOP_KEYWORD_HINTS: dict[str, list[str]] = {
     "کنسلی": ["cancel", "cancellation"],
     "اساتید": ["instructor", "ta_"],
     "مقاله": ["article", "thesis"],
+    "پایان": ["interview_end_time", "end_time", "end_date", "پایان"],
+    "آنلاین": ["interview_mode", "online", "آنلاین"],
+    "حضوری": ["interview_mode", "حضوری"],
 }
 
 
@@ -531,6 +544,9 @@ def check_stuck_states(code: str, pj: dict, alt: dict) -> list[dict]:
 def check_partial_ui(code: str, pj: dict, alt: dict) -> list[dict]:
     """Partial UI paths are minor — returned as warnings not hard fails."""
     partial = (alt.get("partial_ui_paths") or {}).get(code)
+    resolved = (alt.get("interviewer_result_paths") or {}).get(code)
+    if resolved and not partial:
+        return []
     if not partial:
         return []
     roles_in_proc = set()

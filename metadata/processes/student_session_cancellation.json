@@ -13,13 +13,81 @@
       "consecutive_block_message_fa": "دانشجوی گرامی شما مجاز به کنسل کردن جلسات درمان آموزشی به صورت بیش از 3 هفته متوالی نمیباشید و باید برای این کار فرایند \"وقفه در درمان آموزشی\" را اجرا کنید."
     }
   },
+  "forms": [
+    {
+      "code": "student_cancellation_calendar",
+      "title_fa": "انتخاب جلسات برای کنسل (۳ هفته آینده)",
+      "used_in_state": "calendar_displayed",
+      "fields": [
+        {
+          "name": "selected_sessions",
+          "label_fa": "جلسات درمان آموزشی که می‌خواهید کنسل کنید",
+          "type": "checkbox_list",
+          "required": true,
+          "source": "student_cancellation_upcoming_sessions",
+          "note_fa": "فقط جلسات ۳ هفتهٔ آینده نمایش داده می‌شوند. کنسل بیش از ۳ هفته متوالی از این مسیر مجاز نیست."
+        }
+      ]
+    },
+    {
+      "code": "student_cancellation_confirm",
+      "title_fa": "تأیید نهایی کنسلی",
+      "used_in_state": "sessions_selected",
+      "fields": [
+        {
+          "name": "violation_ack",
+          "label_fa": "می‌دانم که با ثبت این کنسلی‌ها، تخلف آموزشی گزارش می‌شود و به کمیته نظارت اطلاع داده خواهد شد.",
+          "type": "checkbox",
+          "required": false
+        }
+      ]
+    }
+  ],
   "states": [
-    {"code": "calendar_displayed", "name_fa": "نمایش تقویم ۳ هفته آینده", "type": "initial", "assigned_role": "student"},
-    {"code": "consecutive_blocked", "name_fa": "مسدود — بیش از ۳ هفته متوالی", "type": "terminal", "assigned_role": "system"},
-    {"code": "sessions_selected", "name_fa": "جلسات انتخاب شده", "type": "intermediate", "assigned_role": "student"},
-    {"code": "cancellation_applied", "name_fa": "کنسلی اعمال و تعیین تکلیف مالی", "type": "terminal", "assigned_role": "system"},
-    {"code": "warning_and_applied", "name_fa": "هشدار ۱۰–۱۲٪ + کنسلی اعمال", "type": "terminal", "assigned_role": "system"},
-    {"code": "violation_and_applied", "name_fa": "تخلف >۱۲٪ + کنسلی اعمال", "type": "terminal", "assigned_role": "system"}
+    {
+      "code": "calendar_displayed",
+      "name_fa": "نمایش تقویم ۳ هفته آینده",
+      "type": "initial",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب جلسات ۳ هفته آینده",
+        "student_task_fa": "جلسات مورد نظر را در فرم زیر تیک بزنید، فرم را ثبت کنید، سپس «ادامه و ثبت مرحله» را بزنید."
+      }
+    },
+    {
+      "code": "consecutive_blocked",
+      "name_fa": "مسدود — بیش از ۳ هفته متوالی",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "sessions_selected",
+      "name_fa": "جلسات انتخاب شده",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "تأیید نهایی کنسلی",
+        "student_task_fa": "خلاصهٔ انتخاب و درصد کنسلی را در باکس بالا ببینید. در صورت هشدار، تأیید را بزنید و «ادامه و ثبت مرحله» را انتخاب کنید."
+      }
+    },
+    {
+      "code": "cancellation_applied",
+      "name_fa": "کنسلی اعمال و تعیین تکلیف مالی",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "warning_and_applied",
+      "name_fa": "هشدار ۱۰–۱۲٪ + کنسلی اعمال",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "violation_and_applied",
+      "name_fa": "تخلف >۱۲٪ + کنسلی اعمال",
+      "type": "terminal",
+      "assigned_role": "system"
+    }
   ],
   "transitions": [
     {
@@ -27,16 +95,25 @@
       "to": "consecutive_blocked",
       "trigger": "student_selects_sessions",
       "required_role": "student",
-      "conditions": ["would_exceed_3_consecutive_weeks"],
+      "conditions": [
+        "would_exceed_3_consecutive_weeks"
+      ],
       "description_fa": "انتخاب منجر به بیش از ۳ هفته متوالی — نمایش پیام و مسدود",
-      "actions": [{"type": "display_error_message", "message_key": "consecutive_weeks_blocked"}]
+      "actions": [
+        {
+          "type": "display_error_message",
+          "message_key": "consecutive_weeks_blocked"
+        }
+      ]
     },
     {
       "from": "calendar_displayed",
       "to": "sessions_selected",
       "trigger": "student_selects_sessions",
       "required_role": "student",
-      "conditions": ["consecutive_weeks_valid"],
+      "conditions": [
+        "consecutive_weeks_valid"
+      ],
       "description_fa": "انتخاب معتبر — پیش از ثبت، محاسبه درصد"
     },
     {
@@ -44,12 +121,28 @@
       "to": "cancellation_applied",
       "trigger": "student_confirms",
       "required_role": "student",
-      "conditions": ["cancellation_below_10_percent"],
+      "conditions": [
+        "cancellation_below_10_percent"
+      ],
       "description_fa": "کنسلی زیر ۱۰٪ — فقط تعیین تکلیف مالی",
       "actions": [
-        {"type": "mark_sessions_cancelled_by_student"},
-        {"type": "block_attendance_for_cancelled_sessions"},
-        {"type": "start_process", "process_code": "fee_determination", "payload": {"trigger": "student_cancelled_session"}, "run_for_each_session": true}
+        {
+          "type": "mark_sessions_cancelled_by_student"
+        },
+        {
+          "type": "block_attendance_for_cancelled_sessions"
+        },
+        {
+          "type": "start_process",
+          "process_code": "fee_determination",
+          "payload": {
+            "trigger": "student_cancelled_session"
+          },
+          "run_for_each_session": true
+        },
+        {
+          "type": "record_cancellation_applied"
+        }
       ]
     },
     {
@@ -57,13 +150,36 @@
       "to": "warning_and_applied",
       "trigger": "student_confirms",
       "required_role": "student",
-      "conditions": ["cancellation_10_to_12_percent"],
+      "conditions": [
+        "cancellation_10_to_12_percent"
+      ],
       "description_fa": "کنسلی ۱۰–۱۲٪ — هشدار + ثبت تخلف + تعیین تکلیف مالی",
       "actions": [
-        {"type": "mark_sessions_cancelled_by_student"},
-        {"type": "block_attendance_for_cancelled_sessions"},
-        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "student_cancellation_warning_10_12", "title_fa": "هشدار پیشگیری از تخلف"}},
-        {"type": "start_process", "process_code": "fee_determination", "payload": {"trigger": "student_cancelled_session"}, "run_for_each_session": true}
+        {
+          "type": "mark_sessions_cancelled_by_student"
+        },
+        {
+          "type": "block_attendance_for_cancelled_sessions"
+        },
+        {
+          "type": "start_process",
+          "process_code": "violation_registration",
+          "payload": {
+            "reason": "student_cancellation_warning_10_12",
+            "title_fa": "هشدار پیشگیری از تخلف"
+          }
+        },
+        {
+          "type": "start_process",
+          "process_code": "fee_determination",
+          "payload": {
+            "trigger": "student_cancelled_session"
+          },
+          "run_for_each_session": true
+        },
+        {
+          "type": "record_cancellation_applied"
+        }
       ]
     },
     {
@@ -71,13 +187,36 @@
       "to": "violation_and_applied",
       "trigger": "student_confirms",
       "required_role": "student",
-      "conditions": ["cancellation_above_12_percent"],
+      "conditions": [
+        "cancellation_above_12_percent"
+      ],
       "description_fa": "کنسلی بیش از ۱۲٪ — تخلف آموزشی + تعیین تکلیف مالی",
       "actions": [
-        {"type": "mark_sessions_cancelled_by_student"},
-        {"type": "block_attendance_for_cancelled_sessions"},
-        {"type": "start_process", "process_code": "violation_registration", "payload": {"reason": "student_cancellation_violation", "title_fa": "تخلف آموزشی — کنسلی بیش از ۱۲٪"}},
-        {"type": "start_process", "process_code": "fee_determination", "payload": {"trigger": "student_cancelled_session"}, "run_for_each_session": true}
+        {
+          "type": "mark_sessions_cancelled_by_student"
+        },
+        {
+          "type": "block_attendance_for_cancelled_sessions"
+        },
+        {
+          "type": "start_process",
+          "process_code": "violation_registration",
+          "payload": {
+            "reason": "student_cancellation_violation",
+            "title_fa": "تخلف آموزشی — کنسلی بیش از ۱۲٪"
+          }
+        },
+        {
+          "type": "start_process",
+          "process_code": "fee_determination",
+          "payload": {
+            "trigger": "student_cancelled_session"
+          },
+          "run_for_each_session": true
+        },
+        {
+          "type": "record_cancellation_applied"
+        }
       ]
     }
   ]

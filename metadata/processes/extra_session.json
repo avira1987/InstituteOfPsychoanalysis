@@ -95,15 +95,17 @@
       "fields": [
         {
           "name": "preferred_date",
-          "label_fa": "تاریخ پیشنهادی (میلادی YYYY-MM-DD)",
-          "type": "text",
-          "required": true
+          "label_fa": "تاریخ پیشنهادی",
+          "type": "shamsi_date",
+          "required": true,
+          "description_fa": "روز موردنظر برای جلسهٔ اضافی را از تقویم شمسی انتخاب کنید."
         },
         {
           "name": "preferred_time",
-          "label_fa": "ساعت پیشنهادی (مثلاً ۱۴:۳۰ یا 14:30)",
-          "type": "text",
-          "required": true
+          "label_fa": "ساعت پیشنهادی",
+          "type": "time",
+          "required": true,
+          "description_fa": "ساعت شروع جلسه را وارد کنید (مثلاً ۱۴:۳۰)."
         },
         {
           "name": "request_note",
@@ -123,26 +125,27 @@
       "fields": [
         {
           "name": "confirmed_alternative_date",
-          "label_fa": "تاریخ تأییدشده یا جدید (YYYY-MM-DD)",
-          "type": "text",
-          "required": false
+          "label_fa": "تاریخ تأییدشده",
+          "type": "shamsi_date",
+          "required": false,
+          "description_fa": "اگر زمان پیشنهادی درمانگر را می‌پذیرید، همان تاریخ را انتخاب کنید."
         },
         {
           "name": "confirmed_alternative_time",
-          "label_fa": "ساعت تأییدشده یا جدید",
-          "type": "text",
+          "label_fa": "ساعت تأییدشده",
+          "type": "time",
           "required": false
         },
         {
           "name": "new_preferred_date",
           "label_fa": "اگر زمان دیگری می‌خواهید: تاریخ جدید",
-          "type": "text",
+          "type": "shamsi_date",
           "required": false
         },
         {
           "name": "new_preferred_time",
           "label_fa": "اگر زمان دیگری می‌خواهید: ساعت جدید",
-          "type": "text",
+          "type": "time",
           "required": false
         }
       ]

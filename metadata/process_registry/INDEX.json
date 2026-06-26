@@ -266,9 +266,9 @@
         "specialized_commission_review",
         "committees_review"
       ],
-      "last_converted": "2026-02-14",
+      "last_converted": "2026-06-25",
       "sop_order": 11,
-      "notes": "۴ گز عت. سر استادارد با ت ۵ رز. سر ع  اضباط با BPMS. SOP بخش ۱: processes/therapy_early_termination/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code therapy_early_termination"
+      "notes": "۴ گزینه علت. مسیر استاندارد با SLA ۵ روز. مسیر انضباطی با BPMS. UI بخش ۱: TherapistEarlyTerminationPanel + فرم reason_selection در TherapistPortal. SOP: processes/therapy_early_termination/SOP_document.txt"
     },
     {
       "code": "specialized_commission_review",

@@ -43,6 +43,22 @@ def test_get_process_forms_fallback_semester_has_forms():
     assert any("form" in str(f).lower() or "code" in f for f in all_forms)
 
 
+def test_committees_review_forms_for_supervision_state():
+    """committees_review exposes supervision_recommendation form at supervision_review."""
+    forms = get_process_forms("committees_review", state_code="supervision_review")
+    assert len(forms) == 1
+    assert forms[0].get("code") == "supervision_recommendation"
+    field_names = {f["name"] for f in forms[0].get("fields", [])}
+    assert "nezarat_recommendation_code" in field_names
+    assert "nezarat_recommendation_fa" in field_names
+
+
+def test_specialized_commission_review_has_decision_form():
+    forms = get_process_forms("specialized_commission_review", state_code="commission_review")
+    assert len(forms) == 1
+    assert forms[0].get("code") == "commission_decision"
+
+
 def test_get_process_ui_requirements_returns_dashboard():
     """ui_requirements is available for dashboard-style processes."""
     ui = get_process_ui_requirements("ta_track_completion")
@@ -290,3 +306,65 @@ async def test_api_start_educational_leave_sets_primary_instance(
         import json
         extra = json.loads(extra)
     assert extra.get("primary_instance_id") == iid
+
+
+@pytest.mark.asyncio
+async def test_api_educational_leave_forms_committee_review(process_api_client):
+    """فرم تعیین جلسه برای committee_review در API متادیتا موجود است."""
+    r = await process_api_client.get(
+        "/api/process/definitions/educational_leave/forms",
+        params={"state": "committee_review"},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    codes = {f.get("code") for f in data.get("forms") or []}
+    assert "leave_committee_meeting" in codes
+
+
+@pytest.mark.asyncio
+async def test_api_educational_leave_reject_requires_reason(
+    process_api_client, db_session: AsyncSession, sample_student, sample_user, sample_student_user
+):
+    """رد درخواست مرخصی بدون علت باید 400 برگرداند."""
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "educational_leave.json")
+    await db_session.commit()
+
+    engine = StateMachineEngine(db_session)
+    instance = await engine.start_process(
+        process_code="educational_leave",
+        student_id=sample_student.id,
+        actor_id=sample_student_user.id,
+        actor_role="student",
+    )
+    await db_session.commit()
+
+    for trigger, payload in [
+        ("student_submitted", {"leave_terms": 1}),
+        (
+            "committee_set_meeting",
+            {
+                "committee_meeting_at": "2026-09-15T10:30:00+00:00",
+                "committee_meeting_mode": "online",
+                "committee_meeting_link": "https://meet.example/leave",
+            },
+        ),
+        ("meeting_held", None),
+    ]:
+        result = await engine.execute_transition(
+            instance.id,
+            trigger,
+            sample_user.id,
+            "admin",
+            payload,
+        )
+        assert result.success, result.error
+        await db_session.commit()
+
+    r = await process_api_client.post(
+        f"/api/process/{instance.id}/trigger",
+        json={"trigger_event": "committee_rejected", "payload": {}},
+    )
+    assert r.status_code == 400
+    detail = r.json().get("detail") or ""
+    assert "علت رد" in detail or "rejection_reason" in detail

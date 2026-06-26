@@ -7,11 +7,9 @@
 | **منبع ورودی** | فلوچارت + متن ۸ گامی |
 
 ## نواقص
-- [ ] فرایند `violation_registration` تعریف نشده
-- [ ] فرایند `patient_referral` تعریف نشده
-- [ ] اکشن‌های transition اجرا نمی‌شوند (نیاز به handler)
-- [ ] SLA Monitor به deputy_education نمی‌فرستد
-- [ ] انتقال sla_breach_7days خودکار trigger نمی‌شود
+- [x] فرم‌های UI کمیته (تعیین جلسه + ثبت تصمیم) و فرم بازگشت دانشجو
+- [ ] فرایند `violation_registration` — UI زیرفرایند جدا
+- [ ] فرایند `patient_referral` — UI زیرفرایند جدا
 
 ## وابستگی‌ها
 - قوانین: is_intern, is_not_intern, leave_terms_eq_1, leave_terms_eq_2 ✓

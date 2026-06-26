@@ -13,8 +13,18 @@ import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBa
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
+import TherapistAttendancePanel from '../components/TherapistAttendancePanel'
+import AttendanceTrackingPanel from '../components/AttendanceTrackingPanel'
+import TherapistEarlyTerminationPanel from '../components/TherapistEarlyTerminationPanel'
+import ShamsiDatePicker from '../components/ShamsiDatePicker'
+import {
+  isoDateToShamsiParts,
+  shamsiDateToIsoDate,
+  defaultShamsiDate,
+} from '../utils/shamsiDateTime'
 
-const THERAPIST_DEEP_LINK_TABS = ['dashboard', 'pending', 'students', 'sessions', 'active']
+const THERAPIST_DEEP_LINK_TABS = ['dashboard', 'pending', 'attendance', 'students', 'sessions', 'active']
 
 const reviewStates = [
   'therapist_review', 'therapist_decision', 'awaiting_therapist',
@@ -42,6 +52,8 @@ export default function TherapistPortal() {
   const [therapySessions, setTherapySessions] = useState([])
   const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
   const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
+  const [attendanceNeedsCount, setAttendanceNeedsCount] = useState(0)
+  const [startingEarlyTerminationFor, setStartingEarlyTerminationFor] = useState(null)
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -62,6 +74,15 @@ export default function TherapistPortal() {
   useEffect(() => {
     if (activeTab === 'sessions') loadTherapySessions()
   }, [activeTab])
+
+  const loadAttendanceStats = async () => {
+    try {
+      const r = await therapyApi.attendanceWorkbench()
+      setAttendanceNeedsCount(r.data?.stats?.needs_recording ?? 0)
+    } catch {
+      setAttendanceNeedsCount(0)
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -94,6 +115,7 @@ export default function TherapistPortal() {
       }
       setPendingActions(pending)
       setMyActiveInstances(allActive)
+      loadAttendanceStats()
     } catch (err) {
       console.error('Load error:', err)
     } finally {
@@ -103,9 +125,35 @@ export default function TherapistPortal() {
 
   const isWaitingForTherapist = (state) => {
     if (!state) return false
+    if (state === 'reason_selection') return true
     return reviewStates.some(rs => state.includes(rs)) ||
            state.includes('therapist') ||
            state.includes('review')
+  }
+
+  const hasActiveEarlyTermination = (studentId) => myActiveInstances.some(
+    (inst) => inst.student_id === studentId && inst.process_code === 'therapy_early_termination',
+  )
+
+  const startEarlyTermination = async (studentId) => {
+    if (!studentId || startingEarlyTerminationFor) return
+    setStartingEarlyTerminationFor(studentId)
+    try {
+      const res = await processExecApi.start({
+        process_code: 'therapy_early_termination',
+        student_id: studentId,
+      })
+      showToast('فرایند قطع زودرس درمان آغاز شد')
+      await loadData()
+      if (res.data?.instance_id) {
+        viewInstance(res.data.instance_id)
+        setActiveTab('active')
+      }
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'خطا در آغاز فرایند', 'error')
+    } finally {
+      setStartingEarlyTerminationFor(null)
+    }
   }
 
   const viewInstance = async (instanceId) => {
@@ -153,10 +201,23 @@ export default function TherapistPortal() {
         const ad = therapyIncreaseAltDate.trim()
         const at = therapyIncreaseAltTime.trim()
         if (!ad || !at) {
-          showToast('برای پیشنهاد جایگزین، تاریخ و ساعت را وارد کنید (YYYY-MM-DD و مثال 14:30).', 'error')
+          showToast('برای پیشنهاد جایگزین، تاریخ و ساعت را انتخاب کنید.', 'error')
           return
         }
         payload = { ...payload, therapist_alternative_date: ad, therapist_alternative_time_hhmm: at }
+      }
+      if (
+        pcode === 'extra_session'
+        && st === 'therapist_review'
+        && triggerEvent === 'therapist_proposed_alternative'
+      ) {
+        const ad = therapyIncreaseAltDate.trim()
+        const at = therapyIncreaseAltTime.trim()
+        if (!ad || !at) {
+          showToast('برای پیشنهاد زمان جایگزین، تاریخ و ساعت را انتخاب کنید.', 'error')
+          return
+        }
+        payload = { ...payload, alternative_date: ad, alternative_time: at }
       }
       payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
       if (toState) payload.to_state = toState
@@ -195,6 +256,7 @@ export default function TherapistPortal() {
 
   const tabs = [
     { id: 'pending', label: `کارهای من (${pendingActions.length})`, icon: '📥' },
+    { id: 'attendance', label: `حضور و غیاب (${attendanceNeedsCount})`, icon: '✅' },
     { id: 'dashboard', label: 'داشبورد', icon: '📊' },
     { id: 'students', label: 'دانشجویان', icon: '👨‍🎓' },
     { id: 'sessions', label: 'جلسات آنلاین', icon: '🎥' },
@@ -435,8 +497,21 @@ export default function TherapistPortal() {
             triggerTransition={triggerTransition}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
             accentColor="var(--warning)"
+            user={user}
+            showToast={showToast}
+            onRefreshInstance={() => viewInstance(selectedInstance)}
           />}
         </div>
+      )}
+
+      {activeTab === 'attendance' && (
+        <TherapistAttendancePanel
+          active={activeTab === 'attendance'}
+          showToast={showToast}
+          onRecorded={() => {
+            loadData()
+          }}
+        />
       )}
 
       {/* Students Tab */}
@@ -463,6 +538,7 @@ export default function TherapistPortal() {
                   <th>جلسات هفتگی</th>
                   <th>وضعیت درمان</th>
                   <th>کارآموز</th>
+                  <th>اقدام</th>
                 </tr>
               </thead>
               <tbody>
@@ -482,6 +558,22 @@ export default function TherapistPortal() {
                       </span>
                     </td>
                     <td>{s.is_intern ? 'بله' : 'خیر'}</td>
+                    <td>
+                      {s.therapy_started && !hasActiveEarlyTermination(s.id) && (
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          data-testid={`start-early-termination-${s.id}`}
+                          disabled={startingEarlyTerminationFor === s.id}
+                          onClick={() => startEarlyTermination(s.id)}
+                        >
+                          {startingEarlyTerminationFor === s.id ? 'در حال آغاز…' : 'قطع زودرس درمان'}
+                        </button>
+                      )}
+                      {hasActiveEarlyTermination(s.id) && (
+                        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>فرایند فعال</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -557,6 +649,9 @@ export default function TherapistPortal() {
             triggerTransition={triggerTransition}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
             accentColor="var(--primary)"
+            user={user}
+            showToast={showToast}
+            onRefreshInstance={() => viewInstance(selectedInstance)}
           />}
         </div>
       )}
@@ -737,14 +832,43 @@ function InstanceDetailPanel({
   triggerTransition,
   onClose,
   accentColor,
+  user,
+  showToast,
+  onRefreshInstance,
 }) {
   const showTherapyScheduleField =
     instanceDetail?.process_code === 'therapy_changes'
     && instanceDetail?.current_state === 'schedule_change_review'
 
   const showTherapyIncreaseAlternativeFields =
-    instanceDetail?.process_code === 'therapy_session_increase'
+    (instanceDetail?.process_code === 'therapy_session_increase'
+      || instanceDetail?.process_code === 'extra_session')
     && instanceDetail?.current_state === 'therapist_review'
+
+  const isAttendanceRecording =
+    instanceDetail?.process_code === 'attendance_tracking'
+    && instanceDetail?.current_state === 'therapist_recording'
+  const attendanceSessionId =
+    instanceDetail?.context_data?.therapy_session_id
+    || instanceDetail?.context_data?.session_id
+
+  const recordAttendanceFromInstance = async (attendanceStatus) => {
+    if (!attendanceSessionId) {
+      showToast?.('شناسهٔ جلسه در پرونده یافت نشد.', 'error')
+      return
+    }
+    try {
+      await therapyApi.patchSession(attendanceSessionId, { attendance_status: attendanceStatus })
+      showToast?.('حضور و غیاب ثبت شد')
+      onRefreshInstance?.()
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast?.(typeof d === 'string' ? d : (e.message || 'خطا در ثبت'), 'error')
+    }
+  }
+
+  const altDateParts =
+    (therapyIncreaseAltDate && isoDateToShamsiParts(therapyIncreaseAltDate)) || defaultShamsiDate()
 
   return (
     <div className="card">
@@ -771,6 +895,59 @@ function InstanceDetailPanel({
         portalRole={portalRole}
         availableTransitions={availableTransitions}
       />
+
+      <AttendanceTrackingPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'attendance_tracking'}
+      />
+
+      <TherapistEarlyTerminationPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'therapy_early_termination'}
+      />
+
+      <OperatorStepFormsSection
+        instanceId={instanceDetail.instance_id}
+        processCode={instanceDetail.process_code}
+        currentState={instanceDetail.current_state}
+        contextData={instanceDetail.context_data}
+        isCompleted={instanceDetail.is_completed}
+        isCancelled={instanceDetail.is_cancelled}
+        role={user?.role}
+        showToast={showToast}
+        onUpdated={() => onRefreshInstance?.()}
+      />
+
+      {isAttendanceRecording && (
+        <div
+          data-testid="therapist-attendance-instance-actions"
+          style={{
+            marginBottom: '1.25rem',
+            padding: '1rem 1.15rem',
+            borderRadius: '10px',
+            background: '#fffbeb',
+            borderRight: '4px solid #f59e0b',
+          }}
+        >
+          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+            ثبت حضور و غیاب این جلسه (فرایند ۶)
+          </h4>
+          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 0.65rem', lineHeight: 1.6 }}>
+            تاریخ جلسه: {instanceDetail.context_data?.session_date || '—'}
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <button type="button" className="btn btn-success btn-sm" onClick={() => recordAttendanceFromInstance('present')}>
+              ✓ حاضر (+۱ ساعت)
+            </button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => recordAttendanceFromInstance('absent_excused')}>
+              غایب موجه
+            </button>
+            <button type="button" className="btn btn-danger btn-sm" onClick={() => recordAttendanceFromInstance('absent_unexcused')}>
+              غایب غیرموجه
+            </button>
+          </div>
+        </div>
+      )}
 
       <InstanceContextSummary
         contextData={instanceDetail.context_data}
@@ -805,25 +982,27 @@ function InstanceDetailPanel({
           {showTherapyIncreaseAlternativeFields && (
             <div style={{ marginBottom: '0.75rem', fontSize: '0.88rem' }}>
               <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
-                پیشنهاد جایگزین (فقط هنگام زدن دکمهٔ «پیشنهاد جایگزین»)
+                پیشنهاد زمان جایگزین (فقط هنگام زدن دکمهٔ «پیشنهاد جایگزین»)
               </span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                <input
-                  className="form-input"
-                  dir="ltr"
-                  style={{ textAlign: 'left', maxWidth: '11rem' }}
-                  placeholder="تاریخ YYYY-MM-DD"
-                  value={therapyIncreaseAltDate}
-                  onChange={e => setTherapyIncreaseAltDate(e.target.value)}
-                />
-                <input
-                  className="form-input"
-                  dir="ltr"
-                  style={{ textAlign: 'left', maxWidth: '8rem' }}
-                  placeholder="14:30"
-                  value={therapyIncreaseAltTime}
-                  onChange={e => setTherapyIncreaseAltTime(e.target.value)}
-                />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+                <div style={{ minWidth: '16rem' }}>
+                  <ShamsiDatePicker
+                    label="تاریخ جایگزین"
+                    value={altDateParts}
+                    onChange={(p) => setTherapyIncreaseAltDate(shamsiDateToIsoDate(p.jy, p.jm, p.jd))}
+                  />
+                </div>
+                <label style={{ fontSize: '0.8rem' }}>
+                  <span style={{ display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>ساعت</span>
+                  <input
+                    className="form-input"
+                    type="time"
+                    dir="ltr"
+                    style={{ textAlign: 'left', maxWidth: '8rem' }}
+                    value={therapyIncreaseAltTime}
+                    onChange={e => setTherapyIncreaseAltTime(e.target.value)}
+                  />
+                </label>
               </div>
               <span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.78rem', color: '#64748b' }}>
                 در صورت تایید یا رد بدون پیشنهاد جایگزین، این فیلدها را خالی بگذارید.

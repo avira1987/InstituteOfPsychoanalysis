@@ -199,7 +199,20 @@ async def publish_calendar_from_instance_context(
     published_by: Optional[uuid.UUID] = None,
 ) -> InstituteCalendar:
     payload = calendar_payload_from_context(context, source_process_code=instance.process_code)
-    payload["extra_data"] = {"source_process_code": instance.process_code}
+    snapshot_keys = (
+        "nowruz_holiday_start",
+        "nowruz_holiday_end",
+        "fall_start_date",
+        "fall_end_date",
+        "winter_start_date",
+        "winter_end_date",
+        "registration_payment_window_start",
+        "registration_payment_window_end",
+    )
+    payload["extra_data"] = {
+        "source_process_code": instance.process_code,
+        **{k: context.get(k) for k in snapshot_keys if context.get(k)},
+    }
     cal = await upsert_active_calendar(
         db,
         payload=payload,
@@ -207,4 +220,35 @@ async def publish_calendar_from_instance_context(
         source_instance=instance,
     )
     await sync_term_dates_to_students(db, cal)
+    try:
+        from app.services.registration_readiness_service import (
+            unlock_intro_students_after_calendar_publish,
+        )
+
+        await unlock_intro_students_after_calendar_publish(db)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "unlock_intro_students_after_calendar_publish failed"
+        )
     return cal
+
+
+def calendar_to_response_dict(cal: InstituteCalendar | None) -> dict[str, Any] | None:
+    """سریال‌سازی تقویم فعال برای API (admin و panel)."""
+    if cal is None:
+        return None
+    return {
+        "id": str(cal.id),
+        "term_code": cal.term_code,
+        "is_active": bool(cal.is_active),
+        "term_start_date": cal.term_start_date.isoformat() if cal.term_start_date else None,
+        "term_end_date": cal.term_end_date.isoformat() if cal.term_end_date else None,
+        "registration_open_at": cal.registration_open_at.isoformat() if cal.registration_open_at else None,
+        "registration_deadline_at": cal.registration_deadline_at.isoformat() if cal.registration_deadline_at else None,
+        "evaluation_open_at": cal.evaluation_open_at.isoformat() if cal.evaluation_open_at else None,
+        "evaluation_close_at": cal.evaluation_close_at.isoformat() if cal.evaluation_close_at else None,
+        "published_at": cal.published_at.isoformat() if cal.published_at else None,
+        "extra_data": cal.extra_data if isinstance(cal.extra_data, dict) else {},
+    }

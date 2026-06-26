@@ -40,8 +40,14 @@ export function canStartProcess(processCode, { studentProfile, activeProcesses }
     }
   }
 
-  if (processCode === 'introductory_course_registration' && studentProfile.course_type !== 'introductory') {
-    return { ok: false, reasonFa: 'این فرایند مخصوص دورهٔ آشنایی است.' }
+  if (processCode === 'introductory_course_registration') {
+    const gate = studentProfile.intro_registration_gate
+    if (gate && gate.allowed === false) {
+      return { ok: false, reasonFa: gate.reason_fa || 'ثبت‌نام دورهٔ آشنایی هنوز باز نشده است.' }
+    }
+    if (studentProfile.course_type !== 'introductory') {
+      return { ok: false, reasonFa: 'این فرایند مخصوص دورهٔ آشنایی است.' }
+    }
   }
   if (processCode === 'comprehensive_course_registration' && studentProfile.course_type !== 'comprehensive') {
     return { ok: false, reasonFa: 'این فرایند مخصوص دورهٔ جامع است.' }

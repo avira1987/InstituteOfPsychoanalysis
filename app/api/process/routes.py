@@ -25,6 +25,14 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.meta.loader import MetadataLoader
 from app.meta.process_forms import get_process_forms, get_process_ui_requirements
+from app.meta.process_data_access import (
+    apply_data_update_to_context,
+    editable_field_names,
+    extract_values,
+    sanitize_editable_payload,
+    visible_field_names,
+    visible_forms_for_role,
+)
 from app.meta.course_selection_validation import (
     course_selection_config,
     normalize_course_codes,
@@ -136,6 +144,24 @@ def _enrich_therapy_session_increase_start(
     return out
 
 
+def _enrich_supervision_session_increase_start(
+    initial_context: Optional[dict],
+    student_row: Student,
+) -> Optional[dict]:
+    """پیش‌فرض شمارندهٔ جلسات هفتگی سوپرویژن هنگام آغاز فرایند ۲۱."""
+    out = dict(initial_context or {})
+    extra = StateMachineEngine._as_mapping(student_row.extra_data)
+    sup_weekly = extra.get("supervision_weekly_sessions")
+    if sup_weekly is None:
+        sup_weekly = extra.get("weekly_supervision_sessions")
+    if sup_weekly is not None:
+        try:
+            out.setdefault("supervision_weekly_sessions", int(sup_weekly))
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
 def _enrich_lesson_start_context(
     initial_context: Optional[dict],
     student_row: Student,
@@ -187,6 +213,105 @@ def _apply_therapy_session_increase_trigger_rules(
         p["first_session_date"] = nd
         p["preferred_time_hhmm"] = nt
     return p
+
+
+def _apply_supervision_session_increase_trigger_rules(
+    trigger_event: str,
+    payload: dict,
+) -> dict:
+    """اعتبارسنجی رویدادهای supervision_session_increase (فرایند ۲۱)."""
+    p = dict(payload or {})
+    if trigger_event == "day_time_entered":
+        fd = (p.get("first_session_date") or "").strip()
+        tm = (p.get("preferred_time_hhmm") or "").strip()
+        if not fd or not tm:
+            raise HTTPException(
+                status_code=400,
+                detail="تاریخ و ساعت جلسه الزامی است (first_session_date، preferred_time_hhmm).",
+            )
+    elif trigger_event == "supervisor_proposed_alternative":
+        ad = (p.get("supervisor_alternative_date") or "").strip()
+        at = (p.get("supervisor_alternative_time_hhmm") or "").strip()
+        if not ad or not at:
+            raise HTTPException(
+                status_code=400,
+                detail="برای پیشنهاد جایگزین، تاریخ و ساعت جایگزین را وارد کنید.",
+            )
+    elif trigger_event == "student_reentered_time":
+        nd = (p.get("new_first_session_date") or "").strip()
+        nt = (p.get("new_preferred_time_hhmm") or "").strip()
+        if not nd or not nt:
+            raise HTTPException(
+                status_code=400,
+                detail="برای ارسال زمان جدید، تاریخ و ساعت جدید الزامی است.",
+            )
+        p["first_session_date"] = nd
+        p["preferred_time_hhmm"] = nt
+    return p
+
+
+_EDUCATIONAL_LEAVE_MEETING_KEYS = (
+    "committee_meeting_at",
+    "committee_meeting_mode",
+    "committee_meeting_link",
+    "committee_meeting_location_fa",
+)
+
+
+def _merge_educational_leave_payload_from_context(
+    instance: ProcessInstance,
+    payload: dict,
+) -> dict:
+    """فیلدهای ثبت‌شده در فرم اپراتور را به payload ترنزیشن اضافه می‌کند."""
+    p = dict(payload or {})
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    for key in _EDUCATIONAL_LEAVE_MEETING_KEYS + ("rejection_reason_fa", "committee_notes_internal"):
+        if key not in p or p.get(key) in (None, ""):
+            if ctx.get(key) not in (None, ""):
+                p[key] = ctx[key]
+    return p
+
+
+def _validate_educational_leave_committee_set_meeting(payload: dict) -> None:
+    p = payload or {}
+    cat = (p.get("committee_meeting_at") or "").strip() if isinstance(p.get("committee_meeting_at"), str) else p.get("committee_meeting_at")
+    if not cat:
+        raise HTTPException(
+            status_code=400,
+            detail="تاریخ و ساعت جلسه الزامی است؛ ابتدا فرم مرحله را ثبت کنید (committee_meeting_at).",
+        )
+    mode = (p.get("committee_meeting_mode") or "").strip()
+    if mode not in ("online", "in_person"):
+        raise HTTPException(
+            status_code=400,
+            detail="نحوهٔ برگزاری جلسه را مشخص کنید: committee_meeting_mode = online یا in_person",
+        )
+    if mode == "online" and not (p.get("committee_meeting_link") or "").strip():
+        raise HTTPException(status_code=400, detail="برای جلسه آنلاین، لینک جلسه (committee_meeting_link) الزامی است.")
+    if mode == "in_person" and not (p.get("committee_meeting_location_fa") or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="برای جلسه حضوری، آدرس یا محل (committee_meeting_location_fa) الزامی است.",
+        )
+
+
+def _validate_educational_leave_committee_rejected(payload: dict) -> None:
+    reason = (payload.get("rejection_reason_fa") or "").strip()
+    if not reason:
+        raise HTTPException(
+            status_code=400,
+            detail="علت رد الزامی است؛ ابتدا فرم مرحله را با فیلد «علت رد» ثبت کنید.",
+        )
+
+
+def _validate_educational_leave_student_return(instance: ProcessInstance) -> None:
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    if not ctx.get("return_registration_confirmed"):
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا فرم تأیید بازگشت را تکمیل و ثبت کنید (تیک «ثبت‌نام ترم آینده را انجام داده‌ام»).",
+        )
+
 
 # ثبت‌نام ترم/دوره وقتی مرخصی فعال است و class_access_blocked روی دانشجوست
 _REGISTRATION_PROCESS_CODES_BLOCKED_UNDER_CLASS_ACCESS = frozenset(
@@ -274,6 +399,12 @@ class OperatorStepFormsRegisterRequest(BaseModel):
     """اپراتور (نقش غیر دانشجو) پس از پر کردن فرم مرحله؛ مقادیر در context_data ذخیره می‌شود."""
     form_values: dict
     state_code: Optional[str] = None
+
+
+class ProcessDataUpdateRequest(BaseModel):
+    """ویرایش/به‌روزرسانی دادهٔ ثبت‌شدهٔ فرایند بر اساس مجوز نقش (editable_by)."""
+    field_values: dict
+    reason: Optional[str] = Field(None, max_length=2000)
 
 
 class StudentEditRequestCreate(BaseModel):
@@ -374,10 +505,12 @@ async def get_process_forms_for_state(
             raise HTTPException(status_code=400, detail="instance_id نامعتبر")
         inst = await db.get(ProcessInstance, iid)
         if inst and inst.process_code == process_code:
-            from app.services.semester_prep_service import apply_pre_filled_fields
+            from app.services.process_form_prefill import apply_pre_filled_fields
 
             base_ctx = StateMachineEngine._as_mapping(inst.context_data)
-            suggested_context = await apply_pre_filled_fields(db, process_code, state, base_ctx)
+            suggested_context = await apply_pre_filled_fields(
+                db, process_code, state, base_ctx, student_id=inst.student_id,
+            )
     return {
         "process_code": process_code,
         "state": state,
@@ -415,9 +548,18 @@ async def start_process(
             detail="به‌دلیل مرخصی آموزشی فعال، ثبت‌نام ترم/درس تا زمان بازگشت و رفع مسدودیت در سامانه مجاز نیست.",
         )
 
+    if request.process_code == "introductory_course_registration":
+        from app.services.registration_readiness_service import check_intro_registration_gate
+
+        gate = await check_intro_registration_gate(db)
+        if not gate.allowed:
+            raise HTTPException(status_code=403, detail=gate.reason_fa)
+
     initial_ctx = request.initial_context
     if request.process_code == "therapy_session_increase":
         initial_ctx = _enrich_therapy_session_increase_start(initial_ctx, student_row)
+    if request.process_code == "supervision_session_increase":
+        initial_ctx = _enrich_supervision_session_increase_start(initial_ctx, student_row)
     if request.process_code == "lesson_start_per_term":
         initial_ctx = _enrich_lesson_start_context(initial_ctx, student_row)
 
@@ -476,32 +618,38 @@ async def trigger_transition(
             request.trigger_event,
             merged_payload,
         )
+    if inst_early and inst_early.process_code == "supervision_session_increase":
+        merged_payload = _apply_supervision_session_increase_trigger_rules(
+            request.trigger_event,
+            merged_payload,
+        )
 
     if request.trigger_event == "committee_set_meeting":
         inst_chk = (
             await db.execute(select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id)))
         ).scalars().first()
         if inst_chk and inst_chk.process_code == "educational_leave":
-            p = merged_payload
-            cat = (p.get("committee_meeting_at") or "").strip()
-            if not cat:
-                raise HTTPException(
-                    status_code=400,
-                    detail="تاریخ و ساعت جلسه الزامی است (فیلد committee_meeting_at).",
-                )
-            mode = (p.get("committee_meeting_mode") or "").strip()
-            if mode not in ("online", "in_person"):
-                raise HTTPException(
-                    status_code=400,
-                    detail="نحوهٔ برگزاری جلسه را مشخص کنید: committee_meeting_mode = online یا in_person",
-                )
-            if mode == "online" and not (p.get("committee_meeting_link") or "").strip():
-                raise HTTPException(status_code=400, detail="برای جلسه آنلاین، لینک جلسه (committee_meeting_link) الزامی است.")
-            if mode == "in_person" and not (p.get("committee_meeting_location_fa") or "").strip():
-                raise HTTPException(
-                    status_code=400,
-                    detail="برای جلسه حضوری، آدرس یا محل (committee_meeting_location_fa) الزامی است.",
-                )
+            merged_payload = _merge_educational_leave_payload_from_context(inst_chk, merged_payload)
+            _validate_educational_leave_committee_set_meeting(merged_payload)
+
+    if request.trigger_event == "committee_rejected":
+        inst_chk = (
+            await db.execute(select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id)))
+        ).scalars().first()
+        if inst_chk and inst_chk.process_code == "educational_leave":
+            merged_payload = _merge_educational_leave_payload_from_context(inst_chk, merged_payload)
+            _validate_educational_leave_committee_rejected(merged_payload)
+
+    if request.trigger_event == "student_registered":
+        inst_chk = (
+            await db.execute(select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id)))
+        ).scalars().first()
+        if (
+            inst_chk
+            and inst_chk.process_code == "educational_leave"
+            and inst_chk.current_state_code == "return_reminder_sent"
+        ):
+            _validate_educational_leave_student_return(inst_chk)
 
     role_norm = _normalize_actor_role(current_user.role)
     if role_norm == "student" and request.trigger_event in ("timeslot_selected", "interview_time_selected"):
@@ -916,10 +1064,14 @@ async def register_operator_step_forms(
     if not forms:
         raise HTTPException(status_code=400, detail="برای این مرحله فرمی تعریف نشده است.")
 
-    from app.services.semester_prep_service import apply_pre_filled_fields
+    from app.services.process_form_prefill import apply_pre_filled_fields
 
     merged_ctx = await apply_pre_filled_fields(
-        db, instance.process_code, state, StateMachineEngine._as_mapping(instance.context_data)
+        db,
+        instance.process_code,
+        state,
+        StateMachineEngine._as_mapping(instance.context_data),
+        student_id=instance.student_id,
     )
     form_values = dict(request.form_values or {})
     for k, v in merged_ctx.items():
@@ -937,6 +1089,79 @@ async def register_operator_step_forms(
     await db.flush()
     await db.refresh(instance)
     return {"success": True, "state_code": state, "context_data": instance.context_data}
+
+
+@router.get("/{instance_id}/data")
+async def get_process_instance_data(
+    instance_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """دادهٔ ثبت‌شدهٔ یک نمونه فرایند برای مشاهده/ویرایش بر اساس نقش.
+
+    لایهٔ عمومی متادیتا-محور: همهٔ فرم‌های فرایند را می‌گیرد، فیلدهای مرئی برای
+    نقش جاری را برمی‌گرداند و مشخص می‌کند کدام فیلدها (بر اساس ``editable_by``)
+    قابل ویرایش‌اند.
+    """
+    instance = await _get_instance_or_404(db, instance_id)
+    await _ensure_student_owns_instance(db, current_user, instance)
+
+    role = _normalize_actor_role(current_user.role)
+    forms = get_process_forms(instance.process_code) or []
+    vis_forms = visible_forms_for_role(forms, role)
+    vis_names = visible_field_names(forms, role)
+    edit_names = editable_field_names(forms, role)
+    values = extract_values(instance.context_data, vis_names)
+    return {
+        "instance_id": str(instance.id),
+        "process_code": instance.process_code,
+        "current_state": instance.current_state_code,
+        "is_completed": instance.is_completed,
+        "is_cancelled": instance.is_cancelled,
+        "forms": vis_forms,
+        "values": values,
+        "editable_field_names": sorted(edit_names),
+        "can_edit": bool(edit_names),
+    }
+
+
+@router.post("/{instance_id}/data/update")
+async def update_process_instance_data(
+    instance_id: str,
+    request: ProcessDataUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """ویرایش/به‌روزرسانی دادهٔ ثبت‌شده؛ فقط فیلدهایی که نقش جاری در
+    ``editable_by`` آن‌هاست اعمال می‌شوند (بقیه نادیده گرفته می‌شوند)."""
+    instance = await _get_instance_or_404(db, instance_id)
+    await _ensure_student_owns_instance(db, current_user, instance)
+
+    role = _normalize_actor_role(current_user.role)
+    forms = get_process_forms(instance.process_code) or []
+    sanitized = sanitize_editable_payload(forms, role, request.field_values or {})
+    if not sanitized:
+        raise HTTPException(
+            status_code=403,
+            detail="هیچ فیلدی برای ویرایش با مجوز نقش شما در این درخواست وجود ندارد.",
+        )
+
+    ctx = apply_data_update_to_context(
+        instance.context_data,
+        sanitized,
+        actor_id=current_user.id,
+        actor_role=role,
+        reason=request.reason,
+    )
+    instance.context_data = ctx
+    flag_modified(instance, "context_data")
+    await db.flush()
+    await db.refresh(instance)
+    return {
+        "success": True,
+        "updated_fields": sorted(sanitized.keys()),
+        "context_data": instance.context_data,
+    }
 
 
 @router.post("/{instance_id}/edit-requests", status_code=201)
@@ -1061,12 +1286,17 @@ async def get_instance_dashboard(
             state_code=status.get("current_state"),
         )
         ui_requirements = get_process_ui_requirements(status.get("process_code", ""))
-        return {
+        out = {
             "status": _redact_confidential_for_student(status, current_user),
             "transitions": transitions,
             "forms": forms,
             "ui_requirements": ui_requirements,
         }
+        if status.get("process_code") == "introductory_course_registration":
+            from app.services.registration_readiness_service import check_intro_registration_gate
+
+            out["registration_gate"] = (await check_intro_registration_gate(db)).to_dict()
+        return out
     except InstanceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -1130,3 +1360,40 @@ async def get_student_instances(
             for i in instances
         ]
     }
+
+
+@router.get("/student/{student_id}/artifacts")
+async def get_student_process_artifacts(
+    student_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """کارنامه‌ها و گواهی‌های قابل نمایش در پورتال دانشجو."""
+    from app.core.resource_access import ensure_can_read_student
+    from app.services.student_artifacts_service import get_student_artifacts
+
+    sid = uuid.UUID(student_id)
+    await ensure_can_read_student(db, current_user, sid)
+    payload = await get_student_artifacts(db, sid)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return payload
+
+
+@router.get("/student/{student_id}/documents/{doc_id}")
+async def get_student_document_detail(
+    student_id: str,
+    doc_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """محتوای یک کارنامه/گواهی قابل نمایش در پورتال دانشجو."""
+    from app.core.resource_access import ensure_can_read_student
+    from app.services.student_artifacts_service import get_student_document
+
+    sid = uuid.UUID(student_id)
+    await ensure_can_read_student(db, current_user, sid)
+    doc = await get_student_document(db, sid, doc_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc

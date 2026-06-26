@@ -277,6 +277,16 @@ class StudentService:
 
         if student.course_type == "introductory":
             process_code = "introductory_course_registration"
+            from app.services.registration_readiness_service import check_intro_registration_gate
+
+            gate = await check_intro_registration_gate(self.db)
+            if not gate.allowed:
+                logger.info(
+                    "Deferred intro registration process for %s: %s",
+                    student.student_code,
+                    gate.reason_fa,
+                )
+                return None
         else:
             process_code = "comprehensive_course_registration"
 

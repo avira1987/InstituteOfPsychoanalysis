@@ -34,25 +34,37 @@
   },
   "form_alternate_paths": {
     "attendance_tracking": {
-      "states": ["therapist_recording", "site_manager_pending"],
+      "states": [
+        "therapist_recording",
+        "site_manager_pending"
+      ],
       "backend": "app/api/therapy_routes.py",
       "frontend": "admin-ui/src/pages/TherapistPortal.jsx",
       "mechanism": "apply_therapy_attendance_via_process + SiteManagerPortal triggerTransition"
     },
     "supervision_50h_completion": {
-      "states": ["therapist_recording", "supervisor_recording"],
+      "states": [
+        "therapist_recording",
+        "supervisor_recording"
+      ],
       "backend": "app/services/attendance_tracking_sync.py",
       "frontend": "admin-ui/src/pages/SupervisorPortal.jsx",
       "mechanism": "generic portal transitions"
     },
     "session_payment": {
-      "states": ["awaiting_payment", "payment_selection"],
+      "states": [
+        "awaiting_payment",
+        "payment_selection"
+      ],
       "backend": "app/api/payment_routes.py",
       "frontend": "admin-ui/src/components/SepPaymentPanel.jsx",
       "mechanism": "gateway callback"
     },
     "committees_review": {
-      "states": ["committee_review", "deputy_review"],
+      "states": [
+        "committee_review",
+        "deputy_review"
+      ],
       "frontend": "admin-ui/src/pages/CommitteePortal.jsx",
       "mechanism": "triggerTransition on pending instances"
     },
@@ -81,8 +93,8 @@
       "mechanism": "StudentQuestCard"
     },
     "supervision_block_transition": {
-      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-      "mechanism": "StudentQuestCard + therapist portal"
+      "frontend": "admin-ui/src/components/StudentSupervisionBlockTransitionPanel.jsx",
+      "mechanism": "StudentSupervisionBlockTransitionPanel + StudentQuestCard + SepPaymentPanel"
     },
     "supervision_session_increase": {
       "frontend": "admin-ui/src/pages/StudentPortal.jsx",
@@ -123,20 +135,180 @@
     "unannounced_supervision_absence_reaction": {
       "frontend": "admin-ui/src/pages/SupervisorPortal.jsx",
       "mechanism": "supervisor + site_manager portals"
+    },
+    "student_instructor_evaluation": {
+      "states": [
+        "evaluation_open"
+      ],
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "ProcessStepForms save + StudentQuestCard guidance (optional form; deadline via calendar)"
+    },
+    "article_writing_completion": {
+      "states": [
+        "class_closed_student"
+      ],
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard triggerTransition defense_requested"
+    },
+    "student_non_registration": {
+      "states": [
+        "branch_register",
+        "branch_leave"
+      ],
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard generic transitions + guidance labels"
+    },
+    "theory_course_completion": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "grades_entry"
+      ]
+    },
+    "skills_course_completion": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "grades_entry"
+      ]
+    },
+    "film_observation_course_completion": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "grades_entry"
+      ]
+    },
+    "live_supervision_course_completion": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "grades_entry"
+      ]
+    },
+    "live_therapy_observation_course_completion": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "grades_entry"
+      ]
+    },
+    "group_supervision_course_completion": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "grades_entry"
+      ]
+    },
+    "film_observation_ta_attendance_completion": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "grades_entry"
+      ]
+    },
+    "live_supervision_ta_evaluation": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py"
+    },
+    "live_therapy_observation_ta_attendance_completion": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "grades_entry"
+      ]
+    },
+    "class_attendance": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "attendance_list_ready"
+      ]
+    },
+    "class_session_cancellation": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "cancellation_request"
+      ]
+    },
+    "live_therapy_observation_session_prep": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "coordination_pending",
+        "patient_referral"
+      ]
+    },
+    "ta_instructor_leave": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "leave_request",
+        "course_committee_review"
+      ]
+    },
+    "full_education_leave": {
+      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/api/process/routes.py",
+      "states": [
+        "leave_request"
+      ]
+    },
+    "return_to_full_education": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "mechanism": "StudentQuestCard + ProcessStepForms"
+    },
+    "upgrade_to_educational_therapist": {
+      "frontend": "admin-ui/src/pages/CommitteePortal.jsx",
+      "mechanism": "CommitteePortal + OperatorProcessInstancePanel",
+      "states": [
+        "monitoring_review",
+        "student_start"
+      ]
+    },
+    "intern_bulk_patient_referral": {
+      "frontend": "admin-ui/src/pages/CommitteePortal.jsx",
+      "mechanism": "CommitteePortal + OperatorProcessInstancePanel",
+      "states": [
+        "coordination_followup",
+        "general_therapy_committee_review"
+      ]
     }
   },
-  "partial_ui_paths": {
+  "partial_ui_paths": {},
+  "interviewer_result_paths": {
     "introductory_course_registration": {
-      "role": "interviewer",
-      "issue_fa": "ثبت نتیجه مصاحبه در پنل مصاحبه‌گر کامل نیست",
-      "workaround_frontend": "admin-ui/src/pages/StaffPortal.jsx",
-      "workaround_note_fa": "InterviewerPortal لینک به staff pending"
+      "states": [
+        "interview_completed",
+        "interview_payment_confirmed"
+      ],
+      "backend": "app/api/process/routes.py",
+      "frontend": "admin-ui/src/components/InterviewerResultPanel.jsx",
+      "mechanism": "triggerTransition + interview result forms in InterviewerPortal"
     },
     "comprehensive_course_registration": {
-      "role": "interviewer",
-      "issue_fa": "ثبت نتیجه مصاحبه در پنل مصاحبه‌گر کامل نیست",
-      "workaround_frontend": "admin-ui/src/pages/StaffPortal.jsx",
-      "workaround_note_fa": "InterviewerPortal لینک به staff pending"
+      "states": [
+        "interview_completed",
+        "interview_payment_confirmed"
+      ],
+      "backend": "app/api/process/routes.py",
+      "frontend": "admin-ui/src/components/InterviewerResultPanel.jsx",
+      "mechanism": "triggerTransition + comprehensive eval form in InterviewerPortal"
     }
   },
   "exclude_from_score": [
@@ -176,13 +348,123 @@
       "note_fa": "ساعات درمان پس از record_attendance / add_hour در پروفایل"
     },
     "session_payment": {
-      "frontend": "admin-ui/src/components/SepPaymentPanel.jsx",
-      "note_fa": "تأیید پرداخت در callback"
+      "frontend": "admin-ui/src/components/StudentSessionPaymentPanel.jsx",
+      "note_fa": "داشبورد مالی درمان + SepPaymentPanel برای درگاه؛ تأیید پرداخت در callback"
     },
     "supervision_50h_completion": {
       "frontend": "admin-ui/src/pages/StudentPortal.jsx",
       "field": "extra_data.lms",
       "note_fa": "ساعات سوپرویژن در extra_data"
+    },
+    "introductory_term_end": {
+      "frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
+      "field": "extra_data.documents",
+      "note_fa": "کارنامه ترمی/تجمیعی پس از generate_term_transcript"
+    },
+    "comprehensive_term_end": {
+      "frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
+      "field": "extra_data.documents",
+      "note_fa": "کارنامه ترمی/تجمیعی پس از generate_term_transcript"
+    },
+    "introductory_course_completion": {
+      "frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
+      "field": "extra_data.documents",
+      "note_fa": "گواهی پایان دوره آشنایی پس از upload_certificate_to_portal"
+    },
+    "class_attendance": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "شمارنده غیبت N از ۵ و وضعیت دروس"
+    },
+    "theory_course_completion": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "skills_course_completion": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "film_observation_course_completion": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "live_supervision_course_completion": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "live_therapy_observation_course_completion": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "group_supervision_course_completion": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "fall_semester_preparation": {
+      "frontend": "admin-ui/src/components/StudentAcademicCalendarPanel.jsx",
+      "field": "GET /api/panel/academic-calendar/active",
+      "note_fa": "تقویم آموزشی read-only پس از publish_academic_calendar_to_profiles"
+    },
+    "winter_semester_preparation": {
+      "frontend": "admin-ui/src/components/StudentAcademicCalendarPanel.jsx",
+      "field": "GET /api/panel/academic-calendar/active",
+      "note_fa": "تقویم آموزشی read-only پس از انتشار ترم زمستان"
+    },
+    "film_observation_ta_attendance_completion": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "live_supervision_ta_evaluation": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "live_therapy_observation_ta_attendance_completion": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "class_session_cancellation": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "live_therapy_observation_session_prep": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "ta_instructor_leave": {
+      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+    },
+    "full_education_leave": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "note_fa": "وضعیت فرایند در پورتال دانشجو/کمیته"
+    },
+    "return_to_full_education": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "note_fa": "وضعیت فرایند در پورتال دانشجو/کمیته"
+    },
+    "upgrade_to_educational_therapist": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "note_fa": "وضعیت فرایند در پورتال دانشجو/کمیته"
+    },
+    "intern_bulk_patient_referral": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "note_fa": "وضعیت فرایند در پورتال دانشجو/کمیته"
+    },
+    "student_instructor_evaluation": {
+      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
+      "note_fa": "فرم ارزیابی اختیاری در پنجره evaluation_open"
     }
   },
   "calendar_triggers_documented": [

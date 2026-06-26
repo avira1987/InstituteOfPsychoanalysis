@@ -23,6 +23,7 @@
       "block_future_applications",
       "block_future_enrollment",
       "block_next_term_registration",
+      "build_class_attendance_list",
       "call_bpms_subprocess",
       "cancel_all_future_sessions",
       "cancel_session",
@@ -91,21 +92,38 @@
       "reactivate_class_registration",
       "record_absence_auto",
       "record_accounting",
+      "record_article_milestone",
       "record_attendance",
+      "record_cancellation_applied",
+      "record_class_attendance",
+      "record_class_cancellation",
       "record_commission_result",
       "record_commission_result_in_student_portal",
+      "record_course_grades",
+      "record_evaluation_closed",
       "record_evaluation_completion",
+      "record_evaluation_submission",
+      "record_intern_referral",
       "record_interruption_dates",
+      "record_leave_request",
+      "record_lms_links_placed",
+      "record_merged_stub",
       "record_pause_dates_in_lms",
       "record_result_in_student_portal",
+      "record_return_request",
+      "record_session_prep",
       "record_supervision_attendance",
+      "record_supervision_cancellation",
+      "record_ta_leave",
       "record_termination_date",
       "record_termination_in_student_portal",
       "record_therapy_change_history",
+      "record_upgrade_decision",
       "redirect_to_process",
       "refer_to_violation_registration",
       "register_courses_in_portal",
       "register_in_calendar",
+      "register_lesson_teaching_assistants",
       "register_makeup_session",
       "register_new_supervision_block_in_lms",
       "register_student_in_courses",
@@ -180,8 +198,10 @@
       "rules_pct": 100.0,
       "forms_pct": 66.7,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_article_milestone"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -215,8 +235,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_class_attendance"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -229,8 +251,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_class_cancellation"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -328,10 +352,10 @@
       "name_fa": "آغاز ترم‌های دوره جامع"
     },
     "educational_leave": {
-      "total_pct": 92.9,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 71.4,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 8,
       "real_actions": [
@@ -396,10 +420,10 @@
       "name_fa": "درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن"
     },
     "fall_semester_preparation": {
-      "total_pct": 96.9,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 87.5,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 3,
       "real_actions": [
@@ -438,8 +462,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_course_grades"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -452,8 +478,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_course_grades"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -466,8 +494,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_leave_request"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -480,8 +510,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_course_grades"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -494,8 +526,10 @@
       "rules_pct": 100.0,
       "forms_pct": 25.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_intern_referral"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -521,11 +555,11 @@
       "name_fa": "اضافه شدن حداکثر ساعت‌های ارائه درمان انترن"
     },
     "internship_12month_conditional_review": {
-      "total_pct": 79.6,
+      "total_pct": 83.3,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
       "forms_pct": 33.3,
-      "portals_pct": 75.0,
+      "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
         "notification"
@@ -533,17 +567,15 @@
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
-      "uncovered_roles": [
-        "progress_committee_scientific"
-      ],
+      "uncovered_roles": [],
       "name_fa": "۱۲ ماه پس از گذشت قبولی به صورت مشروط در انترنی"
     },
     "internship_readiness_consultation": {
-      "total_pct": 78.3,
+      "total_pct": 84.4,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 25.0,
-      "portals_pct": 80.0,
+      "forms_pct": 37.5,
+      "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
         "notification"
@@ -551,9 +583,7 @@
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
-      "uncovered_roles": [
-        "progress_committee_scientific"
-      ],
+      "uncovered_roles": [],
       "name_fa": "مشورت و تعیین آمادگی برای آغاز انترنی"
     },
     "intro_second_semester_registration": {
@@ -623,7 +653,7 @@
       "missing_actions": [],
       "undefined_conditions": [],
       "uncovered_roles": [],
-      "name_fa": "فراد ثبتا در آشا"
+      "name_fa": "فرایند ثبت‌نام دوره آشنایی"
     },
     "introductory_term_end": {
       "total_pct": 100.0,
@@ -649,13 +679,20 @@
       "name_fa": "فرایند پایان ترم‌های دوره آشنایی"
     },
     "lesson_start_per_term": {
-      "total_pct": 75.0,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 6,
+      "real_actions": [
+        "build_class_attendance_list",
+        "create_lms_course_links",
+        "notification",
+        "record_lms_links_placed",
+        "register_lesson_teaching_assistants",
+        "register_student_in_courses"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -668,8 +705,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_course_grades"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -698,8 +737,9 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 2,
       "real_actions": [
+        "record_course_grades",
         "update_record"
       ],
       "stub_actions": [],
@@ -714,8 +754,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_course_grades"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -728,8 +770,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_session_prep"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -742,8 +786,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_course_grades"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -789,8 +835,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_merged_stub"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -803,8 +851,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_return_request"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -840,8 +890,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_course_grades"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -895,8 +947,11 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 2,
+      "real_actions": [
+        "record_evaluation_closed",
+        "record_evaluation_submission"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -925,11 +980,12 @@
       "rules_pct": 100.0,
       "forms_pct": 0.0,
       "portals_pct": 100.0,
-      "n_actions": 4,
+      "n_actions": 5,
       "real_actions": [
         "block_attendance_for_cancelled_sessions",
         "display_error_message",
         "mark_sessions_cancelled_by_student",
+        "record_cancellation_applied",
         "start_process"
       ],
       "stub_actions": [],
@@ -944,11 +1000,12 @@
       "rules_pct": 100.0,
       "forms_pct": 0.0,
       "portals_pct": 100.0,
-      "n_actions": 4,
+      "n_actions": 5,
       "real_actions": [
         "block_attendance_for_cancelled_sessions",
         "display_error_message",
         "mark_sessions_cancelled_by_student",
+        "record_supervision_cancellation",
         "start_process"
       ],
       "stub_actions": [],
@@ -1150,8 +1207,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_ta_leave"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -1252,8 +1311,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_course_grades"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -1406,13 +1467,15 @@
       "name_fa": "درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی"
     },
     "thesis_defense_request": {
-      "total_pct": 84.4,
+      "total_pct": 87.5,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 37.5,
+      "forms_pct": 50.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "notification"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -1466,8 +1529,10 @@
       "rules_pct": 100.0,
       "forms_pct": 25.0,
       "portals_pct": 100.0,
-      "n_actions": 0,
-      "real_actions": [],
+      "n_actions": 1,
+      "real_actions": [
+        "record_upgrade_decision"
+      ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
@@ -1507,10 +1572,10 @@
       "name_fa": "ثبت تخلفات"
     },
     "winter_semester_preparation": {
-      "total_pct": 95.8,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 83.3,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 3,
       "real_actions": [

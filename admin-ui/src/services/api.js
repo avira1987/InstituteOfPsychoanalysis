@@ -265,6 +265,11 @@ export const processExecApi = {
   dashboard: (instanceId) => api.get(`process/${instanceId}/dashboard`),
   studentInstances: (studentId, params) =>
     api.get(`process/instances/student/${studentId}`, { params }),
+  /** کارنامه‌ها و گواهی‌های قابل نمایش در پورتال */
+  studentArtifacts: (studentId) => api.get(`process/student/${studentId}/artifacts`),
+  /** محتوای یک کارنامه/گواهی برای نمایش/دانلود */
+  studentDocument: (studentId, docId) =>
+    api.get(`process/student/${studentId}/documents/${docId}`),
   /** دانشجو: ثبت فرم مرحله (قفل تا باز شدن توسط کارمند) */
   registerStudentStepForms: (instanceId, body) =>
     api.post(`process/${instanceId}/student-step-forms/register`, body),
@@ -287,6 +292,11 @@ export const processExecApi = {
   /** دانشجو: درخواست ویرایش مرحلهٔ ثبت‌شده (ایجاد تیکت) */
   createEditRequest: (instanceId, body) =>
     api.post(`process/${instanceId}/edit-requests`, body),
+  /** لایهٔ عمومی: دادهٔ ثبت‌شدهٔ فرایند برای مشاهده/ویرایش بر اساس نقش */
+  getProcessData: (instanceId) => api.get(`process/${instanceId}/data`),
+  /** لایهٔ عمومی: به‌روزرسانی دادهٔ ثبت‌شده (فقط فیلدهای مجاز نقش) */
+  updateProcessData: (instanceId, body) =>
+    api.post(`process/${instanceId}/data/update`, body),
 }
 
 // ─── پرداخت (درگاه سپ / زبال و mock در بک‌اند) ───────────────
@@ -327,7 +337,10 @@ export const interviewSlotsApi = {
 // ─── Therapy sessions (student / therapist) ───────────────────
 export const therapyApi = {
   mySessions: () => api.get('therapy-sessions/me'),
+  myTherapyProgress: () => api.get('therapy-sessions/me/therapy-progress'),
+  myFeeDeterminationSummary: () => api.get('therapy-sessions/me/fee-determination-summary'),
   forTherapist: () => api.get('therapy-sessions/for-therapist'),
+  attendanceWorkbench: () => api.get('therapy-sessions/attendance-workbench'),
   forStudent: (studentId) => api.get(`therapy-sessions/for-student/${studentId}`),
   patchSession: (sessionId, data) => api.patch(`therapy-sessions/${sessionId}`, data),
 }
@@ -418,6 +431,11 @@ export const panelApi = {
   myProcessInbox: (params) => api.get('panel/my-process-inbox', { params }),
   /** کارتابل فرایند + هشدار آمادگی نقش (وقت مصاحبه، جلسات درمان، …) */
   myOperatorFollowup: (params) => api.get('panel/my-operator-followup', { params }),
+  /** تقویم آموزشی فعال (read-only — دانشجو و سایر نقش‌ها) */
+  activeAcademicCalendar: () => api.get('panel/academic-calendar/active'),
+  /** لیست یکپارچهٔ جلسات و لینک‌های آنلاین دانشجو */
+  myOnlineSessions: (includePast = false) =>
+    api.get('panel/my-online-sessions', { params: { include_past: !!includePast } }),
   navPendingCounts: () => api.get('panel/nav-pending-counts'),
   /** فید اعلان‌های اقدام (زنگوله + صفحهٔ همه اعلان‌ها) */
   actionNotifications: (params) => api.get('panel/action-notifications', { params }),

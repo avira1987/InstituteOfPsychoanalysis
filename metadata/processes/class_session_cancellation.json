@@ -33,7 +33,12 @@
       "to": "makeup_scheduled",
       "trigger": "cancellation_confirmed",
       "required_role": "instructor",
-      "description_fa": "تایید کنسلی و جبرانی — قفل جلسه، ثبت جبرانی، پیامک"
+      "description_fa": "تایید کنسلی و جبرانی — قفل جلسه، ثبت جبرانی، پیامک",
+      "actions": [
+        {
+          "type": "record_class_cancellation"
+        }
+      ]
     }
   ],
   "forms": [

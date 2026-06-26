@@ -1031,7 +1031,7 @@ async def list_users(
     role: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "staff")),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "site_manager")),
 ):
     """List all users (admin and staff; staff use this to set passwords for students)."""
     stmt = select(User)

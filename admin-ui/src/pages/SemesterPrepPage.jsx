@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { semesterPrepApi } from '../services/api'
 import PopupToast from '../components/PopupToast'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 
 const PROCESS_LABELS = {
   fall_semester_preparation: 'آماده‌سازی ترم پاییز',
@@ -88,6 +89,18 @@ export default function SemesterPrepPage() {
                         <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
                           مسئول: {entry.assigned_role || '—'}
                         </p>
+                        {entry.sla_hours ? (
+                          <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: entry.sla_overdue ? '#b91c1c' : '#475569' }}>
+                            مهلت مرحله: {entry.sla_hours} ساعت
+                            {entry.sla_overdue ? ' — گذشته' : ''}
+                          </p>
+                        ) : null}
+                        {entry.current_state === 'calendar_entry' && entry.calendar_sla_deadline_at ? (
+                          <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: '#475569' }}>
+                            مهلت هدف تقویم: تا{' '}
+                            {formatShamsiTehran(entry.calendar_sla_deadline_at, { dateOnly: true })}
+                          </p>
+                        ) : null}
                       </>
                     ) : (
                       <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
@@ -112,13 +125,21 @@ export default function SemesterPrepPage() {
                         {busy === code ? '…' : 'شروع فرایند'}
                       </button>
                     )}
-                    {active && entry.instance_id && anchorId && (
-                      <Link
-                        className="btn btn-secondary"
-                        to={`/panel/students?student_id=${anchorId}&instance_id=${entry.instance_id}`}
-                      >
-                        باز کردن پرونده
-                      </Link>
+                    {active && entry.instance_id && (
+                      <>
+                        <Link
+                          className="btn btn-primary"
+                          to={`/panel/semester-prep/workbench?process_code=${code}`}
+                        >
+                          ادامه مرحله فعلی
+                        </Link>
+                        <Link
+                          className="btn btn-secondary"
+                          to={`/panel/students?student_id=${anchorId}&instance_id=${entry.instance_id}`}
+                        >
+                          باز کردن پرونده
+                        </Link>
+                      </>
                     )}
                   </div>
                 </div>

@@ -12,6 +12,15 @@
   "states": [
     {"code": "merged", "name_fa": "منتقل به فرایند ۱", "type": "initial", "assigned_role": "system"}
   ],
-  "transitions": [],
+  "transitions": [
+    {
+      "from": "merged",
+      "to": "merged",
+      "trigger": "noop",
+      "required_role": "system",
+      "description_fa": "فرایند ادغام‌شده — بدون گردش",
+      "actions": [{"type": "record_merged_stub"}]
+    }
+  ],
   "forms": []
 }

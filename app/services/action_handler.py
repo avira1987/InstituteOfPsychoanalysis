@@ -299,6 +299,9 @@ class ActionHandler:
         if handler:
             return await handler(self, action, instance, context)
 
+        if action_type.startswith("record_"):
+            return await self._handle_record_process_artifact(action, instance, context)
+
         logger.warning(f"No handler for action type '{action_type}', skipping.")
         return f"no_handler_for_{action_type}"
 
@@ -401,6 +404,75 @@ class ActionHandler:
         )
         return merged
 
+    async def _merge_committees_review_initial_payload(
+        self,
+        parent: ProcessInstance,
+        base: dict,
+        transition_context: Optional[dict],
+    ) -> dict:
+        """زمینهٔ اولیهٔ زیرفرایند ب — علت درمانگر و مسیر ورود از والد."""
+        merged = dict(base or {})
+        merged["parent_instance_id"] = str(parent.id)
+        merged["parent_process_code"] = parent.process_code
+        pctx = _as_mapping(parent.context_data)
+        tc = transition_context or {}
+        for key in (
+            "reason",
+            "label",
+            "reason_code",
+            "termination_reason_code",
+            "termination_note",
+            "commission_opinion_fa",
+            "commission_meeting_notes_fa",
+            "therapist_id",
+        ):
+            if pctx.get(key) is not None and merged.get(key) is None:
+                merged[key] = pctx[key]
+        if parent.process_code == "specialized_commission_review":
+            merged.setdefault("entry_reason", "ineligibility_specialized_commission")
+            gp_raw = pctx.get("parent_instance_id")
+            if gp_raw:
+                try:
+                    gp = await self.db.get(ProcessInstance, uuid.UUID(str(gp_raw)))
+                except (ValueError, TypeError):
+                    gp = None
+                if gp:
+                    gctx = _as_mapping(gp.context_data)
+                    for key in ("termination_reason_code", "termination_note", "reason_code"):
+                        if gctx.get(key) is not None and merged.get(key) is None:
+                            merged[key] = gctx[key]
+                    merged["grandparent_process_code"] = gp.process_code
+        elif parent.process_code == "therapy_early_termination":
+            merged.setdefault("entry_reason", "termination_reason_4")
+            if merged.get("termination_reason_code") is None:
+                merged["termination_reason_code"] = (
+                    pctx.get("termination_reason_code") or pctx.get("reason_code") or 4
+                )
+        for key, val in tc.items():
+            if merged.get(key) is None and val is not None:
+                merged[key] = val
+        return merged
+
+    async def _merge_commission_review_initial_payload(
+        self,
+        parent: ProcessInstance,
+        base: dict,
+        transition_context: Optional[dict],
+    ) -> dict:
+        """زمینهٔ اولیهٔ زیرفرایند الف از فرایند قطع زودرس."""
+        merged = dict(base or {})
+        merged["parent_instance_id"] = str(parent.id)
+        merged["parent_process_code"] = parent.process_code
+        pctx = _as_mapping(parent.context_data)
+        tc = transition_context or {}
+        for key in ("termination_reason_code", "termination_note", "reason_code", "therapist_id"):
+            if pctx.get(key) is not None and merged.get(key) is None:
+                merged[key] = pctx[key]
+        for key, val in tc.items():
+            if merged.get(key) is None and val is not None:
+                merged[key] = val
+        return merged
+
     async def _handle_start_process(self, action: dict, instance: ProcessInstance, context: dict):
         from app.core.engine import StateMachineEngine
         from app.services.fee_determination_runner import complete_fee_determination_instance
@@ -442,6 +514,14 @@ class ActionHandler:
             if sub_code == "fee_determination":
                 payloads.append(
                     await self._merge_fee_determination_initial_payload(instance, base_payload, context)
+                )
+            elif sub_code == "committees_review":
+                payloads.append(
+                    await self._merge_committees_review_initial_payload(instance, base_payload, context)
+                )
+            elif sub_code == "specialized_commission_review":
+                payloads.append(
+                    await self._merge_commission_review_initial_payload(instance, base_payload, context)
                 )
             else:
                 payloads.append(base_payload)
@@ -660,8 +740,85 @@ class ActionHandler:
     async def _handle_create_attendance_field(self, action: dict, instance: ProcessInstance, context: dict):
         return "attendance_field_created_for_session"
 
+    async def _resolve_therapy_session_for_link_action(
+        self,
+        action: dict,
+        instance: ProcessInstance,
+        context: dict,
+    ):
+        """جلسهٔ درمان هدف برای فعال‌سازی لینک آنلاین."""
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+        sid_raw = (
+            action.get("therapy_session_id")
+            or merged.get("therapy_session_id")
+            or merged.get("session_id")
+        )
+        if sid_raw:
+            try:
+                uid = uuid.UUID(str(sid_raw))
+                r1 = await self.db.execute(select(TherapySession).where(TherapySession.id == uid))
+                target = r1.scalars().first()
+                if target and target.student_id == instance.student_id:
+                    return target
+            except (ValueError, TypeError):
+                pass
+        stmt = (
+            select(TherapySession)
+            .where(
+                TherapySession.student_id == instance.student_id,
+                TherapySession.status == "scheduled",
+                TherapySession.is_extra == True,
+            )
+            .order_by(TherapySession.session_date.desc())
+        )
+        target = (await self.db.execute(stmt)).scalars().first()
+        if target:
+            return target
+        stmt2 = (
+            select(TherapySession)
+            .where(
+                TherapySession.student_id == instance.student_id,
+                TherapySession.status == "scheduled",
+            )
+            .order_by(TherapySession.session_date.asc())
+        )
+        sessions = list((await self.db.execute(stmt2)).scalars().all())
+        return sessions[0] if sessions else None
+
+    async def _unlock_online_therapy_session_links(
+        self,
+        action: dict,
+        instance: ProcessInstance,
+        context: dict,
+        *,
+        result_prefix: str,
+    ) -> str:
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+        url = action.get("meeting_url") or merged.get("meeting_url") or merged.get("session_link")
+        target = await self._resolve_therapy_session_for_link_action(action, instance, context)
+        if target is None:
+            stmt = select(TherapySession).where(
+                TherapySession.student_id == instance.student_id,
+                TherapySession.status == "scheduled",
+                TherapySession.payment_status.in_(["paid", "waived"]),
+            )
+            unlocked = 0
+            for s in (await self.db.execute(stmt)).scalars().all():
+                s.links_unlocked = True
+                unlocked += 1
+            return f"{result_prefix}_bulk count={unlocked}"
+        if url and str(url).strip():
+            target.meeting_url = str(url).strip()
+            provider = action.get("meeting_provider") or merged.get("meeting_provider")
+            if provider:
+                target.meeting_provider = str(provider)
+        target.links_unlocked = True
+        return f"{result_prefix} session_id={target.id}"
+
     async def _handle_activate_online_link(self, action: dict, instance: ProcessInstance, context: dict):
-        return "online_session_link_activated"
+        return await self._unlock_online_therapy_session_links(
+            action, instance, context, result_prefix="online_session_link_activated"
+        )
 
     async def _handle_record_supervision_attendance(self, action: dict, instance: ProcessInstance, context: dict):
         """ثبت حضور سوپرویژن (متادیتا؛ جزئیات در صورت نیاز به AttendanceService متصل می‌شود)."""
@@ -883,7 +1040,9 @@ class ActionHandler:
         return "makeup_session_registered"
 
     async def _handle_enable_online_link(self, action: dict, instance: ProcessInstance, context: dict):
-        return "online_session_link_enabled"
+        return await self._unlock_online_therapy_session_links(
+            action, instance, context, result_prefix="online_session_link_enabled"
+        )
 
     # ─── Attendance & Hours ──────────────────────────────────────
 
@@ -893,6 +1052,34 @@ class ActionHandler:
             for k in ("selected_sessions", "cancelled_session_ids", "sessions_cancelled", "session_dates"):
                 if k in context:
                     ctx[k] = context[k]
+        merged = {**ctx, **(context or {})}
+        selected_ids = parse_therapy_session_id_list(merged.get("selected_sessions"))
+        cancelled_ids: list[uuid.UUID] = []
+        if selected_ids and instance.process_code == "student_session_cancellation":
+            tag = f"student_session_cancellation:{instance.id}"
+            for sid in selected_ids:
+                r = await self.db.execute(
+                    select(TherapySession).where(
+                        TherapySession.id == sid,
+                        TherapySession.student_id == instance.student_id,
+                    )
+                )
+                ts = r.scalars().first()
+                if not ts:
+                    raise ValueError(f"جلسهٔ درمان یافت نشد: {sid}")
+                if ts.status != "scheduled":
+                    raise ValueError(f"فقط جلسات برنامه‌ریزی‌شده قابل کنسل هستند ({ts.session_date}).")
+                ts.status = "cancelled"
+                prev = (ts.notes or "").strip()
+                ts.notes = f"{prev} — [{tag}]".strip(" —") if prev else f"[{tag}]"
+                cancelled_ids.append(ts.id)
+            if cancelled_ids:
+                try:
+                    await cancel_attendance_instances_for_therapy_session_ids(self.db, cancelled_ids)
+                except Exception:
+                    logger.exception("cancel_attendance_instances_for student cancellation failed")
+            ctx["cancelled_session_ids"] = [str(x) for x in cancelled_ids]
+            ctx["cancellation_applied_at"] = datetime.now(timezone.utc).isoformat()
         instance.context_data = ctx
         flag_modified(instance, "context_data")
         return "sessions_marked_cancelled_by_student"
@@ -1729,7 +1916,12 @@ class ActionHandler:
         return "student_account_deactivated"
 
     async def _handle_call_bpms_subprocess(self, action: dict, instance: ProcessInstance, context: dict):
-        code = action.get("process_code") or action.get("subprocess_code") or "violation_registration"
+        code = (
+            action.get("process_code")
+            or action.get("subprocess_code")
+            or action.get("subprocess")
+            or "violation_registration"
+        )
         payload = dict(action.get("payload") or {})
         payload["parent_instance_id"] = str(instance.id)
         return await self._handle_start_process(
@@ -1922,6 +2114,97 @@ class ActionHandler:
         student.extra_data = extra
         flag_modified(student, "extra_data")
         return "record_result_in_student_portal"
+
+    async def _handle_record_process_artifact(self, action: dict, instance: ProcessInstance, context: dict):
+        """Generic artifact recorder for record_* actions (grades, attendance, evaluations, etc.)."""
+        from datetime import datetime, timezone
+
+        atype = (action.get("type") or "record_artifact").strip()
+        ctx = _as_mapping(instance.context_data)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        ctx["artifact"] = {"produced": True, "action_type": atype, "at": now_iso}
+        ctx.setdefault("submitted_at", now_iso)
+
+        if atype == "record_course_grades" or ctx.get("students_grades"):
+            student = await self._get_student(instance.student_id)
+            if student:
+                extra = _as_mapping(student.extra_data)
+                lms = _as_mapping(extra.get("lms"))
+                grades = ctx.get("students_grades")
+                if isinstance(grades, list):
+                    enrolled = list(lms.get("enrolled_courses") or [])
+                    by_id = {str(g.get("student_id")): g for g in grades if isinstance(g, dict)}
+                    updated = []
+                    for row in enrolled:
+                        if not isinstance(row, dict):
+                            updated.append(row)
+                            continue
+                        sid = str(row.get("student_id") or instance.student_id)
+                        g = by_id.get(sid) or {}
+                        merged = {**row}
+                        if g.get("grade") not in (None, ""):
+                            merged["grade"] = g.get("grade")
+                            merged["status_fa"] = merged.get("status_fa") or "قفل"
+                            merged["grades_locked"] = True
+                            merged["grade_locked"] = True
+                        updated.append(merged)
+                    if not enrolled and grades:
+                        updated = list(grades)
+                    lms["enrolled_courses"] = updated
+                    lms["grades_locked"] = True
+                    try:
+                        lms["grades_pending"] = max(0, int(lms.get("grades_pending") or 0) - 1)
+                    except (TypeError, ValueError):
+                        lms["grades_pending"] = 0
+                    extra["lms"] = lms
+                    student.extra_data = extra
+                    flag_modified(student, "extra_data")
+
+        if atype == "record_class_attendance" and ctx.get("students_attendance"):
+            student = await self._get_student(instance.student_id)
+            if student:
+                extra = _as_mapping(student.extra_data)
+                rows = ctx.get("students_attendance") or []
+                absent = sum(
+                    1 for r in rows
+                    if isinstance(r, dict) and str(r.get("status", "")).lower() in ("absent", "غایب", "absent_unexcused")
+                )
+                extra["class_absence_count"] = int(extra.get("class_absence_count") or 0) + absent
+                extra["lms"] = {**_as_mapping(extra.get("lms")), "absence_count": extra["class_absence_count"]}
+                student.extra_data = extra
+                flag_modified(student, "extra_data")
+
+        if atype == "record_evaluation_submission":
+            student = await self._get_student(instance.student_id)
+            if student:
+                extra = _as_mapping(student.extra_data)
+                snapshot = {
+                    "process_code": instance.process_code,
+                    "at": now_iso,
+                    "overall_score": ctx.get("overall_score"),
+                    "teaching_clarity": ctx.get("teaching_clarity"),
+                    "interaction_quality": ctx.get("interaction_quality"),
+                    "comments": ctx.get("comments"),
+                }
+                evals = list(extra.get("evaluations") or [])
+                evals.append(snapshot)
+                extra["evaluations"] = evals
+                student.extra_data = extra
+                flag_modified(student, "extra_data")
+
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+
+        student = await self._get_student(instance.student_id)
+        if student:
+            extra = _as_mapping(student.extra_data)
+            extra["student_portal_result_recorded"] = True
+            pa = _as_mapping(extra.get("process_artifacts"))
+            pa[instance.process_code] = {"at": now_iso, "action": atype}
+            extra["process_artifacts"] = pa
+            student.extra_data = extra
+            flag_modified(student, "extra_data")
+        return atype
 
     async def _handle_redirect_to_process(self, action: dict, instance: ProcessInstance, context: dict):
         code = action.get("process_code", "")
@@ -2294,6 +2577,21 @@ class ActionHandler:
         "redirect_to_process": _handle_redirect_to_process,
         "move_therapist_to_past": _handle_move_therapist_to_past,
         "record_result_in_student_portal": _handle_unlock_student_portal_flag,
+        "record_course_grades": _handle_record_process_artifact,
+        "record_class_attendance": _handle_record_process_artifact,
+        "record_class_cancellation": _handle_record_process_artifact,
+        "record_cancellation_applied": _handle_record_process_artifact,
+        "record_supervision_cancellation": _handle_record_process_artifact,
+        "record_leave_request": _handle_record_process_artifact,
+        "record_return_request": _handle_record_process_artifact,
+        "record_upgrade_decision": _handle_record_process_artifact,
+        "record_intern_referral": _handle_record_process_artifact,
+        "record_article_milestone": _handle_record_process_artifact,
+        "record_session_prep": _handle_record_process_artifact,
+        "record_ta_leave": _handle_record_process_artifact,
+        "record_evaluation_submission": _handle_record_process_artifact,
+        "record_evaluation_closed": _handle_record_process_artifact,
+        "record_merged_stub": _handle_record_process_artifact,
         "ensure_therapist_slots_freed": _handle_release_therapist_slots,
 
         "send_unlock_to_lms": _handle_svc_lms,

@@ -30,9 +30,23 @@ export function resolveCheckboxListOptions(field, contextData) {
     const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const kind = resolveAdmissionKind(ctx)
     const all = INTRODUCTORY_TERM1_COURSES
+    const offeredRaw = ctx.available_courses || ctx.lms?.available_courses
+    const offeredSet =
+      Array.isArray(offeredRaw) && offeredRaw.length
+        ? new Set(offeredRaw.map((c) => String(c)))
+        : null
     let options
     let maxSelect
     let hint = null
+
+    if (!kind) {
+      return {
+        options: [],
+        maxSelect: null,
+        hint: 'نتیجهٔ مصاحبه در پرونده ثبت نشده است؛ تا زمان ثبت نتیجه توسط مصاحبه‌گر انتخاب درس ممکن نیست.',
+        useFallback: true,
+      }
+    }
 
     if (kind === 'single_course') {
       options = all.filter(o => o.value === 'theory_1')
@@ -42,10 +56,22 @@ export function resolveCheckboxListOptions(field, contextData) {
       const cap = parseAllowedCount(ctx)
       maxSelect = cap != null ? cap : 5
     } else {
-      options = [...all]
-      maxSelect = 5
-      hint =
-        'نتیجهٔ مصاحبه در پرونده دیده نشد؛ فعلاً همهٔ دروس ممکن نمایش داده می‌شود. در صورت تناقض با پذیرش تماس بگیرید.'
+      options = []
+      maxSelect = null
+      hint = 'نوع پذیرش شناخته نشد.'
+      return { options, maxSelect, hint, useFallback: true }
+    }
+
+    if (offeredSet) {
+      options = options.filter((o) => offeredSet.has(o.value))
+      if (!options.length) {
+        return {
+          options: [],
+          maxSelect: null,
+          hint: 'لیست دروس این ترم از آماده‌سازی ترم منتشر نشده یا با نوع پذیرش شما هم‌خوان نیست.',
+          useFallback: true,
+        }
+      }
     }
 
     return { options, maxSelect, hint, useFallback: false }
@@ -107,6 +133,22 @@ export function resolveCheckboxListOptions(field, contextData) {
         options.length === 0
           ? 'جلسهٔ آتی برنامه‌ریزی‌شده‌ای در تقویم نیست؛ با پشتیبانی تماس بگیرید.'
           : `حداقل ${minSelect} جلسه را برای لغو انتخاب کنید (با کاهش برنامه هم‌خوان باشد).`,
+      useFallback: options.length === 0,
+    }
+  }
+
+  if (src === 'student_cancellation_upcoming_sessions') {
+    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
+    const raw = ctx.upcoming_cancellation_sessions
+    const options = Array.isArray(raw) ? raw : []
+    return {
+      options,
+      maxSelect: options.length > 0 ? options.length : null,
+      minSelect: 1,
+      hint:
+        options.length === 0
+          ? 'جلسهٔ برنامه‌ریزی‌شده‌ای در ۳ هفتهٔ آینده نیست.'
+          : 'جلسات مورد نظر را تیک بزنید. کنسل بیش از ۳ هفته متوالی از این مسیر مجاز نیست.',
       useFallback: options.length === 0,
     }
   }

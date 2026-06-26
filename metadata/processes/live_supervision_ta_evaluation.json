@@ -55,6 +55,9 @@
         {
           "type": "update_record",
           "description_fa": "ثبت نمره و وضعیت PASS در پرونده کمک‌مدرس"
+        },
+        {
+          "type": "record_course_grades"
         }
       ],
       "required_role": "system"

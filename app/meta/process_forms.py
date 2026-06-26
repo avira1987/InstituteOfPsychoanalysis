@@ -10,6 +10,7 @@ METADATA_PROCESSES_DIR = Path(__file__).resolve().parent.parent.parent / "metada
 STATE_FORM_ALIASES: dict[str, str] = {
     "documents_incomplete": "documents_upload",
     "documents_review": "documents_upload",
+    "deputy_alerted": "committee_review",
 }
 
 
@@ -55,7 +56,15 @@ def get_process_forms(process_code: str, state_code: Optional[str] = None) -> li
     if state_code is None:
         return [_normalize_form(f) for f in forms]
     effective_state = STATE_FORM_ALIASES.get(state_code, state_code)
-    return [_normalize_form(f) for f in forms if f.get("used_in_state") == effective_state]
+    result = []
+    for f in forms:
+        uis = f.get("used_in_state")
+        if isinstance(uis, list):
+            if effective_state in uis:
+                result.append(f)
+        elif uis == effective_state:
+            result.append(f)
+    return [_normalize_form(f) for f in result]
 
 
 def get_process_ui_requirements(process_code: str) -> dict:

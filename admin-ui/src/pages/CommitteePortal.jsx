@@ -23,14 +23,14 @@ import ProcessRollbackSection from '../components/ProcessRollbackSection'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
-import ShamsiDateTimePicker from '../components/ShamsiDateTimePicker'
-import {
-  defaultShamsiTehranNow,
-  shamsiDateTimeToUtcIso,
-  utcIsoToShamsiTehran,
-} from '../utils/shamsiDateTime'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+import { mergeEducationalLeaveTriggerPayload } from '../utils/educationalLeaveTriggerPayload'
+import { mergeCommitteesReviewTriggerPayload } from '../utils/committeesReviewTriggerPayload'
+import { mergeCommissionReviewTriggerPayload } from '../utils/commissionReviewTriggerPayload'
+import CommitteesReviewPanel from '../components/CommitteesReviewPanel'
+import UnannouncedAbsenceReactionPanel from '../components/UnannouncedAbsenceReactionPanel'
+import SpecializedCommissionReviewPanel from '../components/SpecializedCommissionReviewPanel'
 import {
   COMMITTEE_DEEP_LINK_TABS,
   COMMITTEE_DEFAULT_CONFIG,
@@ -57,13 +57,6 @@ export default function CommitteePortal() {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [rollbackBusy, setRollbackBusy] = useState(false)
-  /** فیلدهای جلسه مرخصی آموزشی — همراه تریگر committee_set_meeting به API فرستاده می‌شود */
-  const [leaveMeeting, setLeaveMeeting] = useState({
-    committee_meeting_at: defaultShamsiTehranNow(),
-    committee_meeting_mode: 'in_person',
-    committee_meeting_link: '',
-    committee_meeting_location_fa: '',
-  })
   const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
   const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
   /** فرم ارزیابی مصاحبهٔ ورود به دوره جامع (محرمانه) — همراه تریگر نتیجه ارسال می‌شود */
@@ -121,6 +114,28 @@ export default function CommitteePortal() {
 
   const isWaitingForReview = (state, processCode) => {
     if (!state) return false
+    if (
+      processCode === 'committees_review'
+      && (state === 'supervision_review' || state === 'education_review')
+    ) {
+      const kindRoles = kindMeta?.portalRoles || []
+      if (user?.role === 'admin' || kindRoles.includes(user?.role)) return true
+      if (user?.role === 'supervision_committee' && state === 'supervision_review') return true
+      if (user?.role === 'education_committee' && state === 'education_review') return true
+      if (user?.role === 'deputy_education' && state === 'education_review') return true
+      return false
+    }
+    if (processCode === 'specialized_commission_review' && state === 'commission_review') {
+      if (user?.role === 'specialized_commission' || user?.role === 'admin') return true
+      return false
+    }
+    if (
+      processCode === 'unannounced_absence_reaction'
+      && state === 'committee_pending'
+    ) {
+      if (user?.role === 'therapy_committee_chair' || user?.role === 'admin') return true
+      return false
+    }
     const keywordMatch = config.reviewKeywords.some((kw) => {
       if (!state.includes(kw)) return false
       if (kw === 'interview_completed' && processCode !== 'comprehensive_course_registration') {
@@ -144,13 +159,6 @@ export default function CommitteePortal() {
       setInstanceDetail(statusRes.data)
       setAvailableTransitions(transRes.data?.transitions || [])
       const ctx = statusRes.data?.context_data || {}
-      const meetingParts = utcIsoToShamsiTehran(ctx.committee_meeting_at) || defaultShamsiTehranNow()
-      setLeaveMeeting({
-        committee_meeting_at: meetingParts,
-        committee_meeting_mode: ctx.committee_meeting_mode === 'online' ? 'online' : 'in_person',
-        committee_meeting_link: ctx.committee_meeting_link || '',
-        committee_meeting_location_fa: ctx.committee_meeting_location_fa || '',
-      })
       setInterviewEval({
         evaluation_notes: ctx.interview_evaluation_notes || '',
         rejection_reason: ctx.interview_rejection_reason || '',
@@ -194,39 +202,36 @@ export default function CommitteePortal() {
     const toState = typeof transition === 'object' ? transition.to_state : undefined
     try {
       let payload = notesPayload(decisionNotes)
-      if (
-        instanceDetail?.process_code === 'educational_leave'
-        && triggerEvent === 'committee_set_meeting'
-      ) {
-        if (!leaveMeeting.committee_meeting_at?.jy) {
-          showToast('تاریخ و ساعت جلسه را مشخص کنید.', 'error')
-          return
-        }
-        const mode = leaveMeeting.committee_meeting_mode
-        if (mode === 'online' && !(leaveMeeting.committee_meeting_link || '').trim()) {
-          showToast('برای جلسه آنلاین، لینک جلسه الزامی است.', 'error')
-          return
-        }
-        if (mode === 'in_person' && !(leaveMeeting.committee_meeting_location_fa || '').trim()) {
-          showToast('برای جلسه حضوری، آدرس یا محل الزامی است.', 'error')
-          return
-        }
-        let iso = ''
-        try {
-          const p = leaveMeeting.committee_meeting_at
-          iso = shamsiDateTimeToUtcIso(p.jy, p.jm, p.jd, p.hour, p.minute)
-        } catch {
-          showToast('تاریخ و ساعت جلسه معتبر نیست.', 'error')
-          return
-        }
-        payload = {
-          ...payload,
-          committee_meeting_at: iso,
-          committee_meeting_mode: mode,
-          committee_meeting_link: (leaveMeeting.committee_meeting_link || '').trim(),
-          committee_meeting_location_fa: (leaveMeeting.committee_meeting_location_fa || '').trim(),
-        }
+      const leaveMerge = mergeEducationalLeaveTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (leaveMerge.error) {
+        showToast(leaveMerge.error, 'error')
+        return
       }
+      payload = leaveMerge.payload
+      const committeesMerge = mergeCommitteesReviewTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (committeesMerge.error) {
+        showToast(committeesMerge.error, 'error')
+        return
+      }
+      payload = committeesMerge.payload
+      const commissionMerge = mergeCommissionReviewTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (commissionMerge.error) {
+        showToast(commissionMerge.error, 'error')
+        return
+      }
+      payload = commissionMerge.payload
       payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
       if (
         instanceDetail?.process_code === 'comprehensive_course_registration'
@@ -549,6 +554,10 @@ export default function CommitteePortal() {
                 availableTransitions={availableTransitions}
               />
 
+              <CommitteesReviewPanel detail={instanceDetail} />
+              <SpecializedCommissionReviewPanel detail={instanceDetail} />
+              <UnannouncedAbsenceReactionPanel detail={instanceDetail} />
+
               <InstanceContextSummary
                 contextData={instanceDetail.context_data}
                 history={instanceDetail.history}
@@ -566,74 +575,6 @@ export default function CommitteePortal() {
                 showToast={showToast}
                 onUpdated={() => viewInstance(selectedInstance)}
               />
-
-              {instanceDetail.process_code === 'educational_leave'
-                && instanceDetail.current_state === 'committee_review'
-                && availableTransitions.some(t => t.trigger_event === 'committee_set_meeting') && (
-                <div style={{
-                  padding: '1rem 1.25rem', marginBottom: '1.25rem', borderRadius: '10px',
-                  background: '#f0f9ff', borderRight: '4px solid #0284c7',
-                }}>
-                  <h4 style={{ fontSize: '0.92rem', fontWeight: 700, marginBottom: '0.75rem', color: '#0369a1' }}>
-                    تعیین جلسه کمیته پیشرفت (زمان و لینک برای دانشجو)
-                  </h4>
-                  <p style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '0.75rem', lineHeight: 1.65 }}>
-                    پیش از زدن دکمهٔ ثبت جلسه، همهٔ موارد زیر را پر کنید؛ پس از انتقال، در پورتال دانشجو و پیامک نمایش داده می‌شود.
-                  </p>
-                  <ShamsiDateTimePicker
-                    label="تاریخ و ساعت جلسه (وقت ایران)"
-                    idPrefix="committee-meeting"
-                    value={leaveMeeting.committee_meeting_at}
-                    onChange={(v) => setLeaveMeeting((prev) => ({ ...prev, committee_meeting_at: v }))}
-                  />
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.85rem', display: 'block', marginBottom: '0.35rem' }}>نحوهٔ برگزاری</span>
-                    <label style={{ marginLeft: '1rem' }}>
-                      <input
-                        type="radio"
-                        name="leave-meeting-mode"
-                        checked={leaveMeeting.committee_meeting_mode === 'in_person'}
-                        onChange={() => setLeaveMeeting(prev => ({ ...prev, committee_meeting_mode: 'in_person' }))}
-                      />
-                      {' '}حضوری
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        name="leave-meeting-mode"
-                        checked={leaveMeeting.committee_meeting_mode === 'online'}
-                        onChange={() => setLeaveMeeting(prev => ({ ...prev, committee_meeting_mode: 'online' }))}
-                      />
-                      {' '}آنلاین
-                    </label>
-                  </div>
-                  {leaveMeeting.committee_meeting_mode === 'online' ? (
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                      لینک جلسه
-                      <input
-                        type="url"
-                        className="psf-input"
-                        dir="ltr"
-                        style={{ width: '100%', marginTop: '0.35rem' }}
-                        placeholder="https://..."
-                        value={leaveMeeting.committee_meeting_link}
-                        onChange={e => setLeaveMeeting(prev => ({ ...prev, committee_meeting_link: e.target.value }))}
-                      />
-                    </label>
-                  ) : (
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                      آدرس یا محل حضوری
-                      <textarea
-                        className="psf-input psf-textarea"
-                        rows={2}
-                        style={{ width: '100%', marginTop: '0.35rem' }}
-                        value={leaveMeeting.committee_meeting_location_fa}
-                        onChange={e => setLeaveMeeting(prev => ({ ...prev, committee_meeting_location_fa: e.target.value }))}
-                      />
-                    </label>
-                  )}
-                </div>
-              )}
 
               {instanceDetail.process_code === 'comprehensive_course_registration'
                 && instanceDetail.current_state === 'interview_completed'
@@ -708,7 +649,7 @@ export default function CommitteePortal() {
                   />
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     {transitionsForActions.map((t, idx) => {
-                      const isApproval = t.trigger_event?.includes('approved') || t.trigger_event?.includes('confirm') || t.trigger_event?.includes('accept') || t.trigger_event?.includes('eligible')
+                      const isApproval = t.trigger_event?.includes('approved') || t.trigger_event?.includes('confirm') || t.trigger_event?.includes('accept') || t.trigger_event?.includes('eligible') || t.trigger_event?.includes('continue')
                       const isReject = t.trigger_event?.includes('reject') || t.trigger_event?.includes('decline') || t.trigger_event?.includes('ineligible') || t.trigger_event?.includes('terminate')
                       return (
                         <button

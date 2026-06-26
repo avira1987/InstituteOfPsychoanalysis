@@ -699,7 +699,12 @@
           "name": "comprehensive_interviewers",
           "label_fa": "مصاحبه‌کنندگان دوره جامع",
           "type": "multi_select",
-          "required": true
+          "required": true,
+          "options_source": {
+            "type": "users",
+            "role": "interviewer",
+            "is_active": true
+          }
         },
         {
           "name": "comprehensive_date_range_start",
@@ -717,7 +722,12 @@
           "name": "introductory_interviewers",
           "label_fa": "مصاحبه‌کنندگان دوره مقدماتی",
           "type": "multi_select",
-          "required": true
+          "required": true,
+          "options_source": {
+            "type": "users",
+            "role": "interviewer",
+            "is_active": true
+          }
         },
         {
           "name": "introductory_date_range_start",

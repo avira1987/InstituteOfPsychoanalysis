@@ -13,6 +13,15 @@ import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBa
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
+import Supervision50hCompletionPanel from '../components/Supervision50hCompletionPanel'
+import StudentSupervisionSessionIncreasePanel from '../components/StudentSupervisionSessionIncreasePanel'
+import ShamsiDatePicker from '../components/ShamsiDatePicker'
+import {
+  isoDateToShamsiParts,
+  shamsiDateToIsoDate,
+  defaultShamsiDate,
+} from '../utils/shamsiDateTime'
 
 const SUPERVISOR_DEEP_LINK_TABS = ['dashboard', 'reviews', 'students', 'processes']
 
@@ -31,6 +40,9 @@ export default function SupervisorPortal() {
   const [instanceDetail, setInstanceDetail] = useState(null)
   const [availableTransitions, setAvailableTransitions] = useState([])
   const [decisionNotes, setDecisionNotes] = useState('')
+  /** پیشنهاد جایگزین برای supervision_session_increase */
+  const [supervisionIncreaseAltDate, setSupervisionIncreaseAltDate] = useState('')
+  const [supervisionIncreaseAltTime, setSupervisionIncreaseAltTime] = useState('')
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [studentSearch, setStudentSearch] = useState('')
@@ -116,6 +128,21 @@ export default function SupervisorPortal() {
     const toState = typeof transition === 'object' ? transition.to_state : undefined
     try {
       let payload = notesPayload(decisionNotes)
+      const st = instanceDetail?.current_state
+      const pcode = instanceDetail?.process_code
+      if (
+        pcode === 'supervision_session_increase'
+        && st === 'supervisor_review'
+        && triggerEvent === 'supervisor_proposed_alternative'
+      ) {
+        const ad = supervisionIncreaseAltDate.trim()
+        const at = supervisionIncreaseAltTime.trim()
+        if (!ad || !at) {
+          showToast('برای پیشنهاد جایگزین، تاریخ و ساعت را انتخاب کنید.', 'error')
+          return
+        }
+        payload = { ...payload, supervisor_alternative_date: ad, supervisor_alternative_time_hhmm: at }
+      }
       payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
       if (toState) payload.to_state = toState
       const res = await processExecApi.trigger(selectedInstance, {
@@ -412,6 +439,84 @@ export default function SupervisorPortal() {
                 availableTransitions={availableTransitions}
               />
 
+              <Supervision50hCompletionPanel
+                detail={instanceDetail}
+                active={instanceDetail?.process_code === 'supervision_50h_completion'}
+              />
+
+              <StudentSupervisionSessionIncreasePanel
+                detail={instanceDetail}
+                active={instanceDetail?.process_code === 'supervision_session_increase'}
+                portalRole="supervisor"
+              />
+
+              {instanceDetail?.process_code === 'supervision_50h_completion'
+                && instanceDetail?.current_state === 'supervisor_recording' && (
+                <div
+                  data-testid="supervisor-50h-attendance-actions"
+                  style={{
+                    marginBottom: '1.25rem',
+                    padding: '1rem 1.15rem',
+                    borderRadius: '10px',
+                    background: '#f0fdfa',
+                    borderRight: '4px solid #0d9488',
+                  }}
+                >
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                    ثبت حضور/غیاب جلسه سوپرویژن (فرایند ۲۰)
+                  </h4>
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 0.65rem', lineHeight: 1.6 }}>
+                    تاریخ جلسه:
+                    {' '}
+                    {instanceDetail.context_data?.supervision_session_date
+                      || instanceDetail.context_data?.session_date
+                      || '—'}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {availableTransitions
+                      .filter((t) => t.trigger_event === 'student_present')
+                      .map((t) => (
+                        <button
+                          key={t.trigger_event}
+                          type="button"
+                          className="btn btn-success btn-sm"
+                          disabled={
+                            instanceDetail.context_data?.supervision_session_paid === false
+                            || instanceDetail.context_data?.session_paid === false
+                          }
+                          onClick={() => triggerTransition(t)}
+                        >
+                          ✓ حاضر (+۱ ساعت)
+                        </button>
+                      ))}
+                    {availableTransitions
+                      .filter((t) => t.trigger_event === 'student_absent')
+                      .map((t) => (
+                        <button
+                          key={t.trigger_event}
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          onClick={() => triggerTransition(t)}
+                        >
+                          غایب
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              <OperatorStepFormsSection
+                instanceId={instanceDetail.instance_id}
+                processCode={instanceDetail.process_code}
+                currentState={instanceDetail.current_state}
+                contextData={instanceDetail.context_data}
+                isCompleted={instanceDetail.is_completed}
+                isCancelled={instanceDetail.is_cancelled}
+                role={user?.role}
+                showToast={showToast}
+                onUpdated={() => viewInstance(selectedInstance)}
+              />
+
               <InstanceContextSummary
                 contextData={instanceDetail.context_data}
                 history={instanceDetail.history}
@@ -426,6 +531,37 @@ export default function SupervisorPortal() {
                   <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--warning)' }}>
                     تصمیم شما
                   </h4>
+                  {instanceDetail.process_code === 'supervision_session_increase'
+                    && instanceDetail.current_state === 'supervisor_review' && (
+                    <div style={{ marginBottom: '0.75rem', fontSize: '0.88rem' }}>
+                      <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                        پیشنهاد زمان جایگزین (فقط هنگام زدن دکمهٔ «پیشنهاد جایگزین»)
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+                        <div style={{ minWidth: '16rem' }}>
+                          <ShamsiDatePicker
+                            label="تاریخ جایگزین"
+                            value={(supervisionIncreaseAltDate && isoDateToShamsiParts(supervisionIncreaseAltDate)) || defaultShamsiDate()}
+                            onChange={(p) => setSupervisionIncreaseAltDate(shamsiDateToIsoDate(p.jy, p.jm, p.jd))}
+                          />
+                        </div>
+                        <label style={{ fontSize: '0.8rem' }}>
+                          <span style={{ display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>ساعت</span>
+                          <input
+                            className="form-input"
+                            type="time"
+                            dir="ltr"
+                            style={{ textAlign: 'left', maxWidth: '8rem' }}
+                            value={supervisionIncreaseAltTime}
+                            onChange={e => setSupervisionIncreaseAltTime(e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.78rem', color: '#64748b' }}>
+                        در صورت تایید یا رد بدون پیشنهاد جایگزین، این فیلدها را خالی بگذارید.
+                      </span>
+                    </div>
+                  )}
                   <DecisionNotesBlock
                     value={decisionNotes}
                     onChange={setDecisionNotes}

@@ -67,6 +67,7 @@
     {
       "title_fa": "زمان جلسهٔ هفتگی اضافه",
       "used_in_state": "request_submitted",
+      "editable_by": ["admin", "therapist"],
       "fields": [
         {
           "name": "first_session_date",
@@ -91,6 +92,7 @@
     {
       "title_fa": "پاسخ به پیشنهاد درمانگر",
       "used_in_state": "student_response",
+      "editable_by": ["admin"],
       "fields": [
         {
           "name": "student_response_note",
@@ -119,6 +121,7 @@
         "therapist",
         "admin"
       ],
+      "editable_by": ["therapist", "admin"],
       "fields": [
         {
           "name": "therapist_alternative_date",

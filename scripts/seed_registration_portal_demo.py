@@ -302,6 +302,10 @@ async def ensure_instance_at_state(
 
 async def run_matrix(db: AsyncSession) -> None:
     from app.core.engine import StateMachineEngine
+    from tests.helpers.registration_gate_fixture import open_intro_registration_gate
+
+    await open_intro_registration_gate(db)
+    await db.flush()
 
     actor_id = await _get_admin_actor_id(db)
     engine = StateMachineEngine(db)

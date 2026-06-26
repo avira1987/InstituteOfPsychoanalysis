@@ -103,6 +103,7 @@ class StudentResponse(BaseModel):
     primary_current_state: Optional[str] = None
     primary_path_missing: Optional[bool] = None
     therapy_hours_progress_fa: Optional[str] = None
+    intro_registration_gate: Optional[dict] = None
 
     model_config = {"from_attributes": True}
 
@@ -319,6 +320,17 @@ async def complete_student_registration(
     )
 
 
+@router.get("/registration-gate")
+async def get_my_intro_registration_gate(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """وضعیت باز/بسته بودن ثبت‌نام دورهٔ آشنایی برای دانشجوی واردشده."""
+    from app.services.registration_readiness_service import check_intro_registration_gate
+
+    return (await check_intro_registration_gate(db)).to_dict()
+
+
 @router.get("/me", response_model=StudentResponse)
 async def get_my_student_profile(
     db: AsyncSession = Depends(get_db),
@@ -361,6 +373,12 @@ async def get_my_student_profile(
         except Exception:
             therapy_hours_progress_fa = None
 
+    intro_gate = None
+    if student.course_type == "introductory":
+        from app.services.registration_readiness_service import check_intro_registration_gate
+
+        intro_gate = (await check_intro_registration_gate(db)).to_dict()
+
     return StudentResponse(
         id=str(student.id),
         user_id=str(student.user_id),
@@ -373,6 +391,7 @@ async def get_my_student_profile(
         weekly_sessions=student.weekly_sessions,
         extra_data=_extra_for_response(student.extra_data),
         therapy_hours_progress_fa=therapy_hours_progress_fa,
+        intro_registration_gate=intro_gate,
     )
 
 

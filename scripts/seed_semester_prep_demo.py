@@ -65,6 +65,7 @@ async def _main() -> int:
         "\n--- ورود پیشنهادی ---",
         "  ادمین / معاون آموزش: admin یا deputy_education1 — رمزها در login_hints",
         "  مسئول سایت (اسلات): site_manager1 / demo123",
+        "  صفحه تدوین تقویم: /panel/semester-prep/calendar",
         "  صفحه آماده‌سازی ترم: /panel/semester-prep",
         sep="\n",
     )

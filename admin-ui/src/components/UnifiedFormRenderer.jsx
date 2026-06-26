@@ -99,10 +99,64 @@ function FileField({ field, value, onChange, disabled, onUploadFile, showToast }
   )
 }
 
+function formatRialDisplay(num) {
+  if (num === '' || num === undefined || num === null) return ''
+  const n = Number(num)
+  if (Number.isNaN(n)) return ''
+  return n.toLocaleString('fa-IR')
+}
+
+function RialNumberField({ id, labelEl, field, value, onChange, disabled, rules }) {
+  const [display, setDisplay] = useState(() => formatRialDisplay(value))
+  useEffect(() => {
+    setDisplay(formatRialDisplay(value))
+  }, [value])
+  const handleBlur = () => {
+    const raw = String(display).replace(/[^\d]/g, '')
+    if (!raw) {
+      onChange('')
+      setDisplay('')
+      return
+    }
+    const n = Number(raw)
+    onChange(n)
+    setDisplay(formatRialDisplay(n))
+  }
+  return (
+    <label className="psf-field" htmlFor={id}>
+      {labelEl}
+      {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
+      <input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        dir="ltr"
+        className="psf-input form-input"
+        value={display}
+        disabled={disabled}
+        placeholder="مثلاً ۱٬۵۰۰٬۰۰۰"
+        onChange={(e) => setDisplay(e.target.value)}
+        onBlur={handleBlur}
+      />
+    </label>
+  )
+}
+
 // انتخاب چندتایی — اگر options موجود باشد چک‌باکسی؛ وگرنه ورودی برچسبی (نام‌ها).
 function MultiSelectField({ field, value, onChange, disabled }) {
   const selected = Array.isArray(value) ? value : []
   const [draft, setDraft] = useState('')
+  const labelMap = useMemo(() => {
+    const m = new Map()
+    if (Array.isArray(field.options)) {
+      field.options.forEach((opt) => {
+        const v = typeof opt === 'object' ? opt.value : opt
+        const lab = typeof opt === 'object' ? (opt.label_fa || v) : opt
+        m.set(String(v), lab)
+      })
+    }
+    return m
+  }, [field.options])
   if (Array.isArray(field.options) && field.options.length) {
     const toggle = (v) => {
       const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]
@@ -134,7 +188,7 @@ function MultiSelectField({ field, value, onChange, disabled }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.4rem' }}>
         {selected.map((v) => (
           <span key={v} className="badge" style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', padding: '0.2rem 0.5rem', borderRadius: '999px', background: '#eef2ff' }}>
-            {v}
+            {labelMap.get(String(v)) || v}
             {!disabled && (
               <button type="button" onClick={() => onChange(selected.filter((x) => x !== v))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#6366f1' }}>×</button>
             )}
@@ -159,23 +213,111 @@ function MultiSelectField({ field, value, onChange, disabled }) {
   )
 }
 
-// جدول قابل‌ویرایش — ستون‌ها از field.columns؛ هر ردیف یک شیء.
-function EditableTableField({ field, value, onChange, disabled }) {
-  const columns = Array.isArray(field.columns) ? field.columns : []
+// dynamic_list — ستون‌ها از field.fields (رشته یا شیء)
+function DynamicListField({ field, value, onChange, disabled }) {
+  const colSpecs = Array.isArray(field.fields) ? field.fields : []
+  const columns = colSpecs.map((c) => {
+    if (typeof c === 'string') return { name: c, label_fa: c, type: 'text' }
+    return { name: c.name || c.code, label_fa: c.label_fa || c.name, type: c.type || 'text' }
+  })
   const rows = Array.isArray(value) ? value : []
   const setCell = (rowIdx, colName, v) => {
     const next = rows.map((r, i) => (i === rowIdx ? { ...r, [colName]: v } : r))
     onChange(next)
   }
-  const addRow = () => onChange([...rows, {}])
+  const addRow = () => {
+    const blank = {}
+    columns.forEach((c) => { blank[c.name] = '' })
+    onChange([...rows, blank])
+  }
   const removeRow = (idx) => onChange(rows.filter((_, i) => i !== idx))
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            {columns.map((col) => (
+              <th key={col.name} style={{ textAlign: 'right', padding: '0.3rem', borderBottom: '1px solid #e5e7eb', fontSize: '0.82rem' }}>{col.label_fa || col.name}</th>
+            ))}
+            {!disabled && <th style={{ width: '2.5rem' }} />}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIdx) => (
+            <tr key={rowIdx}>
+              {columns.map((col) => (
+                <td key={col.name} style={{ padding: '0.25rem', verticalAlign: 'top' }}>
+                  {col.type === 'number' ? (
+                    <input type="number" className="psf-input form-input" value={row?.[col.name] ?? ''} disabled={disabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value === '' ? '' : Number(e.target.value))} />
+                  ) : (
+                    <input type="text" className="psf-input form-input" value={row?.[col.name] ?? ''} disabled={disabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
+                  )}
+                </td>
+              ))}
+              {!disabled && (
+                <td style={{ padding: '0.25rem' }}>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => removeRow(rowIdx)}>حذف</button>
+                </td>
+              )}
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr><td colSpan={columns.length + 1} className="muted" style={{ padding: '0.5rem' }}>ردیفی ثبت نشده</td></tr>
+          )}
+        </tbody>
+      </table>
+      {!disabled && (
+        <button type="button" className="btn btn-sm btn-outline" style={{ marginTop: '0.4rem' }} onClick={addRow}>+ افزودن ردیف</button>
+      )}
+    </div>
+  )
+}
+
+function tableBlankRow(columns) {
+  const blank = {}
+  columns.forEach((col) => {
+    const ct = (col.type || 'text').toLowerCase()
+    blank[col.name] = ct === 'checkbox' ? false : ''
+  })
+  return blank
+}
+
+// جدول قابل‌ویرایش — ستون‌ها از field.columns؛ هر ردیف یک شیء.
+function EditableTableField({ field, value, onChange, disabled }) {
+  const columns = Array.isArray(field.columns) ? field.columns : []
+  const rows = Array.isArray(value) ? value : []
+
+  useEffect(() => {
+    if (disabled || !field.required) return
+    if (Array.isArray(value) && value.length > 0) return
+    onChange([tableBlankRow(columns)])
+    // فقط هنگام خالی بودن مقدار — وابستگی به columns/onChange عمداً محدود است
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disabled, field.required, Array.isArray(value) ? value.length : 0])
+
+  const setCell = (rowIdx, colName, v) => {
+    const next = rows.map((r, i) => (i === rowIdx ? { ...r, [colName]: v } : r))
+    onChange(next)
+  }
+  const addRow = () => onChange([...rows, tableBlankRow(columns)])
+  const removeRow = (idx) => {
+    const next = rows.filter((_, i) => i !== idx)
+    if (field.required && next.length === 0) {
+      onChange([tableBlankRow(columns)])
+      return
+    }
+    onChange(next)
+  }
 
   const renderCell = (col, row, rowIdx) => {
     const ct = (col.type || 'text').toLowerCase()
     const v = row?.[col.name]
+    const cellDisabled = disabled || Boolean(col.auto_fill)
+    const readOnlyStyle = col.auto_fill ? { background: '#f1f5f9' } : undefined
     if (ct === 'select' && Array.isArray(col.options)) {
       return (
-        <select className="psf-input form-input" value={v ?? ''} disabled={disabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)}>
+        <select className="psf-input form-input" style={readOnlyStyle} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)}>
           <option value="">—</option>
           {col.options.map((opt) => {
             const ov = typeof opt === 'object' ? opt.value : opt
@@ -186,15 +328,15 @@ function EditableTableField({ field, value, onChange, disabled }) {
       )
     }
     if (ct === 'time') {
-      return <input type="time" dir="ltr" className="psf-input form-input" value={v ?? ''} disabled={disabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
+      return <input type="time" dir="ltr" className="psf-input form-input" style={readOnlyStyle} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
     }
     if (ct === 'number') {
-      return <input type="number" className="psf-input form-input" value={v ?? ''} disabled={disabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value === '' ? '' : Number(e.target.value))} />
+      return <input type="number" className="psf-input form-input" style={readOnlyStyle} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value === '' ? '' : Number(e.target.value))} />
     }
     if (ct === 'checkbox') {
-      return <input type="checkbox" checked={!!v} disabled={disabled} onChange={(e) => setCell(rowIdx, col.name, e.target.checked)} />
+      return <input type="checkbox" checked={!!v} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.checked)} />
     }
-    return <input type="text" className="psf-input form-input" value={v ?? ''} disabled={disabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
+    return <input type="text" className="psf-input form-input" style={readOnlyStyle} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
   }
 
   return (
@@ -281,25 +423,35 @@ function DateRangeListField({ value, onChange, disabled }) {
   const removeRange = (idx) => onChange(ranges.filter((_, i) => i !== idx))
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-      {ranges.map((r, idx) => (
-        <div key={idx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span className="muted" style={{ fontSize: '0.8rem' }}>از</span>
-          <ShamsiDateFieldBridge
-            value={r?.start ?? ''}
-            disabled={disabled}
-            idPrefix={`range-${idx}-start`}
-            onChange={(v) => setPart(idx, 'start', v)}
-          />
-          <span className="muted" style={{ fontSize: '0.8rem' }}>تا</span>
-          <ShamsiDateFieldBridge
-            value={r?.end ?? ''}
-            disabled={disabled}
-            idPrefix={`range-${idx}-end`}
-            onChange={(v) => setPart(idx, 'end', v)}
-          />
-          {!disabled && <button type="button" className="btn btn-sm btn-outline" onClick={() => removeRange(idx)}>حذف</button>}
-        </div>
-      ))}
+      {ranges.map((r, idx) => {
+        const rangeInvalid = r?.start && r?.end && String(r.end) <= String(r.start)
+        return (
+          <div key={idx}>
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span className="muted" style={{ fontSize: '0.8rem' }}>از</span>
+              <ShamsiDateFieldBridge
+                value={r?.start ?? ''}
+                disabled={disabled}
+                idPrefix={`range-${idx}-start`}
+                onChange={(v) => setPart(idx, 'start', v)}
+              />
+              <span className="muted" style={{ fontSize: '0.8rem' }}>تا</span>
+              <ShamsiDateFieldBridge
+                value={r?.end ?? ''}
+                disabled={disabled}
+                idPrefix={`range-${idx}-end`}
+                onChange={(v) => setPart(idx, 'end', v)}
+              />
+              {!disabled && <button type="button" className="btn btn-sm btn-outline" onClick={() => removeRange(idx)}>حذف</button>}
+            </div>
+            {rangeInvalid && (
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: '#b91c1c' }}>
+                تاریخ پایان باید بعد از شروع باشد
+              </p>
+            )}
+          </div>
+        )
+      })}
       {ranges.length === 0 && <span className="muted">بازه‌ای افزوده نشده</span>}
       {!disabled && <button type="button" className="btn btn-sm btn-outline" style={{ alignSelf: 'flex-start' }} onClick={addRange}>+ افزودن بازه</button>}
     </div>
@@ -411,9 +563,24 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
 
   if (t === 'number') {
     const rules = field.validation || {}
+    const isRial = field.format === 'rial' || (field.label_fa || '').includes('ریال')
+    if (isRial) {
+      return (
+        <RialNumberField
+          id={id}
+          labelEl={labelEl}
+          field={field}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          rules={rules}
+        />
+      )
+    }
     return (
       <label className="psf-field" htmlFor={id}>
         {labelEl}
+        {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
         <input id={id} type="number" className="psf-input form-input" min={rules.min ?? field.min} max={rules.max ?? field.max} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))} />
       </label>
     )
@@ -477,6 +644,16 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
     )
   }
 
+  if (t === 'dynamic_list') {
+    return (
+      <div className="psf-field">
+        {labelEl}
+        {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
+        <DynamicListField field={field} value={value} onChange={onChange} disabled={disabled} />
+      </div>
+    )
+  }
+
   if (t === 'table') {
     return (
       <div className="psf-field">
@@ -530,9 +707,19 @@ export default function UnifiedFormRenderer({
   role,
   onUploadFile,
   showToast,
+  /**
+   * در صورت ارائه، فقط فیلدهایی که نامشان در این فهرست/Set است قابل ویرایش‌اند
+   * و بقیه فقط-خواندنی می‌شوند (علاوه بر disabled سراسری).
+   */
+  editableFieldNames = null,
 }) {
   const filtered = useMemo(() => filterSchemaForRole(schemaJson || { fields: [] }, role), [schemaJson, role])
   const fields = filtered.fields || []
+
+  const editableSet = useMemo(() => {
+    if (editableFieldNames == null) return null
+    return editableFieldNames instanceof Set ? editableFieldNames : new Set(editableFieldNames)
+  }, [editableFieldNames])
 
   const setVal = useCallback(
     (name, v) => onChange({ ...values, [name]: v }),
@@ -544,13 +731,14 @@ export default function UnifiedFormRenderer({
       {fields.map((field) => {
         if (!field?.name) return null
         if (!fieldVisible(field, values)) return null
+        const fieldDisabled = disabled || (editableSet ? !editableSet.has(field.name) : false)
         return (
           <UnifiedField
             key={field.name}
             field={field}
             values={values}
             onFieldChange={setVal}
-            disabled={disabled}
+            disabled={fieldDisabled}
             onUploadFile={onUploadFile}
             showToast={showToast}
           />

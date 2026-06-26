@@ -21,6 +21,7 @@ from app.api.auth import get_password_hash
 from app.core.engine import StateMachineEngine
 from app.meta.seed import load_process, load_rules
 from app.models.operational_models import ProcessInstance, Student, User
+from tests.helpers.registration_gate_fixture import open_intro_registration_gate
 
 
 PROCESSES_DIR = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
@@ -78,6 +79,7 @@ async def journey_intro_student(db_session: AsyncSession, journey_student_user: 
 
 async def _load_journey_metadata(db_session: AsyncSession) -> None:
     await load_rules(db_session)
+    await open_intro_registration_gate(db_session)
     await load_process(db_session, PROCESSES_DIR / "introductory_course_registration.json")
     await load_process(db_session, PROCESSES_DIR / "start_therapy.json")
     await load_process(db_session, PROCESSES_DIR / "introductory_course_completion.json")

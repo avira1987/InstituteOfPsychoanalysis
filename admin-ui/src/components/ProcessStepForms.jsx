@@ -7,6 +7,13 @@ import {
   resolveCheckboxListOptions,
   normalizeSelectedCoursesValue,
 } from '../utils/resolveCourseFieldOptions'
+import ShamsiDatePicker from './ShamsiDatePicker'
+import {
+  isoDateToShamsiParts,
+  shamsiDateToIsoDate,
+  defaultShamsiDate,
+  formatShamsiTehran,
+} from '../utils/shamsiDateTime'
 
 function TherapistSelectField({ id, field, value, onChange, disabled }) {
   const [options, setOptions] = useState([])
@@ -376,6 +383,47 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
           id={id}
           type="date"
           className="psf-input"
+          value={value ?? ''}
+          onChange={e => onChange(e.target.value)}
+          disabled={disabled || locked}
+          dir="ltr"
+        />
+      </label>
+    )
+  }
+
+  if (t === 'shamsi_date') {
+    // مقدار ذخیره‌شده تاریخ میلادی YYYY-MM-DD است تا بک‌اند بدون تغییر بماند؛ نمایش به‌صورت شمسی.
+    const parts = (value && isoDateToShamsiParts(value)) || defaultShamsiDate()
+    return (
+      <div className="psf-field">
+        <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
+        {field.description_fa && <p className="psf-hint">{field.description_fa}</p>}
+        <ShamsiDatePicker
+          idPrefix={id}
+          value={parts}
+          disabled={disabled || locked}
+          onChange={(p) => onChange(shamsiDateToIsoDate(p.jy, p.jm, p.jd))}
+        />
+        {value && (
+          <p className="psf-hint" style={{ marginTop: '0.3rem' }}>
+            تاریخ انتخاب‌شده: {formatShamsiTehran(value, { dateOnly: true })}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  if (t === 'time') {
+    return (
+      <label className="psf-field" htmlFor={id}>
+        <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
+        {field.description_fa && <p className="psf-hint">{field.description_fa}</p>}
+        <input
+          id={id}
+          type="time"
+          className="psf-input"
+          style={{ maxWidth: '10rem' }}
           value={value ?? ''}
           onChange={e => onChange(e.target.value)}
           disabled={disabled || locked}

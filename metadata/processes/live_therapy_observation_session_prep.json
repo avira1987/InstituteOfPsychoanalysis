@@ -59,7 +59,12 @@
       "conditions": [
         "live_session_time_agreed"
       ],
-      "description_fa": "ثبت زمان در LMS — پیامک به مدرس، کمک‌مدرس و دانشجویان"
+      "description_fa": "ثبت زمان در LMS — پیامک به مدرس، کمک‌مدرس و دانشجویان",
+      "actions": [
+        {
+          "type": "record_session_prep"
+        }
+      ]
     },
     {
       "from": "coordination_pending",

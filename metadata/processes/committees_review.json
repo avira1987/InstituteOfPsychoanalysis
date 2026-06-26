@@ -14,6 +14,100 @@
       "commission_eligibility_rejected"
     ]
   },
+  "forms": [
+    {
+      "code": "supervision_recommendation",
+      "title_fa": "پیشنهاد کمیته نظارت",
+      "description_fa": "پرونده را بررسی کنید، پیشنهاد مشورتی را ثبت کنید، سپس دکمهٔ «ثبت پیشنهاد» را بزنید.",
+      "used_in_state": "supervision_review",
+      "visible_to": [
+        "supervision_committee",
+        "monitoring_committee_officer",
+        "admin",
+        "staff"
+      ],
+      "fields": [
+        {
+          "name": "entry_source_display",
+          "label_fa": "منبع ورود به زیرفرایند",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "termination_reason_display",
+          "label_fa": "علت قطع درمان (گزارش درمانگر)",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "commission_opinion_display",
+          "label_fa": "نظر کمیسیون تخصصی (در صورت وجود)",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "nezarat_recommendation_code",
+          "label_fa": "پیشنهاد کمیته نظارت",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {
+              "value": "continue",
+              "label_fa": "پیشنهاد الف — مشکل قابل اغماض است (ادامه آموزش)"
+            },
+            {
+              "value": "terminate",
+              "label_fa": "پیشنهاد ب — تخلف محرز است (قطع آموزش)"
+            }
+          ]
+        },
+        {
+          "name": "nezarat_recommendation_fa",
+          "label_fa": "توضیحات و مستندات پیشنهاد",
+          "type": "textarea",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "education_verdict",
+      "title_fa": "حکم نهایی کمیته آموزش",
+      "description_fa": "پیش از زدن دکمهٔ «ادامه آموزش» یا «قطع قطعی»، فرم را تکمیل و ثبت کنید.",
+      "used_in_state": "education_review",
+      "visible_to": [
+        "education_committee",
+        "deputy_education",
+        "admin",
+        "staff"
+      ],
+      "fields": [
+        {
+          "name": "termination_reason_display",
+          "label_fa": "علت قطع درمان (گزارش درمانگر)",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "commission_opinion_display",
+          "label_fa": "نظر کمیسیون تخصصی",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "supervision_recommendation_display",
+          "label_fa": "پیشنهاد کمیته نظارت",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "education_verdict_notes_fa",
+          "label_fa": "یادداشت جلسه و مستندات حکم (اختیاری)",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    }
+  ],
   "states": [
     {
       "code": "supervision_review",

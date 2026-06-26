@@ -84,7 +84,32 @@ def notification_action_path(item: dict[str, Any]) -> str:
     if kind == "semester_prep_sla":
         instance_id = item.get("instance_id")
         student_id = item.get("student_id")
+        state_code = (item.get("state_code") or "").strip().lower()
+        process_code = (item.get("process_code") or "").strip().lower()
         code = (item.get("responsible_role_code") or "").strip().lower()
+        if (
+            process_code == "fall_semester_preparation"
+            and state_code == "calendar_entry"
+            and code
+            in (
+                "course_committee_executive",
+                "deputy_education",
+                "deputy_education_director",
+            )
+        ):
+            return "/panel/semester-prep/calendar"
+        if (
+            process_code == "winter_semester_preparation"
+            and state_code == "course_list_review"
+            and code
+            in (
+                "scientific_officer_course_committee",
+                "deputy_education",
+                "deputy_education_director",
+                "course_committee_scientific",
+            )
+        ):
+            return "/panel/semester-prep/course-list-review"
         base = {"instance_id": instance_id, "student_id": student_id, "tab": "reviews"}
         if code == "site_manager":
             return _path_query("/panel/portal/site-manager", {**base, "tab": "pending"})

@@ -136,7 +136,7 @@ test.describe('پذیرش مشروط به درمان — قفل جلسات تا 
         await page.getByTestId('student-portal-group-learning').click()
         const sessionsTab = page.locator('.student-portal-nav-sub .tab-item').filter({ hasText: 'جلسات آنلاین' })
         await sessionsTab.click()
-        await expect(page.getByRole('heading', { name: 'جلسات آنلاین درمان' })).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'جلسات آنلاین' })).toBeVisible()
         /* بدون جلسهٔ زمان‌بندی‌شده، ورود به کلاس آنلاین وجود ندارد (غیبت خودکار در بک‌اند با زمان‌بندی جلسات تست واحد می‌شود) */
         await expect(page.getByText(/هنوز جلسه‌ای در تقویم شما ثبت نشده است/)).toBeVisible()
       })
@@ -161,6 +161,29 @@ test.describe('پذیرش مشروط به درمان — قفل جلسات تا 
         const st = await getTokenFromPage(page)
         const api = await fetchStudentMe(request, baseURL, st!)
         expect(api.therapy_started).toBe(true)
+      })
+
+      await test.step('ادمین: seed لینک آنلاین در lms — نمایش در تب جلسات', async () => {
+        await patchStudentAsAdmin(request, baseURL, adminToken, me.id, {
+          extra_data: {
+            lms: {
+              online_links: [
+                {
+                  id: 'e2e-online-1',
+                  kind: 'supervision_50th',
+                  url: 'https://example.com/e2e-supervision',
+                  created_at: new Date().toISOString(),
+                },
+              ],
+            },
+          },
+        })
+        await page.reload({ waitUntil: 'domcontentloaded' })
+        await page.getByTestId('student-portal-group-learning').click()
+        await page.locator('.student-portal-nav-sub .tab-item').filter({ hasText: 'جلسات آنلاین' }).click()
+        await expect(page.getByTestId('student-online-session-supervision-e2e-online-1')).toBeVisible({
+          timeout: 20_000,
+        })
       })
     } finally {
       if (userIdForCleanup) {

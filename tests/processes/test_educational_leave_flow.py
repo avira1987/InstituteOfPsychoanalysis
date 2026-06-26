@@ -68,6 +68,11 @@ class TestEducationalLeaveFlow:
             trigger_event="committee_set_meeting",
             actor_id=sample_user.id,
             actor_role="admin",
+            payload={
+                "committee_meeting_at": "2026-09-15T10:30:00+00:00",
+                "committee_meeting_mode": "online",
+                "committee_meeting_link": "https://meet.example/leave",
+            },
         )
         await db_session.commit()
         assert result.success is True
@@ -88,6 +93,7 @@ class TestEducationalLeaveFlow:
             trigger_event="committee_rejected",
             actor_id=sample_user.id,
             actor_role="admin",
+            payload={"rejection_reason_fa": "شرایط وقفه در این مقطع تأیید نشد."},
         )
         await db_session.commit()
         assert result.success is True

@@ -44,7 +44,16 @@
     "فرم winter_marketing_campaign_form + pre_filled_from از context پاییز.",
     "daily_overdue_check: semester_prep_sla، prep_calendar_deadline، role resolver، PanelTaskReminder چندرôle.",
     "institute_calendar_service: نگاشت fall_start_date و registration_payment_window_*.",
-    "tests/services/test_semester_prep_service.py"
+    "tests/services/test_semester_prep_service.py",
+    "UI اپراتور: ویجت table/date_range_list/multi_select مصاحبه‌گر، pre-fill زمستان، اعتبارسنجی، workbench (یادداشت/رول‌بک/ProcessDataManager)، SLA هاب — docs/semester_prep_ui_gaps.md"
+  ],
+  "resolved_intro_reg_prep_gate_2026_06": [
+    "registration_readiness_service: قفل کل فرایند introductory_course_registration تا fall_semester_preparation=published + InstituteCalendar فعال + پنجره ثبت‌نام.",
+    "engine: مسدودسازی execute_transition و get_available_transitions؛ حذف auto student_logged_in؛ merge available_courses از prep.",
+    "student_service: تأخیر start_initial_process_for_student؛ unlock batch پس از publish تقویم.",
+    "API: GET /students/registration-gate، intro_registration_gate در /students/me، registration_gate در process dashboard.",
+    "UI: StudentPortal/QuestCard/InterviewerResultPanel بنر مسدودیت.",
+    "tests/services/test_registration_readiness.py + tests/helpers/registration_gate_fixture.py"
   ],
   "remaining_gaps": [
     {

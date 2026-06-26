@@ -5,7 +5,7 @@
     {
       "id": "gap_intro_course_registration",
       "title_fa": "دانشجوی دوره آشنایی بدون نمونه فرایند «ثبت‌نام دوره آشنایی»",
-      "enabled": false,
+      "enabled": true,
       "expect": "missing_instance",
       "process_code": "introductory_course_registration",
       "student_filter": {
@@ -15,7 +15,7 @@
     {
       "id": "gap_comprehensive_course_registration",
       "title_fa": "دانشجوی دوره جامع بدون نمونه فرایند «ثبت‌نام دوره جامع»",
-      "enabled": false,
+      "enabled": true,
       "expect": "missing_instance",
       "process_code": "comprehensive_course_registration",
       "student_filter": {

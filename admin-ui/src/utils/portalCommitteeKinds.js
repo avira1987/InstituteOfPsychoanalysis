@@ -56,7 +56,7 @@ export const COMMITTEE_ROLE_CONFIG = {
     subtitle: 'بررسی نهایی و صدور حکم ادامه یا توقف',
     icon: '🎓',
     accentColor: 'var(--primary)',
-    reviewKeywords: ['education_committee', 'education_review', 'final_verdict', 'continuation_review'],
+    reviewKeywords: ['education_committee', 'education_review', 'final_verdict', 'continuation_review', 'committees_review'],
     assignedRoles: ['education_committee'],
   },
   supervision_committee: {
@@ -64,7 +64,7 @@ export const COMMITTEE_ROLE_CONFIG = {
     subtitle: 'بررسی موارد انضباطی و ارائه توصیه‌ها',
     icon: '🔍',
     accentColor: 'var(--warning)',
-    reviewKeywords: ['supervision_committee', 'supervision_review', 'disciplinary_review'],
+    reviewKeywords: ['supervision_committee', 'supervision_review', 'disciplinary_review', 'committees_review'],
     assignedRoles: ['supervision_committee'],
   },
   specialized_commission: {
@@ -80,7 +80,7 @@ export const COMMITTEE_ROLE_CONFIG = {
     subtitle: 'واگذاری پیگیری و مشاهده موارد عدم حضور',
     icon: '🏥',
     accentColor: 'var(--info)',
-    reviewKeywords: ['therapy_committee', 'chair_review', 'delegation', 'no_show'],
+    reviewKeywords: ['therapy_committee', 'chair_review', 'delegation', 'no_show', 'committee_pending'],
     assignedRoles: ['therapy_committee_chair'],
   },
   therapy_committee_executor: {

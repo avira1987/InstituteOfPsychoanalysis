@@ -23,7 +23,7 @@
 - [x] تریگر تقویمی اقساط (`installment_due_date_passed`) via `process_scheduler.dispatch_installment_overdue`
 
 ## وابستگی‌ها (sub_process_refs)
-- ندارد (مستقل)
+- `fall_semester_preparation` باید به state `published` برسد و تقویم آموزشی فعال شود تا کل فرایند `introductory_course_registration` (از مصاحبه تا پرداخت) باز شود — `app/services/registration_readiness_service.py`
 
 ## قالب‌های اعلان
 - interview_scheduled_student_online / interview_scheduled_student_in_person ✓

@@ -56,6 +56,7 @@ _SITE_MANAGER_REVIEW_STATES = (
     "attendance_check",
     "followup_required",
     "site_review",
+    "interview_scheduling",
 )
 
 # CommitteePortal.jsx — roleConfig + defaultConfig
@@ -91,6 +92,7 @@ _COMMITTEE_KEYWORDS: dict[str, list[str]] = {
         "chair_review",
         "delegation",
         "no_show",
+        "committee_pending",
     ],
     "therapy_committee_executor": [
         "executor_review",

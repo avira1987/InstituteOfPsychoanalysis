@@ -5,15 +5,15 @@ import { processExecApi, studentApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
-import InstanceContextSummary from '../components/InstanceContextSummary'
-import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import PopupToast from '../components/PopupToast'
 import DocumentsReviewPanel from '../components/DocumentsReviewPanel'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
-import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
-import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+import OperatorProcessInstancePanel from '../components/OperatorProcessInstancePanel'
+import AttendanceTrackingPanel from '../components/AttendanceTrackingPanel'
+import Supervision50hCompletionPanel from '../components/Supervision50hCompletionPanel'
+import UnannouncedAbsenceReactionPanel from '../components/UnannouncedAbsenceReactionPanel'
 
 const SITE_MANAGER_DEEP_LINK_TABS = [
   'dashboard',
@@ -26,6 +26,7 @@ const SITE_MANAGER_DEEP_LINK_TABS = [
 const siteManagerReviewStates = [
   'site_manager_review', 'site_manager_followup', 'pending_site_manager',
   'attendance_check', 'followup_required', 'site_review',
+  'interview_scheduling',
 ]
 
 export default function SiteManagerPortal() {
@@ -541,84 +542,97 @@ export default function SiteManagerPortal() {
 }
 
 function ActionPanel({ instanceDetail, availableTransitions, decisionNotes, setDecisionNotes, triggerTransition, user, showToast, onRefreshInstance, onClose }) {
+  const isAttendanceFollowup =
+    instanceDetail?.process_code === 'attendance_tracking'
+    && instanceDetail?.current_state === 'site_manager_pending'
+  const isSupervision50hFollowup =
+    instanceDetail?.process_code === 'supervision_50h_completion'
+    && instanceDetail?.current_state === 'site_manager_pending'
+
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="card-title">
-          {labelProcess(instanceDetail.process_code)}
-        </h3>
-        <button onClick={onClose} className="btn btn-outline btn-sm">بستن</button>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
-          <label style={{ fontSize: '0.7rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>وضعیت</label>
-          <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{labelState(instanceDetail.current_state)}</div>
-        </div>
-        <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
-          <label style={{ fontSize: '0.7rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>تاریخ</label>
-          <div>{instanceDetail.started_at ? new Date(instanceDetail.started_at).toLocaleDateString('fa-IR') : '-'}</div>
-        </div>
-      </div>
-
-      <OperatorInstanceGuidanceBlock
+    <>
+      <AttendanceTrackingPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'attendance_tracking'}
+      />
+      <Supervision50hCompletionPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'supervision_50h_completion'}
+      />
+      <UnannouncedAbsenceReactionPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'unannounced_absence_reaction'}
+      />
+      <OperatorProcessInstancePanel
+        user={user}
         instanceDetail={instanceDetail}
-        portalRole={user?.role}
         availableTransitions={availableTransitions}
-      />
-
-      <InstanceContextSummary
-        contextData={instanceDetail.context_data}
-        history={instanceDetail.history}
-        title="پرونده و سابقه (قبل از اقدام)"
-      />
-
-      <OperatorStepFormsSection
-        instanceId={instanceDetail.instance_id}
-        processCode={instanceDetail.process_code}
-        currentState={instanceDetail.current_state}
-        contextData={instanceDetail.context_data}
-        isCompleted={instanceDetail.is_completed}
-        isCancelled={instanceDetail.is_cancelled}
-        role={user?.role}
+        onClose={onClose}
         showToast={showToast}
-        onUpdated={() => onRefreshInstance?.()}
+        onRefreshInstance={onRefreshInstance}
+        onTriggerTransition={triggerTransition}
+        decisionNotes={decisionNotes}
+        setDecisionNotes={setDecisionNotes}
+        showCourseSelection={false}
+        contextSummaryTitle="پرونده و سابقه (قبل از اقدام)"
+        renderExtraBeforeActions={
+          isAttendanceFollowup || isSupervision50hFollowup
+            ? () => (
+              <>
+                {isAttendanceFollowup && (
+                  <div
+                    data-testid="site-manager-attendance-followup-banner"
+                    style={{
+                      marginBottom: '1rem',
+                      padding: '0.85rem 1rem',
+                      borderRadius: '10px',
+                      background: '#fef2f2',
+                      borderRight: '4px solid var(--danger)',
+                      fontSize: '0.88rem',
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    <strong>پیگیری عدم ثبت حضور و غیاب (فرایند ۶)</strong>
+                    <p style={{ margin: '0.35rem 0 0' }}>
+                      درمانگر برای این جلسه حضور/غیاب ثبت نکرده است. پس از تماس یا پیگیری، دکمهٔ
+                      «مسئول سایت پیگیری کرد» را بزنید تا پرونده به مرحلهٔ ثبت درمانگر برگردد.
+                      در صورت تأخیر بیش از ۲ روز، پرونده به معاون آموزش اسکیت می‌شود.
+                    </p>
+                  </div>
+                )}
+                {isSupervision50hFollowup && (
+                  <div
+                    data-testid="site-manager-supervision-50h-followup-banner"
+                    style={{
+                      marginBottom: '1rem',
+                      padding: '0.85rem 1rem',
+                      borderRadius: '10px',
+                      background: '#fef2f2',
+                      borderRight: '4px solid var(--danger)',
+                      fontSize: '0.88rem',
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    <strong>پیگیری عدم ثبت سوپرویژن (فرایند ۲۰)</strong>
+                    <p style={{ margin: '0.35rem 0 0' }}>
+                      سوپروایزر برای این جلسه حضور/غیاب ثبت نکرده است. پس از تماس، دکمهٔ
+                      «مسئول سایت پیگیری کرد» را بزنید تا پرونده به مرحلهٔ ثبت سوپروایزر برگردد.
+                      در صورت تأخیر بیش از ۲ روز، پرونده به معاون آموزش اسکیت می‌شود.
+                    </p>
+                  </div>
+                )}
+              </>
+            )
+            : undefined
+        }
+      actionsBoxStyle={{
+        padding: '1.25rem',
+        background: 'var(--warning-light)',
+        borderRadius: '10px',
+        marginBottom: '1.5rem',
+        borderRight: '4px solid var(--warning)',
+      }}
       />
-
-      {availableTransitions.length > 0 && (
-        <div style={{
-          padding: '1.25rem', background: 'var(--warning-light)',
-          borderRadius: '10px', marginBottom: '1.5rem', borderRight: '4px solid var(--warning)',
-        }}>
-          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem' }}>اقدامات</h4>
-          <DecisionNotesBlock
-            value={decisionNotes}
-            onChange={setDecisionNotes}
-            title="توضیح یا نظر (اختیاری)"
-            hint="متن همراه همان دکمه‌ای که می‌زنید در پرونده ثبت می‌شود."
-          />
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {availableTransitions.map((t, idx) => {
-              const isApproval = t.trigger_event?.includes('done') || t.trigger_event?.includes('confirm')
-              const isReject = t.trigger_event?.includes('reject') || t.trigger_event?.includes('escalate')
-              return (
-                <button
-                  key={idx}
-                  onClick={() => triggerTransition(t)}
-                  style={{
-                    padding: '0.6rem 1.2rem', borderRadius: '8px', border: 'none',
-                    cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem',
-                    background: isApproval ? 'var(--success)' : isReject ? 'var(--danger)' : 'var(--primary)',
-                    color: '#fff',
-                  }}
-                >
-                  {t.description || t.trigger_event}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </div>
+    </>
   )
 }

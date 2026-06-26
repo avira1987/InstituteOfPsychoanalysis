@@ -43,7 +43,12 @@
       "conditions": [
         "course_grades_submitted_in_time"
       ],
-      "description_fa": "ثبت نمرات و قفل"
+      "description_fa": "ثبت نمرات و قفل",
+      "actions": [
+        {
+          "type": "record_course_grades"
+        }
+      ]
     },
     {
       "from": "grades_entry",

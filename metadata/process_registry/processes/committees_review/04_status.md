@@ -3,11 +3,18 @@
 | فیلد | مقدار |
 |------|-------|
 | **وضعیت** | complete_in_metadata |
-| **آخرین به‌روزرسانی** | 2026-02-14 |
+| **آخرین به‌روزرسانی** | 2026-06-25 |
 | **منبع ورودی** | فلوچارت + متن بخش ۳ |
 
-## نواقص
-- [ ] اکشن‌ها: store_nezarat_recommendation, create_education_committee_task, record_termination_date, deactivate_student_account, revoke_student_access, cancel_all_future_sessions, block_future_enrollment, generate_termination_letter, archive_letter_in_student_file
-- [ ] SLA ۳ روز و ۶ روز برای نظارت و آموزش
-- [ ] قالب نامه رسمی و ایمیل (محتوی مصوب دکتر مرادی)
-- [ ] patient_referral در صورت انترن بودن
+## پیاده‌سازی UI
+- [x] فرم‌های `supervision_recommendation` و `education_verdict` در `metadata/processes/committees_review.json`
+- [x] پنل راهنما `CommitteesReviewPanel.jsx` در `CommitteePortal`
+- [x] اعتبارسنجی trigger: `committeesReviewTriggerPayload.js`
+- [x] prefill والد در `process_form_prefill.py`
+- [x] پنل دانشجو `StudentCommitteesRestartPanel.jsx` (مهلت ۵ روز + CTA `therapy_changes`)
+- [x] زنجیره با فرایند ۱۱ (`TherapistEarlyTerminationPanel`) و ۱۲ (`SpecializedCommissionReviewPanel`)
+
+## نواقص بک‌اند (غیر UI)
+- [ ] SLA خودکار ۳ و ۶ روز (scheduler)
+- [ ] قالب نامه رسمی کامل در production document service
+- [ ] patient_referral در صورت انترن بودن — اکشن موجود، تست یکپارچه E2E

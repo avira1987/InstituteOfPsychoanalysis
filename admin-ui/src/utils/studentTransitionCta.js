@@ -48,7 +48,7 @@ export function getStudentTransitionButtonSub(transition) {
   const te = transition?.trigger_event
   const ts = transition?.to_state
   if (te === 'student_registered' && ts === 'returned') {
-    return 'پس از ثبت واقعی دروس ترم در سامانه، این دکمه را بزنید تا مسیر بازگشت بسته شود (اتصال خودکار به سیستم ثبت‌نام ترم وجود ندارد)'
+    return 'پس از ثبت واقعی دروس ترم در سامانه، فرم تأیید بازگشت را پر و ثبت کنید؛ سپس این دکمه را بزنید (اتصال خودکار به سیستم ثبت‌نام ترم وجود ندارد)'
   }
   const next = labelState(transition?.to_state)
   if (!next || next === '—') return ''

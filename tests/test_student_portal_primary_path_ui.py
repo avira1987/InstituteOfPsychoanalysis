@@ -125,3 +125,26 @@ async def test_student_me_idempotent_when_primary_already_valid(
     r2 = await student_portal_ui_client.get("/api/students/me")
     assert r1.status_code == 200 and r2.status_code == 200
     assert r1.json()["extra_data"]["primary_instance_id"] == str(instance.id)
+
+
+@pytest.mark.asyncio
+async def test_intro_student_me_does_not_start_process_when_gate_closed(
+    student_portal_ui_client: AsyncClient,
+    db_session: AsyncSession,
+    sample_student,
+    sample_student_user,
+):
+    """دانشجوی آشنایی بدون آماده‌سازی ترم: /me فرایند intro را start نمی‌کند."""
+    sample_student.course_type = "introductory"
+    sample_student.extra_data = {}
+    await db_session.commit()
+
+    r_me = await student_portal_ui_client.get("/api/students/me")
+    assert r_me.status_code == 200, r_me.text
+    body = r_me.json()
+    assert body.get("intro_registration_gate", {}).get("allowed") is False
+    assert not (body.get("extra_data") or {}).get("primary_instance_id")
+
+    r_gate = await student_portal_ui_client.get("/api/students/registration-gate")
+    assert r_gate.status_code == 200
+    assert r_gate.json().get("allowed") is False

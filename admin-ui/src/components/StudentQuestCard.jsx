@@ -18,6 +18,9 @@ import {
 } from '../utils/studentTransitionCta'
 import { showStudentTransitionCta } from '../utils/studentTransitionCtaVisibility'
 import SepPaymentPanel from './SepPaymentPanel'
+import StudentSessionPaymentPanel from './StudentSessionPaymentPanel'
+import StudentSupervisionBlockTransitionPanel from './StudentSupervisionBlockTransitionPanel'
+import StudentSupervisionSessionIncreasePanel from './StudentSupervisionSessionIncreasePanel'
 import StudentProcessStepReview from './StudentProcessStepReview'
 import StudentSmsHistorySection from './StudentSmsHistorySection'
 
@@ -59,6 +62,10 @@ function resolveSepPaymentDescription(detail) {
       ? 'پرداخت شهریه دوره جامع'
       : 'پرداخت شهریه دوره آشنایی'
   }
+  if (pc === 'supervision_block_transition') {
+    if (cs === 'slot_selected') return 'پرداخت جلسه اول دوره سوپرویژن جدید'
+    if (cs === 'new_block_first_paid') return 'پرداخت جلسه ۵۰ام دوره سوپرویژن فعلی'
+  }
   return 'پرداخت جلسات درمان آموزشی'
 }
 
@@ -89,6 +96,8 @@ export default function StudentQuestCard({
   onInterviewBooked = null,
   /** کلید refetch تاریخچهٔ پیامک (مثلاً instance_id + current_state) */
   smsRefreshKey = null,
+  /** وضعیت قفل ثبت‌نام آشنایی (از API) */
+  registrationGate = null,
 }) {
   const [selectedTransitionIdx, setSelectedTransitionIdx] = useState(0)
   const transitionList = transitions || []
@@ -152,6 +161,13 @@ export default function StudentQuestCard({
 
   const processTitle = labelProcess(detail.process_code)
   const done = detail.is_completed || detail.is_cancelled
+  const introRegGateClosed =
+    detail?.process_code === 'introductory_course_registration' &&
+    registrationGate &&
+    registrationGate.allowed === false
+  const introRegGateReason =
+    registrationGate?.reason_fa ||
+    'ثبت‌نام دورهٔ آشنایی پس از انتشار تقویم آموزشی باز می‌شود.'
   const studentForms = filterFormsForStudent(forms || [])
   const rawResubmit = detail?.context_data?.[CTX_DOCUMENTS_RESUBMIT_FIELDS]
   const docsResubmit = Array.isArray(rawResubmit) && rawResubmit.length ? rawResubmit : null
@@ -180,7 +196,11 @@ export default function StudentQuestCard({
       || (detail?.current_state === 'interview_scheduled' && hasInterviewBooking)
     )
 
-  const showSepPanel = !done && studentId && detail?.instance_id && (showLegacySep || showRegistrationSep)
+  const showSupervisionBlockSep = detail?.process_code === 'supervision_block_transition'
+    && (detail?.current_state === 'slot_selected' || detail?.current_state === 'new_block_first_paid')
+
+  const showSepPanel = !done && studentId && detail?.instance_id
+    && (showLegacySep || showRegistrationSep || showSupervisionBlockSep)
 
   const transitionListForCta = transitionList.filter((t) => {
     if (
@@ -197,7 +217,7 @@ export default function StudentQuestCard({
     transitions: transitionListForCta,
     transitionBlocked,
     detailDone: done,
-  })
+  }) && !introRegGateClosed
 
   const selectedTransition = transitionListForCta[selectedTransitionIdx] ?? transitionListForCta[0]
 
@@ -247,6 +267,26 @@ export default function StudentQuestCard({
       </div>
 
       <StudentProcessGuidancePanel guidance={guidance} variant="quest" />
+
+      {introRegGateClosed && !done && (
+        <div
+          className="quest-staff-wait"
+          role="status"
+          data-testid="student-quest-intro-gate-closed"
+          style={{
+            marginTop: '0.85rem',
+            padding: '1rem 1.25rem',
+            borderRadius: '10px',
+            background: '#fffbeb',
+            borderRight: '4px solid #d97706',
+            fontSize: '0.9rem',
+            lineHeight: 1.75,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>ثبت‌نام موقتاً متوقف است</div>
+          <p style={{ margin: 0 }}>{introRegGateReason}</p>
+        </div>
+      )}
 
       {!done && detail?.current_state === 'credentials_created' && ctx.portal_username && (
         <div
@@ -326,36 +366,47 @@ export default function StudentQuestCard({
         </div>
       )}
 
-      {!done && detail?.process_code === 'session_payment' && ['payment_due', 'payment_selection', 'awaiting_payment', 'payment_failed'].includes(detail?.current_state) && (() => {
-        const c = detail?.context_data || {}
-        const rawDebt = c.debt_sessions_count
-        const debt = rawDebt != null ? Number(rawDebt) : 0
-        const credit = c.session_credit_balance != null ? Number(c.session_credit_balance) : null
+      {!done && detail?.process_code === 'session_payment'
+        && ['payment_due', 'payment_selection', 'awaiting_payment', 'payment_failed'].includes(detail?.current_state) && (
+        <StudentSessionPaymentPanel
+          detail={detail}
+          stepFormValues={stepFormValues}
+          compact
+        />
+      )}
+
+      {!done && detail?.process_code === 'supervision_block_transition' && (
+        <StudentSupervisionBlockTransitionPanel
+          detail={detail}
+          stepFormValues={stepFormValues}
+          extraData={extraData}
+          compact
+        />
+      )}
+
+      {!done && detail?.process_code === 'supervision_session_increase' && (
+        <StudentSupervisionSessionIncreasePanel
+          detail={detail}
+          stepFormValues={stepFormValues}
+          compact
+        />
+      )}
+
+      {detail?.process_code === 'educational_leave' && (() => {
+        const reason = (detail?.context_data?.rejection_reason_fa || '').trim()
+        const showRejected = detail?.current_state === 'rejected' || (detail?.is_completed && reason)
+        if (!showRejected || !reason) return null
         return (
           <div
-            className="quest-session-payment-financial"
+            className="quest-leave-rejected"
             style={{
               marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
-              background: 'linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%)',
-              borderRight: '4px solid #16a34a', fontSize: '0.86rem', lineHeight: 1.75,
+              background: 'linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%)',
+              borderRight: '4px solid #dc2626', fontSize: '0.86rem', lineHeight: 1.75,
             }}
           >
-            <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#14532d' }}>وضعیت مالی جلسات درمان</div>
-            <div>
-              <strong>جلسات بدون پرداخت ثبت‌شده:</strong>{' '}
-              {Number.isFinite(debt) ? debt.toLocaleString('fa-IR') : '—'}
-            </div>
-            {credit != null && Number.isFinite(credit) && credit > 0 && (
-              <div style={{ marginTop: '0.35rem' }}>
-                <strong>اعتبار پس از پرداخت (تقریبی در پرونده):</strong>{' '}
-                {credit.toLocaleString('fa-IR')} تومان
-              </div>
-            )}
-            {Number.isFinite(debt) && debt > 0 && (
-              <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: '#475569' }}>
-                در صورت بدهی، در مرحلهٔ «انتخاب جلسات» گزینهٔ تسویهٔ بدهی را فعال کنید؛ در غیر این صورت فقط پرداخت جلسات آتی مجاز نیست.
-              </p>
-            )}
+            <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#991b1b' }}>علت رد درخواست مرخصی</div>
+            <p style={{ margin: 0, color: '#7f1d1d' }}>{reason}</p>
           </div>
         )
       })()}
@@ -422,27 +473,93 @@ export default function StudentQuestCard({
         const st = c.supervision_threshold != null ? Number(c.supervision_threshold) : null
         const preview = (c.therapy_completion_preview_fa || '').trim()
         if (th == null && preview === '') return null
+
+        const rows = [
+          { key: 'therapy', label: 'درمان آموزشی', hours: th, threshold: tt, color: '#a21caf' },
+          { key: 'clinical', label: 'تجربه بالینی', hours: ch, threshold: ct, color: '#0ea5e9' },
+          { key: 'supervision', label: 'سوپرویژن', hours: sh, threshold: st, color: '#f59e0b' },
+        ].filter(r => r.hours != null && r.threshold != null)
+
+        const evaluable = rows.filter(r => r.threshold > 0)
+        const allMet = evaluable.length > 0 && evaluable.every(r => r.hours >= r.threshold)
+        const unmet = evaluable.filter(r => r.hours < r.threshold)
+
         return (
           <div
             className="quest-therapy-completion-preview"
+            data-testid="student-quest-therapy-completion-preview"
             style={{
               marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
               background: 'linear-gradient(135deg, #fdf4ff 0%, #f8fafc 100%)',
               borderRight: '4px solid #a21caf', fontSize: '0.86rem', lineHeight: 1.75,
             }}
           >
-            <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#701a75' }}>ایست بازرسی ساعات (خاتمه درمان)</div>
-            {preview ? <p style={{ margin: '0 0 0.5rem' }}>{preview}</p> : null}
-            <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.84rem' }}>
-              {th != null && tt != null && (
-                <div><strong>درمان آموزشی:</strong> {th.toLocaleString('fa-IR')} / {tt.toLocaleString('fa-IR')}</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <span style={{ fontWeight: 700, color: '#701a75' }}>ایست بازرسی ساعات (خاتمه درمان)</span>
+              {evaluable.length > 0 && (
+                <span
+                  data-testid="student-quest-therapy-completion-status"
+                  style={{
+                    fontSize: '0.74rem', fontWeight: 700, padding: '0.15rem 0.6rem', borderRadius: '999px',
+                    background: allMet ? '#dcfce7' : '#fef3c7',
+                    color: allMet ? '#166534' : '#92400e',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {allMet ? 'همهٔ شرایط احراز شد' : 'شرایط هنوز کامل نیست'}
+                </span>
               )}
-              {ch != null && ct != null && (
-                <div><strong>تجربه بالینی:</strong> {ch.toLocaleString('fa-IR')} / {ct.toLocaleString('fa-IR')}</div>
-              )}
-              {sh != null && st != null && (
-                <div><strong>سوپرویژن:</strong> {sh.toLocaleString('fa-IR')} / {st.toLocaleString('fa-IR')}</div>
-              )}
+            </div>
+
+            <div style={{ display: 'grid', gap: '0.6rem' }}>
+              {rows.map((r) => {
+                const pct = r.threshold > 0
+                  ? Math.min(100, Math.round((r.hours / r.threshold) * 100))
+                  : 100
+                const met = r.threshold <= 0 || r.hours >= r.threshold
+                const remaining = Math.max(0, r.threshold - r.hours)
+                return (
+                  <div key={r.key} data-testid={`student-quest-therapy-row-${r.key}`}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.82rem' }}>
+                      <span>
+                        <strong>{r.label}</strong>
+                        {met
+                          ? <span style={{ color: '#16a34a', marginInlineStart: '0.4rem' }}>✓ احراز شد</span>
+                          : <span style={{ color: '#b45309', marginInlineStart: '0.4rem' }}>{remaining.toLocaleString('fa-IR')} ساعت مانده</span>}
+                      </span>
+                      <span dir="ltr" style={{ fontVariantNumeric: 'tabular-nums', color: '#475569' }}>
+                        {r.hours.toLocaleString('fa-IR')} / {r.threshold.toLocaleString('fa-IR')}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        marginTop: '0.25rem', height: '7px', borderRadius: '999px',
+                        background: '#e2e8f0', overflow: 'hidden',
+                      }}
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={pct}
+                      aria-label={`${r.label}: ${pct}%`}
+                    >
+                      <div style={{ width: `${pct}%`, height: '100%', background: met ? '#16a34a' : r.color, transition: 'width 0.4s ease' }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div
+              data-testid="student-quest-therapy-completion-hint"
+              style={{
+                marginTop: '0.7rem', padding: '0.55rem 0.7rem', borderRadius: '8px', fontSize: '0.8rem',
+                background: allMet ? '#f0fdf4' : '#fffbeb',
+                color: allMet ? '#166534' : '#92400e',
+              }}
+            >
+              {allMet
+                ? 'همهٔ حدنصاب‌ها کامل است. با زدن دکمهٔ «ادامه و ثبت مرحله»، خاتمهٔ رسمی درمان آموزشی ثبت و جلسات آتی لغو می‌شود.'
+                : `با زدن دکمهٔ ادامه در وضعیت فعلی، نتیجه «شرایط احراز نشده» ثبت می‌شود. ${unmet.length ? `ابتدا ${unmet.map(r => r.label).join('، ')} را تکمیل کنید.` : ''}`}
             </div>
           </div>
         )
@@ -490,6 +607,46 @@ export default function StudentQuestCard({
             {(c.therapy_reduction_next_step_fa || '').trim() ? (
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: '#57534e' }}>{c.therapy_reduction_next_step_fa}</p>
             ) : null}
+          </div>
+        )
+      })()}
+
+      {!done && detail?.process_code === 'student_session_cancellation' && (() => {
+        const c = detail?.context_data || {}
+        const pct = c.cancellation_percent_now != null ? Number(c.cancellation_percent_now) : null
+        const upcoming = Array.isArray(c.upcoming_cancellation_sessions)
+          ? c.upcoming_cancellation_sessions.length
+          : null
+        if (pct == null && upcoming == null) return null
+        return (
+          <div
+            className="quest-session-cancellation-preview"
+            style={{
+              marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
+              background: 'linear-gradient(135deg, #fef2f2 0%, #f8fafc 100%)',
+              borderRight: '4px solid #dc2626', fontSize: '0.86rem', lineHeight: 1.75,
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#991b1b' }}>
+              کنسل جلسات درمان (فرایند ۱۷)
+            </div>
+            {pct != null && (
+              <div style={{ marginBottom: '0.25rem' }}>
+                <strong>درصد کنسلی فعلی:</strong>
+                {' '}
+                {pct.toLocaleString('fa-IR')}٪
+                {pct >= 10 ? ' — نزدیک سقف ۱۲٪' : ''}
+              </div>
+            )}
+            {upcoming != null && (
+              <div>
+                <strong>جلسات ۳ هفتهٔ آینده:</strong>
+                {' '}
+                {upcoming.toLocaleString('fa-IR')}
+                {' '}
+                جلسه
+              </div>
+            )}
           </div>
         )
       })()}

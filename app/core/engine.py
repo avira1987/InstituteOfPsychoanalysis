@@ -294,6 +294,23 @@ class StateMachineEngine:
                     "اول باید زمان مصاحبه را از همین صفحه رزرو کنید؛ وقت رزروشده به این مسیر وصل نشده است."
                 )
 
+        if instance.process_code == "introductory_course_registration":
+            # ثبت نتیجهٔ مصاحبه/پیشروی مصاحبه‌گر نباید با قفل ثبت‌نام (انتشار تقویم) مسدود شود؛
+            # قفل فقط برای پیشروی دانشجو (شروع/انتخاب درس/پرداخت) است.
+            _gate_exempt_triggers = {
+                "interview_result_submitted",
+                "interview_time_reached",
+            }
+            if (
+                actor_role != "interviewer"
+                and trigger_event not in _gate_exempt_triggers
+            ):
+                from app.services.registration_readiness_service import check_intro_registration_gate
+
+                gate = await check_intro_registration_gate(self.db)
+                if not gate.allowed:
+                    raise InvalidTransitionError(gate.reason_fa)
+
         # 2–3. همهٔ ترنزیشن‌های هم‌نام با trigger (به‌ترتیب priority)، تا اولین شاخه‌ای که قوانینش pass شود
         all_transitions = await self.transition_manager.find_transitions_for_state(
             process_def.id, current_state
@@ -364,6 +381,48 @@ class StateMachineEngine:
                         rule_results=rule_results,
                         error=perr,
                     )
+
+        if instance.process_code == "student_session_cancellation" and trigger_event in (
+            "student_selects_sessions",
+            "student_confirms",
+        ):
+            from app.services.action_handler import parse_therapy_session_id_list
+            from app.services.student_session_cancellation_service import (
+                get_cancellation_stats,
+                validate_student_cancellation_selection,
+            )
+
+            merged_p = {**self._as_mapping(instance.context_data), **(payload or {})}
+            selected_raw = merged_p.get("selected_sessions")
+            require_ack = False
+            if trigger_event == "student_confirms":
+                pct = merged_p.get("cancellation_percent_after")
+                if pct is None:
+                    stats = await get_cancellation_stats(
+                        self.db,
+                        instance.student_id,
+                        len(parse_therapy_session_id_list(selected_raw)),
+                    )
+                    pct = stats.get("cancellation_percent_after")
+                try:
+                    require_ack = float(pct or 0) > 12
+                except (TypeError, ValueError):
+                    require_ack = False
+            serr = await validate_student_cancellation_selection(
+                self.db,
+                instance.student_id,
+                selected_raw,
+                require_violation_ack=require_ack,
+                violation_ack=bool(merged_p.get("violation_ack")),
+            )
+            if serr:
+                return TransitionResult(
+                    success=False,
+                    from_state=current_state,
+                    trigger_event=trigger_event,
+                    rule_results=rule_results,
+                    error=serr,
+                )
 
         # 3b. DB ممکن است required_role قدیمی داشته باشد؛ لیست انحصاری «فقط system» در متادیتا را اعمال کن.
         if actor_role == "student" and trigger_event in STUDENT_FORBIDDEN_TRIGGER_EVENTS:
@@ -483,6 +542,22 @@ class StateMachineEngine:
                 "registration payment default context after transition failed (instance=%s)",
                 instance.id,
             )
+
+        if (
+            instance.process_code == "introductory_course_registration"
+            and transition.to_state_code == "course_selection"
+            and trigger_event == "student_logged_in"
+        ):
+            from app.services.registration_readiness_service import (
+                merge_prep_courses_into_instance_context,
+            )
+
+            ctx_cs = await merge_prep_courses_into_instance_context(
+                self.db,
+                self._as_mapping(instance.context_data),
+            )
+            instance.context_data = ctx_cs
+            flag_modified(instance, "context_data")
 
         # 6. Post-transition actions
         actions = _normalize_json_list(transition.actions)
@@ -737,6 +812,13 @@ class StateMachineEngine:
             from_state_code=instance.current_state_code,
         )
 
+        if instance.process_code == "introductory_course_registration":
+            from app.services.registration_readiness_service import check_intro_registration_gate
+
+            gate = await check_intro_registration_gate(self.db)
+            if not gate.allowed:
+                return []
+
         portal_registration = actor_role in ("student", "applicant")
         has_booked_slot = False
         if portal_registration and (
@@ -816,6 +898,13 @@ class StateMachineEngine:
             except Exception:
                 logger.exception(
                     "therapy_session_reduction context for status failed (instance=%s)", instance.id
+                )
+        if instance.process_code == "student_session_cancellation":
+            try:
+                ctx_out = await self._merge_student_session_cancellation_context(instance, ctx_out)
+            except Exception:
+                logger.exception(
+                    "student_session_cancellation context for status failed (instance=%s)", instance.id
                 )
 
         return {
@@ -1146,6 +1235,24 @@ class StateMachineEngine:
         out["therapy_reduction_min_remove_count"] = 1
         return out
 
+    async def _merge_student_session_cancellation_context(
+        self, instance: ProcessInstance, merged: dict
+    ) -> dict:
+        from app.services.student_session_cancellation_service import build_student_cancellation_context
+
+        out = dict(merged)
+        selected = out.get("selected_sessions")
+        if not selected and isinstance(out.get("payload"), dict):
+            selected = out["payload"].get("selected_sessions")
+        extra = await build_student_cancellation_context(
+            self.db,
+            instance.student_id,
+            selected_sessions_raw=selected,
+            display_weeks=3,
+        )
+        out.update(extra)
+        return out
+
     async def _therapy_completion_default_thresholds(self, process_def: ProcessDefinition) -> dict:
         cfg = self._as_mapping(process_def.config)
         d = cfg.get("default_thresholds") or {}
@@ -1330,6 +1437,20 @@ class StateMachineEngine:
         if instance.process_code == "therapy_completion":
             tc = await self._therapy_completion_resolved_fields(instance)
             context["instance"].update(tc)
+
+        if instance.process_code == "student_session_cancellation":
+            from app.services.student_session_cancellation_service import build_student_cancellation_context
+
+            sel = context["instance"].get("selected_sessions")
+            if not sel and isinstance(payload, dict):
+                sel = payload.get("selected_sessions")
+            sc_ctx = await build_student_cancellation_context(
+                self.db,
+                instance.student_id,
+                selected_sessions_raw=sel,
+                display_weeks=3,
+            )
+            context["instance"].update(sc_ctx)
 
         if instance.process_code == "attendance_tracking":
             inst = context["instance"]

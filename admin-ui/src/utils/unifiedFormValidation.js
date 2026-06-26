@@ -76,6 +76,52 @@ export function checkRules(field, val) {
   return null
 }
 
+function isTableRowEmpty(row, columns) {
+  if (!row || typeof row !== 'object') return true
+  return (columns || []).every((col) => {
+    const ct = (col.type || 'text').toLowerCase()
+    const v = row[col.name]
+    if (ct === 'checkbox') return !v
+    return isEmpty(v)
+  })
+}
+
+export function validateTableField(field, val) {
+  const label = field.label_fa || field.name
+  const columns = Array.isArray(field.columns) ? field.columns : []
+  const rows = Array.isArray(val) ? val : []
+  const filledRows = rows.filter((r) => !isTableRowEmpty(r, columns))
+  if (field.required && filledRows.length === 0) {
+    return `${label}: حداقل یک ردیف کامل لازم است`
+  }
+  for (let i = 0; i < filledRows.length; i += 1) {
+    const row = filledRows[i]
+    for (const col of columns) {
+      if (col.auto_fill) continue
+      const ct = (col.type || 'text').toLowerCase()
+      if (ct === 'checkbox') continue
+      const v = row[col.name]
+      if (isEmpty(v)) {
+        return `${label} — ردیف ${i + 1}: «${col.label_fa || col.name}» خالی است`
+      }
+    }
+  }
+  return null
+}
+
+export function validateDateRangeList(val, label = 'بازه تاریخ') {
+  const ranges = Array.isArray(val) ? val : []
+  for (let i = 0; i < ranges.length; i += 1) {
+    const r = ranges[i]
+    const start = r?.start
+    const end = r?.end
+    if (start && end && String(end) <= String(start)) {
+      return `${label} — بازه ${i + 1}: تاریخ پایان باید بعد از شروع باشد`
+    }
+  }
+  return null
+}
+
 /**
  * @param {object} schema { fields: [...] }
  * @param {object} answers
@@ -104,11 +150,18 @@ export function validateUnifiedAnswers(schema, answers, opts = {}) {
         if (Array.isArray(val)) {
           if (val.length === 0 && !ack) { missing.push(field.label_fa || field.name); continue }
         } else if (isEmpty(val) && !ack) { missing.push(field.label_fa || field.name); continue }
+      } else if (t === 'table') {
+        const err = validateTableField(field, val)
+        if (err) { missing.push(err); continue }
       } else if (isEmpty(val)) {
         missing.push(field.label_fa || field.name); continue
       }
     }
     if (!isEmpty(val)) {
+      if (t === 'date_range_list') {
+        const err = validateDateRangeList(val, field.label_fa || field.name)
+        if (err) { missing.push(err); continue }
+      }
       const err = checkRules(field, val)
       if (err) missing.push(err)
     }

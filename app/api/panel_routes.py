@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import get_current_user, require_admin_only
 from app.database import get_db
 from app.meta.student_lifecycle_matrix import get_panel_action_queue_for_role
-from app.models.operational_models import User
+from app.models.operational_models import Student, User
 from app.services.nav_pending_counts import compute_nav_pending_counts
 from app.services.operator_followup_inbox import build_operator_followup_inbox_full
 from app.services.operator_readiness import compute_operator_readiness_alerts
@@ -19,6 +19,8 @@ from app.services.panel_action_notifications import build_action_notifications
 from app.services.panel_task_reminders import dismiss_panel_task_reminder, load_active_panel_reminders
 from app.services.portal_role_inbox import build_portal_role_process_inbox
 from app.services import sms_simulation_service
+from app.services.student_online_sessions_service import list_student_online_sessions
+from sqlalchemy import select
 
 router = APIRouter(prefix="/api/panel", tags=["Panel"])
 
@@ -217,6 +219,40 @@ async def panel_simulated_sms_dismiss(
             detail="پیامک یافت نشد، قبلاً بسته شده، یا شما دسترسی بستن آن را ندارید.",
         )
     return {"success": True}
+
+
+_PANEL_CALENDAR_ROLES = frozenset(
+    {"student", "applicant", "admin", "staff", "deputy_education", "supervisor", "therapist", "instructor"}
+)
+
+
+@router.get("/my-online-sessions")
+async def panel_my_online_sessions(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    include_past: bool = Query(False, description="شامل جلسات گذشته"),
+):
+    """لیست یکپارچهٔ جلسات و لینک‌های آنلاین دانشجو (درمان، مصاحبه، سوپرویژن، کلاس)."""
+    if user.role != "student":
+        raise HTTPException(status_code=403, detail="این endpoint فقط برای دانشجو است")
+    st = (await db.execute(select(Student).where(Student.user_id == user.id))).scalars().first()
+    if not st:
+        raise HTTPException(status_code=404, detail="پروفایل دانشجو یافت نشد")
+    return await list_student_online_sessions(db, st, user, include_past=include_past)
+
+
+@router.get("/academic-calendar/active")
+async def panel_active_academic_calendar(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """تقویم آموزشی فعال انستیتو — read-only برای دانشجو و سایر نقش‌های پورتال."""
+    if user.role not in _PANEL_CALENDAR_ROLES:
+        raise HTTPException(status_code=403, detail="دسترسی به تقویم آموزشی برای این نقش مجاز نیست")
+    from app.services.institute_calendar_service import calendar_to_response_dict, get_active_calendar
+
+    cal = await get_active_calendar(db)
+    return calendar_to_response_dict(cal)
 
 
 @router.get("/operator-followup-inbox")

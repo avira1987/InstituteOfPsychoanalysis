@@ -3,8 +3,13 @@
 | فیلد | مقدار |
 |------|-------|
 | **وضعیت** | complete_in_metadata |
-| **آخرین به‌روزرسانی** | 2026-02-14 |
+| **آخرین به‌روزرسانی** | 2026-06-25 |
 | **منبع ورودی** | فلوچارت + متن ۴ گامی |
+
+## UI (بخش ۱ — آغاز و مسیریابی)
+- [x] فرم مرحله `reason_selection` با فیلد رادیویی `termination_reason_code` در metadata/processes/therapy_early_termination.json
+- [x] پنل راهنمای درمانگر `TherapistEarlyTerminationPanel.jsx` (۴ مسیر + مهلت ۵ روز)
+- [x] شروع فرایند و اتصال در `TherapistPortal.jsx`
 
 ## نواقص
 - [ ] اکشن‌ها: log_termination_request, mark_therapy_relationship_terminated, release_therapist_slots, record_termination_in_student_portal

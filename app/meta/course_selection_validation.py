@@ -91,11 +91,22 @@ def allowed_intro_term1_options(ctx: dict) -> tuple[list[str], Optional[int]]:
 
 def validate_intro_term1_selected_courses(ctx: object, selected: list[str]) -> tuple[bool, Optional[str]]:
     data = StateMachineEngine._as_mapping(ctx)
+    kind = resolve_admission_kind(data)
+    if kind is None:
+        return False, "نتیجهٔ مصاحبه در پرونده ثبت نشده است؛ انتخاب درس مجاز نیست."
     codes = [c for c in selected if c]
     if not codes:
         return False, "حداقل یک درس باید انتخاب شود."
+    offered_raw = data.get("available_courses")
+    offered: Optional[set[str]] = None
+    if isinstance(offered_raw, list) and offered_raw:
+        offered = {str(c).strip() for c in offered_raw if str(c).strip()}
     allowed, max_select = allowed_intro_term1_options(data)
     allowed_set = set(allowed)
+    if offered is not None:
+        allowed_set &= offered
+    if not allowed_set:
+        return False, "لیست دروس این ترم از آماده‌سازی ترم منتشر نشده است."
     unknown = [c for c in codes if c not in allowed_set]
     if unknown:
         labels = [INTRO_TERM1_COURSE_LABELS_FA.get(c, c) for c in unknown]

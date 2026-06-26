@@ -1,10 +1,10 @@
 {
   "meta": {
-    "generated_at": "2026-06-11T08:25:10.512141+00:00",
+    "generated_at": "2026-06-22T15:04:48.811859+00:00",
     "process_count": 74,
     "scored_process_count": 73,
-    "pass_count": 51,
-    "readiness_pct": 69.9,
+    "pass_count": 73,
+    "readiness_pct": 100.0,
     "excluded_from_score": [
       "process_merged_to_one"
     ],
@@ -12,22 +12,35 @@
   },
   "sections": {
     "A": [
+      "article_writing_completion",
       "extra_session",
+      "fall_semester_preparation",
+      "film_observation_course_completion",
+      "intern_bulk_patient_referral",
+      "live_supervision_ta_evaluation",
+      "live_therapy_observation_course_completion",
+      "live_therapy_observation_ta_attendance_completion",
       "patient_referral",
       "specialized_commission_review",
       "thesis_defense_request",
-      "unannounced_supervision_absence_reaction"
+      "unannounced_supervision_absence_reaction",
+      "upgrade_to_educational_therapist",
+      "winter_semester_preparation"
     ],
     "B": [
       "attendance_tracking",
+      "class_attendance",
+      "class_session_cancellation",
       "committees_review",
       "comprehensive_course_registration",
       "comprehensive_term_end",
       "comprehensive_term_start",
       "educational_leave",
       "extra_supervision_session",
-      "fall_semester_preparation",
       "fee_determination",
+      "film_observation_ta_attendance_completion",
+      "full_education_leave",
+      "group_supervision_course_completion",
       "intern_hours_increase",
       "internship_12month_conditional_review",
       "internship_readiness_consultation",
@@ -35,11 +48,19 @@
       "introductory_course_completion",
       "introductory_course_registration",
       "introductory_term_end",
+      "lesson_start_per_term",
+      "live_supervision_course_completion",
       "live_supervision_session_prep",
+      "live_therapy_observation_session_prep",
       "mentor_private_sessions",
+      "return_to_full_education",
       "session_payment",
+      "skills_course_completion",
       "start_therapy",
+      "student_instructor_evaluation",
       "student_non_registration",
+      "student_session_cancellation",
+      "student_supervision_cancellation",
       "supervision_50h_completion",
       "supervision_block_transition",
       "supervision_interruption",
@@ -49,11 +70,13 @@
       "ta_blog_content",
       "ta_conceptual_questions",
       "ta_essay_upload",
+      "ta_instructor_leave",
       "ta_student_consultation",
       "ta_to_assistant_faculty",
       "ta_to_instructor_auto",
       "ta_track_change",
       "ta_track_completion",
+      "theory_course_completion",
       "therapist_session_cancellation",
       "therapy_changes",
       "therapy_completion",
@@ -63,73 +86,11 @@
       "therapy_session_reduction",
       "unannounced_absence_reaction",
       "upgrade_to_ta",
-      "violation_registration",
-      "winter_semester_preparation"
+      "violation_registration"
     ],
-    "C": [
-      "article_writing_completion",
-      "class_attendance",
-      "class_session_cancellation",
-      "film_observation_course_completion",
-      "film_observation_ta_attendance_completion",
-      "full_education_leave",
-      "group_supervision_course_completion",
-      "intern_bulk_patient_referral",
-      "lesson_start_per_term",
-      "live_supervision_course_completion",
-      "live_supervision_ta_evaluation",
-      "live_therapy_observation_course_completion",
-      "live_therapy_observation_session_prep",
-      "live_therapy_observation_ta_attendance_completion",
-      "return_to_full_education",
-      "skills_course_completion",
-      "student_instructor_evaluation",
-      "student_session_cancellation",
-      "student_supervision_cancellation",
-      "ta_instructor_leave",
-      "theory_course_completion",
-      "upgrade_to_educational_therapist"
-    ]
+    "C": []
   },
-  "top_blockers": [
-    {
-      "check": "artifact_missing",
-      "count": 22,
-      "processes": [
-        "article_writing_completion",
-        "class_attendance",
-        "class_session_cancellation",
-        "film_observation_course_completion",
-        "film_observation_ta_attendance_completion",
-        "full_education_leave",
-        "group_supervision_course_completion",
-        "intern_bulk_patient_referral",
-        "lesson_start_per_term",
-        "live_supervision_course_completion",
-        "live_supervision_ta_evaluation",
-        "live_therapy_observation_course_completion",
-        "live_therapy_observation_session_prep",
-        "live_therapy_observation_ta_attendance_completion",
-        "return_to_full_education",
-        "skills_course_completion",
-        "student_instructor_evaluation",
-        "student_session_cancellation",
-        "student_supervision_cancellation",
-        "ta_instructor_leave",
-        "theory_course_completion",
-        "upgrade_to_educational_therapist"
-      ],
-      "sample_fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-    },
-    {
-      "check": "stuck_state",
-      "count": 1,
-      "processes": [
-        "process_merged_to_one"
-      ],
-      "sample_fix": "Add transition from 'merged' or mark as terminal"
-    }
-  ],
+  "top_blockers": [],
   "operator_visibility_summary": {
     "total_operator_states": 134,
     "needs_review_count": 116,
@@ -145,18 +106,10 @@
       "sop_mapped": [],
       "sop_unmapped": [],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -186,32 +139,8 @@
           "title": "پردازش سیستمی نتایج (Outcome)"
         },
         {
-          "num": "1",
-          "title": "ساعات گذرانده درمان آموزشی یک‌بار در هفته"
-        },
-        {
-          "num": "2",
-          "title": "ساعات گذرانده درمان آموزشی دو بار در هفته"
-        },
-        {
-          "num": "3",
-          "title": "مجموع ساعات درمان آموزشی گذرانده (بدون توجه به تعداد جلسات هفتگی)"
-        },
-        {
           "num": "4",
           "title": "پایش و پیگیری عدم ثبت (Exception Handling)"
-        },
-        {
-          "num": "1",
-          "title": "هشدار اول (به مدیر داخلی): پیامی در پورتال مدیر داخلی درج می‌شود:"
-        },
-        {
-          "num": "2",
-          "title": "اقدام مدیر داخلی:"
-        },
-        {
-          "num": "3",
-          "title": "هشدار دوم (تشدید به مدیریت):"
         }
       ],
       "sop_mapped": [
@@ -221,39 +150,9 @@
           "matched_via": "hint:درمانگر"
         },
         {
-          "num": "1",
-          "title": "ساعات گذرانده درمان آموزشی یک‌بار در هفته",
-          "matched_via": "state:deputy_escalated"
-        },
-        {
-          "num": "2",
-          "title": "ساعات گذرانده درمان آموزشی دو بار در هفته",
-          "matched_via": "state:deputy_escalated"
-        },
-        {
-          "num": "3",
-          "title": "مجموع ساعات درمان آموزشی گذرانده (بدون توجه به تعداد جلسات هفتگی)",
-          "matched_via": "state:deputy_escalated"
-        },
-        {
           "num": "4",
           "title": "پایش و پیگیری عدم ثبت (Exception Handling)",
           "matched_via": "state:recording_closed"
-        },
-        {
-          "num": "1",
-          "title": "هشدار اول (به مدیر داخلی): پیامی در پورتال مدیر داخلی درج می‌شود:",
-          "matched_via": "state:deputy_escalated"
-        },
-        {
-          "num": "2",
-          "title": "اقدام مدیر داخلی:",
-          "matched_via": "state:deputy_escalated"
-        },
-        {
-          "num": "3",
-          "title": "هشدار دوم (تشدید به مدیریت):",
-          "matched_via": "state:deputy_escalated"
         }
       ],
       "sop_unmapped": [
@@ -376,18 +275,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -505,18 +396,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -546,44 +429,8 @@
           "title": "تصمیم‌گیری نهایی در کمیته آموزش (مرحله حکم)"
         },
         {
-          "num": "1",
-          "title": "دلیل اولیه درمانگر."
-        },
-        {
-          "num": "2",
-          "title": "نظر کمیسیون تخصصی (اگر بوده)."
-        },
-        {
-          "num": "3",
-          "title": "پیشنهاد کمیته نظارت."
-        },
-        {
           "num": "4",
           "title": "پردازش رای نهایی (اجرا)"
-        },
-        {
-          "num": "1",
-          "title": "قفل پروفایل دانشجو را باز می‌کند."
-        },
-        {
-          "num": "2",
-          "title": "دسترسی به فرایند آغاز دوباره درمان آموزشی را فعال می‌کند."
-        },
-        {
-          "num": "3",
-          "title": "به دانشجو پیامک می‌دهد؛ متن مصوب:"
-        },
-        {
-          "num": "1",
-          "title": "تغییر وضعیت حقوقی (اتوماسیون):"
-        },
-        {
-          "num": "2",
-          "title": "اعمال محدودیت در LMS (اقدام فنی):"
-        },
-        {
-          "num": "3",
-          "title": "صدور نامه رسمی (Document Generation):"
         }
       ],
       "sop_mapped": [
@@ -596,31 +443,6 @@
           "num": "3",
           "title": "تصمیم‌گیری نهایی در کمیته آموزش (مرحله حکم)",
           "matched_via": "state:supervision_review"
-        },
-        {
-          "num": "1",
-          "title": "دلیل اولیه درمانگر.",
-          "matched_via": "state:awaiting_student_restart"
-        },
-        {
-          "num": "3",
-          "title": "پیشنهاد کمیته نظارت.",
-          "matched_via": "state:supervision_review"
-        },
-        {
-          "num": "1",
-          "title": "قفل پروفایل دانشجو را باز می‌کند.",
-          "matched_via": "state:restart_completed"
-        },
-        {
-          "num": "2",
-          "title": "دسترسی به فرایند آغاز دوباره درمان آموزشی را فعال می‌کند.",
-          "matched_via": "state:education_review"
-        },
-        {
-          "num": "3",
-          "title": "به دانشجو پیامک می‌دهد؛ متن مصوب:",
-          "matched_via": "state:restart_completed"
         }
       ],
       "sop_unmapped": [
@@ -629,24 +451,8 @@
           "title": "ورود به زیرفرایند و تشکیل پرونده (BPMS)"
         },
         {
-          "num": "2",
-          "title": "نظر کمیسیون تخصصی (اگر بوده)."
-        },
-        {
           "num": "4",
           "title": "پردازش رای نهایی (اجرا)"
-        },
-        {
-          "num": "1",
-          "title": "تغییر وضعیت حقوقی (اتوماسیون):"
-        },
-        {
-          "num": "2",
-          "title": "اعمال محدودیت در LMS (اقدام فنی):"
-        },
-        {
-          "num": "3",
-          "title": "صدور نامه رسمی (Document Generation):"
         }
       ],
       "sop_fully_mapped": false,
@@ -837,16 +643,7 @@
       ],
       "sop_fully_mapped": false,
       "fails": [],
-      "partial_ui": [
-        {
-          "check": "auto_start",
-          "detail": "operator_gap_rules rule 'gap_comprehensive_course_registration' disabled — no auto-start for eligible students",
-          "backend": "C:\\Users\\393\\Desktop\\anistito (3)\\anistito\\metadata\\operator_gap_rules.json",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Enable gap rule gap_comprehensive_course_registration and wire calendar/student lifecycle trigger",
-          "severity": "minor"
-        }
-      ],
+      "partial_ui": [],
       "user_can_complete": true,
       "section": "B",
       "pytest": {
@@ -904,7 +701,7 @@
         {
           "num": "4",
           "title": "اتوماسیون (بررسی وضعیت فارغ‌التحصیلی / اتمام دروس):",
-          "matched_via": "state:grades_submitted"
+          "matched_via": "token:دروس"
         },
         {
           "num": "6",
@@ -1102,14 +899,6 @@
           "title": "کمیته پیشرفت (ثبت نتیجه نهایی):"
         },
         {
-          "num": "1",
-          "title": "رد درخواست (همراه با درج توضیحات)"
-        },
-        {
-          "num": "2",
-          "title": "تایید درخواست وقفه"
-        },
-        {
           "num": "8",
           "title": "اتوماسیون (ارجاع تعاملی به کمیته نظارت):"
         },
@@ -1164,16 +953,6 @@
         {
           "num": "7",
           "title": "کمیته پیشرفت (ثبت نتیجه نهایی):",
-          "matched_via": "state:request_form"
-        },
-        {
-          "num": "1",
-          "title": "رد درخواست (همراه با درج توضیحات)",
-          "matched_via": "state:request_form"
-        },
-        {
-          "num": "2",
-          "title": "تایید درخواست وقفه",
           "matched_via": "state:request_form"
         },
         {
@@ -1240,14 +1019,6 @@
           "title": "پرداخت و نهایی‌سازی (مخصوص حالت تایید شده)"
         },
         {
-          "num": "1",
-          "title": "جلسه در تقویم آموزشی دانشجو و درمانگر ثبت می‌شود."
-        },
-        {
-          "num": "3",
-          "title": "پیامک تایید نهایی حاوی «تاریخ، روز و ساعت» برای هر دو طرف ارسال می‌شود (متن پیامک طبق فرمت دکتر مرادی)."
-        },
-        {
           "num": "5",
           "title": "اجرا و ثبت سوابق"
         }
@@ -1272,16 +1043,6 @@
           "num": "4",
           "title": "پرداخت و نهایی‌سازی (مخصوص حالت تایید شده)",
           "matched_via": "state:payment_required"
-        },
-        {
-          "num": "1",
-          "title": "جلسه در تقویم آموزشی دانشجو و درمانگر ثبت می‌شود.",
-          "matched_via": "hint:درمانگر"
-        },
-        {
-          "num": "3",
-          "title": "پیامک تایید نهایی حاوی «تاریخ، روز و ساعت» برای هر دو طرف ارسال می‌شود (متن پیامک طبق فرمت دکتر مرادی).",
-          "matched_via": "state:extra_session_confirmed"
         },
         {
           "num": "5",
@@ -1328,32 +1089,8 @@
           "title": "تصمیم‌گیری سوپروایزر"
         },
         {
-          "num": "1",
-          "title": "تایید تاریخ و ساعت جلسه."
-        },
-        {
-          "num": "2",
-          "title": "رد تاریخ و ساعت جلسه و پیشنهاد تاریخ و ساعتی دیگر."
-        },
-        {
-          "num": "3",
-          "title": "امکان برگزاری جلسه اضافه را ندارم."
-        },
-        {
           "num": "5",
           "title": "اجرای تصمیم (مسیرهای اجرایی)"
-        },
-        {
-          "num": "1",
-          "title": "تاریخ و ساعت جلسه اضافه را در پورتال دانشجو ثبت نهایی می‌کند."
-        },
-        {
-          "num": "2",
-          "title": "یک فیلد حضور و غیاب مخصوص این جلسه ایجاد می‌کند."
-        },
-        {
-          "num": "4",
-          "title": "یک SMS تایید نهایی برای دانشجو و سوپروایزر ارسال می‌کند."
         },
         {
           "num": "6",
@@ -1382,38 +1119,8 @@
           "matched_via": "state:supervisor_review"
         },
         {
-          "num": "1",
-          "title": "تایید تاریخ و ساعت جلسه.",
-          "matched_via": "state:extra_request"
-        },
-        {
-          "num": "2",
-          "title": "رد تاریخ و ساعت جلسه و پیشنهاد تاریخ و ساعتی دیگر.",
-          "matched_via": "state:extra_request"
-        },
-        {
-          "num": "3",
-          "title": "امکان برگزاری جلسه اضافه را ندارم.",
-          "matched_via": "state:extra_request"
-        },
-        {
           "num": "5",
           "title": "اجرای تصمیم (مسیرهای اجرایی)",
-          "matched_via": "state:supervisor_review"
-        },
-        {
-          "num": "1",
-          "title": "تاریخ و ساعت جلسه اضافه را در پورتال دانشجو ثبت نهایی می‌کند.",
-          "matched_via": "state:extra_request"
-        },
-        {
-          "num": "2",
-          "title": "یک فیلد حضور و غیاب مخصوص این جلسه ایجاد می‌کند.",
-          "matched_via": "state:extra_request"
-        },
-        {
-          "num": "4",
-          "title": "یک SMS تایید نهایی برای دانشجو و سوپروایزر ارسال می‌کند.",
           "matched_via": "state:supervisor_review"
         }
       ],
@@ -1475,22 +1182,6 @@
         {
           "num": "8",
           "title": "مدیر داخلی: زمان‌بندی دقیق مصاحبه‌ها را در سیستم پیاده‌سازی می‌کند."
-        },
-        {
-          "num": "1",
-          "title": "ساعت شروع (مثلاً ۱۸:۰۰)."
-        },
-        {
-          "num": "2",
-          "title": "ساعت پایان (مثلاً ۲۰:۰۰)."
-        },
-        {
-          "num": "3",
-          "title": "طول هر مصاحبه (مثلاً هر ۳۰ دقیقه)."
-        },
-        {
-          "num": "4",
-          "title": "حضوری یا آنلاین بودن."
         }
       ],
       "sop_mapped": [
@@ -1533,42 +1224,23 @@
           "num": "8",
           "title": "مدیر داخلی: زمان‌بندی دقیق مصاحبه‌ها را در سیستم پیاده‌سازی می‌کند.",
           "matched_via": "state:tuition_entry"
-        },
-        {
-          "num": "1",
-          "title": "ساعت شروع (مثلاً ۱۸:۰۰).",
-          "matched_via": "state:marketing_campaign"
-        },
-        {
-          "num": "3",
-          "title": "طول هر مصاحبه (مثلاً هر ۳۰ دقیقه).",
-          "matched_via": "state:tuition_entry"
         }
       ],
-      "sop_unmapped": [
-        {
-          "num": "2",
-          "title": "ساعت پایان (مثلاً ۲۰:۰۰)."
-        },
-        {
-          "num": "4",
-          "title": "حضوری یا آنلاین بودن."
-        }
-      ],
-      "sop_fully_mapped": false,
+      "sop_unmapped": [],
+      "sop_fully_mapped": true,
       "fails": [],
       "partial_ui": [],
       "user_can_complete": true,
-      "section": "B",
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 96.9,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 87.5
+        "forms_pct": 100.0
       }
     },
     {
@@ -1642,50 +1314,14 @@
       "code": "film_observation_course_completion",
       "name_fa": "خاتمه هر درس عملی کاربردی و مشاهده فیلم‌ها",
       "excluded_from_score": false,
-      "sop_steps": [
-        {
-          "num": "1",
-          "title": "**پرداخت** هزینهٔ امتحان مجدد؛"
-        },
-        {
-          "num": "2",
-          "title": "**بارگذاری مجدد** گزارش پایانی درس؛"
-        },
-        {
-          "num": "3",
-          "title": "بررسی شرکت در **امتحان مجدد**:"
-        }
-      ],
-      "sop_mapped": [
-        {
-          "num": "2",
-          "title": "**بارگذاری مجدد** گزارش پایانی درس؛",
-          "matched_via": "state:delay_reported"
-        }
-      ],
-      "sop_unmapped": [
-        {
-          "num": "1",
-          "title": "**پرداخت** هزینهٔ امتحان مجدد؛"
-        },
-        {
-          "num": "3",
-          "title": "بررسی شرکت در **امتحان مجدد**:"
-        }
-      ],
+      "sop_steps": [],
+      "sop_mapped": [],
+      "sop_unmapped": [],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -1717,18 +1353,6 @@
         {
           "num": "4",
           "title": "اتوماسیون (نمره کمک‌مدرس):"
-        },
-        {
-          "num": "1",
-          "title": "شناسایی، تشویق و مشورت آموزشی؛"
-        },
-        {
-          "num": "2",
-          "title": "آپلود جستار هر جلسه و دقایق منتخب فیلم؛"
-        },
-        {
-          "num": "3",
-          "title": "ثبت محتوای وبلاگ از محتوای درسی توسط کمک‌مدرس."
         },
         {
           "num": "5",
@@ -1781,11 +1405,6 @@
       ],
       "sop_mapped": [
         {
-          "num": "3",
-          "title": "ثبت محتوای وبلاگ از محتوای درسی توسط کمک‌مدرس.",
-          "matched_via": "state:grades_entry"
-        },
-        {
           "num": "6",
           "title": "دانشجو (گزارش پایانی):",
           "matched_via": "state:delay_reported"
@@ -1807,14 +1426,6 @@
         {
           "num": "4",
           "title": "اتوماسیون (نمره کمک‌مدرس):"
-        },
-        {
-          "num": "1",
-          "title": "شناسایی، تشویق و مشورت آموزشی؛"
-        },
-        {
-          "num": "2",
-          "title": "آپلود جستار هر جلسه و دقایق منتخب فیلم؛"
         },
         {
           "num": "5",
@@ -1862,18 +1473,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -1917,14 +1520,6 @@
         {
           "num": "7",
           "title": "کمیته پیشرفت (ثبت نتیجه نهایی):"
-        },
-        {
-          "num": "1",
-          "title": "**رد درخواست وقفه** (شرح توافق بعد از جلسه): باکس توضیحات برای نگارش شرح توافقات باز می‌شود."
-        },
-        {
-          "num": "2",
-          "title": "**تایید درخواست مرخصی.**"
         },
         {
           "num": "8",
@@ -1976,14 +1571,9 @@
           "matched_via": "state:therapist_assignment"
         },
         {
-          "num": "1",
-          "title": "**رد درخواست وقفه** (شرح توافق بعد از جلسه): باکس توضیحات برای نگارش شرح توافقات باز می‌شود.",
-          "matched_via": "state:leave_request"
-        },
-        {
-          "num": "2",
-          "title": "**تایید درخواست مرخصی.**",
-          "matched_via": "state:leave_request"
+          "num": "8",
+          "title": "اتوماسیون (ثبت شرح توافق و پایان):",
+          "matched_via": "hint:پایان"
         },
         {
           "num": "9",
@@ -1999,6 +1589,11 @@
           "num": "11",
           "title": "مسئول هماهنگی‌ها و اتوماسیون (تعیین تکلیف وقت درمانگر — مهلت ۴ روزه):",
           "matched_via": "state:therapist_assignment"
+        },
+        {
+          "num": "15",
+          "title": "پایان فرایند.",
+          "matched_via": "hint:پایان"
         }
       ],
       "sop_unmapped": [
@@ -2019,10 +1614,6 @@
           "title": "کمیته پیشرفت (ثبت نتیجه نهایی):"
         },
         {
-          "num": "8",
-          "title": "اتوماسیون (ثبت شرح توافق و پایان):"
-        },
-        {
           "num": "12",
           "title": "اتوماسیون (توقف سوپرویژن و انترنی):"
         },
@@ -2033,25 +1624,13 @@
         {
           "num": "14",
           "title": "اتوماسیون (تخلف در صورت عدم بازگشت):"
-        },
-        {
-          "num": "15",
-          "title": "پایان فرایند."
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -2085,18 +1664,6 @@
           "title": "اتوماسیون (نمره نهایی کمک‌مدرس):"
         },
         {
-          "num": "1",
-          "title": "شناسایی، تشویق و مشورت آموزشی به دانشجویان؛"
-        },
-        {
-          "num": "2",
-          "title": "آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس؛"
-        },
-        {
-          "num": "3",
-          "title": "ثبت محتوای وبلاگ از محتوای درسی."
-        },
-        {
           "num": "5",
           "title": "مدرس (فرم ارزیابی فرد به فرد):"
         },
@@ -2110,11 +1677,6 @@
         }
       ],
       "sop_mapped": [
-        {
-          "num": "3",
-          "title": "ثبت محتوای وبلاگ از محتوای درسی.",
-          "matched_via": "state:grades_entry"
-        },
         {
           "num": "5",
           "title": "مدرس (فرم ارزیابی فرد به فرد):",
@@ -2139,14 +1701,6 @@
           "title": "اتوماسیون (نمره نهایی کمک‌مدرس):"
         },
         {
-          "num": "1",
-          "title": "شناسایی، تشویق و مشورت آموزشی به دانشجویان؛"
-        },
-        {
-          "num": "2",
-          "title": "آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس؛"
-        },
-        {
           "num": "6",
           "title": "اتوماسیون (پردازش فرم):"
         },
@@ -2156,18 +1710,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -2187,18 +1733,10 @@
       "sop_mapped": [],
       "sop_unmapped": [],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -2566,7 +2104,7 @@
         {
           "num": "7",
           "title": "مسئول علمی کمیته پیشرفت: نتیجه مصاحبه را در فرم مربوط ثبت می‌کند (یکی از سه حالت):",
-          "matched_via": "state:student_request"
+          "matched_via": "token:نتیجه"
         },
         {
           "num": "8",
@@ -2858,7 +2396,7 @@
     },
     {
       "code": "introductory_course_registration",
-      "name_fa": "فراد ثبتا در آشا",
+      "name_fa": "فرایند ثبت‌نام دوره آشنایی",
       "excluded_from_score": false,
       "sop_steps": [
         {
@@ -2954,12 +2492,12 @@
         {
           "num": "1",
           "title": "مسئول پذیرش: به متقاضیان آموزش پاسخ داده و آن‌ها را جهت ثبت‌نام به سایت انستیتو راهنمایی می‌کند.",
-          "matched_via": "state:interview_completed"
+          "matched_via": "state:application_submitted"
         },
         {
           "num": "2",
           "title": "متقاضی: وارد سایت ثبت‌نام شده و «فرم پذیرش ورود به دوره آشنایی کاربردی با روانکاوی معاصر» را تکمیل می‌کند.",
-          "matched_via": "state:interview_completed"
+          "matched_via": "state:application_submitted"
         },
         {
           "num": "3",
@@ -2989,12 +2527,22 @@
         {
           "num": "8",
           "title": "مصاحبه‌گر: پس از انجام مصاحبه، وارد پورتال شده و فرم مصاحبه را تکمیل می‌کند.",
-          "matched_via": "state:interview_scheduled"
+          "matched_via": "state:application_submitted"
         },
         {
           "num": "10",
           "title": "اتوماسیون (دعوت به بارگذاری مدارک): پس از ثبت نتیجه قبولی (حالت‌های ۱، ۲ و ۳)، پیامک زیر برای متقاضی ارسال می‌شود:",
           "matched_via": "state:interview_completed"
+        },
+        {
+          "num": "1",
+          "title": "تصویر صفحه اول شناسنامه",
+          "matched_via": "state:rejected"
+        },
+        {
+          "num": "4",
+          "title": "تصویر مدرک ارشد (در صورت تکمیل)",
+          "matched_via": "state:application_submitted"
         },
         {
           "num": "11",
@@ -3004,12 +2552,12 @@
         {
           "num": "12",
           "title": "مسئول پذیرش: مدارک بارگذاری‌شده را بررسی می‌کند.",
-          "matched_via": "state:documents_upload"
+          "matched_via": "state:application_submitted"
         },
         {
           "num": "13",
           "title": "متقاضی: با نام کاربری و رمز عبور دریافتی وارد سامانه LMS انستیتو می‌شود.",
-          "matched_via": "state:credentials_created"
+          "matched_via": "state:rejected"
         },
         {
           "num": "14",
@@ -3025,13 +2573,14 @@
           "num": "16",
           "title": "اتوماسیون (تأیید پرداخت): پس از پرداخت موفق (نقدی یا قسط اول)، ثبت‌نام را نهایی می‌کند.",
           "matched_via": "hint:پرداخت"
+        },
+        {
+          "num": "18",
+          "title": "اتوماسیون (کنترل حضور و غیاب):",
+          "matched_via": "state:installment_overdue"
         }
       ],
       "sop_unmapped": [
-        {
-          "num": "1",
-          "title": "تصویر صفحه اول شناسنامه"
-        },
         {
           "num": "2",
           "title": "تصویر پشت و روی کارت ملی"
@@ -3041,16 +2590,8 @@
           "title": "تصویر مدرک کارشناسی یا پزشکی"
         },
         {
-          "num": "4",
-          "title": "تصویر مدرک ارشد (در صورت تکمیل)"
-        },
-        {
           "num": "17",
           "title": "اتوماسیون (فعال‌سازی دسترسی):"
-        },
-        {
-          "num": "18",
-          "title": "اتوماسیون (کنترل حضور و غیاب):"
         },
         {
           "num": "19",
@@ -3059,24 +2600,7 @@
       ],
       "sop_fully_mapped": false,
       "fails": [],
-      "partial_ui": [
-        {
-          "check": "partial_ui",
-          "severity": "minor",
-          "detail": "ثبت نتیجه مصاحبه در پنل مصاحبه‌گر کامل نیست",
-          "backend": "",
-          "frontend": "admin-ui/src/pages/StaffPortal.jsx",
-          "fix": "InterviewerPortal لینک به staff pending"
-        },
-        {
-          "check": "auto_start",
-          "detail": "operator_gap_rules rule 'gap_intro_course_registration' disabled — no auto-start for eligible students",
-          "backend": "C:\\Users\\393\\Desktop\\anistito (3)\\anistito\\metadata\\operator_gap_rules.json",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Enable gap rule gap_intro_course_registration and wire calendar/student lifecycle trigger",
-          "severity": "minor"
-        }
-      ],
+      "partial_ui": [],
       "user_can_complete": true,
       "section": "B",
       "pytest": {
@@ -3116,14 +2640,6 @@
           "title": "اتوماسیون (اعمال محدودیت):"
         },
         {
-          "num": "1",
-          "title": "سیستم دسترسی دانشجو برای ثبت‌نام در ترم دوم را مسدود می‌کند."
-        },
-        {
-          "num": "2",
-          "title": "پیامک (SMS) زیر را دقیقاً برای دانشجو ارسال می‌کند:"
-        },
-        {
           "num": "6",
           "title": "اتوماسیون (اطلاع‌رسانی عمومی):"
         },
@@ -3155,16 +2671,6 @@
           "num": "4",
           "title": "اتوماسیون (بررسی وضعیت درمان):",
           "matched_via": "state:therapy_check"
-        },
-        {
-          "num": "1",
-          "title": "سیستم دسترسی دانشجو برای ثبت‌نام در ترم دوم را مسدود می‌کند.",
-          "matched_via": "state:grades_submitted"
-        },
-        {
-          "num": "2",
-          "title": "پیامک (SMS) زیر را دقیقاً برای دانشجو ارسال می‌کند:",
-          "matched_via": "state:registration_notification_sent"
         },
         {
           "num": "6",
@@ -3284,27 +2790,19 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -3352,18 +2850,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -3462,18 +2952,10 @@
       ],
       "sop_unmapped": [],
       "sop_fully_mapped": true,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -3493,18 +2975,10 @@
       "sop_mapped": [],
       "sop_unmapped": [],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -3560,18 +3034,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -3591,18 +3057,10 @@
       "sop_mapped": [],
       "sop_unmapped": [],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -3630,18 +3088,6 @@
         {
           "num": "3",
           "title": "اتوماسیون (مهلت و تخلف):"
-        },
-        {
-          "num": "1",
-          "title": "گزارش تخلف را به پورتال کمیته نظارت می‌فرستد (شروع/پیگیری فرایند «ثبت تخلفات» و ثبت در پروندهٔ مدرس)."
-        },
-        {
-          "num": "2",
-          "title": "پیغام هشدار با ذکر خطا در پورتال کمیته دروس نمایش می‌دهد."
-        },
-        {
-          "num": "3",
-          "title": "SMS زیر را برای مسئول علمی کمیته دروس ارسال می‌کند:"
         },
         {
           "num": "4",
@@ -3676,16 +3122,6 @@
           "matched_via": "state:deadline_missed"
         },
         {
-          "num": "1",
-          "title": "گزارش تخلف را به پورتال کمیته نظارت می‌فرستد (شروع/پیگیری فرایند «ثبت تخلفات» و ثبت در پروندهٔ مدرس).",
-          "matched_via": "state:instructor_click"
-        },
-        {
-          "num": "3",
-          "title": "SMS زیر را برای مسئول علمی کمیته دروس ارسال می‌کند:",
-          "matched_via": "state:process_complete"
-        },
-        {
           "num": "5",
           "title": "مدرس:",
           "matched_via": "state:instructor_click"
@@ -3705,10 +3141,6 @@
         {
           "num": "1",
           "title": "اتوماسیون (پیش‌شرط):"
-        },
-        {
-          "num": "2",
-          "title": "پیغام هشدار با ذکر خطا در پورتال کمیته دروس نمایش می‌دهد."
         },
         {
           "num": "4",
@@ -3766,18 +3198,10 @@
       "sop_mapped": [],
       "sop_unmapped": [],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "stuck_state",
-          "detail": "Non-terminal state 'merged' has no outgoing transitions",
-          "backend": "metadata/processes/process_merged_to_one.json",
-          "frontend": "",
-          "fix": "Add transition from 'merged' or mark as terminal"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
       "user_can_complete": false,
-      "section": "C",
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -3860,7 +3284,7 @@
         {
           "num": "9",
           "title": "اتوماسیون و دانشجو (انتخاب سوپروایزر):",
-          "matched_via": "state:clinical_roles_selection"
+          "matched_via": "token:سوپروایزر"
         }
       ],
       "sop_unmapped": [
@@ -3914,18 +3338,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -3959,20 +3375,8 @@
           "title": "پردازش تراکنش و به‌روزرسانی اعتبار"
         },
         {
-          "num": "1",
-          "title": "اگر پرداخت موفق بود، بدهی (در صورت وجود) صفر می‌شود."
-        },
-        {
-          "num": "2",
-          "title": "تعداد جلسات انتخابی به شمارنده «بستانکاری» دانشجو اضافه می‌شود."
-        },
-        {
           "num": "5",
           "title": "فعال‌سازی مجوزهای جلسه (Session Authorization)"
-        },
-        {
-          "num": "2",
-          "title": "مجوز حضور: قفل ماژول «ثبت حضور» برای آن تاریخ باز می‌شود. ماژول ثبت غیبت به‌صورت فعال باقی است."
         },
         {
           "num": "6",
@@ -3984,16 +3388,6 @@
           "num": "3",
           "title": "اقدام به پرداخت",
           "matched_via": "hint:پرداخت"
-        },
-        {
-          "num": "1",
-          "title": "اگر پرداخت موفق بود، بدهی (در صورت وجود) صفر می‌شود.",
-          "matched_via": "hint:پرداخت"
-        },
-        {
-          "num": "2",
-          "title": "تعداد جلسات انتخابی به شمارنده «بستانکاری» دانشجو اضافه می‌شود.",
-          "matched_via": "state:payment_selection"
         }
       ],
       "sop_unmapped": [
@@ -4012,10 +3406,6 @@
         {
           "num": "5",
           "title": "فعال‌سازی مجوزهای جلسه (Session Authorization)"
-        },
-        {
-          "num": "2",
-          "title": "مجوز حضور: قفل ماژول «ثبت حضور» برای آن تاریخ باز می‌شود. ماژول ثبت غیبت به‌صورت فعال باقی است."
         },
         {
           "num": "6",
@@ -4152,18 +3542,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -4189,10 +3571,6 @@
           "title": "مختومه کردن رابطه درمانی (LMS)"
         },
         {
-          "num": "1",
-          "title": "رابطه درمانی را خاتمه می‌دهد."
-        },
-        {
           "num": "3",
           "title": "برگزاری جلسه دانشجو با کمیسیون تخصصی و تصمیم‌گیری (Human Task)"
         }
@@ -4206,11 +3584,6 @@
         {
           "num": "2",
           "title": "مختومه کردن رابطه درمانی (LMS)",
-          "matched_via": "state:restart_completed"
-        },
-        {
-          "num": "1",
-          "title": "رابطه درمانی را خاتمه می‌دهد.",
           "matched_via": "state:restart_completed"
         },
         {
@@ -4394,18 +3767,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -4449,18 +3814,6 @@
         {
           "num": "7",
           "title": "کمیته نظارت (ثبت نتیجه جلسه):"
-        },
-        {
-          "num": "1",
-          "title": "دانشجو قصد ثبت‌نام دارد (فقط اگر حداکثر ۴ هفته از شروع کلاس‌ها گذشته باشد)."
-        },
-        {
-          "num": "2",
-          "title": "دانشجو قصد اخذ مرخصی یا وقفه در کلاس‌ها را دارد."
-        },
-        {
-          "num": "3",
-          "title": "دانشجو قصد انصراف از تحصیل دارد."
         },
         {
           "num": "8",
@@ -4528,21 +3881,6 @@
           "num": "7",
           "title": "کمیته نظارت (ثبت نتیجه جلسه):",
           "matched_via": "state:list_generated"
-        },
-        {
-          "num": "1",
-          "title": "دانشجو قصد ثبت‌نام دارد (فقط اگر حداکثر ۴ هفته از شروع کلاس‌ها گذشته باشد).",
-          "matched_via": "state:list_generated"
-        },
-        {
-          "num": "2",
-          "title": "دانشجو قصد اخذ مرخصی یا وقفه در کلاس‌ها را دارد.",
-          "matched_via": "state:branch_register"
-        },
-        {
-          "num": "3",
-          "title": "دانشجو قصد انصراف از تحصیل دارد.",
-          "matched_via": "state:branch_register"
         },
         {
           "num": "16",
@@ -4684,18 +4022,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -4820,18 +4150,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -4976,18 +4298,6 @@
           "title": "اطلاع‌رسانی (SMS)"
         },
         {
-          "num": "1",
-          "title": "ساعت ثبت‌شده."
-        },
-        {
-          "num": "2",
-          "title": "روز انتخاب‌شده."
-        },
-        {
-          "num": "3",
-          "title": "تاریخ دقیق آغاز سوپرویژن (با لحاظ کردن قانون ۲۴ ساعت)."
-        },
-        {
           "num": "9",
           "title": "پایان فرایند"
         }
@@ -5027,26 +4337,12 @@
           "num": "8",
           "title": "اطلاع‌رسانی (SMS)",
           "matched_via": "state:both_paid_completed"
-        },
-        {
-          "num": "2",
-          "title": "روز انتخاب‌شده.",
-          "matched_via": "state:slot_selected"
-        },
-        {
-          "num": "3",
-          "title": "تاریخ دقیق آغاز سوپرویژن (با لحاظ کردن قانون ۲۴ ساعت).",
-          "matched_via": "state:slot_selected"
         }
       ],
       "sop_unmapped": [
         {
           "num": "1",
           "title": "پیش‌نیاز سیستمی (توسط مدیریت)"
-        },
-        {
-          "num": "1",
-          "title": "ساعت ثبت‌شده."
         },
         {
           "num": "9",
@@ -5123,14 +4419,6 @@
           "title": "اتوماسیون (کنترل بازگشت — پایان بازه):"
         },
         {
-          "num": "1",
-          "title": "وقت سوپروایزر دانشجو آزاد شده و در شیت‌های وقت‌های آزاد سوپروایزرها قرار می‌گیرد."
-        },
-        {
-          "num": "2",
-          "title": "نام سوپروایزر از بخش «سوپروایزر فعال» حذف شده و به لیست «نام سوپروایزرهای گذشته» در پورتال دانشجو اضافه می‌شود."
-        },
-        {
           "num": "13",
           "title": "اتوماسیون (اقدام فوری — آزادسازی منابع):"
         },
@@ -5191,16 +4479,6 @@
         {
           "num": "12",
           "title": "اتوماسیون (کنترل بازگشت — پایان بازه):",
-          "matched_via": "state:monitoring_return"
-        },
-        {
-          "num": "1",
-          "title": "وقت سوپروایزر دانشجو آزاد شده و در شیت‌های وقت‌های آزاد سوپروایزرها قرار می‌گیرد.",
-          "matched_via": "state:monitoring_return"
-        },
-        {
-          "num": "2",
-          "title": "نام سوپروایزر از بخش «سوپروایزر فعال» حذف شده و به لیست «نام سوپروایزرهای گذشته» در پورتال دانشجو اضافه می‌شود.",
           "matched_via": "state:monitoring_return"
         },
         {
@@ -5274,18 +4552,6 @@
           "title": "تصمیم‌گیری سوپروایزر"
         },
         {
-          "num": "1",
-          "title": "تایید روز هفته و ساعت جلسه."
-        },
-        {
-          "num": "2",
-          "title": "رد روز هفته و ساعت جلسه و پیشنهاد روز هفته و ساعتی دیگر."
-        },
-        {
-          "num": "3",
-          "title": "امکان افزایش تعداد جلسات در هفته را ندارم."
-        },
-        {
           "num": "5",
           "title": "اجرای تصمیم (مسیرهای سه‌گانه)"
         },
@@ -5314,21 +4580,6 @@
           "num": "4",
           "title": "تصمیم‌گیری سوپروایزر",
           "matched_via": "state:supervisor_review"
-        },
-        {
-          "num": "1",
-          "title": "تایید روز هفته و ساعت جلسه.",
-          "matched_via": "state:request_submitted"
-        },
-        {
-          "num": "2",
-          "title": "رد روز هفته و ساعت جلسه و پیشنهاد روز هفته و ساعتی دیگر.",
-          "matched_via": "state:request_submitted"
-        },
-        {
-          "num": "3",
-          "title": "امکان افزایش تعداد جلسات در هفته را ندارم.",
-          "matched_via": "state:request_submitted"
         },
         {
           "num": "5",
@@ -5843,14 +5094,6 @@
           "title": "اتوماسیون (کنترل مهلت آپلود):"
         },
         {
-          "num": "1",
-          "title": "گزارش تخلف به صورت خودکار برای کمیته نظارت ارسال می‌شود (فرایند «ثبت تخلفات»)."
-        },
-        {
-          "num": "2",
-          "title": "پیغام هشدار (Alert) برای پورتال معاون مدیر آموزش ارسال می‌شود."
-        },
-        {
           "num": "5",
           "title": "اتوماسیون (اطلاع‌رسانی به مدرس):"
         },
@@ -5861,14 +5104,6 @@
         {
           "num": "7",
           "title": "اتوماسیون (کنترل مهلت بررسی مدرس):"
-        },
-        {
-          "num": "1",
-          "title": "گزارش برای کمیته نظارت (ثبت تخلفات)."
-        },
-        {
-          "num": "2",
-          "title": "هشدار برای پورتال معاون مدیر آموزش."
         },
         {
           "num": "8",
@@ -5916,11 +5151,6 @@
           "matched_via": "state:ta_upload"
         },
         {
-          "num": "1",
-          "title": "گزارش تخلف به صورت خودکار برای کمیته نظارت ارسال می‌شود (فرایند «ثبت تخلفات»).",
-          "matched_via": "state:upload_late"
-        },
-        {
           "num": "5",
           "title": "اتوماسیون (اطلاع‌رسانی به مدرس):",
           "matched_via": "state:instructor_review"
@@ -5934,11 +5164,6 @@
           "num": "7",
           "title": "اتوماسیون (کنترل مهلت بررسی مدرس):",
           "matched_via": "state:instructor_review"
-        },
-        {
-          "num": "1",
-          "title": "گزارش برای کمیته نظارت (ثبت تخلفات).",
-          "matched_via": "state:upload_late"
         },
         {
           "num": "8",
@@ -5975,14 +5200,6 @@
         {
           "num": "1",
           "title": "پیش‌شرط اجرایی:"
-        },
-        {
-          "num": "2",
-          "title": "پیغام هشدار (Alert) برای پورتال معاون مدیر آموزش ارسال می‌شود."
-        },
-        {
-          "num": "2",
-          "title": "هشدار برای پورتال معاون مدیر آموزش."
         },
         {
           "num": "13",
@@ -6282,6 +5499,11 @@
           "matched_via": "state:course_committee_review"
         },
         {
+          "num": "10",
+          "title": "پایان فرایند.",
+          "matched_via": "hint:پایان"
+        },
+        {
           "num": "2",
           "title": "در صورت موافقت — تعیین تکلیف:",
           "matched_via": "state:substitute_assigned"
@@ -6321,27 +5543,15 @@
           "title": "اتوماسیون:"
         },
         {
-          "num": "10",
-          "title": "پایان فرایند."
-        },
-        {
           "num": "1",
           "title": "نتیجه پس از تماس با متقاضی:"
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -6391,30 +5601,6 @@
           "title": "اتوماسیون (ارسال به کمیته پیشرفت):"
         },
         {
-          "num": "1",
-          "title": "تاریخ ثبت توسط کمک‌مدرس"
-        },
-        {
-          "num": "2",
-          "title": "نام کلاس"
-        },
-        {
-          "num": "3",
-          "title": "نام کمک‌مدرس"
-        },
-        {
-          "num": "4",
-          "title": "نام دانشجو(ان)"
-        },
-        {
-          "num": "5",
-          "title": "علت انتخاب دانشجو"
-        },
-        {
-          "num": "6",
-          "title": "محتوای مداخله یا مشورت آموزشی"
-        },
-        {
           "num": "9",
           "title": "پایان فرایند."
         }
@@ -6444,16 +5630,6 @@
           "num": "8",
           "title": "اتوماسیون (ارسال به کمیته پیشرفت):",
           "matched_via": "state:form_submitted"
-        },
-        {
-          "num": "1",
-          "title": "تاریخ ثبت توسط کمک‌مدرس",
-          "matched_via": "state:ta_form_fill"
-        },
-        {
-          "num": "3",
-          "title": "نام کمک‌مدرس",
-          "matched_via": "state:ta_form_fill"
         }
       ],
       "sop_unmapped": [
@@ -6468,22 +5644,6 @@
         {
           "num": "7",
           "title": "اتوماسیون (امتیاز عملکرد):"
-        },
-        {
-          "num": "2",
-          "title": "نام کلاس"
-        },
-        {
-          "num": "4",
-          "title": "نام دانشجو(ان)"
-        },
-        {
-          "num": "5",
-          "title": "علت انتخاب دانشجو"
-        },
-        {
-          "num": "6",
-          "title": "محتوای مداخله یا مشورت آموزشی"
         },
         {
           "num": "9",
@@ -6745,22 +5905,6 @@
           "title": "کمیته دروس:"
         },
         {
-          "num": "1",
-          "title": "تئوری روانکاوی ۱ تا ۵"
-        },
-        {
-          "num": "2",
-          "title": "مشاهدهٔ فیلم‌های درمانی ۱ تا ۳ و درس «مشاهدهٔ مستمر یک درمان تحلیلی»"
-        },
-        {
-          "num": "3",
-          "title": "تئوری تکنیک‌ها ۱ تا ۳"
-        },
-        {
-          "num": "4",
-          "title": "تکنیک: تمرین مهارت‌ها ۱ تا ۴"
-        },
-        {
           "num": "11",
           "title": "اتوماسیون (منطق تغییر / اضافه):"
         },
@@ -6822,22 +5966,6 @@
         {
           "num": "9",
           "title": "اتوماسیون:"
-        },
-        {
-          "num": "1",
-          "title": "تئوری روانکاوی ۱ تا ۵"
-        },
-        {
-          "num": "2",
-          "title": "مشاهدهٔ فیلم‌های درمانی ۱ تا ۳ و درس «مشاهدهٔ مستمر یک درمان تحلیلی»"
-        },
-        {
-          "num": "3",
-          "title": "تئوری تکنیک‌ها ۱ تا ۳"
-        },
-        {
-          "num": "4",
-          "title": "تکنیک: تمرین مهارت‌ها ۱ تا ۴"
         },
         {
           "num": "11",
@@ -6963,14 +6091,6 @@
           "title": "اتوماسیون (گزینه‌های مرزی):"
         },
         {
-          "num": "1",
-          "title": "دکمه «امتحان مجدد» (با نمایش هزینهٔ دقیق)."
-        },
-        {
-          "num": "2",
-          "title": "دکمه «می‌خواهم درس را دوباره بگذرانم»."
-        },
-        {
           "num": "9",
           "title": "دانشجو (عدم امتحان مجدد):"
         },
@@ -7040,14 +6160,6 @@
           "title": "اتوماسیون (گزینه‌های مرزی):"
         },
         {
-          "num": "1",
-          "title": "دکمه «امتحان مجدد» (با نمایش هزینهٔ دقیق)."
-        },
-        {
-          "num": "2",
-          "title": "دکمه «می‌خواهم درس را دوباره بگذرانم»."
-        },
-        {
           "num": "9",
           "title": "دانشجو (عدم امتحان مجدد):"
         },
@@ -7073,18 +6185,10 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -7471,74 +6575,12 @@
         {
           "num": "3",
           "title": "پردازش مسیرهای تصمیم‌گیری (LMS Logic)"
-        },
-        {
-          "num": "1",
-          "title": "رابطه درمانی فعلی را در دیتابیس «خاتمه‌یافته» تلقی می‌کند."
-        },
-        {
-          "num": "2",
-          "title": "ظرفیت خالی‌شده درمانگر را بلافاصله برای سایرین باز می‌کند."
-        },
-        {
-          "num": "3",
-          "title": "به دانشجو پیامک و نوتیفیکیشن در پورتال ارسال می‌کند."
-        },
-        {
-          "num": "1",
-          "title": "رابطه درمانی را خاتمه می‌دهد."
-        },
-        {
-          "num": "2",
-          "title": "ظرفیت درمانگر را آزاد می‌کند (چون درمانگر نباید معطل بررسی کمیسیون شود)."
-        },
-        {
-          "num": "3",
-          "title": "یک وب‌سرویس/API به BPMS ارسال می‌کند با محتوای: StudentID، TherapistID، Reason: Code 3."
-        },
-        {
-          "num": "1",
-          "title": "رابطه درمانی را قطع می‌کند."
-        },
-        {
-          "num": "3",
-          "title": "ارسال درخواست به BPMS با محتوای: Reason: Code 4."
         }
       ],
       "sop_mapped": [
         {
           "num": "2",
           "title": "انتخاب علت قطع درمان (LMS)",
-          "matched_via": "state:reason_selection"
-        },
-        {
-          "num": "1",
-          "title": "رابطه درمانی فعلی را در دیتابیس «خاتمه‌یافته» تلقی می‌کند.",
-          "matched_via": "state:restart_completed"
-        },
-        {
-          "num": "2",
-          "title": "ظرفیت خالی‌شده درمانگر را بلافاصله برای سایرین باز می‌کند.",
-          "matched_via": "state:restart_completed"
-        },
-        {
-          "num": "3",
-          "title": "به دانشجو پیامک و نوتیفیکیشن در پورتال ارسال می‌کند.",
-          "matched_via": "state:restart_completed"
-        },
-        {
-          "num": "1",
-          "title": "رابطه درمانی را خاتمه می‌دهد.",
-          "matched_via": "state:restart_completed"
-        },
-        {
-          "num": "2",
-          "title": "ظرفیت درمانگر را آزاد می‌کند (چون درمانگر نباید معطل بررسی کمیسیون شود).",
-          "matched_via": "state:restart_completed"
-        },
-        {
-          "num": "1",
-          "title": "رابطه درمانی را قطع می‌کند.",
           "matched_via": "state:reason_selection"
         }
       ],
@@ -7550,14 +6592,6 @@
         {
           "num": "3",
           "title": "پردازش مسیرهای تصمیم‌گیری (LMS Logic)"
-        },
-        {
-          "num": "3",
-          "title": "یک وب‌سرویس/API به BPMS ارسال می‌کند با محتوای: StudentID، TherapistID، Reason: Code 3."
-        },
-        {
-          "num": "3",
-          "title": "ارسال درخواست به BPMS با محتوای: Reason: Code 4."
         }
       ],
       "sop_fully_mapped": false,
@@ -7706,22 +6740,6 @@
         {
           "num": "3",
           "title": "تصمیم‌گیری درمانگر (Therapist Action)"
-        },
-        {
-          "num": "1",
-          "title": "پیام تایید در پورتال به دانشجو نمایش داده می‌شود."
-        },
-        {
-          "num": "2",
-          "title": "سیستم بلافاصله این زمان را به عنوان یک «جلسه تکرار شونده هفتگی» (Recurring) به برنامه دانشجو اضافه می‌کند."
-        },
-        {
-          "num": "1",
-          "title": "فرایند متوقف می‌شود."
-        },
-        {
-          "num": "2",
-          "title": "پیامک (SMS) و نوتیفیکیشن پورتال برای دانشجو ارسال می‌شود."
         }
       ],
       "sop_mapped": [
@@ -7734,31 +6752,12 @@
           "num": "3",
           "title": "تصمیم‌گیری درمانگر (Therapist Action)",
           "matched_via": "hint:درمانگر"
-        },
-        {
-          "num": "1",
-          "title": "پیام تایید در پورتال به دانشجو نمایش داده می‌شود.",
-          "matched_via": "state:student_response"
-        },
-        {
-          "num": "2",
-          "title": "سیستم بلافاصله این زمان را به عنوان یک «جلسه تکرار شونده هفتگی» (Recurring) به برنامه دانشجو اضافه می‌کند.",
-          "matched_via": "state:request_submitted"
-        },
-        {
-          "num": "2",
-          "title": "پیامک (SMS) و نوتیفیکیشن پورتال برای دانشجو ارسال می‌شود.",
-          "matched_via": "state:student_response"
         }
       ],
       "sop_unmapped": [
         {
           "num": "1",
           "title": "احراز صلاحیت (Eligibility Check)"
-        },
-        {
-          "num": "1",
-          "title": "فرایند متوقف می‌شود."
         }
       ],
       "sop_fully_mapped": false,
@@ -7797,14 +6796,6 @@
         {
           "num": "4",
           "title": "اعمال تغییرات (Execution)"
-        },
-        {
-          "num": "1",
-          "title": "حذف از برنامه: جلسه انتخاب شده از برنامه هفتگی دانشجو حذف می‌شود."
-        },
-        {
-          "num": "3",
-          "title": "ثبت سوابق: تاریخچه این تغییر در پرونده درمان آموزشی دانشجو ثبت می‌گردد."
         }
       ],
       "sop_mapped": [
@@ -7812,16 +6803,6 @@
           "num": "2",
           "title": "انتخاب جلسه (Selection)",
           "matched_via": "state:blocked"
-        },
-        {
-          "num": "1",
-          "title": "حذف از برنامه: جلسه انتخاب شده از برنامه هفتگی دانشجو حذف می‌شود.",
-          "matched_via": "state:blocked"
-        },
-        {
-          "num": "3",
-          "title": "ثبت سوابق: تاریخچه این تغییر در پرونده درمان آموزشی دانشجو ثبت می‌گردد.",
-          "matched_via": "state:violation_warning"
         }
       ],
       "sop_unmapped": [
@@ -8185,18 +7166,10 @@
       "sop_mapped": [],
       "sop_unmapped": [],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "artifact_missing",
-          "detail": "No artifact-producing action and pytest B/C did not prove terminal reachability",
-          "backend": "app/services/workflow/",
-          "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-          "fix": "Add record_*/generate_* action on terminal path or ensure level C test passes"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -8248,22 +7221,6 @@
         {
           "num": "9",
           "title": "کمیته دروس (ثبت رسته‌های توافق‌شده):"
-        },
-        {
-          "num": "1",
-          "title": "تئوری روانکاوی ۱ تا ۵"
-        },
-        {
-          "num": "2",
-          "title": "مشاهدهٔ فیلم‌های درمانی ۱ تا ۳ و درس «مشاهدهٔ مستمر یک درمان تحلیلی»"
-        },
-        {
-          "num": "3",
-          "title": "تئوری تکنیک‌ها ۱ تا ۳"
-        },
-        {
-          "num": "4",
-          "title": "تکنیک: تمرین مهارت‌ها ۱ تا ۴"
         },
         {
           "num": "10",
@@ -8320,11 +7277,6 @@
           "matched_via": "state:supervision_review"
         },
         {
-          "num": "2",
-          "title": "مشاهدهٔ فیلم‌های درمانی ۱ تا ۳ و درس «مشاهدهٔ مستمر یک درمان تحلیلی»",
-          "matched_via": "state:track_selection"
-        },
-        {
           "num": "10",
           "title": "دانشجو (امضای تعهدنامه دیجیتال):",
           "matched_via": "state:student_click"
@@ -8339,18 +7291,6 @@
         {
           "num": "1",
           "title": "اتوماسیون (چهار شرط قبل از شروع):"
-        },
-        {
-          "num": "1",
-          "title": "تئوری روانکاوی ۱ تا ۵"
-        },
-        {
-          "num": "3",
-          "title": "تئوری تکنیک‌ها ۱ تا ۳"
-        },
-        {
-          "num": "4",
-          "title": "تکنیک: تمرین مهارت‌ها ۱ تا ۴"
         },
         {
           "num": "12",
@@ -8415,26 +7355,6 @@
           "title": "کمیته نظارت — یکی از:"
         },
         {
-          "num": "1",
-          "title": "مبرا شدن (پایان)"
-        },
-        {
-          "num": "2",
-          "title": "تذکر"
-        },
-        {
-          "num": "3",
-          "title": "اخطار مرحله اول"
-        },
-        {
-          "num": "4",
-          "title": "اخطار مرحله دوم"
-        },
-        {
-          "num": "5",
-          "title": "اخطار مرحله سوم"
-        },
-        {
           "num": "10",
           "title": "اتوماسیون (تذکر یا اخطار ۱ تا ۳):"
         },
@@ -8445,18 +7365,6 @@
         {
           "num": "12",
           "title": "کمیته نظارت — یکی از:"
-        },
-        {
-          "num": "1",
-          "title": "تعلیق موقت آنی از آموزش"
-        },
-        {
-          "num": "2",
-          "title": "تعلیق موقت از ترم بعد"
-        },
-        {
-          "num": "3",
-          "title": "ارجاع به کمیته آموزش"
         },
         {
           "num": "13",
@@ -8534,31 +7442,6 @@
           "matched_via": "state:violation_reported"
         },
         {
-          "num": "1",
-          "title": "مبرا شدن (پایان)",
-          "matched_via": "state:closed"
-        },
-        {
-          "num": "2",
-          "title": "تذکر",
-          "matched_via": "state:verdict_issued"
-        },
-        {
-          "num": "3",
-          "title": "اخطار مرحله اول",
-          "matched_via": "state:verdict_issued"
-        },
-        {
-          "num": "4",
-          "title": "اخطار مرحله دوم",
-          "matched_via": "state:verdict_issued"
-        },
-        {
-          "num": "5",
-          "title": "اخطار مرحله سوم",
-          "matched_via": "state:verdict_issued"
-        },
-        {
           "num": "10",
           "title": "اتوماسیون (تذکر یا اخطار ۱ تا ۳):",
           "matched_via": "state:verdict_issued"
@@ -8566,21 +7449,6 @@
         {
           "num": "12",
           "title": "کمیته نظارت — یکی از:",
-          "matched_via": "state:violation_reported"
-        },
-        {
-          "num": "1",
-          "title": "تعلیق موقت آنی از آموزش",
-          "matched_via": "state:suspension_next_term"
-        },
-        {
-          "num": "2",
-          "title": "تعلیق موقت از ترم بعد",
-          "matched_via": "state:suspension_next_term"
-        },
-        {
-          "num": "3",
-          "title": "ارجاع به کمیته آموزش",
           "matched_via": "state:violation_reported"
         },
         {
@@ -8703,22 +7571,6 @@
           "title": "مدیر داخلی: وقت‌های دقیق مصاحبه را از مصاحبه‌کنندگان دریافت و در سایت پیاده‌سازی می‌کند."
         },
         {
-          "num": "1",
-          "title": "ساعت شروع (مثلاً ۱۸:۰۰)."
-        },
-        {
-          "num": "2",
-          "title": "ساعت پایان (مثلاً ۲۰:۰۰)."
-        },
-        {
-          "num": "3",
-          "title": "طول بازه هر مصاحبه (مثلاً هر ۳۰ دقیقه)."
-        },
-        {
-          "num": "4",
-          "title": "حضوری یا آنلاین بودن."
-        },
-        {
           "num": "7",
           "title": "اتوماسیون (نهایی‌سازی): تمامی اطلاعات تأییدشده را در صفحه «تقویم آموزشی» ثبت می‌کند."
         }
@@ -8750,45 +7602,26 @@
           "matched_via": "state:course_finalization"
         },
         {
-          "num": "1",
-          "title": "ساعت شروع (مثلاً ۱۸:۰۰).",
-          "matched_via": "state:marketing_campaign"
-        },
-        {
-          "num": "3",
-          "title": "طول بازه هر مصاحبه (مثلاً هر ۳۰ دقیقه).",
-          "matched_via": "state:interviewer_assignment"
-        },
-        {
           "num": "7",
           "title": "اتوماسیون (نهایی‌سازی): تمامی اطلاعات تأییدشده را در صفحه «تقویم آموزشی» ثبت می‌کند.",
           "matched_via": "state:course_finalization"
         }
       ],
-      "sop_unmapped": [
-        {
-          "num": "2",
-          "title": "ساعت پایان (مثلاً ۲۰:۰۰)."
-        },
-        {
-          "num": "4",
-          "title": "حضوری یا آنلاین بودن."
-        }
-      ],
-      "sop_fully_mapped": false,
+      "sop_unmapped": [],
+      "sop_fully_mapped": true,
       "fails": [],
       "partial_ui": [],
       "user_can_complete": true,
-      "section": "B",
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 95.8,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 83.3
+        "forms_pct": 100.0
       }
     }
   ]

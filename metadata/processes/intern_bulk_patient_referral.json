@@ -93,7 +93,12 @@
       "to": "completed",
       "trigger": "coordination_followup_complete",
       "required_role": "therapy_education_coordinator",
-      "description_fa": "تیک پیگیری برای همه بیماران؛ مهلت ۳ روز؛ در صورت تاخیر هشدار به معاون مدیر داخلی — پایان"
+      "description_fa": "تیک پیگیری برای همه بیماران؛ مهلت ۳ روز؛ در صورت تاخیر هشدار به معاون مدیر داخلی — پایان",
+      "actions": [
+        {
+          "type": "record_intern_referral"
+        }
+      ]
     }
   ],
   "forms": [

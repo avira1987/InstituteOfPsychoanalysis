@@ -196,10 +196,26 @@ def _validate_registration_data(data: StudentRegistrationRequest) -> None:
     validate_registration_profile_fields(data)
 
 
+@router.get("/registration-gate")
+async def get_intro_registration_gate(
+    db: AsyncSession = Depends(get_db),
+):
+    """وضعیت باز/بسته بودن ثبت‌نام دورهٔ آشنایی (وابسته به آماده‌سازی ترم)."""
+    from app.services.registration_readiness_service import check_intro_registration_gate
+
+    return (await check_intro_registration_gate(db)).to_dict()
+
+
 @router.post("/register")
 async def register_student(data: StudentRegistrationRequest, db: AsyncSession = Depends(get_db)):
     """Public student registration (creates user + student profile)."""
     _validate_registration_data(data)
+    if data.course_type == "introductory":
+        from app.services.registration_readiness_service import check_intro_registration_gate
+
+        gate = await check_intro_registration_gate(db)
+        if not gate.allowed:
+            raise HTTPException(status_code=403, detail=gate.reason_fa)
     nc = validate_national_code_ir(data.national_code or "")
 
     existing_by_nc = await find_student_by_national_code(db, nc)

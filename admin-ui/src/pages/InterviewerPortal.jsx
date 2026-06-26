@@ -1,23 +1,30 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect, useCallback } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import InterviewBookingsPanel from '../components/InterviewBookingsPanel'
 import InterviewSlotRecurringRules from '../components/InterviewSlotRecurringRules'
 import InterviewSlotsAdmin from '../components/InterviewSlotsAdmin'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
+import InterviewerResultPanel from '../components/InterviewerResultPanel'
 import PopupToast from '../components/PopupToast'
 import { panelApi } from '../services/api'
 import { canManageInterviewSlots } from '../utils/interviewSlotAccess'
+import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
+
+const DEEP_LINK_TABS = ['dashboard', 'result']
 
 /**
- * پنل مصاحبه‌گر — تعریف وقت، رزروها، و لینک به پروندهٔ فرایند.
+ * پنل مصاحبه‌گر — تعریف وقت، رزروها، و ثبت نتیجهٔ مصاحبه در همین پنل.
  */
 export default function InterviewerPortal() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [toast, setToast] = useState(null)
   const [inboxItems, setInboxItems] = useState([])
   const [readinessAlerts, setReadinessAlerts] = useState([])
   const [followupLoading, setFollowupLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [selectedInstance, setSelectedInstance] = useState(null)
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -43,6 +50,40 @@ export default function InterviewerPortal() {
     reloadFollowup()
   }, [user?.id, reloadFollowup])
 
+  const viewInstance = useCallback((instanceId) => {
+    setSelectedInstance(instanceId)
+    setActiveTab('result')
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', 'result')
+      next.set('instance_id', instanceId)
+      return next
+    })
+  }, [setSearchParams])
+
+  const closeResultPanel = useCallback(() => {
+    setSelectedInstance(null)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('instance_id')
+      if (next.get('tab') === 'result') next.set('tab', 'dashboard')
+      return next
+    })
+    setActiveTab('dashboard')
+  }, [setSearchParams])
+
+  usePortalInstanceDeepLink({
+    loading: followupLoading,
+    setActiveTab,
+    viewInstance,
+    allowedTabs: DEEP_LINK_TABS,
+  })
+
+  useEffect(() => {
+    const id = searchParams.get('instance_id')
+    if (id) setSelectedInstance(id)
+  }, [searchParams])
+
   const canManageSlots = canManageInterviewSlots(user?.role)
 
   return (
@@ -55,45 +96,73 @@ export default function InterviewerPortal() {
           <p className="page-subtitle">
             {user?.full_name_fa || user?.username}
             {' '}
-            | زمان‌های مصاحبه، رزروها، و ادامهٔ فرایند پذیرش
+            | زمان‌های مصاحبه، رزروها، و ثبت نتیجهٔ مصاحبه
           </p>
           <p className="muted" style={{ marginTop: '0.6rem', fontSize: '0.9rem', maxWidth: '46rem' }}>
             {canManageSlots ? (
               <>
                 به‌عنوان مدیر سیستم می‌توانید وقت مصاحبه را اینجا یا از{' '}
-                <Link to="/panel/portal/staff/admissions?tab=interviewSlots">پنل پذیرش — وقت مصاحبه</Link> تعریف و ویرایش کنید.
-                پس از برگزاری، برای ثبت نتیجه از{' '}
-                <strong>لینک صندوق اقدام</strong> همان نمونهٔ فرایند را باز کنید.
-                ثبت نتیجه فقط برای مصاحبه‌گر همان وقت یا مدیر سیستم امکان‌پذیر است.
+                <Link to="/panel/portal/staff/admissions?tab=interviewSlots">پنل پذیرش — وقت مصاحبه</Link> تعریف کنید.
+                برای ثبت نتیجه از <strong>صندوق اقدام</strong> همان پرونده را باز کنید.
               </>
             ) : (
               <>
-                تعریف وقت مصاحبه فقط از{' '}
-                <Link to="/panel/portal/staff/admissions?tab=interviewSlots">پنل پذیرش — وقت مصاحبه</Link>{' '}
-                انجام می‌شود. در اینجا رزروها و ادامهٔ فرایند پذیرش را می‌بینید؛ پس از برگزاری، برای ثبت نتیجه از{' '}
-                <strong>لینک صندوق اقدام</strong> همان نمونهٔ فرایند را باز کنید.
-                ثبت نتیجه فقط برای مصاحبه‌گر همان وقت امکان‌پذیر است.
+                تعریف وقت مصاحبه از{' '}
+                <Link to="/panel/portal/staff/admissions?tab=interviewSlots">پنل پذیرش</Link> انجام می‌شود.
+                پس از برگزاری مصاحبه، از صندوق زیر «ثبت نتیجه» را در همین صفحه تکمیل کنید.
               </>
             )}
           </p>
         </div>
       </div>
 
-      <OperatorFollowupSection
-        loading={followupLoading}
-        items={inboxItems}
-        readinessAlerts={readinessAlerts}
-        inboxTitle="پرونده‌های باز مرتبط با نقش شما"
-      />
+      <div className="tab-bar" style={{ marginBottom: '1rem' }}>
+        <button
+          type="button"
+          className={`tab-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dashboard')}
+        >
+          داشبورد
+        </button>
+        <button
+          type="button"
+          className={`tab-item ${activeTab === 'result' ? 'active' : ''}`}
+          onClick={() => setActiveTab('result')}
+          disabled={!selectedInstance}
+        >
+          ثبت نتیجهٔ مصاحبه
+        </button>
+      </div>
 
-      {canManageSlots ? (
+      {activeTab === 'result' && selectedInstance && (
+        <InterviewerResultPanel
+          user={user}
+          instanceId={selectedInstance}
+          onClose={closeResultPanel}
+          showToast={showToast}
+          onAfterTransition={reloadFollowup}
+        />
+      )}
+
+      {activeTab === 'dashboard' && (
         <>
-          <InterviewSlotRecurringRules showToast={showToast} onCapacityChanged={reloadFollowup} />
-          <InterviewSlotsAdmin showToast={showToast} onCapacityChanged={reloadFollowup} />
-        </>
-      ) : null}
+          <OperatorFollowupSection
+            loading={followupLoading}
+            items={inboxItems}
+            readinessAlerts={readinessAlerts}
+            inboxTitle="پرونده‌های باز — ثبت نتیجهٔ مصاحبه"
+          />
 
-      <InterviewBookingsPanel showToast={showToast} />
+          {canManageSlots ? (
+            <>
+              <InterviewSlotRecurringRules showToast={showToast} onCapacityChanged={reloadFollowup} />
+              <InterviewSlotsAdmin showToast={showToast} onCapacityChanged={reloadFollowup} />
+            </>
+          ) : null}
+
+          <InterviewBookingsPanel showToast={showToast} />
+        </>
+      )}
     </div>
   )
 }

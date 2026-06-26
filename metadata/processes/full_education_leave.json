@@ -45,7 +45,12 @@
       "to": "therapist_assignment",
       "trigger": "request_submitted",
       "required_role": "student",
-      "description_fa": "ارسال درخواست"
+      "description_fa": "ارسال درخواست",
+      "actions": [
+        {
+          "type": "record_leave_request"
+        }
+      ]
     },
     {
       "from": "therapist_assignment",

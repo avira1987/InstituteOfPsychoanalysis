@@ -65,7 +65,12 @@
       "to": "course_committee_review",
       "trigger": "request_submitted",
       "required_role": "teaching_assistant_or_instructor",
-      "description_fa": "درخواست به کمیته دروس"
+      "description_fa": "درخواست به کمیته دروس",
+      "actions": [
+        {
+          "type": "record_ta_leave"
+        }
+      ]
     },
     {
       "from": "course_committee_review",

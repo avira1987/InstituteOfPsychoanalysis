@@ -27,9 +27,26 @@
     {
       "from": "evaluation_open",
       "to": "evaluation_closed",
+      "trigger": "evaluation_submitted",
+      "required_role": "student",
+      "description_fa": "ثبت فرم ارزیابی توسط دانشجو",
+      "actions": [
+        {
+          "type": "record_evaluation_submission"
+        }
+      ]
+    },
+    {
+      "from": "evaluation_open",
+      "to": "evaluation_closed",
       "trigger": "deadline_reached",
       "description_fa": "پایان مهلت ارزیابی — محاسبه میانگین، نمودار دایره‌ای، توزیع در پورتال مدرس و کمیته‌ها",
-      "required_role": "system"
+      "required_role": "system",
+      "actions": [
+        {
+          "type": "record_evaluation_closed"
+        }
+      ]
     }
   ],
   "forms": [
@@ -49,9 +66,27 @@
           "type": "readonly"
         },
         {
-          "name": "responses",
-          "label_fa": "پاسخ به سوالات (پیوست)",
-          "type": "form_reference"
+          "name": "overall_score",
+          "label_fa": "نمره کلی کیفیت تدریس",
+          "type": "select",
+          "options": ["1", "2", "3", "4", "5"]
+        },
+        {
+          "name": "teaching_clarity",
+          "label_fa": "شفافیت و انتقال مطلب",
+          "type": "select",
+          "options": ["1", "2", "3", "4", "5"]
+        },
+        {
+          "name": "interaction_quality",
+          "label_fa": "کیفیت تعامل با دانشجویان",
+          "type": "select",
+          "options": ["1", "2", "3", "4", "5"]
+        },
+        {
+          "name": "comments",
+          "label_fa": "نظر یا پیشنهاد (اختیاری)",
+          "type": "textarea"
         }
       ]
     },

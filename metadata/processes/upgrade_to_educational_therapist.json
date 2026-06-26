@@ -94,7 +94,12 @@
       "to": "edu_supervision_interview",
       "trigger": "approved",
       "required_role": "supervision_committee",
-      "description_fa": "تایید — ارجاع به کمیته درمان آموزشی و سوپرویژن"
+      "description_fa": "تایید — ارجاع به کمیته درمان آموزشی و سوپرویژن",
+      "actions": [
+        {
+          "type": "record_upgrade_decision"
+        }
+      ]
     },
     {
       "from": "edu_supervision_interview",

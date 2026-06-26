@@ -37,6 +37,9 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const SystemResourcesPage = lazy(() => import('./pages/SystemResourcesPage'))
 const AutomationSchedulerPage = lazy(() => import('./pages/AutomationSchedulerPage'))
 const SemesterPrepPage = lazy(() => import('./pages/SemesterPrepPage'))
+const SemesterPrepCalendarPage = lazy(() => import('./pages/SemesterPrepCalendarPage'))
+const SemesterPrepWorkbenchPage = lazy(() => import('./pages/SemesterPrepWorkbenchPage'))
+const SemesterPrepCourseListReviewPage = lazy(() => import('./pages/SemesterPrepCourseListReviewPage'))
 const HomePage = lazy(() => import('./pages/public/HomePage'))
 const BlogList = lazy(() => import('./pages/public/BlogList'))
 const BlogPost = lazy(() => import('./pages/public/BlogPost'))
@@ -161,6 +164,16 @@ function RequireAdminRole({ children }) {
   return children
 }
 
+/** آماده‌سازی ترم — admin/staff/deputy + مدیر سایت برای زمان‌بندی مصاحبه */
+function RequireSemesterPrepRole({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  const ok = ['admin', 'staff', 'deputy_education', 'site_manager'].includes(user.role)
+  if (!ok) return <Navigate to="/panel" replace />
+  return children
+}
+
 /** تقویم و اتوماسیون زمان‌محور — مشاهده برای staff/deputy؛ ویرایش فقط admin در خود صفحه */
 function RequireSchedulerViewRole({ children }) {
   const { user, loading } = useAuth()
@@ -271,11 +284,35 @@ export default function App() {
             }
           />
           <Route
+            path="semester-prep/calendar"
+            element={
+              <RequireSemesterPrepRole>
+                <SemesterPrepCalendarPage />
+              </RequireSemesterPrepRole>
+            }
+          />
+          <Route
+            path="semester-prep/course-list-review"
+            element={
+              <RequireSemesterPrepRole>
+                <SemesterPrepCourseListReviewPage />
+              </RequireSemesterPrepRole>
+            }
+          />
+          <Route
+            path="semester-prep/workbench"
+            element={
+              <RequireSemesterPrepRole>
+                <SemesterPrepWorkbenchPage />
+              </RequireSemesterPrepRole>
+            }
+          />
+          <Route
             path="semester-prep"
             element={
-              <RequireSchedulerViewRole>
+              <RequireSemesterPrepRole>
                 <SemesterPrepPage />
-              </RequireSchedulerViewRole>
+              </RequireSemesterPrepRole>
             }
           />
           <Route

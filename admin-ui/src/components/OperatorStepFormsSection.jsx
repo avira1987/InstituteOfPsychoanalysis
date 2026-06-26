@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { processExecApi } from '../services/api'
+import { processExecApi, userApi } from '../services/api'
 import UnifiedFormRenderer from './UnifiedFormRenderer'
 import FallSemesterPrepReadonlySummary from './FallSemesterPrepReadonlySummary'
 import InterviewSlotsAdmin from './InterviewSlotsAdmin'
+import { validateUnifiedAnswers } from '../utils/unifiedFormValidation'
 
-const SUPPORTED_PROCESSES = new Set([
+const SEMESTER_PREP_PROCESSES = new Set([
   'fall_semester_preparation',
   'winter_semester_preparation',
 ])
@@ -53,9 +54,11 @@ function buildInitialValues(forms, contextData, processCode, currentState, sugge
     if (ctx[n] !== undefined) init[n] = ctx[n]
   })
 
-  if (
-    processCode === 'fall_semester_preparation' &&
+  const isCourseFinalization =
     currentState === 'course_finalization' &&
+    (processCode === 'fall_semester_preparation' || processCode === 'winter_semester_preparation')
+  if (
+    isCourseFinalization &&
     (!init.courses_finalized || !init.courses_finalized.length) &&
     Array.isArray(ctx.courses) &&
     ctx.courses.length
@@ -63,7 +66,69 @@ function buildInitialValues(forms, contextData, processCode, currentState, sugge
     init.courses_finalized = buildCoursesFinalizedFromDraft(ctx.courses)
   }
 
+  for (const form of forms || []) {
+    for (const field of form?.fields || []) {
+      if ((field.type || '').toLowerCase() !== 'table' || !field.required) continue
+      const name = field.name
+      const rows = init[name]
+      if (!Array.isArray(rows) || rows.length === 0) {
+        const blank = {}
+        for (const col of field.columns || []) {
+          const ct = (col.type || 'text').toLowerCase()
+          blank[col.name] = ct === 'checkbox' ? false : ''
+        }
+        init[name] = [blank]
+      }
+    }
+  }
+
   return init
+}
+
+async function resolveUsersOptionsSource(source) {
+  if (!source || source.type !== 'users') return []
+  const params = {}
+  if (source.role) params.role = source.role
+  if (source.is_active != null) params.is_active = source.is_active
+  try {
+    const res = await userApi.list(params)
+    return (Array.isArray(res.data) ? res.data : []).map((u) => ({
+      value: u.id,
+      label_fa: u.full_name_fa || u.username || u.id,
+    }))
+  } catch {
+    return []
+  }
+}
+
+async function enrichFormsWithDynamicOptions(forms) {
+  const out = []
+  for (const form of forms || []) {
+    const fields = []
+    for (const field of form?.fields || []) {
+      const next = { ...field }
+      if (next.options_source && !(Array.isArray(next.options) && next.options.length)) {
+        const opts = await resolveUsersOptionsSource(next.options_source)
+        if (opts.length) next.options = opts
+      }
+      fields.push(next)
+    }
+    out.push({ ...form, fields })
+  }
+  return out
+}
+
+function hasVisiblePrefill(forms, suggestedContext) {
+  const suggested = suggestedContext || {}
+  return (forms || []).some((form) =>
+    (form.fields || []).some((field) => {
+      if (!field?.pre_filled_from) return false
+      const v = suggested[field.name]
+      if (v == null || v === '') return false
+      if (Array.isArray(v)) return v.length > 0
+      return true
+    }),
+  )
 }
 
 /** گام‌های فرایند ۳۰ — قبل از انتشار */
@@ -155,17 +220,23 @@ export default function OperatorStepFormsSection({
   showToast,
   onUpdated,
 }) {
-  const supported = SUPPORTED_PROCESSES.has(processCode)
+  const isSemesterPrep = SEMESTER_PREP_PROCESSES.has(processCode)
   const isFall = processCode === 'fall_semester_preparation'
   const isWinter = processCode === 'winter_semester_preparation'
   const [forms, setForms] = useState([])
   const [values, setValues] = useState({})
+  const [suggestedContext, setSuggestedContext] = useState({})
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
 
+  const showPrefillBanner = useMemo(
+    () => isWinter && hasVisiblePrefill(forms, suggestedContext),
+    [isWinter, forms, suggestedContext],
+  )
+
   const visible = useMemo(
-    () => !!(supported && instanceId && currentState && !isCompleted && !isCancelled),
-    [supported, instanceId, currentState, isCompleted, isCancelled],
+    () => !!(instanceId && currentState && !isCompleted && !isCancelled),
+    [instanceId, currentState, isCompleted, isCancelled],
   )
 
   useEffect(() => {
@@ -177,7 +248,7 @@ export default function OperatorStepFormsSection({
     setLoading(true)
     processExecApi
       .getProcessFormsForState(processCode, currentState, instanceId)
-      .then((res) => {
+      .then(async (res) => {
         if (!active) return
         const list = Array.isArray(res.data?.forms)
           ? res.data.forms
@@ -185,8 +256,11 @@ export default function OperatorStepFormsSection({
             ? res.data
             : []
         const suggested = res.data?.suggested_context || {}
-        setForms(list)
-        setValues(buildInitialValues(list, contextData, processCode, currentState, suggested))
+        const enriched = await enrichFormsWithDynamicOptions(list)
+        if (!active) return
+        setSuggestedContext(suggested)
+        setForms(enriched)
+        setValues(buildInitialValues(enriched, contextData, processCode, currentState, suggested))
       })
       .catch(() => active && setForms([]))
       .finally(() => active && setLoading(false))
@@ -198,6 +272,15 @@ export default function OperatorStepFormsSection({
   const onChange = useCallback((next) => setValues(next), [])
 
   const save = async () => {
+    const allMissing = []
+    for (const form of forms) {
+      const { ok, missing } = validateUnifiedAnswers({ fields: form.fields || [] }, values, { role })
+      if (!ok) allMissing.push(...missing)
+    }
+    if (allMissing.length) {
+      showToast?.(`لطفاً موارد زیر را تکمیل کنید: ${allMissing.join('؛ ')}`, 'error')
+      return
+    }
     setBusy(true)
     try {
       const res = await processExecApi.registerOperatorStepForms(instanceId, {
@@ -226,10 +309,10 @@ export default function OperatorStepFormsSection({
       </div>
     )
   }
-  if (!forms.length && currentState !== 'interview_scheduling') return null
-
   const showSlotsAdmin =
-    (isFall || isWinter) && currentState === 'interview_scheduling'
+    isSemesterPrep && currentState === 'interview_scheduling'
+
+  if (!forms.length && !showSlotsAdmin) return null
 
   return (
     <div
@@ -270,6 +353,24 @@ export default function OperatorStepFormsSection({
           }}
         >
           هزینه مصاحبه ورود باید همخوان با شأن علمی انستیتو باشد.
+        </div>
+      )}
+
+      {showPrefillBanner && (
+        <div
+          data-testid="winter-prefill-banner"
+          style={{
+            marginBottom: '0.85rem',
+            padding: '0.65rem 0.85rem',
+            background: '#fef3c7',
+            borderRadius: '6px',
+            border: '1px solid #fcd34d',
+            fontSize: '0.82rem',
+            color: '#92400e',
+            lineHeight: 1.6,
+          }}
+        >
+          این جدول از لیست دروس ترم پاییز پر شده است — می‌توانید ویرایش کنید.
         </div>
       )}
 

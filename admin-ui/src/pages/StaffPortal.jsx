@@ -12,22 +12,19 @@ import {
   filterInterviewResultTransitions,
 } from '../utils/interviewResultAccess'
 import { notesPayload } from '../utils/decisionPayload'
+import { mergeEducationalLeaveTriggerPayload } from '../utils/educationalLeaveTriggerPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
-import InstanceContextSummary from '../components/InstanceContextSummary'
-import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import PopupToast from '../components/PopupToast'
 import InterviewSlotRecurringRules from '../components/InterviewSlotRecurringRules'
 import InterviewSlotsAdmin from '../components/InterviewSlotsAdmin'
 import InterviewBookingsPanel from '../components/InterviewBookingsPanel'
 import DocumentsReviewPanel from '../components/DocumentsReviewPanel'
-import ProcessRollbackSection from '../components/ProcessRollbackSection'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
-import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+import OperatorProcessInstancePanel from '../components/OperatorProcessInstancePanel'
+import Supervision50hCompletionPanel from '../components/Supervision50hCompletionPanel'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
-import OperatorCourseSelectionEditor from '../components/OperatorCourseSelectionEditor'
-import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import {
   buildStaffTabsForLane,
   getStaffLaneConfig,
@@ -236,6 +233,16 @@ export default function StaffPortal() {
     const toState = typeof transition === 'object' ? transition.to_state : undefined
     try {
       let payload = notesPayload(decisionNotes)
+      const leaveMerge = mergeEducationalLeaveTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (leaveMerge.error) {
+        showToast(leaveMerge.error, 'error')
+        return
+      }
+      payload = leaveMerge.payload
       payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
       payload = mergeInterviewResultFormPayload(
         payload,
@@ -1079,11 +1086,6 @@ function DetailPanel({
 }) {
   const isIntroReg = instanceDetail.process_code === 'introductory_course_registration'
   const instanceContext = instanceDetail.context_data || {}
-  const transitionsForActions = filterInterviewResultTransitions(
-    availableTransitions,
-    user,
-    instanceContext,
-  )
   const showInterviewAdvance =
     isIntroReg && instanceDetail.current_state === 'interview_payment_confirmed'
   const showInterviewResultForm =
@@ -1094,195 +1096,103 @@ function DetailPanel({
     (t) => t.trigger_event === 'interview_time_reached',
   )
 
+  const filterTransitionsForPanel = (trans) => {
+    let filtered = filterInterviewResultTransitions(trans, user, instanceContext)
+    if (showInterviewAdvance) {
+      filtered = filtered.filter((t) => t.trigger_event !== 'interview_time_reached')
+    }
+    return filtered
+  }
+
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="card-title">
-          {labelProcess(instanceDetail.process_code)}
-        </h3>
-        <button onClick={onClose} className="btn btn-outline btn-sm">بستن</button>
-      </div>
-
-      {!instanceDetail.is_completed && !instanceDetail.is_cancelled && onUnlockStudentForms && (
-        <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#f0fdf4', borderRadius: '8px', borderRight: '4px solid #16a34a' }}>
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            disabled={unlockFormsBusy}
-            onClick={onUnlockStudentForms}
-            style={{ marginBottom: '0.5rem' }}
-          >
-            {unlockFormsBusy ? 'در حال انجام…' : 'باز کردن امکان ویرایش فرم مرحله برای دانشجو'}
-          </button>
-          <p style={{ fontSize: '0.78rem', color: '#166534', margin: 0, lineHeight: 1.6 }}>
-            اگر دانشجو فرم این مرحله را ثبت کرده و دیگر نمی‌تواند ویرایش کند، با این دکمه اجازهٔ ویرایش مجدد را می‌دهید (برای وضعیت فعلی همین فرایند).
-          </p>
-        </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
-          <label style={{ fontSize: '0.7rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>وضعیت</label>
-          <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{labelState(instanceDetail.current_state)}</div>
-        </div>
-        <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: '8px' }}>
-          <label style={{ fontSize: '0.7rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>تاریخ شروع</label>
-          <div>{instanceDetail.started_at ? new Date(instanceDetail.started_at).toLocaleDateString('fa-IR') : '-'}</div>
-        </div>
-      </div>
-
-      <OperatorInstanceGuidanceBlock
+    <>
+      <Supervision50hCompletionPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'supervision_50h_completion'}
+      />
+      <OperatorProcessInstancePanel
+        user={user}
         instanceDetail={instanceDetail}
-        portalRole={user?.role}
         availableTransitions={availableTransitions}
-      />
-
-      <OperatorCourseSelectionEditor
-        instanceId={instanceDetail.instance_id}
-        processCode={instanceDetail.process_code}
-        currentState={instanceDetail.current_state}
-        contextData={instanceDetail.context_data}
-        isCompleted={instanceDetail.is_completed}
-        isCancelled={instanceDetail.is_cancelled}
+        onClose={onClose}
         showToast={showToast}
-        onUpdated={(ctx) => {
-          if (ctx && onRefreshInstance) onRefreshInstance()
-        }}
-      />
+        onRefreshInstance={onRefreshInstance}
+        onTriggerTransition={triggerTransition}
+        decisionNotes={decisionNotes}
+        setDecisionNotes={setDecisionNotes}
+        filterTransitions={filterTransitionsForPanel}
+        showUnlockStudentForms
+        onUnlockStudentForms={onUnlockStudentForms}
+        unlockFormsBusy={unlockFormsBusy}
+        showRollback
+        onRollback={onRollback}
+        rollbackBusy={rollbackBusy}
+        renderExtraBeforeActions={({ triggerTransition: trig, transitionsForActions }) => (
+        <>
+          {showInterviewAdvance && (
+            <div
+              style={{
+                padding: '1rem 1.25rem',
+                marginBottom: '1.25rem',
+                background: '#eff6ff',
+                borderRadius: '10px',
+                borderRight: '4px solid #2563eb',
+              }}
+            >
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#1e40af' }}>
+                ثبت برگزاری مصاحبه
+              </h4>
+              <p style={{ fontSize: '0.85rem', lineHeight: 1.65, margin: '0 0 0.75rem', color: '#334155' }}>
+                پس از برگزاری مصاحبه (یا برای تست بدون انتظار تا زمان قرار)، این دکمه را بزنید تا مرحلهٔ ثبت نتیجه برای مصاحبه‌گر باز شود.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                data-testid="staff-advance-interview-completed"
+                disabled={!interviewTimeReachedTransition}
+                onClick={() => {
+                  if (interviewTimeReachedTransition) trig(interviewTimeReachedTransition)
+                }}
+              >
+                ثبت برگزاری مصاحبه و باز کردن ثبت نتیجه
+              </button>
+            </div>
+          )}
 
-      <OperatorStepFormsSection
-        instanceId={instanceDetail.instance_id}
-        processCode={instanceDetail.process_code}
-        currentState={instanceDetail.current_state}
-        contextData={instanceDetail.context_data}
-        isCompleted={instanceDetail.is_completed}
-        isCancelled={instanceDetail.is_cancelled}
-        role={user?.role}
-        showToast={showToast}
-        onUpdated={(ctx) => {
-          if (ctx && onRefreshInstance) onRefreshInstance()
-        }}
-      />
-
-      <InstanceContextSummary
-        contextData={instanceDetail.context_data}
-        history={instanceDetail.history}
-        title="پرونده و سابقه (قبل از اقدام)"
-      />
-
-      {onRollback && (
-        <ProcessRollbackSection
-          user={user}
-          instanceDetail={instanceDetail}
-          onRollback={onRollback}
-          busy={rollbackBusy}
-        />
+          {showInterviewResultForm && (
+            <div
+              style={{
+                padding: '1rem 1.25rem',
+                marginBottom: '1.25rem',
+                background: '#faf5ff',
+                borderRadius: '10px',
+                borderRight: '4px solid #7c3aed',
+              }}
+            >
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.75rem', color: '#5b21b6' }}>
+                فرم محرمانهٔ نتیجهٔ مصاحبه
+              </h4>
+              <label style={{ display: 'block', fontSize: '0.88rem' }}>
+                <span style={{ fontWeight: 600 }}>یادداشت مصاحبه‌گر (اختیاری)</span>
+                <textarea
+                  className="form-input"
+                  rows={3}
+                  style={{ width: '100%', marginTop: '0.35rem' }}
+                  dir="rtl"
+                  value={interviewResultForm.interviewer_notes}
+                  onChange={(e) =>
+                    setInterviewResultForm((prev) => ({
+                      ...prev,
+                      interviewer_notes: e.target.value,
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          )}
+        </>
       )}
-
-      {showInterviewAdvance && (
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            marginBottom: '1.25rem',
-            background: '#eff6ff',
-            borderRadius: '10px',
-            borderRight: '4px solid #2563eb',
-          }}
-        >
-          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#1e40af' }}>
-            ثبت برگزاری مصاحبه
-          </h4>
-          <p style={{ fontSize: '0.85rem', lineHeight: 1.65, margin: '0 0 0.75rem', color: '#334155' }}>
-            پس از برگزاری مصاحبه (یا برای تست بدون انتظار تا زمان قرار)، این دکمه را بزنید تا مرحلهٔ ثبت نتیجه برای مصاحبه‌گر باز شود.
-            اگر زمان مصاحبه گذشته باشد، سامانه نیز به‌صورت خودکار این مرحله را جلو می‌برد.
-          </p>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            data-testid="staff-advance-interview-completed"
-            disabled={!interviewTimeReachedTransition}
-            onClick={() => {
-              if (interviewTimeReachedTransition) {
-                triggerTransition(interviewTimeReachedTransition)
-              }
-            }}
-          >
-            ثبت برگزاری مصاحبه و باز کردن ثبت نتیجه
-          </button>
-        </div>
-      )}
-
-      {showInterviewResultForm && (
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            marginBottom: '1.25rem',
-            background: '#faf5ff',
-            borderRadius: '10px',
-            borderRight: '4px solid #7c3aed',
-          }}
-        >
-          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.75rem', color: '#5b21b6' }}>
-            فرم محرمانهٔ نتیجهٔ مصاحبه
-          </h4>
-          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 0.85rem', lineHeight: 1.6 }}>
-            قبل از زدن یکی از دکمه‌های نتیجه در پایین، در صورت نیاز یادداشت را ثبت کنید.
-          </p>
-          <label style={{ display: 'block', fontSize: '0.88rem' }}>
-            <span style={{ fontWeight: 600 }}>یادداشت مصاحبه‌گر (اختیاری)</span>
-            <textarea
-              className="form-input"
-              rows={3}
-              style={{ width: '100%', marginTop: '0.35rem' }}
-              dir="rtl"
-              value={interviewResultForm.interviewer_notes}
-              onChange={(e) =>
-                setInterviewResultForm((prev) => ({
-                  ...prev,
-                  interviewer_notes: e.target.value,
-                }))
-              }
-            />
-          </label>
-        </div>
-      )}
-
-      {transitionsForActions.length > 0 && (
-        <div style={{
-          padding: '1.25rem', background: 'var(--info-light)',
-          borderRadius: '10px', marginBottom: '1.5rem', borderRight: '4px solid var(--info)',
-        }}>
-          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--info)' }}>اقدامات</h4>
-          <DecisionNotesBlock
-            value={decisionNotes}
-            onChange={setDecisionNotes}
-            title="توضیح یا نظر (اختیاری)"
-            hint="متن همراه همان دکمه‌ای که می‌زنید در پرونده ثبت می‌شود."
-          />
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {transitionsForActions
-              .filter((t) => !(showInterviewAdvance && t.trigger_event === 'interview_time_reached'))
-              .map((t, idx) => {
-              const isApproval = t.trigger_event?.includes('approved') || t.trigger_event?.includes('confirm') || t.trigger_event?.includes('verified')
-              const isReject = t.trigger_event?.includes('reject') || t.trigger_event?.includes('decline')
-              return (
-                <button
-                  key={idx}
-                  onClick={() => triggerTransition(t)}
-                  style={{
-                    padding: '0.6rem 1.2rem', borderRadius: '8px', border: 'none',
-                    cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem',
-                    background: isApproval ? 'var(--success)' : isReject ? 'var(--danger)' : 'var(--primary)',
-                    color: '#fff',
-                  }}
-                >
-                  {t.description || t.trigger_event}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </div>
+    />
+    </>
   )
 }

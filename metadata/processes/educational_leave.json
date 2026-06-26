@@ -62,7 +62,11 @@
       "code": "rejected",
       "name_fa": "رد درخواست",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "درخواست مرخصی رد شد",
+        "student_task_fa": "علت رد درخواست در همین صفحه نمایش داده می‌شود. در صورت پرسش با کمیته پیشرفت یا پذیرش تماس بگیرید."
+      }
     },
     {
       "code": "approved_non_intern",
@@ -109,7 +113,11 @@
       "name_fa": "یادآوری بازگشت ارسال شد",
       "type": "intermediate",
       "assigned_role": "system",
-      "sla_hours": 336
+      "sla_hours": 336,
+      "metadata": {
+        "student_short_fa": "بازگشت به تحصیل",
+        "student_task_fa": "پس از ثبت‌نام واقعی دروس ترم آینده در سامانه، فرم تأیید بازگشت را پر کنید و دکمهٔ «ثبت بازگشت» را بزنید."
+      }
     },
     {
       "code": "returned",
@@ -438,6 +446,121 @@
         {
           "name": "request_reason",
           "label_fa": "توضیح کوتاه درخواست (اختیاری)",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "code": "leave_committee_meeting",
+      "used_in_state": ["committee_review", "deputy_alerted"],
+      "title_fa": "تعیین جلسه بررسی مرخصی",
+      "description_fa": "پیش از زدن دکمهٔ «ثبت جلسه»، فرم را تکمیل و ثبت کنید. اطلاعات جلسه در پورتال دانشجو و پیامک نمایش داده می‌شود.",
+      "visible_to": [
+        "progress_committee",
+        "deputy_education",
+        "admin",
+        "staff"
+      ],
+      "fields": [
+        {
+          "name": "leave_terms_display",
+          "label_fa": "مدت وقفه درخواستی",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "clinical_status_display",
+          "label_fa": "وضعیت بالینی",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "committee_meeting_at",
+          "label_fa": "تاریخ و ساعت جلسه (وقت ایران)",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "name": "committee_meeting_mode",
+          "label_fa": "نحوهٔ برگزاری",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {
+              "value": "in_person",
+              "label_fa": "حضوری"
+            },
+            {
+              "value": "online",
+              "label_fa": "آنلاین"
+            }
+          ]
+        },
+        {
+          "name": "committee_meeting_link",
+          "label_fa": "لینک جلسه (آنلاین)",
+          "type": "text",
+          "required": true,
+          "visible_if": {
+            "committee_meeting_mode": "online"
+          }
+        },
+        {
+          "name": "committee_meeting_location_fa",
+          "label_fa": "آدرس یا محل حضوری",
+          "type": "textarea",
+          "required": true,
+          "visible_if": {
+            "committee_meeting_mode": "in_person"
+          }
+        }
+      ]
+    },
+    {
+      "code": "leave_committee_decision",
+      "used_in_state": "committee_decision",
+      "title_fa": "ثبت نتیجهٔ نهایی جلسه",
+      "description_fa": "پیش از زدن دکمهٔ تأیید یا رد، فرم را ثبت کنید. در صورت رد، علت رد برای دانشجو نمایش داده می‌شود.",
+      "visible_to": [
+        "progress_committee",
+        "deputy_education",
+        "admin",
+        "staff"
+      ],
+      "fields": [
+        {
+          "name": "rejection_reason_fa",
+          "label_fa": "علت رد (برای نمایش به دانشجو در صورت رد)",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "name": "committee_notes_internal",
+          "label_fa": "یادداشت داخلی کمیته (اختیاری)",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "code": "leave_return_confirmation",
+      "used_in_state": "return_reminder_sent",
+      "title_fa": "تأیید بازگشت به تحصیل",
+      "description_fa": "پس از ثبت‌نام واقعی دروس ترم آینده در سامانه، این فرم را تکمیل کنید.",
+      "visible_to": [
+        "student"
+      ],
+      "fields": [
+        {
+          "name": "return_registration_confirmed",
+          "label_fa": "ثبت‌نام ترم آینده را در سامانه انجام داده‌ام",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "name": "return_notes",
+          "label_fa": "توضیح کوتاه (اختیاری)",
           "type": "textarea",
           "required": false
         }

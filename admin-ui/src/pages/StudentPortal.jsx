@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { processExecApi, studentApi, therapyApi, assignmentApi } from '../services/api'
+import { processExecApi, studentApi, panelApi, assignmentApi } from '../services/api'
 import GamificationPanel from '../components/GamificationPanel'
 import StudentQuestCard from '../components/StudentQuestCard'
 import StudentSmsHistorySection from '../components/StudentSmsHistorySection'
@@ -38,6 +38,20 @@ import { showStudentTransitionCta } from '../utils/studentTransitionCtaVisibilit
 import StudentRegistration from './public/StudentRegistration'
 import StudentProfileDocumentsSection from '../components/StudentProfileDocumentsSection'
 import StudentRegistrationProfileView from '../components/StudentRegistrationProfileView'
+import StudentTranscriptsPanel from '../components/StudentTranscriptsPanel'
+import StudentAcademicCalendarPanel from '../components/StudentAcademicCalendarPanel'
+import StudentCourseStatusPanel from '../components/StudentCourseStatusPanel'
+import StudentSessionPaymentPanel from '../components/StudentSessionPaymentPanel'
+import StudentTherapyHoursPanel from '../components/StudentTherapyHoursPanel'
+import StudentTherapyReductionPanel from '../components/StudentTherapyReductionPanel'
+import StudentTherapyInterruptionPanel from '../components/StudentTherapyInterruptionPanel'
+import StudentSessionCancellationPanel from '../components/StudentSessionCancellationPanel'
+import StudentSupervisionBlockTransitionPanel from '../components/StudentSupervisionBlockTransitionPanel'
+import StudentSupervisionSessionIncreasePanel from '../components/StudentSupervisionSessionIncreasePanel'
+import StudentCommitteesRestartPanel from '../components/StudentCommitteesRestartPanel'
+import StudentFeeDeterminationPanel from '../components/StudentFeeDeterminationPanel'
+import SepPaymentPanel from '../components/SepPaymentPanel'
+import StudentOnlineSessionsPanel from '../components/StudentOnlineSessionsPanel'
 
 const studentProcessCodes = [
   'educational_leave', 'start_therapy', 'extra_session', 'session_payment',
@@ -101,7 +115,7 @@ export default function StudentPortal() {
   const [toast, setToast] = useState(null)
   const [processFilter, setProcessFilter] = useState('')
   const [processDefinition, setProcessDefinition] = useState(null)
-  const [therapySessions, setTherapySessions] = useState([])
+  const [onlineSessions, setOnlineSessions] = useState([])
   const [assignments, setAssignments] = useState([])
   const [primaryJourney, setPrimaryJourney] = useState(null)
   const [primaryJourneyLoading, setPrimaryJourneyLoading] = useState(false)
@@ -191,23 +205,27 @@ export default function StudentPortal() {
     processDefinition,
   ])
 
-  const loadTherapyAndAssignments = async () => {
+  const loadLearningData = async () => {
     if (!studentProfile) return
     try {
-      const [tRes, aRes] = await Promise.all([
-        therapyApi.mySessions().catch(() => ({ data: [] })),
+      const [oRes, aRes] = await Promise.all([
+        panelApi.myOnlineSessions(false).catch(() => ({ data: { items: [] } })),
         assignmentApi.mine().catch(() => ({ data: [] })),
       ])
-      setTherapySessions(Array.isArray(tRes.data) ? tRes.data : [])
+      setOnlineSessions(Array.isArray(oRes.data?.items) ? oRes.data.items : [])
       setAssignments(Array.isArray(aRes.data) ? aRes.data : [])
     } catch (e) {
       console.error(e)
     }
   }
 
+  const handleOnlineSessionsLoaded = useCallback((items) => {
+    setOnlineSessions(Array.isArray(items) ? items : [])
+  }, [])
+
   useEffect(() => {
     if (studentProfile && (activeTab === 'sessions' || activeTab === 'assignments' || activeTab === 'profile')) {
-      loadTherapyAndAssignments()
+      loadLearningData()
     }
   }, [studentProfile, activeTab])
 
@@ -298,6 +316,7 @@ export default function StudentPortal() {
         transitions,
         forms,
         definition: def,
+        registrationGate: dashRes.data?.registration_gate || null,
       })
     } catch (e) {
       console.error('Primary journey load failed', e)
@@ -553,19 +572,19 @@ export default function StudentPortal() {
   }, [studentProfile?.extra_data?.primary_instance_id, primaryJourney?.detail?.instance_id, stepFormValues, loadPrimaryJourney])
 
   const profileLearningSummary = useMemo(() => {
-    const sessions = Array.isArray(therapySessions) ? therapySessions : []
+    const sessions = Array.isArray(onlineSessions) ? onlineSessions : []
     const assigns = Array.isArray(assignments) ? assignments : []
     const sessionCount = sessions.length
     const assignmentCount = assigns.length
     let nearestSession = null
     if (sessionCount > 0) {
       const sorted = [...sessions].sort((a, b) => {
-        const ta = Date.parse(a.session_starts_at || a.session_date || '') || 0
-        const tb = Date.parse(b.session_starts_at || b.session_date || '') || 0
+        const ta = Date.parse(a.starts_at || a.session_starts_at || a.session_date || '') || Number.MAX_SAFE_INTEGER
+        const tb = Date.parse(b.starts_at || b.session_starts_at || b.session_date || '') || Number.MAX_SAFE_INTEGER
         return ta - tb
       })
       const f = sorted[0]
-      nearestSession = f.session_date || f.session_starts_at || null
+      nearestSession = f.starts_at || f.session_date || f.session_starts_at || null
     }
     let nearestDue = null
     const withDue = assigns.filter((a) => a.due_at)
@@ -583,7 +602,35 @@ export default function StudentPortal() {
       nearestSession,
       nearestDue,
     }
-  }, [therapySessions, assignments])
+  }, [onlineSessions, assignments])
+
+  const activeEvaluationInstance = useMemo(
+    () => activeProcesses.find(
+      (p) => p.process_code === 'student_instructor_evaluation'
+        && p.current_state === 'evaluation_open',
+    ),
+    [activeProcesses],
+  )
+
+  const activeFullLeaveInstance = useMemo(
+    () => activeProcesses.find((p) => p.process_code === 'full_education_leave'),
+    [activeProcesses],
+  )
+
+  const activeInternshipPromissory = useMemo(
+    () => activeProcesses.find(
+      (p) => p.process_code === 'internship_readiness_consultation'
+        && p.current_state === 'promissory_note',
+    ),
+    [activeProcesses],
+  )
+
+  const activeSessionPaymentInstance = useMemo(
+    () => activeProcesses.find(
+      (p) => p.process_code === 'session_payment' && !p.is_completed && !p.is_cancelled,
+    ) || null,
+    [activeProcesses],
+  )
 
   if (loading) {
     return (
@@ -657,6 +704,16 @@ export default function StudentPortal() {
       regCodeForProfile &&
       canStartProcess(regCodeForProfile, accessCtx).ok,
   )
+  const introGate = studentProfile?.intro_registration_gate
+  const introGateClosed = Boolean(
+    studentProfile?.course_type === 'introductory' &&
+      introGate &&
+      introGate.allowed === false,
+  )
+  const introGateReason =
+    introGate?.reason_fa ||
+    primaryJourney?.registrationGate?.reason_fa ||
+    'ثبت‌نام دورهٔ آشنایی پس از انتشار تقویم آموزشی باز می‌شود.'
   const registrationBlocking = studentProfile && hasActiveRegistrationProcess(activeProcesses)
 
   const primarySmsRefreshKey = primaryJourney?.detail
@@ -671,6 +728,7 @@ export default function StudentPortal() {
     { code: 'educational_leave', icon: '🏖️', label: 'درخواست مرخصی' },
     { code: 'extra_session', icon: '➕', label: 'جلسه اضافی' },
     { code: 'therapy_session_increase', icon: '📈', label: 'افزایش جلسات هفتگی درمان' },
+    { code: 'supervision_session_increase', icon: '📈', label: 'افزایش جلسات هفتگی سوپرویژن' },
     { code: 'student_session_cancellation', icon: '🚫', label: 'کنسل جلسه درمان' },
     { code: 'student_supervision_cancellation', icon: '🚫', label: 'کنسل جلسه سوپرویژن' },
   ]
@@ -678,6 +736,61 @@ export default function StudentPortal() {
 
   /** رزرو وقت مصاحبه اکنون داخل کارت مسیر (StudentQuestCard) است */
   const dashboardUrgentAlertItems = []
+  if (studentProfile?.extra_data?.academic_calendar_published) {
+    dashboardUrgentAlertItems.push({
+      key: 'academic-calendar-published',
+      node: (
+        <div
+          className="card student-portal-alert-card student-portal-alert-card--info"
+          role="status"
+          data-testid="student-academic-calendar-alert"
+        >
+          <strong className="student-portal-alert-card-title student-portal-alert-card-title--info">
+            تقویم آموزشی منتشر شد
+          </strong>
+          <p className="student-portal-alert-card-p">
+            تاریخ‌های ترم و مهلت ثبت‌نام در بخش «تقویم آموزشی» تب پروفایل به‌روز است. در صورت باز بودن
+            مهلت، می‌توانید از تب فرایندها ثبت‌نام ترم را ادامه دهید.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            style={{ marginTop: '0.5rem' }}
+            onClick={() => setActiveTab('profile')}
+          >
+            مشاهده تقویم آموزشی
+          </button>
+        </div>
+      ),
+    })
+  }
+  if (activeEvaluationInstance) {
+    dashboardUrgentAlertItems.push({
+      key: 'instructor-evaluation',
+      node: (
+        <div
+          className="card student-portal-alert-card student-portal-alert-card--info"
+          role="status"
+          data-testid="student-evaluation-alert"
+        >
+          <strong className="student-portal-alert-card-title student-portal-alert-card-title--info">
+            مهلت ارزیابی اساتید
+          </strong>
+          <p className="student-portal-alert-card-p">
+            پنجرهٔ ارزیابی مدرسین باز است. فرم را در تب «فرایندها» تکمیل کنید (اختیاری اما توصیه‌شده).
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            style={{ marginTop: '0.5rem' }}
+            onClick={() => setActiveTab('processes')}
+          >
+            رفتن به فرایند ارزیابی
+          </button>
+        </div>
+      ),
+    })
+  }
 
   const profileSecondaryAlertItems = []
   if (showSessionPaymentAfterTherapy) {
@@ -721,6 +834,37 @@ export default function StudentPortal() {
         >
           <strong className="student-portal-alert-card-title student-portal-alert-card-title--neutral">پیشرفت ساعات درمان آموزشی</strong>
           <p className="student-portal-alert-card-p">{studentProfile.therapy_hours_progress_fa}</p>
+        </div>
+      ),
+    })
+  }
+  if (activeFullLeaveInstance) {
+    profileSecondaryAlertItems.push({
+      key: 'full-education-leave',
+      node: (
+        <div className="card student-portal-alert-card student-portal-alert-card--info" role="status">
+          <strong className="student-portal-alert-card-title student-portal-alert-card-title--info">
+            مرخصی از کل آموزش
+          </strong>
+          <p className="student-portal-alert-card-p">
+            فرایند مرخصی کامل آموزش در پروندهٔ شما فعال است. وضعیت فعلی:{' '}
+            {labelState(activeFullLeaveInstance.current_state)} — جزئیات را در تب «فرایندها» ببینید.
+          </p>
+        </div>
+      ),
+    })
+  }
+  if (activeInternshipPromissory) {
+    profileSecondaryAlertItems.push({
+      key: 'intern-promissory',
+      node: (
+        <div className="card student-portal-alert-card student-portal-alert-card--info" role="status">
+          <strong className="student-portal-alert-card-title student-portal-alert-card-title--info">
+            تحویل سفته کارورزی
+          </strong>
+          <p className="student-portal-alert-card-p">
+            سفته را حضوری تحویل دهید. پس از ثبت توسط کمیته پیشرفت، مرحلهٔ بعد در همان فرایند فعال می‌شود.
+          </p>
         </div>
       ),
     })
@@ -919,7 +1063,20 @@ export default function StudentPortal() {
                 courseType={studentProfile.course_type}
                 onInterviewBooked={handleInterviewBooked}
                 smsRefreshKey={primarySmsRefreshKey}
+                registrationGate={primaryJourney?.registrationGate || introGate}
               />
+            ) : introGateClosed && !primaryJourney?.detail ? (
+              <div
+                className="card student-portal-alert-card student-portal-alert-card--info"
+                role="status"
+                data-testid="student-intro-registration-gate-closed"
+                style={{ marginBottom: '1.25rem' }}
+              >
+                <strong className="student-portal-alert-card-title student-portal-alert-card-title--info">
+                  ثبت‌نام دورهٔ آشنایی هنوز باز نشده
+                </strong>
+                <p className="student-portal-alert-card-p">{introGateReason}</p>
+              </div>
             ) : showManualRegStart ? (
               <div
                 className="card"
@@ -971,6 +1128,7 @@ export default function StudentPortal() {
                 courseType={studentProfile.course_type}
                 onInterviewBooked={handleInterviewBooked}
                 smsRefreshKey={primarySmsRefreshKey}
+                registrationGate={primaryJourney?.registrationGate || introGate}
               />
             )
           )}
@@ -1194,6 +1352,143 @@ export default function StudentPortal() {
                 title="پرونده و سابقه (قبل از اقدام)"
               />
 
+              {instanceDetail.process_code === 'session_payment' && !instanceDetailDone && (
+                <>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <StudentSessionPaymentPanel
+                      detail={instanceDetail}
+                      stepFormValues={stepFormValues}
+                      active={activeTab === 'processes'}
+                    />
+                  </div>
+                  {instanceDetail.current_state === 'awaiting_payment' && studentProfile?.id && (() => {
+                    const ctx = instanceDetail.context_data || {}
+                    const amountRial = ctx.payment_amount_rial != null
+                      ? Number(ctx.payment_amount_rial)
+                      : Math.round(Number(ctx.invoice_amount || 0) * 10)
+                    return (
+                      <div style={{ marginBottom: '1.25rem' }} data-testid="student-process-tab-sep-payment">
+                        <SepPaymentPanel
+                          instanceId={instanceDetail.instance_id}
+                          studentId={studentProfile.id}
+                          amountRial={amountRial}
+                          description="پرداخت جلسات درمان آموزشی"
+                        />
+                      </div>
+                    )
+                  })()}
+                </>
+              )}
+
+              {instanceDetail.process_code === 'attendance_tracking' && studentProfile?.therapy_started && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentTherapyHoursPanel
+                    therapyHoursProgressFa={studentProfile.therapy_hours_progress_fa}
+                    active={activeTab === 'processes'}
+                    compact
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'therapy_session_reduction' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentTherapyReductionPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'therapy_interruption' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentTherapyInterruptionPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'student_session_cancellation' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentSessionCancellationPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'supervision_session_increase' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentSupervisionSessionIncreasePanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'supervision_block_transition' && !instanceDetailDone && (
+                <>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <StudentSupervisionBlockTransitionPanel
+                      detail={instanceDetail}
+                      stepFormValues={stepFormValues}
+                      extraData={studentProfile?.extra_data}
+                      active={activeTab === 'processes'}
+                    />
+                  </div>
+                  {['slot_selected', 'new_block_first_paid'].includes(instanceDetail.current_state)
+                    && studentProfile?.id && (() => {
+                      const ctx = instanceDetail.context_data || {}
+                      const amountRial = ctx.payment_amount_rial != null
+                        ? Number(ctx.payment_amount_rial)
+                        : Math.round(Number(ctx.invoice_amount || 0) * 10)
+                      const desc = instanceDetail.current_state === 'slot_selected'
+                        ? 'پرداخت جلسه اول دوره سوپرویژن جدید'
+                        : 'پرداخت جلسه ۵۰ام دوره سوپرویژن فعلی'
+                      return (
+                        <div style={{ marginBottom: '1.25rem' }} data-testid="student-supervision-block-sep-payment">
+                          <SepPaymentPanel
+                            instanceId={instanceDetail.instance_id}
+                            studentId={studentProfile.id}
+                            amountRial={amountRial}
+                            description={desc}
+                          />
+                        </div>
+                      )
+                    })()}
+                </>
+              )}
+
+              {(instanceDetail.process_code === 'committees_review'
+                || instanceDetail.process_code === 'specialized_commission_review')
+                && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentCommitteesRestartPanel
+                    detail={instanceDetail}
+                    studentId={studentProfile?.id}
+                    active={activeTab === 'processes'}
+                    showToast={showToast}
+                    onAfterStart={() => {
+                      if (selectedInstance) viewInstance(selectedInstance)
+                      loadData()
+                    }}
+                  />
+                </div>
+              )}
+
+              {(instanceDetail.process_code === 'fee_determination'
+                || instanceDetail.process_code === 'attendance_tracking'
+                || instanceDetail.process_code === 'student_session_cancellation')
+                && studentProfile?.therapy_started && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentFeeDeterminationPanel active={activeTab === 'processes'} compact />
+                </div>
+              )}
+
               {filterFormsForStudent(instanceForms || []).length > 0 && stepFormLockedProcess && (
                 <div className="psf-locked-banner" role="status" style={{
                   marginBottom: '1.25rem', padding: '1rem 1.25rem', borderRadius: '10px',
@@ -1351,45 +1646,11 @@ export default function StudentPortal() {
 
       {/* Online sessions */}
       {activeTab === 'sessions' && (
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">جلسات آنلاین درمان</h3>
-          </div>
-          {!studentProfile ? (
-            <div className="empty-state" style={{ padding: '2rem' }}>پروفایل دانشجو یافت نشد.</div>
-          ) : therapySessions.length === 0 ? (
-            <p style={{ padding: '1rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-              هنوز جلسه‌ای در تقویم شما ثبت نشده است. پس از پرداخت موفق و فعال‌سازی لینک توسط درمانگر، لینک ورود (اسکای‌روم / الوکام و …) در این بخش نمایش داده می‌شود.
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {therapySessions.map(s => (
-                <div
-                  key={s.id}
-                  style={{
-                    padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)',
-                    display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600 }}>تاریخ جلسه: {s.session_date}</div>
-                    {s.session_starts_at ? (
-                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>زمان شروع (UTC): {s.session_starts_at}</div>
-                    ) : null}
-                    <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>وضعیت پرداخت: {s.payment_status} | وضعیت جلسه: {s.status}</div>
-                  </div>
-                  {s.meeting_url ? (
-                    <a href={s.meeting_url} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">
-                      ورود به جلسه
-                    </a>
-                  ) : (
-                    <span className="badge badge-warning" style={{ fontSize: '0.75rem' }}>در انتظار لینک از درمانگر</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <StudentOnlineSessionsPanel
+          studentProfile={studentProfile}
+          active={activeTab === 'sessions'}
+          onSessionsLoaded={handleOnlineSessionsLoaded}
+        />
       )}
 
       {/* Assignments */}
@@ -1544,7 +1805,19 @@ export default function StudentPortal() {
                 courseType={studentProfile.course_type}
                 onInterviewBooked={handleInterviewBooked}
                 smsRefreshKey={primarySmsRefreshKey}
+                registrationGate={primaryJourney?.registrationGate || introGate}
               />
+            ) : introGateClosed && !primaryJourney?.detail ? (
+              <div
+                className="card student-portal-alert-card student-portal-alert-card--info"
+                role="status"
+                data-testid="student-profile-intro-registration-gate-closed"
+              >
+                <strong className="student-portal-alert-card-title student-portal-alert-card-title--info">
+                  ثبت‌نام دورهٔ آشنایی هنوز باز نشده
+                </strong>
+                <p className="student-portal-alert-card-p">{introGateReason}</p>
+              </div>
             ) : showManualRegStart ? (
               <div
                 className="card"
@@ -1596,6 +1869,7 @@ export default function StudentPortal() {
                 courseType={studentProfile.course_type}
                 onInterviewBooked={handleInterviewBooked}
                 smsRefreshKey={primarySmsRefreshKey}
+                registrationGate={primaryJourney?.registrationGate || introGate}
               />
             )
           )}
@@ -1604,6 +1878,42 @@ export default function StudentPortal() {
               instanceId={primaryJourney.detail.instance_id}
               onSubmitted={() => loadPrimaryJourney(primaryJourney.detail.instance_id)}
             />
+          )}
+          {studentProfile && (
+            <StudentAcademicCalendarPanel onOpenProcesses={() => setActiveTab('processes')} />
+          )}
+          {studentProfile && (
+            <StudentTranscriptsPanel studentId={studentProfile.id} />
+          )}
+          {studentProfile && (
+            <StudentCourseStatusPanel
+              extraData={studentProfile.extra_data}
+              activeProcesses={activeProcesses}
+            />
+          )}
+          {studentProfile?.therapy_started && (
+            <StudentTherapyHoursPanel
+              therapyHoursProgressFa={studentProfile.therapy_hours_progress_fa}
+              active={activeTab === 'profile'}
+            />
+          )}
+          {studentProfile?.therapy_started && (
+            <StudentSessionPaymentPanel
+              detail={activeSessionPaymentInstance || (
+                primaryJourney?.detail?.process_code === 'session_payment'
+                  ? primaryJourney.detail
+                  : null
+              )}
+              stepFormValues={
+                primaryJourney?.detail?.process_code === 'session_payment'
+                  ? stepFormValues
+                  : null
+              }
+              active={activeTab === 'profile'}
+            />
+          )}
+          {studentProfile?.therapy_started && (
+            <StudentFeeDeterminationPanel active={activeTab === 'profile'} />
           )}
           {studentProfile && (
             <div className="card student-profile-summary-card">

@@ -114,3 +114,62 @@ def test_winter_course_list_pre_filled_from_metadata():
         fld for fld in review_form.get("fields") or [] if fld.get("name") == "courses"
     )
     assert courses_field.get("pre_filled_from") == "fall_semester_preparation.course_list_form"
+
+
+def test_interviewer_assignment_options_source_metadata():
+    forms = get_process_forms("fall_semester_preparation", state_code="interviewer_assignment")
+    assignment_form = next(f for f in forms if f.get("code") == "interviewer_assignment_form")
+    for name in ("comprehensive_interviewers", "introductory_interviewers"):
+        field = next(fld for fld in assignment_form.get("fields") or [] if fld.get("name") == name)
+        src = field.get("options_source") or {}
+        assert src.get("type") == "users"
+        assert src.get("role") == "interviewer"
+        assert src.get("is_active") is True
+
+
+def test_educational_leave_committee_meeting_form_requires_datetime_and_mode():
+    forms = get_process_forms("educational_leave", state_code="committee_review")
+    assert forms, "leave_committee_meeting باید برای committee_review تعریف شده باشد"
+    ok, missing = validate_operator_step_forms(forms, {}, {})
+    assert ok is False
+    assert missing
+    ok2, missing2 = validate_operator_step_forms(
+        forms,
+        {
+            "committee_meeting_at": "2026-09-15T10:30:00+00:00",
+            "committee_meeting_mode": "in_person",
+            "committee_meeting_location_fa": "سالن جلسات",
+        },
+        {},
+    )
+    assert ok2 is True, missing2
+    ok3, _ = validate_operator_step_forms(
+        forms,
+        {
+            "committee_meeting_at": "2026-09-15T10:30:00+00:00",
+            "committee_meeting_mode": "online",
+        },
+        {},
+    )
+    assert ok3 is False
+
+
+def test_educational_leave_deputy_alerted_uses_committee_review_form():
+    forms = get_process_forms("educational_leave", state_code="deputy_alerted")
+    codes = {f.get("code") for f in forms}
+    assert "leave_committee_meeting" in codes
+
+
+def test_educational_leave_return_confirmation_form():
+    from app.meta.student_step_forms import validate_student_step_forms
+
+    forms = get_process_forms("educational_leave", state_code="return_reminder_sent")
+    assert forms
+    ok, _ = validate_student_step_forms(forms, {}, {})
+    assert ok is False
+    ok2, missing2 = validate_student_step_forms(
+        forms,
+        {"return_registration_confirmed": True},
+        {},
+    )
+    assert ok2 is True, missing2
