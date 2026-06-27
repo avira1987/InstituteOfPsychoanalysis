@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 import { processExecApi, studentApi, userApi, auditApi, assignmentApi, therapyApi, alocomApi, panelApi } from '../services/api'
@@ -24,6 +24,8 @@ import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import OperatorProcessInstancePanel from '../components/OperatorProcessInstancePanel'
 import Supervision50hCompletionPanel from '../components/Supervision50hCompletionPanel'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
+import CourseCommitteePrepPanel from '../components/CourseCommitteePrepPanel'
+import InstructionSemesterCoursesPanel from '../components/InstructionSemesterCoursesPanel'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import {
   buildStaffTabsForLane,
@@ -31,6 +33,11 @@ import {
   getStaffLanePath,
   stateMatchesStaffLane,
 } from '../utils/portalStaffLanes'
+import {
+  getPendingTaskDestination,
+  isSemesterPrepWorkbenchDestination,
+  resolvePendingInstanceId,
+} from '../utils/operatorFollowupDeepLinks'
 
 const STAFF_DEEP_LINK_TABS = [
   'dashboard',
@@ -51,9 +58,12 @@ const staffReviewStates = [
 
 export default function StaffPortal() {
   const { lane: laneParam } = useParams()
+  const navigate = useNavigate()
   const lane = laneParam || 'admissions'
   const laneConfig = getStaffLaneConfig(lane) || getStaffLaneConfig('admissions')
   const portalPath = getStaffLanePath(lane)
+  const isCourseCommitteeLane = lane === 'course-committee'
+  const isInstructionLane = lane === 'instruction'
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('pending')
@@ -139,18 +149,20 @@ export default function StaffPortal() {
       const seen = new Set()
       for (const i of inboxProcess) {
         ordered.push({
-          id: i.instance_id,
+          instance_id: i.instance_id,
           student_id: i.student_id,
           student_code: i.student_code,
           current_state: i.state_code,
           process_code: i.process_code,
+          responsible_role_code: i.responsible_role_code,
           is_completed: false,
           is_cancelled: false,
         })
         seen.add(i.instance_id)
       }
       for (const p of pending) {
-        if (!seen.has(p.id)) ordered.push(p)
+        const pid = resolvePendingInstanceId(p)
+        if (pid && !seen.has(pid)) ordered.push(p)
       }
       setPendingActions(ordered)
       setAllActiveInstances(allActive)
@@ -166,6 +178,7 @@ export default function StaffPortal() {
   }
 
   const viewInstance = async (instanceId) => {
+    if (!instanceId) return
     setSelectedInstance(instanceId)
     try {
       const [statusRes, transRes] = await Promise.all([
@@ -176,6 +189,19 @@ export default function StaffPortal() {
       setAvailableTransitions(transRes.data?.transitions || [])
     } catch (err) {
       console.error('View error:', err)
+    }
+  }
+
+  const openPendingTask = (task) => {
+    const dest = getPendingTaskDestination(task)
+    if (isSemesterPrepWorkbenchDestination(dest.href)) {
+      navigate(dest.href)
+      return
+    }
+    const instanceId = resolvePendingInstanceId(task)
+    if (instanceId) {
+      viewInstance(instanceId)
+      setActiveTab('pending')
     }
   }
 
@@ -356,8 +382,12 @@ export default function StaffPortal() {
       <OperatorFollowupSection
         items={processInboxItems}
         readinessAlerts={operatorReadinessAlerts}
-        inboxTitle="صندوق اقدام (پرونده‌های باز شما)"
+        inboxTitle={isCourseCommitteeLane ? 'صندوق اقدام (آماده‌سازی ترم و پرونده‌ها)' : 'صندوق اقدام (پرونده‌های باز شما)'}
       />
+
+      {isCourseCommitteeLane && <CourseCommitteePrepPanel showToast={showToast} />}
+
+      {isInstructionLane && <InstructionSemesterCoursesPanel />}
 
       <div className="tab-bar">
         {tabs.map(tab => (
@@ -434,42 +464,44 @@ export default function StaffPortal() {
             </div>
           </div>
 
-          <div className="card" style={{ marginBottom: '1.5rem' }}>
-            <div className="card-header">
-              <h3 className="card-title">تکلیف جدید برای دانشجو</h3>
+          {!isCourseCommitteeLane && (
+            <div className="card" style={{ marginBottom: '1.5rem' }}>
+              <div className="card-header">
+                <h3 className="card-title">تکلیف جدید برای دانشجو</h3>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                شناسه دانشجو را از لیست انتخاب کنید (همان UUID در دیتابیس؛ از ستون دانشجویان قابل کپی است).
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: '560px' }}>
+                <select
+                  className="form-input"
+                  value={newAssignment.student_id}
+                  onChange={e => setNewAssignment({ ...newAssignment, student_id: e.target.value })}
+                >
+                  <option value="">— انتخاب دانشجو —</option>
+                  {allStudents.map(s => (
+                    <option key={s.id} value={s.id}>{s.student_code} ({s.id.slice(0, 8)}…)</option>
+                  ))}
+                </select>
+                <input
+                  className="form-input"
+                  placeholder="عنوان تکلیف"
+                  value={newAssignment.title_fa}
+                  onChange={e => setNewAssignment({ ...newAssignment, title_fa: e.target.value })}
+                />
+                <textarea
+                  className="form-input"
+                  placeholder="توضیح (اختیاری)"
+                  rows={2}
+                  value={newAssignment.description}
+                  onChange={e => setNewAssignment({ ...newAssignment, description: e.target.value })}
+                />
+                <button type="button" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={handleCreateAssignment}>
+                  ثبت تکلیف
+                </button>
+              </div>
             </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-              شناسه دانشجو را از لیست انتخاب کنید (همان UUID در دیتابیس؛ از ستون دانشجویان قابل کپی است).
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: '560px' }}>
-              <select
-                className="form-input"
-                value={newAssignment.student_id}
-                onChange={e => setNewAssignment({ ...newAssignment, student_id: e.target.value })}
-              >
-                <option value="">— انتخاب دانشجو —</option>
-                {allStudents.map(s => (
-                  <option key={s.id} value={s.id}>{s.student_code} ({s.id.slice(0, 8)}…)</option>
-                ))}
-              </select>
-              <input
-                className="form-input"
-                placeholder="عنوان تکلیف"
-                value={newAssignment.title_fa}
-                onChange={e => setNewAssignment({ ...newAssignment, title_fa: e.target.value })}
-              />
-              <textarea
-                className="form-input"
-                placeholder="توضیح (اختیاری)"
-                rows={2}
-                value={newAssignment.description}
-                onChange={e => setNewAssignment({ ...newAssignment, description: e.target.value })}
-              />
-              <button type="button" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={handleCreateAssignment}>
-                ثبت تکلیف
-              </button>
-            </div>
-          </div>
+          )}
 
           <div className="dashboard-grid">
             <div className="card">
@@ -484,14 +516,16 @@ export default function StaffPortal() {
               {pendingActions.length === 0 ? (
                 <div className="empty-state" style={{ padding: '2rem' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>✅</div>
-                  <p>وظیفه منتظری وجود ندارد</p>
+                  <p>{isCourseCommitteeLane ? 'وظیفه پرونده‌ای منتظر نیست — کار اصلی در کارت آماده‌سازی ترم بالاست.' : 'وظیفه منتظری وجود ندارد'}</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {pendingActions.slice(0, 6).map(p => (
+                  {pendingActions.slice(0, 6).map(p => {
+                    const pid = resolvePendingInstanceId(p)
+                    return (
                     <button
-                      key={p.instance_id}
-                      onClick={() => { viewInstance(p.instance_id); setActiveTab('pending') }}
+                      key={pid}
+                      onClick={() => openPendingTask(p)}
                       style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         padding: '0.6rem 0.75rem', borderRadius: '6px', cursor: 'pointer',
@@ -507,7 +541,8 @@ export default function StaffPortal() {
                       </div>
                       <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>منتظر</span>
                     </button>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -549,22 +584,41 @@ export default function StaffPortal() {
               <h3 className="card-title">دسترسی سریع</h3>
             </div>
             <div className="quick-actions-grid">
-              <button className="quick-action-btn" onClick={() => { setActiveTab('students'); setShowNewStudent(true) }}>
-                <span className="quick-action-icon">➕</span>
-                <span>ایجاد دانشجو</span>
-              </button>
-              <button className="quick-action-btn" onClick={() => setActiveTab('pending')}>
-                <span className="quick-action-icon">📥</span>
-                <span>بررسی وظایف</span>
-              </button>
-              <button className="quick-action-btn" onClick={() => setActiveTab('students')}>
-                <span className="quick-action-icon">👨‍🎓</span>
-                <span>لیست دانشجویان</span>
-              </button>
-              <button className="quick-action-btn" onClick={() => setActiveTab('processes')}>
-                <span className="quick-action-icon">🔄</span>
-                <span>فرایندهای فعال</span>
-              </button>
+              {isCourseCommitteeLane ? (
+                <>
+                  <Link className="quick-action-btn" to="/panel/semester-prep/workbench?process_code=fall_semester_preparation" style={{ textDecoration: 'none' }}>
+                    <span className="quick-action-icon">📆</span>
+                    <span>workbench آماده‌سازی</span>
+                  </Link>
+                  <button className="quick-action-btn" onClick={() => setActiveTab('pending')}>
+                    <span className="quick-action-icon">📥</span>
+                    <span>کارهای منتظر</span>
+                  </button>
+                  <Link className="quick-action-btn" to="/panel/semester-prep" style={{ textDecoration: 'none' }}>
+                    <span className="quick-action-icon">📋</span>
+                    <span>هاب آماده‌سازی ترم</span>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <button className="quick-action-btn" onClick={() => { setActiveTab('students'); setShowNewStudent(true) }}>
+                    <span className="quick-action-icon">➕</span>
+                    <span>ایجاد دانشجو</span>
+                  </button>
+                  <button className="quick-action-btn" onClick={() => setActiveTab('pending')}>
+                    <span className="quick-action-icon">📥</span>
+                    <span>بررسی وظایف</span>
+                  </button>
+                  <button className="quick-action-btn" onClick={() => setActiveTab('students')}>
+                    <span className="quick-action-icon">👨‍🎓</span>
+                    <span>لیست دانشجویان</span>
+                  </button>
+                  <button className="quick-action-btn" onClick={() => setActiveTab('processes')}>
+                    <span className="quick-action-icon">🔄</span>
+                    <span>فرایندهای فعال</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </>
@@ -584,16 +638,18 @@ export default function StaffPortal() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {pendingActions.map(p => (
+                {pendingActions.map(p => {
+                  const pid = resolvePendingInstanceId(p)
+                  return (
                   <button
-                    key={p.instance_id}
-                    onClick={() => viewInstance(p.instance_id)}
+                    key={pid}
+                    onClick={() => openPendingTask(p)}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer',
                       textAlign: 'right',
-                      border: selectedInstance === p.instance_id ? '2px solid var(--primary)' : '1px solid var(--border)',
-                      background: selectedInstance === p.instance_id ? 'var(--primary-light)' : '#fff',
+                      border: selectedInstance === pid ? '2px solid var(--primary)' : '1px solid var(--border)',
+                      background: selectedInstance === pid ? 'var(--primary-light)' : '#fff',
                     }}
                   >
                     <div>
@@ -604,7 +660,8 @@ export default function StaffPortal() {
                     </div>
                     <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>منتظر</span>
                   </button>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

@@ -22,6 +22,10 @@ function isEmpty(v) {
 export function filterSchemaForRole(schema, role) {
   const fields = Array.isArray(schema?.fields) ? schema.fields : []
   const r = normRole(role)
+  const formVisibleTo = Array.isArray(schema?.visible_to) ? schema.visible_to.map(normRole) : null
+  if (formVisibleTo?.length && r && !formVisibleTo.includes(r)) {
+    return { ...(schema || {}), fields: [] }
+  }
   const out = fields.filter((f) => {
     if (!f || typeof f !== 'object') return false
     if (r === 'student' && f.confidential) return false

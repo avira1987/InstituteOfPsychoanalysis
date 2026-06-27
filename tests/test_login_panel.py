@@ -27,6 +27,15 @@ def client():
         yield c
 
 
+from app.demo_role_users import resolve_portal_login_username
+
+
+def test_resolve_portal_login_username_accepts_role_without_suffix():
+    assert resolve_portal_login_username("deputy_education") == "deputy_education1"
+    assert resolve_portal_login_username("deputy_education1") == "deputy_education1"
+    assert resolve_portal_login_username("admin") == "admin"
+
+
 def test_login_password_and_access_panel(client: TestClient):
     """
     ورود با نام کاربری و رمز عبور و دسترسی به پنل:
@@ -123,6 +132,27 @@ def test_login_otp_and_access_panel(client: TestClient):
         me = r_me.json()
         assert "username" in me
         assert me.get("username", "").startswith("user_") or "role" in me
+
+
+def test_login_password_accepts_persian_digits(client: TestClient):
+    """رمز و پاسخ کد امنیتی با ارقام فارسی باید پذیرفته شوند."""
+    r_challenge = client.post("/api/auth/login-challenge")
+    assert r_challenge.status_code == 200
+    data = r_challenge.json()
+    answer_latin = _parse_challenge_answer(data["question"])
+    assert answer_latin is not None
+    answer_fa = answer_latin.translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
+
+    r_login = client.post(
+        "/api/auth/login-json",
+        json={
+            "username": "admin",
+            "password": "admin" + "۱۲۳",
+            "challenge_id": data["challenge_id"],
+            "challenge_answer": answer_fa,
+        },
+    )
+    assert r_login.status_code == 200, f"login-json failed: {r_login.text}"
 
 
 def test_login_password_wrong_credentials(client: TestClient):

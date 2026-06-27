@@ -23,6 +23,7 @@ from app.api.auth import (
     create_access_token,
     get_password_hash,
     get_current_user,
+    normalize_login_field,
     require_role,
     user_to_response,
     verify_password,
@@ -144,12 +145,13 @@ async def login_json(
         else:
             expires_at = None
 
+        challenge_answer = normalize_login_field(body.challenge_answer)
         if (
             not challenge
             or challenge.is_used
             or not expires_at
             or expires_at < now
-            or not verify_password(body.challenge_answer.strip(), challenge.answer_hash)
+            or not verify_password(challenge_answer, challenge.answer_hash)
         ):
             raise HTTPException(status_code=400, detail="کد امنیتی نامعتبر است")
 
@@ -157,7 +159,11 @@ async def login_json(
         await db.commit()
 
         # سپس اعتبارسنجی نام کاربری/رمز عبور
-        user = await authenticate_user(db, body.username, body.password)
+        user = await authenticate_user(
+            db,
+            normalize_login_field(body.username),
+            normalize_login_field(body.password),
+        )
         if not user:
             raise HTTPException(status_code=401, detail="Incorrect username or password")
         access_token = create_access_token(

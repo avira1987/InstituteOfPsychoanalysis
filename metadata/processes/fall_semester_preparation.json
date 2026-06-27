@@ -404,6 +404,7 @@
       "code": "academic_calendar_form",
       "name_fa": "فرم تقویم آموزشی دو ترم",
       "used_in_state": "calendar_entry",
+      "editable_by": ["admin", "staff", "deputy_education", "deputy_education_director", "course_committee", "course_committee_executive"],
       "fields": [
         {
           "name": "fall_start_date",
@@ -443,13 +444,13 @@
         },
         {
           "name": "registration_payment_window_start",
-          "label_fa": "شروع پنجره ثبت‌نام و پرداخت",
+          "label_fa": "شروع پنجره ثبت‌نام، پرداخت و شهریه",
           "type": "date",
           "required": true
         },
         {
           "name": "registration_payment_window_end",
-          "label_fa": "پایان پنجره ثبت‌نام و پرداخت",
+          "label_fa": "پایان پنجره ثبت‌نام، پرداخت و شهریه",
           "type": "date",
           "required": true
         },
@@ -461,7 +462,7 @@
         },
         {
           "name": "teaching_assistant_interview_deadline",
-          "label_fa": "مهلت مصاحبه دستیاران آموزشی",
+          "label_fa": "مهلت مصاحبه کمک مدرسی",
           "type": "date",
           "required": true
         },
@@ -483,6 +484,7 @@
       "code": "tuition_form",
       "name_fa": "فرم تعیین شهریه",
       "used_in_state": "tuition_entry",
+      "editable_by": ["admin", "staff", "deputy_education", "deputy_education_director"],
       "fields": [
         {
           "name": "per_unit_cost_introductory",
@@ -515,6 +517,7 @@
       "code": "license_check_form",
       "name_fa": "فرم بررسی پروانه فعالیت",
       "used_in_state": "license_check",
+      "editable_by": ["admin", "staff", "deputy_education", "deputy_education_director"],
       "fields": [
         {
           "name": "license_status",
@@ -547,22 +550,34 @@
       "code": "course_list_form",
       "name_fa": "فرم لیست دروس ترم",
       "used_in_state": "course_list_creation",
+      "editable_by": ["admin", "staff", "deputy_education", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
+      "note_fa": "دروس ترم پاییز و زمستان را در دو جدول جداگانه ثبت کنید.",
       "fields": [
         {
-          "name": "courses",
-          "label_fa": "جدول دروس",
+          "name": "courses_fall",
+          "label_fa": "جدول دروس ترم پاییز",
           "type": "table",
           "required": true,
           "columns": [
             {
               "name": "course_name",
               "label_fa": "نام درس",
-              "type": "text"
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_catalog"
+              }
             },
             {
               "name": "track",
               "label_fa": "رسته",
-              "type": "text"
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_committee_tracks"
+              }
             },
             {
               "name": "proposed_day",
@@ -586,12 +601,97 @@
             {
               "name": "instructor",
               "label_fa": "مدرس",
-              "type": "text"
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_committee_roster",
+                "kind": "instructor",
+                "filter_by_column": "track"
+              }
             },
             {
               "name": "teaching_assistant",
               "label_fa": "کمک‌مدرس",
-              "type": "text"
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_committee_roster",
+                "kind": "teaching_assistant",
+                "filter_by_column": "track"
+              }
+            }
+          ]
+        },
+        {
+          "name": "courses_winter",
+          "label_fa": "جدول دروس ترم زمستان",
+          "type": "table",
+          "required": true,
+          "columns": [
+            {
+              "name": "course_name",
+              "label_fa": "نام درس",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_catalog"
+              }
+            },
+            {
+              "name": "track",
+              "label_fa": "رسته",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_committee_tracks"
+              }
+            },
+            {
+              "name": "proposed_day",
+              "label_fa": "روز پیشنهادی",
+              "type": "select",
+              "options": [
+                "شنبه",
+                "یکشنبه",
+                "دوشنبه",
+                "سه‌شنبه",
+                "چهارشنبه",
+                "پنجشنبه",
+                "جمعه"
+              ]
+            },
+            {
+              "name": "proposed_time",
+              "label_fa": "ساعت پیشنهادی",
+              "type": "time"
+            },
+            {
+              "name": "instructor",
+              "label_fa": "مدرس",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_committee_roster",
+                "kind": "instructor",
+                "filter_by_column": "track"
+              }
+            },
+            {
+              "name": "teaching_assistant",
+              "label_fa": "کمک‌مدرس",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_committee_roster",
+                "kind": "teaching_assistant",
+                "filter_by_column": "track"
+              }
             }
           ]
         }
@@ -601,10 +701,65 @@
       "code": "course_finalization_form",
       "name_fa": "فرم نهایی‌سازی دروس و مکان‌ها",
       "used_in_state": "course_finalization",
+      "editable_by": ["admin", "staff", "deputy_education", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
       "fields": [
         {
-          "name": "courses_finalized",
-          "label_fa": "جدول نهایی دروس",
+          "name": "courses_finalized_fall",
+          "label_fa": "جدول نهایی دروس ترم پاییز",
+          "type": "table",
+          "required": true,
+          "columns": [
+            {
+              "name": "course_name",
+              "label_fa": "نام درس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "track",
+              "label_fa": "رسته",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "day",
+              "label_fa": "روز",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "time",
+              "label_fa": "ساعت",
+              "type": "time",
+              "auto_fill": true
+            },
+            {
+              "name": "instructor",
+              "label_fa": "مدرس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "teaching_assistant",
+              "label_fa": "کمک‌مدرس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "classroom_location",
+              "label_fa": "مکان کلاس",
+              "type": "text"
+            },
+            {
+              "name": "instructor_coordinated",
+              "label_fa": "هماهنگی با مدرس انجام شد",
+              "type": "checkbox"
+            }
+          ]
+        },
+        {
+          "name": "courses_finalized_winter",
+          "label_fa": "جدول نهایی دروس ترم زمستان",
           "type": "table",
           "required": true,
           "columns": [
@@ -662,29 +817,18 @@
       "code": "marketing_campaign_form",
       "name_fa": "فرم تأیید شروع کمپین بازاریابی پذیرش",
       "used_in_state": "marketing_campaign",
+      "editable_by": ["admin", "staff", "deputy_education", "admissions_officer"],
+      "note_fa": "خروجی فعالیت‌های ۱ (تقویم)، ۲ (شهریه) و ۵ (برنامه نهایی دروس) را به‌صورت PDF بگیرید و برای مدیر مارکتینگ ارسال کنید.",
       "fields": [
         {
-          "name": "marketing_confirmed",
-          "label_fa": "شروع تبلیغات پذیرش تأیید می‌شود",
+          "name": "marketing_info_sent_to_manager",
+          "label_fa": "اطلاعات لازم برای شروع کمپین تبلیغاتی (خروجی فعالیت‌های ۱، ۲ و ۵) برای مدیر مارکتینگ ارسال شد",
           "type": "checkbox",
           "required": true
         },
         {
-          "name": "marketing_channels",
-          "label_fa": "کانال‌های اطلاع‌رسانی",
-          "type": "multi_select",
-          "required": false,
-          "options": [
-            "سایت",
-            "اینستاگرام",
-            "پیامک",
-            "خبرنامه",
-            "سایر"
-          ]
-        },
-        {
           "name": "marketing_notes",
-          "label_fa": "یادداشت برای مدیر مارکتینگ",
+          "label_fa": "یادداشت انتقال به مدیر مارکتینگ (اختیاری)",
           "type": "textarea",
           "required": false
         }
@@ -694,6 +838,8 @@
       "code": "interviewer_assignment_form",
       "name_fa": "فرم تعیین مصاحبه‌کنندگان",
       "used_in_state": "interviewer_assignment",
+      "visible_to": ["admin", "deputy_education", "deputy_education_director"],
+      "editable_by": ["admin", "deputy_education", "deputy_education_director"],
       "fields": [
         {
           "name": "comprehensive_interviewers",
@@ -747,6 +893,7 @@
       "code": "interview_scheduling_form",
       "name_fa": "فرم زمان‌بندی دقیق مصاحبه‌ها",
       "used_in_state": "interview_scheduling",
+      "editable_by": ["admin", "staff", "site_manager", "deputy_education"],
       "editable_anytime": true,
       "fields": [
         {

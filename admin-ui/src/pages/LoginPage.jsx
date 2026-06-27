@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { authApi } from '../services/api'
 import { getSiteLogoUrl } from '../utils/siteLogo'
 import { getPortalHomeHref } from '../utils/portalRoleHome'
+import { toLatinDigits } from '../utils/persianDigits'
 
 const LOGIN_TAB_KEY = 'login_tab'
 const LOGIN_ERROR_KEY = 'login_error'
@@ -251,7 +252,12 @@ export default function LoginPage() {
     setError('')
     try {
       sessionStorage.removeItem(LOGIN_ERROR_KEY)
-      await login(username, password, challengeId, challengeAnswer)
+      await login(
+        toLatinDigits(username).trim(),
+        toLatinDigits(password),
+        challengeId,
+        toLatinDigits(challengeAnswer).trim(),
+      )
       sessionStorage.removeItem(LOGIN_TAB_KEY)
       // ریدایرکت بعد از ورود در useEffect بر اساس /api/auth/home انجام می‌شود.
     } catch (err) {
@@ -444,11 +450,24 @@ export default function LoginPage() {
         )}
 
         {staffMode && (
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-light)', textAlign: 'center', marginBottom: '1rem' }}>
-            <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 500 }}>
-              ← ورود دانشجو و ثبت‌نام با شماره موبایل
-            </Link>
-          </p>
+          <>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-light)', textAlign: 'center', marginBottom: '0.75rem' }}>
+              <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 500 }}>
+                ← ورود دانشجو و ثبت‌نام با شماره موبایل
+              </Link>
+            </p>
+            <p
+              style={{
+                fontSize: '0.78rem',
+                color: 'var(--text-secondary)',
+                textAlign: 'center',
+                marginBottom: '1rem',
+                lineHeight: 1.6,
+              }}
+            >
+              حساب دمو معاون آموزش: <code style={{ direction: 'ltr' }}>deputy_education1</code> / <code style={{ direction: 'ltr' }}>demo123</code>
+            </p>
+          </>
         )}
 
         {staffMode && (

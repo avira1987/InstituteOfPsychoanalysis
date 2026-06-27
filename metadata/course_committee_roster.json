@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "description_fa": "چارت مدرسین و کمک‌مدرسین کمیته دروس — منبع: چارت مدرسین رواندرمانی تحلیلی",
+  "tracks": [
+    {
+      "code": "analytic_psychotherapy",
+      "name_fa": "رواندرمانی تحلیلی",
+      "educational_instructor": {
+        "roster_key": "educational_instructor",
+        "name_fa": "ادريس صالحي",
+        "tier": 0,
+        "member_kind": "instructor"
+      },
+      "instructors": [
+        { "roster_key": "inst_t1_01", "name_fa": "اسرا شريفي", "tier": 1, "member_kind": "instructor" },
+        { "roster_key": "inst_t1_02", "name_fa": "علي علوي", "tier": 1, "member_kind": "instructor" },
+        { "roster_key": "inst_t1_03", "name_fa": "پيمانه بهرامي", "tier": 1, "member_kind": "instructor" },
+        { "roster_key": "inst_t1_04", "name_fa": "فاطمه مجتهد زاده", "tier": 1, "member_kind": "instructor" },
+        { "roster_key": "inst_t1_05", "name_fa": "فريبا حاتمي", "tier": 1, "member_kind": "instructor" },
+        { "roster_key": "inst_t1_06", "name_fa": "سارا خسروي", "tier": 1, "member_kind": "instructor" },
+        { "roster_key": "inst_t1_07", "name_fa": "ياسمن اكرامي", "tier": 1, "member_kind": "instructor" },
+        { "roster_key": "inst_t2_01", "name_fa": "زهرا رشوند", "tier": 2, "member_kind": "instructor" },
+        { "roster_key": "inst_t2_02", "name_fa": "اميد سينا", "tier": 2, "member_kind": "instructor" },
+        { "roster_key": "inst_t2_03", "name_fa": "زهره كريمي", "tier": 2, "member_kind": "instructor" },
+        { "roster_key": "inst_t2_04", "name_fa": "راحله نوبخت", "tier": 2, "member_kind": "instructor" },
+        { "roster_key": "inst_t2_05", "name_fa": "مبينا منظريان", "tier": 2, "member_kind": "instructor" },
+        { "roster_key": "inst_t2_06", "name_fa": "پريسا روشن", "tier": 2, "member_kind": "instructor" },
+        { "roster_key": "inst_t2_07", "name_fa": "الناز بهمن زاد", "tier": 2, "member_kind": "instructor" }
+      ],
+      "teaching_assistants": [
+        { "roster_key": "ta_t3_01", "name_fa": "سارا طراوتي", "tier": 3, "member_kind": "teaching_assistant" },
+        { "roster_key": "ta_t3_02", "name_fa": "زهرا غروي", "tier": 3, "member_kind": "teaching_assistant" },
+        { "roster_key": "ta_t3_03", "name_fa": "هانيه پور جبار", "tier": 3, "member_kind": "teaching_assistant" }
+      ]
+    }
+  ]
+}

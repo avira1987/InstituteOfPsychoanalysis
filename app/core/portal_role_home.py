@@ -83,6 +83,7 @@ PORTAL_ROLE_HOME: dict[str, tuple[str, str | None]] = {
     "therapist": ("/panel/portal/therapist", "pending"),
     "supervisor": ("/panel/portal/supervisor", "reviews"),
     "staff": (staff_lane_path(STAFF_DEFAULT_LANE), "pending"),
+    "course_committee": (staff_lane_path("course-committee"), "pending"),
     "site_manager": ("/panel/portal/site-manager", "pending"),
     "interviewer": ("/panel/portal/interviewer", None),
     "finance": ("/panel/finance", None),

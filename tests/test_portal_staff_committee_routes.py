@@ -39,6 +39,14 @@ def test_committee_kind_for_assigned_role():
     assert committee_kind_for_assigned_role("therapy_committee_chair") == "therapy"
 
 
+def test_course_committee_redirects_to_staff_lane():
+    assert redirect_url_for_role("course_committee") == (
+        "/panel/portal/staff/course-committee?tab=pending"
+    )
+    assert staff_lane_for_assigned_role("course_committee_executive") == "course-committee"
+    assert staff_lane_for_assigned_role("scientific_officer_course_committee") == "course-committee"
+
+
 def test_staff_cannot_see_admin_tools_in_nav():
     assert user_sees_nav_path("staff", "/panel/processes") is False
     assert user_sees_nav_path("staff", "/panel/audit") is False

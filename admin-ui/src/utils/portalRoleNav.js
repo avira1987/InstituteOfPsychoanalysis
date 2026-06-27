@@ -52,7 +52,7 @@ const SHARED_NAV = [
     path: '/panel/semester-prep/workbench',
     label: 'مرحلهٔ آماده‌سازی ترم',
     icon: '📋',
-    roles: ['admin', 'deputy_education', 'staff'],
+    roles: ['admin', 'deputy_education', 'staff', 'course_committee'],
     priority: 45.14,
   },
   {
@@ -81,8 +81,15 @@ const SHARED_NAV = [
     path: '/panel/semester-prep',
     label: 'آماده‌سازی ترم',
     icon: '📅',
-    roles: ['admin', 'deputy_education', 'staff'],
+    roles: ['admin', 'deputy_education', 'staff', 'course_committee'],
     priority: 45.2,
+  },
+  {
+    path: '/panel/semester-prep/sla-warnings',
+    label: 'هشدارهای مهلت آماده‌سازی ترم',
+    icon: '⏰',
+    roles: ['admin', 'deputy_education', 'staff', 'course_committee'],
+    priority: 45.25,
   },
   {
     path: '/panel/automation-scheduler',

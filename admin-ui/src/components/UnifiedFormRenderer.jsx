@@ -6,6 +6,12 @@ import { resolveUploadPublicUrl, parseStepFileUploadValue } from '../utils/uploa
 import { studentApi } from '../services/api'
 import ShamsiDatePicker from './ShamsiDatePicker'
 import ShamsiDateTimePicker from './ShamsiDateTimePicker'
+import CreatableSearchSelect from './CreatableSearchSelect'
+import {
+  createCourseCatalogEntry,
+  createCourseCommitteeMember,
+  createCourseCommitteeTrack,
+} from '../utils/resolveFormOptionsSource'
 import {
   defaultShamsiDate,
   defaultShamsiTehranNow,
@@ -283,10 +289,70 @@ function tableBlankRow(columns) {
   return blank
 }
 
+function columnOptionsForRow(col, row) {
+  const filterCol = col.filter_by_column || col.options_source?.filter_by_column
+  if (filterCol && col._optionsByTrack && typeof col._optionsByTrack === 'object') {
+    const trackVal = row?.[filterCol]
+    if (!trackVal) return []
+    return col._optionsByTrack[trackVal] || []
+  }
+  return Array.isArray(col.options) ? col.options : []
+}
+
+function rosterDependentColumns(columns) {
+  const byFilter = {}
+  for (const col of columns) {
+    const filterCol = col.filter_by_column || col.options_source?.filter_by_column
+    if (filterCol) {
+      if (!byFilter[filterCol]) byFilter[filterCol] = []
+      byFilter[filterCol].push(col.name)
+    }
+  }
+  return byFilter
+}
+
+const TABLE_COLUMN_MIN_WIDTH = {
+  course_name: '12.5rem',
+  track: '9.5rem',
+  instructor: '10.5rem',
+  teaching_assistant: '10.5rem',
+  proposed_day: '7.5rem',
+  proposed_time: '7.5rem',
+}
+
+function columnMinWidth(col) {
+  return TABLE_COLUMN_MIN_WIDTH[col?.name] || undefined
+}
+
+function isCreatableSelectColumn(col) {
+  const t = (col?.type || '').toLowerCase()
+  return t === 'creatable_select' || (t === 'select' && (col.creatable || col.searchable))
+}
+
+function buildCreateHandler(col, row) {
+  const src = col.options_source || {}
+  if (src.type === 'course_catalog') {
+    return async (nameFa) => createCourseCatalogEntry(nameFa)
+  }
+  if (src.type === 'course_committee_tracks') {
+    return async (nameFa) => createCourseCommitteeTrack(nameFa)
+  }
+  if (src.type === 'course_committee_roster') {
+    const track = row?.[src.filter_by_column || col.filter_by_column]
+    const kind = src.kind || 'instructor'
+    return async (nameFa) => {
+      if (!track) throw new Error('ابتدا رسته را انتخاب کنید')
+      return createCourseCommitteeMember({ track, kind, nameFa })
+    }
+  }
+  return null
+}
+
 // جدول قابل‌ویرایش — ستون‌ها از field.columns؛ هر ردیف یک شیء.
 function EditableTableField({ field, value, onChange, disabled }) {
   const columns = Array.isArray(field.columns) ? field.columns : []
   const rows = Array.isArray(value) ? value : []
+  const dependentsByTrack = useMemo(() => rosterDependentColumns(columns), [columns])
 
   useEffect(() => {
     if (disabled || !field.required) return
@@ -297,7 +363,23 @@ function EditableTableField({ field, value, onChange, disabled }) {
   }, [disabled, field.required, Array.isArray(value) ? value.length : 0])
 
   const setCell = (rowIdx, colName, v) => {
-    const next = rows.map((r, i) => (i === rowIdx ? { ...r, [colName]: v } : r))
+    const next = rows.map((r, i) => {
+      if (i !== rowIdx) return r
+      const updated = { ...r, [colName]: v }
+      const deps = dependentsByTrack[colName]
+      if (deps?.length) {
+        for (const dep of deps) {
+          updated[dep] = ''
+          if (dep === 'instructor') {
+            updated.instructor_id = ''
+          }
+          if (dep === 'teaching_assistant') {
+            updated.teaching_assistant_id = ''
+          }
+        }
+      }
+      return updated
+    })
     onChange(next)
   }
   const addRow = () => onChange([...rows, tableBlankRow(columns)])
@@ -315,37 +397,72 @@ function EditableTableField({ field, value, onChange, disabled }) {
     const v = row?.[col.name]
     const cellDisabled = disabled || Boolean(col.auto_fill)
     const readOnlyStyle = col.auto_fill ? { background: '#f1f5f9' } : undefined
-    if (ct === 'select' && Array.isArray(col.options)) {
+    const minW = columnMinWidth(col)
+
+    if (isCreatableSelectColumn(col)) {
+      const rowOptions = columnOptionsForRow(col, row)
+      const filterCol = col.filter_by_column || col.options_source?.filter_by_column
+      const needsTrack = filterCol && !row?.[filterCol]
       return (
-        <select className="psf-input form-input" style={readOnlyStyle} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)}>
-          <option value="">—</option>
-          {col.options.map((opt) => {
+        <CreatableSearchSelect
+          value={v ?? ''}
+          onChange={(next) => setCell(rowIdx, col.name, next)}
+          options={rowOptions}
+          disabled={cellDisabled}
+          needsTrack={needsTrack}
+          allowCreate={col.creatable !== false}
+          onCreateNew={cellDisabled ? null : buildCreateHandler(col, row)}
+          style={readOnlyStyle}
+          minWidth={minW}
+          testId={`table-cell-${col.name}-${rowIdx}`}
+        />
+      )
+    }
+
+    if (ct === 'select' && (Array.isArray(col.options) || col._optionsByTrack)) {
+      const rowOptions = columnOptionsForRow(col, row)
+      const filterCol = col.filter_by_column || col.options_source?.filter_by_column
+      const needsTrack = filterCol && !row?.[filterCol]
+      const placeholder = needsTrack ? 'ابتدا رسته را انتخاب کنید' : '—'
+      return (
+        <select
+          className="psf-input form-input"
+          style={readOnlyStyle}
+          value={v ?? ''}
+          disabled={cellDisabled || needsTrack}
+          onChange={(e) => setCell(rowIdx, col.name, e.target.value)}
+        >
+          <option value="">{placeholder}</option>
+          {rowOptions.map((opt) => {
             const ov = typeof opt === 'object' ? opt.value : opt
             const lab = typeof opt === 'object' ? (opt.label_fa || ov) : opt
             return <option key={String(ov)} value={ov}>{lab}</option>
           })}
+          {v && !rowOptions.some((opt) => String(typeof opt === 'object' ? opt.value : opt) === String(v)) ? (
+            <option value={v}>{typeof v === 'string' && v.length > 20 ? v : v}</option>
+          ) : null}
         </select>
       )
     }
     if (ct === 'time') {
-      return <input type="time" dir="ltr" className="psf-input form-input" style={readOnlyStyle} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
+      return <input type="time" dir="ltr" className="psf-input form-input" style={{ ...readOnlyStyle, minWidth: minW }} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
     }
     if (ct === 'number') {
-      return <input type="number" className="psf-input form-input" style={readOnlyStyle} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value === '' ? '' : Number(e.target.value))} />
+      return <input type="number" className="psf-input form-input" style={{ ...readOnlyStyle, minWidth: minW }} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value === '' ? '' : Number(e.target.value))} />
     }
     if (ct === 'checkbox') {
       return <input type="checkbox" checked={!!v} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.checked)} />
     }
-    return <input type="text" className="psf-input form-input" style={readOnlyStyle} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
+    return <input type="text" className="psf-input form-input" style={{ ...readOnlyStyle, minWidth: minW }} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div className="unified-form-table-scroll" style={{ overflowX: 'auto', width: '100%', maxWidth: '100%', minWidth: 0 }}>
+      <table className="table" style={{ width: '100%', minWidth: '52rem', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
             {columns.map((col) => (
-              <th key={col.name} style={{ textAlign: 'right', padding: '0.3rem', borderBottom: '1px solid #e5e7eb', fontSize: '0.82rem' }}>{col.label_fa || col.name}</th>
+              <th key={col.name} style={{ textAlign: 'right', padding: '0.3rem', borderBottom: '1px solid #e5e7eb', fontSize: '0.82rem', minWidth: columnMinWidth(col) }}>{col.label_fa || col.name}</th>
             ))}
             {!disabled && <th style={{ width: '2.5rem' }} />}
           </tr>
@@ -354,7 +471,7 @@ function EditableTableField({ field, value, onChange, disabled }) {
           {rows.map((row, rowIdx) => (
             <tr key={rowIdx}>
               {columns.map((col) => (
-                <td key={col.name} style={{ padding: '0.25rem', verticalAlign: 'top' }}>{renderCell(col, row, rowIdx)}</td>
+                <td key={col.name} style={{ padding: '0.25rem', verticalAlign: 'top', minWidth: columnMinWidth(col) }}>{renderCell(col, row, rowIdx)}</td>
               ))}
               {!disabled && (
                 <td style={{ padding: '0.25rem' }}>
@@ -727,7 +844,10 @@ export default function UnifiedFormRenderer({
   )
 
   return (
-    <div className="unified-form-renderer psf-fields" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+    <div
+      className="unified-form-renderer psf-fields"
+      style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', width: '100%', maxWidth: '100%', minWidth: 0 }}
+    >
       {fields.map((field) => {
         if (!field?.name) return null
         if (!fieldVisible(field, values)) return null

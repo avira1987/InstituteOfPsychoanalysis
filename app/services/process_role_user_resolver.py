@@ -11,9 +11,11 @@ from app.models.operational_models import User
 
 # Metadata assigned_role → portal User.role search order
 _METADATA_TO_PORTAL_ROLES: dict[str, tuple[str, ...]] = {
-    "course_committee_executive": ("deputy_education",),
+    "course_committee_executive": ("course_committee", "deputy_education"),
+    "education_director": ("deputy_education", "admin"),
     "deputy_education_director": ("deputy_education",),
-    "scientific_officer_course_committee": ("deputy_education", "staff"),
+    "scientific_officer_course_committee": ("course_committee", "deputy_education", "staff"),
+    "course_committee": ("course_committee",),
     "admissions_officer": ("staff", "site_manager", "deputy_education"),
     "site_manager": ("site_manager",),
     "staff": ("staff",),

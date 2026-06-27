@@ -10,6 +10,7 @@ import PopupToast from '../components/PopupToast'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import OperatorCourseSelectionEditor from '../components/OperatorCourseSelectionEditor'
 import RegistrationCourseTypeEditor from '../components/RegistrationCourseTypeEditor'
+import { isInstituteLevelProcess } from '../utils/instituteProcesses'
 
 export default function StudentTracker() {
   const [searchParams] = useSearchParams()
@@ -424,7 +425,9 @@ export default function StudentTracker() {
               <button type="button" className="modal-close" onClick={closeStudentDetail} aria-label="بستن">&times;</button>
             </div>
             <div className="modal-body" style={{ paddingTop: 0 }}>
-              {selectedStudent && (
+              {selectedStudent
+                && !isInstituteLevelProcess(instanceStatus?.process_code)
+                && !(instances.length > 0 && instances.every((i) => isInstituteLevelProcess(i.process_code))) && (
                 <RegistrationCourseTypeEditor
                   studentId={selectedStudent}
                   initialCourseType={

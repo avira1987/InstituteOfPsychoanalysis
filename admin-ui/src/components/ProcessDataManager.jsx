@@ -15,6 +15,8 @@ export default function ProcessDataManager({
   showToast,
   onUpdated,
   title = 'دادهٔ ثبت‌شدهٔ پرونده',
+  /** فقط فرم‌های این state (مثلاً workbench آماده‌سازی ترم) */
+  stateCode = null,
 }) {
   const [data, setData] = useState(null)
   const [values, setValues] = useState({})
@@ -51,8 +53,15 @@ export default function ProcessDataManager({
     [data],
   )
 
-  const forms = data?.forms || []
-  const canEdit = !!data?.can_edit
+  const forms = useMemo(() => {
+    const all = data?.forms || []
+    if (!stateCode) return all
+    return all.filter((f) => f.used_in_state === stateCode)
+  }, [data?.forms, stateCode])
+  const canEdit = useMemo(
+    () => forms.some((f) => (f.fields || []).some((field) => field.__editable)),
+    [forms],
+  )
 
   const save = async () => {
     setBusy(true)

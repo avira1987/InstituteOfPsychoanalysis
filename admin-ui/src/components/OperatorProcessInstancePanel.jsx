@@ -9,6 +9,7 @@ import OperatorCourseSelectionEditor from './OperatorCourseSelectionEditor'
 import OperatorStepFormsSection from './OperatorStepFormsSection'
 import ProcessDataManager from './ProcessDataManager'
 import ProcessRollbackSection from './ProcessRollbackSection'
+import { isInstituteLevelProcess } from '../utils/instituteProcesses'
 
 /**
  * پنل یکپارچهٔ جزئیات پروندهٔ فرایند برای اپراتورها — فرم مرحله، راهنما، ترنزیشن.
@@ -153,12 +154,14 @@ export default function OperatorProcessInstancePanel({
         onUpdated={() => onRefreshInstance?.()}
       />
 
-      <ProcessDataManager
-        instanceId={instanceId}
-        role={user?.role}
-        showToast={showToast}
-        onUpdated={() => onRefreshInstance?.()}
-      />
+      {!isInstituteLevelProcess(instanceDetail.process_code) && (
+        <ProcessDataManager
+          instanceId={instanceId}
+          role={user?.role}
+          showToast={showToast}
+          onUpdated={() => onRefreshInstance?.()}
+        />
+      )}
 
       <InstanceContextSummary
         contextData={instanceDetail.context_data}

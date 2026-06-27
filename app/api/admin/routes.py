@@ -1026,6 +1026,112 @@ async def _purge_rows_blocking_student_delete(db: AsyncSession, student_id: uuid
     await db.flush()
 
 
+@router.get("/course-committee-roster/tracks")
+async def list_course_committee_tracks(
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "site_manager", "course_committee")),
+):
+    """فهرست رسته‌های کمیته دروس (برای select ستون track)."""
+    from app.services.course_committee_roster_service import list_track_options
+
+    return {"tracks": list_track_options()}
+
+
+class RosterTrackCreate(BaseModel):
+    name_fa: str = Field(..., min_length=1)
+    code: Optional[str] = None
+
+
+class RosterMemberCreate(BaseModel):
+    track: str = Field(..., min_length=1)
+    kind: Literal["instructor", "teaching_assistant"]
+    name_fa: str = Field(..., min_length=1)
+
+
+class CourseCatalogCreate(BaseModel):
+    name_fa: str = Field(..., min_length=1)
+
+
+@router.post("/course-committee-roster/tracks")
+async def create_course_committee_track(
+    body: RosterTrackCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    from app.services.course_committee_roster_service import add_track_to_roster
+
+    try:
+        track = add_track_to_roster(body.name_fa, body.code)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"track": track}
+
+
+@router.post("/course-committee-roster/members")
+async def create_course_committee_member(
+    body: RosterMemberCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    from app.services.course_committee_roster_service import add_member_to_roster, ensure_roster_user
+
+    try:
+        member = add_member_to_roster(track=body.track, kind=body.kind, name_fa=body.name_fa)
+        user = await ensure_roster_user(
+            db,
+            track=body.track,
+            kind=body.kind,
+            name_fa=body.name_fa,
+            roster_key=str(member.get("value") or ""),
+        )
+        await db.flush()
+        return {
+            "member": {
+                "value": str(user.id),
+                "label_fa": user.full_name_fa or body.name_fa,
+                "source": "user",
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/course-catalog")
+async def list_course_catalog(
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "site_manager", "course_committee")),
+):
+    from app.services.course_committee_roster_service import list_course_catalog_options
+
+    return {"courses": list_course_catalog_options()}
+
+
+@router.post("/course-catalog")
+async def create_course_catalog_entry(
+    body: CourseCatalogCreate,
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    from app.services.course_committee_roster_service import add_course_to_catalog
+
+    try:
+        course = add_course_to_catalog(body.name_fa)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"course": course}
+
+
+@router.get("/course-committee-roster")
+async def list_course_committee_roster(
+    track: str = Query(..., description="کد رسته، مثلاً analytic_psychotherapy"),
+    kind: Literal["instructor", "teaching_assistant"] = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "site_manager", "course_committee")),
+):
+    """مدرسین یا کمک‌مدرسین یک رسته — ادغام چارت و کاربران سامانه."""
+    from app.services.course_committee_roster_service import list_members
+
+    members = await list_members(db, track=track, kind=kind)
+    return {"track": track, "kind": kind, "members": members}
+
+
 @router.get("/users")
 async def list_users(
     role: Optional[str] = Query(None),
@@ -1076,6 +1182,8 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     allowed_fields = {"full_name_fa", "full_name_en", "role", "phone", "email", "is_active"}
+    if current_user.role == "admin":
+        allowed_fields = allowed_fields | {"profile_meta"}
     if current_user.role == "staff":
         allowed_fields = {"full_name_fa", "full_name_en", "phone", "email"}
     for key, value in data.items():
@@ -1378,18 +1486,29 @@ class SemesterPrepStartBody(BaseModel):
 @router.get("/semester-prep/status")
 async def get_semester_prep_status(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "deputy_education", "staff")),
+    current_user: User = Depends(require_role("admin", "deputy_education", "staff", "course_committee")),
 ):
     from app.services.semester_prep_service import build_prep_status
 
     return await build_prep_status(db)
 
 
+@router.get("/semester-prep/sla-warnings")
+async def get_semester_prep_sla_warnings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "deputy_education", "staff", "course_committee")),
+):
+    """هشدارهای مهلت ثبت‌شدهٔ آماده‌سازی ترم (بررسی ارسال هشدار به مدیر آموزش و سایر گیرندگان)."""
+    from app.services.semester_prep_service import build_prep_sla_warning_log
+
+    return await build_prep_sla_warning_log(db)
+
+
 @router.post("/semester-prep/start")
 async def start_semester_prep(
     body: SemesterPrepStartBody,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "deputy_education")),
+    current_user: User = Depends(require_role("admin", "deputy_education", "course_committee")),
 ):
     from app.services.semester_prep_service import (
         FALL_PREP,

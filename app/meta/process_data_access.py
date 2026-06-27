@@ -36,6 +36,41 @@ def _norm_list(values: Optional[Iterable[Any]]) -> list[str]:
     return [_norm(str(v)) for v in values if str(v).strip()]
 
 
+# نقش پورتال ↔ assigned_role متادیتا (آماده‌سازی ترم و نقش‌های مرتبط)
+_EDITABLE_ROLE_ALIASES: dict[str, frozenset[str]] = {
+    "deputy_education": frozenset(
+        {"deputy_education", "deputy_education_director", "course_committee_executive", "scientific_officer_course_committee"}
+    ),
+    "deputy_education_director": frozenset({"deputy_education_director", "deputy_education"}),
+    "course_committee": frozenset(
+        {"course_committee", "course_committee_executive", "course_committee_scientific", "scientific_officer_course_committee"}
+    ),
+    "course_committee_executive": frozenset({"course_committee_executive", "course_committee", "deputy_education"}),
+    "scientific_officer_course_committee": frozenset(
+        {"scientific_officer_course_committee", "course_committee_scientific", "course_committee", "deputy_education"}
+    ),
+    "course_committee_scientific": frozenset(
+        {"course_committee_scientific", "scientific_officer_course_committee", "course_committee"}
+    ),
+    "admissions_officer": frozenset({"admissions_officer", "admission_officer", "staff", "deputy_education"}),
+    "admission_officer": frozenset({"admission_officer", "admissions_officer", "staff"}),
+}
+
+
+def _role_matches_editable_list(role: str, allowed: list[str]) -> bool:
+    r = _norm(role)
+    allowed_norm = set(allowed)
+    if r in allowed_norm:
+        return True
+    for code in allowed_norm:
+        if r in _EDITABLE_ROLE_ALIASES.get(code, frozenset()):
+            return True
+    for alias in _EDITABLE_ROLE_ALIASES.get(r, frozenset()):
+        if alias in allowed_norm:
+            return True
+    return False
+
+
 def _inherit(field: dict, form: dict, key: str):
     """مقدار سطح فیلد را برگردان؛ اگر نبود، مقدار سطح فرم."""
     if key in field and field.get(key) is not None:
@@ -63,7 +98,7 @@ def field_editable_by_role(form: dict, field: dict, role: str) -> bool:
     allowed = _norm_list(editable_by)
     if not allowed:
         return False
-    return _norm(role) in allowed
+    return _role_matches_editable_list(role, allowed)
 
 
 def _iter_fields(forms: list):

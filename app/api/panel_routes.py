@@ -291,3 +291,19 @@ async def panel_operator_followup_inbox(
         gap_limit=gap_limit,
         readiness_user=user,
     )
+
+
+@router.get("/my-semester-courses")
+async def panel_my_semester_courses(
+    user: User = Depends(get_current_user),
+):
+    """دروس انتساب‌یافته از آماده‌سازی ترم — برای پنل مدرس و کمک‌مدرس."""
+    meta = user.profile_meta if isinstance(user.profile_meta, dict) else {}
+    items = meta.get("semester_course_assignments") or []
+    if not isinstance(items, list):
+        items = []
+    role = (user.role or "").strip()
+    if role in ("instructor", "teaching_assistant"):
+        kind = "instructor" if role == "instructor" else "teaching_assistant"
+        items = [x for x in items if isinstance(x, dict) and (x.get("role_kind") in (None, kind))]
+    return {"courses": items, "role": role}

@@ -71,7 +71,7 @@ def test_marketing_campaign_requires_confirmation():
     assert missing
     ok2, _ = validate_operator_step_forms(
         forms,
-        {"marketing_confirmed": True, "marketing_channels": ["سایت"]},
+        {"marketing_info_sent_to_manager": True},
         {},
     )
     assert ok2 is True
@@ -104,7 +104,7 @@ def test_winter_marketing_campaign_form_exists():
     assert "winter_marketing_campaign_form" in codes
     marketing_form = next(f for f in forms if f.get("code") == "winter_marketing_campaign_form")
     field_names = {fld.get("name") for fld in marketing_form.get("fields") or []}
-    assert "marketing_confirmed" in field_names
+    assert "marketing_info_sent_to_manager" in field_names
 
 
 def test_winter_course_list_pre_filled_from_metadata():
@@ -113,7 +113,7 @@ def test_winter_course_list_pre_filled_from_metadata():
     courses_field = next(
         fld for fld in review_form.get("fields") or [] if fld.get("name") == "courses"
     )
-    assert courses_field.get("pre_filled_from") == "fall_semester_preparation.course_list_form"
+    assert courses_field.get("pre_filled_from") == "fall_semester_preparation.courses_winter"
 
 
 def test_interviewer_assignment_options_source_metadata():
@@ -125,6 +125,47 @@ def test_interviewer_assignment_options_source_metadata():
         assert src.get("type") == "users"
         assert src.get("role") == "interviewer"
         assert src.get("is_active") is True
+
+
+def test_course_list_form_roster_select_columns():
+    forms = get_process_forms("fall_semester_preparation", state_code="course_list_creation")
+    course_form = next(f for f in forms if f.get("code") == "course_list_form")
+    fields = {fld.get("name"): fld for fld in course_form.get("fields") or []}
+    assert "courses_fall" in fields
+    assert "courses_winter" in fields
+    assert fields["courses_fall"].get("label_fa") == "جدول دروس ترم پاییز"
+    assert fields["courses_winter"].get("label_fa") == "جدول دروس ترم زمستان"
+
+    courses_field = fields["courses_fall"]
+    columns = {c.get("name"): c for c in courses_field.get("columns") or []}
+
+    track_src = (columns["track"].get("options_source") or {})
+    assert track_src.get("type") == "course_committee_tracks"
+    assert columns["track"].get("type") == "creatable_select"
+
+    inst_src = columns["instructor"].get("options_source") or {}
+    assert inst_src.get("type") == "course_committee_roster"
+    assert inst_src.get("kind") == "instructor"
+    assert inst_src.get("filter_by_column") == "track"
+    assert columns["instructor"].get("type") == "creatable_select"
+
+    course_src = (columns["course_name"].get("options_source") or {})
+    assert course_src.get("type") == "course_catalog"
+    assert columns["course_name"].get("type") == "creatable_select"
+
+    ta_src = columns["teaching_assistant"].get("options_source") or {}
+    assert ta_src.get("kind") == "teaching_assistant"
+    assert columns["teaching_assistant"].get("type") == "creatable_select"
+
+
+def test_winter_course_list_review_roster_columns():
+    forms = get_process_forms("winter_semester_preparation", state_code="course_list_review")
+    review_form = next(f for f in forms if f.get("code") == "winter_course_list_review_form")
+    courses_field = next(fld for fld in review_form.get("fields") or [] if fld.get("name") == "courses")
+    columns = {c.get("name"): c for c in courses_field.get("columns") or []}
+    assert columns["track"].get("type") == "creatable_select"
+    assert columns["instructor"].get("type") == "creatable_select"
+    assert columns["teaching_assistant"].get("type") == "creatable_select"
 
 
 def test_educational_leave_committee_meeting_form_requires_datetime_and_mode():

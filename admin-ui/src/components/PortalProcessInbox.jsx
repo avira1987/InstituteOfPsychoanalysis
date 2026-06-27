@@ -82,6 +82,8 @@ export default function PortalProcessInbox({ items, title }) {
               instance_id: it.instance_id,
               student_id: it.student_id,
               responsible_role_code: it.responsible_role_code,
+              process_code: it.process_code,
+              state_code: it.state_code,
             })
             const ptitle = labelProcess(it.process_code)
             return (

@@ -99,6 +99,8 @@ export const CONTEXT_KEY_LABELS = {
   latest_certificate: 'آخرین مدرک تحصیلی',
   digital_commitment: 'پذیرش قوانین انستیتو',
   selected_timeslot: 'زمان مصاحبه انتخاب‌شده',
+  calendar_sla_deadline_at: 'مهلت تدوین تقویم آموزشی',
+  prep_term_label_fa: 'ترم آماده‌سازی',
 }
 
 const INTERVIEW_RESULT_LABELS = {

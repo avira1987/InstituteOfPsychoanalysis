@@ -1,14 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { processExecApi, userApi } from '../services/api'
+import { processExecApi } from '../services/api'
 import UnifiedFormRenderer from './UnifiedFormRenderer'
 import FallSemesterPrepReadonlySummary from './FallSemesterPrepReadonlySummary'
+import MarketingCampaignHandoffPanel, { isMarketingHandoffField } from './MarketingCampaignHandoffPanel'
+import SemesterPrepStepDeadlineBanner from './SemesterPrepStepDeadlineBanner'
 import InterviewSlotsAdmin from './InterviewSlotsAdmin'
+import DecisionNotesBlock from './DecisionNotesBlock'
 import { validateUnifiedAnswers } from '../utils/unifiedFormValidation'
-
-const SEMESTER_PREP_PROCESSES = new Set([
-  'fall_semester_preparation',
-  'winter_semester_preparation',
-])
+import {
+  denormalizeCourseRosterTableRows,
+  normalizeCourseTableInitialRows,
+  resolveFormOptionsSource,
+} from '../utils/resolveFormOptionsSource'
+import { SEMESTER_PREP_PROCESSES } from '../utils/instituteProcesses'
+import {
+  defaultShamsiDate,
+  defaultShamsiTehranNow,
+  shamsiDateToIsoDate,
+  shamsiDateTimeToUtcIso,
+} from '../utils/shamsiDateTime'
 
 /** گام‌های فرایند ۲۹ — هشت مرحلهٔ عملیاتی قبل از انتشار */
 const FALL_SEMESTER_STEPS = [
@@ -57,21 +67,44 @@ function buildInitialValues(forms, contextData, processCode, currentState, sugge
   const isCourseFinalization =
     currentState === 'course_finalization' &&
     (processCode === 'fall_semester_preparation' || processCode === 'winter_semester_preparation')
+  if (isCourseFinalization && processCode === 'fall_semester_preparation') {
+    const draftPairs = [
+      ['courses_finalized_fall', 'courses_fall'],
+      ['courses_finalized_winter', 'courses_winter'],
+    ]
+    for (const [finalName, draftName] of draftPairs) {
+      if ((!init[finalName] || !init[finalName].length) && Array.isArray(ctx[draftName]) && ctx[draftName].length) {
+        init[finalName] = buildCoursesFinalizedFromDraft(ctx[draftName])
+      }
+    }
+  }
   if (
     isCourseFinalization &&
+    processCode === 'winter_semester_preparation' &&
     (!init.courses_finalized || !init.courses_finalized.length) &&
     Array.isArray(ctx.courses) &&
     ctx.courses.length
   ) {
     init.courses_finalized = buildCoursesFinalizedFromDraft(ctx.courses)
   }
+  if (
+    isCourseFinalization &&
+    processCode === 'fall_semester_preparation' &&
+    (!init.courses_finalized_fall || !init.courses_finalized_fall.length) &&
+    Array.isArray(ctx.courses) &&
+    ctx.courses.length
+  ) {
+    init.courses_finalized_fall = buildCoursesFinalizedFromDraft(ctx.courses)
+  }
 
   for (const form of forms || []) {
     for (const field of form?.fields || []) {
       if ((field.type || '').toLowerCase() !== 'table' || !field.required) continue
       const name = field.name
-      const rows = init[name]
-      if (!Array.isArray(rows) || rows.length === 0) {
+      let rows = init[name]
+      if (Array.isArray(rows) && rows.length) {
+        init[name] = normalizeCourseTableInitialRows(field, rows)
+      } else if (!Array.isArray(rows) || rows.length === 0) {
         const blank = {}
         for (const col of field.columns || []) {
           const ct = (col.type || 'text').toLowerCase()
@@ -82,23 +115,47 @@ function buildInitialValues(forms, contextData, processCode, currentState, sugge
     }
   }
 
+  for (const form of forms || []) {
+    for (const field of form?.fields || []) {
+      const ft = (field.type || '').toLowerCase()
+      const name = field.name
+      if (!name) continue
+      const current = init[name]
+      if (current !== undefined && current !== null && current !== '') continue
+      if (ft === 'date') {
+        const d = defaultShamsiDate()
+        try {
+          init[name] = shamsiDateToIsoDate(d.jy, d.jm, d.jd)
+        } catch {
+          /* ignore */
+        }
+      } else if (ft === 'datetime') {
+        const d = defaultShamsiTehranNow()
+        try {
+          init[name] = shamsiDateTimeToUtcIso(d.jy, d.jm, d.jd, d.hour, d.minute)
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  }
+
   return init
 }
 
-async function resolveUsersOptionsSource(source) {
-  if (!source || source.type !== 'users') return []
-  const params = {}
-  if (source.role) params.role = source.role
-  if (source.is_active != null) params.is_active = source.is_active
-  try {
-    const res = await userApi.list(params)
-    return (Array.isArray(res.data) ? res.data : []).map((u) => ({
-      value: u.id,
-      label_fa: u.full_name_fa || u.username || u.id,
-    }))
-  } catch {
-    return []
+async function enrichColumnOptions(col) {
+  const next = { ...col }
+  if (!next.options_source || (Array.isArray(next.options) && next.options.length)) {
+    return next
   }
+  const { options, optionsByTrack } = await resolveFormOptionsSource(next.options_source)
+  if (optionsByTrack) {
+    next._optionsByTrack = optionsByTrack
+    next.filter_by_column = next.options_source.filter_by_column || next.filter_by_column
+  } else if (options.length) {
+    next.options = options
+  }
+  return next
 }
 
 async function enrichFormsWithDynamicOptions(forms) {
@@ -107,9 +164,17 @@ async function enrichFormsWithDynamicOptions(forms) {
     const fields = []
     for (const field of form?.fields || []) {
       const next = { ...field }
-      if (next.options_source && !(Array.isArray(next.options) && next.options.length)) {
-        const opts = await resolveUsersOptionsSource(next.options_source)
-        if (opts.length) next.options = opts
+      const ft = (next.type || '').toLowerCase()
+      if (ft === 'table' && Array.isArray(next.columns)) {
+        const columns = []
+        for (const col of next.columns) {
+          columns.push(await enrichColumnOptions(col))
+        }
+        next.columns = columns
+      } else if (next.options_source && !(Array.isArray(next.options) && next.options.length)) {
+        const { options, optionsByTrack } = await resolveFormOptionsSource(next.options_source)
+        if (optionsByTrack) next._optionsByTrack = optionsByTrack
+        else if (options.length) next.options = options
       }
       fields.push(next)
     }
@@ -147,11 +212,16 @@ function SemesterPrepStepper({ steps, currentState, testId = 'semester-prep-step
 
   return (
     <div
+      className="semester-prep-stepper-scroll"
       data-testid={testId}
       style={{
         marginBottom: '1rem',
         padding: '0.75rem 0',
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
         overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
       <div style={{ display: 'flex', gap: '0.35rem', minWidth: 'max-content', alignItems: 'flex-start' }}>
@@ -219,6 +289,18 @@ export default function OperatorStepFormsSection({
   role,
   showToast,
   onUpdated,
+  /** اگر تنظیم شود، پس از ثبت موفق فرم همان ترنزیشن اجرا می‌شود. */
+  primaryTransition = null,
+  onAdvanceAfterSave = null,
+  advanceBusy = false,
+  /** مهلت SLA مرحله (از status آماده‌سازی ترم) */
+  stepSla = null,
+  /** دکمه‌های پیشروی مرحله — در آماده‌سازی ترم زیر همان فرم نمایش داده می‌شوند. */
+  actionTransitions = [],
+  decisionNotes = '',
+  onDecisionNotesChange = null,
+  onActionTrigger = null,
+  actionBusy = false,
 }) {
   const isSemesterPrep = SEMESTER_PREP_PROCESSES.has(processCode)
   const isFall = processCode === 'fall_semester_preparation'
@@ -233,6 +315,25 @@ export default function OperatorStepFormsSection({
     () => isWinter && hasVisiblePrefill(forms, suggestedContext),
     [isWinter, forms, suggestedContext],
   )
+
+  const editableFieldNames = useMemo(() => {
+    const names = new Set()
+    let hasEditableFlag = false
+    for (const form of forms) {
+      for (const field of form?.fields || []) {
+        if (!field?.name) continue
+        if ('__editable' in field) {
+          hasEditableFlag = true
+          if (field.__editable) names.add(field.name)
+        } else {
+          names.add(field.name)
+        }
+      }
+    }
+    return hasEditableFlag ? names : null
+  }, [forms])
+
+  const canEditForms = editableFieldNames == null || editableFieldNames.size > 0
 
   const visible = useMemo(
     () => !!(instanceId && currentState && !isCompleted && !isCancelled),
@@ -271,6 +372,20 @@ export default function OperatorStepFormsSection({
 
   const onChange = useCallback((next) => setValues(next), [])
 
+  const hasInlineActions = actionTransitions.length > 0 && typeof onActionTrigger === 'function'
+  const canAdvanceOnSave = !!(primaryTransition && onAdvanceAfterSave && !hasInlineActions)
+
+  const isMarketingStep = currentState === 'marketing_campaign' && (isFall || isWinter)
+  const marketingForm = useMemo(
+    () => (isMarketingStep ? forms.find((f) => (f.fields || []).some((field) => isMarketingHandoffField(field.name))) : null),
+    [isMarketingStep, forms],
+  )
+
+  const filterHandoffFields = useCallback(
+    (fields) => (isMarketingStep ? (fields || []).filter((f) => !isMarketingHandoffField(f?.name)) : fields || []),
+    [isMarketingStep],
+  )
+
   const save = async () => {
     const allMissing = []
     for (const form of forms) {
@@ -283,12 +398,37 @@ export default function OperatorStepFormsSection({
     }
     setBusy(true)
     try {
+      const payloadValues = { ...values }
+      for (const form of forms) {
+        for (const field of form?.fields || []) {
+          if ((field.type || '').toLowerCase() !== 'table' || !field.name) continue
+          const rows = payloadValues[field.name]
+          if (Array.isArray(rows)) {
+            payloadValues[field.name] = denormalizeCourseRosterTableRows(field, rows)
+          }
+        }
+      }
       const res = await processExecApi.registerOperatorStepForms(instanceId, {
-        form_values: values,
+        form_values: payloadValues,
         state_code: currentState,
       })
-      showToast?.('فرم این مرحله ثبت شد. اکنون می‌توانید دکمهٔ اقدام را بزنید.')
-      onUpdated?.(res.data?.context_data)
+      if (canAdvanceOnSave) {
+        const advanceResult = await onAdvanceAfterSave(primaryTransition)
+        if (advanceResult?.ok) {
+          const nextLabel = advanceResult.toStateLabel || 'مرحله بعد'
+          showToast?.(`مرحله ثبت شد — بعدی: ${nextLabel}`)
+          onUpdated?.()
+        } else {
+          showToast?.(
+            advanceResult?.error || 'فرم ثبت شد ولی پیشروی انجام نشد. از دکمهٔ پایین صفحه استفاده کنید.',
+            'error',
+          )
+          onUpdated?.(res.data?.context_data)
+        }
+      } else {
+        showToast?.('فرم این مرحله ثبت شد. اکنون می‌توانید دکمهٔ اقدام را بزنید.')
+        onUpdated?.(res.data?.context_data)
+      }
     } catch (e) {
       const d = e?.response?.data?.detail
       if (d && typeof d === 'object' && Array.isArray(d.missing)) {
@@ -316,27 +456,62 @@ export default function OperatorStepFormsSection({
 
   return (
     <div
+      className="operator-step-forms-section"
       style={{
         marginBottom: '1.25rem',
         padding: '1rem 1.25rem',
         background: '#eff6ff',
         borderRadius: '10px',
         borderRight: '4px solid #2563eb',
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        boxSizing: 'border-box',
       }}
       data-testid="operator-step-forms-section"
     >
       {isFall && <FallSemesterStepper currentState={currentState} />}
       {isWinter && <WinterSemesterStepper currentState={currentState} />}
 
+      {isSemesterPrep && stepSla?.deadlineAt && (
+        <SemesterPrepStepDeadlineBanner
+          deadlineAt={stepSla.deadlineAt}
+          overdue={!!stepSla.overdue}
+          warningRecipientsFa={stepSla.warningRecipientsFa}
+        />
+      )}
+
       <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#1e40af' }}>
         فرم این مرحله
       </h4>
       <p style={{ fontSize: '0.82rem', color: '#334155', margin: '0 0 0.85rem', lineHeight: 1.65 }}>
-        اطلاعات این مرحله را پر و ثبت کنید؛ سپس دکمهٔ اقدام (پایین) را برای پیشروی فرایند بزنید.
+        {isMarketingStep
+          ? 'خروجی فعالیت‌های قبلی را بررسی کنید، PDF بگیرید و برای مدیر مارکتینگ ارسال کنید؛ سپس تأیید ارسال را تیک بزنید و فرم را ثبت کنید.'
+          : canAdvanceOnSave
+          ? 'اطلاعات این مرحله را پر کنید و با دکمهٔ زیر ثبت کنید تا به مرحلهٔ بعد بروید.'
+          : hasInlineActions
+            ? 'اطلاعات این مرحله را پر کنید، فرم را ذخیره کنید و سپس دکمهٔ پیشروی را بزنید.'
+            : 'اطلاعات این مرحله را پر و ثبت کنید؛ سپس دکمهٔ اقدام را برای پیشروی فرایند بزنید.'}
       </p>
 
       {(isFall || isWinter) && (
-        <FallSemesterPrepReadonlySummary currentState={currentState} contextData={contextData} />
+        <FallSemesterPrepReadonlySummary
+          currentState={currentState}
+          contextData={contextData}
+          processCode={processCode}
+        />
+      )}
+
+      {isMarketingStep && (
+        <MarketingCampaignHandoffPanel
+          instanceId={instanceId}
+          processCode={processCode}
+          showToast={showToast}
+          form={marketingForm}
+          values={values}
+          onChange={onChange}
+          disabled={!canEditForms}
+        />
       )}
 
       {isFall && currentState === 'tuition_entry' && (
@@ -374,20 +549,28 @@ export default function OperatorStepFormsSection({
         </div>
       )}
 
-      {forms.map((form) => (
-        <div key={form.code || form.name_fa} style={{ marginBottom: '1rem' }}>
-          {form.name_fa && (
+      {forms.map((form) => {
+        const visibleFields = filterHandoffFields(form.fields)
+        if (!visibleFields.length) return null
+        return (
+        <div key={form.code || form.name_fa} style={{ marginBottom: '1rem', minWidth: 0, maxWidth: '100%' }}>
+          {form.name_fa && !isMarketingStep && (
             <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem' }}>{form.name_fa}</div>
           )}
+          {form.note_fa && !isMarketingStep && (
+            <p style={{ fontSize: '0.82rem', color: '#475569', margin: '0 0 0.5rem', lineHeight: 1.6 }}>{form.note_fa}</p>
+          )}
           <UnifiedFormRenderer
-            schemaJson={{ fields: form.fields || [] }}
+            schemaJson={{ fields: visibleFields, visible_to: form.visible_to, editable_by: form.editable_by }}
             values={values}
             onChange={onChange}
             role={role}
+            editableFieldNames={editableFieldNames}
             showToast={showToast}
           />
         </div>
-      ))}
+        )
+      })}
 
       {showSlotsAdmin && (
         <div
@@ -405,16 +588,51 @@ export default function OperatorStepFormsSection({
         </div>
       )}
 
-      {(forms.length > 0 || showSlotsAdmin) && (
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          data-testid="operator-step-forms-save"
-          disabled={busy}
-          onClick={save}
+      {(forms.length > 0 || showSlotsAdmin) && canEditForms && (
+        <div
+          style={{
+            marginTop: hasInlineActions ? '1rem' : 0,
+            paddingTop: hasInlineActions ? '1rem' : 0,
+            borderTop: hasInlineActions ? '1px solid #bfdbfe' : 'none',
+          }}
         >
-          {busy ? 'در حال ثبت…' : 'ثبت فرم این مرحله'}
-        </button>
+          {hasInlineActions && typeof onDecisionNotesChange === 'function' && (
+            <DecisionNotesBlock
+              value={decisionNotes}
+              onChange={onDecisionNotesChange}
+              title="توضیح یا نظر (اختیاری)"
+              hint="متن همراه دکمهٔ اقدام در پرونده ثبت می‌شود."
+            />
+          )}
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              className={hasInlineActions ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'}
+              data-testid="operator-step-forms-save"
+              disabled={busy || advanceBusy || actionBusy}
+              onClick={save}
+            >
+              {busy || advanceBusy
+                ? 'در حال ثبت…'
+                : canAdvanceOnSave
+                  ? 'ثبت و رفتن به مرحله بعد'
+                  : 'ثبت فرم این مرحله'}
+            </button>
+            {hasInlineActions &&
+              actionTransitions.map((t) => (
+                <button
+                  key={`${t.trigger_event}-${t.to_state || ''}`}
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  data-testid="operator-step-forms-action"
+                  disabled={busy || actionBusy}
+                  onClick={() => onActionTrigger(t)}
+                >
+                  {t.description || t.description_fa || t.trigger_event}
+                </button>
+              ))}
+          </div>
+        </div>
       )}
     </div>
   )

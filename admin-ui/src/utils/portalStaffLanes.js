@@ -49,7 +49,7 @@ export const STAFF_LANES = {
     icon: '📚',
     tabIds: ['pending', 'dashboard', 'processes', 'students'],
     assignedRoles: ['course_committee', 'course_committee_scientific', 'course_committee_executive', 'scientific_officer_course_committee'],
-    allowedPortalRoles: ['admin', 'staff'],
+    allowedPortalRoles: ['admin', 'staff', 'course_committee'],
     priority: 23.3,
   },
 }

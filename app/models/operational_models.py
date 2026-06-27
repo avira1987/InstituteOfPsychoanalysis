@@ -39,6 +39,8 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     # شناسهٔ کاربر agent در الوکام (برای نقش teacher/participant در رویداد)
     alocom_agent_user_id = Column(Integer, nullable=True)
+    # رسته‌های کمیته دروس، tier مدرس/کمک‌مدرس، و سایر متادیتای نقش آموزشی
+    profile_meta = Column(JSONB, nullable=True)
 
     # Relationships
     # DB: students.user_id → users.id ON DELETE CASCADE — بدون passive_deletes، ORM سعی می‌کند user_id را NULL کند و خطای NOT NULL می‌دهد.

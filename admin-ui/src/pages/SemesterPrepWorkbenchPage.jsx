@@ -1,10 +1,8 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
-import DecisionNotesBlock from '../components/DecisionNotesBlock'
-import ProcessDataManager from '../components/ProcessDataManager'
 import ProcessRollbackSection from '../components/ProcessRollbackSection'
 import PopupToast from '../components/PopupToast'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
@@ -29,7 +27,8 @@ const STATE_HINTS = {
     license_check: 'بررسی و به‌روزرسانی شماره پروانه فعالیت انستیتو.',
     course_list_creation: 'تدوین لیست دروس، روز و ساعت، مدرسین و کمک‌مدرسین برای دو ترم.',
     course_finalization: 'نهایی‌سازی مکان کلاس‌ها و هماهنگی با مدرسین.',
-    marketing_campaign: 'تأیید شروع کمپین بازاریابی پذیرش.',
+    marketing_campaign:
+      'خروجی فعالیت‌های ۱، ۲ و ۵ را به‌صورت PDF برای مدیر مارکتینگ ارسال کنید و تأیید ارسال را ثبت کنید.',
     interviewer_assignment: 'تعیین مصاحبه‌کنندگان و بازهٔ زمانی مصاحبه‌های ورودی.',
     interview_scheduling:
       'زمان‌بندی دقیق اسلات‌های مصاحبه (ساعت شروع/پایان، مدت نوبت، حضوری یا آنلاین).',
@@ -38,7 +37,8 @@ const STATE_HINTS = {
     license_check: 'بررسی پروانه فعالیت برای ترم زمستان.',
     course_list_review: 'بازبینی و ویرایش لیست دروس زمستان (پیش‌پر از پاییز).',
     course_finalization: 'نهایی‌سازی مکان کلاس‌ها و تأییدیه مدرسین.',
-    marketing_campaign: 'تأیید شروع کمپین بازاریابی زمستان.',
+    marketing_campaign:
+      'خروجی فعالیت‌های ۲ و ۳ را به‌صورت PDF برای مدیر مارکتینگ ارسال کنید و تأیید ارسال را ثبت کنید.',
     interviewer_assignment: 'تعیین مصاحبه‌کنندگان و بازهٔ زمانی مصاحبه‌های زمستان.',
     interview_scheduling: 'ثبت اسلات‌های دقیق مصاحبه برای متقاضیان.',
   },
@@ -73,6 +73,7 @@ export default function SemesterPrepWorkbenchPage() {
   const canStart =
     user?.role === 'admin' ||
     user?.role === 'deputy_education' ||
+    user?.role === 'course_committee' ||
     (user?.role === 'staff' && resolvedCode === 'fall_semester_preparation')
 
   const winterBlocked =
@@ -87,6 +88,18 @@ export default function SemesterPrepWorkbenchPage() {
   const deadlineLabel = entry.calendar_sla_deadline_at
     ? formatShamsiTehran(entry.calendar_sla_deadline_at, { dateOnly: true })
     : null
+
+  const stepSla = useMemo(() => {
+    const deadlineAt =
+      entry.sla_deadline_at ||
+      (currentState === 'calendar_entry' ? entry.calendar_sla_deadline_at : null)
+    if (!deadlineAt) return null
+    return {
+      deadlineAt,
+      overdue: !!entry.sla_overdue,
+      warningRecipientsFa: entry.sla_warning_recipients_fa || [],
+    }
+  }, [entry, currentState])
 
   const handleStart = async () => {
     const result = await startProcess(resolvedCode)
@@ -127,7 +140,10 @@ export default function SemesterPrepWorkbenchPage() {
   }
 
   return (
-    <div className="page-container" style={{ maxWidth: 920, margin: '0 auto', padding: '1.25rem' }}>
+    <div
+      className="page-container semester-prep-workbench"
+      style={{ width: '100%', maxWidth: 'min(920px, 100%)', margin: '0 auto', padding: '1.25rem' }}
+    >
       <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
         <Link to="/panel/semester-prep" className="muted" style={{ fontSize: '0.82rem' }}>
           ← بازگشت به آماده‌سازی ترم
@@ -221,13 +237,12 @@ export default function SemesterPrepWorkbenchPage() {
             role={user?.role}
             showToast={showToast}
             onUpdated={() => loadInstance(instanceId)}
-          />
-
-          <ProcessDataManager
-            instanceId={instanceId}
-            role={user?.role}
-            showToast={showToast}
-            onUpdated={() => loadInstance(instanceId)}
+            stepSla={stepSla}
+            actionTransitions={actionTransitions}
+            decisionNotes={decisionNotes}
+            onDecisionNotesChange={setDecisionNotes}
+            onActionTrigger={handleTrigger}
+            actionBusy={busy}
           />
 
           <ProcessRollbackSection
@@ -236,44 +251,6 @@ export default function SemesterPrepWorkbenchPage() {
             onRollback={handleRollback}
             busy={rollbackBusy}
           />
-
-          {actionTransitions.length > 0 && (
-            <div
-              style={{
-                padding: '1.15rem',
-                background: '#f0fdf4',
-                borderRadius: '10px',
-                borderRight: '4px solid #16a34a',
-                marginTop: '0.5rem',
-              }}
-            >
-              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#15803d' }}>
-                ثبت و پیشروی مرحله
-              </h4>
-              <p style={{ fontSize: '0.82rem', color: '#334155', margin: '0 0 0.85rem', lineHeight: 1.65 }}>
-                پس از پر کردن و ذخیرهٔ فرم بالا، یکی از دکمه‌های زیر را بزنید.
-              </p>
-              <DecisionNotesBlock
-                value={decisionNotes}
-                onChange={setDecisionNotes}
-                title="توضیح یا نظر (اختیاری)"
-                hint="متن همراه دکمهٔ اقدام در پرونده ثبت می‌شود."
-              />
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
-                {actionTransitions.map((t) => (
-                  <button
-                    key={`${t.trigger_event}-${t.to_state || ''}`}
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={busy}
-                    onClick={() => handleTrigger(t)}
-                  >
-                    {t.description || t.description_fa || t.trigger_event}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </>
       )}
 

@@ -519,6 +519,180 @@ input, select, textarea { font-family: inherit; }
   margin-right: var(--sidebar-width);
   padding: 2rem;
   max-width: calc(100vw - var(--sidebar-width));
+  overflow-x: auto;
+}
+
+/* ─── صفحات محدودعرض (آماده‌سازی ترم و …) ───────────────────── */
+.page-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.semester-prep-workbench .operator-step-forms-section,
+.operator-step-forms-section {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.semester-prep-stepper-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.unified-form-renderer,
+.unified-form-table-scroll {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* خلاصهٔ فقط‌خواندنی آماده‌سازی ترم — شکست خط در عرض کم */
+.fall-semester-readonly-summary {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+.fall-semester-readonly-summary__row {
+  display: grid;
+  grid-template-columns: minmax(5rem, auto) minmax(0, 1fr);
+  gap: 0.2rem 0.5rem;
+  font-size: 0.82rem;
+  margin-bottom: 0.25rem;
+  min-width: 0;
+  align-items: start;
+}
+
+.fall-semester-readonly-summary__label {
+  color: #64748b;
+}
+
+.fall-semester-readonly-summary__value {
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.fall-semester-readonly-summary__text {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #334155;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .fall-semester-readonly-summary__row {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+  }
+
+  .semester-prep-workbench .operator-step-forms-section,
+  .operator-step-forms-section {
+    padding: 0.85rem 0.9rem;
+  }
+}
+
+.operator-step-forms-section .unified-form-renderer {
+  width: 100%;
+}
+
+.operator-step-forms-section input[type='time'],
+.operator-step-forms-section input[type='date'],
+.operator-step-forms-section select.psf-input,
+.operator-step-forms-section .psf-input {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* انتخابگر تاریخ/ساعت شمسی — شکست خط در عرض کم */
+.shamsi-datetime-picker {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.shamsi-datetime-picker__legend {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.shamsi-datetime-picker--compact .shamsi-datetime-picker__legend {
+  margin-bottom: 0.2rem;
+  font-size: 0.82rem;
+}
+
+.shamsi-datetime-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5rem), 1fr));
+  gap: 0.5rem;
+  align-items: end;
+  min-width: 0;
+}
+
+.shamsi-datetime-picker__grid--compact {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 3.5rem), 1fr));
+  gap: 0.3rem;
+}
+
+.shamsi-datetime-picker__field {
+  font-size: 0.8rem;
+  min-width: 0;
+}
+
+.shamsi-datetime-picker--compact .shamsi-datetime-picker__field {
+  font-size: 0.72rem;
+}
+
+.shamsi-datetime-picker__field .psf-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 0.2rem;
+}
+
+.shamsi-datetime-picker__hint {
+  font-size: 0.72rem;
+  margin: 0.35rem 0 0;
+}
+
+.shamsi-datetime-picker__hint--compact {
+  font-size: 0.68rem;
+  margin: 0.2rem 0 0;
+  line-height: 1.35;
+}
+
+/* فرم تعریف وقت مصاحبه — شروع/پایان زیر هم در عرض کم */
+.interview-slots-admin__datetime-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0.65rem;
+  align-items: start;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.interview-slots-admin__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-width: 56rem;
+  min-width: 0;
+  width: 100%;
 }
 
 /* ─── Cards ─────────────────────────────────────────────────── */
@@ -6080,6 +6254,8 @@ button.link-like {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .psf-label {
@@ -6093,6 +6269,7 @@ button.link-like {
 .psf-textarea,
 select.psf-input {
   width: 100%;
+  max-width: 100%;
   padding: 0.45rem 0.65rem;
   min-height: 2.4rem;
   border-radius: 8px;

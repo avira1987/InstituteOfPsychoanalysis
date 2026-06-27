@@ -49,33 +49,20 @@ export default function ShamsiDateTimePicker({
   }, [jy, jm])
 
   return (
-    <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-      <legend
-        style={{
-          display: 'block',
-          marginBottom: compact ? '0.2rem' : '0.35rem',
-          fontSize: compact ? '0.82rem' : '0.88rem',
-          fontWeight: 600,
-        }}
-      >
+    <fieldset
+      className={`shamsi-datetime-picker${compact ? ' shamsi-datetime-picker--compact' : ''}`}
+    >
+      <legend className="shamsi-datetime-picker__legend">
         {label}
       </legend>
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: compact
-            ? 'repeat(5, minmax(3.75rem, 1fr))'
-            : 'repeat(auto-fill, minmax(7.5rem, 1fr))',
-          gap: compact ? '0.3rem' : '0.5rem',
-          alignItems: 'end',
-        }}
+        className={`shamsi-datetime-picker__grid${compact ? ' shamsi-datetime-picker__grid--compact' : ''}`}
       >
-        <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
+        <label className="shamsi-datetime-picker__field">
           سال شمسی
           <select
             id={`${idPrefix}-y`}
             className="psf-input"
-            style={{ width: '100%', marginTop: '0.2rem' }}
             value={jy}
             disabled={disabled}
             onChange={(e) => setPart({ jy: parseInt(e.target.value, 10) })}
@@ -85,12 +72,11 @@ export default function ShamsiDateTimePicker({
             ))}
           </select>
         </label>
-        <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
+        <label className="shamsi-datetime-picker__field">
           ماه
           <select
             id={`${idPrefix}-m`}
             className="psf-input"
-            style={{ width: '100%', marginTop: '0.2rem' }}
             value={jm}
             disabled={disabled}
             onChange={(e) => setPart({ jm: parseInt(e.target.value, 10) })}
@@ -100,12 +86,11 @@ export default function ShamsiDateTimePicker({
             ))}
           </select>
         </label>
-        <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
+        <label className="shamsi-datetime-picker__field">
           روز
           <select
             id={`${idPrefix}-d`}
             className="psf-input"
-            style={{ width: '100%', marginTop: '0.2rem' }}
             value={Math.min(jd, maxDay)}
             disabled={disabled}
             onChange={(e) => setPart({ jd: parseInt(e.target.value, 10) })}
@@ -115,7 +100,7 @@ export default function ShamsiDateTimePicker({
             ))}
           </select>
         </label>
-        <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
+        <label className="shamsi-datetime-picker__field">
           ساعت
           <input
             id={`${idPrefix}-h`}
@@ -123,14 +108,13 @@ export default function ShamsiDateTimePicker({
             min={0}
             max={23}
             className="psf-input"
-            style={{ width: '100%', marginTop: '0.2rem' }}
             dir="ltr"
             value={hour}
             disabled={disabled}
             onChange={(e) => setPart({ hour: Math.min(23, Math.max(0, parseInt(e.target.value, 10) || 0)) })}
           />
         </label>
-        <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
+        <label className="shamsi-datetime-picker__field">
           دقیقه
           <input
             id={`${idPrefix}-min`}
@@ -138,7 +122,6 @@ export default function ShamsiDateTimePicker({
             min={0}
             max={59}
             className="psf-input"
-            style={{ width: '100%', marginTop: '0.2rem' }}
             dir="ltr"
             value={minute}
             disabled={disabled}
@@ -147,11 +130,11 @@ export default function ShamsiDateTimePicker({
         </label>
       </div>
       {!compact ? (
-      <p className="muted" style={{ fontSize: '0.72rem', margin: '0.35rem 0 0' }}>
-        زمان به‌وقت رسمی ایران (۳۰+۳) ثبت می‌شود.
-      </p>
+        <p className="shamsi-datetime-picker__hint muted">
+          زمان به‌وقت رسمی ایران (۳۰+۳) ثبت می‌شود.
+        </p>
       ) : (
-        <p className="muted" style={{ fontSize: '0.68rem', margin: '0.2rem 0 0', lineHeight: 1.35 }}>
+        <p className="shamsi-datetime-picker__hint shamsi-datetime-picker__hint--compact muted">
           ایران (۳۰+۳).
         </p>
       )}

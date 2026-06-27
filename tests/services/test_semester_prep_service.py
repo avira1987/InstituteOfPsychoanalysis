@@ -110,6 +110,54 @@ async def test_ensure_fall_prep_started(db_session: AsyncSession, sample_user):
 
 
 @pytest.mark.asyncio
+async def test_build_prep_status_includes_step_sla_deadline(db_session: AsyncSession, sample_user):
+    from app.services.semester_prep_service import build_prep_status
+
+    processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+    await db_session.commit()
+
+    await get_or_start_prep_instance(
+        db_session, FALL_PREP, actor_id=sample_user.id, actor_role="admin"
+    )
+    await db_session.commit()
+
+    status = await build_prep_status(db_session)
+    entry = status["processes"][FALL_PREP]
+    assert entry["active"] is True
+    assert entry.get("sla_deadline_at")
+    assert entry.get("calendar_sla_deadline_at")
+    assert "اعضای کمیته دروس" in (entry.get("sla_warning_recipients_fa") or [])
+
+
+@pytest.mark.asyncio
+async def test_build_prep_status_tuition_sla_after_transition(db_session: AsyncSession, sample_user):
+    from app.services.semester_prep_service import build_prep_status
+
+    processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+    await db_session.commit()
+
+    inst, _ = await get_or_start_prep_instance(
+        db_session, FALL_PREP, actor_id=sample_user.id, actor_role="admin"
+    )
+    engine = StateMachineEngine(db_session)
+    await engine.execute_transition(
+        instance_id=inst.id,
+        trigger_event="calendar_submitted",
+        actor_id=sample_user.id,
+        actor_role="admin",
+    )
+    await db_session.commit()
+
+    status = await build_prep_status(db_session)
+    entry = status["processes"][FALL_PREP]
+    assert entry["current_state"] == "tuition_entry"
+    assert entry.get("sla_deadline_at")
+    assert "مدیر آموزش" in (entry.get("sla_warning_recipients_fa") or [])
+
+
+@pytest.mark.asyncio
 async def test_apply_pre_filled_from_fall_courses(db_session: AsyncSession, sample_user):
     from sqlalchemy.orm.attributes import flag_modified
 
@@ -130,7 +178,7 @@ async def test_apply_pre_filled_from_fall_courses(db_session: AsyncSession, samp
     )
     sample_courses = [{"code": "PSY101", "title_fa": "روانشناسی"}]
     ctx = dict(fall.context_data or {})
-    ctx["courses"] = sample_courses
+    ctx["courses_winter"] = sample_courses
     fall.context_data = ctx
     flag_modified(fall, "context_data")
     fall.is_completed = True

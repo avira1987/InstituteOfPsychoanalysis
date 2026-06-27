@@ -11,5 +11,8 @@
   {"code":"supervision_committee","name_fa":"کمیته نظارت","name_en":"Supervision Committee","permissions":["review_disciplinary_cases","submit_supervision_recommendation","set_meeting_date"]},
   {"code":"education_committee","name_fa":"کمیته آموزش","name_en":"Education Committee","permissions":["review_final_verdict","issue_continuation_or_termination_verdict"]},
   {"code":"therapy_committee_chair","name_fa":"مسئول پروژه کمیته درمان آموزشی و سوپرویژن","name_en":"Therapy Committee Chair","permissions":["delegate_followup","view_no_show_cases"]},
-  {"code":"therapy_committee_executor","name_fa":"مجری کمیته درمان آموزشی و سوپرویژن","name_en":"Therapy Committee Executor","permissions":["follow_up_students","record_executor_report","select_definitive_stop_or_return"]}
+  {"code":"therapy_committee_executor","name_fa":"مجری کمیته درمان آموزشی و سوپرویژن","name_en":"Therapy Committee Executor","permissions":["follow_up_students","record_executor_report","select_definitive_stop_or_return"]},
+  {"code":"instructor","name_fa":"مدرس","name_en":"Instructor","permissions":["record_attendance","review_ta_work"]},
+  {"code":"teaching_assistant","name_fa":"کمک‌مدرس","name_en":"Teaching Assistant","permissions":["submit_ta_assignments","coordinate_with_instructor"]},
+  {"code":"course_committee","name_fa":"کمیته دروس","name_en":"Course Committee","permissions":["view_process_instances","view_students","manage_attendance"]}
 ]

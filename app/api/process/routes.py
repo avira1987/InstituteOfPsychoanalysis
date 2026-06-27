@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import Response
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -496,7 +497,9 @@ async def get_process_forms_for_state(
     current_user: User = Depends(get_current_user),
 ):
     """Get form metadata for a process (for rendering in UI). Optional state filter for current state forms (BUILD_TODO § ز)."""
-    forms = get_process_forms(process_code, state_code=state)
+    actor_role = _normalize_actor_role(current_user.role)
+    raw_forms = get_process_forms(process_code, state_code=state)
+    forms = visible_forms_for_role(raw_forms, actor_role) if actor_role != "student" else raw_forms
     suggested_context: dict = {}
     if instance_id and state:
         try:
@@ -1034,6 +1037,47 @@ async def operator_update_selected_courses(
     }
 
 
+@router.get("/{instance_id}/marketing-campaign-pack.pdf")
+async def download_marketing_campaign_pack_pdf(
+    instance_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """خروجی PDF فعالیت‌های مرتبط با کمپین بازاریابی برای انتقال به مدیر مارکتینگ."""
+    actor_role = _normalize_actor_role(current_user.role)
+    if actor_role == "student":
+        raise HTTPException(status_code=403, detail="Only operators can download marketing pack")
+
+    instance = await _get_instance_or_404(db, instance_id)
+    from app.services.semester_prep_service import PREP_PROCESS_CODES
+
+    if instance.process_code not in PREP_PROCESS_CODES:
+        raise HTTPException(status_code=400, detail="این خروجی فقط برای فرایند آماده‌سازی ترم است")
+    if (instance.current_state_code or "") != "marketing_campaign":
+        raise HTTPException(status_code=400, detail="خروجی PDF فقط در مرحلهٔ کمپین بازاریابی در دسترس است")
+
+    from app.services.semester_prep_marketing_pdf import build_marketing_campaign_pdf_bytes
+
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    name = (current_user.full_name_fa or current_user.username or "").strip()
+    try:
+        pdf_bytes = build_marketing_campaign_pdf_bytes(
+            instance.process_code,
+            ctx,
+            recipient_display_name=name,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+
+    safe_slug = "winter" if instance.process_code == "winter_semester_preparation" else "fall"
+    filename = f"marketing_campaign_{safe_slug}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/{instance_id}/operator-step-forms/register")
 async def register_operator_step_forms(
     instance_id: str,
@@ -1060,9 +1104,20 @@ async def register_operator_step_forms(
     if state != (instance.current_state_code or ""):
         raise HTTPException(status_code=400, detail="فقط فرم مرحلهٔ فعلی قابل ثبت است.")
 
-    forms = get_process_forms(instance.process_code, state_code=state)
+    raw_forms = get_process_forms(instance.process_code, state_code=state)
+    forms = visible_forms_for_role(raw_forms, actor_role)
     if not forms:
-        raise HTTPException(status_code=400, detail="برای این مرحله فرمی تعریف نشده است.")
+        raise HTTPException(
+            status_code=403,
+            detail="شما اجازهٔ ثبت فرم این مرحله را ندارید.",
+        )
+
+    edit_names = editable_field_names(forms, actor_role)
+    if not edit_names:
+        raise HTTPException(
+            status_code=403,
+            detail="شما اجازهٔ ویرایش فرم این مرحله را ندارید.",
+        )
 
     from app.services.process_form_prefill import apply_pre_filled_fields
 
@@ -1078,11 +1133,36 @@ async def register_operator_step_forms(
         if form_values.get(k) in (None, "", []) and v not in (None, "", []):
             form_values[k] = v
 
+    form_values = sanitize_editable_payload(forms, actor_role, form_values)
+    if not form_values:
+        raise HTTPException(
+            status_code=403,
+            detail="شما اجازهٔ ثبت فرم این مرحله را ندارید.",
+        )
+
     ok, missing = validate_operator_step_forms(forms, form_values, instance.context_data or {})
     if not ok:
         raise HTTPException(status_code=400, detail={"error": "validation_failed", "missing": missing})
 
     sanitized = sanitize_operator_form_values(forms, form_values)
+    from app.services.course_committee_roster_service import enrich_course_table_rows
+
+    sanitized = await enrich_course_table_rows(db, forms, sanitized)
+    from app.services.course_committee_roster_service import sync_semester_course_assignments
+
+    for form in forms:
+        if not isinstance(form, dict):
+            continue
+        for field in form.get("fields") or []:
+            if not isinstance(field, dict) or (field.get("type") or "") != "table":
+                continue
+            fname = field.get("name")
+            if fname and isinstance(sanitized.get(fname), list):
+                await sync_semester_course_assignments(
+                    db,
+                    courses_rows=sanitized[fname],
+                    process_code=instance.process_code,
+                )
     ctx = apply_register_to_context(instance.context_data or {}, state, sanitized)
     instance.context_data = ctx
     flag_modified(instance, "context_data")

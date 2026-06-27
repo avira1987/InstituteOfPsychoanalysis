@@ -55,6 +55,11 @@ def pytest_sessionstart(session):
             )
             conn.execute(
                 text(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_meta JSONB"
+                )
+            )
+            conn.execute(
+                text(
                     """
                     CREATE TABLE IF NOT EXISTS sms_simulation_outbox (
                         id VARCHAR(36) NOT NULL PRIMARY KEY,

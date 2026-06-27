@@ -97,7 +97,9 @@ def prep_courses_rows_to_codes(rows: Any) -> list[str]:
 
 async def load_intro_term1_offered_course_codes(db: AsyncSession) -> list[str]:
     """Published fall prep course list mapped to intro term1 codes."""
-    raw = await load_fall_prep_context_field(db, "courses")
+    raw = await load_fall_prep_context_field(db, "courses_fall")
+    if raw in (None, "", []):
+        raw = await load_fall_prep_context_field(db, "courses")
     mapped = prep_courses_rows_to_codes(raw)
     if mapped:
         return mapped

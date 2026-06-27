@@ -18,6 +18,15 @@ from app.models.operational_models import User
 settings = get_settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
+# ارقام فارسی/عربی → لاتین (ورود با کیبورد فارسی)
+_LOGIN_DIGIT_MAP = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+
+
+def normalize_login_field(value: str | None) -> str:
+    if value is None:
+        return ""
+    return str(value).strip().translate(_LOGIN_DIGIT_MAP)
+
 
 # ─── Schemas ────────────────────────────────────────────────────
 
@@ -180,7 +189,11 @@ async def authenticate_user(
     db: AsyncSession, username: str, password: str
 ) -> Optional[User]:
     """Authenticate a user by username and password."""
-    stmt = select(User).where(User.username == username)
+    from app.demo_role_users import resolve_portal_login_username
+
+    resolved = resolve_portal_login_username(normalize_login_field(username))
+    password = normalize_login_field(password)
+    stmt = select(User).where(User.username == resolved)
     result = await db.execute(stmt)
     user = result.scalars().first()
     if not user or not verify_password(password, user.hashed_password):

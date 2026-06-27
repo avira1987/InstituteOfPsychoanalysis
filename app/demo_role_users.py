@@ -36,6 +36,7 @@ SUPPORTED_ROLES: list[str] = [
     "therapy_committee_executor",
     "deputy_education",
     "monitoring_committee_officer",
+    "course_committee",
 ]
 
 # کاربران اضافه فقط برای actor_id در ترنزیشن‌های مصاحبه/پذیرش (نقش User = staff)
@@ -50,6 +51,18 @@ def _username_for_role(role: str) -> str:
     return "admin" if role == "admin" else f"{role}1"
 
 
+def resolve_portal_login_username(username: str) -> str:
+    """حساب‌های دمو با پسوند ۱ ساخته می‌شوند؛ نام نقش بدون ۱ هم پذیرفته می‌شود."""
+    u = (username or "").strip()
+    if not u or u == "admin":
+        return u
+    if u.endswith("1"):
+        return u
+    if u in SUPPORTED_ROLES:
+        return f"{u}1"
+    return u
+
+
 def _email_for_username(username: str) -> str:
     return f"{username}@demo.anistito.local"
 
@@ -61,12 +74,17 @@ class DemoActors(NamedTuple):
     admissions_id: uuid.UUID
 
 
+DEMO_ROLE_NAMES_FA: dict[str, str] = {
+    "deputy_education": "معاون آموزش (دمو)",
+}
+
+
 async def ensure_demo_role_users(db: AsyncSession) -> None:
     """ایجاد/به‌روزرسانی کاربران دمو برای همهٔ نقش‌ها + سه کاربر سناریو."""
     for role in SUPPORTED_ROLES:
         username = _username_for_role(role)
         email = _email_for_username(username)
-        full_name_fa = f"کاربر دمو ({role})"
+        full_name_fa = DEMO_ROLE_NAMES_FA.get(role, f"کاربر دمو ({role})")
         password = ADMIN_PASSWORD if role == "admin" else DEFAULT_PASSWORD
 
         result = await db.execute(select(User).where(User.username == username))
@@ -74,7 +92,7 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
 
         if user:
             user.email = email
-            user.full_name_fa = user.full_name_fa or full_name_fa
+            user.full_name_fa = full_name_fa
             user.role = role
             user.hashed_password = get_password_hash(password)
             user.portal_password_plain = password

@@ -13,15 +13,45 @@ const DEPUTY_PREP_ROLES = new Set([
   'deputy_education',
   'deputy_education_director',
   'course_committee_executive',
+  'course_committee',
 ])
 
 const SCIENTIFIC_PREP_ROLES = new Set([
   'scientific_officer_course_committee',
   'course_committee_scientific',
+  'course_committee',
 ])
 
 function workbenchHref(processCode) {
   return `/panel/semester-prep/workbench?process_code=${encodeURIComponent(processCode)}`
+}
+
+/** شناسهٔ نمونه — در برخی لیست‌ها `id` و در برخی `instance_id` است. */
+export function resolvePendingInstanceId(item) {
+  if (!item || typeof item !== 'object') return null
+  return item.instance_id || item.id || null
+}
+
+/**
+ * مقصد کلیک از «وظایف منتظر» یا کارتابل — با پشتیبانی از آماده‌سازی ترم.
+ * @param {FollowupItem & { current_state?: string }} item
+ */
+export function getPendingTaskDestination(item) {
+  const instanceId = resolvePendingInstanceId(item)
+  const stateCode = (item.state_code || item.current_state || '').toLowerCase()
+  return getOperatorFollowupDestination({
+    kind: item.kind || 'process',
+    instance_id: instanceId,
+    student_id: item.student_id,
+    responsible_role_code: item.responsible_role_code,
+    process_code: (item.process_code || '').toLowerCase(),
+    state_code: stateCode,
+    assignment_id: item.assignment_id,
+  })
+}
+
+export function isSemesterPrepWorkbenchDestination(href) {
+  return typeof href === 'string' && href.includes('/panel/semester-prep/workbench')
 }
 
 function qs(params) {

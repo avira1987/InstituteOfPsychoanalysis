@@ -40,6 +40,7 @@ const SemesterPrepPage = lazy(() => import('./pages/SemesterPrepPage'))
 const SemesterPrepCalendarPage = lazy(() => import('./pages/SemesterPrepCalendarPage'))
 const SemesterPrepWorkbenchPage = lazy(() => import('./pages/SemesterPrepWorkbenchPage'))
 const SemesterPrepCourseListReviewPage = lazy(() => import('./pages/SemesterPrepCourseListReviewPage'))
+const SemesterPrepSlaWarningsPage = lazy(() => import('./pages/SemesterPrepSlaWarningsPage'))
 const HomePage = lazy(() => import('./pages/public/HomePage'))
 const BlogList = lazy(() => import('./pages/public/BlogList'))
 const BlogPost = lazy(() => import('./pages/public/BlogPost'))
@@ -169,7 +170,7 @@ function RequireSemesterPrepRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  const ok = ['admin', 'staff', 'deputy_education', 'site_manager'].includes(user.role)
+  const ok = ['admin', 'staff', 'deputy_education', 'site_manager', 'course_committee'].includes(user.role)
   if (!ok) return <Navigate to="/panel" replace />
   return children
 }
@@ -304,6 +305,14 @@ export default function App() {
             element={
               <RequireSemesterPrepRole>
                 <SemesterPrepWorkbenchPage />
+              </RequireSemesterPrepRole>
+            }
+          />
+          <Route
+            path="semester-prep/sla-warnings"
+            element={
+              <RequireSemesterPrepRole>
+                <SemesterPrepSlaWarningsPage />
               </RequireSemesterPrepRole>
             }
           />

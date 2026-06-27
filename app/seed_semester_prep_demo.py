@@ -112,16 +112,41 @@ def _demo_license_context() -> dict[str, Any]:
 
 def _demo_courses() -> list[dict[str, Any]]:
     return [
-        {"code": "PSY201", "title_fa": "روانشناسی بالینی ۱", "units": 3, "instructor": "دکتر نمونه"},
-        {"code": "SUP301", "title_fa": "سوپرویژن گروهی", "units": 2, "instructor": "استاد نمونه"},
-        {"code": "FIL102", "title_fa": "فیلم‌درمانی", "units": 2, "instructor": "مدرس نمونه"},
+        {
+            "course_name": "تئوری روانکاوی ۱",
+            "track": "analytic_psychotherapy",
+            "proposed_day": "شنبه",
+            "proposed_time": "18:00",
+            "instructor": "ادريس صالحي",
+            "teaching_assistant": "سارا طراوتي",
+        },
+        {
+            "course_name": "سوپرویژن گروهی",
+            "track": "analytic_psychotherapy",
+            "proposed_day": "دوشنبه",
+            "proposed_time": "17:00",
+            "instructor": "اسرا شريفي",
+            "teaching_assistant": "زهرا غروي",
+        },
+    ]
+
+
+def _demo_courses_winter() -> list[dict[str, Any]]:
+    return [
+        {
+            "course_name": "تئوری روانکاوی ۳",
+            "track": "analytic_psychotherapy",
+            "proposed_day": "چهارشنبه",
+            "proposed_time": "17:30",
+            "instructor": "علي علوي",
+            "teaching_assistant": "هانيه پور جبار",
+        },
     ]
 
 
 def _demo_marketing_context() -> dict[str, Any]:
     return {
-        "marketing_confirmed": True,
-        "marketing_channels": ["website", "sms", "social"],
+        "marketing_info_sent_to_manager": True,
         "marketing_notes": "کمپین دمو — آماده‌سازی ترم",
     }
 
@@ -241,6 +266,7 @@ async def seed_semester_prep_demo(
 
     cal = _demo_calendar_context()
     courses = _demo_courses()
+    courses_winter = _demo_courses_winter()
     interviewer_ctx = _demo_interviewer_context()
 
     fall_inst, fall_created = await get_or_start_prep_instance(
@@ -259,7 +285,8 @@ async def seed_semester_prep_demo(
             **cal,
             **_demo_tuition_context(),
             **_demo_license_context(),
-            "courses": courses,
+            "courses_fall": courses,
+            "courses_winter": courses_winter,
             **_demo_marketing_context(),
             **interviewer_ctx,
             "interview_scheduling_notes": "دمو — منتظر ثبت اسلات توسط مسئول سایت",
@@ -298,7 +325,7 @@ async def seed_semester_prep_demo(
         winter_inst.id,
         {
             **_demo_winter_license_context(),
-            "courses": courses,
+            "courses": courses_winter,
             **_demo_marketing_context(),
             **interviewer_ctx,
             "interview_scheduling_notes": "دمو زمستان — زمان‌بندی اسلات",

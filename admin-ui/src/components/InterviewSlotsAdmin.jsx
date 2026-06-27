@@ -168,7 +168,7 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged }) {
         </p>
       </div>
       <div style={{ padding: '0 1.25rem 1rem' }}>
-        <form onSubmit={createSlot} style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', maxWidth: '56rem' }}>
+        <form onSubmit={createSlot} className="interview-slots-admin__form">
           {editingId && (
             <p className="muted" style={{ margin: 0, fontSize: '0.86rem', padding: '0.35rem 0.5rem', background: 'var(--bg-muted)', borderRadius: '8px' }}>
               در حال ویرایش وقت انتخاب‌شده —{' '}
@@ -177,14 +177,7 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged }) {
               </button>
             </p>
           )}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: '0.65rem',
-              alignItems: 'start',
-            }}
-          >
+          <div className="interview-slots-admin__datetime-row">
             <ShamsiDateTimePicker
               compact
               label="شروع"

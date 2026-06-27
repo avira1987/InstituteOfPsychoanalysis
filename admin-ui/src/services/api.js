@@ -205,6 +205,7 @@ export const schedulerApi = {
 export const semesterPrepApi = {
   getStatus: () => api.get('admin/semester-prep/status'),
   start: (processCode) => api.post('admin/semester-prep/start', { process_code: processCode }),
+  getSlaWarnings: () => api.get('admin/semester-prep/sla-warnings'),
 }
 
 // ─── Dashboard ─────────────────────────────────────────────────
@@ -289,6 +290,25 @@ export const processExecApi = {
   /** اپراتور: ثبت فرم مرحلهٔ فعلی فرایند (مثل آماده‌سازی ترم پاییز/زمستان) */
   registerOperatorStepForms: (instanceId, body) =>
     api.post(`process/${instanceId}/operator-step-forms/register`, body),
+  /** خروجی PDF بستهٔ کمپین بازاریابی (فعالیت‌های ۱، ۲، ۵) برای انتقال به مدیر مارکتینگ */
+  async downloadMarketingCampaignPack(instanceId) {
+    const res = await api.get(`process/${instanceId}/marketing-campaign-pack.pdf`, {
+      responseType: 'blob',
+    })
+    const blob = res.data
+    const cd = res.headers['content-disposition'] || res.headers['Content-Disposition']
+    let filename = 'marketing_campaign.pdf'
+    if (cd && /filename=/i.test(cd)) {
+      const m = cd.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)["']?/i)
+      if (m) filename = decodeURIComponent(m[1].trim())
+    }
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  },
   /** دانشجو: درخواست ویرایش مرحلهٔ ثبت‌شده (ایجاد تیکت) */
   createEditRequest: (instanceId, body) =>
     api.post(`process/${instanceId}/edit-requests`, body),
@@ -436,6 +456,7 @@ export const panelApi = {
   /** لیست یکپارچهٔ جلسات و لینک‌های آنلاین دانشجو */
   myOnlineSessions: (includePast = false) =>
     api.get('panel/my-online-sessions', { params: { include_past: !!includePast } }),
+  mySemesterCourses: () => api.get('panel/my-semester-courses'),
   navPendingCounts: () => api.get('panel/nav-pending-counts'),
   /** فید اعلان‌های اقدام (زنگوله + صفحهٔ همه اعلان‌ها) */
   actionNotifications: (params) => api.get('panel/action-notifications', { params }),

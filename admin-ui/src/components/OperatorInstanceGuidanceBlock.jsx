@@ -30,7 +30,7 @@ export default function OperatorInstanceGuidanceBlock({
   if (!guidance) return null
 
   return (
-    <div data-testid="operator-guidance-block" style={{ marginBottom: '1.25rem' }}>
+    <div data-testid="operator-guidance-block" style={{ marginBottom: '1.25rem', minWidth: 0, maxWidth: '100%' }}>
       <StudentProcessGuidancePanel guidance={guidance} variant="light" />
     </div>
   )

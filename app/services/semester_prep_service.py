@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy import desc, select
@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.engine import StateMachineEngine
+from app.meta.process_forms import get_process_state_metadata
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance
 from app.services.institute_operational_anchor import ensure_institute_operational_student
@@ -30,6 +31,68 @@ PREP_PROCESS_CODES = frozenset(
 
 FALL_PREP = "fall_semester_preparation"
 WINTER_PREP = "winter_semester_preparation"
+
+# گروه‌های گیرندهٔ هشدار SLA در متادیتا (نه لزوماً نقش پورتال)
+_SLA_WARNING_RECIPIENT_LABELS_FA: dict[str, str] = {
+    "education_director": "مدیر آموزش",
+    "deputy_education_director": "معاون مدیر آموزش",
+    "deputy_education": "معاون مدیر آموزش",
+    "course_committee_members": "اعضای کمیته دروس",
+    "course_committee": "کمیته دروس",
+    "course_committee_executive": "مسئول اجرایی کمیته دروس",
+    "scientific_officer_course_committee": "مسئول علمی کمیته دروس",
+    "admissions_officer": "مسئول پذیرش",
+    "site_manager": "مسئول سایت",
+}
+
+
+def _warning_recipients_fa(codes: Any) -> list[str]:
+    if not isinstance(codes, (list, tuple)):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in codes:
+        code = str(raw or "").strip()
+        if not code:
+            continue
+        label = _SLA_WARNING_RECIPIENT_LABELS_FA.get(code, code.replace("_", " "))
+        if label not in seen:
+            seen.add(label)
+            out.append(label)
+    return out
+
+
+def _parse_iso_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _compute_step_sla_deadline(
+    *,
+    state_code: str,
+    ctx: dict[str, Any],
+    sla_hours: int | None,
+    last_transition_at: datetime | None,
+    now: datetime,
+) -> tuple[str | None, bool]:
+    """(deadline_iso, is_overdue) for current prep step."""
+    if state_code == "calendar_entry":
+        dl = _parse_iso_datetime(ctx.get("calendar_sla_deadline_at"))
+        if dl is not None:
+            return dl.isoformat(), now > dl
+    if sla_hours and last_transition_at is not None:
+        try:
+            hours = float(sla_hours)
+        except (TypeError, ValueError):
+            hours = None
+        if hours and hours > 0:
+            dl = last_transition_at + timedelta(hours=hours)
+            return dl.isoformat(), now > dl
+    return None, False
 
 
 def _ctx(instance: ProcessInstance) -> dict[str, Any]:
@@ -197,13 +260,27 @@ async def load_fall_prep_context_field(
     """Read a field from fall prep instance context (active first, then latest completed)."""
     anchor = await ensure_institute_operational_student(db)
     active = await get_active_prep_instance(db, FALL_PREP, student_id=anchor.id)
-    if active is not None:
-        val = _ctx(active).get(field_name)
+    for inst in (active, await get_completed_fall_prep_instance(db, student_id=anchor.id)):
+        if inst is None:
+            continue
+        ctx = _ctx(inst)
+        val = ctx.get(field_name)
         if val is not None:
             return val
-    fall = await get_completed_fall_prep_instance(db, student_id=anchor.id)
-    if fall is not None:
-        return _ctx(fall).get(field_name)
+        # سازگاری با دادهٔ قدیمی تک‌جدولی
+        legacy = ctx.get("courses")
+        if field_name == "courses_fall" and isinstance(legacy, list):
+            return legacy
+        if field_name == "courses_winter" and isinstance(legacy, list):
+            return legacy
+        if field_name == "courses_finalized_fall":
+            legacy_fin = ctx.get("courses_finalized")
+            if isinstance(legacy_fin, list):
+                return legacy_fin
+        if field_name == "courses_finalized_winter":
+            legacy_fin = ctx.get("courses_finalized")
+            if isinstance(legacy_fin, list):
+                return legacy_fin
     return None
 
 
@@ -233,17 +310,86 @@ async def apply_pre_filled_fields(
 
 
 async def _resolve_pre_filled(db: AsyncSession, spec: str) -> Any:
-    """spec: 'fall_semester_preparation.courses' or 'fall_semester_preparation.course_list_form'."""
+    """spec: 'fall_semester_preparation.courses_winter' یا 'fall_semester_preparation.course_list_form'."""
     parts = spec.split(".", 1)
     if len(parts) != 2:
         return None
     proc, tail = parts[0].strip(), parts[1].strip()
     field = tail
-    if tail.endswith("_form"):
+    if tail == "course_list_form":
+        field = "courses_winter"
+    elif tail.endswith("_form"):
         field = "courses"
     if proc == FALL_PREP:
         return await load_fall_prep_context_field(db, field)
     return None
+
+
+def _recipient_label_fa(code: Any) -> str:
+    c = str(code or "").strip()
+    if not c:
+        return ""
+    return _SLA_WARNING_RECIPIENT_LABELS_FA.get(c, c.replace("_", " "))
+
+
+def _extract_sla_warning_rows(inst: ProcessInstance, process_code: str) -> list[dict[str, Any]]:
+    ctx = _ctx(inst)
+    raw_log = ctx.get("__sla_warning_log")
+    if not isinstance(raw_log, list):
+        return []
+    rows: list[dict[str, Any]] = []
+    for entry in raw_log:
+        if not isinstance(entry, dict):
+            continue
+        recipients = entry.get("recipients") or []
+        recipients_view: list[dict[str, Any]] = []
+        any_delivered = False
+        for r in recipients:
+            if not isinstance(r, dict):
+                continue
+            delivered = bool(r.get("delivered"))
+            any_delivered = any_delivered or delivered
+            recipients_view.append(
+                {
+                    "role": r.get("recipient_role"),
+                    "role_fa": _recipient_label_fa(r.get("recipient_role")),
+                    "contact": r.get("contact"),
+                    "delivered": delivered,
+                }
+            )
+        rows.append(
+            {
+                "process_code": process_code,
+                "instance_id": str(inst.id),
+                "state_code": entry.get("state_code"),
+                "fired_at": entry.get("fired_at"),
+                "notification_type": entry.get("notification_type"),
+                "template": entry.get("template"),
+                "message": entry.get("message"),
+                "recipients": recipients_view,
+                "delivered": any_delivered,
+            }
+        )
+    return rows
+
+
+async def build_prep_sla_warning_log(db: AsyncSession) -> dict[str, Any]:
+    """فهرست هشدارهای مهلت ثبت‌شده برای فرایندهای آماده‌سازی ترم (برای UI بررسی)."""
+    anchor = await ensure_institute_operational_student(db)
+    rows: list[dict[str, Any]] = []
+    for code in (FALL_PREP, WINTER_PREP):
+        inst = await get_active_prep_instance(db, code, student_id=anchor.id)
+        if inst is not None:
+            rows.extend(_extract_sla_warning_rows(inst, code))
+    fall_done = await get_completed_fall_prep_instance(db, student_id=anchor.id)
+    if fall_done is not None:
+        rows.extend(_extract_sla_warning_rows(fall_done, FALL_PREP))
+    rows.sort(key=lambda r: str(r.get("fired_at") or ""), reverse=True)
+    return {
+        "anchor_student_code": anchor.student_code,
+        "count": len(rows),
+        "warnings": rows,
+    }
 
 
 async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
@@ -274,16 +420,35 @@ async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
             entry["state_name_fa"] = sd.name_fa if sd else inst.current_state_code
             entry["assigned_role"] = sd.assigned_role if sd else None
             if sd and sd.sla_hours:
-                elapsed = (datetime.now(timezone.utc) - inst.last_transition_at).total_seconds() / 3600
+                entry["sla_hours"] = sd.sla_hours
+            ctx = _ctx(inst)
+            now = datetime.now(timezone.utc)
+            state_meta = get_process_state_metadata(code, inst.current_state_code or "")
+            warning_codes = state_meta.get("sla_warning_recipients") or []
+            entry["sla_warning_recipients_fa"] = _warning_recipients_fa(warning_codes)
+            deadline_at, overdue = _compute_step_sla_deadline(
+                state_code=inst.current_state_code or "",
+                ctx=ctx,
+                sla_hours=sd.sla_hours if sd else None,
+                last_transition_at=inst.last_transition_at,
+                now=now,
+            )
+            if deadline_at:
+                entry["sla_deadline_at"] = deadline_at
+                entry["sla_overdue"] = overdue
+            elif sd and sd.sla_hours:
+                elapsed = (now - inst.last_transition_at).total_seconds() / 3600
                 entry["sla_hours"] = sd.sla_hours
                 entry["sla_overdue"] = elapsed > sd.sla_hours
-            ctx = _ctx(inst)
             cal_deadline = ctx.get("calendar_sla_deadline_at")
             if inst.current_state_code == "calendar_entry" and cal_deadline:
                 try:
-                    dl = datetime.fromisoformat(str(cal_deadline).replace("Z", "+00:00"))
-                    entry["calendar_sla_deadline_at"] = dl.isoformat()
-                    entry["sla_overdue"] = datetime.now(timezone.utc) > dl
+                    dl = _parse_iso_datetime(cal_deadline)
+                    if dl is not None:
+                        entry["calendar_sla_deadline_at"] = dl.isoformat()
+                        if "sla_deadline_at" not in entry:
+                            entry["sla_deadline_at"] = dl.isoformat()
+                            entry["sla_overdue"] = now > dl
                 except (TypeError, ValueError):
                     pass
         else:

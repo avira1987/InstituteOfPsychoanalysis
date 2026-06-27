@@ -328,6 +328,8 @@ class ActionHandler:
                     or action.get("warning_message_fa")
                     or f"هشدار مهلت: {template}",
                 }
+        warning_records: list[dict] = []
+        last_message: str = ""
         for role in recipients:
             contact = await self._resolve_contact(role, instance, ntype)
             if contact:
@@ -338,12 +340,69 @@ class ActionHandler:
                     notif_context,
                     message_override=msg_override,
                 )
+                last_message = result.message or last_message
                 sent.append(f"{role}:{contact}:{result.success}")
+                warning_records.append(
+                    {
+                        "recipient_role": role,
+                        "contact": contact,
+                        "delivered": bool(result.success),
+                    }
+                )
             else:
                 sent.append(f"{role}:no_contact")
                 logger.warning(f"No contact for role '{role}' in instance {instance.id}")
+                warning_records.append(
+                    {
+                        "recipient_role": role,
+                        "contact": None,
+                        "delivered": False,
+                    }
+                )
+
+        if template.startswith("sla_warning_"):
+            self._record_sla_warning_dispatch(
+                instance,
+                notification_type=ntype,
+                template=template,
+                message=(
+                    last_message
+                    or msg_override
+                    or notif_context.get("warning_message")
+                    or f"هشدار مهلت: {template}"
+                ),
+                recipients=warning_records,
+            )
 
         return f"sent={','.join(sent)}"
+
+    @staticmethod
+    def _record_sla_warning_dispatch(
+        instance: ProcessInstance,
+        *,
+        notification_type: str,
+        template: str,
+        message: str,
+        recipients: list[dict],
+    ) -> None:
+        """ثبت رخداد ارسال هشدار مهلت در context نمونه تا در UI قابل بررسی باشد."""
+        ctx = _as_mapping(instance.context_data)
+        log = ctx.get("__sla_warning_log")
+        if not isinstance(log, list):
+            log = []
+        log.append(
+            {
+                "fired_at": datetime.now(timezone.utc).isoformat(),
+                "state_code": instance.current_state_code,
+                "notification_type": notification_type,
+                "template": template,
+                "message": message,
+                "recipients": recipients,
+            }
+        )
+        ctx["__sla_warning_log"] = log[-100:]
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
 
     # ─── Sub-process Start ───────────────────────────────────────
 
@@ -2377,6 +2436,7 @@ class ActionHandler:
 
         if role in (
             "deputy_education_director",
+            "education_director",
             "course_committee_executive",
             "scientific_officer_course_committee",
             "admissions_officer",

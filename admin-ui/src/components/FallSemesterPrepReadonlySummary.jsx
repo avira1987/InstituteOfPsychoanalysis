@@ -9,9 +9,9 @@ function formatDateDisplay(value) {
 function Row({ label, value }) {
   if (value == null || value === '') return null
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.82rem', marginBottom: '0.25rem' }}>
-      <span style={{ color: '#64748b', minWidth: '8rem' }}>{label}</span>
-      <span>{value}</span>
+    <div className="fall-semester-readonly-summary__row">
+      <span className="fall-semester-readonly-summary__label">{label}</span>
+      <span className="fall-semester-readonly-summary__value">{value}</span>
     </div>
   )
 }
@@ -37,8 +37,10 @@ function formatCoursesTable(courses) {
 /**
  * خلاصهٔ فقط‌خواندنی مراحل قبلی فرایند ۲۹ (طبق SOP: فرم‌های بعدی خروجی مراحل قبل را نشان می‌دهند).
  */
-export default function FallSemesterPrepReadonlySummary({ currentState, contextData }) {
+export default function FallSemesterPrepReadonlySummary({ currentState, contextData, processCode }) {
   const ctx = contextData || {}
+  const isWinter = processCode === 'winter_semester_preparation'
+  const isMarketing = currentState === 'marketing_campaign'
   const showCalendar = [
     'tuition_entry',
     'license_check',
@@ -63,37 +65,32 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
   const showCourses = [
     'course_finalization',
     'course_list_review',
-    'marketing_campaign',
     'interviewer_assignment',
     'interview_scheduling',
-  ].includes(currentState)
+  ].includes(currentState) || (isWinter && currentState === 'marketing_campaign')
 
   const showFinalized = ['marketing_campaign', 'interviewer_assignment', 'interview_scheduling'].includes(
     currentState,
   )
 
-  const showInterviewers = currentState === 'interview_scheduling'
-
-  if (!showCalendar && !showTuition && !showCourses && !showFinalized && !showInterviewers) return null
+  if (!showCalendar && !showTuition && !showCourses && !showFinalized) return null
 
   return (
     <div
-      style={{
-        marginBottom: '1rem',
-        padding: '0.85rem 1rem',
-        background: '#f8fafc',
-        borderRadius: '8px',
-        border: '1px solid #e2e8f0',
-      }}
+      className="fall-semester-readonly-summary"
       data-testid="fall-semester-readonly-summary"
     >
       <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: '#475569' }}>
-        خلاصهٔ مراحل قبلی (فقط مشاهده)
+        {isMarketing
+          ? 'خروجی فعالیت‌های قبلی (فقط مشاهده — برای ارسال به مدیر مارکتینگ)'
+          : 'خلاصهٔ مراحل قبلی (فقط مشاهده)'}
       </div>
 
       {showCalendar && ctx.fall_start_date && (
         <div style={{ marginBottom: '0.65rem' }}>
-          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>تقویم آموزشی</div>
+          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>
+            {isMarketing && !isWinter ? 'فعالیت ۱ — تقویم آموزشی' : 'تقویم آموزشی'}
+          </div>
           <Row label="پاییز" value={ctx.fall_start_date && ctx.fall_end_date ? `${formatDateDisplay(ctx.fall_start_date)} تا ${formatDateDisplay(ctx.fall_end_date)}` : null} />
           <Row label="زمستان" value={ctx.winter_start_date && ctx.winter_end_date ? `${formatDateDisplay(ctx.winter_start_date)} تا ${formatDateDisplay(ctx.winter_end_date)}` : null} />
           <Row
@@ -109,7 +106,9 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
 
       {showTuition && ctx.per_unit_cost_introductory != null && (
         <div style={{ marginBottom: '0.65rem' }}>
-          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>شهریه و مصاحبه</div>
+          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>
+            {isMarketing && !isWinter ? 'فعالیت ۲ — شهریه و مصاحبه' : 'شهریه و مصاحبه'}
+          </div>
           <Row label="واحد آشنایی" value={ctx.per_unit_cost_introductory != null ? `${ctx.per_unit_cost_introductory} ریال` : null} />
           <Row label="واحد جامع" value={ctx.per_unit_cost_comprehensive != null ? `${ctx.per_unit_cost_comprehensive} ریال` : null} />
           <Row label="مصاحبه آشنایی" value={ctx.interview_fee_introductory != null ? `${ctx.interview_fee_introductory} ریال` : ctx.interview_fee} />
@@ -117,39 +116,53 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
         </div>
       )}
 
-      {showCourses && ctx.courses?.length > 0 && (
+      {showCourses && (ctx.courses_fall?.length > 0 || ctx.courses_winter?.length > 0 || ctx.courses?.length > 0) && (
         <div style={{ marginBottom: '0.65rem' }}>
-          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>لیست دروس (پیش‌نویس)</div>
-          <p style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.6, color: '#334155' }}>{formatCoursesTable(ctx.courses)}</p>
+          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>
+            {isMarketing && isWinter ? 'فعالیت ۲ — لیست دروس زمستان' : 'لیست دروس (پیش‌نویس)'}
+          </div>
+          {ctx.courses_fall?.length > 0 && (
+            <div style={{ marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.15rem' }}>ترم پاییز</div>
+              <p className="fall-semester-readonly-summary__text">{formatCoursesTable(ctx.courses_fall)}</p>
+            </div>
+          )}
+          {ctx.courses_winter?.length > 0 && (
+            <div style={{ marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.15rem' }}>ترم زمستان</div>
+              <p className="fall-semester-readonly-summary__text">{formatCoursesTable(ctx.courses_winter)}</p>
+            </div>
+          )}
+          {!ctx.courses_fall?.length && !ctx.courses_winter?.length && ctx.courses?.length > 0 && (
+            <p className="fall-semester-readonly-summary__text">{formatCoursesTable(ctx.courses)}</p>
+          )}
         </div>
       )}
 
-      {showFinalized && ctx.courses_finalized?.length > 0 && (
+      {showFinalized && (ctx.courses_finalized_fall?.length > 0 || ctx.courses_finalized_winter?.length > 0 || ctx.courses_finalized?.length > 0) && (
         <div style={{ marginBottom: '0.65rem' }}>
-          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>برنامه نهایی دروس</div>
-          <p style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.6, color: '#334155' }}>{formatCoursesTable(ctx.courses_finalized)}</p>
-        </div>
-      )}
-
-      {showInterviewers && (
-        <div>
-          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>مصاحبه‌گران و بازه</div>
-          <Row
-            label="جامع"
-            value={
-              Array.isArray(ctx.comprehensive_interviewers)
-                ? `${ctx.comprehensive_interviewers.join('، ')} (${formatDateDisplay(ctx.comprehensive_date_range_start) || '—'} تا ${formatDateDisplay(ctx.comprehensive_date_range_end) || '—'})`
-                : null
-            }
-          />
-          <Row
-            label="آشنایی"
-            value={
-              Array.isArray(ctx.introductory_interviewers)
-                ? `${ctx.introductory_interviewers.join('، ')} (${formatDateDisplay(ctx.introductory_date_range_start) || '—'} تا ${formatDateDisplay(ctx.introductory_date_range_end) || '—'})`
-                : null
-            }
-          />
+          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>
+            {isMarketing
+              ? isWinter
+                ? 'فعالیت ۳ — برنامه نهایی دروس زمستان'
+                : 'فعالیت ۵ — برنامه نهایی دروس'
+              : 'برنامه نهایی دروس'}
+          </div>
+          {ctx.courses_finalized_fall?.length > 0 && (
+            <div style={{ marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.15rem' }}>ترم پاییز</div>
+              <p className="fall-semester-readonly-summary__text">{formatCoursesTable(ctx.courses_finalized_fall)}</p>
+            </div>
+          )}
+          {ctx.courses_finalized_winter?.length > 0 && (
+            <div style={{ marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.15rem' }}>ترم زمستان</div>
+              <p className="fall-semester-readonly-summary__text">{formatCoursesTable(ctx.courses_finalized_winter)}</p>
+            </div>
+          )}
+          {!ctx.courses_finalized_fall?.length && !ctx.courses_finalized_winter?.length && ctx.courses_finalized?.length > 0 && (
+            <p className="fall-semester-readonly-summary__text">{formatCoursesTable(ctx.courses_finalized)}</p>
+          )}
         </div>
       )}
     </div>

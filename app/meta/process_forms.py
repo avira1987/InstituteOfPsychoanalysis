@@ -72,3 +72,13 @@ def get_process_ui_requirements(process_code: str) -> dict:
     data = _load_process_metadata(process_code)
     ui_requirements = data.get("ui_requirements")
     return ui_requirements if isinstance(ui_requirements, dict) else {}
+
+
+def get_process_state_metadata(process_code: str, state_code: str) -> dict:
+    """متادیتای یک state از JSON فرایند (sla_warning_recipients و غیره)."""
+    data = _load_process_metadata(process_code)
+    code = (state_code or "").strip()
+    for state in data.get("states") or []:
+        if isinstance(state, dict) and state.get("code") == code:
+            return dict(state)
+    return {}
