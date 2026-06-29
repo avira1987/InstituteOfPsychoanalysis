@@ -13,12 +13,46 @@
       "consecutive_block_message_fa": "دانشجوی گرامی، شما مجاز به کنسل کردن جلسات سوپرویژن به صورت بیش از ۳ هفته متوالی نیستید و باید برای این کار فرایند وقفه در سوپرویژن فردی توسط دانشجو را اجرا کنید."
     }
   },
+  "forms": [
+    {
+      "code": "student_supervision_cancellation_calendar",
+      "title_fa": "انتخاب جلسات سوپرویژن برای کنسل (۳ هفته آینده)",
+      "used_in_state": "calendar_displayed",
+      "fields": [
+        {
+          "name": "selected_sessions",
+          "label_fa": "جلسات سوپرویژن که می‌خواهید کنسل کنید",
+          "type": "checkbox_list",
+          "required": true,
+          "source": "student_supervision_upcoming_sessions",
+          "note_fa": "جلسات هر سوپروایزر فعال جداگانه نمایش داده می‌شوند. کنسل بیش از ۳ هفته متوالی از این مسیر مجاز نیست."
+        }
+      ]
+    },
+    {
+      "code": "student_supervision_cancellation_confirm",
+      "title_fa": "تأیید نهایی کنسلی سوپرویژن",
+      "used_in_state": "sessions_selected",
+      "fields": [
+        {
+          "name": "violation_ack",
+          "label_fa": "می‌دانم که با ثبت این کنسلی‌ها، تخلف آموزشی گزارش می‌شود و به کمیته نظارت اطلاع داده خواهد شد.",
+          "type": "checkbox",
+          "required": false
+        }
+      ]
+    }
+  ],
   "states": [
     {
       "code": "calendar_displayed",
       "name_fa": "نمایش تقویم ۳ هفته آینده (سوپرویژن)",
       "type": "initial",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب جلسات سوپرویژن ۳ هفته آینده",
+        "student_task_fa": "جلسات مورد نظر را در فرم زیر تیک بزنید، فرم را ثبت کنید، سپس «ادامه و ثبت مرحله» را بزنید."
+      }
     },
     {
       "code": "consecutive_blocked",
@@ -30,7 +64,11 @@
       "code": "sessions_selected",
       "name_fa": "جلسات انتخاب شده",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "تأیید نهایی کنسلی سوپرویژن",
+        "student_task_fa": "خلاصهٔ انتخاب و درصد کنسلی را در باکس بالا ببینید. در صورت هشدار، تأیید را بزنید و «ادامه و ثبت مرحله» را انتخاب کنید."
+      }
     },
     {
       "code": "cancellation_applied",

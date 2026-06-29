@@ -55,6 +55,7 @@ export default function InstructionSemesterCoursesPanel() {
       </h3>
       <p style={{ margin: '0 0 0.75rem', fontSize: '0.82rem', color: '#64748b', lineHeight: 1.6 }}>
         پس از ثبت لیست دروس در کمیته، درس‌های مرتبط با شما اینجا نمایش داده می‌شوند.
+        ثبت حضور و غیاب هر جلسه از تب «منتظر اقدام» و فرایند ۵۴ انجام می‌شود.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {courses.map((c, idx) => (

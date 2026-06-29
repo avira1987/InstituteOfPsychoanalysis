@@ -22,7 +22,7 @@
       "assigned_role": "teaching_assistant",
       "sla_hours": 24,
       "metadata": {
-        "operator_task_fa": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+        "operator_task_fa": "قالب را دانلود کنید؛ سه فایل PDF سوال را آپلود و ارسال کنید (مهلت ۲۴ ساعت).",
         "operator_short_fa": "آپلود ۳ سوال توسط کمک‌مدرس"
       }
     },
@@ -30,7 +30,11 @@
       "code": "upload_late",
       "name_fa": "تاخیر آپلود — تخلف ثبت",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "teaching_assistant",
+      "metadata": {
+        "operator_task_fa": "مهلت ۲۴ ساعت گذشته؛ تخلف ثبت شده. همچنان می‌توانید آپلود کنید.",
+        "operator_short_fa": "تاخیر آپلود — تخلف ثبت"
+      }
     },
     {
       "code": "instructor_review",
@@ -39,7 +43,7 @@
       "assigned_role": "instructor",
       "sla_days": 4,
       "metadata": {
-        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
+        "operator_task_fa": "هر سه سوال را بررسی کنید؛ برای هر سوال «قابل قبول» یا «غیر قابل قبول» ثبت کنید.",
         "operator_short_fa": "بررسی توسط مدرس"
       }
     },
@@ -48,8 +52,9 @@
       "name_fa": "سوال رد شد — اصلاح ۲۴ ساعته",
       "type": "intermediate",
       "assigned_role": "teaching_assistant",
+      "sla_hours": 24,
       "metadata": {
-        "operator_task_fa": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+        "operator_task_fa": "بازخورد مدرس را ببینید؛ سوال(های) ردشده را اصلاح و PDF جدید آپلود کنید.",
         "operator_short_fa": "سوال رد شد — اصلاح ۲۴ ساعته"
       }
     },
@@ -89,21 +94,22 @@
           ]
         }
       ],
-      "required_role": "system"
+      "required_role": "teaching_assistant",
+      "description_fa": "ثبت آپلود به‌موقع و ارسال به مدرس"
     },
     {
       "from": "upload_late",
       "to": "instructor_review",
       "trigger": "uploaded_late",
       "description_fa": "آپلود دیرهنگام — همچنان قابل آپلود",
-      "required_role": "system"
+      "required_role": "teaching_assistant"
     },
     {
       "from": "instructor_review",
       "to": "question_rejected",
       "trigger": "question_rejected",
       "required_role": "instructor",
-      "description_fa": "غیر قابل قبول — توضیحات اجباری"
+      "description_fa": "حداقل یک سوال غیر قابل قبول — توضیحات اجباری"
     },
     {
       "from": "instructor_review",
@@ -126,21 +132,188 @@
       "code": "conceptual_question_template",
       "name_fa": "قالب سوال تستی‌مفهومی",
       "used_in_state": "ta_upload",
+      "description_fa": "هر سوال در یک فایل PDF جداگانه (مجموعاً ۳ فایل).",
       "fields": [
         {
+          "name": "course_name",
+          "label_fa": "نام درس",
+          "type": "readonly"
+        },
+        {
+          "name": "session_number",
+          "label_fa": "شماره جلسه",
+          "type": "readonly"
+        },
+        {
+          "name": "session_date",
+          "label_fa": "تاریخ جلسه",
+          "type": "readonly"
+        },
+        {
           "name": "question_1",
-          "label_fa": "سوال ۱",
-          "type": "file_upload"
+          "label_fa": "سوال ۱ (PDF)",
+          "type": "file_upload",
+          "required": true,
+          "accept": "application/pdf",
+          "validation": {
+            "max_size_mb": 8
+          },
+          "note_fa": "قالب خام را از باکس راهنمای بالا دانلود کنید."
         },
         {
           "name": "question_2",
-          "label_fa": "سوال ۲",
-          "type": "file_upload"
+          "label_fa": "سوال ۲ (PDF)",
+          "type": "file_upload",
+          "required": true,
+          "accept": "application/pdf",
+          "validation": {
+            "max_size_mb": 8
+          }
         },
         {
           "name": "question_3",
-          "label_fa": "سوال ۳",
-          "type": "file_upload"
+          "label_fa": "سوال ۳ (PDF)",
+          "type": "file_upload",
+          "required": true,
+          "accept": "application/pdf",
+          "validation": {
+            "max_size_mb": 8
+          }
+        }
+      ]
+    },
+    {
+      "code": "conceptual_question_revision",
+      "name_fa": "اصلاح سوالات ردشده",
+      "used_in_state": "question_rejected",
+      "description_fa": "فقط سوال(های) ردشده را با PDF جدید جایگزین کنید.",
+      "fields": [
+        {
+          "name": "question_1",
+          "label_fa": "سوال ۱ (PDF) — در صورت رد",
+          "type": "file_upload",
+          "accept": "application/pdf",
+          "validation": {
+            "max_size_mb": 8
+          }
+        },
+        {
+          "name": "question_2",
+          "label_fa": "سوال ۲ (PDF) — در صورت رد",
+          "type": "file_upload",
+          "accept": "application/pdf",
+          "validation": {
+            "max_size_mb": 8
+          }
+        },
+        {
+          "name": "question_3",
+          "label_fa": "سوال ۳ (PDF) — در صورت رد",
+          "type": "file_upload",
+          "accept": "application/pdf",
+          "validation": {
+            "max_size_mb": 8
+          }
+        }
+      ]
+    },
+    {
+      "code": "conceptual_question_instructor_review",
+      "name_fa": "بررسی سوالات توسط مدرس",
+      "used_in_state": "instructor_review",
+      "fields": [
+        {
+          "name": "course_name",
+          "label_fa": "نام درس",
+          "type": "readonly"
+        },
+        {
+          "name": "session_number",
+          "label_fa": "شماره جلسه",
+          "type": "readonly"
+        },
+        {
+          "name": "session_date",
+          "label_fa": "تاریخ برگزاری جلسه",
+          "type": "readonly"
+        },
+        {
+          "name": "question_1_status",
+          "label_fa": "وضعیت سوال ۱",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "accepted",
+              "label_fa": "قابل قبول"
+            },
+            {
+              "value": "rejected",
+              "label_fa": "غیر قابل قبول"
+            }
+          ]
+        },
+        {
+          "name": "question_1_rejection_note",
+          "label_fa": "توضیح رد سوال ۱",
+          "type": "textarea",
+          "required_if": {
+            "field": "question_1_status",
+            "op": "eq",
+            "value": "rejected"
+          }
+        },
+        {
+          "name": "question_2_status",
+          "label_fa": "وضعیت سوال ۲",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "accepted",
+              "label_fa": "قابل قبول"
+            },
+            {
+              "value": "rejected",
+              "label_fa": "غیر قابل قبول"
+            }
+          ]
+        },
+        {
+          "name": "question_2_rejection_note",
+          "label_fa": "توضیح رد سوال ۲",
+          "type": "textarea",
+          "required_if": {
+            "field": "question_2_status",
+            "op": "eq",
+            "value": "rejected"
+          }
+        },
+        {
+          "name": "question_3_status",
+          "label_fa": "وضعیت سوال ۳",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "accepted",
+              "label_fa": "قابل قبول"
+            },
+            {
+              "value": "rejected",
+              "label_fa": "غیر قابل قبول"
+            }
+          ]
+        },
+        {
+          "name": "question_3_rejection_note",
+          "label_fa": "توضیح رد سوال ۳",
+          "type": "textarea",
+          "required_if": {
+            "field": "question_3_status",
+            "op": "eq",
+            "value": "rejected"
+          }
         }
       ]
     }

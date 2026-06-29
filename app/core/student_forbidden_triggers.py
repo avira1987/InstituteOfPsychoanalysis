@@ -86,6 +86,7 @@ STUDENT_FORBIDDEN_TRIGGER_EVENTS = frozenset({
     'sla_8days_breach',
     'sla_breach',
     'sla_breach_7days',
+    'sla_breach_4days',
     'sla_expired',
     'sla_warning',
     'student_absent_first_session',

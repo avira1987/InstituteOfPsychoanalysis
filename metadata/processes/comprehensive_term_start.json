@@ -25,13 +25,19 @@
       "code": "course_display",
       "name_fa": "نمایش دروس و شهریه",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "دروس ثابت ترم را مشاهده کنید و پس از تأیید، به مرحلهٔ انتخاب روش پرداخت بروید."
+      }
     },
     {
       "code": "payment_choice",
       "name_fa": "انتخاب نحوه پرداخت",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "روش پرداخت (نقدی یا ۲ تا ۴ قسط) را انتخاب کنید."
+      }
     },
     {
       "code": "payment_processing",
@@ -101,15 +107,22 @@
   ],
   "forms": [
     {
-      "code": "comprehensive_term_registration",
-      "name_fa": "ثبت‌نام ترم دوره جامع",
+      "code": "comprehensive_term_courses",
+      "name_fa": "دروس ترم دوره جامع",
       "used_in_state": "course_display",
       "fields": [
         {
           "name": "courses",
           "label_fa": "دروس ارائه شده (الزامی)",
           "type": "readonly_table"
-        },
+        }
+      ]
+    },
+    {
+      "code": "comprehensive_term_payment",
+      "name_fa": "انتخاب روش پرداخت ترم",
+      "used_in_state": "payment_choice",
+      "fields": [
         {
           "name": "payment_method",
           "label_fa": "نحوه پرداخت",

@@ -456,17 +456,6 @@ export default function LoginPage() {
                 ← ورود دانشجو و ثبت‌نام با شماره موبایل
               </Link>
             </p>
-            <p
-              style={{
-                fontSize: '0.78rem',
-                color: 'var(--text-secondary)',
-                textAlign: 'center',
-                marginBottom: '1rem',
-                lineHeight: 1.6,
-              }}
-            >
-              حساب دمو معاون آموزش: <code style={{ direction: 'ltr' }}>deputy_education1</code> / <code style={{ direction: 'ltr' }}>demo123</code>
-            </p>
           </>
         )}
 

@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import json
+import uuid
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -20,7 +22,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.engine import StateMachineEngine
 from app.meta.seed import load_process, load_rules
-from app.models.operational_models import Student
+from app.models.operational_models import ProcessInstance, Student, TherapySession
 from app.services.attendance_service import AttendanceService
 
 from tests.processes.test_all_processes_level_a_smoke import (
@@ -45,16 +47,45 @@ LEVEL_B_INITIAL_CONTEXT: dict[str, dict[str, Any]] = {
         "session_cancelled": False,
     },
     "comprehensive_course_registration": {},
-    "theory_course_completion": {"grades_submitted_before_sla": True},
-    "skills_course_completion": {"grades_submitted_before_sla": True},
+    "theory_course_completion": {
+        "course_code": "theory_psychoanalysis_2",
+        "session_18_submitted_before_sla": True,
+        "qualitative_submitted_before_sla": True,
+    },
+    "skills_course_completion": {
+        "course_code": "technique_skills_1",
+        "course_has_ta": False,
+        "session_17_submitted_before_sla": True,
+        "qualitative_submitted_before_sla": True,
+    },
     "film_observation_course_completion": {"grades_submitted_before_sla": True},
-    "group_supervision_course_completion": {"grades_submitted_before_sla": True},
-    "live_supervision_course_completion": {"grades_submitted_before_sla": True},
+    "group_supervision_course_completion": {
+        "course_code": "group_supervision_1",
+        "course_has_ta": False,
+        "pass_fail_submitted_before_sla": True,
+        "qualitative_submitted_before_sla": True,
+    },
+    "live_supervision_course_completion": {},
     "live_supervision_session_prep": {},
     "article_writing_completion": {},
-    "thesis_defense_request": {},
-    "upgrade_to_educational_therapist": {},
-    "intern_bulk_patient_referral": {},
+    "thesis_defense_request": {
+        "units_67_b_met": True,
+        "clinical_750_met": True,
+        "supervision_150_met": True,
+        "therapy_250_met": True,
+        "all_conditions_met": True,
+    },
+    "upgrade_to_educational_therapist": {
+        "et_eligibility_rank_ok": True,
+        "et_therapy_baseline_met": True,
+        "acknowledge": True,
+    },
+    "intern_bulk_patient_referral": {
+        "patient_referral_rows": [
+            {"patient_name": "بیمار تست", "patient_phone": "09120000000"},
+        ],
+        "referral_conditions": "شرایط ارجاع تست",
+    },
     "live_supervision_ta_evaluation": {},
     "live_therapy_observation_course_completion": {"grades_submitted_before_sla": True},
     "live_therapy_observation_session_prep": {},
@@ -62,7 +93,11 @@ LEVEL_B_INITIAL_CONTEXT: dict[str, dict[str, Any]] = {
     "film_observation_ta_attendance_completion": {"grades_submitted_before_sla": True},
     "fee_determination": {"session_paid": True},
     "student_session_cancellation": {"would_exceed_consecutive_weeks": False},
-    "student_supervision_cancellation": {"would_exceed_consecutive_weeks": False},
+    "student_non_registration": {"weeks_since_term_start": 2},
+    "student_supervision_cancellation": {
+        "would_exceed_consecutive_weeks": False,
+        "cancellation_percent_after": 5,
+    },
     "supervision_block_transition": {"current_supervision_block_attendance": 50},
     "supervision_session_reduction": {"supervision_weekly_sessions": 2},
     "therapy_session_reduction": {"weekly_sessions": 2},
@@ -108,6 +143,43 @@ _DEFAULT_PAYLOAD_TRIES: list[dict[str, Any] | None] = [
 ]
 
 
+async def _level_b_extra_payload_tries(
+    db_session: AsyncSession,
+    code: str,
+    student: Student,
+) -> list[dict[str, Any]]:
+    """دادهٔ واقعی برای فرایندهایی که انتخاب جلسه در ترنزیشن اول الزامی است."""
+    if code == "student_session_cancellation":
+        ts = TherapySession(
+            id=uuid.uuid4(),
+            student_id=student.id,
+            therapist_id=None,
+            session_date=date.today() + timedelta(days=7),
+            session_number=1,
+            status="scheduled",
+        )
+        db_session.add(ts)
+        await db_session.commit()
+        return [{"selected_sessions": [str(ts.id)]}]
+    if code == "student_supervision_cancellation":
+        inst = ProcessInstance(
+            id=uuid.uuid4(),
+            student_id=student.id,
+            process_code="supervision_50h_completion",
+            current_state_code="session_scheduled",
+            context_data={
+                "session_date": (date.today() + timedelta(days=7)).isoformat(),
+                "preferred_time_hhmm": "10:00",
+            },
+            is_completed=False,
+            is_cancelled=False,
+        )
+        db_session.add(inst)
+        await db_session.commit()
+        return [{"selected_sessions": [str(inst.id)]}]
+    return []
+
+
 @pytest.fixture(autouse=True)
 def _patch_attendance_for_level_b(monkeypatch: pytest.MonkeyPatch):
     """مقادیر عددی پایدار برای قوانین سهمیه غیبت و ساعات در context موتور."""
@@ -124,10 +196,14 @@ def _patch_attendance_for_level_b(monkeypatch: pytest.MonkeyPatch):
     async def _hours_until_slot(self, student_id: UUID) -> float:
         return 24.0
 
+    async def _therapy_metrics(self, student_id: UUID) -> dict:
+        return {"therapy_hours_2x": 60.0, "clinical_hours": 200.0, "supervision_hours": 10.0}
+
     monkeypatch.setattr(AttendanceService, "calculate_absence_quota", _quota)
     monkeypatch.setattr(AttendanceService, "get_absence_count", _abs_count)
     monkeypatch.setattr(AttendanceService, "get_completed_hours", _hours)
     monkeypatch.setattr(AttendanceService, "get_hours_until_first_slot", _hours_until_slot)
+    monkeypatch.setattr(AttendanceService, "get_therapy_completion_metrics", _therapy_metrics)
 
 
 @pytest_asyncio.fixture
@@ -137,6 +213,9 @@ async def sample_student_level_b(db_session: AsyncSession, sample_student: Stude
     extra.setdefault("admission_type", "full_admission")
     extra.setdefault("has_active_therapist", True)
     extra.setdefault("introductory_courses_passed_count", 10)
+    extra.setdefault("et_eligibility_rank_ok", True)
+    extra.setdefault("supervision_monthly_sessions", 2)
+    sample_student.therapy_started = True
     sample_student.extra_data = extra
     flag_modified(sample_student, "extra_data")
     await db_session.commit()
@@ -192,8 +271,10 @@ async def test_process_level_b_one_transition_from_initial_succeeds(
     assert triggers, f"{code}: در JSON هیچ ترنزی از {initial} تعریف نشده"
 
     last_error = ""
+    payload_tries = await _level_b_extra_payload_tries(db_session, code, sample_student_level_b)
+    payload_tries.extend(_DEFAULT_PAYLOAD_TRIES)
     for trigger in triggers:
-        for raw_payload in _DEFAULT_PAYLOAD_TRIES:
+        for raw_payload in payload_tries:
             payload = dict(raw_payload) if raw_payload is not None else {}
             result = await engine.execute_transition(
                 instance_id=instance.id,

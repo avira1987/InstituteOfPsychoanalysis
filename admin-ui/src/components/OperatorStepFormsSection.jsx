@@ -13,6 +13,7 @@ import {
   resolveFormOptionsSource,
 } from '../utils/resolveFormOptionsSource'
 import { SEMESTER_PREP_PROCESSES } from '../utils/instituteProcesses'
+import { resolveCheckboxListOptions } from '../utils/resolveCourseFieldOptions'
 import {
   defaultShamsiDate,
   defaultShamsiTehranNow,
@@ -143,12 +144,12 @@ function buildInitialValues(forms, contextData, processCode, currentState, sugge
   return init
 }
 
-async function enrichColumnOptions(col) {
+async function enrichColumnOptions(col, contextData = null) {
   const next = { ...col }
   if (!next.options_source || (Array.isArray(next.options) && next.options.length)) {
     return next
   }
-  const { options, optionsByTrack } = await resolveFormOptionsSource(next.options_source)
+  const { options, optionsByTrack } = await resolveFormOptionsSource(next.options_source, contextData)
   if (optionsByTrack) {
     next._optionsByTrack = optionsByTrack
     next.filter_by_column = next.options_source.filter_by_column || next.filter_by_column
@@ -158,7 +159,7 @@ async function enrichColumnOptions(col) {
   return next
 }
 
-async function enrichFormsWithDynamicOptions(forms) {
+async function enrichFormsWithDynamicOptions(forms, contextData) {
   const out = []
   for (const form of forms || []) {
     const fields = []
@@ -168,13 +169,32 @@ async function enrichFormsWithDynamicOptions(forms) {
       if (ft === 'table' && Array.isArray(next.columns)) {
         const columns = []
         for (const col of next.columns) {
-          columns.push(await enrichColumnOptions(col))
+          columns.push(await enrichColumnOptions(col, contextData))
         }
         next.columns = columns
+      } else if (ft === 'dynamic_list' && Array.isArray(next.fields)) {
+        const nested = []
+        for (const col of next.fields) {
+          if (typeof col === 'object' && col?.options_source) {
+            nested.push(await enrichColumnOptions(col, contextData))
+          } else {
+            nested.push(col)
+          }
+        }
+        next.fields = nested
+      } else if (next.source && !(Array.isArray(next.options) && next.options.length)) {
+        const resolved = resolveCheckboxListOptions(next, contextData)
+        if (resolved.options?.length) next.options = resolved.options
+        if (resolved.maxSelect != null) next.maxSelect = resolved.maxSelect
+        if (resolved.minSelect != null) next.minSelect = resolved.minSelect
+        if (resolved.hint) next._optionsHint = resolved.hint
       } else if (next.options_source && !(Array.isArray(next.options) && next.options.length)) {
-        const { options, optionsByTrack } = await resolveFormOptionsSource(next.options_source)
+        const { options, optionsByTrack } = await resolveFormOptionsSource(next.options_source, contextData)
         if (optionsByTrack) next._optionsByTrack = optionsByTrack
         else if (options.length) next.options = options
+      } else if (ft === 'user_select' && !(Array.isArray(next.options) && next.options.length)) {
+        const { options } = await resolveFormOptionsSource({ type: 'users' }, contextData)
+        if (options.length) next.options = options
       }
       fields.push(next)
     }
@@ -357,7 +377,7 @@ export default function OperatorStepFormsSection({
             ? res.data
             : []
         const suggested = res.data?.suggested_context || {}
-        const enriched = await enrichFormsWithDynamicOptions(list)
+        const enriched = await enrichFormsWithDynamicOptions(list, contextData)
         if (!active) return
         setSuggestedContext(suggested)
         setForms(enriched)

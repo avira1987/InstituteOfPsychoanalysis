@@ -137,6 +137,28 @@ export function resolveCheckboxListOptions(field, contextData) {
     }
   }
 
+  if (src === 'supervision_reduction_upcoming_sessions') {
+    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
+    const raw = ctx.upcoming_supervision_sessions
+    const options = Array.isArray(raw) ? raw : []
+    let weekly = ctx.supervision_weekly_sessions
+    if (weekly == null) weekly = ctx.weekly_supervision_sessions
+    const ws = typeof weekly === 'number' ? weekly : parseInt(String(weekly || '1'), 10)
+    const maxRemove = Number.isFinite(ws) && ws > 1 ? ws - 1 : (options.length > 0 ? options.length - 1 : 0)
+    const minR = ctx.supervision_reduction_min_remove_count
+    const minSelect = typeof minR === 'number' && minR > 0 ? minR : 1
+    return {
+      options,
+      maxSelect: maxRemove > 0 ? maxRemove : (options.length > 0 ? options.length - 1 : null),
+      minSelect,
+      hint:
+        options.length === 0
+          ? 'جلسهٔ هفتگی سوپرویژنی در لیست نیست؛ با پشتیبانی تماس بگیرید.'
+          : `حداقل ${minSelect} و حداکثر ${maxRemove > 0 ? maxRemove : '—'} جلسه را برای حذف انتخاب کنید (حداقل یک جلسه در هفته باقی بماند).`,
+      useFallback: options.length === 0,
+    }
+  }
+
   if (src === 'student_cancellation_upcoming_sessions') {
     const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const raw = ctx.upcoming_cancellation_sessions
@@ -149,6 +171,79 @@ export function resolveCheckboxListOptions(field, contextData) {
         options.length === 0
           ? 'جلسهٔ برنامه‌ریزی‌شده‌ای در ۳ هفتهٔ آینده نیست.'
           : 'جلسات مورد نظر را تیک بزنید. کنسل بیش از ۳ هفته متوالی از این مسیر مجاز نیست.',
+      useFallback: options.length === 0,
+    }
+  }
+
+  if (src === 'student_supervision_upcoming_sessions') {
+    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
+    const raw = ctx.upcoming_cancellation_sessions
+    const options = Array.isArray(raw) ? raw : []
+    const supCount = ctx.active_supervisor_count != null ? Number(ctx.active_supervisor_count) : 1
+    return {
+      options,
+      maxSelect: options.length > 0 ? options.length : null,
+      minSelect: 1,
+      hint:
+        options.length === 0
+          ? 'جلسهٔ سوپرویژن برنامه‌ریزی‌شده‌ای در ۳ هفتهٔ آینده نیست.'
+          : supCount > 1
+            ? 'جلسات هر سوپروایزر فعال در لیست نمایش داده می‌شوند. کنسل بیش از ۳ هفته متوالی مجاز نیست.'
+            : 'جلسات سوپرویژن را تیک بزنید. کنسل بیش از ۳ هفته متوالی از این مسیر مجاز نیست.',
+      useFallback: options.length === 0,
+    }
+  }
+
+  if (src === 'supervisor_sessions_next_4_weeks') {
+    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
+    const raw = ctx.supervisor_sessions_next_4_weeks
+    const options = Array.isArray(raw) ? raw : []
+    const maxSel =
+      typeof field?.max_selection === 'number' && field.max_selection > 0
+        ? field.max_selection
+        : field?.maxSelect === 1 || field?.max_selection === 1
+          ? 1
+          : 1
+    return {
+      options,
+      maxSelect: maxSel,
+      minSelect: 1,
+      hint:
+        options.length === 0
+          ? 'جلسهٔ سوپرویژن برنامه‌ریزی‌شده‌ای در ۴ هفتهٔ آینده نیست.'
+          : 'در هر بار اجرا فقط امکان انتخاب ۱ جلسه وجود دارد.',
+      useFallback: options.length === 0,
+    }
+  }
+
+  if (src === 'assignable_courses') {
+    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
+    const raw = ctx.assignable_courses
+    const options = Array.isArray(raw) ? raw : []
+    return {
+      options,
+      maxSelect: 1,
+      minSelect: 1,
+      hint:
+        options.length === 0
+          ? 'درسی به شما انتساب داده نشده است. با کمیته دروس هماهنگ کنید.'
+          : 'درس مورد نظر را انتخاب کنید.',
+      useFallback: options.length === 0,
+    }
+  }
+
+  if (src === 'class_cancellable_sessions') {
+    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
+    const raw = ctx.cancellable_sessions || ctx.upcoming_cancellable_sessions
+    const options = (Array.isArray(raw) ? raw : []).filter((o) => o?.cancellable !== false)
+    return {
+      options,
+      maxSelect: 1,
+      minSelect: 1,
+      hint:
+        options.length === 0
+          ? 'ابتدا درس را انتخاب و ثبت کنید؛ یا جلسهٔ قابل کنسلی برای این درس نیست.'
+          : 'جلسهٔ کنسل‌شونده را انتخاب کنید. پس از کنسلی، حضور و غیاب این جلسه قفل می‌شود.',
       useFallback: options.length === 0,
     }
   }

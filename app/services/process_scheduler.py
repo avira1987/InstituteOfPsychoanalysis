@@ -582,7 +582,56 @@ async def dispatch_student_milestones(db: AsyncSession, today: date) -> list[dic
                 fingerprint_val=str(extra.get("lms", {}).get("ta_evaluation_term") or today.year),
             )
             if hit:
+                try:
+                    from app.services.ta_to_instructor_auto_service import run_auto_ta_to_instructor_transition
+
+                    inst = await db.get(ProcessInstance, uuid.UUID(hit["instance_id"]))
+                    if inst:
+                        to_state = await run_auto_ta_to_instructor_transition(db, inst)
+                        if to_state:
+                            hit = {**hit, "to_state": to_state}
+                except Exception:
+                    pass
                 out.append({**hit, "trigger": "end_of_term_ta_evaluation_done"})
+
+        # ta_to_assistant_faculty — ۲ بار موفق TA در یک درس (فرایند ۴۹)
+        try:
+            from app.services.ta_to_assistant_faculty_service import (
+                _pick_qualifying_course,
+                is_auto_blocked_for_course,
+            )
+
+            lms = extra.get("lms") if isinstance(extra.get("lms"), dict) else {}
+            qualifying = _pick_qualifying_course(lms)
+            if qualifying and lms.get("end_of_term_ta_evaluation_done") is True:
+                course_code = str(qualifying.get("course_code") or "")
+                if course_code and not is_auto_blocked_for_course(extra, course_code):
+                    term_val = str(lms.get("ta_evaluation_term") or today.isoformat())[:7]
+                    hit = await _start_process_if_absent(
+                        db,
+                        student_id=st.id,
+                        process_code="ta_to_assistant_faculty",
+                        initial_context={
+                            "source": "end_of_term_ta_scan",
+                            "course_code": course_code,
+                        },
+                        fingerprint_key=f"ta_to_assistant_faculty:{course_code}",
+                        fingerprint_val=term_val,
+                    )
+                    if hit:
+                        try:
+                            from app.services.ta_to_assistant_faculty_service import propagate_on_start
+
+                            inst = await db.get(ProcessInstance, uuid.UUID(hit["instance_id"]))
+                            if inst:
+                                to_state = await propagate_on_start(db, inst)
+                                if to_state:
+                                    hit = {**hit, "to_state": to_state}
+                        except Exception:
+                            pass
+                        out.append({**hit, "trigger": "ta_passed_course_twice"})
+        except Exception:
+            logger.debug("ta_to_assistant_faculty scheduler skipped for student=%s", st.id)
 
     return out
 
@@ -710,11 +759,22 @@ async def dispatch_lms_session_hooks(db: AsyncSession, now: datetime) -> list[di
                 fps = extra.get("scheduler_fingerprints") or {}
                 if fps.get(fp):
                     continue
+                from app.services.class_attendance_service import infer_course_type
+
+                course_code = str(course_id)
+                course_type = infer_course_type(course_code)
                 hit = await _start_process_if_absent(
                     db,
                     student_id=st.id,
                     process_code="class_attendance",
-                    initial_context={"session_date": sess_date.isoformat(), "course_id": course_id},
+                    initial_context={
+                        "session_date": sess_date.isoformat(),
+                        "course_id": course_id,
+                        "course_code": course_code,
+                        "lesson_name": course_code,
+                        "lesson_course_label": course_code,
+                        "course_type": course_type,
+                    },
                     fingerprint_key=fp,
                     fingerprint_val=sess_date.isoformat(),
                 )
@@ -733,6 +793,44 @@ async def dispatch_lms_session_hooks(db: AsyncSession, now: datetime) -> list[di
                     st.extra_data = extra
                     flag_modified(st, "extra_data")
                     out.append({**hit, "trigger": "session_time_reached"})
+
+            # skills_course_completion — جلسه ۱۷ و ۱۸
+            if sess_date and sess_date <= today and idx_i in (17, 18):
+                code_l = str(course_id).lower()
+                is_skills = (
+                    "skill" in code_l
+                    or "مهارت" in str(course_id)
+                    or "technique" in code_l
+                    or "تکنیک" in str(course_id)
+                )
+                if is_skills:
+                    from app.services.skills_course_completion_service import dispatch_skills_session_calendar
+
+                    sk_hit = await dispatch_skills_session_calendar(
+                        db,
+                        st,
+                        str(course_id),
+                        idx_i,
+                        sess_date.isoformat(),
+                    )
+                    if sk_hit:
+                        out.append(sk_hit)
+                elif idx_i == 18:
+                    from app.services.theory_course_completion_service import (
+                        dispatch_theory_session_calendar,
+                        is_theory_course,
+                    )
+
+                    if is_theory_course(str(course_id)):
+                        th_hit = await dispatch_theory_session_calendar(
+                            db,
+                            st,
+                            str(course_id),
+                            idx_i,
+                            sess_date.isoformat(),
+                        )
+                        if th_hit:
+                            out.append(th_hit)
 
     return out
 

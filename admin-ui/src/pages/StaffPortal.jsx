@@ -13,6 +13,16 @@ import {
 } from '../utils/interviewResultAccess'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeEducationalLeaveTriggerPayload } from '../utils/educationalLeaveTriggerPayload'
+import { mergeFullEducationLeaveTriggerPayload } from '../utils/fullEducationLeaveTriggerPayload'
+import { mergeReferralTriggerPayload } from '../utils/internBulkPatientReferralTriggerPayload'
+import { mergeLiveSessionPrepTriggerPayload } from '../utils/liveSessionPrepTriggerPayload'
+import { mergeMentorPrivateSessionsTriggerPayload } from '../utils/mentorPrivateSessionsTriggerPayload'
+import { mergeUpgradeToTaTriggerPayload } from '../utils/upgradeToTaTriggerPayload'
+import { mergeTaTrackChangeTriggerPayload } from '../utils/taTrackChangeTriggerPayload'
+import LiveSessionPrepPanel from '../components/LiveSessionPrepPanel'
+import TaUpgradeCourseCommitteePanel from '../components/TaUpgradeCourseCommitteePanel'
+import StudentTaTrackChangePanel from '../components/StudentTaTrackChangePanel'
+import TaTrackChangeCommitteePanel from '../components/TaTrackChangeCommitteePanel'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import PopupToast from '../components/PopupToast'
 import InterviewSlotRecurringRules from '../components/InterviewSlotRecurringRules'
@@ -23,9 +33,34 @@ import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBa
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import OperatorProcessInstancePanel from '../components/OperatorProcessInstancePanel'
 import Supervision50hCompletionPanel from '../components/Supervision50hCompletionPanel'
+import InstructorLessonAttendancePanel from '../components/InstructorLessonAttendancePanel'
+import InstructorClassSessionCancellationPanel from '../components/InstructorClassSessionCancellationPanel'
+import InstructorClassAttendanceInboxHint from '../components/InstructorClassAttendanceInboxHint'
+import LiveTherapyObservationTaAttendancePanel from '../components/LiveTherapyObservationTaAttendancePanel'
+import FilmObservationTaAttendancePanel from '../components/FilmObservationTaAttendancePanel'
+import FilmObservationCourseCompletionPanel from '../components/FilmObservationCourseCompletionPanel'
+import SkillsCourseCompletionPanel from '../components/SkillsCourseCompletionPanel'
+import TheoryCourseCompletionPanel from '../components/TheoryCourseCompletionPanel'
+import GroupSupervisionCourseCompletionPanel from '../components/GroupSupervisionCourseCompletionPanel'
+import TaEssayUploadPanel from '../components/TaEssayUploadPanel'
+import MentorPrivateSessionsPanel from '../components/MentorPrivateSessionsPanel'
+import TaConceptualQuestionsPanel from '../components/TaConceptualQuestionsPanel'
+import ArticleWritingCompletionPanel from '../components/ArticleWritingCompletionPanel'
+import LiveSupervisionCourseCompletionPanel from '../components/LiveSupervisionCourseCompletionPanel'
+import LiveSupervisionDualAttendancePanel from '../components/LiveSupervisionDualAttendancePanel'
+import LiveSupervisionMirrorEvalPanel from '../components/LiveSupervisionMirrorEvalPanel'
+import LiveSupervisionFinalEvalPanel from '../components/LiveSupervisionFinalEvalPanel'
+import IntroductoryTermEndFollowupPanel from '../components/IntroductoryTermEndFollowupPanel'
+import InternBulkPatientReferralCoordinationPanel from '../components/InternBulkPatientReferralCoordinationPanel'
+import TaClassDutiesPanel from '../components/TaClassDutiesPanel'
+import TherapistAssignmentReviewPanel from '../components/TherapistAssignmentReviewPanel'
+import TaToAssistantFacultyTaPanel from '../components/TaToAssistantFacultyTaPanel'
+import TaToInstructorAutoReportPanel from '../components/TaToInstructorAutoReportPanel'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import CourseCommitteePrepPanel from '../components/CourseCommitteePrepPanel'
 import InstructionSemesterCoursesPanel from '../components/InstructionSemesterCoursesPanel'
+import InstructorEvaluationResultsPanel from '../components/InstructorEvaluationResultsPanel'
+import InstructorEvaluationCommitteePanel from '../components/InstructorEvaluationCommitteePanel'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import {
   buildStaffTabsForLane,
@@ -269,18 +304,79 @@ export default function StaffPortal() {
         return
       }
       payload = leaveMerge.payload
-      payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
+      const fullLeaveMerge = mergeFullEducationLeaveTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (fullLeaveMerge.error) {
+        showToast(fullLeaveMerge.error, 'error')
+        return
+      }
+      payload = fullLeaveMerge.payload
+      const referralMerge = mergeReferralTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (referralMerge.error) {
+        showToast(referralMerge.error, 'error')
+        return
+      }
+      payload = referralMerge.payload
+      const sessionPrepMerge = mergeLiveSessionPrepTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (sessionPrepMerge.error) {
+        showToast(sessionPrepMerge.error, 'error')
+        return
+      }
+      payload = sessionPrepMerge.payload
+      const mentorMerge = mergeMentorPrivateSessionsTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (mentorMerge.error) {
+        showToast(mentorMerge.error, 'error')
+        return
+      }
+      payload = mentorMerge.payload
+      const taUpgradeMerge = mergeUpgradeToTaTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (taUpgradeMerge.error) {
+        showToast(taUpgradeMerge.error, 'error')
+        return
+      }
+      payload = taUpgradeMerge.payload
+      const taTrackMerge = mergeTaTrackChangeTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (taTrackMerge.error) {
+        showToast(taTrackMerge.error, 'error')
+        return
+      }
+      payload = taTrackMerge.payload
+      const effectiveToState = payload.to_state || toState
+      payload = mergeInterviewBranchPayload(payload, effectiveToState, triggerEvent)
       payload = mergeInterviewResultFormPayload(
         payload,
         interviewResultForm,
         toState,
         triggerEvent,
       )
-      if (toState) payload.to_state = toState
+      if (effectiveToState) payload.to_state = effectiveToState
       const res = await processExecApi.trigger(selectedInstance, {
         trigger_event: triggerEvent,
         payload,
-        ...(toState ? { to_state: toState } : {}),
+        ...(effectiveToState ? { to_state: effectiveToState } : {}),
       })
       if (res.data.success) {
         showToast(`عملیات انجام شد: ${labelState(res.data.to_state)}`)
@@ -387,7 +483,15 @@ export default function StaffPortal() {
 
       {isCourseCommitteeLane && <CourseCommitteePrepPanel showToast={showToast} />}
 
+      {isCourseCommitteeLane && <InstructorEvaluationCommitteePanel showToast={showToast} />}
+
       {isInstructionLane && <InstructionSemesterCoursesPanel />}
+
+      {isInstructionLane && <InstructorEvaluationResultsPanel showToast={showToast} />}
+
+      {isInstructionLane && (
+        <InstructorClassAttendanceInboxHint pendingActions={pendingActions} />
+      )}
 
       <div className="tab-bar">
         {tabs.map(tab => (
@@ -1142,6 +1246,8 @@ function DetailPanel({
   onRefreshInstance,
 }) {
   const isIntroReg = instanceDetail.process_code === 'introductory_course_registration'
+  const isTaEssay = instanceDetail.process_code === 'ta_essay_upload'
+  const isTaConceptual = instanceDetail.process_code === 'ta_conceptual_questions'
   const instanceContext = instanceDetail.context_data || {}
   const showInterviewAdvance =
     isIntroReg && instanceDetail.current_state === 'interview_payment_confirmed'
@@ -1161,11 +1267,165 @@ function DetailPanel({
     return filtered
   }
 
+  const triggerWithTaEssayValidation = async (transition) => {
+    if (
+      isTaEssay
+      && instanceDetail.current_state === 'instructor_review'
+      && transition.trigger_event === 'rejected'
+      && !(decisionNotes || '').trim()
+    ) {
+      showToast?.('برای «غیر قابل قبول»، ثبت توضیح رد الزامی است.', 'error')
+      return
+    }
+    if (isTaConceptual && instanceDetail.current_state === 'instructor_review') {
+      const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
+      const ctx = instanceDetail.context_data || {}
+      const statuses = [1, 2, 3].map((n) => ctx[`question_${n}_status`])
+      const anyRejected = statuses.some((s) => s === 'rejected')
+      const allOk = statuses.every((s) => s === 'accepted')
+      if (triggerEvent === 'all_accepted' && !allOk) {
+        showToast?.('برای «تأیید همه»، هر سه سوال باید «قابل قبول» باشند. ابتدا فرم را ثبت کنید.', 'error')
+        return
+      }
+      if (triggerEvent === 'question_rejected' && !anyRejected) {
+        showToast?.('برای «رد»، حداقل یک سوال باید «غیر قابل قبول» باشد و توضیح رد در فرم ثبت شود.', 'error')
+        return
+      }
+      if (triggerEvent === 'question_rejected' && anyRejected) {
+        const missingNote = [1, 2, 3].some(
+          (n) => ctx[`question_${n}_status`] === 'rejected'
+            && !(String(ctx[`question_${n}_rejection_note`] || '').trim()),
+        )
+        if (missingNote) {
+          showToast?.('برای هر سوال ردشده، توضیح رد در فرم الزامی است.', 'error')
+          return
+        }
+      }
+    }
+    return triggerTransition(transition)
+  }
+
   return (
     <>
+      <TaClassDutiesPanel detail={instanceDetail} user={user} />
+      <TherapistAssignmentReviewPanel detail={instanceDetail} />
+      <StudentTaTrackChangePanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'ta_track_change'}
+      />
+      <TaToInstructorAutoReportPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'ta_to_instructor_auto'}
+        audience="staff"
+      />
       <Supervision50hCompletionPanel
         detail={instanceDetail}
         active={instanceDetail?.process_code === 'supervision_50h_completion'}
+      />
+      <TaEssayUploadPanel
+        detail={instanceDetail}
+        portalRole={user?.role}
+        active={isTaEssay}
+      />
+      <MentorPrivateSessionsPanel
+        detail={instanceDetail}
+        user={user}
+        active={instanceDetail?.process_code === 'mentor_private_sessions'}
+      />
+      <TaConceptualQuestionsPanel
+        detail={instanceDetail}
+        portalRole={user?.role}
+        active={isTaConceptual}
+      />
+      <ArticleWritingCompletionPanel
+        detail={instanceDetail}
+        portalRole={user?.role}
+        active={instanceDetail?.process_code === 'article_writing_completion'}
+      />
+      <LiveSupervisionCourseCompletionPanel
+        detail={instanceDetail}
+        portalRole={user?.role}
+        active={instanceDetail?.process_code === 'live_supervision_course_completion'}
+      />
+      <LiveSupervisionMirrorEvalPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'live_supervision_course_completion'}
+      />
+      <LiveSupervisionFinalEvalPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'live_supervision_course_completion'}
+      />
+      <InstructorLessonAttendancePanel
+        detail={instanceDetail}
+        instanceId={instanceDetail?.instance_id}
+        availableTransitions={availableTransitions}
+        showToast={showToast}
+        onRefreshInstance={onRefreshInstance}
+        active={
+          instanceDetail?.process_code === 'class_attendance'
+          && (instanceDetail?.context_data?.course_type || '').toLowerCase() !== 'live_supervision'
+          && !instanceDetail?.context_data?.live_supervision_session
+        }
+      />
+      <InstructorClassSessionCancellationPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'class_session_cancellation'}
+      />
+      <LiveSupervisionDualAttendancePanel
+        detail={instanceDetail}
+        instanceId={instanceDetail?.instance_id}
+        availableTransitions={availableTransitions}
+        showToast={showToast}
+        onRefreshInstance={onRefreshInstance}
+        active={instanceDetail?.process_code === 'class_attendance'}
+      />
+      <LiveTherapyObservationTaAttendancePanel
+        detail={instanceDetail}
+        instanceId={instanceDetail?.instance_id}
+        availableTransitions={availableTransitions}
+        showToast={showToast}
+        onRefreshInstance={onRefreshInstance}
+        active={instanceDetail?.process_code === 'live_therapy_observation_ta_attendance_completion'}
+      />
+      <FilmObservationTaAttendancePanel
+        detail={instanceDetail}
+        instanceId={instanceDetail?.instance_id}
+        availableTransitions={availableTransitions}
+        showToast={showToast}
+        onRefreshInstance={onRefreshInstance}
+        active={instanceDetail?.process_code === 'film_observation_ta_attendance_completion'}
+      />
+      <FilmObservationCourseCompletionPanel
+        detail={instanceDetail}
+        instanceId={instanceDetail?.instance_id}
+        availableTransitions={availableTransitions}
+        showToast={showToast}
+        onRefreshInstance={onRefreshInstance}
+        active={instanceDetail?.process_code === 'film_observation_course_completion'}
+      />
+      <SkillsCourseCompletionPanel
+        detail={instanceDetail}
+        instanceId={instanceDetail?.instance_id}
+        availableTransitions={availableTransitions}
+        showToast={showToast}
+        onRefreshInstance={onRefreshInstance}
+        active={instanceDetail?.process_code === 'skills_course_completion'}
+      />
+      <TheoryCourseCompletionPanel
+        detail={instanceDetail}
+        instanceId={instanceDetail?.instance_id}
+        availableTransitions={availableTransitions}
+        showToast={showToast}
+        onRefreshInstance={onRefreshInstance}
+        active={instanceDetail?.process_code === 'theory_course_completion'}
+      />
+      <GroupSupervisionCourseCompletionPanel
+        detail={instanceDetail}
+        instanceId={instanceDetail?.instance_id}
+        availableTransitions={availableTransitions}
+        showToast={showToast}
+        onRefreshInstance={onRefreshInstance}
+        active={instanceDetail?.process_code === 'group_supervision_course_completion'}
       />
       <OperatorProcessInstancePanel
         user={user}
@@ -1174,7 +1434,7 @@ function DetailPanel({
         onClose={onClose}
         showToast={showToast}
         onRefreshInstance={onRefreshInstance}
-        onTriggerTransition={triggerTransition}
+        onTriggerTransition={triggerWithTaEssayValidation}
         decisionNotes={decisionNotes}
         setDecisionNotes={setDecisionNotes}
         filterTransitions={filterTransitionsForPanel}
@@ -1186,6 +1446,12 @@ function DetailPanel({
         rollbackBusy={rollbackBusy}
         renderExtraBeforeActions={({ triggerTransition: trig, transitionsForActions }) => (
         <>
+          <IntroductoryTermEndFollowupPanel detail={instanceDetail} user={user} />
+          <InternBulkPatientReferralCoordinationPanel detail={instanceDetail} user={user} />
+          <LiveSessionPrepPanel detail={instanceDetail} user={user} />
+          <TaUpgradeCourseCommitteePanel detail={instanceDetail} user={user} />
+          <TaTrackChangeCommitteePanel detail={instanceDetail} user={user} />
+
           {showInterviewAdvance && (
             <div
               style={{

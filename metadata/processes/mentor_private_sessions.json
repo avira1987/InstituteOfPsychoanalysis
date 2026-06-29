@@ -16,8 +16,8 @@
       "type": "initial",
       "assigned_role": "instructor",
       "metadata": {
-        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
-        "operator_short_fa": "کلیک مدرس"
+        "operator_task_fa": "تاریخ و ساعت دو جلسهٔ تدریس خصوصی با کمک‌مدرس را در فرم ثبت کنید.",
+        "operator_short_fa": "ثبت زمان جلسات"
       }
     },
     {
@@ -32,7 +32,7 @@
       "type": "intermediate",
       "assigned_role": "instructor",
       "metadata": {
-        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
+        "operator_task_fa": "جلسات ثبت شد؛ منتظر اطلاع‌رسانی و یادآوری سیستمی بمانید.",
         "operator_short_fa": "۲ جلسه ثبت شد"
       }
     },
@@ -87,6 +87,21 @@
       "name_fa": "ثبت زمان ۲ جلسه تدریس خصوصی",
       "used_in_state": "instructor_click",
       "fields": [
+        {
+          "name": "course_name",
+          "label_fa": "نام درس",
+          "type": "readonly"
+        },
+        {
+          "name": "instructor_name",
+          "label_fa": "نام مدرس",
+          "type": "readonly"
+        },
+        {
+          "name": "teaching_assistant_name",
+          "label_fa": "نام کمک‌مدرس",
+          "type": "readonly"
+        },
         {
           "name": "session_1_date",
           "label_fa": "جلسه اول — تاریخ",

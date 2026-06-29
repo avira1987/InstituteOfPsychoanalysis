@@ -312,6 +312,10 @@ export const processExecApi = {
   /** دانشجو: درخواست ویرایش مرحلهٔ ثبت‌شده (ایجاد تیکت) */
   createEditRequest: (instanceId, body) =>
     api.post(`process/${instanceId}/edit-requests`, body),
+  requestStudentStepOtp: (instanceId) =>
+    api.post(`process/${instanceId}/student-step-forms/step-otp/request`),
+  verifyStudentStepOtp: (instanceId, body) =>
+    api.post(`process/${instanceId}/student-step-forms/step-otp/verify`, body),
   /** لایهٔ عمومی: دادهٔ ثبت‌شدهٔ فرایند برای مشاهده/ویرایش بر اساس نقش */
   getProcessData: (instanceId) => api.get(`process/${instanceId}/data`),
   /** لایهٔ عمومی: به‌روزرسانی دادهٔ ثبت‌شده (فقط فیلدهای مجاز نقش) */
@@ -457,6 +461,45 @@ export const panelApi = {
   myOnlineSessions: (includePast = false) =>
     api.get('panel/my-online-sessions', { params: { include_past: !!includePast } }),
   mySemesterCourses: () => api.get('panel/my-semester-courses'),
+  instructorCourseRoster: (courseCode, options = {}) =>
+    api.get('panel/instructor/course-roster', {
+      params: {
+        course_code: courseCode,
+        ...(options.enrichFilmReports ? { enrich_film_reports: true } : {}),
+      },
+    }),
+  classCancellationPreview: (courseCode, sessionKey = null) =>
+    api.get('panel/instructor/class-cancellation-preview', {
+      params: {
+        course_code: courseCode,
+        ...(sessionKey ? { session_key: sessionKey } : {}),
+      },
+    }),
+  liveSupervisionProgress: (courseCode) =>
+    api.get(`panel/instructor/live-supervision/${encodeURIComponent(courseCode)}/progress`),
+  skillsCourseGradesPreview: (courseCode, instanceId = null) =>
+    api.get(`panel/instructor/skills-course/${encodeURIComponent(courseCode)}/grades-preview`, {
+      params: instanceId ? { instance_id: instanceId } : {},
+    }),
+  theoryCourseGradesPreview: (courseCode, instanceId = null) =>
+    api.get(`panel/instructor/theory-course/${encodeURIComponent(courseCode)}/grades-preview`, {
+      params: instanceId ? { instance_id: instanceId } : {},
+    }),
+  groupSupervisionGradesPreview: (courseCode, instanceId = null) =>
+    api.get(`panel/instructor/group-supervision/${encodeURIComponent(courseCode)}/grades-preview`, {
+      params: instanceId ? { instance_id: instanceId } : {},
+    }),
+  studentInstructorEvaluationCourses: (instanceId) =>
+    api.get(`panel/student/instructor-evaluation/${encodeURIComponent(instanceId)}/courses`),
+  submitStudentInstructorEvaluation: (instanceId, courseCode, body) =>
+    api.post(
+      `panel/student/instructor-evaluation/${encodeURIComponent(instanceId)}/courses/${encodeURIComponent(courseCode)}`,
+      body,
+    ),
+  instructorEvaluationResults: (params) =>
+    api.get('panel/instructor/evaluation-results', { params }),
+  committeeEvaluationResults: (params) =>
+    api.get('panel/committee/evaluation-results', { params }),
   navPendingCounts: () => api.get('panel/nav-pending-counts'),
   /** فید اعلان‌های اقدام (زنگوله + صفحهٔ همه اعلان‌ها) */
   actionNotifications: (params) => api.get('panel/action-notifications', { params }),

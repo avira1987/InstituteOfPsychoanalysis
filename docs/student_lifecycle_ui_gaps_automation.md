@@ -203,22 +203,18 @@
 
 ### گام ۲.۳ — `student_instructor_evaluation` (ارزیابی استاد)
 
-- [x] **وضعیت:** 🟡 — audit: `user_can_complete: NO` (artifact؛ UI آماده)
+- [x] **وضعیت:** ✅ — پنل اختصاصی دانشجو + داشبورد مدرس و کمیته
 
 | کار | UI |
 |-----|-----|
 | باز/بستن پنجره | ✅ scheduler |
-| **فرم ارزیابی دانشجو** | ✅ **`ProcessStepForms` + راهنما + اعلان داشبورد** |
+| **فرم ارزیابی دانشجو** | ✅ **`StudentInstructorEvaluationPanel`** (چند درس، ناشناس، اختیاری) |
+| **داشبورد مدرس** | ✅ **`InstructorEvaluationResultsPanel`** (StaffPortal / instruction) |
+| **داشبورد کمیته** | ✅ **`InstructorEvaluationCommitteePanel`** (StaffPortal / course-committee) |
 
-**کار تکمیل (گام ۲.۳-الف):**
+**فایل‌ها:** `StudentInstructorEvaluationPanel.jsx`, `student_instructor_evaluation_service.py`, `panel_routes.py`, `StaffPortal.jsx`, `StudentPortal.jsx`
 
-1. فرم ارزیابی در `metadata/processes/student_instructor_evaluation.json` → `ProcessStepForms`
-2. ثبت در `customer_acceptance_alternate_paths.json` → `form_alternate_paths`
-3. اعلان در داشبورد هنگام `evaluation_open`
-
-**فایل‌ها:** `metadata/processes/student_instructor_evaluation.json`, `StudentQuestCard.jsx`, `ProcessStepForms.jsx`
-
-**معیار پذیرش:** دانشجو در پنجره ارزیابی فرم را ارسال کند → instance به `evaluation_closed` برود.
+**معیار پذیرش:** دانشجو هر درس را جدا ثبت کند → instance تا deadline باز بماند؛ پس از deadline نتایج در پورتال مدرس و کمیته نمایش داده شود.
 
 ---
 

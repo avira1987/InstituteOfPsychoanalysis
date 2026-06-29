@@ -186,6 +186,18 @@
     "expression": {"field": "instance.student_on_leave", "operator": "eq", "value": true}
   },
   {
+    "code": "student_is_intern",
+    "name_fa": "دانشجو انترن است",
+    "rule_type": "condition",
+    "expression": {"field": "instance.is_intern", "operator": "eq", "value": true}
+  },
+  {
+    "code": "student_not_intern",
+    "name_fa": "دانشجو انترن نیست",
+    "rule_type": "condition",
+    "expression": {"field": "instance.is_intern", "operator": "eq", "value": false}
+  },
+  {
     "code": "session_cancelled",
     "name_fa": "جلسه کنسل شده",
     "rule_type": "condition",
@@ -712,19 +724,82 @@
     "code": "violation_verdict_suspension_next_term",
     "name_fa": "حکم تخلف: تعلیق از ترم بعد",
     "rule_type": "condition",
-    "expression": {"field": "instance.verdict_type", "operator": "eq", "value": "suspension_next_term"}
+    "expression": {"field": "instance.verdict", "operator": "eq", "value": "suspension_next_term"}
   },
   {
     "code": "violation_verdict_suspension_immediate",
     "name_fa": "حکم تخلف: تعلیق آنی",
     "rule_type": "condition",
-    "expression": {"field": "instance.verdict_type", "operator": "eq", "value": "suspension_immediate"}
+    "expression": {"field": "instance.verdict", "operator": "eq", "value": "suspension_immediate"}
   },
   {
     "code": "violation_referred_to_education_committee",
     "name_fa": "تخلف به کمیته آموزش ارجاع شده",
     "rule_type": "condition",
     "expression": {"field": "instance.referred_to_education_committee", "operator": "eq", "value": true}
+  },
+  {
+    "code": "violation_reviewable_yes",
+    "name_fa": "گزارش تخلف قابل بررسی است",
+    "rule_type": "condition",
+    "expression": {"field": "instance.reviewable", "operator": "eq", "value": "yes"}
+  },
+  {
+    "code": "violation_reviewable_no",
+    "name_fa": "گزارش تخلف قابل بررسی نیست",
+    "rule_type": "condition",
+    "expression": {"field": "instance.reviewable", "operator": "eq", "value": "no"}
+  },
+  {
+    "code": "violation_needs_meeting_yes",
+    "name_fa": "نیاز به جلسه با دانشجو",
+    "rule_type": "condition",
+    "expression": {"field": "instance.needs_meeting", "operator": "eq", "value": "yes"}
+  },
+  {
+    "code": "violation_needs_meeting_no",
+    "name_fa": "بدون نیاز به جلسه — حکم مستقیم",
+    "rule_type": "condition",
+    "expression": {"field": "instance.needs_meeting", "operator": "eq", "value": "no"}
+  },
+  {
+    "code": "violation_verdict_minor",
+    "name_fa": "حکم تذکر یا اخطار یا مبرا",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "or",
+      "conditions": [
+        {"field": "instance.verdict", "operator": "eq", "value": "cleared"},
+        {"field": "instance.verdict", "operator": "eq", "value": "notice"},
+        {"field": "instance.verdict", "operator": "eq", "value": "warning_1"},
+        {"field": "instance.verdict", "operator": "eq", "value": "warning_2"},
+        {"field": "instance.verdict", "operator": "eq", "value": "warning_3"}
+      ]
+    }
+  },
+  {
+    "code": "violation_verdict_refer_education",
+    "name_fa": "حکم: ارجاع به کمیته آموزش",
+    "rule_type": "condition",
+    "expression": {"field": "instance.verdict", "operator": "eq", "value": "refer_education"}
+  },
+  {
+    "code": "violation_lift_suspension_yes",
+    "name_fa": "برداشتن تعلیق",
+    "rule_type": "condition",
+    "expression": {"field": "instance.lift_suspension", "operator": "eq", "value": "yes"}
+  },
+  {
+    "code": "violation_education_no_expulsion",
+    "name_fa": "کمیته آموزش: عدم اخراج",
+    "rule_type": "condition",
+    "expression": {"field": "instance.final_decision", "operator": "eq", "value": "no_expulsion"}
+  },
+  {
+    "code": "violation_education_expulsion",
+    "name_fa": "کمیته آموزش: اخراج",
+    "rule_type": "condition",
+    "expression": {"field": "instance.final_decision", "operator": "eq", "value": "expulsion"}
   },
   {
     "code": "evaluation_open_two_weeks_before_term_end",
@@ -761,6 +836,42 @@
     "name_fa": "نمره ارزیابی کمک‌مدرس سوپرویژن زنده < ۷۴ — FAIL",
     "rule_type": "condition",
     "expression": {"field": "instance.ta_final_score", "operator": "lt", "value": 74}
+  },
+  {
+    "code": "live_supervision_18_sessions_complete",
+    "name_fa": "تکمیل ۱۵ جلسه عادی + ۳ پشت‌آینه",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "and",
+      "conditions": [
+        {"field": "instance.live_supervision_normal_count", "operator": "gte", "value": 15},
+        {"field": "instance.live_supervision_mirror_count", "operator": "gte", "value": 3}
+      ]
+    }
+  },
+  {
+    "code": "live_supervision_mirror_write_sla_breach",
+    "name_fa": "تأخیر پیاده‌سازی جلسه پشت‌آینه — مهلت ۵ روز",
+    "rule_type": "condition",
+    "expression": {"field": "instance.days_since_mirror_session", "operator": "gt", "value": 5}
+  },
+  {
+    "code": "live_supervision_mirror_eval_sla_breach",
+    "name_fa": "تأخیر ارزیابی پشت‌آینه مدرس — مهلت ۵ روز",
+    "rule_type": "condition",
+    "expression": {"field": "instance.days_since_third_mirror", "operator": "gt", "value": 5}
+  },
+  {
+    "code": "live_supervision_final_eval_same_day_breach",
+    "name_fa": "تأخیر ارزیابی نهایی — پس از ۲۴:۰۰ همان روز",
+    "rule_type": "condition",
+    "expression": {"field": "instance.final_eval_sla_breach", "operator": "eq", "value": true}
+  },
+  {
+    "code": "live_supervision_compensation_payment_required",
+    "name_fa": "نیاز به پرداخت جبرانی غیبت در بسته ۱۸ جلسه",
+    "rule_type": "condition",
+    "expression": {"field": "instance.compensation_sessions_pending", "operator": "gt", "value": 0}
   },
   {
     "code": "thesis_defense_eligibility_met",
@@ -829,5 +940,179 @@
     "name_fa": "بدون قسط معوق باقی‌مانده — آماده بستن فرایند ترم دوم",
     "rule_type": "condition",
     "expression": {"field": "instance.pending_installments_remaining", "operator": "eq", "value": 0}
+  },
+  {
+    "code": "et_upgrade_eligibility_met",
+    "name_fa": "احراز شروط ارتقا به درمانگر آموزشی",
+    "rule_type": "condition",
+    "expression": {"field": "instance.et_eligibility_met", "operator": "eq", "value": true}
+  },
+  {
+    "code": "et_upgrade_eligibility_not_met",
+    "name_fa": "عدم احراز شروط ارتقا به درمانگر آموزشی",
+    "rule_type": "condition",
+    "expression": {"field": "instance.et_eligibility_met", "operator": "eq", "value": false}
+  },
+  {
+    "code": "et_therapy_frequency_below_weekly",
+    "name_fa": "فرکانس درمان شخصی کمتر از یک جلسه در هفته",
+    "rule_type": "condition",
+    "expression": {"field": "instance.et_therapy_weekly_sessions", "operator": "lt", "value": 1}
+  },
+  {
+    "code": "et_therapy_active",
+    "name_fa": "درمان شخصی فعال",
+    "rule_type": "condition",
+    "expression": {"field": "instance.et_therapy_active", "operator": "eq", "value": true}
+  },
+  {
+    "code": "et_therapy_not_active",
+    "name_fa": "درمان شخصی فعال نیست",
+    "rule_type": "condition",
+    "expression": {"field": "instance.et_therapy_active", "operator": "eq", "value": false}
+  },
+  {
+    "code": "et_personal_therapy_hours_complete",
+    "name_fa": "۵۰ ساعت درمان شخصی تکمیل شد",
+    "rule_type": "condition",
+    "expression": {"field": "instance.et_therapy_hours_remaining", "operator": "lte", "value": 0}
+  },
+  {
+    "code": "et_supervision_frequency_one_per_month",
+    "name_fa": "سوپرویژن یک جلسه در ماه",
+    "rule_type": "condition",
+    "expression": {"field": "instance.et_supervision_monthly_sessions", "operator": "eq", "value": 1}
+  },
+  {
+    "code": "et_supervision_active_two_per_month",
+    "name_fa": "سوپرویژن فعال با دو جلسه در ماه",
+    "rule_type": "condition",
+    "expression": {
+      "operator": "and",
+      "conditions": [
+        {"field": "instance.et_supervision_active", "operator": "eq", "value": true},
+        {"field": "instance.et_supervision_monthly_sessions", "operator": "gte", "value": 2}
+      ]
+    }
+  },
+  {
+    "code": "et_supervision_frequency_below_monthly",
+    "name_fa": "فرکانس سوپرویژن کمتر از یک جلسه در ماه",
+    "rule_type": "condition",
+    "expression": {"field": "instance.et_supervision_monthly_sessions", "operator": "lt", "value": 1}
+  },
+  {
+    "code": "et_supervision_hours_complete",
+    "name_fa": "۵۰ ساعت سوپرویژن تکمیل شد",
+    "rule_type": "condition",
+    "expression": {"field": "instance.et_supervision_hours_remaining", "operator": "lte", "value": 0}
+  },
+  {
+    "code": "skills_session_17_submitted_in_time",
+    "name_fa": "ثبت نمرات جلسه ۱۷ در مهلت",
+    "rule_type": "condition",
+    "expression": {"field": "instance.session_17_submitted_before_sla", "operator": "eq", "value": true}
+  },
+  {
+    "code": "skills_session_17_sla_breach",
+    "name_fa": "تأخیر ثبت نمرات جلسه ۱۷",
+    "rule_type": "condition",
+    "expression": {"field": "instance.session_17_submitted_before_sla", "operator": "eq", "value": false}
+  },
+  {
+    "code": "skills_course_has_ta",
+    "name_fa": "درس دارای کمک‌مدرس",
+    "rule_type": "condition",
+    "expression": {"field": "instance.course_has_ta", "operator": "eq", "value": true}
+  },
+  {
+    "code": "skills_course_no_ta",
+    "name_fa": "درس بدون کمک‌مدرس",
+    "rule_type": "condition",
+    "expression": {"field": "instance.course_has_ta", "operator": "eq", "value": false}
+  },
+  {
+    "code": "skills_qualitative_submitted_in_time",
+    "name_fa": "ارزیابی کیفی در مهلت",
+    "rule_type": "condition",
+    "expression": {"field": "instance.qualitative_submitted_before_sla", "operator": "eq", "value": true}
+  },
+  {
+    "code": "skills_qualitative_sla_breach",
+    "name_fa": "تأخیر ارزیابی کیفی",
+    "rule_type": "condition",
+    "expression": {"field": "instance.qualitative_submitted_before_sla", "operator": "eq", "value": false}
+  },
+  {
+    "code": "group_supervision_pass_fail_in_time",
+    "name_fa": "ثبت Pass/Fail جلسه ۱۸ در مهلت",
+    "rule_type": "condition",
+    "expression": {"field": "instance.pass_fail_submitted_before_sla", "operator": "eq", "value": true}
+  },
+  {
+    "code": "group_supervision_pass_fail_sla_breach",
+    "name_fa": "تأخیر ثبت Pass/Fail جلسه ۱۸",
+    "rule_type": "condition",
+    "expression": {"field": "instance.pass_fail_submitted_before_sla", "operator": "eq", "value": false}
+  },
+  {
+    "code": "group_supervision_has_ta",
+    "name_fa": "درس سوپرویژن گروهی دارای کمک‌مدرس",
+    "rule_type": "condition",
+    "expression": {"field": "instance.course_has_ta", "operator": "eq", "value": true}
+  },
+  {
+    "code": "group_supervision_no_ta",
+    "name_fa": "درس سوپرویژن گروهی بدون کمک‌مدرس",
+    "rule_type": "condition",
+    "expression": {"field": "instance.course_has_ta", "operator": "eq", "value": false}
+  },
+  {
+    "code": "group_supervision_qualitative_in_time",
+    "name_fa": "ارزیابی کیفی سوپرویژن گروهی در مهلت",
+    "rule_type": "condition",
+    "expression": {"field": "instance.qualitative_submitted_before_sla", "operator": "eq", "value": true}
+  },
+  {
+    "code": "group_supervision_qualitative_sla_breach",
+    "name_fa": "تأخیر ارزیابی کیفی سوپرویژن گروهی",
+    "rule_type": "condition",
+    "expression": {"field": "instance.qualitative_submitted_before_sla", "operator": "eq", "value": false}
+  },
+  {
+    "code": "theory_session_18_submitted_in_time",
+    "name_fa": "ثبت مشارکت جلسه ۱۸ در مهلت",
+    "rule_type": "condition",
+    "expression": {"field": "instance.session_18_submitted_before_sla", "operator": "eq", "value": true}
+  },
+  {
+    "code": "theory_session_18_sla_breach",
+    "name_fa": "تأخیر ثبت مشارکت جلسه ۱۸",
+    "rule_type": "condition",
+    "expression": {"field": "instance.session_18_submitted_before_sla", "operator": "eq", "value": false}
+  },
+  {
+    "code": "theory_borderline_score",
+    "name_fa": "نمره مرزی تئوری (۶۴–۷۳)",
+    "rule_type": "condition",
+    "expression": {"field": "instance.borderline_pending", "operator": "eq", "value": true}
+  },
+  {
+    "code": "theory_not_borderline_score",
+    "name_fa": "نمره غیرمرزی تئوری",
+    "rule_type": "condition",
+    "expression": {"field": "instance.borderline_pending", "operator": "eq", "value": false}
+  },
+  {
+    "code": "theory_qualitative_submitted_in_time",
+    "name_fa": "ارزیابی کیفی تئوری در مهلت",
+    "rule_type": "condition",
+    "expression": {"field": "instance.qualitative_submitted_before_sla", "operator": "eq", "value": true}
+  },
+  {
+    "code": "theory_qualitative_sla_breach",
+    "name_fa": "تأخیر ارزیابی کیفی تئوری",
+    "rule_type": "condition",
+    "expression": {"field": "instance.qualitative_submitted_before_sla", "operator": "eq", "value": false}
   }
 ]

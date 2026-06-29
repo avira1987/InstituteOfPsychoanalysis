@@ -837,7 +837,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 38,
-      "notes": "رح ۳۸ (SOP برز). ا ۱۲ شرط شدار سئ پر ظارت جز/ارجاع تخفات صاحب+SMS حات ۱ اگ استادارد (۱۶+: ۳۳۴۵۳۳) حات ۲ حدد (۱۶+: ۲۲۳۳۲۲۴۲+:۳۴۸+:۴) UI ۲۵ بار+ا سف. processes/internship_12month_conditional_review/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code internship_12month_conditional_review"
+      "notes": "رح ۳۸ (SOP برز). ا ۱۲ شرط شدار سئ پر ظارت جز/ارجاع تخفات صاحب+SMS حات ۱ اگ استادارد (۱۶+: ۳۳۴۵۳۳) حات ۲ حدد (۱۶+: ۲۲۳۳۲۲۴۲+:۳۴۸+:۴) UI ۲۵ بار+ا سف. فرم internship_12month_schedule (تاریخ/ساعت/لینک مصاحبه) در interview_scheduling. processes/internship_12month_conditional_review/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code internship_12month_conditional_review"
     },
     {
       "code": "intern_hours_increase",
@@ -861,7 +861,7 @@
     },
     {
       "code": "comprehensive_term_start",
-      "name_fa": "آغاز ترا در جاع",
+      "name_fa": "آغاز ترم‌های دوره جامع",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/comprehensive_term_start",
@@ -876,7 +876,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 40,
-      "notes": "رح ۴۰ (SOP برز). تع/رخص+بازگشت درس ثابت صاح+جبرا ۱۳ اساط ۲۴ حسابدار+SMS ثبت ا  ک کاس ف حضر اگر سط ع. processes/comprehensive_term_start/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_term_start"
+      "notes": "مرحله ۴۰ (SOP برز). تعلیق/مرخصی+بازگشت؛ دروس ثابت+جبرانی؛ اقساط ۲–۴؛ حسابداری+SMS؛ بلاک حضور اگر قسط عقب افتاد. UI: StudentComprehensiveTermStartPanel + comprehensiveTermStartDisplay.jsx در admin-ui. processes/comprehensive_term_start/SOP_document.txt + SOP_flowchart.png + 04_status.md sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_term_start"
     },
     {
       "code": "lesson_start_per_term",
@@ -899,7 +899,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 41,
-      "notes": "رح ۴۱ (SOP برز). ک آا برا  ست حضر حضر فط درس TA از پاز/زستا+حضر TA. processes/lesson_start_per_term/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code lesson_start_per_term"
+      "notes": "مرحله ۴۱ (SOP برز). ثبت حضور فقط مدرس؛ TA از پاییز/زمستان+حضور TA. UI: StudentLessonStartPerTermPanel + lessonStartPerTermDisplay.jsx + InstructorLessonAttendancePanel در admin-ui. processes/lesson_start_per_term/SOP_document.txt + SOP_flowchart.png + 04_status.md sync: scripts/sync_sop_doc_from_registry_files.py --code lesson_start_per_term"
     },
     {
       "code": "student_non_registration",
@@ -1180,7 +1180,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 55,
-      "notes": "رح ۵۵ (SOP برز). ۳رز SLA گزارش عکرد جس+ا/SMS تذکر/اخطار۱۳+۷رز اخطار۳تع/ارجاع کت آزش اخراجread-only. processes/violation_registration/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code violation_registration"
+      "notes": "مرحله ۵۵ (SOP کامل). UI پنل کمیته/دانشجو + فرم‌های اپراتوری + SLA ۳/۷ روز + جدول گزارش عملکرد. processes/violation_registration/SOP_document.txt"
     },
     {
       "code": "class_session_cancellation",
@@ -1285,7 +1285,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 60,
-      "notes": "رح ۶۰ (SOP). دراگر+پرداخت+ا ۲۴ساعت جاع ۲ساعت/آشا ۱۲ اترسپرازر ۱ساعت+پرداخت بازگشا ثبتا. processes/return_to_full_education/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code return_to_full_education"
+      "notes": "رح ۶۰ (SOP). UI: StudentReturnToFullEducationPanel + SEP payment. دراگر+پرداخت+۲۴ساعت+سوپروایزر انترن+بازگشایی ثبت‌نام. processes/return_to_full_education/SOP_document.txt + 04_status.md"
     },
     {
       "code": "theory_course_completion",
@@ -1408,7 +1408,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-04-09",
       "sop_order": 66,
-      "notes": "رح ۶۶ (SOP). پذرشارجاع اگ ۴رک ثبت LMS ا خت SMS فط ارکا آزش. processes/live_therapy_observation_session_prep/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_session_prep"
+      "notes": "رح ۶۶ (SOP). UI: LiveSessionPrepPanel + liveSessionPrepDisplay.jsx (مشترک با ۶۸). processes/live_therapy_observation_session_prep/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_session_prep"
     },
     {
       "code": "live_supervision_course_completion",
@@ -1448,7 +1448,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-04-09",
       "sop_order": 68,
-      "notes": "رح ۶۸ (SOP). پذرشارجاع اگ ۴رک ثبت LMS ا خت SMS درس/ککدرس/داشج (بد بار). processes/live_supervision_session_prep/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_session_prep"
+      "notes": "رح ۶۸ (SOP). UI: LiveSessionPrepPanel + liveSessionPrepDisplay.jsx (مشترک با ۶۶). processes/live_supervision_session_prep/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_session_prep"
     },
     {
       "code": "article_writing_completion",
@@ -1470,7 +1470,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 69,
-      "notes": "رح ۶۹ (SOP). حداکثر۲تر تر۳+ تخف تک تکبست کاس ۸رز دفاع+۴رز ارزاب سا۷۸ظارت. processes/article_writing_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code article_writing_completion"
+      "notes": "رح ۶۹ (SOP). حداکثر۲تر تر۳+ تخف تک تکبست کاس ۸رز دفاع+۴رز ارزاب سا۷۸ظارت. UI: ArticleWritingCompletionPanel + StudentArticleWritingCompletionPanel. processes/article_writing_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code article_writing_completion"
     },
     {
       "code": "thesis_defense_request",

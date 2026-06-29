@@ -3,8 +3,9 @@
 | فیلد | مقدار |
 |------|-------|
 | **وضعیت** | complete_in_metadata |
-| **آخرین به‌روزرسانی** | 2026-02-14 |
+| **آخرین به‌روزرسانی** | 2026-06-27 |
 | **منبع ورودی** | متن ۱۴ گامی (۲۳) + فلوچارت |
+| **فرم‌ها** | `supervision_reduction_session_selection`, `supervision_reduction_structure` در metadata/processes |
 
 ## نواقص
 - [ ] remove_selected_supervision_sessions

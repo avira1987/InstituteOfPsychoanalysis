@@ -27,18 +27,6 @@
     {
       "from": "evaluation_open",
       "to": "evaluation_closed",
-      "trigger": "evaluation_submitted",
-      "required_role": "student",
-      "description_fa": "ثبت فرم ارزیابی توسط دانشجو",
-      "actions": [
-        {
-          "type": "record_evaluation_submission"
-        }
-      ]
-    },
-    {
-      "from": "evaluation_open",
-      "to": "evaluation_closed",
       "trigger": "deadline_reached",
       "description_fa": "پایان مهلت ارزیابی — محاسبه میانگین، نمودار دایره‌ای، توزیع در پورتال مدرس و کمیته‌ها",
       "required_role": "system",

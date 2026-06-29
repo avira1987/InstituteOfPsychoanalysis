@@ -78,19 +78,24 @@
     },
     "introductory_course_completion": {
       "backend": "app/services/workflow/lms_service.py",
-      "mechanism": "system/LMS actions; deputy portal SLA"
+      "frontend": "admin-ui/src/components/StudentIntroductoryCourseCompletionPanel.jsx",
+      "committee_frontend": "admin-ui/src/components/IntroductoryCourseCompletionReviewPanel.jsx",
+      "secondary_frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
+      "mechanism": "system/LMS actions; StudentIntroductoryCourseCompletionPanel; committee certificate_review"
     },
     "lesson_start_per_term": {
-      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-      "mechanism": "StudentQuestCard + ProcessStepForms; system chain after enrolled"
+      "frontend": "admin-ui/src/components/StudentLessonStartPerTermPanel.jsx",
+      "instructor_frontend": "admin-ui/src/components/InstructorLessonAttendancePanel.jsx",
+      "secondary_frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "mechanism": "StudentLessonStartPerTermPanel + lessonStartPerTermDisplay; class_attendance via InstructorLessonAttendancePanel"
     },
     "student_session_cancellation": {
       "frontend": "admin-ui/src/pages/StudentPortal.jsx",
       "mechanism": "StudentQuestCard"
     },
     "student_supervision_cancellation": {
-      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-      "mechanism": "StudentQuestCard"
+      "frontend": "admin-ui/src/components/StudentSupervisionCancellationPanel.jsx",
+      "mechanism": "StudentSupervisionCancellationPanel + StudentQuestCard"
     },
     "supervision_block_transition": {
       "frontend": "admin-ui/src/components/StudentSupervisionBlockTransitionPanel.jsx",
@@ -140,8 +145,15 @@
       "states": [
         "evaluation_open"
       ],
-      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-      "mechanism": "ProcessStepForms save + StudentQuestCard guidance (optional form; deadline via calendar)"
+      "frontend": "admin-ui/src/components/StudentInstructorEvaluationPanel.jsx",
+      "mechanism": "StudentInstructorEvaluationPanel per-course anonymous API + InstructorEvaluationResultsPanel + InstructorEvaluationCommitteePanel"
+    },
+    "live_supervision_course_completion": {
+      "states": [
+        "mirror_implementation_pending"
+      ],
+      "frontend": "admin-ui/src/components/StudentLiveSupervisionMirrorWritePanel.jsx",
+      "mechanism": "StudentPortal + ProcessStepForms mirror_write_submitted"
     },
     "article_writing_completion": {
       "states": [
@@ -167,11 +179,14 @@
       ]
     },
     "skills_course_completion": {
-      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
-      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
-      "backend": "app/api/process/routes.py",
+      "frontend": "admin-ui/src/components/SkillsCourseCompletionPanel.jsx",
+      "mechanism": "StaffPortal instruction lane + SkillsCourseCompletionPanel + triggerTransition",
+      "backend": "app/services/skills_course_completion_service.py",
       "states": [
-        "grades_entry"
+        "session_17_grades_entry",
+        "session_18_grades_entry",
+        "ta_evaluation_entry",
+        "qualitative_eval_pending"
       ]
     },
     "film_observation_course_completion": {
@@ -183,11 +198,13 @@
       ]
     },
     "live_supervision_course_completion": {
-      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
-      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
-      "backend": "app/api/process/routes.py",
+      "frontend": "admin-ui/src/components/LiveSupervisionCourseCompletionPanel.jsx",
+      "mechanism": "StaffPortal instruction lane + LiveSupervisionDualAttendancePanel + OperatorStepFormsSection",
+      "backend": "app/services/live_supervision_course_service.py",
       "states": [
-        "grades_entry"
+        "sessions_in_progress",
+        "mirror_eval_pending",
+        "final_eval_pending"
       ]
     },
     "live_therapy_observation_course_completion": {
@@ -199,11 +216,13 @@
       ]
     },
     "group_supervision_course_completion": {
-      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
-      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
-      "backend": "app/api/process/routes.py",
+      "frontend": "admin-ui/src/components/GroupSupervisionCourseCompletionPanel.jsx",
+      "mechanism": "StaffPortal instruction lane + GroupSupervisionCourseCompletionPanel + OperatorStepFormsSection + triggerTransition",
+      "backend": "app/services/group_supervision_course_completion_service.py",
       "states": [
-        "grades_entry"
+        "session_18_pass_fail_entry",
+        "ta_evaluation_entry",
+        "qualitative_eval_pending"
       ]
     },
     "film_observation_ta_attendance_completion": {
@@ -220,8 +239,8 @@
       "backend": "app/api/process/routes.py"
     },
     "live_therapy_observation_ta_attendance_completion": {
-      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
-      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "frontend": "admin-ui/src/components/LiveTherapyObservationTaAttendancePanel.jsx",
+      "mechanism": "StaffPortal instruction lane + LiveTherapyObservationTaAttendancePanel + OperatorStepFormsSection + triggerTransition",
       "backend": "app/api/process/routes.py",
       "states": [
         "grades_entry"
@@ -236,8 +255,8 @@
       ]
     },
     "class_session_cancellation": {
-      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
-      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
+      "frontend": "admin-ui/src/components/InstructorClassSessionCancellationPanel.jsx",
+      "mechanism": "StaffPortal instruction lane + InstructorClassSessionCancellationPanel + OperatorStepFormsSection + triggerTransition",
       "backend": "app/api/process/routes.py",
       "states": [
         "cancellation_request"
@@ -275,19 +294,30 @@
     },
     "upgrade_to_educational_therapist": {
       "frontend": "admin-ui/src/pages/CommitteePortal.jsx",
-      "mechanism": "CommitteePortal + OperatorProcessInstancePanel",
+      "mechanism": "CommitteePortal + EducationalTherapist*Panel + OperatorStepFormsSection",
       "states": [
         "monitoring_review",
-        "student_start"
+        "interview_scheduling",
+        "interview_held",
+        "therapist_committee_review",
+        "therapy_frequency_escalation"
       ]
     },
     "intern_bulk_patient_referral": {
       "frontend": "admin-ui/src/pages/CommitteePortal.jsx",
-      "mechanism": "CommitteePortal + OperatorProcessInstancePanel",
+      "mechanism": "CommitteePortal + InternBulkPatientReferralSupervisionPanel / TherapyCommitteePanel + OperatorStepFormsSection",
       "states": [
-        "coordination_followup",
+        "supervision_start",
         "general_therapy_committee_review"
       ]
+    },
+    "intern_bulk_patient_referral_coordination": {
+      "frontend": "admin-ui/src/pages/StaffPortal.jsx",
+      "mechanism": "StaffPortal therapy-coord + InternBulkPatientReferralCoordinationPanel + OperatorProcessInstancePanel",
+      "states": [
+        "coordination_followup"
+      ],
+      "process_code": "intern_bulk_patient_referral"
     }
   },
   "partial_ui_paths": {},
@@ -357,9 +387,10 @@
       "note_fa": "ساعات سوپرویژن در extra_data"
     },
     "introductory_term_end": {
-      "frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
+      "frontend": "admin-ui/src/components/StudentIntroductoryTermEndPanel.jsx",
+      "secondary_frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
       "field": "extra_data.documents",
-      "note_fa": "کارنامه ترمی/تجمیعی پس از generate_term_transcript"
+      "note_fa": "پنل راهنمای فرایند ۳۲ در تب فرایندها؛ کارنامه ترمی/تجمیعی در تب پروفایل پس از generate_term_transcript"
     },
     "comprehensive_term_end": {
       "frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
@@ -367,7 +398,9 @@
       "note_fa": "کارنامه ترمی/تجمیعی پس از generate_term_transcript"
     },
     "introductory_course_completion": {
-      "frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
+      "frontend": "admin-ui/src/components/StudentIntroductoryCourseCompletionPanel.jsx",
+      "committee_frontend": "admin-ui/src/components/IntroductoryCourseCompletionReviewPanel.jsx",
+      "secondary_frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
       "field": "extra_data.documents",
       "note_fa": "گواهی پایان دوره آشنایی پس از upload_certificate_to_portal"
     },
@@ -392,9 +425,9 @@
       "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
     },
     "live_supervision_course_completion": {
-      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
-      "field": "extra_data.lms",
-      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+      "frontend": "admin-ui/src/components/StudentLiveSupervisionCoursePanel.jsx",
+      "field": "extra_data.lms.live_supervision",
+      "note_fa": "پیشرفت ۱۵+۳ و پرداخت جبرانی"
     },
     "live_therapy_observation_course_completion": {
       "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
@@ -402,9 +435,9 @@
       "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
     },
     "group_supervision_course_completion": {
-      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
-      "field": "extra_data.lms",
-      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+      "frontend": "admin-ui/src/components/StudentGroupSupervisionCourseCompletionPanel.jsx",
+      "field": "extra_data.lms.group_supervision_hours",
+      "note_fa": "Pass/Fail و ساعات سوپرویژن گروهی پس از ثبت مدرس"
     },
     "fall_semester_preparation": {
       "frontend": "admin-ui/src/components/StudentAcademicCalendarPanel.jsx",
@@ -455,8 +488,19 @@
       "note_fa": "وضعیت فرایند در پورتال دانشجو/کمیته"
     },
     "upgrade_to_educational_therapist": {
-      "frontend": "admin-ui/src/pages/StudentPortal.jsx",
-      "note_fa": "وضعیت فرایند در پورتال دانشجو/کمیته"
+      "frontend": "admin-ui/src/components/StudentEducationalTherapistUpgradePanel.jsx",
+      "mechanism": "StudentEducationalTherapistUpgradePanel + ProcessStepForms",
+      "states": [
+        "student_start",
+        "therapy_frequency_adjustment",
+        "personal_therapy_hours",
+        "therapist_selection",
+        "supervision_frequency_adjustment",
+        "supervision_restart",
+        "supervision_hours",
+        "supervisor_selection",
+        "et_availability_slots"
+      ]
     },
     "intern_bulk_patient_referral": {
       "frontend": "admin-ui/src/pages/StudentPortal.jsx",

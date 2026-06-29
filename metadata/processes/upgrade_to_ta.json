@@ -182,21 +182,60 @@
   ],
   "forms": [
     {
+      "code": "ta_supervision_decision",
+      "name_fa": "تصمیم کمیته نظارت — ارتقا به کمک‌مدرس",
+      "used_in_state": "supervision_review",
+      "fields": [
+        {
+          "name": "ta_eligibility_summary_fa",
+          "label_fa": "خلاصه احراز خودکار",
+          "type": "readonly"
+        },
+        {
+          "name": "result",
+          "label_fa": "نتیجه بررسی",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {
+              "value": "approve",
+              "label_fa": "تایید صلاحیت"
+            },
+            {
+              "value": "reject",
+              "label_fa": "رد صلاحیت"
+            }
+          ]
+        },
+        {
+          "name": "notes",
+          "label_fa": "توضیحات",
+          "type": "textarea"
+        }
+      ]
+    },
+    {
       "code": "ta_interview_schedule",
       "name_fa": "تنظیم وقت مصاحبه کمک‌مدرس",
       "used_in_state": "interview_scheduling",
       "fields": [
         {
           "name": "interview_date",
-          "type": "date_picker"
+          "label_fa": "تاریخ مصاحبه",
+          "type": "date_picker",
+          "required": true
         },
         {
           "name": "interview_time",
-          "type": "time_picker"
+          "label_fa": "ساعت مصاحبه",
+          "type": "time_picker",
+          "required": true
         },
         {
           "name": "meeting_type",
+          "label_fa": "نحوه برگزاری",
           "type": "radio",
+          "required": true,
           "options": [
             {
               "value": "in_person",
@@ -217,7 +256,9 @@
       "fields": [
         {
           "name": "result",
+          "label_fa": "نتیجه مصاحبه",
           "type": "radio",
+          "required": true,
           "options": [
             {
               "value": "approve",
@@ -231,8 +272,48 @@
         },
         {
           "name": "tracks",
-          "label_fa": "رسته‌های کمک‌مدرس",
-          "type": "multi_select"
+          "label_fa": "رسته‌های کمک‌مدرس (پیشنهادی پس از مصاحبه)",
+          "type": "multi_select",
+          "options_source": {
+            "type": "course_committee_tracks"
+          }
+        }
+      ]
+    },
+    {
+      "code": "ta_track_confirmation",
+      "name_fa": "ثبت نهایی رسته‌های کمک‌مدرس",
+      "used_in_state": "track_selection",
+      "fields": [
+        {
+          "name": "tracks",
+          "label_fa": "رسته‌های توافق‌شده",
+          "type": "multi_select",
+          "required": true,
+          "options_source": {
+            "type": "course_committee_tracks"
+          }
+        }
+      ]
+    },
+    {
+      "code": "ta_commitment_signature",
+      "name_fa": "امضای تعهدنامه کمک‌مدرس",
+      "used_in_state": "commitment_signature",
+      "fields": [
+        {
+          "name": "acknowledge",
+          "label_fa": "پذیرش تعهدنامه",
+          "type": "checkbox",
+          "rules_link_href": "/guide#institute-rules",
+          "rules_link_label_fa": "تعهدنامه اعضای هیئت علمی و کمک‌مدرسین",
+          "required": true
+        },
+        {
+          "name": "otp_code",
+          "label_fa": "کد تأیید پیامکی",
+          "type": "step_otp",
+          "required": true
         }
       ]
     }

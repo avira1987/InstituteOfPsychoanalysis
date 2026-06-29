@@ -13,6 +13,7 @@ export const PORTAL_ROLE_HOME = {
   supervisor: { path: '/panel/portal/supervisor', tasksTab: 'reviews' },
   staff: { path: getStaffLanePath(STAFF_DEFAULT_LANE), tasksTab: 'pending' },
   course_committee: { path: getStaffLanePath('course-committee'), tasksTab: 'pending' },
+  teaching_assistant: { path: getStaffLanePath('instruction'), tasksTab: 'pending' },
   site_manager: { path: '/panel/portal/site-manager', tasksTab: 'pending' },
   interviewer: { path: '/panel/portal/interviewer', tasksTab: null },
   finance: { path: '/panel/finance', tasksTab: null },
@@ -33,6 +34,7 @@ const PORTAL_LABELS_FA = {
   supervisor: 'پنل سوپروایزر',
   staff: 'پنل پذیرش',
   course_committee: 'پنل کمیته درس',
+  teaching_assistant: 'پنل مدرس و کمک‌مدرس',
   site_manager: 'پنل مسئول سایت',
   interviewer: 'پنل مصاحبه‌گر',
   finance: 'داشبورد مالی',
@@ -52,6 +54,7 @@ const PORTAL_ICONS = {
   supervisor: '👁️',
   staff: '🏢',
   course_committee: '📚',
+  teaching_assistant: '🎓',
   site_manager: '🏗️',
   interviewer: '🎤',
 }

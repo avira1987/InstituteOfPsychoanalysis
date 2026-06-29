@@ -20,7 +20,21 @@ import { showStudentTransitionCta } from '../utils/studentTransitionCtaVisibilit
 import SepPaymentPanel from './SepPaymentPanel'
 import StudentSessionPaymentPanel from './StudentSessionPaymentPanel'
 import StudentSupervisionBlockTransitionPanel from './StudentSupervisionBlockTransitionPanel'
+import StudentEducationalTherapistUpgradePanel from './StudentEducationalTherapistUpgradePanel'
+import StudentReturnToFullEducationPanel from './StudentReturnToFullEducationPanel'
+import StudentFullEducationLeavePanel from './StudentFullEducationLeavePanel'
+import StudentUpgradeToTaPanel from './StudentUpgradeToTaPanel'
+import StudentTaTrackChangePanel from './StudentTaTrackChangePanel'
+import StudentTaToInstructorAutoPanel from './StudentTaToInstructorAutoPanel'
 import StudentSupervisionSessionIncreasePanel from './StudentSupervisionSessionIncreasePanel'
+import StudentSupervisionSessionReductionPanel from './StudentSupervisionSessionReductionPanel'
+import StudentSupervisionInterruptionPanel from './StudentSupervisionInterruptionPanel'
+import StudentSupervisionCancellationPanel from './StudentSupervisionCancellationPanel'
+import StudentExtraSupervisionSessionPanel from './StudentExtraSupervisionSessionPanel'
+import SupervisorSessionCancellationPanel from './SupervisorSessionCancellationPanel'
+import StudentComprehensiveTermStartPanel from './StudentComprehensiveTermStartPanel'
+import StudentClassAttendancePanel from './StudentClassAttendancePanel'
+import StudentInstructorEvaluationPanel from './StudentInstructorEvaluationPanel'
 import StudentProcessStepReview from './StudentProcessStepReview'
 import StudentSmsHistorySection from './StudentSmsHistorySection'
 
@@ -53,6 +67,12 @@ function resolveSepPaymentDescription(detail) {
   if (pc === 'extra_session' && cs === 'payment_required') {
     return 'پرداخت جلسه اضافی درمان آموزشی'
   }
+  if (pc === 'extra_supervision_session' && cs === 'payment_required') {
+    return 'پرداخت جلسه اضافی سوپرویژن'
+  }
+  if (pc === 'supervisor_session_cancellation' && cs === 'payment_pending') {
+    return 'پرداخت جلسه جبرانی سوپرویژن'
+  }
   if (cs === 'interview_payment') {
     if (pc === 'comprehensive_course_registration') return 'پرداخت هزینه مصاحبهٔ دوره جامع'
     if (pc === 'introductory_course_registration') return 'پرداخت هزینه مصاحبهٔ دوره آشنایی'
@@ -65,6 +85,10 @@ function resolveSepPaymentDescription(detail) {
   if (pc === 'supervision_block_transition') {
     if (cs === 'slot_selected') return 'پرداخت جلسه اول دوره سوپرویژن جدید'
     if (cs === 'new_block_first_paid') return 'پرداخت جلسه ۵۰ام دوره سوپرویژن فعلی'
+  }
+  if (pc === 'return_to_full_education') {
+    if (cs === 'therapy_payment_pending') return 'پرداخت جلسه اول درمان آموزشی (بازگشت به کل آموزش)'
+    if (cs === 'supervision_payment_pending') return 'پرداخت جلسه اول سوپرویژن (بازگشت به کل آموزش)'
   }
   return 'پرداخت جلسات درمان آموزشی'
 }
@@ -187,6 +211,7 @@ export default function StudentQuestCard({
   const showLegacySep = detail?.current_state === 'awaiting_payment'
     || detail?.current_state === 'payment_pending'
     || (detail?.process_code === 'extra_session' && detail?.current_state === 'payment_required')
+    || (detail?.process_code === 'extra_supervision_session' && detail?.current_state === 'payment_required')
 
   const hasInterviewBooking = hasRegistrationInterviewBooking(detail)
   const showRegistrationSep = REGISTRATION_PROCESS_CODES.includes(detail?.process_code)
@@ -199,7 +224,11 @@ export default function StudentQuestCard({
   const showSupervisionBlockSep = detail?.process_code === 'supervision_block_transition'
     && (detail?.current_state === 'slot_selected' || detail?.current_state === 'new_block_first_paid')
 
+  const compTermStartSepInPanel = detail?.process_code === 'comprehensive_term_start'
+    && detail?.current_state === 'payment_processing'
+
   const showSepPanel = !done && studentId && detail?.instance_id
+    && !compTermStartSepInPanel
     && (showLegacySep || showRegistrationSep || showSupervisionBlockSep)
 
   const transitionListForCta = transitionList.filter((t) => {
@@ -384,10 +413,179 @@ export default function StudentQuestCard({
         />
       )}
 
+      {!done && detail?.process_code === 'upgrade_to_educational_therapist' && (
+        <StudentEducationalTherapistUpgradePanel detail={detail} compact />
+      )}
+
+      {!done && detail?.process_code === 'return_to_full_education' && (
+        <StudentReturnToFullEducationPanel
+          detail={detail}
+          studentProfile={studentId ? { id: studentId, extra_data: extraData } : null}
+          compact
+        />
+      )}
+
+      {!done && detail?.process_code === 'full_education_leave' && (
+        <StudentFullEducationLeavePanel detail={detail} compact />
+      )}
+
+      {detail?.process_code === 'full_education_leave' && (() => {
+        const reason = (detail?.context_data?.rejection_reason_fa || '').trim()
+        const showRejected = detail?.current_state === 'leave_rejected' || (detail?.is_completed && reason)
+        if (!showRejected || !reason) return null
+        return (
+          <div
+            className="quest-leave-rejected"
+            style={{
+              marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
+              background: 'linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%)',
+              borderRight: '4px solid #dc2626', fontSize: '0.86rem', lineHeight: 1.75,
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#991b1b' }}>شرح توافقات / علت رد مرخصی</div>
+            <p style={{ margin: 0, color: '#7f1d1d' }}>{reason}</p>
+          </div>
+        )
+      })()}
+
+      {!done && detail?.process_code === 'full_education_leave' && (() => {
+        const c = detail?.context_data || {}
+        const fmt = (s) => {
+          if (!s || typeof s !== 'string') return null
+          const t = Date.parse(s)
+          if (Number.isNaN(t)) return s
+          try {
+            return new Date(t).toLocaleString('fa-IR', { dateStyle: 'medium', timeStyle: 'short' })
+          } catch {
+            return s
+          }
+        }
+        const hasMeeting = !!(c.committee_meeting_at && String(c.committee_meeting_at).trim())
+        const hasSchedule = !!(c.return_reminder_at || c.return_deadline_at)
+        if (!hasMeeting && !hasSchedule) return null
+        const modeFa = c.committee_meeting_mode === 'online' ? 'آنلاین' : c.committee_meeting_mode === 'in_person' ? 'حضوری' : ''
+        return (
+          <div
+            className="quest-leave-context"
+            style={{
+              marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
+              background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
+              borderRight: '4px solid #2563eb', fontSize: '0.86rem', lineHeight: 1.75,
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#1e3a8a' }}>جزئیات مرخصی از کل آموزش</div>
+            {hasMeeting && (
+              <div style={{ marginBottom: hasSchedule ? '0.5rem' : 0 }}>
+                <strong>جلسه کمیته پیشرفت:</strong>{' '}
+                {fmt(c.committee_meeting_at)}
+                {modeFa ? ` · ${modeFa}` : ''}
+                {c.committee_meeting_mode === 'online' && c.committee_meeting_link
+                  ? (
+                    <span> · <a href={c.committee_meeting_link} target="_blank" rel="noopener noreferrer">لینک جلسه</a></span>
+                    )
+                  : null}
+                {c.committee_meeting_mode === 'in_person' && c.committee_meeting_location_fa
+                  ? ` · محل: ${c.committee_meeting_location_fa}`
+                  : null}
+              </div>
+            )}
+            {hasSchedule && (
+              <div>
+                <strong>بازگشت به آموزش:</strong>
+                {c.return_reminder_at ? ` یادآوری حدود ${fmt(c.return_reminder_at)}` : ''}
+                {c.return_deadline_at ? ` — مهلت بازگشت: ${fmt(c.return_deadline_at)}` : ''}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {!done && detail?.process_code === 'upgrade_to_ta' && (
+        <StudentUpgradeToTaPanel detail={detail} compact />
+      )}
+
+      {!done && detail?.process_code === 'ta_track_change' && (
+        <StudentTaTrackChangePanel detail={detail} studentProfile={studentProfile} compact />
+      )}
+
+      {detail?.process_code === 'ta_to_instructor_auto' && (
+        <StudentTaToInstructorAutoPanel detail={detail} extraData={extraData} compact />
+      )}
+
       {!done && detail?.process_code === 'supervision_session_increase' && (
         <StudentSupervisionSessionIncreasePanel
           detail={detail}
           stepFormValues={stepFormValues}
+          compact
+        />
+      )}
+
+      {!done && detail?.process_code === 'supervision_session_reduction' && (
+        <StudentSupervisionSessionReductionPanel
+          detail={detail}
+          stepFormValues={stepFormValues}
+          compact
+        />
+      )}
+
+      {!done && detail?.process_code === 'supervision_interruption' && (
+        <StudentSupervisionInterruptionPanel
+          detail={detail}
+          stepFormValues={stepFormValues}
+          compact
+        />
+      )}
+
+      {!done && detail?.process_code === 'student_supervision_cancellation' && (
+        <StudentSupervisionCancellationPanel
+          detail={detail}
+          stepFormValues={stepFormValues}
+          compact
+        />
+      )}
+
+      {!done && detail?.process_code === 'supervisor_session_cancellation' && (
+        <SupervisorSessionCancellationPanel
+          detail={detail}
+          stepFormValues={stepFormValues}
+          compact
+          portalRole="student"
+        />
+      )}
+
+      {!done && detail?.process_code === 'extra_supervision_session' && (
+        <StudentExtraSupervisionSessionPanel
+          detail={detail}
+          stepFormValues={stepFormValues}
+          compact
+        />
+      )}
+
+      {detail?.process_code === 'comprehensive_term_start' && (
+        <StudentComprehensiveTermStartPanel
+          detail={detail}
+          studentProfile={studentId ? { id: studentId } : null}
+          stepFormValues={stepFormValues}
+          active
+          compact
+        />
+      )}
+
+      {detail?.process_code === 'class_attendance' && (
+        <StudentClassAttendancePanel
+          detail={detail}
+          studentProfile={studentId ? { id: studentId, extra_data: extraData } : null}
+          active
+          compact
+        />
+      )}
+
+      {detail?.process_code === 'student_instructor_evaluation' && (
+        <StudentInstructorEvaluationPanel
+          detail={detail}
+          instanceId={instanceId}
+          studentProfile={studentId ? { id: studentId, extra_data: extraData } : null}
+          active
           compact
         />
       )}
@@ -629,6 +827,46 @@ export default function StudentQuestCard({
           >
             <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#991b1b' }}>
               کنسل جلسات درمان (فرایند ۱۷)
+            </div>
+            {pct != null && (
+              <div style={{ marginBottom: '0.25rem' }}>
+                <strong>درصد کنسلی فعلی:</strong>
+                {' '}
+                {pct.toLocaleString('fa-IR')}٪
+                {pct >= 10 ? ' — نزدیک سقف ۱۲٪' : ''}
+              </div>
+            )}
+            {upcoming != null && (
+              <div>
+                <strong>جلسات ۳ هفتهٔ آینده:</strong>
+                {' '}
+                {upcoming.toLocaleString('fa-IR')}
+                {' '}
+                جلسه
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {!done && detail?.process_code === 'student_supervision_cancellation' && (() => {
+        const c = detail?.context_data || {}
+        const pct = c.cancellation_percent_now != null ? Number(c.cancellation_percent_now) : null
+        const upcoming = Array.isArray(c.upcoming_cancellation_sessions)
+          ? c.upcoming_cancellation_sessions.length
+          : null
+        if (pct == null && upcoming == null) return null
+        return (
+          <div
+            className="quest-supervision-cancellation-preview"
+            style={{
+              marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
+              background: 'linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%)',
+              borderRight: '4px solid #0d9488', fontSize: '0.86rem', lineHeight: 1.75,
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#115e59' }}>
+              کنسل جلسات سوپرویژن (فرایند ۲۵)
             </div>
             {pct != null && (
               <div style={{ marginBottom: '0.25rem' }}>

@@ -16,7 +16,7 @@
       "type": "initial",
       "assigned_role": "admission_officer",
       "metadata": {
-        "operator_task_fa": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.",
+        "operator_task_fa": "ثبت اطلاعات بیمار متقاضی مشاهده زنده درمان و ارجاع به مسئول هماهنگی.",
         "operator_short_fa": "ثبت و ارجاع پرونده بیمار"
       }
     },
@@ -26,7 +26,7 @@
       "type": "intermediate",
       "assigned_role": "therapy_education_coordinator",
       "metadata": {
-        "operator_task_fa": "هماهنگی آموزش درمان و ثبت اطلاعات.",
+        "operator_task_fa": "هماهنگی چهارجانبه (بیمار، درمانگر، مدرس، برنامه کلاسی) و ثبت نتیجه در LMS.",
         "operator_short_fa": "هماهنگی زمان جلسه"
       }
     },
@@ -49,7 +49,7 @@
       "to": "coordination_pending",
       "trigger": "referral_submitted",
       "required_role": "admission_officer",
-      "description_fa": "ارجاع به مسئول هماهنگی"
+      "description_fa": "ارجاع پرونده به مسئول هماهنگی‌های درمان و آموزش"
     },
     {
       "from": "coordination_pending",
@@ -59,10 +59,21 @@
       "conditions": [
         "live_session_time_agreed"
       ],
-      "description_fa": "ثبت زمان در LMS — پیامک به مدرس، کمک‌مدرس و دانشجویان",
+      "description_fa": "ثبت قطعی در LMS و ارسال پیامک به مدرس، کمک‌مدرس و دانشجویان",
       "actions": [
         {
           "type": "record_session_prep"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "live_therapy_observation_session_confirmed",
+          "recipients": [
+            "instructor",
+            "teaching_assistant",
+            "class_students"
+          ],
+          "template_text_fa": "دانشجوی گرامی / مدرس محترم، به اطلاع می‌رساند جلسه «مشاهده زنده درمان» (پشت آینه) در تاریخ {session_date} رأس ساعت {session_time} در سیستم ثبت و قطعی گردید. لطفاً جهت برگزاری کلاس، در زمان مقرر حضور به‌هم رسانید. آموزش انستیتو روانکاوی تهران"
         }
       ]
     },
@@ -74,7 +85,7 @@
       "conditions": [
         "live_session_time_not_agreed"
       ],
-      "description_fa": "وقت هماهنگ نشد — ختم پرونده"
+      "description_fa": "وقت خاصی نشد که هماهنگ شود — ختم پرونده"
     }
   ],
   "forms": [
@@ -82,48 +93,70 @@
       "code": "observation_patient_referral",
       "name_fa": "فرم ارجاع بیمار متقاضی مشاهده زنده درمان",
       "used_in_state": "patient_referral",
+      "description_fa": "ثبت‌کننده: مسئول پذیرش یا مشورت‌دهنده اولیه. پس از ثبت، پرونده به مسئول هماهنگی‌های درمان و آموزش ارجاع می‌شود.",
       "fields": [
         {
           "name": "patient_first_name",
           "label_fa": "نام بیمار",
-          "type": "text"
+          "type": "text",
+          "required": true
         },
         {
           "name": "patient_last_name",
-          "label_fa": "نام خانوادگی",
-          "type": "text"
+          "label_fa": "نام خانوادگی بیمار",
+          "type": "text",
+          "required": true
         },
         {
           "name": "patient_phone",
-          "label_fa": "شماره تماس",
-          "type": "text"
+          "label_fa": "شماره تماس بیمار",
+          "type": "text",
+          "required": true
         },
         {
           "name": "notes",
-          "label_fa": "توضیحات",
+          "label_fa": "توضیحات تکمیلی",
           "type": "textarea"
         }
       ]
     },
     {
       "code": "observation_schedule_form",
-      "name_fa": "ثبت زمان جلسه مشاهده زنده در LMS",
+      "name_fa": "تعیین تکلیف هماهنگی جلسه مشاهده زنده درمان",
       "used_in_state": "coordination_pending",
+      "description_fa": "پس از هماهنگی بین بیمار، درمانگر، مدرس و دانشجویان کلاس، زمان قطعی را ثبت کنید. با ثبت، پیامک به ارکان کلاسی ارسال می‌شود. در صورت عدم توافق، از دکمه «وقت هماهنگ نشد» استفاده کنید.",
       "fields": [
         {
+          "name": "instructor_id",
+          "label_fa": "انتخاب مدرس کلاس",
+          "type": "user_select",
+          "required": true,
+          "options_source": {
+            "type": "users",
+            "role": "instructor"
+          }
+        },
+        {
+          "name": "therapist_id",
+          "label_fa": "انتخاب درمانگر",
+          "type": "user_select",
+          "required": true,
+          "options_source": {
+            "type": "users",
+            "role": "therapist"
+          }
+        },
+        {
           "name": "session_date",
-          "label_fa": "تاریخ",
-          "type": "date_picker"
+          "label_fa": "تاریخ قطعی برگزاری",
+          "type": "date_picker",
+          "required": true
         },
         {
           "name": "session_time",
           "label_fa": "ساعت شروع",
-          "type": "time_picker"
-        },
-        {
-          "name": "instructor_id",
-          "label_fa": "مدرس",
-          "type": "user_select"
+          "type": "time_picker",
+          "required": true
         }
       ]
     }

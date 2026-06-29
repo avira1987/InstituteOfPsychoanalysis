@@ -62,6 +62,9 @@
       "description_fa": "ثبت روز و ساعت توافق‌شده به همراه مدرس و درمانگر — ارسال پیامک به مدرس، کمک‌مدرس و دانشجویان کلاس",
       "actions": [
         {
+          "type": "record_session_prep"
+        },
+        {
           "type": "notification",
           "notification_type": "sms",
           "template": "live_supervision_session_confirmed",

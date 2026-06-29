@@ -6,6 +6,7 @@ import { resolveUploadPublicUrl, parseStepFileUploadValue } from '../utils/uploa
 import { studentApi } from '../services/api'
 import ShamsiDatePicker from './ShamsiDatePicker'
 import ShamsiDateTimePicker from './ShamsiDateTimePicker'
+import StepOtpField from './StepOtpField'
 import CreatableSearchSelect from './CreatableSearchSelect'
 import {
   createCourseCatalogEntry,
@@ -224,7 +225,12 @@ function DynamicListField({ field, value, onChange, disabled }) {
   const colSpecs = Array.isArray(field.fields) ? field.fields : []
   const columns = colSpecs.map((c) => {
     if (typeof c === 'string') return { name: c, label_fa: c, type: 'text' }
-    return { name: c.name || c.code, label_fa: c.label_fa || c.name, type: c.type || 'text' }
+    return {
+      name: c.name || c.code,
+      label_fa: c.label_fa || c.name,
+      type: c.type || 'text',
+      options: c.options,
+    }
   })
   const rows = Array.isArray(value) ? value : []
   const setCell = (rowIdx, colName, v) => {
@@ -254,8 +260,43 @@ function DynamicListField({ field, value, onChange, disabled }) {
             <tr key={rowIdx}>
               {columns.map((col) => (
                 <td key={col.name} style={{ padding: '0.25rem', verticalAlign: 'top' }}>
-                  {col.type === 'number' ? (
+                  {col.type === 'select' && Array.isArray(col.options) && col.options.length > 0 ? (
+                    <select
+                      className="psf-input form-input"
+                      value={row?.[col.name] ?? ''}
+                      disabled={disabled}
+                      onChange={(e) => setCell(rowIdx, col.name, e.target.value)}
+                    >
+                      <option value="">انتخاب کنید…</option>
+                      {col.options.map((opt) => {
+                        const val = typeof opt === 'object' ? opt.value : opt
+                        const lab = typeof opt === 'object' ? (opt.label_fa || opt.value) : opt
+                        return (
+                          <option key={String(val)} value={String(val)}>{lab}</option>
+                        )
+                      })}
+                    </select>
+                  ) : col.type === 'textarea' ? (
+                    <textarea
+                      className="psf-input form-input"
+                      rows={2}
+                      value={row?.[col.name] ?? ''}
+                      disabled={disabled}
+                      onChange={(e) => setCell(rowIdx, col.name, e.target.value)}
+                    />
+                  ) : col.type === 'number' ? (
                     <input type="number" className="psf-input form-input" value={row?.[col.name] ?? ''} disabled={disabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value === '' ? '' : Number(e.target.value))} />
+                  ) : col.type === 'checkbox' ? (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', justifyContent: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!row?.[col.name]}
+                        disabled={disabled}
+                        onChange={(e) => setCell(rowIdx, col.name, e.target.checked)}
+                      />
+                    </label>
+                  ) : col.type === 'readonly' ? (
+                    <span style={{ fontSize: '0.85rem' }}>{row?.[col.name] ?? '—'}</span>
                   ) : (
                     <input type="text" className="psf-input form-input" value={row?.[col.name] ?? ''} disabled={disabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
                   )}
@@ -575,7 +616,7 @@ function DateRangeListField({ value, onChange, disabled }) {
   )
 }
 
-function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, showToast }) {
+function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, showToast, instanceId = null }) {
   const t = (field.type || 'text').toLowerCase()
   const name = field.name
   const id = `uf-${name}`
@@ -609,6 +650,37 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
       <label className="psf-field" htmlFor={id}>
         {labelEl}
         <TherapistSelect id={id} field={field} value={value} onChange={onChange} disabled={disabled} />
+      </label>
+    )
+  }
+
+  if (t === 'user_select') {
+    const userField = {
+      ...field,
+      type: 'select',
+      options_source: field.options_source || { type: 'users' },
+    }
+    if (Array.isArray(userField.options) && userField.options.length) {
+      return (
+        <label className="psf-field" htmlFor={id}>
+          {labelEl}
+          <select id={id} className="psf-input form-input" value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+            <option value="">— انتخاب کنید —</option>
+            {userField.options.map((opt) => {
+              const v = typeof opt === 'object' ? opt.value : opt
+              const lab = typeof opt === 'object' ? (opt.label_fa || opt.value) : opt
+              return <option key={String(v)} value={v}>{lab}</option>
+            })}
+          </select>
+        </label>
+      )
+    }
+    return (
+      <label className="psf-field" htmlFor={id}>
+        {labelEl}
+        <select id={id} className="psf-input form-input" value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+          <option value="">— بارگذاری گزینه‌ها —</option>
+        </select>
       </label>
     )
   }
@@ -761,6 +833,21 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
     )
   }
 
+  if (t === 'step_otp') {
+    return (
+      <StepOtpField
+        instanceId={instanceId}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        labelFa={field.label_fa || name}
+        required={!!field.required}
+        verified={!!values?.step_otp_verified}
+        onVerifiedChange={(v) => onFieldChange('step_otp_verified', v)}
+      />
+    )
+  }
+
   if (t === 'dynamic_list') {
     return (
       <div className="psf-field">
@@ -829,6 +916,7 @@ export default function UnifiedFormRenderer({
    * و بقیه فقط-خواندنی می‌شوند (علاوه بر disabled سراسری).
    */
   editableFieldNames = null,
+  instanceId = null,
 }) {
   const filtered = useMemo(() => filterSchemaForRole(schemaJson || { fields: [] }, role), [schemaJson, role])
   const fields = filtered.fields || []
@@ -861,6 +949,7 @@ export default function UnifiedFormRenderer({
             disabled={fieldDisabled}
             onUploadFile={onUploadFile}
             showToast={showToast}
+            instanceId={instanceId}
           />
         )
       })}

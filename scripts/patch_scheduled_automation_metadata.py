@@ -15,7 +15,7 @@ SLA_STATE_PATCHES = {
     "skills_course_completion": ("grades_entry", 7),
     "group_supervision_course_completion": ("grades_entry", 7),
     "film_observation_course_completion": ("grades_entry", 7),
-    "live_supervision_course_completion": ("grades_entry", 7),
+    "live_supervision_course_completion": ("mirror_implementation_pending", 5),
     "live_therapy_observation_course_completion": ("grades_entry", 7),
     "film_observation_ta_attendance_completion": ("grades_entry", 7),
     "live_therapy_observation_ta_attendance_completion": ("grades_entry", 7),

@@ -201,7 +201,7 @@ async def _run_leave_reminders(db: AsyncSession, now: datetime) -> list[dict]:
     out = []
     engine = StateMachineEngine(db)
     stmt = select(ProcessInstance).where(
-        ProcessInstance.process_code == "educational_leave",
+        ProcessInstance.process_code.in_(("educational_leave", "full_education_leave")),
         ProcessInstance.current_state_code == "on_leave",
         ProcessInstance.is_completed == False,
         ProcessInstance.is_cancelled == False,
@@ -230,7 +230,7 @@ async def _run_leave_return_deadline(db: AsyncSession, now: datetime) -> list[di
     out = []
     engine = StateMachineEngine(db)
     stmt = select(ProcessInstance).where(
-        ProcessInstance.process_code == "educational_leave",
+        ProcessInstance.process_code.in_(("educational_leave", "full_education_leave")),
         ProcessInstance.current_state_code == "return_reminder_sent",
         ProcessInstance.is_completed == False,
         ProcessInstance.is_cancelled == False,

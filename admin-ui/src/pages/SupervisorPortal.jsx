@@ -16,6 +16,9 @@ import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanc
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import Supervision50hCompletionPanel from '../components/Supervision50hCompletionPanel'
 import StudentSupervisionSessionIncreasePanel from '../components/StudentSupervisionSessionIncreasePanel'
+import StudentSupervisionSessionReductionPanel from '../components/StudentSupervisionSessionReductionPanel'
+import StudentExtraSupervisionSessionPanel from '../components/StudentExtraSupervisionSessionPanel'
+import SupervisorSessionCancellationPanel from '../components/SupervisorSessionCancellationPanel'
 import ShamsiDatePicker from '../components/ShamsiDatePicker'
 import {
   isoDateToShamsiParts,
@@ -30,6 +33,18 @@ const supervisorReviewStates = [
   'pending_supervisor', 'supervisor_approval', 'therapist_review',
 ]
 
+const SUPERVISOR_CANCEL_REVIEW_STATES = new Set([
+  'session_selection',
+  'makeup_choice',
+  'supervisor_review_counter',
+  'makeup_confirmed',
+])
+
+function isSupervisorCancelAwaitingReview(inst) {
+  return inst?.process_code === 'supervisor_session_cancellation'
+    && SUPERVISOR_CANCEL_REVIEW_STATES.has(inst?.current_state)
+}
+
 export default function SupervisorPortal() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('reviews')
@@ -43,6 +58,10 @@ export default function SupervisorPortal() {
   /** پیشنهاد جایگزین برای supervision_session_increase */
   const [supervisionIncreaseAltDate, setSupervisionIncreaseAltDate] = useState('')
   const [supervisionIncreaseAltTime, setSupervisionIncreaseAltTime] = useState('')
+  /** تاریخ/ساعت جبرانی برای supervisor_session_cancellation */
+  const [supervisorCancelMakeupDate, setSupervisorCancelMakeupDate] = useState('')
+  const [supervisorCancelMakeupTime, setSupervisorCancelMakeupTime] = useState('')
+  const [startingCancelFor, setStartingCancelFor] = useState(null)
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [studentSearch, setStudentSearch] = useState('')
@@ -79,7 +98,7 @@ export default function SupervisorPortal() {
               if (isDocumentReviewState(inst.current_state)) continue
               const enriched = { ...inst, student_code: s.student_code, student_id: s.id }
               allActive.push(enriched)
-              if (isWaitingForReview(inst.current_state)) {
+              if (isWaitingForReview(inst.current_state) || isSupervisorCancelAwaitingReview(inst)) {
                 pending.push(enriched)
               }
             }
@@ -99,6 +118,32 @@ export default function SupervisorPortal() {
     if (!state) return false
     return supervisorReviewStates.some(rs => state.includes(rs)) ||
            state.includes('supervisor') || state.includes('review')
+  }
+
+  const hasActiveSupervisorSessionCancellation = (studentId) => allActiveInstances.some(
+    (inst) => inst.student_id === studentId
+      && inst.process_code === 'supervisor_session_cancellation',
+  )
+
+  const startSupervisorSessionCancellation = async (studentId) => {
+    if (!studentId || startingCancelFor) return
+    setStartingCancelFor(studentId)
+    try {
+      const res = await processExecApi.start({
+        process_code: 'supervisor_session_cancellation',
+        student_id: studentId,
+      })
+      showToast('فرایند کنسل جلسه سوپرویژن آغاز شد')
+      await loadData()
+      if (res.data?.instance_id) {
+        viewInstance(res.data.instance_id)
+        setActiveTab('reviews')
+      }
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'خطا در آغاز فرایند', 'error')
+    } finally {
+      setStartingCancelFor(null)
+    }
   }
 
   const viewInstance = async (instanceId) => {
@@ -142,6 +187,32 @@ export default function SupervisorPortal() {
           return
         }
         payload = { ...payload, supervisor_alternative_date: ad, supervisor_alternative_time_hhmm: at }
+      }
+      if (
+        pcode === 'extra_supervision_session'
+        && st === 'supervisor_review'
+        && triggerEvent === 'supervisor_proposed_alternative'
+      ) {
+        const ad = supervisionIncreaseAltDate.trim()
+        const at = supervisionIncreaseAltTime.trim()
+        if (!ad || !at) {
+          showToast('برای پیشنهاد زمان جایگزین، تاریخ و ساعت را انتخاب کنید.', 'error')
+          return
+        }
+        payload = { ...payload, alternative_date: ad, alternative_time: at }
+      }
+      if (
+        pcode === 'supervisor_session_cancellation'
+        && (st === 'makeup_choice' || st === 'supervisor_review_counter')
+        && (triggerEvent === 'makeup_date_entered' || triggerEvent === 'supervisor_entered_new_time')
+      ) {
+        const ad = supervisorCancelMakeupDate.trim()
+        const at = supervisorCancelMakeupTime.trim()
+        if (!ad || !at) {
+          showToast('برای جلسه جبرانی، تاریخ و ساعت را انتخاب کنید.', 'error')
+          return
+        }
+        payload = { ...payload, proposed_date: ad, proposed_time: at, makeup_option: 'wants_makeup' }
       }
       payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
       if (toState) payload.to_state = toState
@@ -450,6 +521,24 @@ export default function SupervisorPortal() {
                 portalRole="supervisor"
               />
 
+              <StudentSupervisionSessionReductionPanel
+                detail={instanceDetail}
+                active={instanceDetail?.process_code === 'supervision_session_reduction'}
+                portalRole="supervisor"
+              />
+
+              <StudentExtraSupervisionSessionPanel
+                detail={instanceDetail}
+                active={instanceDetail?.process_code === 'extra_supervision_session'}
+                portalRole="supervisor"
+              />
+
+              <SupervisorSessionCancellationPanel
+                detail={instanceDetail}
+                active={instanceDetail?.process_code === 'supervisor_session_cancellation'}
+                portalRole="supervisor"
+              />
+
               {instanceDetail?.process_code === 'supervision_50h_completion'
                 && instanceDetail?.current_state === 'supervisor_recording' && (
                 <div
@@ -499,6 +588,47 @@ export default function SupervisorPortal() {
                           onClick={() => triggerTransition(t)}
                         >
                           غایب
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {instanceDetail?.process_code === 'supervisor_session_cancellation'
+                && instanceDetail?.current_state === 'makeup_confirmed' && (
+                <div
+                  data-testid="supervisor-cancel-makeup-attendance-actions"
+                  style={{
+                    marginBottom: '1.25rem',
+                    padding: '1rem 1.15rem',
+                    borderRadius: '10px',
+                    background: '#f0fdfa',
+                    borderRight: '4px solid #0d9488',
+                  }}
+                >
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                    ثبت برگزاری جلسه جبرانی (فرایند ۲۶)
+                  </h4>
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 0.65rem', lineHeight: 1.6 }}>
+                    تاریخ جلسه جبرانی:
+                    {' '}
+                    {instanceDetail.context_data?.proposed_date || '—'}
+                    {' '}
+                    ساعت
+                    {' '}
+                    {instanceDetail.context_data?.proposed_time || '—'}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {availableTransitions
+                      .filter((t) => t.trigger_event === 'session_held')
+                      .map((t) => (
+                        <button
+                          key={t.trigger_event}
+                          type="button"
+                          className="btn btn-success btn-sm"
+                          onClick={() => triggerTransition(t)}
+                        >
+                          ✓ جلسه برگزار شد
                         </button>
                       ))}
                   </div>
@@ -562,6 +692,69 @@ export default function SupervisorPortal() {
                       </span>
                     </div>
                   )}
+                  {instanceDetail.process_code === 'extra_supervision_session'
+                    && instanceDetail.current_state === 'supervisor_review' && (
+                    <div style={{ marginBottom: '0.75rem', fontSize: '0.88rem' }}>
+                      <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                        پیشنهاد زمان جایگزین (فقط هنگام زدن دکمهٔ «پیشنهاد جایگزین»)
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+                        <div style={{ minWidth: '16rem' }}>
+                          <ShamsiDatePicker
+                            label="تاریخ جایگزین"
+                            value={(supervisionIncreaseAltDate && isoDateToShamsiParts(supervisionIncreaseAltDate)) || defaultShamsiDate()}
+                            onChange={(p) => setSupervisionIncreaseAltDate(shamsiDateToIsoDate(p.jy, p.jm, p.jd))}
+                          />
+                        </div>
+                        <label style={{ fontSize: '0.8rem' }}>
+                          <span style={{ display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>ساعت</span>
+                          <input
+                            className="form-input"
+                            type="time"
+                            dir="ltr"
+                            style={{ textAlign: 'left', maxWidth: '8rem' }}
+                            value={supervisionIncreaseAltTime}
+                            onChange={e => setSupervisionIncreaseAltTime(e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.78rem', color: '#64748b' }}>
+                        در صورت تایید یا اعلام عدم امکان، این فیلدها را خالی بگذارید.
+                      </span>
+                    </div>
+                  )}
+                  {instanceDetail.process_code === 'supervisor_session_cancellation'
+                    && (instanceDetail.current_state === 'makeup_choice'
+                      || instanceDetail.current_state === 'supervisor_review_counter')
+                    && availableTransitions.some((t) =>
+                      t.trigger_event === 'makeup_date_entered'
+                      || t.trigger_event === 'supervisor_entered_new_time') && (
+                    <div style={{ marginBottom: '0.75rem', fontSize: '0.88rem' }}>
+                      <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                        تاریخ و ساعت جلسه جبرانی
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+                        <div style={{ minWidth: '16rem' }}>
+                          <ShamsiDatePicker
+                            label="تاریخ جبرانی"
+                            value={(supervisorCancelMakeupDate && isoDateToShamsiParts(supervisorCancelMakeupDate)) || defaultShamsiDate()}
+                            onChange={(p) => setSupervisorCancelMakeupDate(shamsiDateToIsoDate(p.jy, p.jm, p.jd))}
+                          />
+                        </div>
+                        <label style={{ fontSize: '0.8rem' }}>
+                          <span style={{ display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>ساعت</span>
+                          <input
+                            className="form-input"
+                            type="time"
+                            dir="ltr"
+                            style={{ textAlign: 'left', maxWidth: '8rem' }}
+                            value={supervisorCancelMakeupTime}
+                            onChange={e => setSupervisorCancelMakeupTime(e.target.value)}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
                   <DecisionNotesBlock
                     value={decisionNotes}
                     onChange={setDecisionNotes}
@@ -619,6 +812,7 @@ export default function SupervisorPortal() {
                   <th>جلسات هفتگی</th>
                   <th>درمان</th>
                   <th>کارآموز</th>
+                  <th>اقدام</th>
                 </tr>
               </thead>
               <tbody>
@@ -638,6 +832,19 @@ export default function SupervisorPortal() {
                       </span>
                     </td>
                     <td>{s.is_intern ? 'بله' : 'خیر'}</td>
+                    <td>
+                      {!hasActiveSupervisorSessionCancellation(s.id) && (
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          data-testid={`start-supervisor-cancel-${s.id}`}
+                          disabled={startingCancelFor === s.id}
+                          onClick={() => startSupervisorSessionCancellation(s.id)}
+                        >
+                          {startingCancelFor === s.id ? 'در حال آغاز…' : 'کنسل جلسه سوپرویژن'}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

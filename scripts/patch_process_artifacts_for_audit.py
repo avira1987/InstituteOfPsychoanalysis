@@ -9,10 +9,19 @@ ROOT = Path(__file__).resolve().parent.parent
 PROCESSES = ROOT / "metadata" / "processes"
 
 RECORD_BY_PROCESS: dict[str, list[tuple[str, str, str]]] = {
-    "theory_course_completion": [("grades_entry", "grades_submitted", "record_course_grades")],
-    "skills_course_completion": [("grades_entry", "grades_submitted", "record_course_grades")],
+    "theory_course_completion": [
+        ("session_18_entry", "session_18_submitted", "record_theory_session_18_grades"),
+    ],
+    "skills_course_completion": [
+        ("session_17_grades_entry", "session_17_submitted", "record_skills_session_17_grades"),
+        ("session_18_grades_entry", "session_18_submitted", "record_skills_session_18_grades"),
+        ("qualitative_eval_pending", "qualitative_submitted", "record_course_grades"),
+    ],
     "film_observation_course_completion": [("grades_entry", "grades_submitted", "record_course_grades")],
-    "live_supervision_course_completion": [("grades_entry", "grades_submitted", "record_course_grades")],
+    "live_supervision_course_completion": [
+        ("mirror_implementation_pending", "mirror_write_submitted", "record_process_artifact"),
+        ("final_eval_pending", "final_eval_submitted", "record_student_performance_traits"),
+    ],
     "live_therapy_observation_course_completion": [("grades_entry", "grades_submitted", "record_course_grades")],
     "group_supervision_course_completion": [("grades_entry", "grades_submitted", "record_course_grades")],
     "film_observation_ta_attendance_completion": [("grades_entry", "grades_submitted", "record_course_grades")],
@@ -21,7 +30,11 @@ RECORD_BY_PROCESS: dict[str, list[tuple[str, str, str]]] = {
     "class_attendance": [("attendance_list_ready", "attendance_submitted", "record_class_attendance")],
     "class_session_cancellation": [("cancellation_request", "cancellation_confirmed", "record_class_cancellation")],
     "full_education_leave": [("leave_request", "request_submitted", "record_leave_request")],
-    "return_to_full_education": [("return_request", "request_submitted", "record_return_request")],
+    "return_to_full_education": [
+        ("return_request", "proceed", "record_return_request"),
+        ("therapist_selection", "therapist_selected", "apply_return_therapy_session_schedule"),
+        ("therapy_payment_pending", "therapy_payment_confirmed", "activate_therapy"),
+    ],
     "upgrade_to_educational_therapist": [("monitoring_review", "approved", "record_upgrade_decision")],
     "intern_bulk_patient_referral": [("coordination_followup", "coordination_followup_complete", "record_intern_referral")],
     "article_writing_completion": [("class_closed_student", "defense_requested", "record_article_milestone")],

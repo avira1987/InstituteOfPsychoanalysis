@@ -4,22 +4,63 @@
     "name_fa": "خاتمه هر درس سوپرویژن گروهی",
     "name_en": "Group Supervision Course Completion",
     "number": 62,
-    "description": "خاتمه درس سوپرویژن گروهی: ثبت نمرات و ارزیابی نهایی؛ قفل نمره پس از مهلت.",
-    "initial_state": "grades_entry",
-    "initial_role": "instructor",
+    "description": "خاتمه درس سوپرویژن گروهی: Pass/Fail جلسه ۱۸، ساعات بالینی (+۳۳.۳۳۳۳)، ارزیابی TA، ارزیابی کیفی Q7/Q8.",
+    "initial_state": "awaiting_session_18",
+    "initial_role": "system",
     "requires_form": true
   },
   "states": [
     {
-      "code": "grades_entry",
-      "name_fa": "ثبت نمرات و ارزیابی",
+      "code": "awaiting_session_18",
+      "name_fa": "منتظر جلسه ۱۸",
       "type": "initial",
+      "assigned_role": "system",
+      "metadata": {
+        "operator_task_fa": "با رسیدن تقویم به جلسه ۱۸، ثبت Pass/Fail برای دانشجویان باز می‌شود.",
+        "operator_short_fa": "منتظر جلسه ۱۸"
+      }
+    },
+    {
+      "code": "session_18_pass_fail_entry",
+      "name_fa": "ثبت Pass/Fail مشارکت (جلسه ۱۸)",
+      "type": "intermediate",
+      "assigned_role": "instructor",
+      "sla_hours": 24,
+      "metadata": {
+        "operator_task_fa": "وضعیت مشارکت هر دانشجو را Pass یا Fail ثبت کنید. مهلت: ۲۴:۰۰ همان روز جلسه ۱۸. Pass → +۳۳.۳ ساعت سوپرویژن گروهی.",
+        "operator_short_fa": "جلسه ۱۸ — Pass/Fail"
+      }
+    },
+    {
+      "code": "pass_fail_applied",
+      "name_fa": "اعمال نتایج و ساعات بالینی",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "operator_task_fa": "سیستم در حال اعمال Pass/Fail و افزودن ساعات سوپرویژن گروهی است.",
+        "operator_short_fa": "اعمال ساعات"
+      }
+    },
+    {
+      "code": "ta_evaluation_entry",
+      "name_fa": "ارزیابی کمک‌مدرس",
+      "type": "intermediate",
       "assigned_role": "instructor",
       "metadata": {
-        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
-        "operator_short_fa": "ثبت نمرات و ارزیابی"
-      },
-      "sla_days": 7
+        "operator_task_fa": "نمره حضور (۰–۸) و وظایف کمک‌مدرس را بررسی و ثبت کنید. ≥ ۷۴ PASS.",
+        "operator_short_fa": "ارزیابی TA"
+      }
+    },
+    {
+      "code": "qualitative_eval_pending",
+      "name_fa": "ارزیابی کیفی (۴ روز)",
+      "type": "intermediate",
+      "assigned_role": "instructor",
+      "sla_days": 4,
+      "metadata": {
+        "operator_task_fa": "فرم ارزیابی کیفی (سوال ۷ و ۸) را برای تک‌تک دانشجویان تکمیل کنید.",
+        "operator_short_fa": "ارزیابی کیفی"
+      }
     },
     {
       "code": "grades_locked",
@@ -28,59 +69,175 @@
       "assigned_role": "system"
     },
     {
-      "code": "delay_reported",
-      "name_fa": "تاخیر — گزارش به کمیته",
+      "code": "session_18_delay",
+      "name_fa": "تأخیر جلسه ۱۸ — گزارش به کمیته دروس",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "qualitative_eval_delay",
+      "name_fa": "تأخیر ارزیابی کیفی — گزارش تخلف",
       "type": "terminal",
       "assigned_role": "system"
     }
   ],
   "transitions": [
     {
-      "from": "grades_entry",
-      "to": "grades_locked",
-      "trigger": "grades_submitted",
+      "from": "awaiting_session_18",
+      "to": "session_18_pass_fail_entry",
+      "trigger": "calendar_session_18_reached",
+      "required_role": "system",
+      "description_fa": "رسیدن تقویم به جلسه ۱۸ — باز شدن ثبت Pass/Fail"
+    },
+    {
+      "from": "session_18_pass_fail_entry",
+      "to": "pass_fail_applied",
+      "trigger": "pass_fail_submitted",
       "required_role": "instructor",
-      "conditions": [
-        "course_grades_submitted_in_time"
-      ],
-      "description_fa": "ثبت نمرات — قفل",
+      "conditions": ["group_supervision_pass_fail_in_time"],
+      "description_fa": "ثبت Pass/Fail دانشجویان",
+      "actions": [{"type": "record_group_supervision_pass_fail"}]
+    },
+    {
+      "from": "session_18_pass_fail_entry",
+      "to": "session_18_delay",
+      "trigger": "sla_breach",
+      "required_role": "system",
+      "conditions": ["group_supervision_pass_fail_sla_breach"],
+      "description_fa": "گذشت مهلت جلسه ۱۸ — گزارش",
+      "actions": [{"type": "start_sub_process", "sub_process_code": "violation_registration"}]
+    },
+    {
+      "from": "pass_fail_applied",
+      "to": "ta_evaluation_entry",
+      "trigger": "hours_applied",
+      "required_role": "system",
+      "conditions": ["group_supervision_has_ta"],
+      "description_fa": "اعمال ساعات — ارزیابی TA",
+      "priority": 10
+    },
+    {
+      "from": "pass_fail_applied",
+      "to": "qualitative_eval_pending",
+      "trigger": "hours_applied",
+      "required_role": "system",
+      "conditions": ["group_supervision_no_ta"],
+      "description_fa": "اعمال ساعات — ارزیابی کیفی",
+      "priority": 20
+    },
+    {
+      "from": "ta_evaluation_entry",
+      "to": "qualitative_eval_pending",
+      "trigger": "ta_grades_submitted",
+      "required_role": "instructor",
+      "description_fa": "ثبت نمره TA",
+      "actions": [{"type": "record_group_supervision_ta_grades"}]
+    },
+    {
+      "from": "qualitative_eval_pending",
+      "to": "grades_locked",
+      "trigger": "qualitative_submitted",
+      "required_role": "instructor",
+      "conditions": ["group_supervision_qualitative_in_time"],
+      "description_fa": "ارزیابی کیفی — قفل نمرات",
       "actions": [
-        {
-          "type": "record_course_grades"
-        }
+        {"type": "record_group_supervision_qualitative_eval"},
+        {"type": "record_course_grades"}
       ]
     },
     {
-      "from": "grades_entry",
-      "to": "delay_reported",
+      "from": "qualitative_eval_pending",
+      "to": "qualitative_eval_delay",
       "trigger": "sla_breach",
-      "conditions": [
-        "course_grades_sla_breach"
-      ],
-      "description_fa": "گذشت مهلت — گزارش",
-      "required_role": "system"
+      "required_role": "system",
+      "conditions": ["group_supervision_qualitative_sla_breach"],
+      "description_fa": "تأخیر ارزیابی کیفی — گزارش تخلف",
+      "actions": [{"type": "start_sub_process", "sub_process_code": "violation_registration"}]
     }
   ],
   "forms": [
     {
-      "code": "group_supervision_grades_form",
-      "name_fa": "ثبت نمرات سوپرویژن گروهی",
-      "used_in_state": "grades_entry",
+      "code": "group_supervision_pass_fail_form",
+      "name_fa": "ثبت Pass/Fail سوپرویژن گروهی (جلسه ۱۸)",
+      "used_in_state": "session_18_pass_fail_entry",
       "fields": [
-        {
-          "name": "course_name",
-          "label_fa": "نام درس",
-          "type": "readonly"
-        },
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
         {
           "name": "students_grades",
-          "label_fa": "لیست دانشجویان و نمرات",
+          "label_fa": "لیست دانشجویان",
           "type": "dynamic_list",
-          "fields": [
-            "student_name",
-            "student_id",
-            "grade"
+          "fields": ["student_name", "student_id", "pass_fail"]
+        }
+      ]
+    },
+    {
+      "code": "group_supervision_ta_eval_form",
+      "name_fa": "ارزیابی کمک‌مدرس سوپرویژن گروهی",
+      "used_in_state": "ta_evaluation_entry",
+      "fields": [
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {"name": "ta_name", "label_fa": "نام کمک‌مدرس", "type": "readonly"},
+        {"name": "ta_attendance_score", "label_fa": "نمره حضور TA (۰–۸)", "type": "number", "required": true},
+        {"name": "ta_duties_score", "label_fa": "نمره وظایف TA", "type": "number", "required": true}
+      ]
+    },
+    {
+      "code": "group_supervision_qualitative_eval_form",
+      "name_fa": "ارزیابی کیفی سوپرویژن گروهی",
+      "used_in_state": "qualitative_eval_pending",
+      "note_fa": "پاسخ سوال ۷ و ۸ در جدول گزارش عملکرد دانشجو (کمیته نظارت) ثبت می‌شود. مهلت: ۴ روز پس از جلسه ۱۸.",
+      "fields": [
+        {"name": "student_name", "label_fa": "نام دانشجو", "type": "readonly"},
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {
+          "name": "q7_has_positive",
+          "label_fa": "سوال ۷ — آیا ویژگی مثبت قابل توجهی مشاهده کردید؟",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "بله"},
+            {"value": "no", "label_fa": "خیر"}
           ]
+        },
+        {
+          "name": "q7_positive_traits",
+          "label_fa": "سوال ۷ — ویژگی‌های مثبت",
+          "type": "checkbox_list",
+          "options_source": {"type": "trait_catalog", "kind": "positive"},
+          "show_if": {"field": "q7_has_positive", "op": "eq", "value": "yes"},
+          "required_if": {"field": "q7_has_positive", "op": "eq", "value": "yes"},
+          "validation": {"min_selection": 1}
+        },
+        {
+          "name": "q7_positive_note",
+          "label_fa": "سوال ۷ — توضیح تکمیلی",
+          "type": "textarea",
+          "show_if": {"field": "q7_has_positive", "op": "eq", "value": "yes"}
+        },
+        {
+          "name": "q8_has_negative",
+          "label_fa": "سوال ۸ — آیا ویژگی منفی قابل توجهی مشاهده کردید؟",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "بله"},
+            {"value": "no", "label_fa": "خیر"}
+          ]
+        },
+        {
+          "name": "q8_negative_traits",
+          "label_fa": "سوال ۸ — ویژگی‌های منفی",
+          "type": "checkbox_list",
+          "options_source": {"type": "trait_catalog", "kind": "negative"},
+          "show_if": {"field": "q8_has_negative", "op": "eq", "value": "yes"},
+          "required_if": {"field": "q8_has_negative", "op": "eq", "value": "yes"},
+          "validation": {"min_selection": 1}
+        },
+        {
+          "name": "q8_negative_note",
+          "label_fa": "سوال ۸ — توضیح تکمیلی",
+          "type": "textarea",
+          "show_if": {"field": "q8_has_negative", "op": "eq", "value": "yes"}
         }
       ]
     }
@@ -88,13 +245,10 @@
   "scheduled_automation": {
     "mode": "instance_sla",
     "completion_role": "instructor",
-    "sla_state": "grades_entry",
-    "sla_days": 7,
+    "sla_states": ["session_18_pass_fail_entry", "qualitative_eval_pending"],
     "triggers": [
-      {
-        "event": "sla_breach",
-        "actor_role": "system"
-      }
+      {"event": "sla_breach", "actor_role": "system", "state": "session_18_pass_fail_entry"},
+      {"event": "sla_breach", "actor_role": "system", "state": "qualitative_eval_pending"}
     ]
   }
 }

@@ -11,15 +11,22 @@
       "code": "extra_request",
       "name_fa": "ثبت درخواست جلسه اضافی سوپرویژن",
       "type": "initial",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "درخواست زمان جلسه اضافی سوپرویژن",
+        "student_task_fa": "تاریخ و ساعت پیشنهادی جلسهٔ اضافی را در فرم همین صفحه وارد و ثبت کنید؛ سپس «ادامه و ثبت مرحله» را بزنید تا سوپروایزر بررسی کند."
+      }
     },
     {
       "code": "supervisor_review",
       "name_fa": "بررسی و تصمیم سوپروایزر",
       "type": "intermediate",
       "assigned_role": "supervisor",
+      "sla_hours": 48,
       "metadata": {
-        "operator_task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+        "student_short_fa": "منتظر سوپروایزر",
+        "student_task_fa": "سوپروایزر زمان شما را بررسی می‌کند؛ اگر پیامک یا اعلان دریافت کردید طبق آن عمل کنید؛ بعداً همین صفحه را تازه کنید.",
+        "operator_task_fa": "زمان پیشنهادی دانشجو را بررسی کنید؛ در صورت «پیشنهاد جایگزین» تاریخ و ساعت جایگزین را وارد و دکمهٔ تصمیم را بزنید.",
         "operator_short_fa": "بررسی و تصمیم سوپروایزر"
       }
     },
@@ -27,19 +34,33 @@
       "code": "student_response",
       "name_fa": "پاسخ دانشجو به پیشنهاد جایگزین",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "sla_hours": 72,
+      "metadata": {
+        "student_short_fa": "پاسخ به زمان پیشنهادی سوپروایزر",
+        "student_task_fa": "اگر زمان پیشنهادی سوپروایزر را می‌پذیرید، دکمهٔ تأیید را بزنید؛ در غیر این صورت تاریخ و ساعت جدید را در فرم بنویسید و «ورود زمان جدید» را انتخاب کنید."
+      }
     },
     {
       "code": "payment_required",
       "name_fa": "پرداخت جلسه اضافی سوپرویژن",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "sla_hours": 48,
+      "metadata": {
+        "student_short_fa": "پرداخت",
+        "student_task_fa": "ابتدا از بخش پرداخت درگاه همین صفحه مبلغ جلسه اضافی سوپرویژن را بپردازید؛ پس از تأیید بانک، مرحلهٔ بعد به‌صورت خودکار ثبت می‌شود."
+      }
     },
     {
       "code": "extra_session_confirmed",
       "name_fa": "جلسه اضافی سوپرویژن تایید و ثبت شد",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "جلسه ثبت شد",
+        "student_task_fa": "جلسه در سیستم ثبت شده است؛ لینک جلسه در همین مسیر یا پیامک آمده است. در زمان مقرر حاضر شوید."
+      }
     },
     {
       "code": "extra_session_completed",
@@ -47,7 +68,9 @@
       "type": "terminal",
       "assigned_role": "supervisor",
       "metadata": {
-        "operator_task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
+        "student_short_fa": "تکمیل شد",
+        "student_task_fa": "جلسهٔ اضافی سوپرویژن برگزار شد و ساعت آن مطابق فرایند تکمیل دوره‌های ۵۰ ساعته ثبت می‌شود.",
+        "operator_task_fa": "پس از برگزاری جلسه، دکمهٔ «جلسه برگزار شد» را بزنید تا ساعت به پروندهٔ سوپرویژن اضافه شود.",
         "operator_short_fa": "جلسه اضافی برگزار شد"
       }
     },
@@ -55,7 +78,78 @@
       "code": "extra_request_rejected",
       "name_fa": "امکان برگزاری جلسه اضافه وجود ندارد",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "پایان درخواست",
+        "student_task_fa": "سوپروایزر در حال حاضر امکان برگزاری جلسهٔ اضافی را اعلام نکرده است؛ در صورت نیاز بعداً می‌توانید دوباره درخواست دهید."
+      }
+    }
+  ],
+  "forms": [
+    {
+      "id": "extra_supervision_session_request",
+      "used_in_state": "extra_request",
+      "title_fa": "زمان پیشنهادی جلسه اضافی سوپرویژن",
+      "visible_to": [
+        "student"
+      ],
+      "fields": [
+        {
+          "name": "preferred_date",
+          "label_fa": "تاریخ پیشنهادی",
+          "type": "shamsi_date",
+          "required": true,
+          "description_fa": "روز موردنظر برای جلسهٔ اضافی را از تقویم شمسی انتخاب کنید."
+        },
+        {
+          "name": "preferred_time",
+          "label_fa": "ساعت پیشنهادی",
+          "type": "time",
+          "required": true,
+          "description_fa": "ساعت شروع جلسه را وارد کنید (مثلاً ۱۴:۳۰)."
+        },
+        {
+          "name": "request_note",
+          "label_fa": "توضیح کوتاه (اختیاری)",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "extra_supervision_student_response",
+      "used_in_state": "student_response",
+      "title_fa": "تأیید یا تغییر زمان",
+      "visible_to": [
+        "student"
+      ],
+      "fields": [
+        {
+          "name": "confirmed_alternative_date",
+          "label_fa": "تاریخ تأییدشده",
+          "type": "shamsi_date",
+          "required": false,
+          "description_fa": "اگر زمان پیشنهادی سوپروایزر را می‌پذیرید، همان تاریخ را انتخاب کنید."
+        },
+        {
+          "name": "confirmed_alternative_time",
+          "label_fa": "ساعت تأییدشده",
+          "type": "time",
+          "required": false
+        },
+        {
+          "name": "new_preferred_date",
+          "label_fa": "اگر زمان دیگری می‌خواهید: تاریخ جدید",
+          "type": "shamsi_date",
+          "required": false
+        },
+        {
+          "name": "new_preferred_time",
+          "label_fa": "اگر زمان دیگری می‌خواهید: ساعت جدید",
+          "type": "time",
+          "required": false
+        }
+      ]
     }
   ],
   "transitions": [
@@ -83,6 +177,9 @@
       "required_role": "supervisor",
       "description_fa": "سوپروایزر زمان پیشنهادی را تایید کرد",
       "actions": [
+        {
+          "type": "prepare_extra_session_payment"
+        },
         {
           "type": "notification",
           "notification_type": "in_app",
@@ -140,7 +237,12 @@
       "to": "payment_required",
       "trigger": "student_confirmed_alternative",
       "required_role": "student",
-      "description_fa": "دانشجو زمان پیشنهادی را تایید کرد"
+      "description_fa": "دانشجو زمان پیشنهادی را تایید کرد",
+      "actions": [
+        {
+          "type": "prepare_extra_session_payment"
+        }
+      ]
     },
     {
       "from": "student_response",
@@ -149,6 +251,9 @@
       "required_role": "student",
       "description_fa": "دانشجو زمان دیگری وارد کرد — بازگشت به سوپروایزر",
       "actions": [
+        {
+          "type": "sync_extra_session_reenter_fields"
+        },
         {
           "type": "notification",
           "notification_type": "sms",
@@ -185,6 +290,23 @@
           ]
         }
       ]
+    },
+    {
+      "from": "payment_required",
+      "to": "payment_required",
+      "trigger": "payment_failed",
+      "description_fa": "پرداخت ناموفق — تلاش مجدد",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "payment_rejected",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
     },
     {
       "from": "extra_session_confirmed",

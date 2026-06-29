@@ -22,7 +22,7 @@
       "assigned_role": "teaching_assistant",
       "sla_days": 4,
       "metadata": {
-        "operator_task_fa": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+        "operator_task_fa": "دانشجویان نیازمند تشویق یا مشورت را با دکمه «افزودن دانشجو» ثبت کنید؛ مهلت ۴ روز پس از جلسه milestone.",
         "operator_short_fa": "تکمیل فرم توسط کمک‌مدرس"
       }
     },
@@ -87,14 +87,38 @@
       "used_in_state": "ta_form_fill",
       "fields": [
         {
+          "name": "submitted_at",
+          "label_fa": "تاریخ ثبت",
+          "type": "readonly"
+        },
+        {
+          "name": "course_name",
+          "label_fa": "نام کلاس / درس",
+          "type": "readonly"
+        },
+        {
+          "name": "teaching_assistant_name",
+          "label_fa": "نام کمک‌مدرس",
+          "type": "readonly"
+        },
+        {
+          "name": "milestone_session",
+          "label_fa": "جلسه milestone (۵ / ۱۰ / ۱۵)",
+          "type": "readonly"
+        },
+        {
           "name": "students",
           "label_fa": "لیست دانشجویان",
           "type": "dynamic_list",
+          "note_fa": "برای هر دانشجوی نیازمند تشویق یا مشورت یک ردیف اضافه کنید.",
           "fields": [
             {
               "name": "student_name",
               "label_fa": "نام دانشجو",
-              "type": "select"
+              "type": "select",
+              "options_source": {
+                "type": "course_class_roster"
+              }
             },
             {
               "name": "reason",

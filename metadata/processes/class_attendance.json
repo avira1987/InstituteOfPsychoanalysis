@@ -49,6 +49,9 @@
       "actions": [
         {
           "type": "record_class_attendance"
+        },
+        {
+          "type": "record_live_supervision_attendance"
         }
       ]
     },

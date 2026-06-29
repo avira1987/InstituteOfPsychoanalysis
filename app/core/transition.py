@@ -166,6 +166,18 @@ class TransitionManager:
         # افسر علمی کمیته دروس در پنل کارمند هم در دسترس است.
         if required == "scientific_officer_course_committee" and actor_role == "staff":
             return True
+        if required == "course_committee_scientific" and actor_role in (
+            "course_committee",
+            "scientific_officer_course_committee",
+            "deputy_education",
+            "staff",
+        ):
+            return True
+        if required == "teaching_assistant" and actor_role in (
+            "teaching_assistant",
+            "staff",
+        ):
+            return True
         return False
 
     async def evaluate_conditions(

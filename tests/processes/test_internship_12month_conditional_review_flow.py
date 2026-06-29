@@ -5,7 +5,25 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.engine import StateMachineEngine
+from app.meta.process_forms import get_process_forms
 from app.meta.seed import load_process
+from app.services.notification_service import TEMPLATES
+
+
+def test_internship_12month_schedule_form_metadata():
+    """فرم تنظیم وقت مصاحبه برای interview_scheduling در metadata موجود است."""
+    forms = get_process_forms("internship_12month_conditional_review", "interview_scheduling")
+    assert len(forms) == 1
+    assert forms[0]["code"] == "internship_12month_schedule"
+    field_names = {f["name"] for f in forms[0]["fields"]}
+    assert {"interview_date", "interview_time", "interview_link", "interview_location"} <= field_names
+
+
+def test_internship_12month_interview_sms_template():
+    """قالب پیامک internship_12month_interview ثبت شده است."""
+    assert "internship_12month_interview" in TEMPLATES
+    assert "{student_name}" in TEMPLATES["internship_12month_interview"]["sms"]
+    assert "{interview_date}" in TEMPLATES["internship_12month_interview"]["sms"]
 
 
 @pytest.mark.asyncio

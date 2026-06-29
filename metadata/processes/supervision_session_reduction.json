@@ -7,18 +7,87 @@
     "initial_state": "initiated",
     "eligibility": "مسیر الف: ۲ یا بیشتر جلسه سوپرویژن در هفته. مسیر ب: ۱ جلسه در هفته با تکمیل ساعات."
   },
+  "forms": [
+    {
+      "code": "supervision_reduction_session_selection",
+      "title_fa": "انتخاب جلسات سوپرویژن برای حذف",
+      "used_in_state": "session_selection",
+      "fields": [
+        {
+          "name": "selected_sessions",
+          "label_fa": "جلسات هفتگی سوپرویژن که باید حذف شوند",
+          "type": "checkbox_list",
+          "required": true,
+          "source": "supervision_reduction_upcoming_sessions"
+        }
+      ]
+    },
+    {
+      "code": "supervision_reduction_structure",
+      "title_fa": "درخواست تغییر تواتر برگزاری جلسات سوپرویژن",
+      "used_in_state": "structure_selection",
+      "fields": [
+        {
+          "name": "frequency",
+          "label_fa": "فاصلهٔ بین جلسات (هفته)",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "2", "label_fa": "دو هفته یک‌بار" },
+            { "value": "3", "label_fa": "سه هفته یک‌بار" },
+            { "value": "4", "label_fa": "چهار هفته یک‌بار" }
+          ]
+        },
+        {
+          "name": "day",
+          "label_fa": "روز هفته",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "saturday", "label_fa": "شنبه" },
+            { "value": "sunday", "label_fa": "یکشنبه" },
+            { "value": "monday", "label_fa": "دوشنبه" },
+            { "value": "tuesday", "label_fa": "سه‌شنبه" },
+            { "value": "wednesday", "label_fa": "چهارشنبه" },
+            { "value": "thursday", "label_fa": "پنج‌شنبه" },
+            { "value": "friday", "label_fa": "جمعه" }
+          ]
+        },
+        {
+          "name": "time",
+          "label_fa": "ساعت برگزاری (مثال 14:30)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "structure_note",
+          "label_fa": "توضیح کوتاه (اختیاری)",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    }
+  ],
   "states": [
     {
       "code": "initiated",
       "name_fa": "آغاز فرایند",
       "type": "initial",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "شروع درخواست کاهش جلسات سوپرویژن",
+        "student_task_fa": "دکمهٔ «ادامه و ثبت مرحله» را بزنید. اگر ۲ جلسه یا بیشتر در هفته دارید، جلسات مازاد را انتخاب می‌کنید؛ اگر ۱ جلسه دارید، مسیر کاهش تواتر (با احراز ساعات) بررسی می‌شود."
+      }
     },
     {
       "code": "session_selection",
       "name_fa": "انتخاب جلسات برای حذف",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب جلسات هفتگی برای حذف",
+        "student_task_fa": "جلسات سوپرویژنی که می‌خواهید حذف کنید را در فرم تیک بزنید؛ حداقل یک جلسه در هفته باید باقی بماند. سپس «ادامه و ثبت مرحله» را بزنید."
+      }
     },
     {
       "code": "multi_reduction_completed",
@@ -36,7 +105,11 @@
       "code": "structure_selection",
       "name_fa": "تعیین ساختار جدید (توالی + روز و ساعت)",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب توالی، روز و ساعت جدید",
+        "student_task_fa": "ابتدا با سوپروایزر هماهنگ کنید؛ سپس توالی (۲/۳/۴ هفته یک‌بار)، روز و ساعت را در فرم وارد کنید و «ادامه و ثبت مرحله» را بزنید."
+      }
     },
     {
       "code": "supervisor_review",
@@ -44,8 +117,9 @@
       "type": "intermediate",
       "assigned_role": "supervisor",
       "metadata": {
-        "operator_task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.",
-        "operator_short_fa": "بررسی و تایید سوپروایزر"
+        "operator_task_fa": "درخواست کاهش تواتر را ببینید؛ در صورت موافقت تأیید کنید، در غیر این صورت رد با توضیح.",
+        "operator_short_fa": "بررسی و تایید سوپروایزر",
+        "student_task_fa": "سوپروایزر در حال بررسی درخواست شماست؛ پس از اعلام نتیجه همین صفحه را تازه کنید."
       }
     },
     {

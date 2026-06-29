@@ -13,7 +13,11 @@
       "code": "list_generated",
       "name_fa": "لیست دانشجویان بدون ثبت‌نام",
       "type": "initial",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "operator_task_fa": "فرم تعیین جلسه را تکمیل کنید و دکمهٔ ثبت جلسه را بزنید.",
+        "operator_short_fa": "شناسایی — تنظیم جلسه"
+      }
     },
     {
       "code": "meeting_scheduled",
@@ -21,8 +25,10 @@
       "type": "intermediate",
       "assigned_role": "supervision_committee",
       "metadata": {
-        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
-        "operator_short_fa": "جلسه تنظیم شده"
+        "operator_task_fa": "پس از ارسال دعوت‌نامه، در روز جلسه حاضر شوید؛ سپس «ارسال دعوت‌نامه» را بزنید تا مرحلهٔ ثبت نتیجه باز شود.",
+        "operator_short_fa": "جلسه تنظیم شده",
+        "student_short_fa": "جلسه کمیته نظارت",
+        "student_task_fa": "زمان و نحوهٔ برگزاری جلسه در همین صفحه نمایش داده می‌شود؛ در روز مقرر طبق اعلام کمیته حاضر شوید."
       }
     },
     {
@@ -31,7 +37,7 @@
       "type": "intermediate",
       "assigned_role": "supervision_committee",
       "metadata": {
-        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
+        "operator_task_fa": "فرم نتیجه جلسه را ثبت کنید؛ سپس یکی از سه دکمهٔ تصمیم (ثبت‌نام / مرخصی / انصراف) را بزنید.",
         "operator_short_fa": "جلسه برگزار شد — ثبت نتیجه"
       }
     },
@@ -39,13 +45,21 @@
       "code": "branch_register",
       "name_fa": "قصد ثبت‌نام — مهلت ۲ روز",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "مهلت ثبت‌نام ۲ روزه",
+        "student_task_fa": "حداکثر ۲ روز فرصت دارید دروس ترم را اخذ و شهریه را پرداخت کنید. از بخش ثبت‌نام ترم در همین پنل اقدام کنید."
+      }
     },
     {
       "code": "branch_leave",
       "name_fa": "قصد مرخصی/وقفه — مهلت ۳ روز",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "مهلت آغاز مرخصی ۳ روز",
+        "student_task_fa": "حداکثر ۳ روز فرصت دارید یکی از فرایندهای مرخصی را از داشبورد شروع کنید."
+      }
     },
     {
       "code": "branch_withdrawal",
@@ -159,9 +173,68 @@
   ],
   "forms": [
     {
+      "code": "non_registration_meeting_schedule",
+      "name_fa": "تعیین جلسه کمیته نظارت",
+      "used_in_state": "list_generated",
+      "description_fa": "پیش از زدن دکمهٔ «ثبت جلسه»، فرم را تکمیل و ثبت کنید. اطلاعات جلسه در پورتال دانشجو و دعوت‌نامه نمایش داده می‌شود.",
+      "visible_to": [
+        "supervision_committee",
+        "admin",
+        "staff"
+      ],
+      "fields": [
+        {
+          "name": "committee_meeting_at",
+          "label_fa": "تاریخ و ساعت جلسه (وقت ایران)",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "name": "committee_meeting_mode",
+          "label_fa": "نحوهٔ برگزاری",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {
+              "value": "in_person",
+              "label_fa": "حضوری"
+            },
+            {
+              "value": "online",
+              "label_fa": "آنلاین"
+            }
+          ]
+        },
+        {
+          "name": "committee_meeting_link",
+          "label_fa": "لینک جلسه (آنلاین)",
+          "type": "text",
+          "required": true,
+          "visible_if": {
+            "committee_meeting_mode": "online"
+          }
+        },
+        {
+          "name": "committee_meeting_location_fa",
+          "label_fa": "آدرس یا محل حضوری",
+          "type": "textarea",
+          "required": true,
+          "visible_if": {
+            "committee_meeting_mode": "in_person"
+          }
+        }
+      ]
+    },
+    {
       "code": "non_registration_meeting_result",
       "name_fa": "ثبت نتیجه جلسه",
       "used_in_state": "meeting_held",
+      "description_fa": "پس از برگزاری جلسه با دانشجو، تعداد هفته‌های گذشته از شروع کلاس‌ها را بررسی کنید و یکی از سه تصمیم را انتخاب کنید. سپس دکمهٔ متناسب با تصمیم را بزنید.",
+      "visible_to": [
+        "supervision_committee",
+        "admin",
+        "staff"
+      ],
       "fields": [
         {
           "name": "weeks_since_start",
@@ -172,6 +245,7 @@
           "name": "decision",
           "label_fa": "تصمیم",
           "type": "radio",
+          "required": true,
           "options": [
             {
               "value": "register",

@@ -1,0 +1,26 @@
+{
+  "positive_traits": [
+    { "value": "punctuality", "label_fa": "وقت‌شناسی و حضور به‌موقع" },
+    { "value": "active_participation", "label_fa": "مشارکت فعال در کلاس" },
+    { "value": "good_preparation", "label_fa": "آمادگی مناسب برای جلسات" },
+    { "value": "reflective_thinking", "label_fa": "تفکر بازتابی و تحلیلی" },
+    { "value": "collaborative", "label_fa": "همکاری سازنده با دیگران" },
+    { "value": "professional_conduct", "label_fa": "رفتار حرفه‌ای و اخلاقی" },
+    { "value": "strong_writing", "label_fa": "مهارت نگارشی قوی" },
+    { "value": "research_diligence", "label_fa": "پیگیری دقیق منابع و تحقیق" },
+    { "value": "accepts_feedback", "label_fa": "پذیرش بازخورد و اصلاح" },
+    { "value": "case_conceptualization", "label_fa": "توانایی مفهوم‌سازی مورد بالینی" }
+  ],
+  "negative_traits": [
+    { "value": "tardiness", "label_fa": "تأخیر یا غیبت مکرر" },
+    { "value": "lack_participation", "label_fa": "کم‌مشارکتی در کلاس" },
+    { "value": "unprepared", "label_fa": "آمادگی ناکافی برای جلسات" },
+    { "value": "missed_deadlines", "label_fa": "عدم رعایت مهلت‌ها" },
+    { "value": "poor_communication", "label_fa": "ارتباط ضعیف با مدرس یا همکلاسی‌ها" },
+    { "value": "disruptive_behavior", "label_fa": "رفتار مخل کلاس" },
+    { "value": "plagiarism_risk", "label_fa": "نگرانی از اصالت نگارش" },
+    { "value": "resists_feedback", "label_fa": "مقاومت در برابر بازخورد" },
+    { "value": "superficial_work", "label_fa": "سطحی‌نگری در انجام تکالیف" },
+    { "value": "unprofessional_conduct", "label_fa": "رفتار غیرحرفه‌ای" }
+  ]
+}

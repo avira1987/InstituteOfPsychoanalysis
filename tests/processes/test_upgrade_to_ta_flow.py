@@ -35,6 +35,35 @@ class TestUpgradeToTaFlow:
         assert instance.current_state_code == "student_click"
         assert instance.is_completed is False
 
+    async def test_status_includes_ta_eligibility_context(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        """وضعیت نمونه باید فیلدهای احراز شرایط کمک‌مدرس را برگرداند."""
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_process(db_session, processes_dir / "upgrade_to_ta.json")
+        sample_student.is_intern = True
+        extra = dict(sample_student.extra_data or {})
+        extra["ta_eligibility_gpa_ok"] = True
+        extra["ta_eligibility_therapy_ok"] = True
+        extra["comprehensive_term2_courses_passed"] = True
+        sample_student.extra_data = extra
+        await db_session.commit()
+
+        engine = StateMachineEngine(db_session)
+        instance = await engine.start_process(
+            process_code="upgrade_to_ta",
+            student_id=sample_student.id,
+            actor_id=sample_user.id,
+            actor_role="student",
+        )
+        await db_session.commit()
+
+        status = await engine.get_instance_status(instance.id)
+        ctx = status.get("context_data") or {}
+        assert "ta_eligibility_summary_fa" in ctx
+        assert "ta_conditions_preview" in ctx
+        assert ctx.get("ta_eligibility_met") is True
+
     async def test_upgrade_to_ta_full_flow_to_ta_registered(
         self, db_session: AsyncSession, sample_student, sample_user, sample_student_user
     ):
@@ -50,6 +79,16 @@ class TestUpgradeToTaFlow:
             actor_id=sample_student_user.id,
             actor_role="student",
         )
+        await db_session.commit()
+
+        sample_student.is_intern = True
+        extra = dict(sample_student.extra_data or {})
+        extra.update({
+            "comprehensive_term2_courses_passed": True,
+            "ta_eligibility_gpa_ok": True,
+            "ta_eligibility_therapy_ok": True,
+        })
+        sample_student.extra_data = extra
         await db_session.commit()
 
         # conditions_met → supervision_review

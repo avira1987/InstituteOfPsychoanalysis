@@ -15,8 +15,13 @@ _METADATA_TO_PORTAL_ROLES: dict[str, tuple[str, ...]] = {
     "education_director": ("deputy_education", "admin"),
     "deputy_education_director": ("deputy_education",),
     "scientific_officer_course_committee": ("course_committee", "deputy_education", "staff"),
+    "course_committee_scientific": ("course_committee", "deputy_education", "staff"),
     "course_committee": ("course_committee",),
     "admissions_officer": ("staff", "site_manager", "deputy_education"),
+    "reference_center": ("staff", "admin"),
+    "marketing": ("staff", "admin"),
+    "instructor": ("staff", "admin"),
+    "teaching_assistant": ("staff", "admin"),
     "site_manager": ("site_manager",),
     "staff": ("staff",),
     "deputy_education": ("deputy_education",),
@@ -24,6 +29,8 @@ _METADATA_TO_PORTAL_ROLES: dict[str, tuple[str, ...]] = {
     "monitoring_committee_officer": ("monitoring_committee_officer",),
     "therapy_committee_chair": ("therapy_committee_chair",),
     "therapy_committee_executor": ("therapy_committee_executor",),
+    "progress_committee_scientific": ("progress_committee",),
+    "progress_committee_project": ("progress_committee",),
 }
 
 

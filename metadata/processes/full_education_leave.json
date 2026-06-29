@@ -4,7 +4,7 @@
     "name_fa": "مرخصی موقت از کل آموزش",
     "name_en": "Temporary Leave from Full Education",
     "number": 59,
-    "description": "درخواست مرخصی موقت از کل دوره آموزش. تعیین تکلیف درمانگر آموزشی و پرونده‌های بالینی.",
+    "description": "درخواست مرخصی موقت از کل دوره آموزش. تعیین تکلیف درمانگر آموزشی و پرونده‌های بالینی. شامل: ثبت درخواست (۱ یا ۲ ترم)، جلسه کمیته پیشرفت ظرف ۷ روز، تصمیم کمیته، تعیین تکلیف درمانگر (۴ روز)، یادآوری بازگشت و فرایند ۶۰.",
     "initial_state": "leave_request",
     "initial_role": "student",
     "requires_form": true
@@ -14,27 +14,110 @@
       "code": "leave_request",
       "name_fa": "درخواست مرخصی از کل آموزش",
       "type": "initial",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "ثبت درخواست مرخصی",
+        "student_task_fa": "مدت مرخصی (۱ یا ۲ ترم) را انتخاب و درخواست را ارسال کنید. با اجرای این فرایند تمامی فعالیت‌های آموزشی به‌جز درمان آموزشی (در صورت تمایل) متوقف می‌شود."
+      }
+    },
+    {
+      "code": "committee_review",
+      "name_fa": "بررسی و تعیین جلسه توسط کمیته پیشرفت",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "sla_hours": 168,
+      "on_sla_breach_event": "sla_breach_7days",
+      "metadata": {
+        "operator_task_fa": "بررسی پرونده و ثبت زمان جلسه (حداکثر ۷ روز).",
+        "operator_short_fa": "بررسی و تعیین جلسه"
+      }
+    },
+    {
+      "code": "deputy_alerted",
+      "name_fa": "هشدار به معاون مدیر آموزش",
+      "type": "intermediate",
+      "assigned_role": "deputy_education",
+      "metadata": {
+        "reason": "عدم ثبت جلسه ظرف ۷ روز توسط کمیته پیشرفت",
+        "operator_task_fa": "بررسی پرونده و ثبت جلسه.",
+        "operator_short_fa": "هشدار به معاون آموزش"
+      }
+    },
+    {
+      "code": "session_scheduled",
+      "name_fa": "جلسه تنظیم شد",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "metadata": {
+        "student_short_fa": "زمان جلسه کمیته",
+        "student_task_fa": "زمان و نحوهٔ برگزاری جلسه در همین صفحه نمایش داده می‌شود؛ در روز مقرر طبق اعلام کمیته حاضر شوید.",
+        "operator_short_fa": "جلسه تنظیم شد"
+      }
+    },
+    {
+      "code": "committee_decision",
+      "name_fa": "برگزاری جلسه و تصمیم‌گیری",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "metadata": {
+        "operator_task_fa": "پس از جلسه، تأیید یا رد درخواست را ثبت کنید.",
+        "operator_short_fa": "تصمیم کمیته"
+      }
+    },
+    {
+      "code": "leave_rejected",
+      "name_fa": "مرخصی رد شد",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "درخواست مرخصی رد شد",
+        "student_task_fa": "شرح توافقات و علت رد در همین صفحه نمایش داده می‌شود."
+      }
     },
     {
       "code": "therapist_assignment",
       "name_fa": "تعیین تکلیف درمانگر آموزشی",
       "type": "intermediate",
-      "assigned_role": "education_committee",
+      "assigned_role": "therapy_education_coordinator",
+      "sla_hours": 96,
+      "on_sla_breach_event": "sla_breach_4days",
       "metadata": {
-        "operator_task_fa": "بررسی پرونده در جلسه کمیته آموزش.",
-        "operator_short_fa": "تعیین تکلیف درمانگر آموزشی"
+        "student_short_fa": "تعیین تکلیف درمانگر",
+        "student_task_fa": "در صورت تمایل به ادامه درمان، ظرف ۳ روز با مسئول هماهنگی‌ها تماس بگیرید. جزئیات در همین صفحه.",
+        "operator_task_fa": "تعیین تکلیف وقت درمانگر (مهلت ۴ روز).",
+        "operator_short_fa": "تعیین تکلیف درمانگر"
       }
     },
     {
-      "code": "leave_approved",
-      "name_fa": "مرخصی تایید شد",
+      "code": "on_leave",
+      "name_fa": "در مرخصی از کل آموزش",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "در مرخصی از کل آموزش",
+        "student_task_fa": "ثبت‌نام دروس و فعالیت‌های آموزشی مسدود است. برای بازگشت، فرایند «بازگشت به کل آموزش» (فرایند ۶۰) را آغاز کنید."
+      }
+    },
+    {
+      "code": "return_reminder_sent",
+      "name_fa": "یادآوری بازگشت ارسال شد",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "sla_hours": 336,
+      "metadata": {
+        "student_short_fa": "بازگشت به کل آموزش",
+        "student_task_fa": "مهلت بازگشت فرا رسیده است. فرایند «بازگشت به کل آموزش پس از مرخصی» (فرایند ۶۰) را آغاز و تکمیل کنید."
+      }
+    },
+    {
+      "code": "leave_complete",
+      "name_fa": "بازگشت به کل آموزش انجام شد",
       "type": "terminal",
       "assigned_role": "system"
     },
     {
-      "code": "leave_rejected",
-      "name_fa": "مرخصی رد شد",
+      "code": "violation_registered",
+      "name_fa": "ثبت تخلف عدم بازگشت",
       "type": "terminal",
       "assigned_role": "system"
     }
@@ -42,68 +125,368 @@
   "transitions": [
     {
       "from": "leave_request",
-      "to": "therapist_assignment",
-      "trigger": "request_submitted",
+      "to": "committee_review",
+      "trigger": "student_submitted",
       "required_role": "student",
-      "description_fa": "ارسال درخواست",
+      "description_fa": "ارسال درخواست مرخصی از کل آموزش به کمیته پیشرفت",
       "actions": [
         {
           "type": "record_leave_request"
+        },
+        {
+          "type": "warn_if",
+          "condition": "student.is_intern AND leave_terms == 2",
+          "message_fa": "دانشجوی گرامی، با توجه به وضعیت انترنی شما، مرخصی از کل آموزش منجر به توقف سوپرویژن فردی و ارجاع بیماران می‌شود. لطفاً جهت تسهیل فرایند با بیماران خود صحبت کنید."
+        }
+      ]
+    },
+    {
+      "from": "committee_review",
+      "to": "deputy_alerted",
+      "trigger": "sla_breach_7days",
+      "description_fa": "عدم ثبت جلسه ظرف ۷ روز — هشدار به معاون مدیر آموزش",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "committee_sla_breach",
+          "recipients": ["deputy_education"]
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "deputy_alerted",
+      "to": "session_scheduled",
+      "trigger": "committee_set_meeting",
+      "required_role": "progress_committee",
+      "description_fa": "ثبت جلسه پس از هشدار SLA"
+    },
+    {
+      "from": "committee_review",
+      "to": "session_scheduled",
+      "trigger": "committee_set_meeting",
+      "required_role": "progress_committee",
+      "description_fa": "ثبت تاریخ، ساعت و نحوهٔ برگزاری جلسه (حداکثر ۷ روز)",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "email",
+          "template": "meeting_scheduled",
+          "recipients": ["student"]
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "meeting_scheduled_sms",
+          "recipients": ["student"]
+        }
+      ]
+    },
+    {
+      "from": "session_scheduled",
+      "to": "committee_decision",
+      "trigger": "meeting_held",
+      "required_role": "progress_committee",
+      "description_fa": "برگزاری جلسه و آماده‌سازی ثبت تصمیم"
+    },
+    {
+      "from": "committee_decision",
+      "to": "leave_rejected",
+      "trigger": "committee_rejected",
+      "required_role": "progress_committee",
+      "description_fa": "رد درخواست — نمایش شرح توافق در پورتال دانشجو (بدون ارجاع به کمیته نظارت)",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "leave_rejected",
+          "recipients": ["student"]
+        }
+      ]
+    },
+    {
+      "from": "committee_decision",
+      "to": "therapist_assignment",
+      "trigger": "committee_approved",
+      "required_role": "progress_committee",
+      "description_fa": "تأیید مرخصی — اعمال محدودیت‌ها و ارجاع به مسئول هماهنگی درمان",
+      "actions": [
+        {
+          "type": "set_full_education_leave_flag"
+        },
+        {
+          "type": "block_next_term_registration"
+        },
+        {
+          "type": "suspend_class_registration"
+        },
+        {
+          "type": "set_leave_return_schedule"
+        },
+        {
+          "type": "apply_full_leave_intern_effects"
+        },
+        {
+          "type": "notify_therapy_coordination"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "leave_approved",
+          "recipients": ["student"]
         }
       ]
     },
     {
       "from": "therapist_assignment",
-      "to": "leave_approved",
-      "trigger": "approved",
-      "required_role": "education_committee",
-      "description_fa": "تایید مرخصی"
+      "to": "on_leave",
+      "trigger": "therapist_assigned",
+      "required_role": "therapy_education_coordinator",
+      "description_fa": "ثبت تکلیف درمانگر توسط مسئول هماهنگی‌ها",
+      "actions": [
+        {
+          "type": "apply_full_leave_therapist_decision"
+        }
+      ]
     },
     {
       "from": "therapist_assignment",
-      "to": "leave_rejected",
-      "trigger": "rejected",
-      "required_role": "education_committee",
-      "description_fa": "رد درخواست"
+      "to": "on_leave",
+      "trigger": "skip_therapist_assignment",
+      "required_role": "system",
+      "description_fa": "دانشجو درمانگر فعال ندارد — عبور از تعیین تکلیف"
+    },
+    {
+      "from": "therapist_assignment",
+      "to": "on_leave",
+      "trigger": "sla_breach_4days",
+      "required_role": "system",
+      "description_fa": "عدم ثبت تکلیف درمانگر ظرف ۴ روز — آزادسازی خودکار وقت",
+      "actions": [
+        {
+          "type": "auto_release_therapist_slot"
+        }
+      ]
+    },
+    {
+      "from": "on_leave",
+      "to": "return_reminder_sent",
+      "trigger": "send_return_reminder",
+      "description_fa": "یادآوری بازگشت — آغاز فرایند ۶۰",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "return_reminder",
+          "recipients": ["student"]
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "return_reminder_sent",
+      "to": "violation_registered",
+      "trigger": "return_deadline_passed",
+      "description_fa": "عدم بازگشت تا ترم بعد — ثبت تخلف",
+      "actions": [
+        {
+          "type": "start_process",
+          "process_code": "violation_registration",
+          "payload": {
+            "reason": "no_return_from_full_education_leave"
+          }
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "violation_no_return",
+          "recipients": ["student", "monitoring_committee_officer"]
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "on_leave",
+      "to": "leave_complete",
+      "trigger": "return_process_completed",
+      "required_role": "system",
+      "description_fa": "تکمیل فرایند ۶۰ بازگشت به کل آموزش",
+      "actions": [
+        {
+          "type": "clear_full_education_leave_flag"
+        },
+        {
+          "type": "unblock_next_term_registration"
+        },
+        {
+          "type": "reactivate_class_registration"
+        }
+      ]
+    },
+    {
+      "from": "return_reminder_sent",
+      "to": "leave_complete",
+      "trigger": "return_process_completed",
+      "required_role": "system",
+      "description_fa": "تکمیل فرایند ۶۰ پس از یادآوری",
+      "actions": [
+        {
+          "type": "clear_full_education_leave_flag"
+        },
+        {
+          "type": "unblock_next_term_registration"
+        },
+        {
+          "type": "reactivate_class_registration"
+        }
+      ]
     }
   ],
   "forms": [
     {
       "code": "full_leave_request_form",
-      "name_fa": "درخواست مرخصی از کل آموزش",
       "used_in_state": "leave_request",
+      "title_fa": "درخواست مرخصی از کل آموزش",
+      "description_fa": "دانشجوی گرامی با اجرای این فرایند تمامی فعالیت‌های شما به غیر از درمان آموزشی در انستیتو متوقف خواهد شد.",
+      "visible_to": ["student"],
       "fields": [
         {
-          "name": "start_date",
-          "label_fa": "تاریخ شروع",
-          "type": "date_picker"
+          "name": "leave_terms",
+          "label_fa": "مدت مرخصی",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": 1, "label_fa": "مرخصی به مدت یک ترم (نزدیک‌ترین ترم آتی)" },
+            { "value": 2, "label_fa": "مرخصی به مدت دو ترم آینده" }
+          ]
         },
         {
-          "name": "end_date",
-          "label_fa": "تاریخ پایان",
-          "type": "date_picker"
+          "name": "request_reason",
+          "label_fa": "توضیح کوتاه درخواست (اختیاری)",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "code": "full_leave_committee_meeting",
+      "used_in_state": ["committee_review", "deputy_alerted"],
+      "title_fa": "تعیین جلسه بررسی مرخصی از کل آموزش",
+      "description_fa": "پیش از زدن دکمهٔ «ثبت جلسه»، فرم را تکمیل و ثبت کنید.",
+      "visible_to": ["progress_committee", "deputy_education", "admin", "staff"],
+      "fields": [
+        {
+          "name": "leave_terms_display",
+          "label_fa": "مدت مرخصی درخواستی",
+          "type": "readonly",
+          "required": false
         },
         {
-          "name": "reason",
-          "label_fa": "دلیل",
-          "type": "textarea"
+          "name": "clinical_status_display",
+          "label_fa": "وضعیت بالینی",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "committee_meeting_at",
+          "label_fa": "تاریخ و ساعت جلسه (وقت ایران)",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "name": "committee_meeting_mode",
+          "label_fa": "نحوهٔ برگزاری",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "in_person", "label_fa": "حضوری" },
+            { "value": "online", "label_fa": "آنلاین" }
+          ]
+        },
+        {
+          "name": "committee_meeting_link",
+          "label_fa": "لینک جلسه (آنلاین)",
+          "type": "text",
+          "required": true,
+          "visible_if": { "committee_meeting_mode": "online" }
+        },
+        {
+          "name": "committee_meeting_location_fa",
+          "label_fa": "آدرس یا محل حضوری",
+          "type": "textarea",
+          "required": true,
+          "visible_if": { "committee_meeting_mode": "in_person" }
+        }
+      ]
+    },
+    {
+      "code": "full_leave_committee_decision",
+      "used_in_state": "committee_decision",
+      "title_fa": "ثبت نتیجهٔ نهایی جلسه",
+      "description_fa": "پیش از زدن دکمهٔ تأیید یا رد، فرم را ثبت کنید.",
+      "visible_to": ["progress_committee", "deputy_education", "admin", "staff"],
+      "fields": [
+        {
+          "name": "rejection_reason_fa",
+          "label_fa": "شرح توافقات / علت رد (برای نمایش به دانشجو در صورت رد)",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "name": "committee_notes_internal",
+          "label_fa": "یادداشت داخلی کمیته (اختیاری)",
+          "type": "textarea",
+          "required": false
         }
       ]
     },
     {
       "code": "therapist_assignment_form",
-      "name_fa": "تعیین تکلیف درمانگر آموزشی",
       "used_in_state": "therapist_assignment",
+      "title_fa": "بررسی و تغییر وضعیت درمانگر دانشجوی در حال مرخصی",
+      "description_fa": "مهلت سیستمی ۴ روز از تاریخ ارسال. در صورت عدم ثبت تا پایان مهلت، وقت به‌صورت خودکار آزاد می‌شود.",
+      "visible_to": ["therapy_education_coordinator", "admin", "staff"],
       "fields": [
         {
-          "name": "decision",
-          "label_fa": "تایید یا رد",
-          "type": "radio"
+          "name": "student_name_display",
+          "label_fa": "نام دانشجو",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "therapist_deadline_display",
+          "label_fa": "مهلت اقدام",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "current_therapist_display",
+          "label_fa": "نام درمانگر فعلی",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "current_session_times_display",
+          "label_fa": "زمان جلسات فعلی",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "therapist_decision",
+          "label_fa": "تعیین تکلیف",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "continue_general", "label_fa": "تأیید ادامه درمان در قالب «درمان عموم» (تماس گرفته شد)" },
+            { "value": "release_slot", "label_fa": "آزادسازی وقت درمانگر (عدم تماس / انصراف)" }
+          ]
         },
         {
           "name": "therapist_notes",
-          "label_fa": "توضیحات",
-          "type": "textarea"
+          "label_fa": "توضیحات مسئول هماهنگی",
+          "type": "textarea",
+          "required": false
         }
       ]
     }

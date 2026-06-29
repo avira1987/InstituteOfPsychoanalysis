@@ -121,6 +121,35 @@
   ],
   "forms": [
     {
+      "code": "internship_12month_schedule",
+      "name_fa": "تنظیم وقت مصاحبه ارزیابی مجدد",
+      "used_in_state": "interview_scheduling",
+      "fields": [
+        {
+          "name": "interview_date",
+          "label_fa": "تاریخ مصاحبه",
+          "type": "date_picker",
+          "required": true
+        },
+        {
+          "name": "interview_time",
+          "label_fa": "ساعت مصاحبه",
+          "type": "time_picker",
+          "required": true
+        },
+        {
+          "name": "interview_link",
+          "label_fa": "لینک جلسه (آنلاین)",
+          "type": "text"
+        },
+        {
+          "name": "interview_location",
+          "label_fa": "مکان برگزاری (حضوری)",
+          "type": "text"
+        }
+      ]
+    },
+    {
       "code": "internship_12month_result",
       "name_fa": "نتیجه مصاحبه ارزیابی مجدد",
       "used_in_state": "interview_held",

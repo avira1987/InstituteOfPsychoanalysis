@@ -18,7 +18,10 @@
       "code": "invitation_sent",
       "name_fa": "ارسال دعوتنامه ثبت‌نام دوره جامع",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_task_fa": "پیامک مهلت درخواست ورود به دوره جامع ارسال شده؛ در مهلت اعلام‌شده با بخش پذیرش تماس بگیرید."
+      }
     },
     {
       "code": "certificate_draft_generated",
@@ -32,8 +35,9 @@
       "type": "intermediate",
       "assigned_role": "supervision_committee",
       "metadata": {
-        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
-        "operator_short_fa": "بررسی و تایید کمیته نظارت"
+        "operator_task_fa": "پیش‌نویس گواهی پایان دوره آشنایی را بررسی کنید؛ در صورت صحت «committee_approved_certificate» و در صورت نیاز به اصلاح «committee_requested_revision» را بزنید.",
+        "operator_short_fa": "بررسی و تایید کمیته نظارت",
+        "student_task_fa": "گواهی در حال بررسی کمیته نظارت است؛ پس از تأیید در تب پروفایل قابل دانلود می‌شود."
       }
     },
     {
@@ -46,7 +50,10 @@
       "code": "process_complete",
       "name_fa": "فرایند تکمیل شد",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_task_fa": "گواهی پایان دوره آماده است؛ از تب پروفایل → کارنامه‌ها دانلود کنید."
+      }
     }
   ],
   "transitions": [

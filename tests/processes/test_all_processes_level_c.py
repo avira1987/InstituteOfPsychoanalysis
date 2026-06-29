@@ -247,6 +247,22 @@ async def test_process_level_c_second_transition_or_terminal_after_first(
         assert result2.success, result2.error or "success=False"
         return
 
+    if code == "supervision_session_reduction":
+        result2 = await engine.execute_transition(
+            instance_id=instance.id,
+            trigger_event="sessions_selected",
+            actor_id=sample_user.id,
+            actor_role="admin",
+            payload={
+                "supervision_weekly_sessions": 2,
+                "selected_sessions": ["slot_1"],
+                "supervision_remaining_after_reduction": 1,
+            },
+        )
+        await db_session.commit()
+        assert result2.success, result2.error or "success=False"
+        return
+
     cur = instance.current_state_code
     rows2 = _initial_state_transitions_sorted(data, cur)
     assert rows2, f"{code}: پس از گام اول state={cur} هیچ ترنزیشن خروجی در JSON نیست"

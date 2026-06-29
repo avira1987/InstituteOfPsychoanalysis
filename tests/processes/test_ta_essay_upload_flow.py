@@ -35,10 +35,10 @@ class TestTaEssayUploadFlow:
         assert instance.current_state_code == "session_ended"
         assert instance.is_completed is False
 
-    async def test_ta_essay_upload_flow_to_approved_reference_center(
+    async def test_ta_essay_upload_flow_to_content_published(
         self, db_session: AsyncSession, sample_student, sample_user
     ):
-        """سناریوی خوش‌بینانه: session_ended → ta_upload → instructor_review → approved_reference_center."""
+        """سناریوی خوش‌بینانه: session_ended → … → content_published."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
         await load_process(db_session, processes_dir / "ta_essay_upload.json")
         await db_session.commit()
@@ -52,40 +52,24 @@ class TestTaEssayUploadFlow:
         )
         await db_session.commit()
 
-        # session_ended -> ta_upload
-        result = await engine.execute_transition(
-            instance_id=instance.id,
-            trigger_event="process_started",
-            actor_id=sample_user.id,
-            actor_role="admin",
-        )
-        await db_session.commit()
-        assert result.success is True
-        assert result.to_state == "ta_upload"
-
-        # ta_upload -> instructor_review
-        result = await engine.execute_transition(
-            instance_id=instance.id,
-            trigger_event="uploaded",
-            actor_id=sample_user.id,
-            actor_role="admin",
-        )
-        await db_session.commit()
-        assert result.success is True
-        assert result.to_state == "instructor_review"
-
-        # instructor_review -> approved_reference_center
-        result = await engine.execute_transition(
-            instance_id=instance.id,
-            trigger_event="accepted",
-            actor_id=sample_user.id,
-            actor_role="admin",
-        )
-        await db_session.commit()
-        assert result.success is True
-        assert result.to_state == "approved_reference_center"
+        steps = [
+            ("process_started", "ta_upload"),
+            ("uploaded", "instructor_review"),
+            ("accepted", "reference_center_editing"),
+            ("sent_to_marketing", "marketing_publication"),
+            ("publication_recorded", "content_published"),
+        ]
+        for trigger, expected_state in steps:
+            result = await engine.execute_transition(
+                instance_id=instance.id,
+                trigger_event=trigger,
+                actor_id=sample_user.id,
+                actor_role="admin",
+            )
+            await db_session.commit()
+            assert result.success is True, f"trigger {trigger} failed: {result.error}"
+            assert result.to_state == expected_state
 
         instance = await engine.get_process_instance(instance.id)
-        assert instance.current_state_code == "approved_reference_center"
+        assert instance.current_state_code == "content_published"
         assert instance.is_completed is True
-

@@ -4,7 +4,7 @@
     "name_fa": "بازگشت دوباره به کل آموزش پس از مرخصی",
     "name_en": "Return to Full Education After Leave",
     "number": 60,
-    "description": "بازگشت دانشجو به دوره پس از مرخصی. انتخاب ارکان بالینی و فعال‌سازی مجدد مسیر آموزشی.",
+    "description": "بازگشت دانشجو به دوره پس از مرخصی از کل آموزش. انتخاب درمانگر آموزشی، پرداخت جلسه اول، قانون ۲۴ ساعت؛ برای انترن انتخاب سوپروایزر و پرداخت؛ بازگشایی ثبت‌نام دروس.",
     "initial_state": "return_request",
     "initial_role": "student",
     "requires_form": true
@@ -14,21 +14,97 @@
       "code": "return_request",
       "name_fa": "درخواست بازگشت",
       "type": "initial",
-      "assigned_role": "student"
-    },
-    {
-      "code": "clinical_roles_selection",
-      "name_fa": "انتخاب ارکان بالینی",
-      "type": "intermediate",
-      "assigned_role": "education_committee",
+      "assigned_role": "student",
       "metadata": {
-        "operator_task_fa": "بررسی پرونده در جلسه کمیته آموزش.",
-        "operator_short_fa": "انتخاب ارکان بالینی"
+        "student_short_fa": "شروع بازگشت به کل آموزش",
+        "student_task_fa": "پس از مرخصی از کل آموزش، برای بازگشت به کلاس‌ها و سوپرویژن ابتدا درمانگر آموزشی خود را انتخاب و جلسهٔ اول را پرداخت کنید. دکمهٔ ادامه را بزنید."
       }
     },
     {
-      "code": "return_approved",
-      "name_fa": "بازگشت تایید شد",
+      "code": "therapist_selection",
+      "name_fa": "انتخاب درمانگر آموزشی",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب درمانگر و ساعات هفتگی",
+        "student_task_fa": "درمانگر آموزشی و تعداد جلسات هفتگی را انتخاب کنید (دوره جامع: دقیقاً ۲ ساعت؛ دوره آشنایی: ۱ تا ۲ ساعت). سپس دکمهٔ ادامه را بزنید."
+      }
+    },
+    {
+      "code": "therapy_24h_scheduled",
+      "name_fa": "محاسبه تاریخ شروع درمان (قانون ۲۴ ساعت)",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "در حال ثبت زمان‌بندی درمان",
+        "student_task_fa": "این مرحله معمولاً خودکار طی چند ثانیه تکمیل می‌شود. اگر متوقف ماند، صفحه را تازه کنید."
+      }
+    },
+    {
+      "code": "therapy_payment_pending",
+      "name_fa": "پرداخت جلسه اول درمان آموزشی",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "sla_hours": 48,
+      "metadata": {
+        "student_short_fa": "پرداخت جلسهٔ اول درمان",
+        "student_task_fa": "هزینهٔ جلسهٔ اول درمان آموزشی را از درگاه بانک همین صفحه بپردازید. پس از تأیید بانک به مرحلهٔ بعد هدایت می‌شوید."
+      }
+    },
+    {
+      "code": "therapy_completed",
+      "name_fa": "درمان آموزشی بازگشایی شد",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "درمان ثبت شد",
+        "student_task_fa": "درمان آموزشی شما ثبت شد. در صورت انترن بودن، مرحلهٔ انتخاب سوپروایزر باز می‌شود."
+      }
+    },
+    {
+      "code": "supervisor_selection",
+      "name_fa": "انتخاب سوپروایزر",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب سوپروایزر (انترن)",
+        "student_task_fa": "از فهرست سوپروایزرهای دارای وقت آزاد، یک سوپروایزر و زمان جلسه (۱ ساعت در هفته) انتخاب کنید."
+      }
+    },
+    {
+      "code": "supervision_24h_scheduled",
+      "name_fa": "محاسبه تاریخ شروع سوپرویژن (قانون ۲۴ ساعت)",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "در حال ثبت زمان‌بندی سوپرویژن",
+        "student_task_fa": "این مرحله معمولاً خودکار تکمیل می‌شود."
+      }
+    },
+    {
+      "code": "supervision_payment_pending",
+      "name_fa": "پرداخت جلسه اول سوپرویژن",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "sla_hours": 48,
+      "metadata": {
+        "student_short_fa": "پرداخت جلسهٔ اول سوپرویژن",
+        "student_task_fa": "هزینهٔ جلسهٔ اول سوپرویژن را از درگاه بانک همین صفحه بپردازید."
+      }
+    },
+    {
+      "code": "registration_unlocked",
+      "name_fa": "ثبت‌نام دروس باز شد",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "بازگشایی دسترسی‌ها",
+        "student_task_fa": "محدودیت ثبت‌نام دروس برداشته شد. می‌توانید در ترم جدید ثبت‌نام کنید."
+      }
+    },
+    {
+      "code": "return_complete",
+      "name_fa": "بازگشت به کل آموزش تکمیل شد",
       "type": "terminal",
       "assigned_role": "system"
     },
@@ -42,29 +118,153 @@
   "transitions": [
     {
       "from": "return_request",
-      "to": "clinical_roles_selection",
-      "trigger": "request_submitted",
+      "to": "therapist_selection",
+      "trigger": "proceed",
       "required_role": "student",
-      "description_fa": "ارسال درخواست",
+      "description_fa": "شروع انتخاب درمانگر",
       "actions": [
         {
           "type": "record_return_request"
+        },
+        {
+          "type": "prefill_return_context"
         }
       ]
     },
     {
-      "from": "clinical_roles_selection",
-      "to": "return_approved",
-      "trigger": "roles_assigned",
-      "required_role": "education_committee",
-      "description_fa": "انتخاب درمانگر و سوپروایزر و تایید"
+      "from": "therapist_selection",
+      "to": "therapy_24h_scheduled",
+      "trigger": "therapist_selected",
+      "required_role": "student",
+      "description_fa": "درمانگر و برنامه هفتگی انتخاب شد",
+      "actions": [
+        {
+          "type": "apply_return_therapy_session_schedule"
+        }
+      ]
     },
     {
-      "from": "clinical_roles_selection",
-      "to": "return_rejected",
-      "trigger": "rejected",
-      "required_role": "education_committee",
-      "description_fa": "رد درخواست"
+      "from": "therapy_24h_scheduled",
+      "to": "therapy_payment_pending",
+      "trigger": "therapy_24h_passed",
+      "required_role": "system",
+      "description_fa": "تاریخ اولین جلسه درمان محاسبه شد"
+    },
+    {
+      "from": "therapy_payment_pending",
+      "to": "therapy_payment_pending",
+      "trigger": "payment_failed",
+      "description_fa": "پرداخت ناموفق",
+      "required_role": "system"
+    },
+    {
+      "from": "therapy_payment_pending",
+      "to": "therapy_completed",
+      "trigger": "therapy_payment_confirmed",
+      "description_fa": "پرداخت درمان تأیید شد",
+      "required_role": "system",
+      "actions": [
+        {
+          "type": "activate_therapy"
+        },
+        {
+          "type": "create_session_link"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "return_therapy_scheduled",
+          "recipients": [
+            "student",
+            "therapist"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "therapy_completed",
+      "to": "supervisor_selection",
+      "trigger": "needs_supervisor",
+      "required_role": "system",
+      "description_fa": "انترن — انتخاب سوپروایزر"
+    },
+    {
+      "from": "therapy_completed",
+      "to": "registration_unlocked",
+      "trigger": "skip_supervisor",
+      "required_role": "system",
+      "description_fa": "غیر انترن — بازگشایی ثبت‌نام",
+      "actions": [
+        {
+          "type": "unblock_next_term_registration"
+        },
+        {
+          "type": "unblock_attendance_registration"
+        }
+      ]
+    },
+    {
+      "from": "supervisor_selection",
+      "to": "supervision_24h_scheduled",
+      "trigger": "supervisor_selected",
+      "required_role": "student",
+      "description_fa": "سوپروایزر انتخاب شد",
+      "actions": [
+        {
+          "type": "apply_return_supervision_schedule"
+        }
+      ]
+    },
+    {
+      "from": "supervision_24h_scheduled",
+      "to": "supervision_payment_pending",
+      "trigger": "supervision_24h_passed",
+      "required_role": "system",
+      "description_fa": "تاریخ اولین جلسه سوپرویژن محاسبه شد"
+    },
+    {
+      "from": "supervision_payment_pending",
+      "to": "registration_unlocked",
+      "trigger": "supervision_payment_confirmed",
+      "required_role": "system",
+      "description_fa": "پرداخت سوپرویژن تأیید شد",
+      "actions": [
+        {
+          "type": "unblock_next_term_registration"
+        },
+        {
+          "type": "unblock_attendance_registration"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "return_supervision_scheduled",
+          "recipients": [
+            "student",
+            "supervisor"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "registration_unlocked",
+      "to": "return_complete",
+      "trigger": "finalize_return",
+      "required_role": "system",
+      "description_fa": "بازگشت به کل آموزش نهایی شد",
+      "actions": [
+        {
+          "type": "clear_full_education_leave_flag"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "return_to_education_complete",
+          "recipients": [
+            "student"
+          ]
+        }
+      ]
     }
   ],
   "forms": [
@@ -74,36 +274,79 @@
       "used_in_state": "return_request",
       "fields": [
         {
-          "name": "return_date",
-          "label_fa": "تاریخ بازگشت",
-          "type": "date_picker"
-        },
-        {
           "name": "notes",
-          "label_fa": "توضیحات",
+          "label_fa": "توضیحات (اختیاری)",
           "type": "textarea"
         }
       ]
     },
     {
-      "code": "clinical_roles_form",
-      "name_fa": "انتخاب ارکان بالینی",
-      "used_in_state": "clinical_roles_selection",
+      "code": "return_therapist_form",
+      "name_fa": "انتخاب درمانگر آموزشی",
+      "used_in_state": "therapist_selection",
       "fields": [
         {
           "name": "therapist_id",
           "label_fa": "درمانگر آموزشی",
-          "type": "user_select"
+          "type": "therapist_select",
+          "required": true
         },
+        {
+          "name": "weekly_sessions",
+          "label_fa": "تعداد جلسات در هفته",
+          "type": "select",
+          "options": [
+            1,
+            2
+          ],
+          "required": true,
+          "description_fa": "دوره جامع: دقیقاً ۲ جلسه؛ دوره آشنایی: ۱ یا ۲ جلسه."
+        },
+        {
+          "name": "first_session_date",
+          "label_fa": "تاریخ اولین جلسه",
+          "type": "date_picker",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "return_supervisor_form",
+      "name_fa": "انتخاب سوپروایزر",
+      "used_in_state": "supervisor_selection",
+      "fields": [
         {
           "name": "supervisor_id",
           "label_fa": "سوپروایزر",
-          "type": "user_select"
+          "type": "user_select",
+          "required": true
         },
         {
-          "name": "decision",
-          "label_fa": "تایید یا رد",
-          "type": "radio"
+          "name": "supervision_day",
+          "label_fa": "روز جلسه سوپرویژن",
+          "type": "select",
+          "options": [
+            "شنبه",
+            "یکشنبه",
+            "دوشنبه",
+            "سه‌شنبه",
+            "چهارشنبه",
+            "پنجشنبه",
+            "جمعه"
+          ],
+          "required": true
+        },
+        {
+          "name": "supervision_time",
+          "label_fa": "ساعت جلسه",
+          "type": "time_picker",
+          "required": true
+        },
+        {
+          "name": "first_supervision_date",
+          "label_fa": "تاریخ اولین جلسه سوپرویژن",
+          "type": "date_picker",
+          "required": true
         }
       ]
     }

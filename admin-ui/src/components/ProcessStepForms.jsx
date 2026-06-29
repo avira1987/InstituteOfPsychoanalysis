@@ -8,6 +8,7 @@ import {
   normalizeSelectedCoursesValue,
 } from '../utils/resolveCourseFieldOptions'
 import ShamsiDatePicker from './ShamsiDatePicker'
+import StepOtpField from './StepOtpField'
 import {
   isoDateToShamsiParts,
   shamsiDateToIsoDate,
@@ -414,7 +415,7 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
     )
   }
 
-  if (t === 'time') {
+  if (t === 'time_picker' || t === 'time') {
     return (
       <label className="psf-field" htmlFor={id}>
         <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
@@ -430,6 +431,21 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
           dir="ltr"
         />
       </label>
+    )
+  }
+
+  if (t === 'step_otp') {
+    return (
+      <StepOtpField
+        instanceId={instanceId}
+        value={value}
+        onChange={onChange}
+        disabled={disabled || locked}
+        labelFa={field.label_fa || name}
+        required={!!field.required}
+        verified={!!values.step_otp_verified}
+        onVerifiedChange={(v) => onFieldChange('step_otp_verified', v)}
+      />
     )
   }
 

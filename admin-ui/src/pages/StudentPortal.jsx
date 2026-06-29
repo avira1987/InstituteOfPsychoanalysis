@@ -26,6 +26,8 @@ import PopupToast from '../components/PopupToast'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import { buildStudentGuidance } from '../utils/studentProcessGuidance'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
+import { mergeUpgradeToTaTriggerPayload } from '../utils/upgradeToTaTriggerPayload'
+import { mergeReturnToFullEducationTriggerPayload } from '../utils/returnToFullEducationTriggerPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import {
   STUDENT_TRANSITION_CTA_INTRO,
@@ -46,20 +48,55 @@ import StudentTherapyHoursPanel from '../components/StudentTherapyHoursPanel'
 import StudentTherapyReductionPanel from '../components/StudentTherapyReductionPanel'
 import StudentTherapyInterruptionPanel from '../components/StudentTherapyInterruptionPanel'
 import StudentSessionCancellationPanel from '../components/StudentSessionCancellationPanel'
+import StudentSupervisionCancellationPanel from '../components/StudentSupervisionCancellationPanel'
+import SupervisorSessionCancellationPanel from '../components/SupervisorSessionCancellationPanel'
 import StudentSupervisionBlockTransitionPanel from '../components/StudentSupervisionBlockTransitionPanel'
 import StudentSupervisionSessionIncreasePanel from '../components/StudentSupervisionSessionIncreasePanel'
+import StudentSupervisionSessionReductionPanel from '../components/StudentSupervisionSessionReductionPanel'
+import StudentSupervisionInterruptionPanel from '../components/StudentSupervisionInterruptionPanel'
+import StudentExtraSupervisionSessionPanel from '../components/StudentExtraSupervisionSessionPanel'
+import StudentIntroductoryCourseRegistrationPanel from '../components/StudentIntroductoryCourseRegistrationPanel'
+import StudentComprehensiveCourseRegistrationPanel from '../components/StudentComprehensiveCourseRegistrationPanel'
+import StudentIntroductoryTermEndPanel from '../components/StudentIntroductoryTermEndPanel'
+import StudentComprehensiveTermEndPanel from '../components/StudentComprehensiveTermEndPanel'
+import StudentIntroSecondSemesterRegistrationPanel from '../components/StudentIntroSecondSemesterRegistrationPanel'
+import StudentComprehensiveTermStartPanel from '../components/StudentComprehensiveTermStartPanel'
+import StudentNonRegistrationPanel from '../components/StudentNonRegistrationPanel'
+import StudentInstructorEvaluationPanel from '../components/StudentInstructorEvaluationPanel'
+import StudentViolationRegistrationPanel from '../components/StudentViolationRegistrationPanel'
+import StudentInternBulkPatientReferralPanel from '../components/StudentInternBulkPatientReferralPanel'
+import StudentLessonStartPerTermPanel from '../components/StudentLessonStartPerTermPanel'
+import StudentClassAttendancePanel from '../components/StudentClassAttendancePanel'
+import StudentIntroductoryCourseCompletionPanel from '../components/StudentIntroductoryCourseCompletionPanel'
+import StudentArticleWritingCompletionPanel from '../components/StudentArticleWritingCompletionPanel'
+import StudentFilmObservationCourseCompletionPanel from '../components/StudentFilmObservationCourseCompletionPanel'
+import StudentSkillsCourseCompletionPanel from '../components/StudentSkillsCourseCompletionPanel'
+import StudentTheoryCourseCompletionPanel from '../components/StudentTheoryCourseCompletionPanel'
+import StudentGroupSupervisionCourseCompletionPanel from '../components/StudentGroupSupervisionCourseCompletionPanel'
+import StudentLiveSupervisionCoursePanel from '../components/StudentLiveSupervisionCoursePanel'
+import StudentLiveSupervisionMirrorWritePanel from '../components/StudentLiveSupervisionMirrorWritePanel'
+import StudentThesisDefenseRequestPanel from '../components/StudentThesisDefenseRequestPanel'
 import StudentCommitteesRestartPanel from '../components/StudentCommitteesRestartPanel'
 import StudentFeeDeterminationPanel from '../components/StudentFeeDeterminationPanel'
+import StudentEducationalTherapistUpgradePanel from '../components/StudentEducationalTherapistUpgradePanel'
+import StudentReturnToFullEducationPanel from '../components/StudentReturnToFullEducationPanel'
+import StudentFullEducationLeavePanel from '../components/StudentFullEducationLeavePanel'
+import StudentUpgradeToTaPanel from '../components/StudentUpgradeToTaPanel'
+import StudentTaTrackChangePanel from '../components/StudentTaTrackChangePanel'
+import StudentTaToInstructorAutoPanel from '../components/StudentTaToInstructorAutoPanel'
 import SepPaymentPanel from '../components/SepPaymentPanel'
 import StudentOnlineSessionsPanel from '../components/StudentOnlineSessionsPanel'
 
 const studentProcessCodes = [
-  'educational_leave', 'start_therapy', 'extra_session', 'session_payment',
+  'educational_leave', 'full_education_leave', 'return_to_full_education',
+  'start_therapy', 'extra_session', 'session_payment',
   'therapy_changes', 'therapy_session_increase', 'therapy_session_reduction',
   'therapy_interruption', 'student_session_cancellation', 'student_supervision_cancellation', 'supervision_block_transition',
   'extra_supervision_session', 'supervision_session_increase', 'supervision_session_reduction',
+  'supervision_interruption', 'supervisor_session_cancellation',
   'introductory_course_registration', 'comprehensive_course_registration',
-  'fee_determination', 'therapy_completion', 'upgrade_to_ta', 'internship_readiness_consultation',
+  'fee_determination', 'therapy_completion', 'upgrade_to_ta', 'ta_track_change', 'upgrade_to_educational_therapist', 'internship_readiness_consultation',
+  'thesis_defense_request',
 ]
 
 /** ناوبری دو سطحی: گروه → زیرتب (testidهای student-portal-tab-* حفظ می‌شوند) */
@@ -479,6 +516,18 @@ export default function StudentPortal() {
     try {
       let payload = mergeFormPayload(decisionNotes, stepFormValues)
       payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
+      const taMerge = mergeUpgradeToTaTriggerPayload(instanceDetail, triggerEvent, payload)
+      if (taMerge.error) {
+        showToast(taMerge.error, 'error')
+        return
+      }
+      payload = taMerge.payload
+      const returnMerge = mergeReturnToFullEducationTriggerPayload(instanceDetail, triggerEvent, payload)
+      if (returnMerge.error) {
+        showToast(returnMerge.error, 'error')
+        return
+      }
+      payload = returnMerge.payload
       if (toState) payload.to_state = toState
       const res = await processExecApi.trigger(selectedInstance, {
         trigger_event: triggerEvent,
@@ -518,6 +567,12 @@ export default function StudentPortal() {
     try {
       let payload = mergeFormPayload(decisionNotes, stepFormValues)
       payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
+      const taMergePrimary = mergeUpgradeToTaTriggerPayload(primaryJourney?.detail, triggerEvent, payload)
+      if (taMergePrimary.error) {
+        showToast(taMergePrimary.error, 'error')
+        return
+      }
+      payload = taMergePrimary.payload
       if (toState) payload.to_state = toState
       const res = await processExecApi.trigger(pid, {
         trigger_event: triggerEvent,
@@ -614,6 +669,16 @@ export default function StudentPortal() {
 
   const activeFullLeaveInstance = useMemo(
     () => activeProcesses.find((p) => p.process_code === 'full_education_leave'),
+    [activeProcesses],
+  )
+
+  const fullLeaveCompleted = useMemo(
+    () => completedProcesses.some((p) => p.process_code === 'full_education_leave'),
+    [completedProcesses],
+  )
+
+  const activeReturnInstance = useMemo(
+    () => activeProcesses.find((p) => p.process_code === 'return_to_full_education'),
     [activeProcesses],
   )
 
@@ -726,11 +791,17 @@ export default function StudentPortal() {
   const quickActionItems = [
     { code: 'session_payment', icon: '💳', label: 'پرداخت جلسات' },
     { code: 'educational_leave', icon: '🏖️', label: 'درخواست مرخصی' },
-    { code: 'extra_session', icon: '➕', label: 'جلسه اضافی' },
+    { code: 'full_education_leave', icon: '🛑', label: 'مرخصی از کل آموزش' },
+    { code: 'extra_session', icon: '➕', label: 'جلسه اضافی درمان' },
+    { code: 'extra_supervision_session', icon: '➕', label: 'جلسه اضافی سوپرویژن' },
     { code: 'therapy_session_increase', icon: '📈', label: 'افزایش جلسات هفتگی درمان' },
     { code: 'supervision_session_increase', icon: '📈', label: 'افزایش جلسات هفتگی سوپرویژن' },
+    { code: 'supervision_session_reduction', icon: '📉', label: 'کاهش جلسات هفتگی سوپرویژن' },
     { code: 'student_session_cancellation', icon: '🚫', label: 'کنسل جلسه درمان' },
     { code: 'student_supervision_cancellation', icon: '🚫', label: 'کنسل جلسه سوپرویژن' },
+    { code: 'upgrade_to_ta', icon: '📚', label: 'ارتقا به کمک‌مدرس' },
+    { code: 'ta_track_change', icon: '🔀', label: 'تغییر/اضافه رسته کمک‌مدرس' },
+    { code: 'supervision_interruption', icon: '⏸️', label: 'وقفه سوپرویژن' },
   ]
   const allowedQuickActionItems = quickActionItems.filter((item) => canStartProcess(item.code, accessCtx).ok)
 
@@ -839,6 +910,11 @@ export default function StudentPortal() {
     })
   }
   if (activeFullLeaveInstance) {
+    const returnStartCheck = canStartProcess('return_to_full_education', {
+      studentProfile,
+      activeProcesses,
+      completedProcesses,
+    })
     profileSecondaryAlertItems.push({
       key: 'full-education-leave',
       node: (
@@ -850,9 +926,51 @@ export default function StudentPortal() {
             فرایند مرخصی کامل آموزش در پروندهٔ شما فعال است. وضعیت فعلی:{' '}
             {labelState(activeFullLeaveInstance.current_state)} — جزئیات را در تب «فرایندها» ببینید.
           </p>
+          {returnStartCheck.ok && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              style={{ marginTop: '0.65rem' }}
+              data-testid="start-return-to-full-education"
+              onClick={() => startProcess('return_to_full_education')}
+            >
+              شروع بازگشت به کل آموزش
+            </button>
+          )}
         </div>
       ),
     })
+  }
+  if (!activeReturnInstance && (fullLeaveCompleted || studentProfile?.extra_data?.on_full_education_leave)) {
+    const returnStartCheck = canStartProcess('return_to_full_education', {
+      studentProfile,
+      activeProcesses,
+      completedProcesses,
+    })
+    if (returnStartCheck.ok) {
+      profileSecondaryAlertItems.push({
+        key: 'return-to-full-education-cta',
+        node: (
+          <div className="card student-portal-alert-card student-portal-alert-card--info" role="status">
+            <strong className="student-portal-alert-card-title student-portal-alert-card-title--info">
+              بازگشت به کل آموزش
+            </strong>
+            <p className="student-portal-alert-card-p">
+              برای بازگشت به کلاس‌ها و فعالیت‌های آموزشی، فرایند «بازگشت به کل آموزش پس از مرخصی» را آغاز کنید.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              style={{ marginTop: '0.65rem' }}
+              data-testid="start-return-to-full-education-dashboard"
+              onClick={() => startProcess('return_to_full_education')}
+            >
+              شروع بازگشت به کل آموزش
+            </button>
+          </div>
+        ),
+      })
+    }
   }
   if (activeInternshipPromissory) {
     profileSecondaryAlertItems.push({
@@ -1420,6 +1538,27 @@ export default function StudentPortal() {
                 </div>
               )}
 
+              {instanceDetail.process_code === 'student_supervision_cancellation' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentSupervisionCancellationPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'supervisor_session_cancellation' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <SupervisorSessionCancellationPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                    portalRole="student"
+                  />
+                </div>
+              )}
+
               {instanceDetail.process_code === 'supervision_session_increase' && (
                 <div style={{ marginBottom: '1.25rem' }}>
                   <StudentSupervisionSessionIncreasePanel
@@ -1429,6 +1568,298 @@ export default function StudentPortal() {
                   />
                 </div>
               )}
+
+              {instanceDetail.process_code === 'supervision_session_reduction' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentSupervisionSessionReductionPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'supervision_interruption' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentSupervisionInterruptionPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'extra_supervision_session' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentExtraSupervisionSessionPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'introductory_course_registration' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentIntroductoryCourseRegistrationPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'comprehensive_course_registration' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentComprehensiveCourseRegistrationPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'introductory_term_end' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentIntroductoryTermEndPanel
+                    detail={instanceDetail}
+                    extraData={studentProfile?.extra_data}
+                    active={activeTab === 'processes'}
+                    onGoToProfile={() => setActiveTab('profile')}
+                    onGoToProcesses={() => setActiveTab('processes')}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'comprehensive_term_end' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentComprehensiveTermEndPanel
+                    detail={instanceDetail}
+                    extraData={studentProfile?.extra_data}
+                    active={activeTab === 'processes'}
+                    onGoToProfile={() => setActiveTab('profile')}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'intro_second_semester_registration' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentIntroSecondSemesterRegistrationPanel
+                    detail={instanceDetail}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'comprehensive_term_start' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentComprehensiveTermStartPanel
+                    detail={instanceDetail}
+                    studentProfile={studentProfile}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'lesson_start_per_term' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentLessonStartPerTermPanel
+                    detail={instanceDetail}
+                    studentProfile={studentProfile}
+                    stepFormValues={stepFormValues}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'class_attendance' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentClassAttendancePanel
+                    detail={instanceDetail}
+                    studentProfile={studentProfile}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'student_non_registration' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentNonRegistrationPanel
+                    detail={instanceDetail}
+                    activeProcesses={activeProcesses}
+                    active={activeTab === 'processes'}
+                    onStartLeave={() => startProcess('educational_leave')}
+                    onStartFullLeave={() => startProcess('full_education_leave')}
+                    onGoToRegistration={(p) => viewInstance(p.instance_id)}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'student_instructor_evaluation' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentInstructorEvaluationPanel
+                    detail={instanceDetail}
+                    instanceId={selectedInstance}
+                    studentProfile={studentProfile}
+                    active={activeTab === 'processes'}
+                    showToast={showToast}
+                    onRefreshInstance={() => viewInstance(selectedInstance)}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'violation_registration' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentViolationRegistrationPanel
+                    detail={instanceDetail}
+                    extraData={studentProfile?.extra_data || instanceDetail?.student_extra_data}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'intern_bulk_patient_referral' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentInternBulkPatientReferralPanel
+                    detail={instanceDetail}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'introductory_course_completion' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentIntroductoryCourseCompletionPanel
+                    detail={instanceDetail}
+                    extraData={studentProfile?.extra_data}
+                    active={activeTab === 'processes'}
+                    onGoToProfile={() => setActiveTab('profile')}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'article_writing_completion' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentArticleWritingCompletionPanel
+                    detail={instanceDetail}
+                    active={activeTab === 'processes'}
+                    onOpenProcesses={() => setActiveTab('processes')}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'film_observation_course_completion' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentFilmObservationCourseCompletionPanel
+                    detail={instanceDetail}
+                    instanceId={selectedInstance}
+                    showToast={showToast}
+                    onRefreshInstance={() => viewInstance(selectedInstance)}
+                    stepFormValues={stepFormValues}
+                    onFieldChange={(name, v) => setStepFormValues((prev) => ({ ...prev, [name]: v }))}
+                    stepFormLocked={stepFormLockedProcess}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'skills_course_completion' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentSkillsCourseCompletionPanel
+                    detail={instanceDetail}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'theory_course_completion' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentTheoryCourseCompletionPanel
+                    detail={instanceDetail}
+                    instanceId={selectedInstance}
+                    availableTransitions={availableTransitions}
+                    showToast={showToast}
+                    onRefreshInstance={() => viewInstance(selectedInstance)}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'group_supervision_course_completion' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentGroupSupervisionCourseCompletionPanel
+                    detail={instanceDetail}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'live_supervision_course_completion' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentLiveSupervisionCoursePanel
+                    detail={instanceDetail}
+                    extraData={studentProfile?.extra_data}
+                    active={activeTab === 'processes'}
+                  />
+                  <StudentLiveSupervisionMirrorWritePanel
+                    detail={instanceDetail}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'thesis_defense_request' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentThesisDefenseRequestPanel
+                    detail={instanceDetail}
+                    extraData={studentProfile?.extra_data}
+                    active={activeTab === 'processes'}
+                    onGoToProfile={() => setActiveTab('profile')}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'extra_supervision_session'
+                && !instanceDetailDone
+                && instanceDetail.current_state === 'payment_required'
+                && studentProfile?.id && (() => {
+                  const ctx = instanceDetail.context_data || {}
+                  const amountRial = ctx.payment_amount_rial != null
+                    ? Number(ctx.payment_amount_rial)
+                    : Math.round(Number(ctx.invoice_amount || 0) * 10)
+                  return (
+                    <div style={{ marginBottom: '1.25rem' }} data-testid="student-extra-supervision-sep-payment">
+                      <SepPaymentPanel
+                        instanceId={instanceDetail.instance_id}
+                        studentId={studentProfile.id}
+                        amountRial={amountRial}
+                        description="پرداخت جلسه اضافی سوپرویژن"
+                      />
+                    </div>
+                  )
+                })()}
+
+              {instanceDetail.process_code === 'supervisor_session_cancellation'
+                && !instanceDetailDone
+                && instanceDetail.current_state === 'payment_pending'
+                && studentProfile?.id && (() => {
+                  const ctx = instanceDetail.context_data || {}
+                  const amountRial = ctx.payment_amount_rial != null
+                    ? Number(ctx.payment_amount_rial)
+                    : Math.round(Number(ctx.invoice_amount || ctx.session_fee_toman || 0) * 10)
+                  return (
+                    <div style={{ marginBottom: '1.25rem' }} data-testid="student-supervisor-cancel-sep-payment">
+                      <SepPaymentPanel
+                        instanceId={instanceDetail.instance_id}
+                        studentId={studentProfile.id}
+                        amountRial={amountRial > 0 ? amountRial : undefined}
+                        description="پرداخت جلسه جبرانی سوپرویژن"
+                      />
+                    </div>
+                  )
+                })()}
 
               {instanceDetail.process_code === 'supervision_block_transition' && !instanceDetailDone && (
                 <>
@@ -1489,7 +1920,72 @@ export default function StudentPortal() {
                 </div>
               )}
 
-              {filterFormsForStudent(instanceForms || []).length > 0 && stepFormLockedProcess && (
+              {instanceDetail.process_code === 'upgrade_to_educational_therapist' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentEducationalTherapistUpgradePanel
+                    detail={instanceDetail}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'return_to_full_education' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentReturnToFullEducationPanel
+                    detail={instanceDetail}
+                    studentProfile={studentProfile}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'full_education_leave' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentFullEducationLeavePanel
+                    detail={instanceDetail}
+                    active={activeTab === 'processes'}
+                    canStartReturn={canStartProcess('return_to_full_education', {
+                      studentProfile,
+                      activeProcesses,
+                      completedProcesses,
+                    }).ok}
+                    onStartReturn={() => startProcess('return_to_full_education')}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'upgrade_to_ta' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentUpgradeToTaPanel
+                    detail={instanceDetail}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'ta_track_change' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentTaTrackChangePanel
+                    detail={instanceDetail}
+                    studentProfile={studentProfile}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'ta_to_instructor_auto' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentTaToInstructorAutoPanel
+                    detail={instanceDetail}
+                    extraData={studentProfile?.extra_data}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {filterFormsForStudent(instanceForms || []).length > 0 && stepFormLockedProcess
+                && instanceDetail.process_code !== 'film_observation_course_completion'
+                && instanceDetail.process_code !== 'student_instructor_evaluation' && (
                 <div className="psf-locked-banner" role="status" style={{
                   marginBottom: '1.25rem', padding: '1rem 1.25rem', borderRadius: '10px',
                   background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)',
@@ -1498,7 +1994,9 @@ export default function StudentPortal() {
                   اطلاعات این مرحله قبلاً ثبت شده است. برای ویرایش، مسئول مربوط (اداری) باید از پنل کارمندان، امکان ویرایش را برای شما باز کند؛ سپس همین صفحه را تازه کنید.
                 </div>
               )}
-              {!stepFormLockedProcess && (
+              {!stepFormLockedProcess
+                && instanceDetail.process_code !== 'film_observation_course_completion'
+                && instanceDetail.process_code !== 'student_instructor_evaluation' && (
                 <>
                   <ProcessStepForms
                     forms={instanceForms}

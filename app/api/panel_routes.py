@@ -2,9 +2,10 @@
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -307,3 +308,284 @@ async def panel_my_semester_courses(
         kind = "instructor" if role == "instructor" else "teaching_assistant"
         items = [x for x in items if isinstance(x, dict) and (x.get("role_kind") in (None, kind))]
     return {"courses": items, "role": role}
+
+
+@router.get("/instructor/course-roster")
+async def panel_instructor_course_roster(
+    course_code: str,
+    enrich_film_reports: bool = Query(False, alias="enrich_film_reports"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """لیست دانشجویان ثبت‌نام‌شده در یک درس — برای ثبت حضور توسط مدرس."""
+    from app.services.instructor_course_roster_service import get_course_roster_for_user
+
+    role = (user.role or "").strip()
+    if role not in ("admin", "staff", "instructor", "teaching_assistant"):
+        raise HTTPException(status_code=403, detail="دسترسی مدرس یا کمک‌مدرس لازم است.")
+    code = str(course_code or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="course_code الزامی است.")
+    roster = await get_course_roster_for_user(
+        db, user, code, include_final_reports=enrich_film_reports,
+    )
+    if not roster and role in ("instructor", "teaching_assistant"):
+        from app.services.instructor_course_roster_service import user_may_access_course
+        if not user_may_access_course(user, code):
+            raise HTTPException(status_code=403, detail="این درس به شما انتساب داده نشده است.")
+    return {"course_code": code, "roster": roster}
+
+
+@router.get("/instructor/class-cancellation-preview")
+async def panel_class_cancellation_preview(
+    course_code: str = Query(..., alias="course_code"),
+    session_key: Optional[str] = Query(None, alias="session_key"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """پیش‌نمایش زمان جبرانی — فرایند ۵۶."""
+    from app.services.class_session_cancellation_service import preview_cancellation
+
+    role = (user.role or "").strip()
+    if role not in (
+        "admin",
+        "staff",
+        "instructor",
+        "teaching_assistant",
+        "scientific_officer_course_committee",
+        "course_committee_executive",
+        "deputy_education",
+    ):
+        raise HTTPException(status_code=403, detail="دسترسی مدرس یا کمیته دروس لازم است.")
+    code = str(course_code or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="course_code الزامی است.")
+    all_term = role in (
+        "scientific_officer_course_committee",
+        "course_committee_executive",
+        "admin",
+        "staff",
+        "deputy_education",
+    )
+    return await preview_cancellation(
+        db, user, code, session_key, all_term=all_term
+    )
+
+
+@router.get("/instructor/live-supervision/{course_code}/progress")
+async def panel_live_supervision_progress(
+    course_code: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """پیشرفت ۱۵+۳ هر دانشجو در درس سوپرویژن زنده."""
+    from app.services.instructor_course_roster_service import get_course_roster_for_user
+    from app.services.live_supervision_course_service import get_progress_for_course
+
+    role = (user.role or "").strip()
+    if role not in ("admin", "staff", "instructor", "teaching_assistant"):
+        raise HTTPException(status_code=403, detail="دسترسی مدرس یا کمک‌مدرس لازم است.")
+    code = str(course_code or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="course_code الزامی است.")
+    roster = await get_course_roster_for_user(db, user, code)
+    progress = await get_progress_for_course(db, code, roster)
+    return {"course_code": code, "progress": progress, "roster_count": len(roster)}
+
+
+@router.get("/instructor/skills-course/{course_code}/grades-preview")
+async def panel_skills_course_grades_preview(
+    course_code: str,
+    instance_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """پیش‌نمایش نمرات درس تمرین مهارت‌ها — فرایند ۶۳."""
+    from app.services.instructor_course_roster_service import get_course_roster_for_user, user_may_access_course
+    from app.services.skills_course_completion_service import get_grades_preview
+
+    role = (user.role or "").strip()
+    if role not in ("admin", "staff", "instructor", "teaching_assistant"):
+        raise HTTPException(status_code=403, detail="دسترسی مدرس یا کمک‌مدرس لازم است.")
+    code = str(course_code or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="course_code الزامی است.")
+    roster = await get_course_roster_for_user(db, user, code)
+    if not roster and role in ("instructor", "teaching_assistant"):
+        if not user_may_access_course(user, code):
+            raise HTTPException(status_code=403, detail="این درس به شما انتساب داده نشده است.")
+    instance = None
+    if instance_id:
+        try:
+            from app.models.operational_models import ProcessInstance
+            import uuid as _uuid
+
+            instance = await db.get(ProcessInstance, _uuid.UUID(str(instance_id)))
+        except (ValueError, TypeError):
+            instance = None
+    preview = await get_grades_preview(db, code, instance=instance)
+    return preview
+
+
+@router.get("/instructor/group-supervision/{course_code}/grades-preview")
+async def panel_group_supervision_grades_preview(
+    course_code: str,
+    instance_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """پیش‌نمایش Pass/Fail سوپرویژن گروهی — فرایند ۶۲."""
+    from app.services.instructor_course_roster_service import get_course_roster_for_user, user_may_access_course
+    from app.services.group_supervision_course_completion_service import get_grades_preview
+
+    role = (user.role or "").strip()
+    if role not in ("admin", "staff", "instructor", "teaching_assistant"):
+        raise HTTPException(status_code=403, detail="دسترسی مدرس یا کمک‌مدرس لازم است.")
+    code = str(course_code or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="course_code الزامی است.")
+    roster = await get_course_roster_for_user(db, user, code)
+    if not roster and role in ("instructor", "teaching_assistant"):
+        if not user_may_access_course(user, code):
+            raise HTTPException(status_code=403, detail="این درس به شما انتساب داده نشده است.")
+    instance = None
+    if instance_id:
+        try:
+            from app.models.operational_models import ProcessInstance
+            import uuid as _uuid
+
+            instance = await db.get(ProcessInstance, _uuid.UUID(str(instance_id)))
+        except (ValueError, TypeError):
+            instance = None
+    preview = await get_grades_preview(db, code, instance=instance)
+    return preview
+
+
+@router.get("/instructor/theory-course/{course_code}/grades-preview")
+async def panel_theory_course_grades_preview(
+    course_code: str,
+    instance_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """پیش‌نمایش نمرات درس تئوری — فرایند ۶۱."""
+    from app.services.instructor_course_roster_service import get_course_roster_for_user, user_may_access_course
+    from app.services.theory_course_completion_service import get_grades_preview
+
+    role = (user.role or "").strip()
+    if role not in ("admin", "staff", "instructor", "teaching_assistant"):
+        raise HTTPException(status_code=403, detail="دسترسی مدرس یا کمک‌مدرس لازم است.")
+    code = str(course_code or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="course_code الزامی است.")
+    roster = await get_course_roster_for_user(db, user, code)
+    if not roster and role in ("instructor", "teaching_assistant"):
+        if not user_may_access_course(user, code):
+            raise HTTPException(status_code=403, detail="این درس به شما انتساب داده نشده است.")
+    instance = None
+    if instance_id:
+        try:
+            from app.models.operational_models import ProcessInstance
+            import uuid as _uuid
+
+            instance = await db.get(ProcessInstance, _uuid.UUID(str(instance_id)))
+        except (ValueError, TypeError):
+            instance = None
+    preview = await get_grades_preview(db, code, instance=instance)
+    return preview
+
+
+@router.get("/instructor/trait-catalog")
+async def panel_instructor_trait_catalog(
+    kind: str = "positive",
+    user: User = Depends(get_current_user),
+):
+    """کاتالوگ ویژگی‌های مثبت/منفی فرم ارزیابی مدرس (سوال ۷ و ۸)."""
+    role = (user.role or "").strip()
+    if role not in ("admin", "staff", "instructor", "teaching_assistant"):
+        raise HTTPException(status_code=403, detail="دسترسی مدرس یا اپراتور لازم است.")
+    from app.services.trait_catalog_service import list_trait_options
+
+    k = (kind or "positive").strip().lower()
+    if k not in ("positive", "negative"):
+        raise HTTPException(status_code=400, detail="kind باید positive یا negative باشد.")
+    return {"kind": k, "traits": list_trait_options(k)}
+
+
+class InstructorEvaluationSubmitBody(BaseModel):
+    overall_score: int = Field(..., ge=1, le=5)
+    teaching_clarity: int = Field(..., ge=1, le=5)
+    interaction_quality: int = Field(..., ge=1, le=5)
+    comments: Optional[str] = None
+
+
+@router.get("/student/instructor-evaluation/{instance_id}/courses")
+async def panel_student_instructor_evaluation_courses(
+    instance_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """فهرست دروس قابل ارزیابی برای دانشجو (فرایند ۵۷)."""
+    from app.services.student_instructor_evaluation_service import (
+        get_evaluation_courses_for_instance,
+        load_instance_for_student,
+    )
+
+    inst, student = await load_instance_for_student(db, instance_id, user)
+    return await get_evaluation_courses_for_instance(db, inst, student)
+
+
+@router.post("/student/instructor-evaluation/{instance_id}/courses/{course_code}")
+async def panel_student_instructor_evaluation_submit(
+    instance_id: uuid.UUID,
+    course_code: str,
+    body: InstructorEvaluationSubmitBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """ثبت ناشناس ارزیابی یک درس (فرایند ۵۷)."""
+    from app.services.student_instructor_evaluation_service import (
+        load_instance_for_student,
+        submit_course_evaluation,
+    )
+
+    inst, student = await load_instance_for_student(db, instance_id, user)
+    result = await submit_course_evaluation(
+        db,
+        inst,
+        student,
+        course_code,
+        body.model_dump(),
+    )
+    await db.commit()
+    return result
+
+
+_INSTRUCTOR_EVAL_ROLES = frozenset({"admin", "staff", "instructor", "teaching_assistant"})
+
+
+@router.get("/instructor/evaluation-results")
+async def panel_instructor_evaluation_results(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    term_code: str | None = Query(None, description="کد ترم (پیش‌فرض: ترم فعال)"),
+):
+    """نتایج تجمیع‌شده ارزیابی مدرسین — فقط دروس انتساب‌یافته به مدرس."""
+    role = (user.role or "").strip()
+    if role not in _INSTRUCTOR_EVAL_ROLES:
+        raise HTTPException(status_code=403, detail="دسترسی مدرس یا اپراتور لازم است")
+    from app.services.student_instructor_evaluation_service import results_for_instructor
+
+    return await results_for_instructor(db, user, term_code)
+
+
+@router.get("/committee/evaluation-results")
+async def panel_committee_evaluation_results(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    term_code: str | None = Query(None, description="کد ترم (پیش‌فرض: ترم فعال)"),
+):
+    """نتایج تجمیع‌شده ارزیابی — نمای کمیته دروس / پژوهش."""
+    from app.services.student_instructor_evaluation_service import results_for_committee
+
+    return await results_for_committee(db, user, term_code)

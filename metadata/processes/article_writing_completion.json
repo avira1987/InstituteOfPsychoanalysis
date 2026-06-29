@@ -16,7 +16,7 @@
       "type": "initial",
       "assigned_role": "instructor",
       "metadata": {
-        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
+        "operator_task_fa": "برای دانشجویی که کارش تمام شده، تیک تکمیل را ثبت کنید.",
         "operator_short_fa": "کلاس مقاله‌نویسی فعال"
       }
     },
@@ -33,7 +33,7 @@
       "type": "intermediate",
       "assigned_role": "instructor",
       "metadata": {
-        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
+        "operator_task_fa": "فرم ارزیابی کیفی (سوال ۷ و ۸) را ظرف ۴ روز تکمیل کنید.",
         "operator_short_fa": "منتظر فرم ارزیابی مدرس (۴ روز)"
       },
       "sla_days": 4
@@ -98,7 +98,15 @@
       "to": "completed_to_defense",
       "trigger": "evaluation_submitted",
       "required_role": "instructor",
-      "description_fa": "فرم ارزیابی تکمیل شد"
+      "description_fa": "فرم ارزیابی تکمیل شد",
+      "actions": [
+        {
+          "type": "record_student_performance_traits",
+          "payload": {
+            "source": "article_writing_completion"
+          }
+        }
+      ]
     },
     {
       "from": "instructor_eval_pending",
@@ -126,15 +134,38 @@
       "code": "article_completion_tick_dashboard",
       "name_fa": "داشبورد ثبت تیک تکمیل",
       "used_in_state": "course_active",
+      "note_fa": "حداکثر ۲ ترم (یک سال) برای تکمیل این درس مجاز است. اخذ در ترم سوم و بعد، گزارش تخلف آموزشی به کمیته نظارت دارد.",
       "fields": [
+        {
+          "name": "course_code",
+          "label_fa": "کد/نام درس",
+          "type": "readonly"
+        },
+        {
+          "name": "enrollment_term",
+          "label_fa": "ترم اخذ فعلی",
+          "type": "readonly"
+        },
         {
           "name": "students",
           "label_fa": "لیست دانشجویان و تیک تکمیل",
           "type": "dynamic_list",
           "fields": [
-            "student_name",
-            "student_id",
-            "completed"
+            {
+              "name": "student_name",
+              "label_fa": "نام دانشجو",
+              "type": "readonly"
+            },
+            {
+              "name": "student_id",
+              "label_fa": "شناسه دانشجو",
+              "type": "readonly"
+            },
+            {
+              "name": "completed",
+              "label_fa": "تکمیل شد",
+              "type": "checkbox"
+            }
           ]
         }
       ]
@@ -143,21 +174,62 @@
       "code": "article_student_evaluation_form",
       "name_fa": "فرم ارزیابی کیفی دانشجو",
       "used_in_state": "instructor_eval_pending",
+      "note_fa": "پاسخ سوال ۷ و ۸ در جدول گزارش عملکرد دانشجو (کمیته نظارت) ثبت می‌شود. مهلت: ۴ روز پس از تیک تکمیل.",
       "fields": [
         {
-          "name": "student_id",
+          "name": "student_name",
           "label_fa": "نام دانشجو",
           "type": "readonly"
         },
         {
-          "name": "q7_positive",
-          "label_fa": "سوال ۷ - ویژگی‌های مثبت",
-          "type": "textarea"
+          "name": "q7_has_positive",
+          "label_fa": "سوال ۷ — آیا ویژگی مثبت قابل توجهی مشاهده کردید؟",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "yes", "label_fa": "بله" },
+            { "value": "no", "label_fa": "خیر" }
+          ]
         },
         {
-          "name": "q8_negative",
-          "label_fa": "سوال ۸ - ویژگی‌های منفی",
-          "type": "textarea"
+          "name": "q7_positive_traits",
+          "label_fa": "سوال ۷ — ویژگی‌های مثبت (یک یا چند مورد)",
+          "type": "checkbox_list",
+          "options_source": { "type": "trait_catalog", "kind": "positive" },
+          "show_if": { "field": "q7_has_positive", "op": "eq", "value": "yes" },
+          "required_if": { "field": "q7_has_positive", "op": "eq", "value": "yes" },
+          "validation": { "min_selection": 1 }
+        },
+        {
+          "name": "q7_positive_note",
+          "label_fa": "سوال ۷ — توضیح تکمیلی (اختیاری)",
+          "type": "textarea",
+          "show_if": { "field": "q7_has_positive", "op": "eq", "value": "yes" }
+        },
+        {
+          "name": "q8_has_negative",
+          "label_fa": "سوال ۸ — آیا ویژگی منفی قابل توجهی مشاهده کردید؟",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "yes", "label_fa": "بله" },
+            { "value": "no", "label_fa": "خیر" }
+          ]
+        },
+        {
+          "name": "q8_negative_traits",
+          "label_fa": "سوال ۸ — ویژگی‌های منفی (یک یا چند مورد)",
+          "type": "checkbox_list",
+          "options_source": { "type": "trait_catalog", "kind": "negative" },
+          "show_if": { "field": "q8_has_negative", "op": "eq", "value": "yes" },
+          "required_if": { "field": "q8_has_negative", "op": "eq", "value": "yes" },
+          "validation": { "min_selection": 1 }
+        },
+        {
+          "name": "q8_negative_note",
+          "label_fa": "سوال ۸ — توضیح تکمیلی (اختیاری)",
+          "type": "textarea",
+          "show_if": { "field": "q8_has_negative", "op": "eq", "value": "yes" }
         }
       ]
     }

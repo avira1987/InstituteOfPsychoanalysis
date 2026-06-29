@@ -77,6 +77,9 @@ export function checkRules(field, val) {
   if (Array.isArray(val) && rules.max_selection != null && val.length > rules.max_selection) {
     return `${label}: حداکثر ${rules.max_selection} انتخاب`
   }
+  if (Array.isArray(val) && rules.min_selection != null && val.length < rules.min_selection) {
+    return `${label}: حداقل ${rules.min_selection} انتخاب لازم است`
+  }
   return null
 }
 

@@ -77,9 +77,35 @@
           "label_fa": "لیست دانشجویان و نمرات",
           "type": "dynamic_list",
           "fields": [
-            "student_name",
-            "student_id",
-            "grade"
+            {
+              "name": "student_name",
+              "label_fa": "نام دانشجو",
+              "type": "readonly"
+            },
+            {
+              "name": "student_id",
+              "label_fa": "شناسه دانشجو",
+              "type": "readonly"
+            },
+            {
+              "name": "participation_score",
+              "label_fa": "نمره مشارکت (۰–۱۰)",
+              "type": "number",
+              "validation": {
+                "min": 0,
+                "max": 10
+              }
+            },
+            {
+              "name": "attendance_score",
+              "label_fa": "نمره حضور (سیستمی)",
+              "type": "readonly"
+            },
+            {
+              "name": "grade",
+              "label_fa": "نمره ثبت‌شده",
+              "type": "number"
+            }
           ]
         }
       ]

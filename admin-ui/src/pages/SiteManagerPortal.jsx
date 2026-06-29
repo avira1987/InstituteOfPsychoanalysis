@@ -14,6 +14,7 @@ import OperatorProcessInstancePanel from '../components/OperatorProcessInstanceP
 import AttendanceTrackingPanel from '../components/AttendanceTrackingPanel'
 import Supervision50hCompletionPanel from '../components/Supervision50hCompletionPanel'
 import UnannouncedAbsenceReactionPanel from '../components/UnannouncedAbsenceReactionPanel'
+import UnannouncedSupervisionAbsenceReactionPanel from '../components/UnannouncedSupervisionAbsenceReactionPanel'
 
 const SITE_MANAGER_DEEP_LINK_TABS = [
   'dashboard',
@@ -562,6 +563,10 @@ function ActionPanel({ instanceDetail, availableTransitions, decisionNotes, setD
       <UnannouncedAbsenceReactionPanel
         detail={instanceDetail}
         active={instanceDetail?.process_code === 'unannounced_absence_reaction'}
+      />
+      <UnannouncedSupervisionAbsenceReactionPanel
+        detail={instanceDetail}
+        active={instanceDetail?.process_code === 'unannounced_supervision_absence_reaction'}
       />
       <OperatorProcessInstancePanel
         user={user}

@@ -16,7 +16,7 @@
       "type": "initial",
       "assigned_role": "supervision_committee",
       "metadata": {
-        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
+        "operator_task_fa": "جلسه کمیته نظارت، شرایط ارجاع و لیست بیماران را ثبت کنید.",
         "operator_short_fa": "شروع فرایند و ثبت جلسه توسط کمیته نظارت"
       }
     },
@@ -30,7 +30,12 @@
       "code": "student_patient_log",
       "name_fa": "تیک و توضیح صحبت با هر بیمار توسط دانشجو",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "sla_days": 15,
+      "metadata": {
+        "student_short_fa": "تماس با بیماران و ثبت توضیحات",
+        "student_task_fa": "برای هر بیمار تیک «صحبت انجام شد» را بزنید و نتیجهٔ تماس را بنویسید؛ سپس دکمهٔ ثبت را بزنید."
+      }
     },
     {
       "code": "general_therapy_committee_review",
@@ -38,7 +43,7 @@
       "type": "intermediate",
       "assigned_role": "therapy_committee_executor",
       "metadata": {
-        "operator_task_fa": "اجرا و پیگیری تصمیم کمیته درمان.",
+        "operator_task_fa": "یادداشت‌های دانشجو را ببینید و برای هر بیمار اطلاعات ارجاع را تکمیل کنید.",
         "operator_short_fa": "مشاهده و تکمیل اطلاعات توسط کمیته درمان عموم"
       }
     },
@@ -47,8 +52,9 @@
       "name_fa": "پیگیری و ثبت ارجاع نهایی توسط مسئول هماهنگی‌ها",
       "type": "intermediate",
       "assigned_role": "therapy_education_coordinator",
+      "sla_days": 3,
       "metadata": {
-        "operator_task_fa": "هماهنگی آموزش درمان و ثبت اطلاعات.",
+        "operator_task_fa": "برای هر بیمار تیک پیگیری را بزنید؛ حداکثر ۳ روز مهلت دارید.",
         "operator_short_fa": "پیگیری و ثبت ارجاع نهایی توسط مسئول هماهنگی‌ها"
       }
     },
@@ -122,8 +128,153 @@
           "label_fa": "شرایط ارجاع (متن)",
           "type": "textarea",
           "required": true
+        },
+        {
+          "name": "patient_referral_rows",
+          "label_fa": "لیست بیماران انترن برای ارجاع",
+          "type": "table",
+          "required": true,
+          "min_rows": 1,
+          "columns": [
+            {
+              "name": "patient_name",
+              "label_fa": "نام بیمار",
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": "patient_phone",
+              "label_fa": "شماره تماس",
+              "type": "tel"
+            }
+          ]
         }
       ]
+    },
+    {
+      "code": "student_patient_contact_form",
+      "name_fa": "ثبت تماس با بیماران",
+      "used_in_state": "student_patient_log",
+      "fields": [
+        {
+          "name": "patient_referral_rows",
+          "label_fa": "تماس با هر بیمار",
+          "type": "table",
+          "required": true,
+          "columns": [
+            {
+              "name": "patient_name",
+              "label_fa": "نام بیمار",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "patient_phone",
+              "label_fa": "شماره تماس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "contacted",
+              "label_fa": "صحبت انجام شد",
+              "type": "checkbox",
+              "required": true
+            },
+            {
+              "name": "contact_notes",
+              "label_fa": "نتیجهٔ صحبت با بیمار",
+              "type": "text",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "submit_label_fa": "ثبت تماس‌ها"
+    },
+    {
+      "code": "therapy_committee_referral_form",
+      "name_fa": "تکمیل اطلاعات ارجاع — کمیته درمان عموم",
+      "used_in_state": "general_therapy_committee_review",
+      "fields": [
+        {
+          "name": "patient_referral_rows",
+          "label_fa": "لیست بیماران و یادداشت‌های ارجاع",
+          "type": "table",
+          "required": true,
+          "columns": [
+            {
+              "name": "patient_name",
+              "label_fa": "نام بیمار",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "contact_notes",
+              "label_fa": "یادداشت دانشجو",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "committee_contacted",
+              "label_fa": "صحبت کمیته انجام شد",
+              "type": "checkbox",
+              "required": true
+            },
+            {
+              "name": "referral_notes",
+              "label_fa": "توضیحات ارجاع",
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": "replacement_therapist",
+              "label_fa": "درمانگر جایگزین",
+              "type": "text"
+            }
+          ]
+        }
+      ],
+      "submit_label_fa": "ثبت اطلاعات کمیته"
+    },
+    {
+      "code": "coordination_followup_form",
+      "name_fa": "پیگیری نهایی ارجاع بیماران",
+      "used_in_state": "coordination_followup",
+      "fields": [
+        {
+          "name": "patient_referral_rows",
+          "label_fa": "پیگیری ارجاع هر بیمار",
+          "type": "table",
+          "required": true,
+          "columns": [
+            {
+              "name": "patient_name",
+              "label_fa": "نام بیمار",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "replacement_therapist",
+              "label_fa": "درمانگر جایگزین",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "referral_notes",
+              "label_fa": "یادداشت ارجاع",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "followup_done",
+              "label_fa": "پیگیری انجام شد",
+              "type": "checkbox",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "submit_label_fa": "ثبت پیگیری‌ها"
     }
   ]
 }

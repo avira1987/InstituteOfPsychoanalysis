@@ -9,6 +9,7 @@ the appropriate service method.
 """
 
 import json
+import re
 import uuid
 import logging
 from typing import Optional, Any, List
@@ -47,6 +48,16 @@ from app.services.financial_program_defaults_service import get_effective_financ
 from app.services.interview_slot_service import enrich_interview_notification_context
 
 logger = logging.getLogger(__name__)
+
+_LIVE_SESSION_PREP_CODES = frozenset({
+    "live_supervision_session_prep",
+    "live_therapy_observation_session_prep",
+})
+
+_LIVE_SESSION_COURSE_KEYWORDS = {
+    "live_supervision_session_prep": ("supervision", "سوپرویژن"),
+    "live_therapy_observation_session_prep": ("observation", "مشاهده", "therapy_observation"),
+}
 
 
 def parse_therapy_session_id_list(raw) -> list[uuid.UUID]:
@@ -128,6 +139,57 @@ async def validate_therapy_reduction_preflight(
             return "جلسات گذشته را نمی‌توان انتخاب کرد."
 
     return None
+
+
+async def validate_supervision_reduction_preflight(
+    db: AsyncSession,
+    instance: ProcessInstance,
+    payload: dict,
+    student: Student,
+) -> Optional[str]:
+    """
+    اعتبارسنجی payload قبل از ترنزیشن sessions_selected (فرایند ۲۴).
+    برمی‌گرداند رشتهٔ خطا یا None.
+    """
+    merged = {**_as_mapping(instance.context_data), **(payload or {})}
+    try:
+        weekly = int(merged.get("supervision_weekly_sessions") or 1)
+    except (TypeError, ValueError):
+        weekly = 1
+    if weekly < 2:
+        return "این مسیر فقط برای دانشجویان با ۲ جلسه یا بیشتر سوپرویژن در هفته است."
+
+    selected = _parse_supervision_reduction_selected_list(merged.get("selected_sessions"))
+    if not selected:
+        return "حداقل یک جلسهٔ سوپرویژن برای حذف انتخاب کنید."
+
+    remaining = weekly - len(selected)
+    if remaining < 1:
+        return "حداقل یک جلسهٔ سوپرویژن در هفته باید باقی بماند."
+
+    max_remove = weekly - 1
+    if len(selected) > max_remove:
+        return f"حداکثر {max_remove} جلسه را می‌توانید حذف کنید (انتخاب‌شده: {len(selected)})."
+
+    return None
+
+
+def _parse_supervision_reduction_selected_list(raw) -> list[str]:
+    if raw is None or raw == "":
+        return []
+    if isinstance(raw, list):
+        return [str(x).strip() for x in raw if x is not None and str(x).strip()]
+    if isinstance(raw, str):
+        s = raw.strip()
+        if s.startswith("["):
+            try:
+                parsed = json.loads(s)
+                if isinstance(parsed, list):
+                    return [str(x).strip() for x in parsed if x is not None and str(x).strip()]
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return [p for p in re.split(r"[,،\s]+", s) if p]
+    return [str(raw).strip()]
 
 
 def _as_mapping(val) -> dict:
@@ -331,6 +393,39 @@ class ActionHandler:
         warning_records: list[dict] = []
         last_message: str = ""
         for role in recipients:
+            if role == "class_students" and instance.process_code in _LIVE_SESSION_PREP_CODES:
+                course_code = await self._live_session_course_code(instance)
+                contacts = (
+                    await self._resolve_class_student_contacts(instance, course_code)
+                    if course_code
+                    else []
+                )
+                if not contacts:
+                    sent.append(f"{role}:no_contact")
+                    logger.warning(f"No class_students contacts for instance {instance.id}")
+                    warning_records.append(
+                        {"recipient_role": role, "contact": None, "delivered": False}
+                    )
+                    continue
+                for contact in contacts:
+                    result = await notification_service.send_notification(
+                        ntype,
+                        effective_template,
+                        contact,
+                        notif_context,
+                        message_override=msg_override,
+                    )
+                    last_message = result.message or last_message
+                    sent.append(f"{role}:{contact}:{result.success}")
+                    warning_records.append(
+                        {
+                            "recipient_role": role,
+                            "contact": contact,
+                            "delivered": bool(result.success),
+                        }
+                    )
+                continue
+
             contact = await self._resolve_contact(role, instance, ntype)
             if contact:
                 result = await notification_service.send_notification(
@@ -532,6 +627,38 @@ class ActionHandler:
                 merged[key] = val
         return merged
 
+    async def _merge_violation_registration_initial_payload(
+        self,
+        parent: ProcessInstance,
+        base: dict,
+        transition_context: Optional[dict],
+    ) -> dict:
+        """زمینهٔ اولیهٔ فرایند ثبت تخلف از فرایند مبدأ."""
+        merged = dict(base or {})
+        merged["parent_instance_id"] = str(parent.id)
+        merged["source_process_code"] = parent.process_code
+        pctx = _as_mapping(parent.context_data)
+        tc = transition_context or {}
+        reason = merged.get("reason") or pctx.get("reason") or pctx.get("reason_code")
+        if reason is not None:
+            merged.setdefault("source_reason", str(reason))
+        for key in (
+            "description",
+            "violation_description",
+            "termination_note",
+            "occurrence_date",
+            "reporter_name",
+        ):
+            if pctx.get(key) is not None and merged.get(key) is None:
+                merged[key] = pctx[key]
+        if merged.get("description") is None and merged.get("violation_description"):
+            merged["description"] = merged["violation_description"]
+        for key, val in tc.items():
+            if merged.get(key) is None and val is not None:
+                merged[key] = val
+        merged["violation_reported_at"] = datetime.now(timezone.utc).isoformat()
+        return merged
+
     async def _handle_start_process(self, action: dict, instance: ProcessInstance, context: dict):
         from app.core.engine import StateMachineEngine
         from app.services.fee_determination_runner import complete_fee_determination_instance
@@ -581,6 +708,12 @@ class ActionHandler:
             elif sub_code == "specialized_commission_review":
                 payloads.append(
                     await self._merge_commission_review_initial_payload(instance, base_payload, context)
+                )
+            elif sub_code == "violation_registration":
+                payloads.append(
+                    await self._merge_violation_registration_initial_payload(
+                        instance, base_payload, context
+                    )
                 )
             else:
                 payloads.append(base_payload)
@@ -685,7 +818,7 @@ class ActionHandler:
 
     async def _handle_sync_extra_session_reenter_fields(self, action: dict, instance: ProcessInstance, context: dict):
         """پس از بازگشت به extra_request: کپی زمان جدید به فیلدهای فرم اصلی."""
-        if instance.process_code != "extra_session":
+        if instance.process_code not in ("extra_session", "extra_supervision_session"):
             return "skip"
         ctx = _as_mapping(instance.context_data)
         nd = ctx.get("new_preferred_date")
@@ -700,7 +833,7 @@ class ActionHandler:
 
     async def _handle_prepare_extra_session_payment(self, action: dict, instance: ProcessInstance, context: dict):
         """قبل از درگاه: مبلغ ریال و تاریخ/ساعت توافق‌شده در context برای UI و ثبت بعدی."""
-        if instance.process_code != "extra_session":
+        if instance.process_code not in ("extra_session", "extra_supervision_session"):
             return "skip_not_extra_session"
         fd = await get_effective_financial_program_defaults(self.db)
         fee_rial = int(fd["extra_session_fee_rial"])
@@ -1139,11 +1272,97 @@ class ActionHandler:
                     logger.exception("cancel_attendance_instances_for student cancellation failed")
             ctx["cancelled_session_ids"] = [str(x) for x in cancelled_ids]
             ctx["cancellation_applied_at"] = datetime.now(timezone.utc).isoformat()
+        elif selected_ids and instance.process_code == "student_supervision_cancellation":
+            from app.services.supervisor_session_cancellation_service import _parse_date
+
+            tag = f"student_supervision_cancellation:{instance.id}"
+            cancelled_inst_ids: list[str] = []
+            for sid in selected_ids:
+                sup_inst = await self.db.get(ProcessInstance, sid)
+                if (
+                    not sup_inst
+                    or sup_inst.student_id != instance.student_id
+                    or sup_inst.process_code != "supervision_50h_completion"
+                ):
+                    raise ValueError(f"جلسهٔ سوپرویژن یافت نشد: {sid}")
+                if sup_inst.current_state_code not in ("session_scheduled", "supervisor_recording"):
+                    raise ValueError("فقط جلسات برنامه‌ریزی‌شدهٔ سوپرویژن قابل کنسل هستند.")
+                sctx = _as_mapping(sup_inst.context_data)
+                sd = _parse_date(sctx.get("session_date") or sctx.get("supervision_session_date"))
+                sctx["block_reason"] = "session_cancelled"
+                sctx["cancelled_by"] = "student"
+                sctx["cancellation_tag"] = tag
+                sctx["cancelled_at"] = datetime.now(timezone.utc).isoformat()
+                if sd:
+                    sctx["cancelled_session_date"] = sd.isoformat()
+                sup_inst.context_data = sctx
+                sup_inst.current_state_code = "recording_closed"
+                sup_inst.is_completed = True
+                sup_inst.completed_at = datetime.now(timezone.utc)
+                flag_modified(sup_inst, "context_data")
+                cancelled_inst_ids.append(str(sup_inst.id))
+            if cancelled_inst_ids:
+                student = await self._get_student(instance.student_id)
+                if student:
+                    extra = _as_mapping(student.extra_data)
+                    prev = int(extra.get("supervision_cancelled_sessions_count") or 0)
+                    extra["supervision_cancelled_sessions_count"] = prev + len(cancelled_inst_ids)
+                    student.extra_data = extra
+                    flag_modified(student, "extra_data")
+            ctx["cancelled_supervision_instance_ids"] = cancelled_inst_ids
+            ctx["cancelled_session_ids"] = cancelled_inst_ids
+            ctx["cancellation_applied_at"] = datetime.now(timezone.utc).isoformat()
         instance.context_data = ctx
         flag_modified(instance, "context_data")
         return "sessions_marked_cancelled_by_student"
 
     async def _handle_block_attendance(self, action: dict, instance: ProcessInstance, context: dict):
+        if instance.process_code != "student_supervision_cancellation":
+            return "attendance_blocked_for_cancelled_sessions"
+        from app.services.supervisor_session_cancellation_service import _parse_date
+
+        ctx = _as_mapping(instance.context_data)
+        merged = {**ctx, **(context or {})}
+        cancelled_ids = merged.get("cancelled_supervision_instance_ids") or merged.get(
+            "cancelled_session_ids"
+        ) or []
+        if isinstance(cancelled_ids, str):
+            cancelled_ids = [cancelled_ids]
+        student = await self._get_student(instance.student_id)
+        if not student:
+            return "attendance_blocked_for_cancelled_sessions"
+        extra = _as_mapping(student.extra_data)
+        lms = _as_mapping(extra.get("lms"))
+        att = dict(lms.get("attendance_enabled") or {})
+        blocked = list(lms.get("supervision_attendance_blocked_dates") or [])
+        for raw_id in cancelled_ids:
+            try:
+                sup_inst = await self.db.get(ProcessInstance, uuid.UUID(str(raw_id)))
+            except (TypeError, ValueError):
+                sup_inst = None
+            if not sup_inst:
+                continue
+            sctx = _as_mapping(sup_inst.context_data)
+            sd = _parse_date(
+                sctx.get("cancelled_session_date")
+                or sctx.get("session_date")
+                or sctx.get("supervision_session_date")
+            )
+            sup_key = str(sctx.get("supervisor_id") or student.supervisor_id or "current")
+            entry = dict(att.get(sup_key) or {})
+            entry["enabled"] = False
+            entry["blocked_at"] = datetime.now(timezone.utc).isoformat()
+            entry["reason"] = "student_supervision_cancellation"
+            if sd:
+                entry["blocked_date"] = sd.isoformat()
+                if sd.isoformat() not in blocked:
+                    blocked.append(sd.isoformat())
+            att[sup_key] = entry
+        lms["attendance_enabled"] = att
+        lms["supervision_attendance_blocked_dates"] = blocked
+        extra["lms"] = lms
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
         return "attendance_blocked_for_cancelled_sessions"
 
     # ─── Financial ───────────────────────────────────────────────
@@ -1687,6 +1906,328 @@ class ActionHandler:
         await self.db.refresh(instance)
         return f"start_therapy_schedule_applied fee_rial={fee} to_state={res.to_state}"
 
+    async def _handle_prefill_return_context(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.return_to_full_education_service import build_return_context
+
+        if instance.process_code != "return_to_full_education":
+            return "skip_not_return_to_full_education"
+        ctx = await build_return_context(
+            self.db, instance.student_id, _as_mapping(instance.context_data),
+        )
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        await self.db.flush()
+        return "prefill_return_context"
+
+    async def _handle_apply_return_therapy_session_schedule(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.core.engine import StateMachineEngine
+        from app.services.return_to_full_education_service import (
+            apply_24h_bump,
+            therapy_payment_fee_rial,
+            validate_weekly_sessions,
+        )
+
+        if instance.process_code != "return_to_full_education":
+            return "skip_not_return_to_full_education"
+
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+
+        def _parse_first_date(val):
+            if val is None:
+                return None
+            if isinstance(val, date) and not isinstance(val, datetime):
+                return val
+            if isinstance(val, datetime):
+                return val.date()
+            s = str(val).strip()
+            if not s:
+                return None
+            try:
+                return date.fromisoformat(s[:10])
+            except (TypeError, ValueError):
+                return None
+
+        student = await self._get_student(instance.student_id)
+        course_type = str(merged.get("course_type") or (student.course_type if student else "") or "introductory")
+        ws = int(merged.get("weekly_sessions") or 1)
+        err = validate_weekly_sessions(course_type, ws)
+        if err:
+            raise ValueError(err)
+
+        first = _parse_first_date(merged.get("first_session_date"))
+        if first is None:
+            first = datetime.now(timezone.utc).date() + timedelta(days=1)
+        first = await apply_24h_bump(first, instance.student_id, self.db)
+
+        tid = merged.get("therapist_id")
+        if not tid:
+            raise ValueError("therapist_id در پروندهٔ این مرحله ثبت نشده است.")
+        tid_uuid = uuid.UUID(str(tid))
+
+        fee = await therapy_payment_fee_rial(self.db, merged)
+        ctx = _as_mapping(instance.context_data)
+        ctx.update(merged)
+        ctx["therapist_id"] = str(tid_uuid)
+        ctx["weekly_sessions"] = ws
+        ctx["therapy_first_session_at"] = first.isoformat()
+        ctx["therapy_payment_amount_rial"] = fee
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        await self.db.flush()
+
+        engine = StateMachineEngine(self.db)
+        actor = await self._resolve_system_actor_id_for_actions()
+        res = await engine.execute_transition(
+            instance_id=instance.id,
+            trigger_event="therapy_24h_passed",
+            actor_id=actor,
+            actor_role="system",
+            payload={},
+        )
+        if not res.success:
+            logger.error(
+                "return_to_full_education therapy_24h_passed failed instance=%s err=%s",
+                instance.id,
+                res.error,
+            )
+            return f"nested_transition_failed: {res.error}"
+        await self.db.refresh(instance)
+        return f"return_therapy_schedule_applied fee_rial={fee}"
+
+    async def _handle_apply_return_supervision_schedule(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.core.engine import StateMachineEngine
+        from app.services.return_to_full_education_service import (
+            apply_24h_bump,
+            supervision_payment_fee_rial,
+        )
+
+        if instance.process_code != "return_to_full_education":
+            return "skip_not_return_to_full_education"
+
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+        sid = merged.get("supervisor_id")
+        if not sid:
+            raise ValueError("supervisor_id در پرونده ثبت نشده است.")
+
+        def _parse_first_date(val):
+            if val is None:
+                return None
+            s = str(val).strip()
+            if not s:
+                return None
+            try:
+                return date.fromisoformat(s[:10])
+            except (TypeError, ValueError):
+                return None
+
+        first = _parse_first_date(merged.get("first_supervision_date"))
+        if first is None:
+            first = datetime.now(timezone.utc).date() + timedelta(days=1)
+        first = await apply_24h_bump(first, instance.student_id, self.db)
+
+        fee = await supervision_payment_fee_rial(self.db, merged)
+        ctx = _as_mapping(instance.context_data)
+        ctx.update(merged)
+        ctx["supervisor_id"] = str(sid)
+        ctx["supervision_first_session_at"] = first.isoformat()
+        ctx["supervision_payment_amount_rial"] = fee
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        await self.db.flush()
+
+        engine = StateMachineEngine(self.db)
+        actor = await self._resolve_system_actor_id_for_actions()
+        res = await engine.execute_transition(
+            instance_id=instance.id,
+            trigger_event="supervision_24h_passed",
+            actor_id=actor,
+            actor_role="system",
+            payload={},
+        )
+        if not res.success:
+            logger.error(
+                "return_to_full_education supervision_24h_passed failed instance=%s err=%s",
+                instance.id,
+                res.error,
+            )
+            return f"nested_transition_failed: {res.error}"
+        await self.db.refresh(instance)
+        return f"return_supervision_schedule_applied fee_rial={fee}"
+
+    async def _handle_apply_full_leave_therapist_decision(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        if instance.process_code != "full_education_leave":
+            return "skip_not_full_education_leave"
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+        decision = str(merged.get("therapist_decision") or "").strip()
+        if decision == "release_slot":
+            return await self._handle_auto_release_therapist_slot(action, instance, context)
+        if decision == "continue_general":
+            student = await self._get_student(instance.student_id)
+            if student:
+                extra = _as_mapping(student.extra_data)
+                extra["therapy_relationship"] = "general_therapy"
+                extra["transferred_to_general_therapy_at"] = datetime.now(timezone.utc).isoformat()
+                student.extra_data = extra
+                flag_modified(student, "extra_data")
+            ctx = _as_mapping(instance.context_data)
+            ctx["therapist_decision"] = "continue_general"
+            ctx["therapy_continues_as_general"] = True
+            instance.context_data = ctx
+            flag_modified(instance, "context_data")
+            return "therapist_continue_general"
+        return "therapist_decision_missing"
+
+    async def _handle_set_full_education_leave_flag(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        student = await self._get_student(instance.student_id)
+        if not student:
+            return "student_not_found"
+        extra = _as_mapping(student.extra_data)
+        now = datetime.now(timezone.utc)
+        extra["on_full_education_leave"] = True
+        extra["full_education_leave_active"] = True
+        extra["full_education_leave_started_at"] = now.isoformat()
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+        lt = merged.get("leave_terms")
+        try:
+            terms = int(lt) if lt is not None else None
+        except (TypeError, ValueError):
+            terms = None
+        if terms is not None:
+            extra["full_education_leave_terms"] = terms
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+        ctx = _as_mapping(instance.context_data)
+        ctx["leave_activated_at"] = now.isoformat()
+        if terms is not None:
+            ctx["leave_terms"] = terms
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        return "set_full_education_leave_flag"
+
+    async def _handle_apply_full_leave_intern_effects(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.full_education_leave_service import apply_intern_effects
+
+        if instance.process_code != "full_education_leave":
+            return "skip_not_full_education_leave"
+        result = await apply_intern_effects(self.db, instance)
+        if result == "not_intern_skipped":
+            return result
+        try:
+            await self._handle_start_process(
+                {"process_code": "intern_bulk_patient_referral", "type": "start_process"},
+                instance,
+                context,
+            )
+        except Exception:
+            logger.exception(
+                "full_education_leave intern_bulk_patient_referral start failed instance=%s",
+                instance.id,
+            )
+        return "apply_full_leave_intern_effects"
+
+    async def _handle_notify_therapy_coordination(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.full_education_leave_service import (
+            THERAPY_COORD_SMS_FA,
+            build_leave_context,
+        )
+
+        if instance.process_code != "full_education_leave":
+            return "skip_not_full_education_leave"
+        ctx = await build_leave_context(
+            self.db, instance.student_id, _as_mapping(instance.context_data),
+        )
+        if not ctx.get("has_active_therapist"):
+            return "notify_therapy_coordination_skipped_no_therapist"
+        ctx["therapy_coord_notified_at"] = datetime.now(timezone.utc).isoformat()
+        ctx["student_portal_alert_fa"] = THERAPY_COORD_SMS_FA
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        await self._handle_notification(
+            {
+                "type": "notification",
+                "notification_type": "sms",
+                "template": "leave_approved",
+                "template_text_fa": THERAPY_COORD_SMS_FA,
+                "recipients": ["student"],
+            },
+            instance,
+            context,
+        )
+        return "notify_therapy_coordination"
+
+    async def _handle_auto_release_therapist_slot(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        student = await self._get_student(instance.student_id)
+        if not student:
+            return "student_not_found"
+        prev = str(student.therapist_id) if student.therapist_id else None
+        student.therapist_id = None
+        student.therapy_started = False
+        extra = _as_mapping(student.extra_data)
+        extra["therapy_relationship"] = "released_on_full_leave"
+        extra["therapist_auto_released_at"] = datetime.now(timezone.utc).isoformat()
+        log = list(extra.get("therapist_slot_release_log") or [])
+        log.append({
+            "at": datetime.now(timezone.utc).isoformat(),
+            "process_code": instance.process_code,
+            "instance_id": str(instance.id),
+            "source": "full_education_leave_sla",
+            "therapist_id": prev,
+        })
+        extra["therapist_slot_release_log"] = log
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+        ctx = _as_mapping(instance.context_data)
+        ctx["therapist_decision"] = "release_slot"
+        ctx["therapist_auto_released"] = True
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        return "auto_release_therapist_slot"
+
+    async def _handle_clear_full_education_leave_flag(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        student = await self._get_student(instance.student_id)
+        if student:
+            extra = _as_mapping(student.extra_data)
+            extra["on_full_education_leave"] = False
+            extra["full_education_leave_active"] = False
+            student.extra_data = extra
+            flag_modified(student, "extra_data")
+        ctx = _as_mapping(instance.context_data)
+        ctx["return_completed_at"] = datetime.now(timezone.utc).isoformat()
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        if instance.process_code == "return_to_full_education":
+            try:
+                from app.core.engine import StateMachineEngine
+                from app.services.full_education_leave_service import complete_leave_on_return
+
+                engine = StateMachineEngine(self.db)
+                actor = uuid.UUID(str(context.get("actor_id"))) if context and context.get("actor_id") else uuid.UUID("00000000-0000-0000-0000-000000000001")
+                await complete_leave_on_return(self.db, engine, instance.student_id, actor)
+            except Exception:
+                logger.exception(
+                    "complete full_education_leave on return failed student=%s",
+                    instance.student_id,
+                )
+        return "clear_full_education_leave_flag"
+
     async def _handle_delete_future_appointments(self, action: dict, instance: ProcessInstance, context: dict):
         today = datetime.now(timezone.utc).date()
         stmt = delete(TherapySession).where(
@@ -2174,6 +2715,16 @@ class ActionHandler:
         flag_modified(student, "extra_data")
         return "record_result_in_student_portal"
 
+    async def _handle_record_class_cancellation(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        """اعمال کنسلی کلاس — فرایند ۵۶."""
+        from app.services.class_session_cancellation_service import apply_class_cancellation
+
+        actor_id = context.get("actor_id") or context.get("triggered_by")
+        result = await apply_class_cancellation(self.db, instance, actor_id)
+        return f"class_cancellation_applied n={result.get('students_updated', 0)}"
+
     async def _handle_record_process_artifact(self, action: dict, instance: ProcessInstance, context: dict):
         """Generic artifact recorder for record_* actions (grades, attendance, evaluations, etc.)."""
         from datetime import datetime, timezone
@@ -2219,37 +2770,61 @@ class ActionHandler:
                     student.extra_data = extra
                     flag_modified(student, "extra_data")
 
-        if atype == "record_class_attendance" and ctx.get("students_attendance"):
-            student = await self._get_student(instance.student_id)
-            if student:
-                extra = _as_mapping(student.extra_data)
-                rows = ctx.get("students_attendance") or []
-                absent = sum(
-                    1 for r in rows
-                    if isinstance(r, dict) and str(r.get("status", "")).lower() in ("absent", "غایب", "absent_unexcused")
-                )
-                extra["class_absence_count"] = int(extra.get("class_absence_count") or 0) + absent
-                extra["lms"] = {**_as_mapping(extra.get("lms")), "absence_count": extra["class_absence_count"]}
-                student.extra_data = extra
-                flag_modified(student, "extra_data")
+        if atype == "record_class_attendance":
+            merged_att = {**ctx, **(context or {})}
+            rows = merged_att.get("students_attendance") or []
+            if rows:
+                from app.services.class_attendance_service import apply_session_attendance
 
-        if atype == "record_evaluation_submission":
-            student = await self._get_student(instance.student_id)
-            if student:
-                extra = _as_mapping(student.extra_data)
-                snapshot = {
-                    "process_code": instance.process_code,
-                    "at": now_iso,
-                    "overall_score": ctx.get("overall_score"),
-                    "teaching_clarity": ctx.get("teaching_clarity"),
-                    "interaction_quality": ctx.get("interaction_quality"),
-                    "comments": ctx.get("comments"),
-                }
-                evals = list(extra.get("evaluations") or [])
-                evals.append(snapshot)
-                extra["evaluations"] = evals
-                student.extra_data = extra
-                flag_modified(student, "extra_data")
+                course_code = (
+                    merged_att.get("course_code")
+                    or merged_att.get("lesson_course_label")
+                    or merged_att.get("course_id")
+                    or merged_att.get("lesson_name")
+                    or ""
+                )
+                summary = await apply_session_attendance(
+                    self.db,
+                    str(course_code),
+                    str(merged_att.get("session_date") or ""),
+                    rows,
+                    course_type=merged_att.get("course_type"),
+                    actor_id=instance.started_by or instance.student_id,
+                    session_number=merged_att.get("session_number"),
+                )
+                ctx["attendance_summary"] = summary
+                ctx["course_code"] = summary.get("course_code") or course_code
+                ctx["course_type"] = summary.get("course_type") or merged_att.get("course_type")
+                ctx["students_attendance"] = rows
+                if merged_att.get("session_date"):
+                    ctx["session_date"] = merged_att["session_date"]
+                if merged_att.get("lesson_name"):
+                    ctx["lesson_name"] = merged_att["lesson_name"]
+                inst_sid = str(instance.student_id)
+                per = (summary.get("per_student") or {}).get(inst_sid) or {}
+                if per.get("student_absence_count") is not None:
+                    ctx["student_absence_count"] = per["student_absence_count"]
+                elif merged_att.get("student_absence_count") is not None:
+                    ctx["student_absence_count"] = merged_att["student_absence_count"]
+
+        if atype == "record_evaluation_closed" and instance.process_code == "student_instructor_evaluation":
+            from app.services.student_instructor_evaluation_service import aggregate_term_results
+            from app.services.institute_calendar_service import get_active_calendar
+
+            term_code = str(ctx.get("term_code") or "").strip()
+            if not term_code:
+                cal = await get_active_calendar(self.db)
+                term_code = cal.term_code if cal else "default"
+            agg = await aggregate_term_results(self.db, term_code)
+            ctx["evaluation_aggregated_at"] = agg.get("aggregated_at")
+            ctx["evaluation_term_code"] = term_code
+
+        if atype == "record_session_prep":
+            merged = {**ctx, **(context or {})}
+            ctx["session_time_registered"] = True
+            for key in ("session_date", "session_time", "instructor_id", "therapist_id", "course_code"):
+                if merged.get(key) not in (None, ""):
+                    ctx[key] = merged[key]
 
         instance.context_data = ctx
         flag_modified(instance, "context_data")
@@ -2264,6 +2839,315 @@ class ActionHandler:
             student.extra_data = extra
             flag_modified(student, "extra_data")
         return atype
+
+    async def _handle_record_student_performance_traits(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        """ثبت ویژگی‌های مثبت/منفی سوال ۷ و ۸ در گزارش عملکرد دانشجو."""
+        from datetime import datetime, timezone
+
+        from app.services.trait_catalog_service import trait_label
+
+        ctx = _as_mapping(instance.context_data)
+        merged = {**ctx, **(context or {})}
+        now_iso = datetime.now(timezone.utc).isoformat()
+        source = (action.get("payload") or {}).get("source") or instance.process_code
+
+        reporter_name = merged.get("instructor_name") or merged.get("reporter_name") or "مدرس"
+        reporter_role = "instructor"
+
+        entries: list[dict] = []
+
+        if merged.get("q7_has_positive") == "yes":
+            traits_raw = merged.get("q7_positive_traits") or []
+            traits = [str(t) for t in traits_raw] if isinstance(traits_raw, list) else []
+            if traits:
+                entries.append({
+                    "at": now_iso,
+                    "kind": "positive",
+                    "traits": traits,
+                    "trait_labels_fa": [trait_label("positive", t) for t in traits],
+                    "note": (merged.get("q7_positive_note") or "").strip() or None,
+                    "reporter_role": reporter_role,
+                    "reporter_name": reporter_name,
+                    "process_code": source,
+                    "question": "q7",
+                })
+
+        if merged.get("q8_has_negative") == "yes":
+            traits_raw = merged.get("q8_negative_traits") or []
+            traits = [str(t) for t in traits_raw] if isinstance(traits_raw, list) else []
+            if traits:
+                entries.append({
+                    "at": now_iso,
+                    "kind": "negative",
+                    "traits": traits,
+                    "trait_labels_fa": [trait_label("negative", t) for t in traits],
+                    "note": (merged.get("q8_negative_note") or "").strip() or None,
+                    "reporter_role": reporter_role,
+                    "reporter_name": reporter_name,
+                    "process_code": source,
+                    "question": "q8",
+                })
+
+        ctx["performance_traits_recorded_at"] = now_iso
+        ctx["performance_traits_snapshot"] = entries
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+
+        student = await self._get_student(instance.student_id)
+        if student and entries:
+            extra = _as_mapping(student.extra_data)
+            log = list(extra.get("monitoring_performance_log") or [])
+            log.extend(entries)
+            extra["monitoring_performance_log"] = log
+            student.extra_data = extra
+            flag_modified(student, "extra_data")
+
+        return "record_student_performance_traits"
+
+    _VIOLATION_TYPE_FA = {
+        "professional": "حرفه‌ای",
+        "educational": "آموزشی",
+        "disciplinary": "انضباطی",
+    }
+    _VIOLATION_VERDICT_FA = {
+        "cleared": "مبرا",
+        "notice": "تذکر",
+        "warning_1": "اخطار مرحله اول",
+        "warning_2": "اخطار مرحله دوم",
+        "warning_3": "اخطار مرحله سوم",
+        "suspension_next_term": "تعلیق از ترم بعد",
+        "suspension_immediate": "تعلیق آنی",
+        "refer_education": "ارجاع به کمیته آموزش",
+        "no_expulsion": "عدم اخراج",
+        "expulsion": "اخراج از آموزش",
+    }
+
+    async def _handle_record_violation_performance_entry(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        """ثبت حکم/تخلف در جدول گزارش عملکرد دانشجو."""
+        ctx = _as_mapping(instance.context_data)
+        merged = {**ctx, **(context or {})}
+        now_iso = datetime.now(timezone.utc).isoformat()
+        verdict = merged.get("verdict") or merged.get("final_decision")
+        vtype = merged.get("violation_type")
+        entry = {
+            "at": now_iso,
+            "kind": "violation",
+            "violation_type": vtype,
+            "violation_type_fa": self._VIOLATION_TYPE_FA.get(str(vtype or ""), vtype),
+            "description": (merged.get("description") or "").strip() or None,
+            "verdict_action": verdict,
+            "verdict_action_fa": self._VIOLATION_VERDICT_FA.get(str(verdict or ""), verdict),
+            "compensatory_conditions": (merged.get("compensatory_conditions") or "").strip() or None,
+            "final_status": merged.get("final_decision"),
+            "final_status_fa": self._VIOLATION_VERDICT_FA.get(
+                str(merged.get("final_decision") or ""), merged.get("final_decision")
+            ),
+            "reporter_name": merged.get("reporter_name") or "کمیته نظارت",
+            "reporter_role": "monitoring_committee",
+            "process_code": instance.process_code,
+            "instance_id": str(instance.id),
+            "source_process_code": merged.get("source_process_code"),
+            "source_reason": merged.get("source_reason"),
+        }
+        ctx["verdict_action"] = entry["verdict_action_fa"]
+        ctx["final_status"] = entry["final_status_fa"] or ctx.get("final_status")
+        ctx["last_performance_entry_at"] = now_iso
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+
+        student = await self._get_student(instance.student_id)
+        if student:
+            extra = _as_mapping(student.extra_data)
+            log = list(extra.get("monitoring_performance_log") or [])
+            log.append(entry)
+            extra["monitoring_performance_log"] = log
+            student.extra_data = extra
+            flag_modified(student, "extra_data")
+        return "record_violation_performance_entry"
+
+    async def _handle_lift_suspension_restrictions(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        """برداشتن محدودیت‌های تعلیق (ثبت‌نام، حضور، کلاس)."""
+        student = await self._get_student(instance.student_id)
+        if not student:
+            return "student_not_found"
+        extra = _as_mapping(student.extra_data)
+        extra["class_access_blocked"] = False
+        gates = dict(extra.get("gates") or {})
+        gates["next_term_registration_blocked"] = False
+        gates["next_term_registration_blocked_at"] = datetime.now(timezone.utc).isoformat()
+        extra["gates"] = gates
+        lms = dict(extra.get("lms") or {})
+        lms["attendance_enabled"] = {"global": {"enabled": True, "unblocked_at": datetime.now(timezone.utc).isoformat()}}
+        extra["lms"] = lms
+        extra["violation_suspension_lifted_at"] = datetime.now(timezone.utc).isoformat()
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+        ctx = _as_mapping(instance.context_data)
+        ctx["suspension_lifted_at"] = datetime.now(timezone.utc).isoformat()
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        return "lift_suspension_restrictions"
+
+    async def _handle_record_live_supervision_attendance(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.live_supervision_course_service import record_dual_attendance
+
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+        course_type = str(merged.get("course_type") or "").lower()
+        if course_type != "live_supervision" and not merged.get("live_supervision_session"):
+            return "record_live_supervision_attendance_skipped"
+        course_code = (
+            merged.get("course_code")
+            or merged.get("lesson_course_label")
+            or merged.get("course_name")
+            or ""
+        )
+        rows = merged.get("dual_attendance") or merged.get("students_dual_attendance") or []
+        if not rows and merged.get("students_attendance"):
+            for r in merged.get("students_attendance") or []:
+                if not isinstance(r, dict):
+                    continue
+                status = str(r.get("status") or "present").lower()
+                rows.append({
+                    "student_id": r.get("student_id"),
+                    "normal_present": status == "present" and not r.get("mirror_present"),
+                    "mirror_present": bool(r.get("mirror_present")),
+                    "absent": status in ("absent", "غایب", "absent_unexcused"),
+                })
+        actor_id = instance.started_by or instance.student_id
+        summary = await record_dual_attendance(
+            self.db,
+            course_code=str(course_code),
+            session_date=str(merged.get("session_date") or ""),
+            attendance_rows=rows,
+            actor_id=actor_id,
+            calendar_session_increment=str(merged.get("course_type") or "") == "live_supervision"
+            or bool(merged.get("live_supervision_session")),
+        )
+        ctx = _as_mapping(instance.context_data)
+        ctx["live_supervision_attendance_summary"] = summary
+        ctx["course_type"] = ctx.get("course_type") or "live_supervision"
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        return f"record_live_supervision_attendance updated={summary.get('updated', 0)}"
+
+    async def _handle_record_skills_session_17_grades(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.skills_course_completion_service import on_session_17_submit
+
+        return await on_session_17_submit(self.db, instance, context)
+
+    async def _handle_record_skills_session_18_grades(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.skills_course_completion_service import on_session_18_submit
+
+        return await on_session_18_submit(self.db, instance, context)
+
+    async def _handle_compute_skills_final_grades(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.skills_course_completion_service import auto_compute_grades
+
+        return await auto_compute_grades(self.db, instance)
+
+    async def _handle_record_skills_ta_grades(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.skills_course_completion_service import on_ta_grades_submit
+
+        return await on_ta_grades_submit(self.db, instance, context)
+
+    async def _handle_record_skills_qualitative_eval(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.skills_course_completion_service import on_qualitative_submit
+
+        return await on_qualitative_submit(self.db, instance, context)
+
+    async def _handle_record_theory_session_18_grades(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.theory_course_completion_service import on_session_18_submit
+
+        return await on_session_18_submit(self.db, instance, context)
+
+    async def _handle_compute_theory_final_grades(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.theory_course_completion_service import auto_compute_grades
+
+        return await auto_compute_grades(self.db, instance, context)
+
+    async def _handle_compute_theory_retake_grades(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.theory_course_completion_service import on_retake_compute
+
+        return await on_retake_compute(self.db, instance, context)
+
+    async def _handle_finalize_theory_borderline_fail(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.theory_course_completion_service import on_borderline_fail
+
+        return await on_borderline_fail(self.db, instance, context)
+
+    async def _handle_activate_theory_retake_exam(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.theory_course_completion_service import on_activate_retake
+
+        return await on_activate_retake(self.db, instance, context)
+
+    async def _handle_record_theory_qualitative_eval(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.theory_course_completion_service import on_qualitative_submit
+
+        return await on_qualitative_submit(self.db, instance, context)
+
+    async def _handle_record_group_supervision_pass_fail(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.group_supervision_course_completion_service import on_pass_fail_submit
+
+        return await on_pass_fail_submit(self.db, instance, context)
+
+    async def _handle_record_group_supervision_ta_grades(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.group_supervision_course_completion_service import on_ta_grades_submit
+
+        return await on_ta_grades_submit(self.db, instance, context)
+
+    async def _handle_record_group_supervision_qualitative_eval(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.group_supervision_course_completion_service import on_qualitative_submit
+
+        return await on_qualitative_submit(self.db, instance, context)
+
+    async def _handle_activate_compensation_payment(
+        self, action: dict, instance: ProcessInstance, context: dict,
+    ):
+        from app.services.live_supervision_course_service import activate_compensation_payment
+
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+        course_code = str(merged.get("course_code") or merged.get("course_name") or "")
+        n = int(merged.get("compensation_sessions_pending") or merged.get("sessions_count") or 0)
+        result = await activate_compensation_payment(
+            self.db, instance.student_id, course_code, n,
+        )
+        return f"activate_compensation_payment {result}"
 
     async def _handle_redirect_to_process(self, action: dict, instance: ProcessInstance, context: dict):
         code = action.get("process_code", "")
@@ -2385,6 +3269,97 @@ class ActionHandler:
 
     # ─── Contact Resolution ──────────────────────────────────────
 
+    async def _instructor_course_assignment_row(
+        self, instructor_user_id: Any, process_code: str
+    ) -> Optional[dict]:
+        try:
+            user = await self._get_user_direct(uuid.UUID(str(instructor_user_id)))
+        except (ValueError, TypeError):
+            return None
+        if not user:
+            return None
+        meta = _as_mapping(user.profile_meta)
+        items = meta.get("semester_course_assignments") or []
+        kws = _LIVE_SESSION_COURSE_KEYWORDS.get(process_code, ())
+        fallback: Optional[dict] = None
+        for row in items:
+            if not isinstance(row, dict):
+                continue
+            if row.get("role_kind") not in (None, "instructor"):
+                continue
+            code = str(
+                row.get("course_code") or row.get("code") or row.get("course_name") or ""
+            ).strip()
+            if not code:
+                continue
+            if fallback is None:
+                fallback = row
+            code_l = code.lower()
+            if not kws or any(k.lower() in code_l or k in code for k in kws):
+                return row
+        return fallback
+
+    async def _live_session_course_code(self, instance: ProcessInstance) -> Optional[str]:
+        ctx = _as_mapping(instance.context_data)
+        if ctx.get("course_code"):
+            return str(ctx["course_code"]).strip() or None
+        iuid = ctx.get("instructor_id")
+        if not iuid:
+            return None
+        row = await self._instructor_course_assignment_row(iuid, instance.process_code)
+        if not row:
+            return None
+        return str(
+            row.get("course_code") or row.get("code") or row.get("course_name") or ""
+        ).strip() or None
+
+    async def _resolve_live_session_ta_contact(
+        self, instance: ProcessInstance, course_code: str
+    ) -> Optional[str]:
+        stmt = select(User).where(User.role == "teaching_assistant", User.is_active == True)
+        result = await self.db.execute(stmt)
+        code = str(course_code or "").strip()
+        for user in result.scalars().all():
+            meta = _as_mapping(user.profile_meta)
+            for row in meta.get("semester_course_assignments") or []:
+                if not isinstance(row, dict):
+                    continue
+                if row.get("role_kind") not in (None, "teaching_assistant"):
+                    continue
+                row_code = str(
+                    row.get("course_code") or row.get("code") or row.get("course_name") or ""
+                ).strip()
+                if row_code == code:
+                    return user.phone or user.email
+        return None
+
+    async def _resolve_class_student_contacts(
+        self, instance: ProcessInstance, course_code: str
+    ) -> list[str]:
+        from app.services.instructor_course_roster_service import get_course_roster
+
+        roster = await get_course_roster(self.db, course_code)
+        contacts: list[str] = []
+        seen: set[str] = set()
+        for entry in roster:
+            sid = entry.get("student_id")
+            if not sid:
+                continue
+            try:
+                st = await self.db.get(Student, uuid.UUID(str(sid)))
+            except (ValueError, TypeError):
+                continue
+            if not st or not st.user_id:
+                continue
+            user = await self._get_user_direct(st.user_id)
+            if not user:
+                continue
+            contact = user.phone or user.email
+            if contact and contact not in seen:
+                seen.add(contact)
+                contacts.append(contact)
+        return contacts
+
     async def _resolve_contact(self, role: str, instance: ProcessInstance, ntype: str) -> Optional[str]:
         """Resolve a contact (phone/email) for a role in the context of an instance."""
         student = await self._get_student(instance.student_id)
@@ -2452,6 +3427,35 @@ class ActionHandler:
             user = await self._get_user_direct(uuid.UUID(ctx["new_supervisor_id"]))
             return user.phone or user.email if user else None
 
+        if instance.process_code in _LIVE_SESSION_PREP_CODES:
+            if role == "instructor" and ctx.get("instructor_id"):
+                try:
+                    user = await self._get_user_direct(uuid.UUID(str(ctx["instructor_id"])))
+                    return user.phone or user.email if user else None
+                except (ValueError, TypeError):
+                    pass
+            if role == "teaching_assistant":
+                course_code = await self._live_session_course_code(instance)
+                if course_code:
+                    return await self._resolve_live_session_ta_contact(instance, course_code)
+            if role == "therapist" and ctx.get("therapist_id"):
+                try:
+                    user = await self._get_user_direct(uuid.UUID(str(ctx["therapist_id"])))
+                    return user.phone or user.email if user else None
+                except (ValueError, TypeError):
+                    pass
+
+        _PROGRESS_RECIPIENT_TO_ASSIGNED = {
+            "progress_scientific": "progress_committee_scientific",
+            "progress_project": "progress_committee_project",
+        }
+        if role in _PROGRESS_RECIPIENT_TO_ASSIGNED:
+            contact = await resolve_contact_for_assigned_role(
+                self.db, _PROGRESS_RECIPIENT_TO_ASSIGNED[role]
+            )
+            if contact:
+                return contact
+
         return None
 
     async def _build_notification_context(self, instance: ProcessInstance, context: dict) -> dict:
@@ -2479,6 +3483,15 @@ class ActionHandler:
 
         if instance.process_code == "educational_leave" and notif_ctx.get("committee_meeting_at"):
             notif_ctx["meeting_summary_fa"] = self._format_committee_meeting_summary_fa(notif_ctx)
+        if instance.process_code == "ta_track_change" and (
+            notif_ctx.get("meeting_date") or notif_ctx.get("meeting_time")
+        ):
+            from app.services.ta_track_change_service import format_meeting_summary_fa
+
+            notif_ctx["meeting_summary_fa"] = format_meeting_summary_fa(notif_ctx)
+            notif_ctx.setdefault("meeting_date", notif_ctx.get("meeting_date") or "")
+            notif_ctx.setdefault("meeting_time", notif_ctx.get("meeting_time") or "")
+            notif_ctx.setdefault("meeting_link", notif_ctx.get("meeting_link") or "")
         notif_ctx.setdefault("meeting_summary_fa", "")
 
         if instance.process_code == "therapy_completion":
@@ -2534,6 +3547,29 @@ class ActionHandler:
                         lines.append(f"{i}- {labels.get(fname) or fname}")
                     notif_ctx["deficiency_list"] = "\n".join(lines) if lines else "—"
 
+        if instance.process_code == "internship_12month_conditional_review":
+            link = (notif_ctx.get("interview_link") or "").strip()
+            loc = (notif_ctx.get("interview_location") or "").strip()
+            if link:
+                notif_ctx["interview_location_or_link"] = f"(لینک جلسه: {link})"
+            elif loc:
+                notif_ctx["interview_location_or_link"] = f"(مکان: {loc})"
+            else:
+                notif_ctx["interview_location_or_link"] = "(مکان: انستیتو روانکاوی تهران)"
+            notif_ctx.setdefault("interview_date", "—")
+            notif_ctx.setdefault("interview_time", "—")
+
+        if instance.process_code in _LIVE_SESSION_PREP_CODES:
+            ctxm = _as_mapping(instance.context_data)
+            sd = ctxm.get("session_date")
+            st = str(ctxm.get("session_time") or "").strip()
+            date_fa = str(sd)[:10] if sd else "—"
+            notif_ctx["تاریخ ثبت شده"] = date_fa
+            notif_ctx["ساعت ثبت شده"] = st or "—"
+            notif_ctx.setdefault("session_date_fa", date_fa)
+            notif_ctx.setdefault("session_date", date_fa)
+            notif_ctx.setdefault("session_time", st or "—")
+
         return notif_ctx
 
     @staticmethod
@@ -2563,6 +3599,36 @@ class ActionHandler:
         stmt = select(User).where(User.id == user_id)
         result = await self.db.execute(stmt)
         return result.scalars().first()
+
+    async def _handle_evaluate_et_therapy_readiness(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        from app.services.educational_therapist_upgrade_service import run_auto_readiness_transition
+
+        actor = await self._resolve_system_actor_id_for_actions()
+        to_state = await run_auto_readiness_transition(
+            self.db, instance, phase="therapy", actor_id=actor
+        )
+        return f"therapy_readiness_auto to_state={to_state}"
+
+    async def _handle_evaluate_et_supervision_readiness(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        from app.services.educational_therapist_upgrade_service import run_auto_readiness_transition
+
+        actor = await self._resolve_system_actor_id_for_actions()
+        to_state = await run_auto_readiness_transition(
+            self.db, instance, phase="supervision", actor_id=actor
+        )
+        return f"supervision_readiness_auto to_state={to_state}"
+
+    async def _handle_register_et_availability_slots(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        from app.services.educational_therapist_upgrade_service import register_et_availability_slots
+
+        merged = {**_as_mapping(instance.context_data), **_as_mapping(context)}
+        return await register_et_availability_slots(self.db, instance, merged)
 
     # ─── Action Registry ─────────────────────────────────────────
 
@@ -2614,6 +3680,15 @@ class ActionHandler:
         "resolve_access_restrictions": _handle_resolve_access,
         "create_session_link": _handle_create_session_link,
         "apply_start_therapy_session_schedule": _handle_apply_start_therapy_session_schedule,
+        "prefill_return_context": _handle_prefill_return_context,
+        "apply_return_therapy_session_schedule": _handle_apply_return_therapy_session_schedule,
+        "apply_return_supervision_schedule": _handle_apply_return_supervision_schedule,
+        "set_full_education_leave_flag": _handle_set_full_education_leave_flag,
+        "apply_full_leave_intern_effects": _handle_apply_full_leave_intern_effects,
+        "apply_full_leave_therapist_decision": _handle_apply_full_leave_therapist_decision,
+        "notify_therapy_coordination": _handle_notify_therapy_coordination,
+        "auto_release_therapist_slot": _handle_auto_release_therapist_slot,
+        "clear_full_education_leave_flag": _handle_clear_full_education_leave_flag,
         "delete_future_therapy_appointments": _handle_delete_future_appointments,
         "release_therapist_slots": _handle_release_therapist_slots,
         "update_therapy_status": _handle_update_therapy_status,
@@ -2639,14 +3714,36 @@ class ActionHandler:
         "record_result_in_student_portal": _handle_unlock_student_portal_flag,
         "record_course_grades": _handle_record_process_artifact,
         "record_class_attendance": _handle_record_process_artifact,
-        "record_class_cancellation": _handle_record_process_artifact,
+        "record_live_supervision_attendance": _handle_record_live_supervision_attendance,
+        "record_skills_session_17_grades": _handle_record_skills_session_17_grades,
+        "record_skills_session_18_grades": _handle_record_skills_session_18_grades,
+        "compute_skills_final_grades": _handle_compute_skills_final_grades,
+        "record_skills_ta_grades": _handle_record_skills_ta_grades,
+        "record_skills_qualitative_eval": _handle_record_skills_qualitative_eval,
+        "record_theory_session_18_grades": _handle_record_theory_session_18_grades,
+        "compute_theory_final_grades": _handle_compute_theory_final_grades,
+        "compute_theory_retake_grades": _handle_compute_theory_retake_grades,
+        "finalize_theory_borderline_fail": _handle_finalize_theory_borderline_fail,
+        "activate_theory_retake_exam": _handle_activate_theory_retake_exam,
+        "record_theory_qualitative_eval": _handle_record_theory_qualitative_eval,
+        "record_group_supervision_pass_fail": _handle_record_group_supervision_pass_fail,
+        "record_group_supervision_ta_grades": _handle_record_group_supervision_ta_grades,
+        "record_group_supervision_qualitative_eval": _handle_record_group_supervision_qualitative_eval,
+        "activate_compensation_payment": _handle_activate_compensation_payment,
+        "record_class_cancellation": _handle_record_class_cancellation,
         "record_cancellation_applied": _handle_record_process_artifact,
         "record_supervision_cancellation": _handle_record_process_artifact,
         "record_leave_request": _handle_record_process_artifact,
         "record_return_request": _handle_record_process_artifact,
         "record_upgrade_decision": _handle_record_process_artifact,
+        "evaluate_et_therapy_readiness": _handle_evaluate_et_therapy_readiness,
+        "evaluate_et_supervision_readiness": _handle_evaluate_et_supervision_readiness,
+        "register_et_availability_slots": _handle_register_et_availability_slots,
         "record_intern_referral": _handle_record_process_artifact,
         "record_article_milestone": _handle_record_process_artifact,
+        "record_student_performance_traits": _handle_record_student_performance_traits,
+        "record_violation_performance_entry": _handle_record_violation_performance_entry,
+        "lift_suspension_restrictions": _handle_lift_suspension_restrictions,
         "record_session_prep": _handle_record_process_artifact,
         "record_ta_leave": _handle_record_process_artifact,
         "record_evaluation_submission": _handle_record_process_artifact,

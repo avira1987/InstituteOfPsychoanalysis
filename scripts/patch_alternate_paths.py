@@ -65,7 +65,7 @@ def main() -> None:
 
     extra_forms = {
         "full_education_leave": {**STAFF_PANEL, "backend": "app/api/process/routes.py", "states": ["leave_request"]},
-        "return_to_full_education": {"frontend": "admin-ui/src/pages/StudentPortal.jsx", "mechanism": "StudentQuestCard + ProcessStepForms"},
+        "return_to_full_education": {"frontend": "admin-ui/src/pages/StudentPortal.jsx", "mechanism": "StudentReturnToFullEducationPanel + ProcessStepForms + SepPaymentPanel"},
         "upgrade_to_educational_therapist": {**COMMITTEE_PANEL, "states": ["monitoring_review", "student_start"]},
         "intern_bulk_patient_referral": {**COMMITTEE_PANEL, "states": ["coordination_followup", "general_therapy_committee_review"]},
         "student_session_cancellation": forms.get("student_session_cancellation") or {"frontend": "admin-ui/src/pages/StudentPortal.jsx"},

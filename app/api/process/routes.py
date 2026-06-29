@@ -163,6 +163,153 @@ def _enrich_supervision_session_increase_start(
     return out
 
 
+async def _enrich_class_session_cancellation_start(
+    db: AsyncSession,
+    initial_context: Optional[dict],
+    student_row: Student,
+    actor_user: User,
+) -> Optional[dict]:
+    """پیش‌بارگذاری دروس و جلسات هنگام آغاز فرایند ۵۶."""
+    from app.services.class_session_cancellation_service import (
+        build_class_session_cancellation_context,
+    )
+
+    role = (actor_user.role or "").strip()
+    all_term = role in (
+        "scientific_officer_course_committee",
+        "course_committee_executive",
+        "admin",
+        "staff",
+        "deputy_education",
+    )
+    out = dict(initial_context or {})
+    extra = await build_class_session_cancellation_context(
+        db,
+        actor_user,
+        out,
+        all_term=all_term,
+        student=student_row,
+    )
+    out.update(extra)
+    return out
+
+
+def _apply_class_session_cancellation_trigger_rules(
+    trigger_event: str,
+    payload: dict,
+    context_data: Optional[dict],
+) -> dict:
+    """اعتبارسنجی رویداد cancellation_confirmed (فرایند ۵۶)."""
+    p = dict(payload or {})
+    ctx = StateMachineEngine._as_mapping(context_data)
+    merged = {**ctx, **p}
+
+    if trigger_event == "cancellation_confirmed":
+        lesson = str(merged.get("lesson_id") or merged.get("course_code") or "").strip()
+        session = merged.get("session_to_cancel")
+        makeup_date = str(merged.get("makeup_date") or "").strip()
+        makeup_time = str(merged.get("makeup_time") or "").strip()
+        if not lesson:
+            raise HTTPException(status_code=400, detail="نام درس الزامی است.")
+        if not session or str(session).strip() == "":
+            raise HTTPException(status_code=400, detail="جلسه جهت کنسلی الزامی است.")
+        if not makeup_date or not makeup_time:
+            raise HTTPException(
+                status_code=400,
+                detail="تاریخ و ساعت جلسه جبرانی الزامی است؛ ابتدا درس و جلسه را در فرم انتخاب کنید.",
+            )
+        p.setdefault("lesson_id", lesson)
+        p.setdefault("session_to_cancel", session)
+        p.setdefault("makeup_date", makeup_date)
+        p.setdefault("makeup_time", makeup_time)
+    return p
+
+
+async def _enrich_supervisor_session_cancellation_start(
+    db: AsyncSession,
+    initial_context: Optional[dict],
+    student_row: Student,
+) -> Optional[dict]:
+    """پیش‌بارگذاری لیست جلسات ۴ هفته آینده هنگام آغاز فرایند ۲۶."""
+    from app.services.supervisor_session_cancellation_service import (
+        get_supervisor_sessions_next_4_weeks,
+    )
+
+    out = dict(initial_context or {})
+    if student_row.supervisor_id:
+        out.setdefault("supervisor_id", str(student_row.supervisor_id))
+    sessions = await get_supervisor_sessions_next_4_weeks(
+        db,
+        student_row.supervisor_id,
+        student_row.id,
+        display_weeks=4,
+    )
+    out["supervisor_sessions_next_4_weeks"] = sessions
+    return out
+
+
+def _apply_supervisor_session_cancellation_trigger_rules(
+    trigger_event: str,
+    payload: dict,
+    context_data: Optional[dict],
+) -> dict:
+    """اعتبارسنجی رویدادهای supervisor_session_cancellation (فرایند ۲۶)."""
+    p = dict(payload or {})
+    ctx = StateMachineEngine._as_mapping(context_data)
+    merged = {**ctx, **p}
+
+    if trigger_event in ("makeup_date_entered", "supervisor_entered_new_time"):
+        if merged.get("makeup_option") != "no_makeup":
+            pd = (merged.get("proposed_date") or "").strip()
+            pt = (merged.get("proposed_time") or "").strip()
+            if not pd or not pt:
+                raise HTTPException(
+                    status_code=400,
+                    detail="تاریخ و ساعت جلسه جبرانی الزامی است.",
+                )
+            p.setdefault("proposed_date", pd)
+            p.setdefault("proposed_time", pt)
+    elif trigger_event == "student_counter_proposed":
+        if not str(merged.get("counter_proposal_text") or "").strip():
+            raise HTTPException(
+                status_code=400,
+                detail="لطفاً تاریخ و ساعت پیشنهادی خود را در توضیحات بنویسید.",
+            )
+    return p
+
+
+async def _enrich_supervision_session_reduction_start(
+    db: AsyncSession,
+    initial_context: Optional[dict],
+    student_row: Student,
+) -> Optional[dict]:
+    """پیش‌فرض شمارندهٔ جلسات و ساعات آموزشی هنگام آغاز فرایند ۲۴."""
+    from app.services.attendance_service import AttendanceService
+
+    out = dict(initial_context or {})
+    extra = StateMachineEngine._as_mapping(student_row.extra_data)
+    sup_weekly = extra.get("supervision_weekly_sessions")
+    if sup_weekly is None:
+        sup_weekly = extra.get("weekly_supervision_sessions")
+    if sup_weekly is not None:
+        try:
+            out.setdefault("supervision_weekly_sessions", int(sup_weekly))
+        except (TypeError, ValueError):
+            pass
+    else:
+        out.setdefault("supervision_weekly_sessions", 1)
+
+    att = AttendanceService(db)
+    m = await att.get_therapy_completion_metrics(student_row.id)
+    out.setdefault("therapy_hours_2x", float(m["therapy_hours_2x"]))
+    out.setdefault("clinical_hours", float(m["clinical_hours"]))
+    out.setdefault("supervision_hours", float(m["supervision_hours"]))
+    out.setdefault("therapy_threshold", float(extra.get("therapy_threshold", 250)))
+    out.setdefault("clinical_threshold", float(extra.get("clinical_threshold", 750)))
+    out.setdefault("supervision_threshold", float(extra.get("supervision_threshold", 150)))
+    return out
+
+
 def _enrich_lesson_start_context(
     initial_context: Optional[dict],
     student_row: Student,
@@ -251,6 +398,70 @@ def _apply_supervision_session_increase_trigger_rules(
     return p
 
 
+def _parse_supervision_reduction_selected(raw) -> list[str]:
+    if raw is None or raw == "":
+        return []
+    if isinstance(raw, list):
+        return [str(x).strip() for x in raw if x is not None and str(x).strip()]
+    if isinstance(raw, str):
+        s = raw.strip()
+        if s.startswith("["):
+            try:
+                parsed = json.loads(s)
+                if isinstance(parsed, list):
+                    return [str(x).strip() for x in parsed if x is not None and str(x).strip()]
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return [p for p in re.split(r"[,،\s]+", s) if p]
+    return [str(raw).strip()]
+
+
+def _apply_supervision_session_reduction_trigger_rules(
+    trigger_event: str,
+    payload: dict,
+    context_data: Optional[dict] = None,
+) -> dict:
+    """اعتبارسنجی رویدادهای supervision_session_reduction (فرایند ۲۴)."""
+    p = dict(payload or {})
+    ctx = StateMachineEngine._as_mapping(context_data)
+
+    if trigger_event == "frequency_day_time_entered":
+        freq = (p.get("frequency") or ctx.get("frequency") or "").strip()
+        day = (p.get("day") or ctx.get("day") or "").strip()
+        tm = (p.get("time") or ctx.get("time") or "").strip()
+        if not freq or not day or not tm:
+            raise HTTPException(
+                status_code=400,
+                detail="توالی، روز هفته و ساعت برگزاری الزامی است (frequency، day، time).",
+            )
+        if freq not in ("2", "3", "4"):
+            raise HTTPException(
+                status_code=400,
+                detail="توالی باید ۲، ۳ یا ۴ هفته یک‌بار باشد.",
+            )
+    elif trigger_event == "sessions_selected":
+        merged = {**ctx, **p}
+        selected = _parse_supervision_reduction_selected(merged.get("selected_sessions"))
+        if not selected:
+            raise HTTPException(
+                status_code=400,
+                detail="حداقل یک جلسهٔ سوپرویژن برای حذف انتخاب کنید.",
+            )
+        try:
+            weekly = int(merged.get("supervision_weekly_sessions") or 1)
+        except (TypeError, ValueError):
+            weekly = 1
+        remaining = weekly - len(selected)
+        if remaining < 1:
+            raise HTTPException(
+                status_code=400,
+                detail="حداقل یک جلسهٔ سوپرویژن در هفته باید باقی بماند.",
+            )
+        p["supervision_remaining_after_reduction"] = remaining
+        p["selected_sessions"] = selected
+    return p
+
+
 _EDUCATIONAL_LEAVE_MEETING_KEYS = (
     "committee_meeting_at",
     "committee_meeting_mode",
@@ -305,6 +516,110 @@ def _validate_educational_leave_committee_rejected(payload: dict) -> None:
         )
 
 
+_TA_TRACK_MEETING_KEYS = (
+    "meeting_date",
+    "meeting_time",
+    "meeting_type",
+    "meeting_link",
+    "meeting_location_fa",
+    "path",
+    "new_tracks",
+    "result",
+)
+
+
+def _merge_ta_track_change_payload_from_context(
+    instance: ProcessInstance,
+    payload: dict,
+) -> dict:
+    p = dict(payload or {})
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    for key in _TA_TRACK_MEETING_KEYS:
+        if key not in p or p.get(key) in (None, ""):
+            if ctx.get(key) not in (None, ""):
+                p[key] = ctx[key]
+    return p
+
+
+def _ta_track_form_submitted(ctx: dict, state_code: str) -> bool:
+    submitted = StateMachineEngine._as_mapping(ctx.get("__student_forms_submitted_states"))
+    return bool(submitted.get(state_code))
+
+
+def _validate_ta_track_change_meeting_registered(
+    instance: ProcessInstance,
+    payload: dict,
+) -> dict:
+    from app.services.ta_track_change_service import ensure_meeting_fields
+
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    if not _ta_track_form_submitted(ctx, "course_committee_review"):
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا فرم «ثبت زمان و مشخصات جلسه» را تکمیل و ثبت کنید.",
+        )
+    p = _merge_ta_track_change_payload_from_context(instance, payload)
+    p = ensure_meeting_fields(p, instance.id)
+    date = (p.get("meeting_date") or "").strip() if isinstance(p.get("meeting_date"), str) else p.get("meeting_date")
+    if not date:
+        raise HTTPException(status_code=400, detail="تاریخ جلسه الزامی است.")
+    time = (p.get("meeting_time") or "").strip() if isinstance(p.get("meeting_time"), str) else p.get("meeting_time")
+    if not time:
+        raise HTTPException(status_code=400, detail="ساعت جلسه الزامی است.")
+    mode = (p.get("meeting_type") or "").strip()
+    if mode not in ("online", "in_person"):
+        raise HTTPException(status_code=400, detail="نحوهٔ برگزاری جلسه (حضوری/آنلاین) الزامی است.")
+    if mode == "online" and not (p.get("meeting_link") or "").strip():
+        raise HTTPException(status_code=400, detail="لینک جلسه آنلاین تولید نشد.")
+    return p
+
+
+async def _validate_ta_track_change_approved(
+    db: AsyncSession,
+    instance: ProcessInstance,
+    payload: dict,
+) -> dict:
+    from app.models.operational_models import Student
+    from app.services.ta_track_change_service import validate_new_tracks
+
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    if not _ta_track_form_submitted(ctx, "meeting_scheduled"):
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا فرم «نتیجه جلسه و تخصیص رسته‌ها» را تکمیل و ثبت کنید.",
+        )
+    p = _merge_ta_track_change_payload_from_context(instance, payload)
+    result = (p.get("result") or ctx.get("result") or "").strip()
+    if result != "approve":
+        raise HTTPException(status_code=400, detail="در فرم «موافقت» انتخاب نشده است.")
+    path = (p.get("path") or ctx.get("path") or "").strip()
+    raw_tracks = p.get("new_tracks") or ctx.get("new_tracks") or []
+    tracks = (
+        [str(x).strip() for x in raw_tracks if x is not None and str(x).strip()]
+        if isinstance(raw_tracks, list)
+        else [str(raw_tracks).strip()] if str(raw_tracks).strip() else []
+    )
+    student = await db.get(Student, instance.student_id)
+    err = validate_new_tracks(student, path, tracks)
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    p["path"] = path
+    p["new_tracks"] = tracks
+    return p
+
+
+def _validate_ta_track_change_path_chosen(instance: ProcessInstance, payload: dict) -> None:
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    if not _ta_track_form_submitted(ctx, "ta_click"):
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا فرم «انتخاب مسیر» را تکمیل و ثبت کنید.",
+        )
+    path = (payload.get("path") or ctx.get("path") or "").strip()
+    if path not in ("add", "change"):
+        raise HTTPException(status_code=400, detail="مسیر درخواست (add/change) در فرم ثبت نشده است.")
+
+
 def _validate_educational_leave_student_return(instance: ProcessInstance) -> None:
     ctx = StateMachineEngine._as_mapping(instance.context_data)
     if not ctx.get("return_registration_confirmed"):
@@ -312,6 +627,173 @@ def _validate_educational_leave_student_return(instance: ProcessInstance) -> Non
             status_code=400,
             detail="ابتدا فرم تأیید بازگشت را تکمیل و ثبت کنید (تیک «ثبت‌نام ترم آینده را انجام داده‌ام»).",
         )
+
+
+def _merge_non_registration_payload_from_context(
+    instance: ProcessInstance,
+    payload: dict,
+) -> dict:
+    p = dict(payload or {})
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    for key in _EDUCATIONAL_LEAVE_MEETING_KEYS + ("decision", "weeks_since_start", "weeks_since_term_start"):
+        if key not in p or p.get(key) in (None, ""):
+            if ctx.get(key) not in (None, ""):
+                p[key] = ctx[key]
+    return p
+
+
+def _non_registration_form_submitted(ctx: dict, state_code: str) -> bool:
+    submitted = StateMachineEngine._as_mapping(ctx.get("__student_forms_submitted_states"))
+    return bool(submitted.get(state_code))
+
+
+def _validate_student_non_registration_meeting_scheduled(instance: ProcessInstance, payload: dict) -> None:
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    if not _non_registration_form_submitted(ctx, "list_generated"):
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا فرم «تعیین جلسه» را تکمیل و ثبت کنید، سپس دکمهٔ ثبت جلسه را بزنید.",
+        )
+    _validate_educational_leave_committee_set_meeting(payload)
+
+
+def _validate_student_non_registration_choice(
+    instance: ProcessInstance,
+    payload: dict,
+    trigger_event: str,
+) -> None:
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    if not _non_registration_form_submitted(ctx, "meeting_held"):
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا فرم «ثبت نتیجه جلسه» را تکمیل و ثبت کنید، سپس دکمهٔ تصمیم را بزنید.",
+        )
+    decision = (payload.get("decision") or ctx.get("decision") or "").strip()
+    mapping = {
+        "choice_register": "register",
+        "choice_leave": "leave",
+        "choice_withdrawal": "withdrawal",
+    }
+    expected = mapping.get(trigger_event)
+    if not expected or decision != expected:
+        raise HTTPException(
+            status_code=400,
+            detail="تصمیم ثبت‌شده در فرم با دکمهٔ انتخاب‌شده هم‌خوان نیست.",
+        )
+    if trigger_event == "choice_register":
+        weeks_raw = payload.get("weeks_since_start") or payload.get("weeks_since_term_start")
+        if weeks_raw is None:
+            weeks_raw = ctx.get("weeks_since_start") or ctx.get("weeks_since_term_start")
+        try:
+            weeks = int(weeks_raw)
+        except (TypeError, ValueError):
+            weeks = None
+        if weeks is not None and weeks > 4:
+            raise HTTPException(
+                status_code=400,
+                detail="گزینهٔ ثبت‌نام فقط تا ۴ هفته پس از شروع کلاس‌ها مجاز است.",
+            )
+
+
+def _referral_rows_from_payload(ctx: dict, payload: dict) -> list[dict]:
+    rows = payload.get("patient_referral_rows")
+    if not isinstance(rows, list) or not rows:
+        rows = ctx.get("patient_referral_rows")
+    if not isinstance(rows, list):
+        return []
+    return [r for r in rows if isinstance(r, dict)]
+
+
+def _merge_intern_bulk_referral_payload(instance: ProcessInstance, payload: dict) -> dict:
+    p = dict(payload or {})
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    for key in (
+        "meeting_datetime",
+        "meeting_held",
+        "referral_conditions",
+        "patient_referral_rows",
+    ):
+        if key not in p or p.get(key) in (None, "", []):
+            if ctx.get(key) not in (None, "", []):
+                p[key] = ctx[key]
+    return p
+
+
+def _operator_form_submitted(ctx: dict, state_code: str) -> bool:
+    from app.meta.student_step_forms import CTX_SUBMITTED
+
+    submitted = StateMachineEngine._as_mapping(ctx.get(CTX_SUBMITTED))
+    return bool(submitted.get(state_code))
+
+
+def _validate_intern_bulk_meeting_logged(instance: ProcessInstance, payload: dict) -> None:
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    if not _operator_form_submitted(ctx, "supervision_start"):
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا فرم «ثبت جلسه و شرایط ارجاع» را تکمیل و ثبت کنید.",
+        )
+    conditions = str(payload.get("referral_conditions") or ctx.get("referral_conditions") or "").strip()
+    if not conditions:
+        raise HTTPException(status_code=400, detail="شرایط ارجاع الزامی است.")
+    rows = _referral_rows_from_payload(ctx, payload)
+    if not rows:
+        raise HTTPException(status_code=400, detail="حداقل یک بیمار در لیست ارجاع ثبت کنید.")
+    for i, row in enumerate(rows, start=1):
+        if not str(row.get("patient_name") or "").strip():
+            raise HTTPException(status_code=400, detail=f"نام بیمار در ردیف {i} الزامی است.")
+
+
+def _validate_intern_bulk_student_contacts(payload: dict, ctx: dict) -> None:
+    rows = _referral_rows_from_payload(ctx, payload)
+    if not rows:
+        raise HTTPException(status_code=400, detail="لیست بیماران یافت نشد.")
+    for i, row in enumerate(rows, start=1):
+        if not row.get("contacted"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"برای بیمار ردیف {i} تیک «صحبت انجام شد» الزامی است.",
+            )
+        if not str(row.get("contact_notes") or "").strip():
+            raise HTTPException(
+                status_code=400,
+                detail=f"توضیحات صحبت با بیمار ردیف {i} الزامی است.",
+            )
+
+
+def _validate_intern_bulk_committee_notes(payload: dict, ctx: dict) -> None:
+    if not _operator_form_submitted(ctx, "general_therapy_committee_review"):
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا فرم کمیته درمان عموم را تکمیل و ثبت کنید.",
+        )
+    rows = _referral_rows_from_payload(ctx, payload)
+    for i, row in enumerate(rows, start=1):
+        if not row.get("committee_contacted"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"تیک «صحبت کمیته انجام شد» برای ردیف {i} الزامی است.",
+            )
+        if not str(row.get("referral_notes") or "").strip():
+            raise HTTPException(
+                status_code=400,
+                detail=f"توضیحات ارجاع برای ردیف {i} الزامی است.",
+            )
+
+
+def _validate_intern_bulk_coordination_followup(payload: dict, ctx: dict) -> None:
+    if not _operator_form_submitted(ctx, "coordination_followup"):
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا فرم پیگیری را تکمیل و ثبت کنید.",
+        )
+    rows = _referral_rows_from_payload(ctx, payload)
+    for i, row in enumerate(rows, start=1):
+        if not row.get("followup_done"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"تیک «پیگیری انجام شد» برای ردیف {i} الزامی است.",
+            )
 
 
 # ثبت‌نام ترم/دوره وقتی مرخصی فعال است و class_access_blocked روی دانشجوست
@@ -335,18 +817,28 @@ _ALLOWED_STEP_DOC_TYPES = frozenset(
 _FIELD_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
 
 
-def _file_upload_field_names_for_process(process_code: str) -> set[str]:
-    forms = get_process_forms(process_code, state_code="documents_upload")
+def _file_upload_field_names_for_process(
+    process_code: str,
+    state_code: Optional[str] = None,
+) -> set[str]:
+    """فیلدهای file_upload مجاز برای دانشجو — state فعلی + documents_upload (سازگاری عقب‌رو)."""
+    states: list[str] = []
+    if state_code:
+        states.append(state_code)
+    if "documents_upload" not in states:
+        states.append("documents_upload")
     names: set[str] = set()
-    for form in filter_forms_for_student(forms):
-        for field in form.get("fields") or []:
-            if not isinstance(field, dict):
-                continue
-            if field.get("type") != "file_upload":
-                continue
-            name = field.get("name")
-            if name:
-                names.add(name)
+    for state in states:
+        forms = get_process_forms(process_code, state_code=state)
+        for form in filter_forms_for_student(forms):
+            for field in form.get("fields") or []:
+                if not isinstance(field, dict):
+                    continue
+                if field.get("type") != "file_upload":
+                    continue
+                name = field.get("name")
+                if name:
+                    names.add(name)
     return names
 
 
@@ -563,8 +1055,18 @@ async def start_process(
         initial_ctx = _enrich_therapy_session_increase_start(initial_ctx, student_row)
     if request.process_code == "supervision_session_increase":
         initial_ctx = _enrich_supervision_session_increase_start(initial_ctx, student_row)
+    if request.process_code == "supervisor_session_cancellation":
+        initial_ctx = await _enrich_supervisor_session_cancellation_start(
+            db, initial_ctx, student_row
+        )
+    if request.process_code == "supervision_session_reduction":
+        initial_ctx = await _enrich_supervision_session_reduction_start(db, initial_ctx, student_row)
     if request.process_code == "lesson_start_per_term":
         initial_ctx = _enrich_lesson_start_context(initial_ctx, student_row)
+    if request.process_code == "class_session_cancellation":
+        initial_ctx = await _enrich_class_session_cancellation_start(
+            db, initial_ctx, student_row, current_user
+        )
 
     engine = StateMachineEngine(db)
     try:
@@ -626,6 +1128,24 @@ async def trigger_transition(
             request.trigger_event,
             merged_payload,
         )
+    if inst_early and inst_early.process_code == "supervision_session_reduction":
+        merged_payload = _apply_supervision_session_reduction_trigger_rules(
+            request.trigger_event,
+            merged_payload,
+            inst_early.context_data,
+        )
+    if inst_early and inst_early.process_code == "supervisor_session_cancellation":
+        merged_payload = _apply_supervisor_session_cancellation_trigger_rules(
+            request.trigger_event,
+            merged_payload,
+            inst_early.context_data,
+        )
+    if inst_early and inst_early.process_code == "class_session_cancellation":
+        merged_payload = _apply_class_session_cancellation_trigger_rules(
+            request.trigger_event,
+            merged_payload,
+            inst_early.context_data,
+        )
 
     if request.trigger_event == "committee_set_meeting":
         inst_chk = (
@@ -653,6 +1173,54 @@ async def trigger_transition(
             and inst_chk.current_state_code == "return_reminder_sent"
         ):
             _validate_educational_leave_student_return(inst_chk)
+
+    inst_nr = (
+        await db.execute(select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id)))
+    ).scalars().first()
+    if inst_nr and inst_nr.process_code == "student_non_registration":
+        if request.trigger_event == "meeting_scheduled":
+            merged_payload = _merge_non_registration_payload_from_context(inst_nr, merged_payload)
+            _validate_student_non_registration_meeting_scheduled(inst_nr, merged_payload)
+        if request.trigger_event in ("choice_register", "choice_leave", "choice_withdrawal"):
+            merged_payload = _merge_non_registration_payload_from_context(inst_nr, merged_payload)
+            _validate_student_non_registration_choice(inst_nr, merged_payload, request.trigger_event)
+
+    inst_ref = (
+        await db.execute(select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id)))
+    ).scalars().first()
+    if inst_ref and inst_ref.process_code == "intern_bulk_patient_referral":
+        merged_payload = _merge_intern_bulk_referral_payload(inst_ref, merged_payload)
+        ctx_ref = StateMachineEngine._as_mapping(inst_ref.context_data)
+        if request.trigger_event == "meeting_and_conditions_logged":
+            _validate_intern_bulk_meeting_logged(inst_ref, merged_payload)
+        if request.trigger_event == "student_patient_contacts_done":
+            _validate_intern_bulk_student_contacts(merged_payload, ctx_ref)
+        if request.trigger_event == "committee_referral_notes_complete":
+            _validate_intern_bulk_committee_notes(merged_payload, ctx_ref)
+        if request.trigger_event == "coordination_followup_complete":
+            _validate_intern_bulk_coordination_followup(merged_payload, ctx_ref)
+
+    inst_ttc = (
+        await db.execute(select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id)))
+    ).scalars().first()
+    if inst_ttc and inst_ttc.process_code == "ta_track_change":
+        if request.trigger_event == "path_chosen":
+            merged_payload = _merge_ta_track_change_payload_from_context(inst_ttc, merged_payload)
+            _validate_ta_track_change_path_chosen(inst_ttc, merged_payload)
+        if request.trigger_event == "meeting_registered":
+            merged_payload = _validate_ta_track_change_meeting_registered(inst_ttc, merged_payload)
+        if request.trigger_event == "approved":
+            merged_payload = await _validate_ta_track_change_approved(db, inst_ttc, merged_payload)
+        if request.trigger_event == "rejected":
+            ctx_ttc = StateMachineEngine._as_mapping(inst_ttc.context_data)
+            if not _ta_track_form_submitted(ctx_ttc, "meeting_scheduled"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="ابتدا فرم «نتیجه جلسه» را تکمیل و ثبت کنید.",
+                )
+            result = (merged_payload.get("result") or ctx_ttc.get("result") or "").strip()
+            if result != "reject":
+                raise HTTPException(status_code=400, detail="در فرم «عدم موافقت» انتخاب نشده است.")
 
     role_norm = _normalize_actor_role(current_user.role)
     if role_norm == "student" and request.trigger_event in ("timeslot_selected", "interview_time_selected"):
@@ -795,11 +1363,33 @@ async def register_student_step_forms(
             sanitized["leave_terms"] = int(sanitized["leave_terms"])
         except (TypeError, ValueError):
             pass
+    if (
+        instance.process_code == "upgrade_to_ta"
+        and instance.current_state_code == "commitment_signature"
+    ):
+        if sanitized.get("step_otp_verified") is not True:
+            otp_code = str(sanitized.get("otp_code") or "").strip()
+            if not otp_code:
+                raise HTTPException(status_code=400, detail="کد پیامکی الزامی است.")
+            phone = (current_user.phone or "").strip()
+            if not phone:
+                raise HTTPException(status_code=400, detail="شماره موبایل در پروفایل شما ثبت نشده است.")
+            from app.services.otp_service import verify_otp_code_only
+
+            otp_res = await verify_otp_code_only(db, phone, otp_code)
+            if not otp_res.get("success"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=otp_res.get("error") or "کد پیامکی نامعتبر است.",
+                )
+            sanitized["step_otp_verified"] = True
     ctx = apply_register_to_context(
         instance.context_data or {},
         instance.current_state_code,
         sanitized,
     )
+    if sanitized.get("final_report_pdf"):
+        ctx["final_report_uploaded_at"] = datetime.now(timezone.utc).isoformat()
     instance.context_data = ctx
     flag_modified(instance, "context_data")
     await db.flush()
@@ -912,7 +1502,10 @@ async def upload_student_step_file(
     if not student or student.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your process instance")
 
-    allowed = _file_upload_field_names_for_process(instance.process_code)
+    allowed = _file_upload_field_names_for_process(
+        instance.process_code,
+        state_code=instance.current_state_code,
+    )
     if field_name not in allowed:
         raise HTTPException(status_code=400, detail="Field not allowed for this process")
 
@@ -944,6 +1537,8 @@ async def upload_student_step_file(
     }
     ctx = dict(StateMachineEngine._as_mapping(instance.context_data))
     ctx[field_name] = file_meta
+    if field_name == "final_report_pdf":
+        ctx["final_report_uploaded_at"] = datetime.now(timezone.utc).isoformat()
     instance.context_data = ctx
     flag_modified(instance, "context_data")
     await db.flush()
@@ -1148,6 +1743,42 @@ async def register_operator_step_forms(
     from app.services.course_committee_roster_service import enrich_course_table_rows
 
     sanitized = await enrich_course_table_rows(db, forms, sanitized)
+    if instance.process_code == "class_session_cancellation" and state == "cancellation_request":
+        from app.services.class_session_cancellation_service import (
+            build_class_session_cancellation_context,
+        )
+
+        role = (current_user.role or "").strip()
+        all_term = role in (
+            "scientific_officer_course_committee",
+            "course_committee_executive",
+            "admin",
+            "staff",
+            "deputy_education",
+        )
+        student_row = await db.get(Student, instance.student_id)
+        extra = await build_class_session_cancellation_context(
+            db,
+            current_user,
+            {**StateMachineEngine._as_mapping(instance.context_data), **sanitized},
+            form_values=sanitized,
+            all_term=all_term,
+            student=student_row,
+        )
+        for key in (
+            "makeup_date",
+            "makeup_time",
+            "makeup_summary_fa",
+            "cancellation_ordinal",
+            "cancellation_ordinal_fa",
+            "usual_class_time",
+            "term_week_makeup_label",
+            "assignable_courses",
+            "cancellable_sessions",
+            "upcoming_cancellable_sessions",
+        ):
+            if extra.get(key) not in (None, ""):
+                sanitized[key] = extra[key]
     from app.services.course_committee_roster_service import sync_semester_course_assignments
 
     for form in forms:

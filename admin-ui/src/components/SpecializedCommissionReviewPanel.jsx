@@ -69,21 +69,65 @@ export default function SpecializedCommissionReviewPanel({
         </div>
 
         {currentState === 'commission_review' && (
-          <div
-            data-testid="commission-review-hint"
-            style={{
-              marginBottom: '0.85rem',
-              padding: '0.75rem 1rem',
-              borderRadius: '10px',
-              background: '#eff6ff',
-              borderRight: '4px solid #2563eb',
-              fontSize: '0.86rem',
-              lineHeight: 1.75,
-            }}
-          >
-            پرونده را بررسی کرده و با دانشجو جلسه بگذارید. فرم را ثبت کنید، سپس «تأیید صلاحیت»
-            یا «رد صلاحیت» را بزنید. رد → ارجاع به کمیته‌های نظارت و آموزش (فرایند ۱۳).
-          </div>
+          <>
+            <div
+              data-testid="commission-review-hint"
+              style={{
+                marginBottom: '0.85rem',
+                padding: '0.75rem 1rem',
+                borderRadius: '10px',
+                background: '#eff6ff',
+                borderRight: '4px solid #2563eb',
+                fontSize: '0.86rem',
+                lineHeight: 1.75,
+              }}
+            >
+              پرونده را بررسی کرده و با دانشجو جلسه بگذارید. فرم را ثبت کنید، سپس «تأیید صلاحیت»
+              یا «رد صلاحیت» را بزنید. رد → ارجاع به کمیته‌های نظارت و آموزش (فرایند ۱۳).
+            </div>
+            <div
+              data-testid="commission-outcomes-overview"
+              style={{
+                display: 'grid',
+                gap: '0.65rem',
+                marginBottom: '0.85rem',
+              }}
+            >
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  borderRadius: '10px',
+                  background: '#f0fdf4',
+                  borderRight: '4px solid #16a34a',
+                  fontSize: '0.84rem',
+                  lineHeight: 1.7,
+                }}
+              >
+                <strong style={{ color: '#15803d' }}>تأیید صلاحیت</strong>
+                <ul style={{ margin: '0.35rem 0 0', paddingInlineStart: '1.1rem' }}>
+                  <li>باز شدن انتخاب درمانگر برای دانشجو (Unlock LMS)</li>
+                  <li>مهلت ۵ روز برای آغاز دوباره درمان</li>
+                  <li>عدم آغاز → ثبت تخلف آموزشی</li>
+                </ul>
+              </div>
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  borderRadius: '10px',
+                  background: '#fef2f2',
+                  borderRight: '4px solid #dc2626',
+                  fontSize: '0.84rem',
+                  lineHeight: 1.7,
+                }}
+              >
+                <strong style={{ color: '#b91c1c' }}>رد صلاحیت</strong>
+                <ul style={{ margin: '0.35rem 0 0', paddingInlineStart: '1.1rem' }}>
+                  <li>برچسب «عدم صلاحیت تخصصی»</li>
+                  <li>ارجاع به زیرفرایند ب — کمیته‌های نظارت و آموزش</li>
+                </ul>
+              </div>
+            </div>
+          </>
         )}
 
         {currentState === 'awaiting_student_restart' && (
@@ -127,6 +171,22 @@ export default function SpecializedCommissionReviewPanel({
             }}
           >
             دانشجو درمان را از سر گرفت.
+          </div>
+        )}
+
+        {currentState === 'violation_no_restart' && (
+          <div
+            data-testid="commission-violation"
+            style={{
+              padding: '0.85rem 1rem',
+              borderRadius: '10px',
+              background: '#fef2f2',
+              borderRight: '4px solid #dc2626',
+              fontSize: '0.86rem',
+              lineHeight: 1.75,
+            }}
+          >
+            دانشجو در مهلت ۵ روزه درمان را از سر نگرفت. فرایند ثبت تخلف آموزشی آغاز شده است.
           </div>
         )}
       </div>

@@ -158,6 +158,209 @@ export function getOperatorFollowupDestination(item) {
 
   if (!instanceId || !studentId) return tracker
 
+  if (
+    processCode === 'live_supervision_session_prep'
+    || processCode === 'live_therapy_observation_session_prep'
+  ) {
+    if (stateCode === 'patient_referral' && (code === 'admission_officer' || code === 'admissions_officer')) {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'admissions'),
+        hintFa: 'پنل پذیرش — ارجاع بیمار برای جلسه زنده',
+      }
+    }
+    if (stateCode === 'coordination_pending' && code === 'therapy_education_coordinator') {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'therapy-coord'),
+        hintFa: 'پنل هماهنگی درمان — تعیین زمان جلسه زنده',
+      }
+    }
+  }
+
+  if (processCode === 'intern_bulk_patient_referral') {
+    if (stateCode === 'coordination_followup' && code === 'therapy_education_coordinator') {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'therapy-coord'),
+        hintFa: 'پنل هماهنگی درمان — پیگیری ارجاع بیماران',
+      }
+    }
+    if (stateCode === 'supervision_start' && code === 'supervision_committee') {
+      return {
+        href: committeeHref({ ...base, tab: 'reviews' }, code),
+        hintFa: 'پنل کمیته نظارت — ثبت جلسه و لیست بیماران',
+      }
+    }
+    if (stateCode === 'general_therapy_committee_review' && code === 'therapy_committee_executor') {
+      return {
+        href: committeeHref({ ...base, tab: 'reviews' }, code),
+        hintFa: 'پنل کمیته درمان — تکمیل ارجاع',
+      }
+    }
+  }
+
+  if (processCode === 'class_attendance') {
+    if (stateCode === 'attendance_list_ready' || code === 'instructor') {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — ثبت حضور و غیاب جلسه کلاس (فرایند ۵۴)',
+      }
+    }
+  }
+
+  if (processCode === 'article_writing_completion') {
+    if (['course_active', 'instructor_eval_pending'].includes(stateCode)
+      || code === 'instructor') {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — خاتمه درس مقاله‌نویسی (فرایند ۶۹)',
+      }
+    }
+  }
+
+  if (processCode === 'film_observation_ta_attendance_completion') {
+    if (stateCode === 'grades_entry' || code === 'instructor') {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — خاتمه درس عملی کاربردی: مشارکت و حضور (فرایند ۷۵)',
+      }
+    }
+  }
+
+  if (processCode === 'film_observation_course_completion') {
+    if (stateCode === 'grades_entry' || code === 'instructor') {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — خاتمه درس عملی کاربردی: گزارش PDF (فرایند ۶۴)',
+      }
+    }
+  }
+
+  if (processCode === 'skills_course_completion') {
+    if (
+      ['session_17_grades_entry', 'session_18_grades_entry', 'ta_evaluation_entry', 'qualitative_eval_pending'].includes(stateCode)
+      || code === 'instructor'
+    ) {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — خاتمه دروس تکنیک: تمرین مهارت‌ها (فرایند ۶۳)',
+      }
+    }
+  }
+
+  if (processCode === 'theory_course_completion') {
+    if (
+      ['session_18_entry', 'qualitative_eval_pending'].includes(stateCode)
+      || code === 'instructor'
+    ) {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — خاتمه دروس تئوری (فرایند ۶۱)',
+      }
+    }
+  }
+
+  if (processCode === 'group_supervision_course_completion') {
+    if (
+      ['session_18_pass_fail_entry', 'ta_evaluation_entry', 'qualitative_eval_pending'].includes(stateCode)
+      || code === 'instructor'
+    ) {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — خاتمه سوپرویژن گروهی (فرایند ۶۲)',
+      }
+    }
+  }
+
+  if (processCode === 'upgrade_to_ta') {
+    if (stateCode === 'supervision_review' || code === 'supervision_committee') {
+      return {
+        href: committeeHref({ ...base, tab: 'reviews' }, 'supervision_committee'),
+        hintFa: 'پنل کمیته نظارت — ارتقا به کمک‌مدرس (فرایند ۴۷)',
+      }
+    }
+    if (
+      ['interview_scheduling', 'interview_held', 'track_selection'].includes(stateCode)
+      || ['course_committee', 'course_committee_scientific', 'course_committee_executive', 'scientific_officer_course_committee'].includes(code)
+    ) {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'course-committee'),
+        hintFa: 'پنل کمیته درس — مصاحبه/رسته ارتقا به کمک‌مدرس (فرایند ۴۷)',
+      }
+    }
+  }
+
+  if (processCode === 'thesis_defense_request') {
+    if (stateCode === 'progress_committee_review' || code === 'progress_committee') {
+      return {
+        href: committeeHref({ ...base, tab: 'reviews' }, 'progress_committee'),
+        hintFa: 'پنل کمیته پیشرفت — بررسی گزارش دفاع (فرایند ۷۰)',
+      }
+    }
+    if (stateCode === 'supervision_committee_review' || code === 'supervision_committee') {
+      return {
+        href: committeeHref({ ...base, tab: 'reviews' }, 'supervision_committee'),
+        hintFa: 'پنل کمیته نظارت — مجوز دفاع (فرایند ۷۰)',
+      }
+    }
+    if (
+      ['education_committee_scheduling', 'revision_upload'].includes(stateCode)
+      || code === 'education_committee'
+    ) {
+      return {
+        href: committeeHref({ ...base, tab: 'reviews' }, 'education_committee'),
+        hintFa: 'پنل کمیته آموزش — زمان‌بندی دفاع (فرایند ۷۰)',
+      }
+    }
+  }
+
+  if (processCode === 'ta_to_instructor_auto') {
+    if (
+      ['deputy_education', 'deputy_education_director'].includes(code)
+      || code === 'education'
+    ) {
+      return {
+        href: committeeHref({ ...base, tab: 'reviews' }, 'education'),
+        hintFa: 'پنل معاونت آموزش — گزارش ارتقای خودکار کمک‌مدرس به مدرس (فرایند ۵۰)',
+      }
+    }
+    return {
+      href: staffHref({ ...base, tab: 'pending' }, 'course-committee'),
+      hintFa: 'پنل کمیته درس — گزارش ارتقای خودکار کمک‌مدرس به مدرس (فرایند ۵۰)',
+    }
+  }
+
+  if (processCode === 'ta_essay_upload') {
+    if (['reference_center_editing', 'marketing_publication'].includes(stateCode)
+      || ['reference_center', 'marketing'].includes(code)) {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'content-ops'),
+        hintFa: 'پنل تولید محتوا — مرکز مرجع / مارکتینگ',
+      }
+    }
+    if (['ta_upload', 'instructor_review', 'rejected_revision'].includes(stateCode)
+      || ['teaching_assistant', 'instructor'].includes(code)) {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — آپلود جستار / بررسی مدرس',
+      }
+    }
+  }
+
+  if (processCode === 'mentor_private_sessions') {
+    if (['instructor_click', 'sessions_registered', 'process_complete'].includes(stateCode)
+      || ['instructor', 'teaching_assistant'].includes(code)) {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — ثبت تاریخ ۲ جلسه تدریس خصوصی (فرایند ۴۸)',
+      }
+    }
+    if (stateCode === 'deadline_missed' || code === 'course_committee_scientific') {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'course-committee'),
+        hintFa: 'کمیته دروس — هشدار عدم ثبت جلسات تدریس خصوصی',
+      }
+    }
+  }
+
   if (code === 'therapist') {
     return {
       href: `/panel/portal/therapist${qs({ ...base, tab: 'pending' })}`,

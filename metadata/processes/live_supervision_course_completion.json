@@ -5,96 +5,281 @@
     "name_en": "Live Supervision Course Completion",
     "number": 67,
     "description": "۱۵ عادی + ۳ پشت آینه؛ بسته ۱۸ جلسه؛ غیبت و پرداخت جبرانی؛ فرم پیاده‌سازی و ارزیابی؛ پایان شخصی‌سازی‌شده و ارزیابی کیفی سوال ۷ و ۸.",
-    "initial_state": "grades_entry",
+    "initial_state": "sessions_in_progress",
     "initial_role": "instructor",
     "requires_form": true
   },
   "states": [
     {
-      "code": "grades_entry",
-      "name_fa": "ثبت نمرات و ارزیابی",
+      "code": "sessions_in_progress",
+      "name_fa": "کلاس سوپرویژن زنده فعال",
       "type": "initial",
       "assigned_role": "instructor",
       "metadata": {
-        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
-        "operator_short_fa": "ثبت نمرات و ارزیابی"
-      },
-      "sla_days": 7
+        "operator_task_fa": "ثبت حضور دوگانه (عادی/پشت‌آینه) در هر جلسه؛ پیگیری پیشرفت ۱۵+۳ هر دانشجو.",
+        "operator_short_fa": "کلاس فعال — حضور دوگانه"
+      }
     },
     {
-      "code": "grades_locked",
-      "name_fa": "نمرات قفل شد",
+      "code": "mirror_implementation_pending",
+      "name_fa": "منتظر پیاده‌سازی جلسه پشت‌آینه (۵ روز)",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "operator_task_fa": "فرم پیاده‌سازی جلسه پشت‌آینه را تکمیل کنید.",
+        "operator_short_fa": "پیاده‌سازی پشت‌آینه"
+      },
+      "sla_days": 5
+    },
+    {
+      "code": "mirror_eval_pending",
+      "name_fa": "منتظر ارزیابی ۳ جلسه پشت‌آینه (۵ روز)",
+      "type": "intermediate",
+      "assigned_role": "instructor",
+      "metadata": {
+        "operator_task_fa": "فرم ارزیابی بالینی جلسات پشت‌آینه را تکمیل کنید.",
+        "operator_short_fa": "ارزیابی پشت‌آینه"
+      },
+      "sla_days": 5
+    },
+    {
+      "code": "final_eval_pending",
+      "name_fa": "منتظر ارزیابی نهایی کیفی (تا ۲۴:۰۰)",
+      "type": "intermediate",
+      "assigned_role": "instructor",
+      "metadata": {
+        "operator_task_fa": "فرم ارزیابی نهایی (سوال ۷ و ۸) را تکمیل کنید.",
+        "operator_short_fa": "ارزیابی نهایی"
+      },
+      "sla_days": 1
+    },
+    {
+      "code": "completed",
+      "name_fa": "درس تکمیل شد — ثبت در کارنامه",
       "type": "terminal",
       "assigned_role": "system"
     },
     {
-      "code": "delay_reported",
-      "name_fa": "تاخیر — گزارش به کمیته",
+      "code": "mirror_write_violation",
+      "name_fa": "تأخیر پیاده‌سازی پشت‌آینه — گزارش تخلف",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "mirror_eval_violation",
+      "name_fa": "تأخیر ارزیابی پشت‌آینه — گزارش تخلف",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "final_eval_delay",
+      "name_fa": "تأخیر ارزیابی نهایی — اطلاع کمیته دروس",
       "type": "terminal",
       "assigned_role": "system"
     }
   ],
   "transitions": [
     {
-      "from": "grades_entry",
-      "to": "grades_locked",
-      "trigger": "grades_submitted",
-      "required_role": "instructor",
-      "conditions": [
-        "course_grades_submitted_in_time"
-      ],
-      "description_fa": "ثبت نمرات — قفل",
+      "from": "sessions_in_progress",
+      "to": "mirror_implementation_pending",
+      "trigger": "mirror_attendance_recorded",
+      "required_role": "system",
+      "description_fa": "ثبت حضور پشت‌آینه — فعال‌سازی فرم پیاده‌سازی دانشجو"
+    },
+    {
+      "from": "mirror_implementation_pending",
+      "to": "sessions_in_progress",
+      "trigger": "mirror_write_submitted",
+      "required_role": "student",
+      "description_fa": "پیاده‌سازی پشت‌آینه ثبت شد"
+    },
+    {
+      "from": "mirror_implementation_pending",
+      "to": "mirror_write_violation",
+      "trigger": "sla_breach",
+      "conditions": ["live_supervision_mirror_write_sla_breach"],
+      "description_fa": "تأخیر ۵ روزه پیاده‌سازی — گزارش به کمیته نظارت",
+      "required_role": "system",
       "actions": [
-        {
-          "type": "record_course_grades"
-        }
+        {"type": "start_sub_process", "sub_process_code": "violation_registration"}
       ]
     },
     {
-      "from": "grades_entry",
-      "to": "delay_reported",
+      "from": "sessions_in_progress",
+      "to": "mirror_eval_pending",
+      "trigger": "third_mirror_recorded",
+      "required_role": "system",
+      "description_fa": "ثبت سومین جلسه پشت‌آینه — ارزیابی مدرس"
+    },
+    {
+      "from": "mirror_implementation_pending",
+      "to": "mirror_eval_pending",
+      "trigger": "third_mirror_recorded",
+      "required_role": "system",
+      "description_fa": "ثبت سومین پشت‌آینه (قبل از پیاده‌سازی) — ارزیابی مدرس"
+    },
+    {
+      "from": "mirror_eval_pending",
+      "to": "sessions_in_progress",
+      "trigger": "mirror_eval_submitted",
+      "required_role": "instructor",
+      "description_fa": "ارزیابی پشت‌آینه ثبت شد"
+    },
+    {
+      "from": "mirror_eval_pending",
+      "to": "mirror_eval_violation",
       "trigger": "sla_breach",
-      "conditions": [
-        "course_grades_sla_breach"
-      ],
-      "description_fa": "گذشت مهلت — گزارش",
+      "conditions": ["live_supervision_mirror_eval_sla_breach"],
+      "description_fa": "تأخیر ۵ روزه ارزیابی پشت‌آینه — گزارش به کمیته نظارت",
+      "required_role": "system",
+      "actions": [
+        {"type": "start_sub_process", "sub_process_code": "violation_registration"}
+      ]
+    },
+    {
+      "from": "sessions_in_progress",
+      "to": "final_eval_pending",
+      "trigger": "eighteenth_attendance_recorded",
+      "required_role": "system",
+      "description_fa": "ثبت هجدهمین حضور — ارزیابی نهایی کیفی"
+    },
+    {
+      "from": "mirror_eval_pending",
+      "to": "final_eval_pending",
+      "trigger": "eighteenth_attendance_recorded",
+      "required_role": "system",
+      "description_fa": "ثبت هجدهمین حضور حین ارزیابی پشت‌آینه"
+    },
+    {
+      "from": "final_eval_pending",
+      "to": "completed",
+      "trigger": "final_eval_submitted",
+      "required_role": "instructor",
+      "description_fa": "ارزیابی نهایی ثبت شد — خاتمه درس",
+      "actions": [
+        {
+          "type": "record_student_performance_traits",
+          "payload": {"source": "live_supervision_course_completion"}
+        },
+        {"type": "record_course_grades"}
+      ]
+    },
+    {
+      "from": "final_eval_pending",
+      "to": "final_eval_delay",
+      "trigger": "sla_breach",
+      "conditions": ["live_supervision_final_eval_same_day_breach"],
+      "description_fa": "تأخیر ارزیابی نهایی — SMS مسئول علمی کمیته دروس",
       "required_role": "system"
     }
   ],
   "forms": [
     {
-      "code": "live_supervision_grades_form",
-      "name_fa": "ثبت حضور و ارزیابی سوپرویژن زنده",
-      "used_in_state": "grades_entry",
+      "code": "mirror_session_write_form",
+      "name_fa": "پیاده‌سازی جلسه پشت‌آینه",
+      "used_in_state": "mirror_implementation_pending",
+      "note_fa": "لطفاً جلسه پشت آینه خود را پیاده‌سازی کنید. مهلت: ۵ روز پس از برگزاری جلسه.",
       "fields": [
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {"name": "mirror_session_index", "label_fa": "شماره جلسه پشت‌آینه", "type": "readonly"},
+        {"name": "mirror_session_date", "label_fa": "تاریخ جلسه", "type": "readonly"},
         {
-          "name": "course_name",
-          "label_fa": "نام درس",
-          "type": "readonly"
+          "name": "mirror_implementation_text",
+          "label_fa": "متن پیاده‌سازی جلسه پشت‌آینه",
+          "type": "textarea",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "mirror_sessions_eval_form",
+      "name_fa": "ارزیابی عملکرد پشت‌آینه (۳ جلسه)",
+      "used_in_state": "mirror_eval_pending",
+      "note_fa": "پس از ثبت سومین جلسه پشت‌آینه، ظرف ۵ روز ارزیابی بالینی را تکمیل کنید.",
+      "fields": [
+        {"name": "student_name", "label_fa": "نام دانشجو", "type": "readonly"},
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {
+          "name": "mirror_eval_score",
+          "label_fa": "نمره ارزیابی پشت‌آینه (۰–۱۰۰)",
+          "type": "number",
+          "required": true
         },
         {
-          "name": "students_grades",
-          "label_fa": "لیست دانشجویان و نمرات",
-          "type": "dynamic_list",
-          "fields": [
-            "student_name",
-            "student_id",
-            "grade"
+          "name": "mirror_eval_notes",
+          "label_fa": "توضیحات تکمیلی",
+          "type": "textarea"
+        }
+      ]
+    },
+    {
+      "code": "live_supervision_final_eval_form",
+      "name_fa": "ارزیابی نهایی کیفی سوپرویژن زنده",
+      "used_in_state": "final_eval_pending",
+      "note_fa": "پاسخ سوال ۷ و ۸ در جدول گزارش عملکرد دانشجو (کمیته نظارت) ثبت می‌شود. مهلت: تا ساعت ۲۴:۰۰ همان روز.",
+      "fields": [
+        {"name": "student_name", "label_fa": "نام دانشجو", "type": "readonly"},
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {
+          "name": "q7_has_positive",
+          "label_fa": "سوال ۷ — آیا ویژگی مثبت قابل توجهی مشاهده کردید؟",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "بله"},
+            {"value": "no", "label_fa": "خیر"}
           ]
+        },
+        {
+          "name": "q7_positive_traits",
+          "label_fa": "سوال ۷ — ویژگی‌های مثبت",
+          "type": "checkbox_list",
+          "options_source": {"type": "trait_catalog", "kind": "positive"},
+          "show_if": {"field": "q7_has_positive", "op": "eq", "value": "yes"},
+          "required_if": {"field": "q7_has_positive", "op": "eq", "value": "yes"},
+          "validation": {"min_selection": 1}
+        },
+        {
+          "name": "q7_positive_note",
+          "label_fa": "سوال ۷ — توضیح تکمیلی",
+          "type": "textarea",
+          "show_if": {"field": "q7_has_positive", "op": "eq", "value": "yes"}
+        },
+        {
+          "name": "q8_has_negative",
+          "label_fa": "سوال ۸ — آیا ویژگی منفی قابل توجهی مشاهده کردید؟",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "بله"},
+            {"value": "no", "label_fa": "خیر"}
+          ]
+        },
+        {
+          "name": "q8_negative_traits",
+          "label_fa": "سوال ۸ — ویژگی‌های منفی",
+          "type": "checkbox_list",
+          "options_source": {"type": "trait_catalog", "kind": "negative"},
+          "show_if": {"field": "q8_has_negative", "op": "eq", "value": "yes"},
+          "required_if": {"field": "q8_has_negative", "op": "eq", "value": "yes"},
+          "validation": {"min_selection": 1}
+        },
+        {
+          "name": "q8_negative_note",
+          "label_fa": "سوال ۸ — توضیح تکمیلی",
+          "type": "textarea",
+          "show_if": {"field": "q8_has_negative", "op": "eq", "value": "yes"}
         }
       ]
     }
   ],
   "scheduled_automation": {
     "mode": "instance_sla",
-    "completion_role": "instructor",
-    "sla_state": "grades_entry",
-    "sla_days": 7,
+    "completion_role": "student",
     "triggers": [
-      {
-        "event": "sla_breach",
-        "actor_role": "system"
-      }
+      {"event": "sla_breach", "state": "mirror_implementation_pending", "sla_days": 5},
+      {"event": "sla_breach", "state": "mirror_eval_pending", "sla_days": 5},
+      {"event": "sla_breach", "state": "final_eval_pending", "sla_days": 1}
     ]
   }
 }

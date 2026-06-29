@@ -295,7 +295,7 @@
           "name": "psychotic_report_file",
           "label_fa": "فایل گزارش تکمیل ۱۵۰ ساعت تجربه کاری با بیماران سایکوتیک (PDF)",
           "type": "file_upload",
-          "visible_when": "all_conditions_met"
+          "show_if": { "field": "all_conditions_met", "op": "truthy" }
         }
       ]
     },
@@ -326,7 +326,7 @@
           "name": "revision_notes",
           "label_fa": "توضیحات اصلاحی",
           "type": "textarea",
-          "visible_when": "decision == 'revision'"
+          "show_if": { "field": "decision", "op": "eq", "value": "revision" }
         }
       ]
     },
@@ -339,12 +339,14 @@
         {
           "name": "reviewer_1_id",
           "label_fa": "تعیین داور اول",
-          "type": "user_select"
+          "type": "select",
+          "options_source": { "type": "users", "role": "instructor" }
         },
         {
           "name": "reviewer_2_id",
           "label_fa": "تعیین داور دوم",
-          "type": "user_select"
+          "type": "select",
+          "options_source": { "type": "users", "role": "instructor" }
         },
         {
           "name": "defense_date",
@@ -355,6 +357,67 @@
           "name": "defense_time",
           "label_fa": "ساعت شروع جلسه",
           "type": "time_picker"
+        }
+      ]
+    },
+    {
+      "code": "report_revision_form",
+      "name_fa": "بارگذاری مجدد گزارش سایکوتیک (اصلاح‌شده)",
+      "used_in_state": "report_revision",
+      "fields": [
+        {
+          "name": "psychotic_report_file",
+          "label_fa": "فایل گزارش اصلاح‌شده (PDF)",
+          "type": "file_upload",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "supervision_permit_decision",
+      "name_fa": "صدور مجوز دفاع — کمیته نظارت",
+      "used_in_state": "supervision_committee_review",
+      "fields": [
+        {
+          "name": "permit_decision",
+          "label_fa": "تصمیم",
+          "type": "radio",
+          "options": [
+            { "value": "issue", "label_fa": "صدور مجوز دفاع" },
+            { "value": "deny", "label_fa": "عدم صدور مجوز" }
+          ]
+        },
+        {
+          "name": "permit_denial_reason",
+          "label_fa": "توضیحات (در صورت عدم مجوز)",
+          "type": "textarea",
+          "show_if": { "field": "permit_decision", "op": "eq", "value": "deny" }
+        }
+      ]
+    },
+    {
+      "code": "thesis_upload_form",
+      "name_fa": "بارگذاری پایان‌نامه / گزارش موردی",
+      "used_in_state": "thesis_upload",
+      "fields": [
+        {
+          "name": "thesis_file",
+          "label_fa": "فایل پایان‌نامه (PDF)",
+          "type": "file_upload",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "revised_thesis_upload_form",
+      "name_fa": "بارگذاری پایان‌نامه اصلاح‌شده",
+      "used_in_state": "revision_required",
+      "fields": [
+        {
+          "name": "revised_thesis_file",
+          "label_fa": "فایل پایان‌نامه اصلاح‌شده (PDF)",
+          "type": "file_upload",
+          "required": true
         }
       ]
     },

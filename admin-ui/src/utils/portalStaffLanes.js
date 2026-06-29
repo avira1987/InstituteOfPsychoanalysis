@@ -1,6 +1,6 @@
 /** تعریف laneهای پنل کارمند — مسیر، تب‌ها، assigned_roleهای مرتبط */
 
-export const STAFF_LANE_IDS = ['admissions', 'instruction', 'therapy-coord', 'course-committee']
+export const STAFF_LANE_IDS = ['admissions', 'instruction', 'content-ops', 'therapy-coord', 'course-committee']
 
 /** @type {Record<string, { id: string, path: string, label: string, title: string, subtitle: string, icon: string, tabIds: string[], assignedRoles: string[], allowedPortalRoles: string[], priority: number }>} */
 export const STAFF_LANES = {
@@ -12,7 +12,7 @@ export const STAFF_LANES = {
     subtitle: 'مدارک، مصاحبه و ثبت‌نام',
     icon: '📥',
     tabIds: ['pending', 'dashboard', 'documentsReview', 'interviewSlots', 'students'],
-    assignedRoles: ['admissions_officer', 'interviewer'],
+    assignedRoles: ['admissions_officer', 'admission_officer', 'interviewer'],
     allowedPortalRoles: ['admin', 'staff', 'interviewer'],
     priority: 23,
   },
@@ -27,6 +27,18 @@ export const STAFF_LANES = {
     assignedRoles: ['instructor', 'teaching_assistant', 'teaching_assistant_or_instructor'],
     allowedPortalRoles: ['admin', 'staff'],
     priority: 23.1,
+  },
+  'content-ops': {
+    id: 'content-ops',
+    path: '/panel/portal/staff/content-ops',
+    label: 'تولید محتوا',
+    title: 'پنل تولید محتوا',
+    subtitle: 'مرکز مرجع و مارکتینگ',
+    icon: '📝',
+    tabIds: ['pending', 'dashboard'],
+    assignedRoles: ['reference_center', 'marketing', 'admissions_officer'],
+    allowedPortalRoles: ['admin', 'staff'],
+    priority: 23.15,
   },
   'therapy-coord': {
     id: 'therapy-coord',
@@ -112,6 +124,12 @@ export function stateMatchesStaffLane(state, laneId, processCode) {
   if (!s) return false
   switch (laneId) {
     case 'admissions':
+      if (
+        processCode === 'live_supervision_session_prep'
+        || processCode === 'live_therapy_observation_session_prep'
+      ) {
+        return s === 'patient_referral'
+      }
       if (s === 'interview_completed') return true
       return (
         s.includes('staff') || s.includes('payment') || s.includes('office')
@@ -119,13 +137,53 @@ export function stateMatchesStaffLane(state, laneId, processCode) {
         || s.includes('registration')
       )
     case 'instruction':
+      if (processCode === 'class_attendance' || processCode === 'lesson_start_per_term') return true
+      if (processCode === 'class_session_cancellation') return true
+      if (processCode === 'mentor_private_sessions') return true
+      if (processCode === 'live_supervision_course_completion') return true
+      if (processCode === 'film_observation_ta_attendance_completion') return true
+      if (processCode === 'film_observation_course_completion') return true
+      if (processCode === 'skills_course_completion') return true
+      if (processCode === 'theory_course_completion') return true
+      if (processCode === 'group_supervision_course_completion') return true
+      if (processCode === 'ta_to_instructor_auto') return true
+      if (processCode === 'article_writing_completion') {
+        return ['course_active', 'instructor_eval_pending'].includes(s)
+      }
+      if (processCode && String(processCode).startsWith('ta_')) {
+        if (processCode === 'ta_essay_upload') {
+          return ['ta_upload', 'instructor_review', 'rejected_revision'].includes(s)
+        }
+        return true
+      }
       return (
         s.includes('instructor') || s.includes('teaching') || s.includes('grade')
         || s.includes('attendance') || s.includes('assignment') || s.includes('ta_')
       )
+    case 'content-ops':
+      if (processCode === 'ta_essay_upload') {
+        return ['reference_center_editing', 'marketing_publication'].includes(s)
+      }
+      return s.includes('reference_center') || s.includes('marketing_publication')
     case 'therapy-coord':
+      if (processCode === 'intern_bulk_patient_referral' && s === 'coordination_followup') return true
+      if (
+        (processCode === 'live_supervision_session_prep'
+          || processCode === 'live_therapy_observation_session_prep')
+        && s === 'coordination_pending'
+      ) {
+        return true
+      }
       return s.includes('therapy_education') || s.includes('therapy_coord') || s.includes('coordinator')
     case 'course-committee':
+      if (processCode === 'ta_to_instructor_auto') return true
+      if (processCode === 'class_session_cancellation') return true
+      if (
+        processCode === 'upgrade_to_ta'
+        && ['interview_scheduling', 'interview_held', 'track_selection'].includes(s)
+      ) {
+        return true
+      }
       if (processCode && (processCode.includes('semester') || processCode.includes('course'))) return true
       return s.includes('course_committee') || s.includes('course_list') || s.includes('calendar_entry')
     default:
@@ -137,6 +195,7 @@ export function staffLaneForAssignedRole(roleCode) {
   const code = (roleCode || '').trim()
   if (!code) return 'admissions'
   if (code === 'admission_officer') return 'admissions'
+  if (code === 'reference_center' || code === 'marketing') return 'content-ops'
   for (const id of STAFF_LANE_IDS) {
     if (STAFF_LANES[id].assignedRoles.includes(code)) return id
   }

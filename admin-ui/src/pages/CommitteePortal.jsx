@@ -26,11 +26,37 @@ import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBa
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
 import { mergeEducationalLeaveTriggerPayload } from '../utils/educationalLeaveTriggerPayload'
+import { mergeFullEducationLeaveTriggerPayload } from '../utils/fullEducationLeaveTriggerPayload'
 import { mergeCommitteesReviewTriggerPayload } from '../utils/committeesReviewTriggerPayload'
 import { mergeCommissionReviewTriggerPayload } from '../utils/commissionReviewTriggerPayload'
 import CommitteesReviewPanel from '../components/CommitteesReviewPanel'
 import UnannouncedAbsenceReactionPanel from '../components/UnannouncedAbsenceReactionPanel'
+import UnannouncedSupervisionAbsenceReactionPanel from '../components/UnannouncedSupervisionAbsenceReactionPanel'
 import SpecializedCommissionReviewPanel from '../components/SpecializedCommissionReviewPanel'
+import IntroductoryCourseCompletionReviewPanel from '../components/IntroductoryCourseCompletionReviewPanel'
+import TaToInstructorAutoReportPanel from '../components/TaToInstructorAutoReportPanel'
+import InternHoursIncreasePanel from '../components/InternHoursIncreasePanel'
+import StudentNonRegistrationReviewPanel from '../components/StudentNonRegistrationReviewPanel'
+import FullEducationLeaveCommitteeReviewPanel from '../components/FullEducationLeaveCommitteeReviewPanel'
+import ViolationRegistrationReviewPanel from '../components/ViolationRegistrationReviewPanel'
+import InstructorClassSessionCancellationPanel from '../components/InstructorClassSessionCancellationPanel'
+import ThesisDefenseProgressReviewPanel from '../components/ThesisDefenseProgressReviewPanel'
+import ThesisDefenseSupervisionReviewPanel from '../components/ThesisDefenseSupervisionReviewPanel'
+import ThesisDefenseEducationSchedulePanel from '../components/ThesisDefenseEducationSchedulePanel'
+import EducationalTherapistMonitoringReviewPanel from '../components/EducationalTherapistMonitoringReviewPanel'
+import EducationalTherapistInterviewPanel from '../components/EducationalTherapistInterviewPanel'
+import EducationalTherapistTherapistReviewPanel from '../components/EducationalTherapistTherapistReviewPanel'
+import TaToAssistantFacultyReviewPanel from '../components/TaToAssistantFacultyReviewPanel'
+import TaUpgradeSupervisionReviewPanel from '../components/TaUpgradeSupervisionReviewPanel'
+import { mergeEducationalTherapistUpgradeTriggerPayload } from '../utils/educationalTherapistUpgradeTriggerPayload'
+import { mergeTaToAssistantFacultyTriggerPayload } from '../utils/taToAssistantFacultyTriggerPayload'
+import { mergeUpgradeToTaTriggerPayload } from '../utils/upgradeToTaTriggerPayload'
+import { mergeTaTrackChangeTriggerPayload } from '../utils/taTrackChangeTriggerPayload'
+import TaTrackChangeCommitteePanel from '../components/TaTrackChangeCommitteePanel'
+import InternBulkPatientReferralSupervisionPanel from '../components/InternBulkPatientReferralSupervisionPanel'
+import InternBulkPatientReferralTherapyCommitteePanel from '../components/InternBulkPatientReferralTherapyCommitteePanel'
+import { mergeNonRegistrationTriggerPayload } from '../utils/nonRegistrationTriggerPayload'
+import { mergeReferralTriggerPayload } from '../utils/internBulkPatientReferralTriggerPayload'
 import {
   COMMITTEE_DEEP_LINK_TABS,
   COMMITTEE_DEFAULT_CONFIG,
@@ -136,6 +162,67 @@ export default function CommitteePortal() {
       if (user?.role === 'therapy_committee_chair' || user?.role === 'admin') return true
       return false
     }
+    if (
+      processCode === 'introductory_course_completion'
+      && state === 'certificate_review'
+    ) {
+      const kindRoles = kindMeta?.portalRoles || []
+      return user?.role === 'admin' || kindRoles.includes(user?.role)
+    }
+    if (
+      processCode === 'student_non_registration'
+      && ['list_generated', 'meeting_scheduled', 'meeting_held'].includes(state)
+    ) {
+      return user?.role === 'supervision_committee' || user?.role === 'admin'
+    }
+    if (processCode === 'upgrade_to_educational_therapist') {
+      if (state === 'monitoring_review') {
+        return user?.role === 'supervision_committee' || user?.role === 'admin'
+      }
+      if (
+        ['interview_scheduling', 'interview_held', 'therapist_committee_review', 'therapy_frequency_escalation'].includes(state)
+      ) {
+        return user?.role === 'education_committee' || user?.role === 'admin'
+      }
+      return false
+    }
+    if (processCode === 'upgrade_to_ta') {
+      if (state === 'supervision_review') {
+        return user?.role === 'supervision_committee' || user?.role === 'admin'
+      }
+      return false
+    }
+    if (processCode === 'ta_to_assistant_faculty' && state === 'supervision_review') {
+      return user?.role === 'supervision_committee' || user?.role === 'admin'
+    }
+    if (processCode === 'intern_bulk_patient_referral') {
+      if (state === 'supervision_start' && (user?.role === 'supervision_committee' || user?.role === 'admin')) {
+        return true
+      }
+      if (
+        state === 'general_therapy_committee_review'
+        && (user?.role === 'therapy_committee_executor' || user?.role === 'admin')
+      ) {
+        return true
+      }
+      return false
+    }
+    if (processCode === 'internship_12month_conditional_review') {
+      if (user?.role === 'admin') return true
+      if (
+        state === 'interview_scheduling'
+        && (user?.role === 'progress_committee' || user?.role === 'progress_committee_project')
+      ) {
+        return true
+      }
+      if (
+        state === 'interview_held'
+        && (user?.role === 'progress_committee' || user?.role === 'progress_committee_scientific')
+      ) {
+        return true
+      }
+      return false
+    }
     const keywordMatch = config.reviewKeywords.some((kw) => {
       if (!state.includes(kw)) return false
       if (kw === 'interview_completed' && processCode !== 'comprehensive_course_registration') {
@@ -212,6 +299,16 @@ export default function CommitteePortal() {
         return
       }
       payload = leaveMerge.payload
+      const fullLeaveMerge = mergeFullEducationLeaveTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (fullLeaveMerge.error) {
+        showToast(fullLeaveMerge.error, 'error')
+        return
+      }
+      payload = fullLeaveMerge.payload
       const committeesMerge = mergeCommitteesReviewTriggerPayload(
         instanceDetail,
         triggerEvent,
@@ -232,6 +329,66 @@ export default function CommitteePortal() {
         return
       }
       payload = commissionMerge.payload
+      const nonRegMerge = mergeNonRegistrationTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (nonRegMerge.error) {
+        showToast(nonRegMerge.error, 'error')
+        return
+      }
+      payload = nonRegMerge.payload
+      const referralMerge = mergeReferralTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (referralMerge.error) {
+        showToast(referralMerge.error, 'error')
+        return
+      }
+      payload = referralMerge.payload
+      const etUpgradeMerge = mergeEducationalTherapistUpgradeTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (etUpgradeMerge.error) {
+        showToast(etUpgradeMerge.error, 'error')
+        return
+      }
+      payload = etUpgradeMerge.payload
+      const taAssistantMerge = mergeTaToAssistantFacultyTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (taAssistantMerge.error) {
+        showToast(taAssistantMerge.error, 'error')
+        return
+      }
+      payload = taAssistantMerge.payload
+      const taUpgradeMerge = mergeUpgradeToTaTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (taUpgradeMerge.error) {
+        showToast(taUpgradeMerge.error, 'error')
+        return
+      }
+      payload = taUpgradeMerge.payload
+      const taTrackMerge = mergeTaTrackChangeTriggerPayload(
+        instanceDetail,
+        triggerEvent,
+        payload,
+      )
+      if (taTrackMerge.error) {
+        showToast(taTrackMerge.error, 'error')
+        return
+      }
+      payload = taTrackMerge.payload
       payload = mergeInterviewBranchPayload(payload, toState, triggerEvent)
       if (
         instanceDetail?.process_code === 'comprehensive_course_registration'
@@ -555,8 +712,38 @@ export default function CommitteePortal() {
               />
 
               <CommitteesReviewPanel detail={instanceDetail} />
+              <IntroductoryCourseCompletionReviewPanel detail={instanceDetail} user={user} />
+              <TaToInstructorAutoReportPanel
+                detail={instanceDetail}
+                active={instanceDetail?.process_code === 'ta_to_instructor_auto'}
+                audience="committee"
+              />
               <SpecializedCommissionReviewPanel detail={instanceDetail} />
               <UnannouncedAbsenceReactionPanel detail={instanceDetail} />
+              <UnannouncedSupervisionAbsenceReactionPanel detail={instanceDetail} />
+              <InternHoursIncreasePanel detail={instanceDetail} />
+              <StudentNonRegistrationReviewPanel detail={instanceDetail} />
+              <FullEducationLeaveCommitteeReviewPanel detail={instanceDetail} />
+              <ViolationRegistrationReviewPanel
+                detail={instanceDetail}
+                studentExtraData={instanceDetail?.student_extra_data}
+              />
+              <InstructorClassSessionCancellationPanel
+                detail={instanceDetail}
+                active={instanceDetail?.process_code === 'class_session_cancellation'}
+                allowAllCourses
+              />
+              <ThesisDefenseProgressReviewPanel detail={instanceDetail} />
+              <ThesisDefenseSupervisionReviewPanel detail={instanceDetail} />
+              <ThesisDefenseEducationSchedulePanel detail={instanceDetail} />
+              <EducationalTherapistMonitoringReviewPanel detail={instanceDetail} user={user} />
+              <EducationalTherapistInterviewPanel detail={instanceDetail} user={user} />
+              <TaTrackChangeCommitteePanel detail={instanceDetail} user={user} />
+              <EducationalTherapistTherapistReviewPanel detail={instanceDetail} user={user} />
+              <TaUpgradeSupervisionReviewPanel detail={instanceDetail} user={user} />
+              <TaToAssistantFacultyReviewPanel detail={instanceDetail} user={user} />
+              <InternBulkPatientReferralSupervisionPanel detail={instanceDetail} />
+              <InternBulkPatientReferralTherapyCommitteePanel detail={instanceDetail} />
 
               <InstanceContextSummary
                 contextData={instanceDetail.context_data}
@@ -639,7 +826,9 @@ export default function CommitteePortal() {
                   borderRadius: '10px', marginBottom: '1.5rem', borderRight: '4px solid var(--success)',
                 }}>
                   <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--success)' }}>
-                    تصمیم کمیته
+                    {instanceDetail.process_code === 'specialized_commission_review'
+                      ? 'تصمیم کمیسیون تخصصی'
+                      : 'تصمیم کمیته'}
                   </h4>
                   <DecisionNotesBlock
                     value={decisionNotes}

@@ -218,6 +218,22 @@ class StateMachineEngine:
                     instance.id,
                 )
 
+        if process_code in ("educational_leave", "full_education_leave"):
+            try:
+                await self.db.flush()
+                from app.services.student_non_registration_chaining import (
+                    maybe_advance_non_registration_on_leave_start,
+                )
+
+                await maybe_advance_non_registration_on_leave_start(
+                    self.db, self, student_id, process_code, actor_id,
+                )
+            except Exception:
+                logger.exception(
+                    "student_non_registration leave chain on start failed (instance=%s)",
+                    instance.id,
+                )
+
         if process_code == "therapy_completion":
             try:
                 await self.db.flush()
@@ -225,6 +241,42 @@ class StateMachineEngine:
             except Exception:
                 logger.exception(
                     "therapy_completion initial snapshot failed (instance=%s)",
+                    instance.id,
+                )
+
+        if process_code == "ta_to_assistant_faculty":
+            try:
+                await self.db.flush()
+                from app.services.ta_to_assistant_faculty_service import propagate_on_start
+
+                await propagate_on_start(self.db, instance, actor_id=actor_id)
+            except Exception:
+                logger.exception(
+                    "ta_to_assistant_faculty propagate on start failed (instance=%s)",
+                    instance.id,
+                )
+
+        if process_code == "return_to_full_education":
+            try:
+                await self.db.flush()
+                from app.services.return_to_full_education_service import propagate_on_start
+
+                await propagate_on_start(self.db, instance)
+            except Exception:
+                logger.exception(
+                    "return_to_full_education propagate on start failed (instance=%s)",
+                    instance.id,
+                )
+
+        if process_code == "full_education_leave":
+            try:
+                await self.db.flush()
+                from app.services.full_education_leave_service import propagate_on_start
+
+                await propagate_on_start(self.db, instance)
+            except Exception:
+                logger.exception(
+                    "full_education_leave propagate on start failed (instance=%s)",
                     instance.id,
                 )
 
@@ -283,6 +335,15 @@ class StateMachineEngine:
             if ts and ts in _INTERVIEW_RESULT_BY_TO_STATE:
                 payload = {**payload, "interview_result": _INTERVIEW_RESULT_BY_TO_STATE[ts]}
 
+        if instance.process_code in (
+            "live_supervision_session_prep",
+            "live_therapy_observation_session_prep",
+        ):
+            if trigger_event == "time_registered":
+                payload = {**payload, "session_time_registered": True}
+            elif trigger_event == "no_time_agreed":
+                payload = {**payload, "session_time_registered": False}
+
         if (
             actor_role in ("student", "applicant")
             and trigger_event == "proceed_to_payment"
@@ -293,6 +354,23 @@ class StateMachineEngine:
                 raise InvalidTransitionError(
                     "اول باید زمان مصاحبه را از همین صفحه رزرو کنید؛ وقت رزروشده به این مسیر وصل نشده است."
                 )
+
+        if (
+            instance.process_code == "upgrade_to_ta"
+            and instance.current_state_code == "student_click"
+            and trigger_event == "conditions_met"
+        ):
+            from app.services.ta_upgrade_service import (
+                build_ta_upgrade_context,
+                validate_conditions_met_trigger,
+            )
+
+            ta_ctx = await build_ta_upgrade_context(
+                self.db, instance.student_id, instance.context_data or {}
+            )
+            err = validate_conditions_met_trigger(ta_ctx)
+            if err:
+                raise InvalidTransitionError(err)
 
         if instance.process_code == "introductory_course_registration":
             # ثبت نتیجهٔ مصاحبه/پیشروی مصاحبه‌گر نباید با قفل ثبت‌نام (انتشار تقویم) مسدود شود؛
@@ -382,6 +460,82 @@ class StateMachineEngine:
                         error=perr,
                     )
 
+        if (
+            instance.process_code == "supervision_session_reduction"
+            and trigger_event == "sessions_selected"
+            and transition.to_state_code == "multi_reduction_completed"
+        ):
+            from app.services.action_handler import validate_supervision_reduction_preflight
+
+            st_stmt = select(Student).where(Student.id == instance.student_id)
+            st_res = await self.db.execute(st_stmt)
+            st_student = st_res.scalars().first()
+            if st_student:
+                perr = await validate_supervision_reduction_preflight(
+                    self.db, instance, payload or {}, st_student
+                )
+                if perr:
+                    return TransitionResult(
+                        success=False,
+                        from_state=current_state,
+                        trigger_event=trigger_event,
+                        rule_results=rule_results,
+                        error=perr,
+                    )
+
+        if instance.process_code == "supervisor_session_cancellation":
+            from app.services.supervisor_session_cancellation_service import (
+                validate_supervisor_makeup_time,
+                validate_supervisor_session_selection,
+            )
+
+            merged_p = {**self._as_mapping(instance.context_data), **(payload or {})}
+            sup_user_id = None
+            st_row = await self.db.get(Student, instance.student_id)
+            if st_row and st_row.supervisor_id:
+                sup_user_id = st_row.supervisor_id
+
+            if trigger_event == "session_selected":
+                sel = merged_p.get("selected_session")
+                serr = await validate_supervisor_session_selection(
+                    self.db,
+                    instance.student_id,
+                    sel,
+                    supervisor_user_id=sup_user_id,
+                )
+                if serr:
+                    return TransitionResult(
+                        success=False,
+                        from_state=current_state,
+                        trigger_event=trigger_event,
+                        rule_results=rule_results,
+                        error=serr,
+                    )
+            elif trigger_event in ("makeup_date_entered", "supervisor_entered_new_time"):
+                if merged_p.get("makeup_option") == "no_makeup":
+                    pass
+                else:
+                    pd = merged_p.get("proposed_date")
+                    pt = merged_p.get("proposed_time")
+                    merr = await validate_supervisor_makeup_time(pd, pt)
+                    if merr:
+                        return TransitionResult(
+                            success=False,
+                            from_state=current_state,
+                            trigger_event=trigger_event,
+                            rule_results=rule_results,
+                            error=merr,
+                        )
+            elif trigger_event == "student_counter_proposed":
+                if not str(merged_p.get("counter_proposal_text") or "").strip():
+                    return TransitionResult(
+                        success=False,
+                        from_state=current_state,
+                        trigger_event=trigger_event,
+                        rule_results=rule_results,
+                        error="لطفاً تاریخ و ساعت پیشنهادی خود را در توضیحات بنویسید.",
+                    )
+
         if instance.process_code == "student_session_cancellation" and trigger_event in (
             "student_selects_sessions",
             "student_confirms",
@@ -409,6 +563,48 @@ class StateMachineEngine:
                 except (TypeError, ValueError):
                     require_ack = False
             serr = await validate_student_cancellation_selection(
+                self.db,
+                instance.student_id,
+                selected_raw,
+                require_violation_ack=require_ack,
+                violation_ack=bool(merged_p.get("violation_ack")),
+            )
+            if serr:
+                return TransitionResult(
+                    success=False,
+                    from_state=current_state,
+                    trigger_event=trigger_event,
+                    rule_results=rule_results,
+                    error=serr,
+                )
+
+        if instance.process_code == "student_supervision_cancellation" and trigger_event in (
+            "student_selects_sessions",
+            "student_confirms",
+        ):
+            from app.services.student_supervision_cancellation_service import (
+                get_supervision_cancellation_stats,
+                parse_supervision_instance_id_list,
+                validate_student_supervision_cancellation_selection,
+            )
+
+            merged_p = {**self._as_mapping(instance.context_data), **(payload or {})}
+            selected_raw = merged_p.get("selected_sessions")
+            require_ack = False
+            if trigger_event == "student_confirms":
+                pct = merged_p.get("cancellation_percent_after")
+                if pct is None:
+                    stats = await get_supervision_cancellation_stats(
+                        self.db,
+                        instance.student_id,
+                        len(parse_supervision_instance_id_list(selected_raw)),
+                    )
+                    pct = stats.get("cancellation_percent_after")
+                try:
+                    require_ack = float(pct or 0) > 12
+                except (TypeError, ValueError):
+                    require_ack = False
+            serr = await validate_student_supervision_cancellation_selection(
                 self.db,
                 instance.student_id,
                 selected_raw,
@@ -475,6 +671,11 @@ class StateMachineEngine:
                     ctx["leave_terms"] = int(ctx["leave_terms"])
                 except (TypeError, ValueError):
                     pass
+            if instance.process_code == "full_education_leave" and "leave_terms" in ctx:
+                try:
+                    ctx["leave_terms"] = int(ctx["leave_terms"])
+                except (TypeError, ValueError):
+                    pass
             if trigger_event == "documents_approved":
                 ctx.pop("__documents_resubmit_fields", None)
                 ctx.pop("__document_field_status", None)
@@ -508,6 +709,59 @@ class StateMachineEngine:
                 ).date().isoformat()
             instance.context_data = ctx
             flag_modified(instance, "context_data")
+
+        if instance.process_code == "ta_track_change" and trigger_event == "approved":
+            try:
+                from app.models.operational_models import Student
+                from app.services.ta_track_change_service import apply_track_change
+
+                student = await self.db.get(Student, instance.student_id)
+                ctx_apply = dict(self._as_mapping(instance.context_data))
+                path = str(ctx_apply.get("path") or (payload or {}).get("path") or "")
+                new_tracks = ctx_apply.get("new_tracks") or (payload or {}).get("new_tracks") or []
+                ta_user = None
+                if student and student.user_id:
+                    ta_user = await self.db.get(User, student.user_id)
+                if student:
+                    result_apply = await apply_track_change(
+                        self.db,
+                        student,
+                        path=path,
+                        new_tracks=new_tracks if isinstance(new_tracks, list) else [new_tracks],
+                        ta_user=ta_user,
+                    )
+                    ctx_apply["applied_tracks"] = result_apply.get("applied_tracks")
+                    instance.context_data = ctx_apply
+                    flag_modified(instance, "context_data")
+            except ValueError as e:
+                raise InvalidTransitionError(str(e)) from e
+            except Exception:
+                logger.exception(
+                    "ta_track_change apply failed (instance=%s)",
+                    instance.id,
+                )
+
+        if instance.process_code == "supervisor_session_cancellation" and payload:
+            try:
+                from app.services.supervisor_session_cancellation_service import (
+                    resolve_selected_supervision_session,
+                )
+                sel = (payload or {}).get("selected_session") or self._as_mapping(
+                    instance.context_data
+                ).get("selected_session")
+                if sel:
+                    detail = await resolve_selected_supervision_session(
+                        self.db, instance.student_id, sel
+                    )
+                    if detail:
+                        ctx_sc = dict(self._as_mapping(instance.context_data))
+                        ctx_sc.update(detail)
+                        instance.context_data = ctx_sc
+                        flag_modified(instance, "context_data")
+            except Exception:
+                logger.exception(
+                    "supervisor_session_cancellation enrich after transition failed"
+                )
 
         if instance.process_code == "therapy_changes" and transition.to_state_code in (
             "change_approved",
@@ -669,6 +923,24 @@ class StateMachineEngine:
                     instance.id,
                 )
 
+        if instance.process_code == "ta_track_change":
+            try:
+                from app.services.ta_track_change_chaining import chain_ta_track_change_after_transition
+
+                await chain_ta_track_change_after_transition(
+                    self.db,
+                    self,
+                    instance,
+                    transition.to_state_code,
+                    actor_id,
+                )
+                instance = await self.get_process_instance(instance_id)
+            except Exception:
+                logger.exception(
+                    "ta_track_change chain failed (instance=%s)",
+                    instance.id,
+                )
+
         if (
             transition.to_state_code == "registration_complete"
             and instance.process_code == "introductory_course_registration"
@@ -696,6 +968,52 @@ class StateMachineEngine:
             except Exception:
                 logger.exception(
                     "Follow-up after start_therapy therapy_active failed (instance=%s)",
+                    instance.id,
+                )
+
+        if (
+            transition.to_state_code == "therapy_completed"
+            and instance.process_code == "return_to_full_education"
+        ):
+            try:
+                from app.services.return_to_full_education_service import branch_after_therapy_payment
+
+                actor = actor_id
+                await branch_after_therapy_payment(self.db, self, instance, actor)
+                instance = await self.get_process_instance(instance_id)
+            except Exception:
+                logger.exception(
+                    "return_to_full_education branch after therapy failed (instance=%s)",
+                    instance.id,
+                )
+
+        if (
+            transition.to_state_code == "registration_unlocked"
+            and instance.process_code == "return_to_full_education"
+        ):
+            try:
+                from app.services.return_to_full_education_service import finalize_registration_unlock
+
+                await finalize_registration_unlock(self.db, self, instance, actor_id)
+                instance = await self.get_process_instance(instance_id)
+            except Exception:
+                logger.exception(
+                    "return_to_full_education finalize failed (instance=%s)",
+                    instance.id,
+                )
+
+        if (
+            transition.to_state_code == "therapist_assignment"
+            and instance.process_code == "full_education_leave"
+        ):
+            try:
+                from app.services.full_education_leave_service import maybe_skip_therapist_assignment
+
+                await maybe_skip_therapist_assignment(self.db, self, instance, actor_id)
+                instance = await self.get_process_instance(instance_id)
+            except Exception:
+                logger.exception(
+                    "full_education_leave therapist skip failed (instance=%s)",
                     instance.id,
                 )
 
@@ -739,6 +1057,77 @@ class StateMachineEngine:
             except Exception:
                 logger.exception(
                     "therapy_changes parent propagation failed (instance=%s)",
+                    instance.id,
+                )
+
+        if instance.process_code == "student_non_registration":
+            try:
+                from app.services.student_non_registration_chaining import (
+                    chain_student_non_registration_after_transition,
+                )
+
+                await chain_student_non_registration_after_transition(
+                    self.db,
+                    self,
+                    instance,
+                    transition.to_state_code,
+                    actor_id,
+                )
+                instance = await self.get_process_instance(instance_id)
+            except Exception:
+                logger.exception(
+                    "student_non_registration chain failed (instance=%s)",
+                    instance.id,
+                )
+
+        if instance.process_code == "intern_bulk_patient_referral":
+            try:
+                from app.services.intern_bulk_patient_referral_chaining import (
+                    chain_intern_bulk_referral_after_transition,
+                )
+
+                await chain_intern_bulk_referral_after_transition(
+                    self.db,
+                    self,
+                    instance,
+                    transition.to_state_code,
+                    actor_id,
+                    payload,
+                )
+                instance = await self.get_process_instance(instance_id)
+            except Exception:
+                logger.exception(
+                    "intern_bulk_patient_referral chain failed (instance=%s)",
+                    instance.id,
+                )
+
+        if instance.process_code == "ta_to_assistant_faculty":
+            try:
+                from app.services.ta_to_assistant_faculty_service import chain_after_transition
+
+                await chain_after_transition(
+                    self.db,
+                    instance,
+                    transition.to_state_code,
+                )
+            except Exception:
+                logger.exception(
+                    "ta_to_assistant_faculty chain failed (instance=%s)",
+                    instance.id,
+                )
+
+        if instance.process_code in ("comprehensive_term_start", "intro_second_semester_registration"):
+            try:
+                from app.services.student_non_registration_chaining import (
+                    maybe_advance_non_registration_on_term_registration,
+                )
+
+                await maybe_advance_non_registration_on_term_registration(
+                    self.db, self, instance, actor_id,
+                )
+            except Exception:
+                logger.exception(
+                    "student_non_registration registration chain failed (instance=%s)",
                     instance.id,
                 )
 
@@ -899,6 +1288,13 @@ class StateMachineEngine:
                 logger.exception(
                     "therapy_session_reduction context for status failed (instance=%s)", instance.id
                 )
+        if instance.process_code == "supervision_session_reduction":
+            try:
+                ctx_out = await self._merge_supervision_session_reduction_instance_context(instance, ctx_out)
+            except Exception:
+                logger.exception(
+                    "supervision_session_reduction context for status failed (instance=%s)", instance.id
+                )
         if instance.process_code == "student_session_cancellation":
             try:
                 ctx_out = await self._merge_student_session_cancellation_context(instance, ctx_out)
@@ -906,8 +1302,101 @@ class StateMachineEngine:
                 logger.exception(
                     "student_session_cancellation context for status failed (instance=%s)", instance.id
                 )
+        if instance.process_code == "student_supervision_cancellation":
+            try:
+                ctx_out = await self._merge_student_supervision_cancellation_context(instance, ctx_out)
+            except Exception:
+                logger.exception(
+                    "student_supervision_cancellation context for status failed (instance=%s)", instance.id
+                )
+        if instance.process_code == "supervisor_session_cancellation":
+            try:
+                ctx_out = await self._merge_supervisor_session_cancellation_context(instance, ctx_out)
+            except Exception:
+                logger.exception(
+                    "supervisor_session_cancellation context for status failed (instance=%s)", instance.id
+                )
+        if instance.process_code == "class_session_cancellation":
+            try:
+                ctx_out = await self._merge_class_session_cancellation_context(instance, ctx_out)
+            except Exception:
+                logger.exception(
+                    "class_session_cancellation context for status failed (instance=%s)", instance.id
+                )
+        if instance.process_code == "upgrade_to_educational_therapist":
+            try:
+                from app.services.educational_therapist_upgrade_service import build_et_upgrade_context
 
-        return {
+                et_ctx = await build_et_upgrade_context(
+                    self.db, instance.student_id, ctx_out
+                )
+                ctx_out = {**ctx_out, **et_ctx}
+            except Exception:
+                logger.exception(
+                    "upgrade_to_educational_therapist context for status failed (instance=%s)", instance.id
+                )
+        if instance.process_code == "upgrade_to_ta":
+            try:
+                from app.services.ta_upgrade_service import build_ta_upgrade_context
+
+                ta_ctx = await build_ta_upgrade_context(
+                    self.db, instance.student_id, ctx_out
+                )
+                ctx_out = {**ctx_out, **ta_ctx}
+            except Exception:
+                logger.exception(
+                    "upgrade_to_ta context for status failed (instance=%s)", instance.id
+                )
+        if instance.process_code == "ta_track_change":
+            try:
+                from app.services.ta_track_change_service import build_ta_track_change_context
+
+                ttc_ctx = await build_ta_track_change_context(
+                    self.db, instance.student_id, ctx_out
+                )
+                ctx_out = {**ctx_out, **ttc_ctx}
+            except Exception:
+                logger.exception(
+                    "ta_track_change context for status failed (instance=%s)", instance.id
+                )
+        if instance.process_code == "ta_to_assistant_faculty":
+            try:
+                from app.services.ta_to_assistant_faculty_service import build_ta_assistant_faculty_context
+
+                taf_ctx = await build_ta_assistant_faculty_context(
+                    self.db, instance.student_id, ctx_out
+                )
+                ctx_out = {**ctx_out, **taf_ctx}
+            except Exception:
+                logger.exception(
+                    "ta_to_assistant_faculty context for status failed (instance=%s)", instance.id
+                )
+        if instance.process_code == "intern_bulk_patient_referral":
+            try:
+                ctx_out = self._merge_intern_bulk_patient_referral_context(ctx_out)
+            except Exception:
+                logger.exception(
+                    "intern_bulk_patient_referral context for status failed (instance=%s)", instance.id
+                )
+        if instance.process_code == "thesis_defense_request":
+            try:
+                fresh = await self._thesis_defense_resolved_fields(instance)
+                ctx_out = {**ctx_out, **fresh}
+            except Exception:
+                logger.exception(
+                    "thesis_defense_request fresh context for status failed (instance=%s)", instance.id
+                )
+
+        student_extra_data = None
+        if instance.process_code == "violation_registration" and instance.student_id:
+            st_row = await self.db.get(Student, instance.student_id)
+            if st_row and st_row.extra_data:
+                extra = self._as_mapping(st_row.extra_data)
+                student_extra_data = {
+                    "monitoring_performance_log": extra.get("monitoring_performance_log") or [],
+                }
+
+        result = {
             "instance_id": str(instance.id),
             "process_code": instance.process_code,
             "current_state": instance.current_state_code,
@@ -928,6 +1417,9 @@ class StateMachineEngine:
                 for h in history
             ],
         }
+        if student_extra_data is not None:
+            result["student_extra_data"] = student_extra_data
+        return result
 
     async def rollback_to_previous_state(
         self,
@@ -1235,6 +1727,73 @@ class StateMachineEngine:
         out["therapy_reduction_min_remove_count"] = 1
         return out
 
+    async def _merge_supervision_session_reduction_instance_context(
+        self, instance: ProcessInstance, merged: dict
+    ) -> dict:
+        """ساعات/آستانه‌ها و لیست جلسات هفتگی سوپرویژن برای فرم checkbox در پنل دانشجو."""
+        out = dict(merged)
+        stmt = select(Student).where(Student.id == instance.student_id)
+        result = await self.db.execute(stmt)
+        student = result.scalars().first()
+        if not student:
+            return out
+        extra = self._as_mapping(student.extra_data)
+        att = AttendanceService(self.db)
+        m = await att.get_therapy_completion_metrics(student.id)
+        out.setdefault("therapy_hours_2x", float(m["therapy_hours_2x"]))
+        out.setdefault("clinical_hours", float(m["clinical_hours"]))
+        out.setdefault("supervision_hours", float(m["supervision_hours"]))
+        out.setdefault("therapy_threshold", float(extra.get("therapy_threshold", 250)))
+        out.setdefault("clinical_threshold", float(extra.get("clinical_threshold", 750)))
+        out.setdefault("supervision_threshold", float(extra.get("supervision_threshold", 150)))
+
+        sup_weekly = out.get("supervision_weekly_sessions")
+        if sup_weekly is None:
+            sup_weekly = extra.get("supervision_weekly_sessions") or extra.get("weekly_supervision_sessions")
+        try:
+            ws = int(sup_weekly) if sup_weekly is not None else 1
+        except (TypeError, ValueError):
+            ws = 1
+        out["supervision_weekly_sessions"] = ws
+
+        lms = self._as_mapping(extra.get("lms"))
+        slots_raw = lms.get("supervision_weekly_slots")
+        upcoming: list[dict] = []
+        if isinstance(slots_raw, list) and slots_raw:
+            for i, slot in enumerate(slots_raw):
+                if isinstance(slot, dict):
+                    val = slot.get("id") or slot.get("value") or f"slot_{i + 1}"
+                    label = slot.get("label_fa") or slot.get("label") or str(val)
+                else:
+                    val = f"slot_{i + 1}"
+                    label = str(slot)
+                upcoming.append({"value": str(val), "label_fa": str(label)})
+        else:
+            default_days = ["دوشنبه", "چهارشنبه", "شنبه", "یکشنبه", "سه‌شنبه"]
+            default_times = ["10:00", "14:30", "16:00", "18:00", "11:00"]
+            for i in range(max(1, ws)):
+                day = default_days[i % len(default_days)]
+                tm = default_times[i % len(default_times)]
+                upcoming.append({
+                    "value": f"slot_{i + 1}",
+                    "label_fa": f"{day} — ساعت {tm} (جلسهٔ سوپرویژن هفتگی {i + 1})",
+                })
+
+        out["upcoming_supervision_sessions"] = upcoming
+        max_remove = max(0, ws - 1)
+        out["supervision_reduction_max_remove_count"] = max_remove
+        out["supervision_reduction_min_remove_count"] = 1 if max_remove > 0 else 0
+        return out
+
+    @staticmethod
+    def _merge_intern_bulk_patient_referral_context(merged: dict) -> dict:
+        """اطمینان از وجود patient_referral_rows در context برای prefill فرم‌ها."""
+        out = dict(merged)
+        rows = out.get("patient_referral_rows")
+        if not isinstance(rows, list):
+            out["patient_referral_rows"] = []
+        return out
+
     async def _merge_student_session_cancellation_context(
         self, instance: ProcessInstance, merged: dict
     ) -> dict:
@@ -1249,6 +1808,55 @@ class StateMachineEngine:
             instance.student_id,
             selected_sessions_raw=selected,
             display_weeks=3,
+        )
+        out.update(extra)
+        return out
+
+    async def _merge_student_supervision_cancellation_context(
+        self, instance: ProcessInstance, merged: dict
+    ) -> dict:
+        from app.services.student_supervision_cancellation_service import (
+            build_student_supervision_cancellation_context,
+        )
+
+        out = dict(merged)
+        selected = out.get("selected_sessions")
+        if not selected and isinstance(out.get("payload"), dict):
+            selected = out["payload"].get("selected_sessions")
+        extra = await build_student_supervision_cancellation_context(
+            self.db,
+            instance.student_id,
+            selected_sessions_raw=selected,
+            display_weeks=3,
+        )
+        out.update(extra)
+        return out
+
+    async def _merge_supervisor_session_cancellation_context(
+        self, instance: ProcessInstance, merged: dict
+    ) -> dict:
+        from app.services.supervisor_session_cancellation_service import (
+            build_supervisor_cancellation_context,
+        )
+
+        out = dict(merged)
+        extra = await build_supervisor_cancellation_context(self.db, instance)
+        out.update(extra)
+        return out
+
+    async def _merge_class_session_cancellation_context(
+        self, instance: ProcessInstance, merged: dict
+    ) -> dict:
+        from app.services.class_session_cancellation_service import (
+            build_class_session_cancellation_context,
+        )
+
+        out = dict(merged)
+        extra = await build_class_session_cancellation_context(
+            self.db,
+            None,
+            out,
+            student=await self.db.get(Student, instance.student_id),
         )
         out.update(extra)
         return out
@@ -1308,6 +1916,14 @@ class StateMachineEngine:
             "therapy_completion_preview_fa": preview_fa,
         }
 
+    async def _thesis_defense_resolved_fields(self, instance: ProcessInstance) -> dict:
+        """شروط چهارگانه دفاع پایان‌نامه — برای قوانین و UI."""
+        from app.services.thesis_defense_eligibility_service import (
+            build_thesis_defense_eligibility_context,
+        )
+
+        return await build_thesis_defense_eligibility_context(self.db, instance.student_id)
+
     async def _persist_therapy_completion_snapshot(self, instance: ProcessInstance) -> None:
         """ذخیرهٔ snapshot روی context_data برای اعلان‌ها و UI."""
         fields = await self._therapy_completion_resolved_fields(instance)
@@ -1340,6 +1956,7 @@ class StateMachineEngine:
         context = {
             "instance": {
                 "id": str(instance.id),
+                "student_id": str(instance.student_id),
                 "process_code": instance.process_code,
                 "current_state": instance.current_state_code,
                 **self._as_mapping(instance.context_data),
@@ -1387,6 +2004,17 @@ class StateMachineEngine:
             # hours_until_first_slot: for 24_hour_rule (use_first_slot vs use_next_slot)
             context["instance"]["hours_until_first_slot"] = await attendance.get_hours_until_first_slot(student.id)
 
+            # weeks_since_term_start — فرایند ۴۲ و قانون within_4_weeks_of_term_start
+            term_start_for_weeks = None
+            if extra.get("term_start_date"):
+                try:
+                    term_start_for_weeks = date.fromisoformat(str(extra["term_start_date"])[:10])
+                except (TypeError, ValueError):
+                    pass
+            if term_start_for_weeks is not None:
+                delta_days = (date.today() - term_start_for_weeks).days
+                context["instance"]["weeks_since_term_start"] = max(0, delta_days // 7)
+
         # تاریخ امروز (UTC) برای قوانین مقایسهٔ سررسید اقساط و مشابه
         context["instance"]["calendar_today"] = datetime.now(timezone.utc).date().isoformat()
 
@@ -1394,6 +2022,11 @@ class StateMachineEngine:
         # و context_data تا بعد از موفقیت ترنزیشن ذخیره نمی‌شود — بدون این ادغام، شرط‌های نتیجهٔ مصاحبه همیشه fail می‌شوند.
         if payload and isinstance(payload, dict):
             context["instance"].update(payload)
+
+        if instance.process_code == "theory_course_completion" and payload and isinstance(payload, dict):
+            from app.services.theory_course_completion_service import enrich_transition_context
+
+            enrich_transition_context(context["instance"], payload)
 
         # introductory_course_registration: چهار شاخه با یک trigger — اگر UI فقط to_state بفرستد
         if (
@@ -1452,6 +2085,30 @@ class StateMachineEngine:
             )
             context["instance"].update(sc_ctx)
 
+        if instance.process_code == "student_supervision_cancellation":
+            from app.services.student_supervision_cancellation_service import (
+                build_student_supervision_cancellation_context,
+            )
+
+            sel = context["instance"].get("selected_sessions")
+            if not sel and isinstance(payload, dict):
+                sel = payload.get("selected_sessions")
+            ssc_ctx = await build_student_supervision_cancellation_context(
+                self.db,
+                instance.student_id,
+                selected_sessions_raw=sel,
+                display_weeks=3,
+            )
+            context["instance"].update(ssc_ctx)
+
+        if instance.process_code == "supervisor_session_cancellation":
+            from app.services.supervisor_session_cancellation_service import (
+                build_supervisor_cancellation_context,
+            )
+
+            scc_ctx = await build_supervisor_cancellation_context(self.db, instance)
+            context["instance"].update(scc_ctx)
+
         if instance.process_code == "attendance_tracking":
             inst = context["instance"]
             raw_sid = inst.get("therapy_session_id") or inst.get("session_id")
@@ -1486,5 +2143,39 @@ class StateMachineEngine:
                 sp = inst.get("supervision_session_paid")
                 if sp is not None:
                     inst["session_paid"] = bool(sp)
+
+        if instance.process_code == "upgrade_to_educational_therapist":
+            from app.services.educational_therapist_upgrade_service import build_et_upgrade_context
+
+            et_ctx = await build_et_upgrade_context(
+                self.db,
+                instance.student_id,
+                context["instance"],
+            )
+            context["instance"].update(et_ctx)
+
+        if instance.process_code == "upgrade_to_ta":
+            from app.services.ta_upgrade_service import build_ta_upgrade_context
+
+            ta_ctx = await build_ta_upgrade_context(
+                self.db,
+                instance.student_id,
+                context["instance"],
+            )
+            context["instance"].update(ta_ctx)
+
+        if instance.process_code == "ta_to_assistant_faculty":
+            from app.services.ta_to_assistant_faculty_service import build_ta_assistant_faculty_context
+
+            taf_ctx = await build_ta_assistant_faculty_context(
+                self.db,
+                instance.student_id,
+                context["instance"],
+            )
+            context["instance"].update(taf_ctx)
+
+        if instance.process_code == "thesis_defense_request":
+            td_ctx = await self._thesis_defense_resolved_fields(instance)
+            context["instance"].update(td_ctx)
 
         return context

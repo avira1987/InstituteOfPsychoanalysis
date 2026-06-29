@@ -22,7 +22,7 @@
       "assigned_role": "teaching_assistant",
       "sla_hours": 24,
       "metadata": {
-        "operator_task_fa": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+        "operator_task_fa": "قالب خام را دانلود کنید؛ جستار و دقایق منتخب را در Word بنویسید و هر دو فرمت Word و PDF را آپلود کنید.",
         "operator_short_fa": "آپلود جستار و دقایق منتخب"
       }
     },
@@ -33,7 +33,7 @@
       "assigned_role": "instructor",
       "sla_days": 4,
       "metadata": {
-        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
+        "operator_task_fa": "فایل‌های آپلودشده را بررسی کنید؛ «قابل قبول» یا «غیر قابل قبول» (با توضیح اجباری در صورت رد).",
         "operator_short_fa": "تایید علمی توسط مدرس"
       }
     },
@@ -42,14 +42,36 @@
       "name_fa": "رد — اصلاح",
       "type": "intermediate",
       "assigned_role": "teaching_assistant",
+      "sla_hours": 24,
       "metadata": {
-        "operator_task_fa": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست.",
+        "operator_task_fa": "بازخورد مدرس را ببینید؛ فایل‌ها را اصلاح و مجدداً آپلود کنید.",
         "operator_short_fa": "رد — اصلاح"
       }
     },
     {
-      "code": "approved_reference_center",
-      "name_fa": "تایید — مرکز مرجع و مارکتینگ",
+      "code": "reference_center_editing",
+      "name_fa": "ویرایش و تدوین — مرکز مرجع",
+      "type": "intermediate",
+      "assigned_role": "reference_center",
+      "metadata": {
+        "operator_task_fa": "ویرایش ادبی متن جستار؛ استخراج دقیق‌تر دقایق از فیلم کلاس؛ آپلود Word نهایی و ارسال به مارکتینگ.",
+        "operator_short_fa": "ویرایش مرکز مرجع"
+      }
+    },
+    {
+      "code": "marketing_publication",
+      "name_fa": "انتشار محتوا — مارکتینگ",
+      "type": "intermediate",
+      "assigned_role": "marketing",
+      "sla_days": 7,
+      "metadata": {
+        "operator_task_fa": "پلتفرم‌های انتشار را انتخاب کنید و تاریخ انتشار هر مورد را ثبت کنید.",
+        "operator_short_fa": "انتشار مارکتینگ"
+      }
+    },
+    {
+      "code": "content_published",
+      "name_fa": "محتوا منتشر شد",
       "type": "terminal",
       "assigned_role": "system"
     }
@@ -76,7 +98,8 @@
           ]
         }
       ],
-      "required_role": "system"
+      "required_role": "teaching_assistant",
+      "description_fa": "ثبت آپلود و ارسال به مدرس"
     },
     {
       "from": "instructor_review",
@@ -87,10 +110,10 @@
     },
     {
       "from": "instructor_review",
-      "to": "approved_reference_center",
+      "to": "reference_center_editing",
       "trigger": "accepted",
       "required_role": "instructor",
-      "description_fa": "قابل قبول — ارسال به مرکز مرجع و مارکتینگ"
+      "description_fa": "قابل قبول — ارسال به مرکز مرجع"
     },
     {
       "from": "rejected_revision",
@@ -98,6 +121,207 @@
       "trigger": "revised_and_uploaded",
       "required_role": "teaching_assistant",
       "description_fa": "اصلاح و ارسال مجدد"
+    },
+    {
+      "from": "reference_center_editing",
+      "to": "marketing_publication",
+      "trigger": "sent_to_marketing",
+      "required_role": "reference_center",
+      "description_fa": "ارسال به پورتال مارکتینگ"
+    },
+    {
+      "from": "marketing_publication",
+      "to": "content_published",
+      "trigger": "publication_recorded",
+      "required_role": "marketing",
+      "description_fa": "ثبت انتشار و بایگانی"
+    }
+  ],
+  "forms": [
+    {
+      "code": "ta_essay_upload_form",
+      "name_fa": "آپلود جستار و دقایق منتخب",
+      "used_in_state": ["ta_upload", "rejected_revision"],
+      "editable_by": ["teaching_assistant", "admin", "staff"],
+      "fields": [
+        {
+          "name": "course_name",
+          "label_fa": "نام درس",
+          "type": "text",
+          "required": false,
+          "editable_by": []
+        },
+        {
+          "name": "session_number",
+          "label_fa": "شماره جلسه",
+          "type": "text",
+          "required": false,
+          "editable_by": []
+        },
+        {
+          "name": "session_date",
+          "label_fa": "تاریخ جلسه",
+          "type": "text",
+          "required": false,
+          "editable_by": []
+        },
+        {
+          "name": "essay_word",
+          "label_fa": "فایل Word جستار و دقایق منتخب",
+          "type": "file_upload",
+          "accept": ".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "required": true,
+          "note_fa": "قالب خام: /templates/ta_essay_minutes_template.docx — هر دو فرمت Word و PDF الزامی است."
+        },
+        {
+          "name": "essay_pdf",
+          "label_fa": "فایل PDF جستار و دقایق منتخب",
+          "type": "file_upload",
+          "accept": ".pdf,application/pdf",
+          "required": true
+        },
+        {
+          "name": "selected_minutes_note",
+          "label_fa": "یادداشت دقایق منتخب (اختیاری)",
+          "type": "textarea",
+          "required": false,
+          "note_fa": "در صورت ثبت دقایق در فایل Word، این فیلد اختیاری است."
+        }
+      ]
+    },
+    {
+      "code": "reference_center_essay_form",
+      "name_fa": "تدوین نهایی — مرکز مرجع",
+      "used_in_state": "reference_center_editing",
+      "editable_by": ["reference_center", "admin", "staff"],
+      "fields": [
+        {
+          "name": "edited_essay_word",
+          "label_fa": "فایل Word ویرایش‌شده (نهایی)",
+          "type": "file_upload",
+          "accept": ".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "required": true,
+          "note_fa": "پس از ویرایش ادبی و استخراج دقیق‌تر بازهٔ دقایق از فیلم ضبط‌شدهٔ کلاس."
+        },
+        {
+          "name": "refined_minutes_from_to",
+          "label_fa": "بازهٔ دقایق مهم (از دقیقه … تا …)",
+          "type": "text",
+          "required": true,
+          "placeholder_fa": "مثال: از دقیقه ۱۲ تا ۲۸"
+        }
+      ]
+    },
+    {
+      "code": "marketing_publication_form",
+      "name_fa": "مدیریت محتواهای دریافتی از کلاس‌ها",
+      "used_in_state": "marketing_publication",
+      "editable_by": ["marketing", "admissions_officer", "admin", "staff"],
+      "fields": [
+        {
+          "name": "publish_platforms",
+          "label_fa": "محل‌های انتشار",
+          "type": "multi_select",
+          "required": true,
+          "options": [
+            { "value": "instagram", "label_fa": "اینستاگرام" },
+            { "value": "telegram", "label_fa": "تلگرام" },
+            { "value": "site_video", "label_fa": "دیدنی‌های سایت" },
+            { "value": "site_audio", "label_fa": "شنیدنی‌های سایت" },
+            { "value": "site_reading", "label_fa": "خواندنی‌های سایت" },
+            { "value": "youtube", "label_fa": "یوتیوب" },
+            { "value": "aparat", "label_fa": "آپارات" },
+            { "value": "linkedin", "label_fa": "لینکدین" }
+          ],
+          "note_fa": "با انتخاب هر پلتفرم، تاریخ انتشار همان مورد را در فیلدهای زیر وارد کنید."
+        },
+        {
+          "name": "publish_date_instagram",
+          "label_fa": "تاریخ انتشار — اینستاگرام",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "publish_date_telegram",
+          "label_fa": "تاریخ انتشار — تلگرام",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "publish_date_site_video",
+          "label_fa": "تاریخ انتشار — دیدنی‌های سایت",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "publish_date_site_audio",
+          "label_fa": "تاریخ انتشار — شنیدنی‌های سایت",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "publish_date_site_reading",
+          "label_fa": "تاریخ انتشار — خواندنی‌های سایت",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "publish_date_youtube",
+          "label_fa": "تاریخ انتشار — یوتیوب",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "publish_date_aparat",
+          "label_fa": "تاریخ انتشار — آپارات",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "publish_date_linkedin",
+          "label_fa": "تاریخ انتشار — لینکدین",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    {
+      "code": "ta_essay_instructor_review",
+      "name_fa": "بررسی جستار توسط مدرس",
+      "used_in_state": "instructor_review",
+      "editable_by": ["instructor", "admin", "staff"],
+      "fields": [
+        {
+          "name": "course_name",
+          "label_fa": "نام درس",
+          "type": "readonly"
+        },
+        {
+          "name": "session_date",
+          "label_fa": "تاریخ جلسه",
+          "type": "readonly"
+        },
+        {
+          "name": "review_decision",
+          "label_fa": "نتیجه بررسی",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "accepted", "label_fa": "قابل قبول" },
+            { "value": "rejected", "label_fa": "غیر قابل قبول" }
+          ]
+        },
+        {
+          "name": "rejection_notes",
+          "label_fa": "توضیح رد",
+          "type": "textarea",
+          "required_if": {
+            "field": "review_decision",
+            "op": "eq",
+            "value": "rejected"
+          }
+        }
+      ]
     }
   ]
 }

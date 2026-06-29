@@ -3,12 +3,15 @@
 | فیلد | مقدار |
 |------|-------|
 | **وضعیت** | complete_in_metadata |
-| **آخرین به‌روزرسانی** | 2026-02-14 |
+| **آخرین به‌روزرسانی** | 2026-06-25 |
 | **منبع ورودی** | متن بخش ۲ قطع زودرس |
 
-## نواقص
-- [ ] نقش specialized_commission
-- [ ] اکشن send_unlock_to_lms، unlock_student_therapist_selection
-- [ ] اکشن record_commission_result_in_student_portal
-- [ ] SLA ۵ روز و trigger violation
-- [ ] تداخل با committees_review (زیرفرایند ب) وقتی از الف پاس می‌شود
+## UI (بخش ۲ — زیرفرایند الف)
+- [x] فرم `commission_decision` در metadata/processes/specialized_commission_review.json
+- [x] پنل راهنما `SpecializedCommissionReviewPanel.jsx` + اتصال در `CommitteePortal.jsx`
+- [x] اعتبارسنجی تصمیم `commissionReviewTriggerPayload.js`
+- [x] UI دانشجو `StudentCommitteesRestartPanel` برای مهلت ۵ روز پس از تأیید
+- [x] SLA timestamp (`awaiting_restart_entered_at`) در engine
+
+## نواقص بک‌اند (خارج از UI)
+- [ ] تداخل کامل با `committees_review` (زیرفرایند ب) در همه سناریوها

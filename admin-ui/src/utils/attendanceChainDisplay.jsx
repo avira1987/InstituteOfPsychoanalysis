@@ -1,4 +1,4 @@
-/** نمایش مشترک زنجیره حضور و غیاب درمان (فرایند ۶) و غیبت بدون اطلاع (فرایند ۱۵). */
+/** نمایش مشترک زنجیره حضور و غیاب درمان (فرایند ۶)، غیبت بدون اطلاع درمان (۱۵) و سوپرویژن (۲۷). */
 
 import React from 'react'
 import { computeSlaRemaining, SlaBanner, ReadonlyRow } from './earlyTerminationChainDisplay'
@@ -85,6 +85,66 @@ export const UNANNOUNCED_EXECUTOR_OPTIONS = [
   },
 ]
 
+export const UNANNOUNCED_SUPERVISION_SITE_MANAGER_OPTIONS = [
+  {
+    key: 'option_1',
+    trigger: 'site_manager_option_1',
+    title: 'گزینه ۱ — قصد غیبت معین',
+    items: [
+      'ارسال SMS به دانشجو',
+      'ثبت تخلف آموزشی (دو جلسه پیوسته No-Show سوپرویژن)',
+    ],
+    color: '#dc2626',
+  },
+  {
+    key: 'option_2',
+    trigger: 'site_manager_option_2',
+    title: 'گزینه ۲ — قطع قطعی سوپرویژن',
+    items: [
+      'آزادسازی وقت سوپروایزر و انتقال به گذشته',
+      'ارسال SMS قطع سوپرویژن',
+      'ارجاع به رئیس کمیته درمان آموزشی و سوپرویژن',
+    ],
+    color: '#0d9488',
+  },
+  {
+    key: 'option_3',
+    trigger: 'site_manager_option_3',
+    title: 'گزینه ۳ — وضعیت مبهم',
+    items: [
+      'آزادسازی وقت سوپروایزر',
+      'ارسال SMS به دانشجو',
+      'تایمر ۳ هفته برای بازگشت یا ارجاع به کمیته',
+    ],
+    color: '#d97706',
+  },
+]
+
+export const UNANNOUNCED_SUPERVISION_EXECUTOR_OPTIONS = [
+  {
+    key: 'option_a',
+    trigger: 'executor_option_a',
+    title: 'گزینه الف — قطع سوپرویژن قطعی',
+    items: [
+      'ثبت نتیجه در پرونده دانشجو',
+      'اطمینان از آزادسازی وقت سوپروایزر',
+      'ثبت تخلف آموزشی',
+      'در صورت انترن بودن: آغاز فرایند ارجاع بیماران',
+    ],
+    color: '#dc2626',
+  },
+  {
+    key: 'option_b',
+    trigger: 'executor_option_b',
+    title: 'گزینه ب — پذیرفته بازگشت به سوپرویژن',
+    items: [
+      'ثبت توافق بازگشت در پرونده دانشجو',
+      'ثبت تخلف آموزشی (غیبت پیوسته سوپرویژن)',
+    ],
+    color: '#16a34a',
+  },
+]
+
 export function HintBlock({ testId, title, children, color = '#2563eb', bg = '#eff6ff' }) {
   return (
     <div
@@ -138,6 +198,19 @@ export function formatSessionContext(ctx = {}) {
   if (ctx.therapy_session_id || ctx.session_id) {
     parts.push(`شناسه جلسه: ${ctx.therapy_session_id || ctx.session_id}`)
   }
+  if (ctx.consecutive_unannounced_count != null) {
+    parts.push(`تعداد غیبت پیوسته: ${Number(ctx.consecutive_unannounced_count).toLocaleString('fa-IR')}`)
+  }
+  return parts
+}
+
+export function formatSupervisionAbsenceContext(ctx = {}) {
+  const parts = []
+  const sessionDate = ctx.supervision_session_date || ctx.session_date
+  if (sessionDate) parts.push(`تاریخ جلسه: ${sessionDate}`)
+  const sessionId = ctx.supervision_session_id || ctx.session_id
+  if (sessionId) parts.push(`شناسه جلسه: ${sessionId}`)
+  if (ctx.supervisor_name) parts.push(`سوپروایزر: ${ctx.supervisor_name}`)
   if (ctx.consecutive_unannounced_count != null) {
     parts.push(`تعداد غیبت پیوسته: ${Number(ctx.consecutive_unannounced_count).toLocaleString('fa-IR')}`)
   }

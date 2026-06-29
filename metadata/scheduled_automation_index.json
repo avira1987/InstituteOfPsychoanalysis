@@ -53,23 +53,29 @@
     "theory_course_completion": {
       "mode": "instance_sla",
       "completion_role": "instructor",
-      "sla_state": "grades_entry",
-      "sla_days": 7,
-      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+      "sla_states": ["session_18_entry", "qualitative_eval_pending"],
+      "triggers": [
+        { "event": "sla_breach", "actor_role": "system", "state": "session_18_entry" },
+        { "event": "sla_breach", "actor_role": "system", "state": "qualitative_eval_pending" }
+      ]
     },
     "skills_course_completion": {
       "mode": "instance_sla",
       "completion_role": "instructor",
-      "sla_state": "grades_entry",
-      "sla_days": 7,
-      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+      "sla_states": ["session_17_grades_entry", "qualitative_eval_pending"],
+      "triggers": [
+        { "event": "sla_breach", "actor_role": "system", "state": "session_17_grades_entry" },
+        { "event": "sla_breach", "actor_role": "system", "state": "qualitative_eval_pending" }
+      ]
     },
     "group_supervision_course_completion": {
       "mode": "instance_sla",
       "completion_role": "instructor",
-      "sla_state": "grades_entry",
-      "sla_days": 7,
-      "triggers": [{ "event": "sla_breach", "actor_role": "system" }]
+      "sla_states": ["session_18_pass_fail_entry", "qualitative_eval_pending"],
+      "triggers": [
+        { "event": "sla_breach", "actor_role": "system", "state": "session_18_pass_fail_entry" },
+        { "event": "sla_breach", "actor_role": "system", "state": "qualitative_eval_pending" }
+      ]
     },
     "film_observation_course_completion": {
       "mode": "instance_sla",

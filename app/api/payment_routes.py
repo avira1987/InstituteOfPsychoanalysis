@@ -736,6 +736,48 @@ async def _apply_payment_success_transition(
             logger.exception(f"[PAYMENT] Transition payment_confirmed failed for start_therapy: {e}")
             return False
 
+    if inst.process_code == "return_to_full_education":
+        if inst.current_state_code == "therapy_payment_pending":
+            try:
+                await engine.execute_transition(
+                    instance_id=instance_id,
+                    trigger_event="therapy_payment_confirmed",
+                    actor_id=system_actor_id,
+                    actor_role="system",
+                    payload=payload,
+                )
+                logger.info(
+                    "[PAYMENT] return_to_full_education therapy_payment_confirmed instance_id=%s ref=%s",
+                    instance_id,
+                    ref_id,
+                )
+                return True
+            except Exception as e:
+                logger.exception(
+                    "[PAYMENT] return_to_full_education therapy_payment_confirmed failed: %s", e,
+                )
+                return False
+        if inst.current_state_code == "supervision_payment_pending":
+            try:
+                await engine.execute_transition(
+                    instance_id=instance_id,
+                    trigger_event="supervision_payment_confirmed",
+                    actor_id=system_actor_id,
+                    actor_role="system",
+                    payload=payload,
+                )
+                logger.info(
+                    "[PAYMENT] return_to_full_education supervision_payment_confirmed instance_id=%s ref=%s",
+                    instance_id,
+                    ref_id,
+                )
+                return True
+            except Exception as e:
+                logger.exception(
+                    "[PAYMENT] return_to_full_education supervision_payment_confirmed failed: %s", e,
+                )
+                return False
+
     if inst.process_code == "extra_session" and inst.current_state_code == "payment_required":
         try:
             await engine.execute_transition(
@@ -837,6 +879,26 @@ async def _apply_payment_success_transition(
                 return True
             except Exception as e:
                 logger.exception("[PAYMENT] comp_reg tuition_payment_confirmed failed: %s", e)
+                return False
+
+    if inst.process_code == "comprehensive_term_start":
+        if inst.current_state_code == "payment_processing":
+            try:
+                await engine.execute_transition(
+                    instance_id=instance_id,
+                    trigger_event="payment_confirmed",
+                    actor_id=system_actor_id,
+                    actor_role="system",
+                    payload=payload,
+                )
+                logger.info(
+                    "[PAYMENT] comp_term_start payment_confirmed instance_id=%s ref=%s",
+                    instance_id,
+                    ref_id,
+                )
+                return True
+            except Exception as e:
+                logger.exception("[PAYMENT] comp_term_start payment_confirmed failed: %s", e)
                 return False
 
     if inst.process_code == "supervision_block_transition":

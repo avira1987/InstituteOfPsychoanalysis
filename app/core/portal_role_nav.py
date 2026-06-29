@@ -12,11 +12,12 @@ ADMIN_ONLY_PATHS = frozenset({
     "/panel/system-resources",
 })
 
-STAFF_LANE_IDS = ("admissions", "instruction", "therapy-coord", "course-committee")
+STAFF_LANE_IDS = ("admissions", "instruction", "content-ops", "therapy-coord", "course-committee")
 
 STAFF_LANE_ROLES: dict[str, frozenset[str]] = {
     "admissions": frozenset({"admin", "staff", "interviewer"}),
     "instruction": frozenset({"admin", "staff"}),
+    "content-ops": frozenset({"admin", "staff"}),
     "therapy-coord": frozenset({"admin", "staff"}),
     "course-committee": frozenset({"admin", "staff"}),
 }

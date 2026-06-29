@@ -15,19 +15,21 @@
       "name_fa": "تخلف ثبت و ارجاع به کمیته نظارت",
       "type": "initial",
       "assigned_role": "monitoring_committee_officer",
+      "sla_days": 3,
+      "on_sla_breach_event": "first_action_sla_breach",
       "metadata": {
-        "operator_task_fa": "بررسی گزارش و ثبت اقدام.",
+        "operator_task_fa": "بررسی گزارش و ثبت اقدام اولیه (قابل بررسی بودن یا نبودن) ظرف ۳ روز.",
         "operator_short_fa": "تخلف ثبت و ارجاع به کمیته نظارت"
       }
     },
     {
       "code": "review_status_set",
-      "name_fa": "قابل بررسی نیست / قابل بررسی است",
+      "name_fa": "قابل بررسی — تعیین نوع تخلف و نیاز به جلسه",
       "type": "intermediate",
       "assigned_role": "supervision_committee",
       "metadata": {
-        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
-        "operator_short_fa": "قابل بررسی نیست / قابل بررسی است"
+        "operator_task_fa": "نوع تخلف و نیاز به جلسه با دانشجو را ثبت کنید؛ سپس دکمهٔ متناسب را بزنید.",
+        "operator_short_fa": "تعیین نوع تخلف و جلسه"
       }
     },
     {
@@ -36,33 +38,41 @@
       "type": "intermediate",
       "assigned_role": "supervision_committee",
       "metadata": {
-        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
-        "operator_short_fa": "جلسه تنظیم و دعوت‌نامه ارسال شد"
+        "operator_task_fa": "پس از برگزاری جلسه، فرم حکم را تکمیل و «صدور حکم» را بزنید.",
+        "operator_short_fa": "جلسه تنظیم و دعوت‌نامه ارسال شد",
+        "student_short_fa": "جلسه کمیته نظارت",
+        "student_task_fa": "زمان و نحوهٔ برگزاری جلسه در همین صفحه نمایش داده می‌شود؛ در روز مقرر طبق اعلام کمیته حاضر شوید."
       }
     },
     {
       "code": "verdict_issued",
       "name_fa": "حکم صادر شد (تذکر/اخطار ۱-۳)",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "supervision_committee",
+      "sla_days": 7,
+      "on_sla_breach_event": "compensatory_followup_sla_breach",
+      "metadata": {
+        "operator_task_fa": "در صورت شروط جبرانی، پیگیری پس از ۷ روز را انجام دهید.",
+        "operator_short_fa": "حکم صادر شد"
+      }
     },
     {
       "code": "suspension_next_term",
       "name_fa": "تعلیق از ترم بعد",
-      "type": "terminal",
+      "type": "intermediate",
       "assigned_role": "supervision_committee",
       "metadata": {
-        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
+        "operator_task_fa": "پیگیری شروط جبرانی یا ارجاع به کمیته آموزش.",
         "operator_short_fa": "تعلیق از ترم بعد"
       }
     },
     {
       "code": "suspension_immediate",
       "name_fa": "تعلیق آنی",
-      "type": "terminal",
+      "type": "intermediate",
       "assigned_role": "supervision_committee",
       "metadata": {
-        "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
+        "operator_task_fa": "پیگیری شروط جبرانی یا ارجاع به کمیته آموزش.",
         "operator_short_fa": "تعلیق آنی"
       }
     },
@@ -72,7 +82,7 @@
       "type": "intermediate",
       "assigned_role": "education_committee",
       "metadata": {
-        "operator_task_fa": "بررسی پرونده در جلسه کمیته آموزش.",
+        "operator_task_fa": "بررسی پرونده در جلسه آنلاین کمیته آموزش و ثبت حکم نهایی.",
         "operator_short_fa": "ارجاع به کمیته آموزش"
       }
     },
@@ -86,7 +96,11 @@
       "code": "expelled",
       "name_fa": "اخراج — پورتال مسدود",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "اخراج از آموزش",
+        "student_task_fa": "پورتال شما به حالت فقط‌خواندنی درآمده است. در صورت پرسش با دفتر انستیتو تماس بگیرید."
+      }
     }
   ],
   "transitions": [
@@ -95,22 +109,37 @@
       "to": "review_status_set",
       "trigger": "committee_reviewing",
       "required_role": "monitoring_committee_officer",
-      "description_fa": "کمیته نظارت در حال بررسی"
+      "conditions": ["violation_reviewable_yes"],
+      "description_fa": "قابل بررسی است — ارجاع به کمیته نظارت"
     },
     {
       "from": "violation_reported",
       "to": "closed",
       "trigger": "recorded_and_closed",
       "required_role": "monitoring_committee_officer",
-      "description_fa": "ثبت و مختومه (مبرا یا رد)",
+      "conditions": ["violation_reviewable_no"],
+      "description_fa": "قابل بررسی نیست — مختومه",
       "actions": [
         {
           "type": "notification",
           "notification_type": "in_app",
           "template": "violation_recorded",
-          "recipients": [
-            "student"
-          ]
+          "recipients": ["student"]
+        }
+      ]
+    },
+    {
+      "from": "violation_reported",
+      "to": "violation_reported",
+      "trigger": "first_action_sla_breach",
+      "required_role": "system",
+      "description_fa": "گذشت ۳ روز بدون اقدام اولیه",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "violation_first_action_sla_breach",
+          "recipients": ["monitoring_committee_officer", "deputy_education"]
         }
       ]
     },
@@ -119,7 +148,41 @@
       "to": "meeting_scheduled",
       "trigger": "meeting_set",
       "required_role": "supervision_committee",
-      "description_fa": "جلسه تنظیم شد"
+      "conditions": ["violation_needs_meeting_yes"],
+      "description_fa": "جلسه تنظیم شد",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "email",
+          "template": "violation_meeting_invite",
+          "recipients": ["student"]
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "violation_meeting_invite_sms",
+          "recipients": ["student"]
+        }
+      ]
+    },
+    {
+      "from": "review_status_set",
+      "to": "verdict_issued",
+      "trigger": "verdict_direct",
+      "required_role": "supervision_committee",
+      "conditions": ["violation_needs_meeting_no"],
+      "description_fa": "بدون جلسه — حکم مستقیم",
+      "actions": [
+        {
+          "type": "record_violation_performance_entry"
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "violation_verdict_issued",
+          "recipients": ["student"]
+        }
+      ]
     },
     {
       "from": "review_status_set",
@@ -133,52 +196,424 @@
       "to": "verdict_issued",
       "trigger": "verdict_issued",
       "required_role": "supervision_committee",
-      "description_fa": "حکم صادر شد"
+      "description_fa": "حکم صادر شد پس از جلسه",
+      "actions": [
+        {
+          "type": "record_violation_performance_entry"
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "violation_verdict_issued",
+          "recipients": ["student"]
+        }
+      ]
     },
     {
       "from": "verdict_issued",
       "to": "closed",
-      "trigger": "closed",
-      "required_role": "system",
-      "description_fa": "پرونده مختومه"
+      "trigger": "verdict_recorded",
+      "required_role": "supervision_committee",
+      "conditions": ["violation_verdict_minor"],
+      "description_fa": "تذکر/اخطار — پرونده مختومه",
+      "actions": [
+        {
+          "type": "record_violation_performance_entry"
+        }
+      ]
+    },
+    {
+      "from": "verdict_issued",
+      "to": "suspension_next_term",
+      "trigger": "suspension_next_term",
+      "required_role": "supervision_committee",
+      "conditions": ["violation_verdict_suspension_next_term"],
+      "description_fa": "تعلیق از ترم بعد",
+      "actions": [
+        {
+          "type": "record_violation_performance_entry"
+        },
+        {
+          "type": "block_next_term_registration"
+        },
+        {
+          "type": "block_attendance_registration"
+        }
+      ]
+    },
+    {
+      "from": "verdict_issued",
+      "to": "suspension_immediate",
+      "trigger": "suspension_immediate",
+      "required_role": "supervision_committee",
+      "conditions": ["violation_verdict_suspension_immediate"],
+      "description_fa": "تعلیق آنی",
+      "actions": [
+        {
+          "type": "record_violation_performance_entry"
+        },
+        {
+          "type": "suspend_class_registration"
+        },
+        {
+          "type": "block_attendance_registration"
+        }
+      ]
     },
     {
       "from": "verdict_issued",
       "to": "referred_to_education_committee",
       "trigger": "referred_to_education",
       "required_role": "supervision_committee",
-      "description_fa": "ارجاع به کمیته آموزش"
+      "conditions": ["violation_verdict_refer_education"],
+      "description_fa": "ارجاع به کمیته آموزش",
+      "actions": [
+        {
+          "type": "record_violation_performance_entry"
+        },
+        {
+          "type": "create_education_committee_task"
+        }
+      ]
+    },
+    {
+      "from": "verdict_issued",
+      "to": "verdict_issued",
+      "trigger": "compensatory_followup_sla_breach",
+      "required_role": "system",
+      "description_fa": "یادآوری پیگیری شروط جبرانی پس از ۷ روز",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "violation_compensatory_reminder",
+          "recipients": ["monitoring_committee_officer"]
+        }
+      ]
+    },
+    {
+      "from": "suspension_next_term",
+      "to": "closed",
+      "trigger": "lift_suspension",
+      "required_role": "supervision_committee",
+      "conditions": ["violation_lift_suspension_yes"],
+      "description_fa": "برداشتن تعلیق",
+      "actions": [
+        {
+          "type": "lift_suspension_restrictions"
+        }
+      ]
+    },
+    {
+      "from": "suspension_immediate",
+      "to": "closed",
+      "trigger": "lift_suspension",
+      "required_role": "supervision_committee",
+      "conditions": ["violation_lift_suspension_yes"],
+      "description_fa": "برداشتن تعلیق آنی",
+      "actions": [
+        {
+          "type": "lift_suspension_restrictions"
+        }
+      ]
+    },
+    {
+      "from": "suspension_next_term",
+      "to": "referred_to_education_committee",
+      "trigger": "referred_to_education",
+      "required_role": "supervision_committee",
+      "description_fa": "ارجاع به کمیته آموزش از حالت تعلیق"
+    },
+    {
+      "from": "suspension_immediate",
+      "to": "referred_to_education_committee",
+      "trigger": "referred_to_education",
+      "required_role": "supervision_committee",
+      "description_fa": "ارجاع به کمیته آموزش از حالت تعلیق آنی"
     },
     {
       "from": "referred_to_education_committee",
       "to": "expelled",
       "trigger": "expulsion_issued",
       "required_role": "education_committee",
-      "description_fa": "حکم اخراج"
+      "conditions": ["violation_education_expulsion"],
+      "description_fa": "حکم اخراج",
+      "actions": [
+        {
+          "type": "record_violation_performance_entry"
+        },
+        {
+          "type": "revoke_student_access"
+        },
+        {
+          "type": "notification",
+          "notification_type": "in_app",
+          "template": "violation_expulsion_issued",
+          "recipients": ["student", "monitoring_committee_officer"]
+        }
+      ]
     },
     {
       "from": "referred_to_education_committee",
       "to": "closed",
       "trigger": "closed",
       "required_role": "education_committee",
-      "description_fa": "مختومه بدون اخراج"
+      "conditions": ["violation_education_no_expulsion"],
+      "description_fa": "مختومه بدون اخراج",
+      "actions": [
+        {
+          "type": "record_violation_performance_entry"
+        }
+      ]
     }
   ],
   "forms": [
     {
-      "code": "violation_report_form",
-      "name_fa": "ثبت اولیه تخلف",
+      "code": "violation_initial_review",
+      "name_fa": "بررسی اولیه گزارش تخلف",
       "used_in_state": "violation_reported",
+      "description_fa": "ظرف ۳ روز «قابل بررسی بودن» را ثبت کنید. اگر قابل بررسی نیست، «ثبت و مختومه» را بزنید؛ در غیر این صورت «در حال بررسی».",
+      "visible_to": ["monitoring_committee_officer", "supervision_committee", "admin", "staff"],
       "fields": [
+        {
+          "name": "source_reason",
+          "label_fa": "منبع/علت ارجاع",
+          "type": "readonly"
+        },
+        {
+          "name": "source_process_code",
+          "label_fa": "فرایند مبدأ",
+          "type": "readonly"
+        },
         {
           "name": "description",
           "label_fa": "شرح تخلف",
-          "type": "textarea"
+          "type": "textarea",
+          "required": true
         },
         {
           "name": "occurrence_date",
           "label_fa": "تاریخ وقوع",
           "type": "date_picker"
+        },
+        {
+          "name": "violation_type",
+          "label_fa": "نوع تخلف",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "professional", "label_fa": "حرفه‌ای"},
+            {"value": "educational", "label_fa": "آموزشی"},
+            {"value": "disciplinary", "label_fa": "انضباطی"}
+          ]
+        },
+        {
+          "name": "reviewable",
+          "label_fa": "قابل بررسی است؟",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "بله — ادامه بررسی"},
+            {"value": "no", "label_fa": "خیر — مختومه"}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "violation_meeting_schedule",
+      "name_fa": "نوع تخلف و تعیین جلسه",
+      "used_in_state": "review_status_set",
+      "description_fa": "نیاز به جلسه با دانشجو را مشخص کنید. اگر «خیر»، فرم حکم را همین‌جا تکمیل و «صدور حکم مستقیم» را بزنید.",
+      "visible_to": ["supervision_committee", "monitoring_committee_officer", "admin", "staff"],
+      "fields": [
+        {
+          "name": "violation_type_display",
+          "label_fa": "نوع تخلف",
+          "type": "readonly"
+        },
+        {
+          "name": "needs_meeting",
+          "label_fa": "نیاز به جلسه با دانشجو",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "بله — تنظیم جلسه"},
+            {"value": "no", "label_fa": "خیر — صدور حکم مستقیم"}
+          ]
+        },
+        {
+          "name": "meeting_at",
+          "label_fa": "تاریخ و ساعت جلسه (وقت ایران)",
+          "type": "datetime",
+          "required": true,
+          "visible_if": {"needs_meeting": "yes"}
+        },
+        {
+          "name": "meeting_mode",
+          "label_fa": "نحوهٔ برگزاری",
+          "type": "radio",
+          "required": true,
+          "visible_if": {"needs_meeting": "yes"},
+          "options": [
+            {"value": "in_person", "label_fa": "حضوری"},
+            {"value": "online", "label_fa": "آنلاین"}
+          ]
+        },
+        {
+          "name": "meeting_link",
+          "label_fa": "لینک جلسه (آنلاین)",
+          "type": "text",
+          "required": true,
+          "visible_if": {"meeting_mode": "online"}
+        },
+        {
+          "name": "meeting_location_fa",
+          "label_fa": "آدرس یا محل حضوری",
+          "type": "textarea",
+          "required": true,
+          "visible_if": {"meeting_mode": "in_person"}
+        },
+        {
+          "name": "verdict",
+          "label_fa": "حکم (بدون جلسه)",
+          "type": "radio",
+          "required": true,
+          "visible_if": {"needs_meeting": "no"},
+          "options": [
+            {"value": "cleared", "label_fa": "مبرا"},
+            {"value": "notice", "label_fa": "تذکر"},
+            {"value": "warning_1", "label_fa": "اخطار مرحله اول"},
+            {"value": "warning_2", "label_fa": "اخطار مرحله دوم"},
+            {"value": "warning_3", "label_fa": "اخطار مرحله سوم"},
+            {"value": "suspension_next_term", "label_fa": "تعلیق از ترم بعد"},
+            {"value": "suspension_immediate", "label_fa": "تعلیق آنی"},
+            {"value": "refer_education", "label_fa": "ارجاع به کمیته آموزش"}
+          ]
+        },
+        {
+          "name": "compensatory_conditions",
+          "label_fa": "شروط جبرانی",
+          "type": "textarea",
+          "visible_if": {"needs_meeting": "no"}
+        }
+      ]
+    },
+    {
+      "code": "violation_verdict_form",
+      "name_fa": "صدور حکم پس از جلسه",
+      "used_in_state": "meeting_scheduled",
+      "description_fa": "پس از برگزاری جلسه، حکم را انتخاب و ثبت کنید؛ سپس «صدور حکم» را بزنید.",
+      "visible_to": ["supervision_committee", "monitoring_committee_officer", "admin", "staff"],
+      "fields": [
+        {
+          "name": "meeting_at_display",
+          "label_fa": "زمان جلسه",
+          "type": "readonly"
+        },
+        {
+          "name": "verdict",
+          "label_fa": "حکم صادر شده",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "cleared", "label_fa": "مبرا"},
+            {"value": "notice", "label_fa": "تذکر"},
+            {"value": "warning_1", "label_fa": "اخطار مرحله اول"},
+            {"value": "warning_2", "label_fa": "اخطار مرحله دوم"},
+            {"value": "warning_3", "label_fa": "اخطار مرحله سوم"},
+            {"value": "suspension_next_term", "label_fa": "تعلیق از ترم بعد"},
+            {"value": "suspension_immediate", "label_fa": "تعلیق آنی"},
+            {"value": "refer_education", "label_fa": "ارجاع به کمیته آموزش"}
+          ]
+        },
+        {
+          "name": "compensatory_conditions",
+          "label_fa": "شروط جبرانی",
+          "type": "textarea"
+        }
+      ]
+    },
+    {
+      "code": "suspension_followup_form",
+      "name_fa": "پیگیری تعلیق و شروط جبرانی",
+      "used_in_state": "suspension_next_term",
+      "description_fa": "پس از جلسه پیگیری، تعلیق را بردارید یا به کمیته آموزش ارجاع دهید.",
+      "visible_to": ["supervision_committee", "monitoring_committee_officer", "admin", "staff"],
+      "fields": [
+        {
+          "name": "followup_deadline",
+          "label_fa": "مهلت پیگیری شروط جبرانی",
+          "type": "date_picker"
+        },
+        {
+          "name": "lift_suspension",
+          "label_fa": "نتیجه پیگیری",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "برداشتن تعلیق — مختومه"},
+            {"value": "no", "label_fa": "ادامه تعلیق / ارجاع به کمیته آموزش"}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "suspension_immediate_followup_form",
+      "name_fa": "پیگیری تعلیق آنی",
+      "used_in_state": "suspension_immediate",
+      "description_fa": "پس از جلسه پیگیری، تعلیق آنی را بردارید یا به کمیته آموزش ارجاع دهید.",
+      "visible_to": ["supervision_committee", "monitoring_committee_officer", "admin", "staff"],
+      "fields": [
+        {
+          "name": "followup_deadline",
+          "label_fa": "مهلت پیگیری شروط جبرانی",
+          "type": "date_picker"
+        },
+        {
+          "name": "lift_suspension",
+          "label_fa": "نتیجه پیگیری",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "برداشتن تعلیق — مختومه"},
+            {"value": "no", "label_fa": "ادامه تعلیق / ارجاع به کمیته آموزش"}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "education_committee_verdict",
+      "name_fa": "حکم نهایی کمیته آموزش",
+      "used_in_state": "referred_to_education_committee",
+      "description_fa": "جلسه همیشه آنلاین است. پس از برگزاری، حکم نهایی را ثبت و دکمهٔ متناسب را بزنید.",
+      "visible_to": ["education_committee", "deputy_education", "admin", "staff"],
+      "fields": [
+        {
+          "name": "education_meeting_at",
+          "label_fa": "تاریخ و ساعت جلسه آنلاین",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "name": "education_meeting_link",
+          "label_fa": "لینک جلسه آنلاین",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "final_decision",
+          "label_fa": "حکم نهایی",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "no_expulsion", "label_fa": "عدم اخراج — مختومه"},
+            {"value": "expulsion", "label_fa": "اخراج از آموزش"}
+          ]
+        },
+        {
+          "name": "education_verdict_notes_fa",
+          "label_fa": "یادداشت جلسه (اختیاری)",
+          "type": "textarea"
         }
       ]
     },
@@ -186,7 +621,8 @@
       "code": "committee_verdict_form",
       "name_fa": "جدول گزارش عملکرد دانشجو (کمیته نظارت)",
       "used_in_state": "verdict_issued",
-      "description_fa": "ثبت اقدام/حکم، نوع تخلف، شروط جبرانی، وضعیت نهایی کمیته آموزش",
+      "description_fa": "خلاصهٔ حکم ثبت‌شده — برای پیگیری شروط جبرانی از دکمه‌های پایین استفاده کنید.",
+      "visible_to": ["supervision_committee", "monitoring_committee_officer", "education_committee", "admin", "staff"],
       "fields": [
         {
           "name": "verdict_action",

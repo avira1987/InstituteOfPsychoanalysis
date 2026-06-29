@@ -4,22 +4,83 @@
     "name_fa": "خاتمه دروس تئوری",
     "name_en": "Theory Course Completion",
     "number": 61,
-    "description": "خاتمه هر درس تئوری: ثبت نمرات نهایی و ارزیابی کیفی. قفل نمره پس از مهلت.",
-    "initial_state": "grades_entry",
-    "initial_role": "instructor",
+    "description": "خاتمه هر درس تئوری: جلسه ۱۸ مشارکت، آزمون تستی ۸۲ نمره‌ای، نمرات مرزی، ارزیابی کیفی. قفل نمره پس از مهلت.",
+    "initial_state": "awaiting_session_18",
+    "initial_role": "system",
     "requires_form": true
   },
   "states": [
     {
-      "code": "grades_entry",
-      "name_fa": "ثبت نمرات و ارزیابی کیفی",
+      "code": "awaiting_session_18",
+      "name_fa": "منتظر جلسه ۱۸",
       "type": "initial",
-      "assigned_role": "instructor",
+      "assigned_role": "system",
       "metadata": {
-        "operator_task_fa": "ثبت نمره/حضور/تأیید TA.",
-        "operator_short_fa": "ثبت نمرات و ارزیابی کیفی"
-      },
-      "sla_days": 7
+        "operator_task_fa": "با رسیدن تقویم به جلسه ۱۸، ثبت مشارکت و انتخاب پک آزمون باز می‌شود.",
+        "operator_short_fa": "منتظر جلسه ۱۸"
+      }
+    },
+    {
+      "code": "session_18_entry",
+      "name_fa": "ثبت مشارکت و انتخاب پک آزمون (جلسه ۱۸)",
+      "type": "intermediate",
+      "assigned_role": "instructor",
+      "sla_hours": 24,
+      "metadata": {
+        "operator_task_fa": "مشارکت (۰–۱۰) را برای هر دانشجو ثبت کنید و پک آزمون تستی را تأیید کنید. مهلت: ۲۴:۰۰ همان روز جلسه ۱۸.",
+        "operator_short_fa": "جلسه ۱۸ — مشارکت و آزمون"
+      }
+    },
+    {
+      "code": "final_exam_open",
+      "name_fa": "آزمون تستی نهایی",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "operator_task_fa": "آزمون تستی آنلاین (۸۲ نمره) در پورتال برگزار می‌شود.",
+        "operator_short_fa": "آزمون تستی"
+      }
+    },
+    {
+      "code": "grades_computed",
+      "name_fa": "محاسبه نمرات نهایی",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "operator_task_fa": "سیستم در حال محاسبه جمع نمره و وضعیت PASS/FAIL/Incomplete.",
+        "operator_short_fa": "محاسبه نمرات"
+      }
+    },
+    {
+      "code": "borderline_student_choice",
+      "name_fa": "انتخاب امتحان مجدد یا دوباره گذراندن",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "operator_task_fa": "نمره شما در بازه مرزی (۶۴–۷۳) است. امتحان مجدد یا دوباره گذراندن درس را انتخاب کنید.",
+        "operator_short_fa": "نمره مرزی"
+      }
+    },
+    {
+      "code": "retake_exam_open",
+      "name_fa": "امتحان مجدد",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "operator_task_fa": "پس از پرداخت، آزمون مجدد با پک جدید برگزار می‌شود.",
+        "operator_short_fa": "امتحان مجدد"
+      }
+    },
+    {
+      "code": "qualitative_eval_pending",
+      "name_fa": "ارزیابی کیفی (۴ روز)",
+      "type": "intermediate",
+      "assigned_role": "instructor",
+      "sla_days": 4,
+      "metadata": {
+        "operator_task_fa": "فرم ارزیابی کیفی (سوال ۷ و ۸) را برای تک‌تک دانشجویان تکمیل کنید.",
+        "operator_short_fa": "ارزیابی کیفی"
+      }
     },
     {
       "code": "grades_locked",
@@ -28,64 +89,217 @@
       "assigned_role": "system"
     },
     {
-      "code": "delay_reported",
-      "name_fa": "تاخیر — گزارش به کمیته",
+      "code": "session_18_delay",
+      "name_fa": "تأخیر جلسه ۱۸ — گزارش به کمیته",
+      "type": "terminal",
+      "assigned_role": "system"
+    },
+    {
+      "code": "qualitative_eval_delay",
+      "name_fa": "تأخیر ارزیابی کیفی — گزارش تخلف",
       "type": "terminal",
       "assigned_role": "system"
     }
   ],
   "transitions": [
     {
-      "from": "grades_entry",
-      "to": "grades_locked",
-      "trigger": "grades_submitted",
+      "from": "awaiting_session_18",
+      "to": "session_18_entry",
+      "trigger": "calendar_session_18_reached",
+      "required_role": "system",
+      "description_fa": "رسیدن تقویم به جلسه ۱۸ — باز شدن ثبت مشارکت"
+    },
+    {
+      "from": "session_18_entry",
+      "to": "final_exam_open",
+      "trigger": "session_18_submitted",
       "required_role": "instructor",
-      "conditions": [
-        "course_grades_submitted_in_time"
-      ],
-      "description_fa": "ثبت نمرات — قفل",
+      "conditions": ["theory_session_18_submitted_in_time"],
+      "description_fa": "ثبت مشارکت و تأیید آزمون",
+      "actions": [{"type": "record_theory_session_18_grades"}]
+    },
+    {
+      "from": "session_18_entry",
+      "to": "session_18_delay",
+      "trigger": "sla_breach",
+      "required_role": "system",
+      "conditions": ["theory_session_18_sla_breach"],
+      "description_fa": "گذشت مهلت جلسه ۱۸ — گزارش",
+      "actions": [{"type": "start_sub_process", "sub_process_code": "violation_registration"}]
+    },
+    {
+      "from": "final_exam_open",
+      "to": "borderline_student_choice",
+      "trigger": "exam_completed",
+      "required_role": "student",
+      "conditions": ["theory_borderline_score"],
+      "description_fa": "اتمام آزمون — نمره مرزی",
+      "actions": [{"type": "compute_theory_final_grades"}],
+      "priority": 10
+    },
+    {
+      "from": "final_exam_open",
+      "to": "qualitative_eval_pending",
+      "trigger": "exam_completed",
+      "required_role": "student",
+      "conditions": ["theory_not_borderline_score"],
+      "description_fa": "اتمام آزمون — ارزیابی کیفی",
+      "actions": [{"type": "compute_theory_final_grades"}],
+      "priority": 20
+    },
+    {
+      "from": "final_exam_open",
+      "to": "borderline_student_choice",
+      "trigger": "exam_completed",
+      "required_role": "system",
+      "conditions": ["theory_borderline_score"],
+      "description_fa": "اتمام آزمون (سیستمی) — نمره مرزی",
+      "actions": [{"type": "compute_theory_final_grades"}],
+      "priority": 10
+    },
+    {
+      "from": "final_exam_open",
+      "to": "qualitative_eval_pending",
+      "trigger": "exam_completed",
+      "required_role": "system",
+      "conditions": ["theory_not_borderline_score"],
+      "description_fa": "اتمام آزمون (سیستمی) — ارزیابی کیفی",
+      "actions": [{"type": "compute_theory_final_grades"}],
+      "priority": 20
+    },
+    {
+      "from": "borderline_student_choice",
+      "to": "qualitative_eval_pending",
+      "trigger": "repeat_course_selected",
+      "required_role": "student",
+      "description_fa": "دوباره گذراندن درس — ثبت نمره فعلی",
+      "actions": [{"type": "finalize_theory_borderline_fail"}]
+    },
+    {
+      "from": "borderline_student_choice",
+      "to": "retake_exam_open",
+      "trigger": "retake_selected",
+      "required_role": "student",
+      "description_fa": "انتخاب امتحان مجدد",
+      "actions": [{"type": "activate_theory_retake_exam"}]
+    },
+    {
+      "from": "retake_exam_open",
+      "to": "qualitative_eval_pending",
+      "trigger": "retake_exam_completed",
+      "required_role": "student",
+      "description_fa": "اتمام امتحان مجدد",
+      "actions": [{"type": "compute_theory_retake_grades"}]
+    },
+    {
+      "from": "retake_exam_open",
+      "to": "qualitative_eval_pending",
+      "trigger": "retake_exam_completed",
+      "required_role": "system",
+      "description_fa": "اتمام امتحان مجدد (سیستمی)",
+      "actions": [{"type": "compute_theory_retake_grades"}]
+    },
+    {
+      "from": "qualitative_eval_pending",
+      "to": "grades_locked",
+      "trigger": "qualitative_submitted",
+      "required_role": "instructor",
+      "conditions": ["theory_qualitative_submitted_in_time"],
+      "description_fa": "ارزیابی کیفی — قفل نمرات",
       "actions": [
-        {
-          "type": "record_course_grades"
-        }
+        {"type": "record_theory_qualitative_eval"},
+        {"type": "record_course_grades"}
       ]
     },
     {
-      "from": "grades_entry",
-      "to": "delay_reported",
+      "from": "qualitative_eval_pending",
+      "to": "qualitative_eval_delay",
       "trigger": "sla_breach",
-      "conditions": [
-        "course_grades_sla_breach"
-      ],
-      "description_fa": "گذشت مهلت — گزارش",
-      "required_role": "system"
+      "required_role": "system",
+      "conditions": ["theory_qualitative_sla_breach"],
+      "description_fa": "تأخیر ارزیابی کیفی — گزارش تخلف",
+      "actions": [{"type": "start_sub_process", "sub_process_code": "violation_registration"}]
     }
   ],
   "forms": [
     {
-      "code": "theory_grades_form",
-      "name_fa": "ثبت نمرات دروس تئوری",
-      "used_in_state": "grades_entry",
+      "code": "theory_session_18_form",
+      "name_fa": "ثبت مشارکت و انتخاب پک آزمون — جلسه ۱۸",
+      "used_in_state": "session_18_entry",
+      "visible_to": ["instructor", "teaching_assistant", "admin", "staff"],
       "fields": [
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
         {
-          "name": "course_name",
-          "label_fa": "نام درس",
-          "type": "readonly"
+          "name": "exam_pack_id",
+          "label_fa": "پک سوالات آزمون نهایی (۸۲ نمره)",
+          "type": "text",
+          "required": true
         },
         {
           "name": "students_grades",
-          "label_fa": "لیست دانشجویان و نمرات",
+          "label_fa": "لیست دانشجویان",
           "type": "dynamic_list",
-          "fields": [
-            "student_name",
-            "student_id",
-            "grade"
+          "fields": ["student_name", "student_id", "participation_score", "attendance_score"]
+        }
+      ]
+    },
+    {
+      "code": "theory_qualitative_eval_form",
+      "name_fa": "ارزیابی کیفی درس تئوری",
+      "used_in_state": "qualitative_eval_pending",
+      "note_fa": "پاسخ سوال ۷ و ۸ در جدول گزارش عملکرد دانشجو (کمیته نظارت) ثبت می‌شود. مهلت: ۴ روز پس از جلسه ۱۸.",
+      "fields": [
+        {"name": "student_name", "label_fa": "نام دانشجو", "type": "readonly"},
+        {"name": "course_name", "label_fa": "نام درس", "type": "readonly"},
+        {
+          "name": "q7_has_positive",
+          "label_fa": "سوال ۷ — آیا ویژگی مثبت قابل توجهی مشاهده کردید؟",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "بله"},
+            {"value": "no", "label_fa": "خیر"}
           ]
         },
         {
-          "name": "qualitative_eval",
-          "label_fa": "ارزیابی کیفی",
-          "type": "textarea"
+          "name": "q7_positive_traits",
+          "label_fa": "سوال ۷ — ویژگی‌های مثبت",
+          "type": "checkbox_list",
+          "options_source": {"type": "trait_catalog", "kind": "positive"},
+          "show_if": {"field": "q7_has_positive", "op": "eq", "value": "yes"},
+          "required_if": {"field": "q7_has_positive", "op": "eq", "value": "yes"},
+          "validation": {"min_selection": 1}
+        },
+        {
+          "name": "q7_positive_note",
+          "label_fa": "سوال ۷ — توضیح تکمیلی",
+          "type": "textarea",
+          "show_if": {"field": "q7_has_positive", "op": "eq", "value": "yes"}
+        },
+        {
+          "name": "q8_has_negative",
+          "label_fa": "سوال ۸ — آیا ویژگی منفی قابل توجهی مشاهده کردید؟",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {"value": "yes", "label_fa": "بله"},
+            {"value": "no", "label_fa": "خیر"}
+          ]
+        },
+        {
+          "name": "q8_negative_traits",
+          "label_fa": "سوال ۸ — ویژگی‌های منفی",
+          "type": "checkbox_list",
+          "options_source": {"type": "trait_catalog", "kind": "negative"},
+          "show_if": {"field": "q8_has_negative", "op": "eq", "value": "yes"},
+          "required_if": {"field": "q8_has_negative", "op": "eq", "value": "yes"},
+          "validation": {"min_selection": 1}
+        },
+        {
+          "name": "q8_negative_note",
+          "label_fa": "سوال ۸ — توضیح تکمیلی",
+          "type": "textarea",
+          "show_if": {"field": "q8_has_negative", "op": "eq", "value": "yes"}
         }
       ]
     }
@@ -93,13 +307,10 @@
   "scheduled_automation": {
     "mode": "instance_sla",
     "completion_role": "instructor",
-    "sla_state": "grades_entry",
-    "sla_days": 7,
+    "sla_states": ["session_18_entry", "qualitative_eval_pending"],
     "triggers": [
-      {
-        "event": "sla_breach",
-        "actor_role": "system"
-      }
+      {"event": "sla_breach", "actor_role": "system", "state": "session_18_entry"},
+      {"event": "sla_breach", "actor_role": "system", "state": "qualitative_eval_pending"}
     ]
   }
 }

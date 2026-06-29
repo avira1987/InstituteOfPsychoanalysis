@@ -27,6 +27,7 @@
       "name_fa": "بررسی صلاحیت — کمیته نظارت",
       "type": "intermediate",
       "assigned_role": "supervision_committee",
+      "sla_days": 7,
       "metadata": {
         "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
         "operator_short_fa": "بررسی صلاحیت — کمیته نظارت"
@@ -39,13 +40,24 @@
       "assigned_role": "system"
     },
     {
-      "code": "edu_supervision_interview",
-      "name_fa": "مصاحبه — کمیته درمان آموزشی و سوپرویژن",
+      "code": "interview_scheduling",
+      "name_fa": "تنظیم وقت مصاحبه — کمیته درمان آموزشی و سوپرویژن",
+      "type": "intermediate",
+      "assigned_role": "education_committee",
+      "sla_days": 7,
+      "metadata": {
+        "operator_task_fa": "هماهنگی وقت مصاحبه با دانشجو و ثبت در LMS.",
+        "operator_short_fa": "تنظیم وقت مصاحبه"
+      }
+    },
+    {
+      "code": "interview_held",
+      "name_fa": "برگزاری مصاحبه — کمیته درمان آموزشی و سوپرویژن",
       "type": "intermediate",
       "assigned_role": "education_committee",
       "metadata": {
         "operator_task_fa": "بررسی پرونده در جلسه کمیته آموزش.",
-        "operator_short_fa": "مصاحبه — کمیته درمان آموزشی و سوپرویژن"
+        "operator_short_fa": "برگزاری مصاحبه"
       }
     },
     {
@@ -55,10 +67,108 @@
       "assigned_role": "system"
     },
     {
-      "code": "therapy_supervision_hours",
-      "name_fa": "تکمیل ۵۰ ساعت درمان شخصی و سوپرویژن و انتخاب اسلات‌ها",
+      "code": "therapy_readiness_check",
+      "name_fa": "بررسی وضعیت درمان شخصی",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "system"
+    },
+    {
+      "code": "therapy_frequency_adjustment",
+      "name_fa": "افزایش فرکانس درمان به یک جلسه در هفته",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "درمان شخصی را به حداقل یک جلسه در هفته افزایش دهید. مهلت: ۱۰ روز."
+      }
+    },
+    {
+      "code": "therapy_frequency_escalation",
+      "name_fa": "هشدار مهلت فرکانس درمان — مسئول پروژه",
+      "type": "intermediate",
+      "assigned_role": "education_committee",
+      "metadata": {
+        "operator_task_fa": "پیگیری عدم فعال‌سازی درمان هفتگی در مهلت ۱۰ روز.",
+        "operator_short_fa": "هشدار مهلت فرکانس درمان"
+      }
+    },
+    {
+      "code": "personal_therapy_hours",
+      "name_fa": "تکمیل ۵۰ ساعت درمان شخصی",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "۵۰ ساعت دیگر درمان شخصی را دریافت کنید؛ قوانین سختگیرانه غیبت/کنسلی اعمال نمی‌شود."
+      }
+    },
+    {
+      "code": "therapist_selection",
+      "name_fa": "انتخاب درمانگر از شیت وقت‌های آزاد",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "از شیت وقت‌های آزاد درمانگران، درمانگر پیشنهادی خود را انتخاب کنید."
+      }
+    },
+    {
+      "code": "therapist_committee_review",
+      "name_fa": "بررسی درمانگر پیشنهادی — کمیته درمان آموزشی",
+      "type": "intermediate",
+      "assigned_role": "education_committee",
+      "metadata": {
+        "operator_task_fa": "تایید یا رد درمانگر پیشنهادی متقاضی.",
+        "operator_short_fa": "بررسی درمانگر پیشنهادی"
+      }
+    },
+    {
+      "code": "supervision_readiness_check",
+      "name_fa": "بررسی وضعیت سوپرویژن فردی",
+      "type": "intermediate",
+      "assigned_role": "system"
+    },
+    {
+      "code": "supervision_frequency_adjustment",
+      "name_fa": "افزایش فرکانس سوپرویژن به دو جلسه در ماه",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "سوپرویژن فردی را به دو جلسه در ماه افزایش دهید تا ۵۰ ساعت تکمیل شود."
+      }
+    },
+    {
+      "code": "supervision_restart",
+      "name_fa": "آغاز مجدد سوپرویژن با عضو هیئت علمی کامل",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "سوپرویژن فعلی قطع شده؛ با عضو هیئت علمی کامل سوپرویژن را از نو آغاز کنید."
+      }
+    },
+    {
+      "code": "supervision_hours",
+      "name_fa": "تکمیل ۵۰ ساعت سوپرویژن فردی",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "تا تکمیل ۵۰ ساعت سوپرویژن فردی ادامه دهید."
+      }
+    },
+    {
+      "code": "supervisor_selection",
+      "name_fa": "انتخاب سوپروایزر از شیت هیئت علمی کامل",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "از شیت وقت‌های آزاد سوپروایزرها (هیئت علمی کامل) زمان سوپرویژن را انتخاب کنید."
+      }
+    },
+    {
+      "code": "et_availability_slots",
+      "name_fa": "ثبت دو زمان خالی در شیت درمانگران آموزشی",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_task_fa": "دو زمان خالی برای ارائه خدمات به‌عنوان درمانگر آموزشی در شیت ثبت کنید."
+      }
     },
     {
       "code": "promotion_completed",
@@ -72,13 +182,23 @@
       "from": "student_start",
       "to": "eligibility_failed",
       "trigger": "conditions_failed",
+      "conditions": ["et_upgrade_eligibility_not_met"],
       "description_fa": "عدم تحقق شروط ارتقا — پیغام رد",
-      "required_role": "student"
+      "required_role": "student",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "et_eligibility_failed",
+          "recipients": ["student"]
+        }
+      ]
     },
     {
       "from": "student_start",
       "to": "monitoring_review",
       "trigger": "conditions_met",
+      "conditions": ["et_upgrade_eligibility_met"],
       "description_fa": "شروط اولیه — ارسال به کمیته نظارت",
       "required_role": "student"
     },
@@ -87,11 +207,19 @@
       "to": "monitoring_rejected",
       "trigger": "rejected",
       "required_role": "supervision_committee",
-      "description_fa": "رد صلاحیت"
+      "description_fa": "رد صلاحیت",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "et_monitoring_rejected",
+          "recipients": ["student"]
+        }
+      ]
     },
     {
       "from": "monitoring_review",
-      "to": "edu_supervision_interview",
+      "to": "interview_scheduling",
       "trigger": "approved",
       "required_role": "supervision_committee",
       "description_fa": "تایید — ارجاع به کمیته درمان آموزشی و سوپرویژن",
@@ -102,25 +230,208 @@
       ]
     },
     {
-      "from": "edu_supervision_interview",
+      "from": "interview_scheduling",
+      "to": "interview_held",
+      "trigger": "interview_scheduled",
+      "required_role": "education_committee",
+      "description_fa": "وقت مصاحبه ثبت شد",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "et_interview_scheduled",
+          "recipients": ["student", "education_committee"]
+        }
+      ]
+    },
+    {
+      "from": "interview_held",
       "to": "interview_rejected",
       "trigger": "interview_rejected",
       "required_role": "education_committee",
-      "description_fa": "رد پس از مصاحبه"
+      "description_fa": "رد پس از مصاحبه",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "et_interview_rejected",
+          "recipients": ["student"]
+        }
+      ]
     },
     {
-      "from": "edu_supervision_interview",
-      "to": "therapy_supervision_hours",
+      "from": "interview_held",
+      "to": "therapy_readiness_check",
       "trigger": "interview_approved",
       "required_role": "education_committee",
-      "description_fa": "تایید مصاحبه — مسیر درمان و سوپرویژن"
+      "description_fa": "تایید مصاحبه — بررسی درمان شخصی",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "et_interview_approved",
+          "recipients": ["student"]
+        },
+        {
+          "type": "evaluate_et_therapy_readiness"
+        }
+      ]
     },
     {
-      "from": "therapy_supervision_hours",
+      "from": "therapy_readiness_check",
+      "to": "therapy_frequency_adjustment",
+      "trigger": "therapy_frequency_low",
+      "conditions": ["et_therapy_frequency_below_weekly"],
+      "required_role": "system",
+      "description_fa": "فرکانس درمان کمتر از یک جلسه در هفته"
+    },
+    {
+      "from": "therapy_readiness_check",
+      "to": "personal_therapy_hours",
+      "trigger": "therapy_active",
+      "conditions": ["et_therapy_active"],
+      "required_role": "system",
+      "description_fa": "درمان شخصی فعال — پیگیری ۵۰ ساعت"
+    },
+    {
+      "from": "therapy_readiness_check",
+      "to": "therapist_selection",
+      "trigger": "no_active_therapy",
+      "conditions": ["et_therapy_not_active"],
+      "required_role": "system",
+      "description_fa": "درمان شخصی فعال نیست — انتخاب درمانگر"
+    },
+    {
+      "from": "therapy_frequency_adjustment",
+      "to": "personal_therapy_hours",
+      "trigger": "frequency_confirmed",
+      "required_role": "student",
+      "description_fa": "فرکانس هفتگی تأیید شد"
+    },
+    {
+      "from": "therapy_frequency_adjustment",
+      "to": "therapy_frequency_escalation",
+      "trigger": "deadline_exceeded",
+      "required_role": "system",
+      "description_fa": "مهلت ۱۰ روزه افزایش فرکانس درمان گذشت"
+    },
+    {
+      "from": "personal_therapy_hours",
+      "to": "supervision_readiness_check",
+      "trigger": "hours_complete",
+      "conditions": ["et_personal_therapy_hours_complete"],
+      "required_role": "student",
+      "description_fa": "۵۰ ساعت درمان شخصی تکمیل شد",
+      "actions": [
+        {
+          "type": "evaluate_et_supervision_readiness"
+        }
+      ]
+    },
+    {
+      "from": "therapist_selection",
+      "to": "therapist_committee_review",
+      "trigger": "therapist_submitted",
+      "required_role": "student",
+      "description_fa": "درمانگر پیشنهادی ثبت شد"
+    },
+    {
+      "from": "therapist_committee_review",
+      "to": "therapist_selection",
+      "trigger": "rejected",
+      "required_role": "education_committee",
+      "description_fa": "رد درمانگر — انتخاب مجدد",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "et_therapist_rejected",
+          "recipients": ["student"]
+        }
+      ]
+    },
+    {
+      "from": "therapist_committee_review",
+      "to": "supervision_readiness_check",
+      "trigger": "approved",
+      "required_role": "education_committee",
+      "description_fa": "تایید درمانگر — بررسی سوپرویژن",
+      "actions": [
+        {
+          "type": "evaluate_et_supervision_readiness"
+        }
+      ]
+    },
+    {
+      "from": "supervision_readiness_check",
+      "to": "supervision_frequency_adjustment",
+      "trigger": "frequency_increase_needed",
+      "conditions": ["et_supervision_frequency_one_per_month"],
+      "required_role": "system",
+      "description_fa": "یک جلسه در ماه — افزایش به دو جلسه"
+    },
+    {
+      "from": "supervision_readiness_check",
+      "to": "supervision_hours",
+      "trigger": "supervision_active",
+      "conditions": ["et_supervision_active_two_per_month"],
+      "required_role": "system",
+      "description_fa": "سوپرویژن فعال — پیگیری ۵۰ ساعت"
+    },
+    {
+      "from": "supervision_readiness_check",
+      "to": "supervision_restart",
+      "trigger": "supervision_restart_needed",
+      "conditions": ["et_supervision_frequency_below_monthly"],
+      "required_role": "system",
+      "description_fa": "فرکانس کمتر از یک جلسه در ماه — آغاز مجدد"
+    },
+    {
+      "from": "supervision_frequency_adjustment",
+      "to": "supervision_hours",
+      "trigger": "frequency_confirmed",
+      "required_role": "student",
+      "description_fa": "فرکانس ماهانه تأیید شد"
+    },
+    {
+      "from": "supervision_restart",
+      "to": "supervisor_selection",
+      "trigger": "restart_confirmed",
+      "required_role": "student",
+      "description_fa": "آغاز مجدد سوپرویژن تأیید شد"
+    },
+    {
+      "from": "supervision_hours",
+      "to": "supervisor_selection",
+      "trigger": "hours_complete",
+      "conditions": ["et_supervision_hours_complete"],
+      "required_role": "student",
+      "description_fa": "۵۰ ساعت سوپرویژن تکمیل شد"
+    },
+    {
+      "from": "supervisor_selection",
+      "to": "et_availability_slots",
+      "trigger": "supervisor_selected",
+      "required_role": "student",
+      "description_fa": "سوپروایزر و زمان انتخاب شد"
+    },
+    {
+      "from": "et_availability_slots",
       "to": "promotion_completed",
       "trigger": "slots_registered",
       "required_role": "student",
-      "description_fa": "تکمیل ساعات و ثبت دو زمان خالی — پایان فرایند"
+      "description_fa": "ثبت دو زمان خالی — پایان فرایند",
+      "actions": [
+        {
+          "type": "register_et_availability_slots"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "et_promotion_completed",
+          "recipients": ["student"]
+        }
+      ]
     }
   ],
   "forms": [
@@ -133,6 +444,234 @@
           "name": "acknowledge",
           "label_fa": "تایید مطالعه شرایط",
           "type": "checkbox",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "et_monitoring_decision",
+      "name_fa": "تصمیم کمیته نظارت — ارتقا به درمانگر آموزشی",
+      "used_in_state": "monitoring_review",
+      "fields": [
+        {
+          "name": "result",
+          "label_fa": "نتیجه بررسی",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "approve", "label_fa": "تایید صلاحیت" },
+            { "value": "reject", "label_fa": "رد صلاحیت" }
+          ]
+        },
+        {
+          "name": "notes",
+          "label_fa": "توضیحات",
+          "type": "textarea"
+        }
+      ]
+    },
+    {
+      "code": "et_interview_schedule",
+      "name_fa": "تنظیم وقت مصاحبه ارتقا به درمانگر آموزشی",
+      "used_in_state": "interview_scheduling",
+      "fields": [
+        {
+          "name": "interview_date",
+          "label_fa": "تاریخ جلسه",
+          "type": "date_picker",
+          "required": true
+        },
+        {
+          "name": "interview_time",
+          "label_fa": "ساعت جلسه",
+          "type": "time_picker",
+          "required": true
+        },
+        {
+          "name": "meeting_type",
+          "label_fa": "نحوه برگزاری",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "in_person", "label_fa": "حضوری" },
+            { "value": "online", "label_fa": "آنلاین" }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "et_interview_result",
+      "name_fa": "نتیجه مصاحبه ارتقا به درمانگر آموزشی",
+      "used_in_state": "interview_held",
+      "fields": [
+        {
+          "name": "result",
+          "label_fa": "نتیجه",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "approve", "label_fa": "تایید صلاحیت" },
+            { "value": "reject", "label_fa": "رد صلاحیت" }
+          ]
+        },
+        {
+          "name": "notes",
+          "label_fa": "یادداشت جلسه",
+          "type": "textarea"
+        }
+      ]
+    },
+    {
+      "code": "therapy_frequency_confirm",
+      "name_fa": "تأیید افزایش فرکانس درمان هفتگی",
+      "used_in_state": "therapy_frequency_adjustment",
+      "fields": [
+        {
+          "name": "confirmed_weekly",
+          "label_fa": "درمان شخصی را به حداقل یک جلسه در هفته افزایش داده‌ام",
+          "type": "checkbox",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "therapist_pick",
+      "name_fa": "انتخاب درمانگر پیشنهادی",
+      "used_in_state": "therapist_selection",
+      "fields": [
+        {
+          "name": "therapist_id",
+          "label_fa": "درمانگر از شیت وقت‌های آزاد",
+          "type": "therapist_select",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "therapist_committee_decision",
+      "name_fa": "بررسی درمانگر پیشنهادی",
+      "used_in_state": "therapist_committee_review",
+      "fields": [
+        {
+          "name": "result",
+          "label_fa": "نتیجه",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "approve", "label_fa": "تایید درمانگر" },
+            { "value": "reject", "label_fa": "رد — انتخاب مجدد" }
+          ]
+        },
+        {
+          "name": "notes",
+          "label_fa": "توضیحات",
+          "type": "textarea"
+        }
+      ]
+    },
+    {
+      "code": "supervision_frequency_confirm",
+      "name_fa": "تأیید افزایش فرکانس سوپرویژن",
+      "used_in_state": "supervision_frequency_adjustment",
+      "fields": [
+        {
+          "name": "confirmed_two_per_month",
+          "label_fa": "سوپرویژن فردی را به دو جلسه در ماه افزایش داده‌ام",
+          "type": "checkbox",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "supervision_restart_confirm",
+      "name_fa": "تأیید آغاز مجدد سوپرویژن",
+      "used_in_state": "supervision_restart",
+      "fields": [
+        {
+          "name": "restart_acknowledged",
+          "label_fa": "از قطع سوپرویژن قبلی و آغاز با عضو هیئت علمی کامل مطلع هستم",
+          "type": "checkbox",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "supervisor_pick",
+      "name_fa": "انتخاب سوپروایزر و زمان",
+      "used_in_state": "supervisor_selection",
+      "fields": [
+        {
+          "name": "supervisor_id",
+          "label_fa": "شناسه سوپروایزر (هیئت علمی کامل)",
+          "type": "text",
+          "required": true,
+          "description_fa": "سوپروایزر را از شیت وقت‌های آزاد انتخاب و شناسه را وارد کنید."
+        },
+        {
+          "name": "session_day",
+          "label_fa": "روز جلسه",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "saturday", "label_fa": "شنبه" },
+            { "value": "sunday", "label_fa": "یکشنبه" },
+            { "value": "monday", "label_fa": "دوشنبه" },
+            { "value": "tuesday", "label_fa": "سه‌شنبه" },
+            { "value": "wednesday", "label_fa": "چهارشنبه" },
+            { "value": "thursday", "label_fa": "پنج‌شنبه" }
+          ]
+        },
+        {
+          "name": "session_time",
+          "label_fa": "ساعت جلسه",
+          "type": "time_picker",
+          "required": true
+        }
+      ]
+    },
+    {
+      "code": "et_slot_pair",
+      "name_fa": "ثبت دو زمان خالی درمانگر آموزشی",
+      "used_in_state": "et_availability_slots",
+      "fields": [
+        {
+          "name": "slot_1_day",
+          "label_fa": "زمان خالی ۱ — روز",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "saturday", "label_fa": "شنبه" },
+            { "value": "sunday", "label_fa": "یکشنبه" },
+            { "value": "monday", "label_fa": "دوشنبه" },
+            { "value": "tuesday", "label_fa": "سه‌شنبه" },
+            { "value": "wednesday", "label_fa": "چهارشنبه" },
+            { "value": "thursday", "label_fa": "پنج‌شنبه" }
+          ]
+        },
+        {
+          "name": "slot_1_time",
+          "label_fa": "زمان خالی ۱ — ساعت",
+          "type": "time_picker",
+          "required": true
+        },
+        {
+          "name": "slot_2_day",
+          "label_fa": "زمان خالی ۲ — روز",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "saturday", "label_fa": "شنبه" },
+            { "value": "sunday", "label_fa": "یکشنبه" },
+            { "value": "monday", "label_fa": "دوشنبه" },
+            { "value": "tuesday", "label_fa": "سه‌شنبه" },
+            { "value": "wednesday", "label_fa": "چهارشنبه" },
+            { "value": "thursday", "label_fa": "پنج‌شنبه" }
+          ]
+        },
+        {
+          "name": "slot_2_time",
+          "label_fa": "زمان خالی ۲ — ساعت",
+          "type": "time_picker",
           "required": true
         }
       ]

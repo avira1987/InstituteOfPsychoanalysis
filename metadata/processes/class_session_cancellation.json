@@ -50,12 +50,14 @@
         {
           "name": "lesson_id",
           "label_fa": "نام درس",
-          "type": "select"
+          "type": "select",
+          "source": "assignable_courses"
         },
         {
           "name": "session_to_cancel",
           "label_fa": "جلسه جهت کنسلی",
-          "type": "select"
+          "type": "select",
+          "source": "class_cancellable_sessions"
         },
         {
           "name": "makeup_date",

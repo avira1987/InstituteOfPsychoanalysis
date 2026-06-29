@@ -4,6 +4,25 @@
 import { userApi } from '../services/api'
 import api from '../services/api'
 
+export async function resolveCourseClassRoster(courseCode) {
+  const code = (courseCode || '').trim()
+  if (!code) return []
+  try {
+    const res = await api.get('panel/instructor/course-roster', {
+      params: { course_code: code, _ts: Date.now() },
+      headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
+    })
+    const roster = res.data?.roster
+    if (!Array.isArray(roster)) return []
+    return roster.map((r) => ({
+      value: r.student_id || r.student_code || r.name_fa,
+      label_fa: r.name_fa || r.student_code || r.student_id || '—',
+    }))
+  } catch {
+    return []
+  }
+}
+
 export async function resolveUsersOptionsSource(source) {
   if (!source || source.type !== 'users') return []
   const params = {}
@@ -96,8 +115,26 @@ export async function createCourseCommitteeMember({ track, kind, nameFa }) {
   return res.data?.member
 }
 
+export async function resolveTraitCatalogOptions(kind) {
+  const k = (kind || 'positive').trim().toLowerCase()
+  try {
+    const res = await api.get('panel/instructor/trait-catalog', {
+      params: { kind: k, _ts: Date.now() },
+      headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
+    })
+    const traits = res.data?.traits
+    if (!Array.isArray(traits)) return []
+    return traits.map((t) => ({
+      value: t.value,
+      label_fa: t.label_fa || t.value,
+    }))
+  } catch {
+    return []
+  }
+}
+
 /** resolve options_source برای فیلد یا ستون جدول */
-export async function resolveFormOptionsSource(source) {
+export async function resolveFormOptionsSource(source, contextData = null) {
   if (!source || typeof source !== 'object') return { options: [], optionsByTrack: null }
 
   if (source.type === 'users') {
@@ -125,6 +162,23 @@ export async function resolveFormOptionsSource(source) {
       }),
     )
     return { options: [], optionsByTrack }
+  }
+
+  if (source.type === 'course_class_roster') {
+    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
+    const courseCode =
+      source.course_code
+      || ctx.course_id
+      || ctx.course_code
+      || ctx.lesson_course_label
+      || ctx.course_name
+    const options = await resolveCourseClassRoster(courseCode)
+    return { options, optionsByTrack: null }
+  }
+
+  if (source.type === 'trait_catalog') {
+    const options = await resolveTraitCatalogOptions(source.kind || 'positive')
+    return { options, optionsByTrack: null }
   }
 
   return { options: [], optionsByTrack: null }
