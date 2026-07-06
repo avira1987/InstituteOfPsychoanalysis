@@ -105,6 +105,10 @@ _COMMITTEE_KEYWORDS: dict[str, list[str]] = {
         "sla_alert",
         "escalation",
         "deputy_education",
+        # آماده‌سازی ترم — مراحل assigned_role معاون
+        "tuition_entry",
+        "license_check",
+        "interviewer_assignment",
     ],
     "monitoring_committee_officer": [
         "monitoring",

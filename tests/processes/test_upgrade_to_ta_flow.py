@@ -3,13 +3,21 @@
 import pytest
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.engine import StateMachineEngine
 from app.meta.seed import load_process
+from app.services.course_committee_roster_service import _load_roster_file, reload_roster_cache
 
 
 @pytest.mark.asyncio
 class TestUpgradeToTaFlow:
+
+    @pytest.fixture(autouse=True)
+    def _fresh_roster(self):
+        reload_roster_cache()
+        yield
+        reload_roster_cache()
 
     async def test_upgrade_to_ta_loads_and_starts(
         self, db_session: AsyncSession, sample_student, sample_user
@@ -141,10 +149,14 @@ class TestUpgradeToTaFlow:
             trigger_event="tracks_registered",
             actor_id=sample_user.id,
             actor_role="admin",
+            payload={"tracks": ["analytic_psychotherapy"]},
         )
         await db_session.commit()
         assert result.success is True
         assert result.to_state == "commitment_signature"
+
+        instance = await engine.get_process_instance(instance.id)
+        assert instance.context_data.get("tracks") == ["analytic_psychotherapy"]
 
         # commitment_signed → ta_registered (required_role: student)
         result = await engine.execute_transition(
@@ -160,3 +172,22 @@ class TestUpgradeToTaFlow:
         instance = await engine.get_process_instance(instance.id)
         assert instance.current_state_code == "ta_registered"
         assert instance.is_completed is True
+
+        await db_session.refresh(sample_student)
+        extra = sample_student.extra_data or {}
+        assert extra.get("ta_registered") is True
+        assert extra.get("is_teaching_assistant") is True
+        assert "analytic_psychotherapy" in (extra.get("ta_active_tracks") or [])
+
+        ta_name = (sample_student_user.full_name_fa or "").strip()
+        reload_roster_cache()
+        track_def = next(
+            t for t in _load_roster_file().get("tracks") or []
+            if isinstance(t, dict) and t.get("code") == "analytic_psychotherapy"
+        )
+        ta_names = {
+            (m.get("name_fa") or "").strip()
+            for m in (track_def.get("teaching_assistants") or [])
+            if isinstance(m, dict)
+        }
+        assert ta_name in ta_names

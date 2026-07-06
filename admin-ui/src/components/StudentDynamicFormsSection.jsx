@@ -2,22 +2,17 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { dynamicFormsApi } from '../services/api'
 import UnifiedFormRenderer from './UnifiedFormRenderer'
 import { validateUnifiedAnswers } from '../utils/unifiedFormValidation'
-import PopupToast from './PopupToast'
+import { useToast } from '../contexts/ToastContext'
 
 /**
  * فرم‌های داینامیک متصل به نمونه فرایند (همان state) — از API open-for-instance.
  */
 export default function StudentDynamicFormsSection({ instanceId, onSubmitted }) {
-  const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(true)
   const [assignments, setAssignments] = useState([])
   const [valuesByAssignment, setValuesByAssignment] = useState({})
   const [busy, setBusy] = useState({})
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 4000)
-  }
+  const { showToast } = useToast()
 
   const load = useCallback(async () => {
     if (!instanceId) {
@@ -93,7 +88,6 @@ export default function StudentDynamicFormsSection({ instanceId, onSubmitted }) 
 
   return (
     <div className="card" style={{ marginBottom: '1.25rem' }} data-testid="student-dynamic-forms-section">
-      <PopupToast toast={toast} />
       <div className="card-header">
         <h3 className="card-title">فرم‌های تکمیلی این مرحله</h3>
         <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.9rem' }}>

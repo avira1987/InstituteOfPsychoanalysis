@@ -193,3 +193,37 @@ async def test_apply_pre_filled_from_fall_courses(db_session: AsyncSession, samp
         {},
     )
     assert merged.get("courses") == sample_courses
+
+
+def test_apply_course_finalization_prefill_from_fall_course_lists():
+    from app.services.semester_prep_service import (
+        FALL_PREP,
+        _apply_course_finalization_prefill,
+    )
+
+    draft_fall = [
+        {
+            "course_name": "تئوری ۱",
+            "track": "آشنایی",
+            "proposed_day": "شنبه",
+            "proposed_time": "18:00",
+            "instructor": "دکتر الف",
+            "teaching_assistant": "خانم ب",
+        }
+    ]
+    draft_winter = [
+        {
+            "course_name": "عملی ۲",
+            "track": "جامع",
+            "day": "دوشنبه",
+            "time": "17:30",
+            "instructor": "دکتر ج",
+        }
+    ]
+    ctx = {"courses_fall": draft_fall, "courses_winter": draft_winter}
+    merged = _apply_course_finalization_prefill(FALL_PREP, "course_finalization", ctx)
+    assert merged["courses_finalized_fall"][0]["course_name"] == "تئوری ۱"
+    assert merged["courses_finalized_fall"][0]["day"] == "شنبه"
+    assert merged["courses_finalized_fall"][0]["time"] == "18:00"
+    assert merged["courses_finalized_winter"][0]["course_name"] == "عملی ۲"
+    assert merged["courses_finalized_winter"][0]["day"] == "دوشنبه"

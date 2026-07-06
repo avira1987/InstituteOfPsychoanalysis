@@ -6,7 +6,7 @@ import InterviewSlotRecurringRules from '../components/InterviewSlotRecurringRul
 import InterviewSlotsAdmin from '../components/InterviewSlotsAdmin'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import InterviewerResultPanel from '../components/InterviewerResultPanel'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import { panelApi } from '../services/api'
 import { canManageInterviewSlots } from '../utils/interviewSlotAccess'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
@@ -19,17 +19,12 @@ const DEEP_LINK_TABS = ['dashboard', 'result']
 export default function InterviewerPortal() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [toast, setToast] = useState(null)
+  const { showToast } = useToast()
   const [inboxItems, setInboxItems] = useState([])
   const [readinessAlerts, setReadinessAlerts] = useState([])
   const [followupLoading, setFollowupLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('dashboard')
   const [selectedInstance, setSelectedInstance] = useState(null)
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 4000)
-  }
 
   const reloadFollowup = React.useCallback(() => {
     setFollowupLoading(true)
@@ -88,8 +83,6 @@ export default function InterviewerPortal() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
-
       <div className="page-header">
         <div>
           <h1 className="page-title">پنل مصاحبه‌گر</h1>

@@ -67,14 +67,14 @@ const SHARED_NAV = [
     path: '/panel/semester-prep/calendar',
     label: 'تدوین تقویم آموزشی دو ترم',
     icon: '📆',
-    roles: ['admin', 'deputy_education', 'staff'],
+    roles: ['admin', 'course_committee', 'staff'],
     priority: 45.15,
   },
   {
     path: '/panel/semester-prep/course-list-review',
     label: 'بازبینی و ویرایش لیست دروس ترم زمستان',
     icon: '📚',
-    roles: ['admin', 'deputy_education', 'staff'],
+    roles: ['admin', 'course_committee', 'staff'],
     priority: 45.17,
   },
   {

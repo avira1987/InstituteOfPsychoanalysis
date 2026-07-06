@@ -11,11 +11,46 @@ def test_deputy_education_can_edit_fall_tuition_form():
     assert "interview_fee_comprehensive" in names
 
 
-def test_deputy_education_can_edit_fall_calendar_form():
+def test_deputy_education_cannot_edit_fall_course_list_form():
+    forms = get_process_forms("fall_semester_preparation", state_code="course_list_creation")
+    names = editable_field_names(forms, "deputy_education")
+    assert "courses_fall" not in names
+    assert "courses_winter" not in names
+    assert not names
+
+
+def test_course_committee_can_edit_fall_course_list_form():
+    forms = get_process_forms("fall_semester_preparation", state_code="course_list_creation")
+    names = editable_field_names(forms, "course_committee")
+    assert "courses_fall" in names
+    assert "courses_winter" in names
+
+
+def test_deputy_education_cannot_edit_fall_course_finalization_form():
+    forms = get_process_forms("fall_semester_preparation", state_code="course_finalization")
+    names = editable_field_names(forms, "deputy_education")
+    assert not names
+
+
+def test_deputy_education_cannot_edit_fall_calendar_form():
     forms = get_process_forms("fall_semester_preparation", state_code="calendar_entry")
     names = editable_field_names(forms, "deputy_education")
+    assert "fall_start_date" not in names
+    assert not names
+
+
+def test_course_committee_can_edit_fall_calendar_form():
+    forms = get_process_forms("fall_semester_preparation", state_code="calendar_entry")
+    names = editable_field_names(forms, "course_committee")
     assert "fall_start_date" in names
     assert "registration_payment_window_start" in names
+
+
+def test_course_committee_can_edit_fall_course_finalization_form():
+    forms = get_process_forms("fall_semester_preparation", state_code="course_finalization")
+    names = editable_field_names(forms, "course_committee")
+    assert "courses_finalized_fall" in names
+    assert "courses_finalized_winter" in names
 
 
 def test_deputy_education_can_edit_winter_license_form():
@@ -44,3 +79,35 @@ def test_deputy_education_can_edit_interviewer_assignment_form():
     names = editable_field_names(forms, "deputy_education")
     assert "comprehensive_interviewers" in names
     assert "introductory_interviewers" in names
+
+
+def test_deputy_education_cannot_edit_marketing_campaign_form():
+    forms = get_process_forms("fall_semester_preparation", state_code="marketing_campaign")
+    names = editable_field_names(forms, "deputy_education")
+    assert "marketing_info_sent_to_manager" not in names
+    assert "marketing_notes" not in names
+    assert not names
+
+
+def test_staff_can_edit_marketing_campaign_form():
+    forms = get_process_forms("fall_semester_preparation", state_code="marketing_campaign")
+    names = editable_field_names(forms, "staff")
+    assert "marketing_info_sent_to_manager" in names
+
+
+def test_portal_role_can_act_on_marketing_campaign_state():
+    from app.meta.operator_state_catalog import portal_role_can_act_on_assigned_role
+
+    assert portal_role_can_act_on_assigned_role("staff", "admissions_officer")
+    assert not portal_role_can_act_on_assigned_role("deputy_education", "admissions_officer")
+    assert portal_role_can_act_on_assigned_role("deputy_education", "deputy_education_director")
+    assert portal_role_can_act_on_assigned_role("admin", "admissions_officer")
+    assert portal_role_can_act_on_assigned_role("staff", "staff")
+    assert portal_role_can_act_on_assigned_role("staff", "site_manager")
+
+
+def test_staff_can_edit_interview_scheduling_form():
+    forms = get_process_forms("fall_semester_preparation", state_code="interview_scheduling")
+    names = editable_field_names(forms, "staff")
+    assert "interview_start_time" in names
+    assert "slot_duration_minutes" in names

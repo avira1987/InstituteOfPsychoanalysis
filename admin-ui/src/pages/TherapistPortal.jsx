@@ -8,7 +8,7 @@ import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload
 import { isDocumentReviewState } from '../utils/documentReviewStates'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
@@ -47,18 +47,13 @@ export default function TherapistPortal() {
   const [therapyIncreaseAltDate, setTherapyIncreaseAltDate] = useState('')
   const [therapyIncreaseAltTime, setTherapyIncreaseAltTime] = useState('')
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState(null)
   const [studentSearch, setStudentSearch] = useState('')
   const [therapySessions, setTherapySessions] = useState([])
   const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
   const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
   const [attendanceNeedsCount, setAttendanceNeedsCount] = useState(0)
   const [startingEarlyTerminationFor, setStartingEarlyTerminationFor] = useState(null)
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 4000)
-  }
+  const { showToast } = useToast()
 
   useEffect(() => { loadData() }, [])
 
@@ -265,7 +260,6 @@ export default function TherapistPortal() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
 
       <ResolvedProcessHistoryBanner
         instanceDetail={instanceDetail}

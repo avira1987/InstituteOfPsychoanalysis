@@ -5,6 +5,7 @@ import { getAvatarUrl, panelApi, dynamicFormsApi } from '../services/api'
 import NotificationBell from './NotificationBell'
 import { getSiteLogoUrl } from '../utils/siteLogo'
 import { navItemsForRole } from '../utils/portalRoleNav'
+import { PANEL_NOTIFICATIONS_CHANGED_EVENT } from '../utils/panelNotifications'
 
 const roleLabels = {
   admin: 'مدیر سیستم',
@@ -80,10 +81,13 @@ export default function Layout() {
     const onVis = () => {
       if (document.visibilityState === 'visible') loadNavPending()
     }
+    const onNotifChanged = () => loadNavPending()
     document.addEventListener('visibilitychange', onVis)
+    window.addEventListener(PANEL_NOTIFICATIONS_CHANGED_EVENT, onNotifChanged)
     return () => {
       clearInterval(t)
       document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener(PANEL_NOTIFICATIONS_CHANGED_EVENT, onNotifChanged)
     }
   }, [loadNavPending, loadDynamicNav])
 

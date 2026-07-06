@@ -95,6 +95,12 @@
           "name_fa": "الناز بهمن زاد",
           "tier": 2,
           "member_kind": "instructor"
+        },
+        {
+          "roster_key": "inst_دانشجوی_تست",
+          "name_fa": "دانشجوی تست",
+          "tier": 2,
+          "member_kind": "instructor"
         }
       ],
       "teaching_assistants": [
@@ -113,6 +119,12 @@
         {
           "roster_key": "ta_t3_03",
           "name_fa": "هانيه پور جبار",
+          "tier": 3,
+          "member_kind": "teaching_assistant"
+        },
+        {
+          "roster_key": "ta_دانشجوی_تست",
+          "name_fa": "دانشجوی تست",
           "tier": 3,
           "member_kind": "teaching_assistant"
         }

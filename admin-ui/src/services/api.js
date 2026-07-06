@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { getRouterBasename } from '../utils/routerBasename'
 import { emitSimulatedSmsFromApi } from '../utils/simulatedSmsBridge'
+import { dispatchPanelNotificationsChanged } from '../utils/panelNotifications'
 
 // API base. Override با VITE_API_BASE در .env در صورت نیاز.
 export function getApiBase() {
@@ -242,6 +243,8 @@ export const studentApi = {
     api.patch(`students/${studentId}/registration-course-type`, data),
   updateRegistrationCourseTypeByUser: (userId, data) =>
     api.patch(`students/by-user/${userId}/registration-course-type`, data),
+  taPortfolio: () => api.get('students/me/ta-portfolio'),
+  taPortfolioFor: (studentId) => api.get(`students/${studentId}/ta-portfolio`),
 }
 
 // ─── Process Execution ─────────────────────────────────────────
@@ -257,9 +260,16 @@ export const processExecApi = {
       },
     }),
   start: (data) => api.post('process/start', data),
-  trigger: (instanceId, data) => api.post(`process/${instanceId}/trigger`, data),
+  trigger: async (instanceId, data) => {
+    const res = await api.post(`process/${instanceId}/trigger`, data)
+    if (res.data?.success) {
+      dispatchPanelNotificationsChanged()
+    }
+    return res
+  },
   /** بازگشت به مرحلهٔ قبل (ادمین، معاون آموزش، کارمند) */
   rollback: (instanceId, body) => api.post(`process/${instanceId}/rollback`, body || {}),
+  restart: (instanceId, body) => api.post(`process/${instanceId}/restart`, body || {}),
   status: (instanceId) => api.get(`process/${instanceId}/status`),
   transitions: (instanceId) => api.get(`process/${instanceId}/transitions`),
   /** وضعیت + انتقال‌ها + فرم‌های مرحلهٔ فعلی (مثل بارگذاری داشبورد فرایند در UI) */
@@ -503,6 +513,11 @@ export const panelApi = {
   navPendingCounts: () => api.get('panel/nav-pending-counts'),
   /** فید اعلان‌های اقدام (زنگوله + صفحهٔ همه اعلان‌ها) */
   actionNotifications: (params) => api.get('panel/action-notifications', { params }),
+  /** بستن یک اعلان از فید (کار انجام‌شده یا حذف دستی) */
+  dismissActionNotification: (notificationId) =>
+    api.post('panel/action-notifications/dismiss', { notification_id: notificationId }),
+  /** ثبت پیام پاپ‌آپ UI برای مرور در پنل اعلان‌ها */
+  createFlashMessage: (body) => api.post('panel/flash-messages', body),
   /** صندوق پیگیری سراسری — نقش admin */
   operatorFollowupInbox: (params) => api.get('panel/operator-followup-inbox', { params }),
   /** پیامک شبیه‌سازی‌شده (SMS_PROVIDER=log) برای شمارهٔ موبایل کاربر */

@@ -1,10 +1,15 @@
 """صف نمونهٔ فرایند برای نقش پنل — API و سرویس."""
 
+from pathlib import Path
+
 import pytest
 from starlette.testclient import TestClient
 
+from app.core.engine import StateMachineEngine
 from app.main import app
+from app.meta.seed import load_process
 from app.services.portal_role_inbox import build_portal_role_process_inbox
+from app.services.semester_prep_service import get_or_start_prep_instance
 
 
 @pytest.fixture(scope="module")
@@ -38,3 +43,50 @@ def test_my_process_inbox_admin_returns_items_key(client: TestClient):
     data = r2.json()
     assert "items" in data
     assert "summary" in data
+
+
+@pytest.mark.asyncio
+async def test_deputy_inbox_shows_interviewer_assignment_after_marketing(
+    db_session, sample_user
+):
+    """پس از مرحلهٔ بازاریابی، معاون آموزش باید مرحلهٔ تعیین مصاحبه‌گران را در کارتابل ببیند."""
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+    await db_session.commit()
+
+    inst, _ = await get_or_start_prep_instance(
+        db_session,
+        "fall_semester_preparation",
+        actor_id=sample_user.id,
+        actor_role="admin",
+    )
+    await db_session.commit()
+
+    engine = StateMachineEngine(db_session)
+    for trigger in (
+        "calendar_submitted",
+        "tuition_submitted",
+        "license_reviewed",
+        "course_list_submitted",
+        "courses_finalized",
+        "marketing_started",
+    ):
+        result = await engine.execute_transition(
+            instance_id=inst.id,
+            trigger_event=trigger,
+            actor_id=sample_user.id,
+            actor_role="admin",
+        )
+        await db_session.commit()
+        assert result.success is True, result.error
+
+    out = await build_portal_role_process_inbox(db_session, portal_role="deputy_education")
+    process_items = [i for i in out["items"] if i.get("kind") == "process"]
+    matching = [
+        i
+        for i in process_items
+        if i.get("process_code") == "fall_semester_preparation"
+        and i.get("state_code") == "interviewer_assignment"
+    ]
+    assert matching, "deputy_education inbox should list interviewer_assignment after marketing_started"
+    assert matching[0].get("responsible_role_code") == "deputy_education_director"

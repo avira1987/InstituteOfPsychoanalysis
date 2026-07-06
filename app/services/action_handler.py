@@ -2403,6 +2403,11 @@ class ActionHandler:
         if not student:
             return "student_not_found"
         merged = {**_as_mapping(instance.context_data), **(context or {})}
+        if instance.process_code == "ta_track_completion":
+            from app.services.ta_track_portfolio_service import apply_track_completion_from_context
+
+            result = apply_track_completion_from_context(student, merged)
+            return result
         keys = (
             "total_score",
             "result_status",

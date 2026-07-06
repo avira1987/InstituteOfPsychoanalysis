@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
 import ProcessRollbackSection from '../components/ProcessRollbackSection'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import { notesPayload } from '../utils/decisionPayload'
 import { labelState } from '../utils/processDisplay'
@@ -13,6 +13,7 @@ import {
   SEMESTER_PREP_CODES,
   useSemesterPrepWorkbench,
 } from '../hooks/useSemesterPrepWorkbench'
+import { portalRoleCanActOnState } from '../utils/portalRoleAccess'
 
 const PROCESS_LABELS = {
   fall_semester_preparation: 'آماده‌سازی ترم پاییز',
@@ -48,11 +49,9 @@ export default function SemesterPrepWorkbenchPage() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const processParam = searchParams.get('process_code')
-  const [toast, setToast] = useState(null)
+  const { showToast } = useToast()
   const [decisionNotes, setDecisionNotes] = useState('')
   const [rollbackBusy, setRollbackBusy] = useState(false)
-
-  const showToast = (message, type = 'success') => setToast({ message, type })
 
   const {
     status,
@@ -225,6 +224,9 @@ export default function SemesterPrepWorkbenchPage() {
             instanceDetail={instanceDetail}
             portalRole={user?.role}
             availableTransitions={actionTransitions}
+            stepFormLocked={
+              !!(user?.role && entry?.assigned_role && !portalRoleCanActOnState(user.role, entry.assigned_role))
+            }
           />
 
           <OperatorStepFormsSection
@@ -235,6 +237,7 @@ export default function SemesterPrepWorkbenchPage() {
             isCompleted={instanceDetail?.is_completed}
             isCancelled={instanceDetail?.is_cancelled}
             role={user?.role}
+            stateAssignedRole={entry?.assigned_role}
             showToast={showToast}
             onUpdated={() => loadInstance(instanceId)}
             stepSla={stepSla}
@@ -254,7 +257,6 @@ export default function SemesterPrepWorkbenchPage() {
         </>
       )}
 
-      {toast && <PopupToast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

@@ -13,6 +13,8 @@ import {
   resolveFormOptionsSource,
 } from '../utils/resolveFormOptionsSource'
 import { SEMESTER_PREP_PROCESSES } from '../utils/instituteProcesses'
+import { buildWaitingForRoleTaskFa } from '../utils/operatorProcessGuidance'
+import { portalRoleCanActOnState } from '../utils/portalRoleAccess'
 import { resolveCheckboxListOptions } from '../utils/resolveCourseFieldOptions'
 import {
   defaultShamsiDate,
@@ -149,8 +151,11 @@ async function enrichColumnOptions(col, contextData = null) {
   if (!next.options_source || (Array.isArray(next.options) && next.options.length)) {
     return next
   }
-  const { options, optionsByTrack } = await resolveFormOptionsSource(next.options_source, contextData)
-  if (optionsByTrack) {
+  const { options, optionsByTrack, optionsByCourse } = await resolveFormOptionsSource(next.options_source, contextData)
+  if (optionsByCourse) {
+    next._optionsByCourse = optionsByCourse
+    next.filter_by_column = next.options_source.filter_by_column || next.filter_by_column
+  } else if (optionsByTrack) {
     next._optionsByTrack = optionsByTrack
     next.filter_by_column = next.options_source.filter_by_column || next.filter_by_column
   } else if (options.length) {
@@ -189,8 +194,9 @@ async function enrichFormsWithDynamicOptions(forms, contextData) {
         if (resolved.minSelect != null) next.minSelect = resolved.minSelect
         if (resolved.hint) next._optionsHint = resolved.hint
       } else if (next.options_source && !(Array.isArray(next.options) && next.options.length)) {
-        const { options, optionsByTrack } = await resolveFormOptionsSource(next.options_source, contextData)
-        if (optionsByTrack) next._optionsByTrack = optionsByTrack
+        const { options, optionsByTrack, optionsByCourse } = await resolveFormOptionsSource(next.options_source, contextData)
+        if (optionsByCourse) next._optionsByCourse = optionsByCourse
+        else if (optionsByTrack) next._optionsByTrack = optionsByTrack
         else if (options.length) next.options = options
       } else if (ft === 'user_select' && !(Array.isArray(next.options) && next.options.length)) {
         const { options } = await resolveFormOptionsSource({ type: 'users' }, contextData)
@@ -315,6 +321,8 @@ export default function OperatorStepFormsSection({
   advanceBusy = false,
   /** مهلت SLA مرحله (از status آماده‌سازی ترم) */
   stepSla = null,
+  /** assigned_role متادیتا برای مرحلهٔ فعلی — قفل فرم اگر نقش پورتال مجاز نیست */
+  stateAssignedRole = null,
   /** دکمه‌های پیشروی مرحله — در آماده‌سازی ترم زیر همان فرم نمایش داده می‌شوند. */
   actionTransitions = [],
   decisionNotes = '',
@@ -328,7 +336,10 @@ export default function OperatorStepFormsSection({
   const [forms, setForms] = useState([])
   const [values, setValues] = useState({})
   const [suggestedContext, setSuggestedContext] = useState({})
+  const [canActOnState, setCanActOnState] = useState(true)
+  const [fetchedStateAssignedRole, setFetchedStateAssignedRole] = useState(null)
   const [loading, setLoading] = useState(false)
+  const effectiveStateAssignedRole = fetchedStateAssignedRole ?? stateAssignedRole
   const [busy, setBusy] = useState(false)
 
   const showPrefillBanner = useMemo(
@@ -353,7 +364,17 @@ export default function OperatorStepFormsSection({
     return hasEditableFlag ? names : null
   }, [forms])
 
-  const canEditForms = editableFieldNames == null || editableFieldNames.size > 0
+  const roleLocked =
+    role !== 'admin'
+    && (
+      canActOnState === false
+      || !!(role && effectiveStateAssignedRole && !portalRoleCanActOnState(role, effectiveStateAssignedRole))
+    )
+
+  const canEditForms =
+    (editableFieldNames == null || editableFieldNames.size > 0) && !roleLocked
+
+  const waitingTaskFa = roleLocked ? buildWaitingForRoleTaskFa(effectiveStateAssignedRole) : ''
 
   const visible = useMemo(
     () => !!(instanceId && currentState && !isCompleted && !isCancelled),
@@ -381,6 +402,8 @@ export default function OperatorStepFormsSection({
         if (!active) return
         setSuggestedContext(suggested)
         setForms(enriched)
+        setCanActOnState(res.data?.can_act_on_state !== false)
+        setFetchedStateAssignedRole(res.data?.state_assigned_role || null)
         setValues(buildInitialValues(enriched, contextData, processCode, currentState, suggested))
       })
       .catch(() => active && setForms([]))
@@ -389,6 +412,14 @@ export default function OperatorStepFormsSection({
       active = false
     }
   }, [visible, processCode, currentState, instanceId])
+
+  useEffect(() => {
+    if (!forms.length || !visible) return
+    setValues((prev) => {
+      const next = buildInitialValues(forms, contextData, processCode, currentState, suggestedContext)
+      return JSON.stringify(prev) === JSON.stringify(next) ? prev : next
+    })
+  }, [forms, contextData, suggestedContext, processCode, currentState, visible])
 
   const onChange = useCallback((next) => setValues(next), [])
 
@@ -505,7 +536,9 @@ export default function OperatorStepFormsSection({
         فرم این مرحله
       </h4>
       <p style={{ fontSize: '0.82rem', color: '#334155', margin: '0 0 0.85rem', lineHeight: 1.65 }}>
-        {isMarketingStep
+        {roleLocked
+          ? 'این مرحله در انتظار نقش مسئول دیگر است — فقط مشاهده.'
+          : isMarketingStep
           ? 'خروجی فعالیت‌های قبلی را بررسی کنید، PDF بگیرید و برای مدیر مارکتینگ ارسال کنید؛ سپس تأیید ارسال را تیک بزنید و فرم را ثبت کنید.'
           : canAdvanceOnSave
           ? 'اطلاعات این مرحله را پر کنید و با دکمهٔ زیر ثبت کنید تا به مرحلهٔ بعد بروید.'
@@ -531,6 +564,7 @@ export default function OperatorStepFormsSection({
           values={values}
           onChange={onChange}
           disabled={!canEditForms}
+          readOnly={!canEditForms}
         />
       )}
 
@@ -586,6 +620,7 @@ export default function OperatorStepFormsSection({
             onChange={onChange}
             role={role}
             editableFieldNames={editableFieldNames}
+            disabled={!canEditForms}
             showToast={showToast}
           />
         </div>

@@ -6,15 +6,33 @@ import React from 'react'
  */
 export default function StudentProcessGuidancePanel({ guidance, variant = 'quest' }) {
   if (!guidance) return null
-  const { overviewFa, shortFa, taskFa } = guidance
+  const { overviewFa, shortFa, taskFa, canAct, done, waitingRoleLabelFa } = guidance
   if (!overviewFa && !shortFa && !taskFa) return null
 
+  const isWaitingForOtherRole = !done && canAct === false && !!taskFa
   const hasCollapsedBlocks = !!(overviewFa || shortFa)
   const defaultOpenDetails = !taskFa && hasCollapsedBlocks
 
   return (
     <div className={`spg spg--${variant}`}>
-      {taskFa && (
+      {isWaitingForOtherRole && (
+        <div
+          className="spg-block spg-block--waiting-role"
+          data-testid="guidance-waiting-role-banner"
+          role="status"
+        >
+          <span className="spg-label">منتظر اقدام همکار</span>
+          <p className="spg-text spg-text--waiting-role" data-testid="guidance-waiting-role-text">
+            {taskFa}
+          </p>
+          {waitingRoleLabelFa ? (
+            <p className="spg-text spg-text--waiting-role-hint">
+              نقش مسئول این مرحله: <strong>{waitingRoleLabelFa}</strong>
+            </p>
+          ) : null}
+        </div>
+      )}
+      {taskFa && !isWaitingForOtherRole && (
         <div className="spg-block spg-block--task" data-testid="guidance-task-block">
           <span className="spg-label">وظیفهٔ شما در این مرحله</span>
           <p className="spg-text spg-text--task-primary" data-testid="guidance-task-text">{taskFa}</p>

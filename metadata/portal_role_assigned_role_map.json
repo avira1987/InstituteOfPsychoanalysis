@@ -15,14 +15,17 @@
     },
     "staff": {
       "assigned_roles": [
+        "staff",
         "admissions_officer",
+        "site_manager",
         "instructor",
         "teaching_assistant",
         "teaching_assistant_or_instructor",
         "therapy_education_coordinator",
         "course_committee",
         "course_committee_scientific"
-      ]
+      ],
+      "note_fa": "مدیر داخلی / کارمند دفتر: پذیرش، زمان‌بندی مصاحبه (مرحله ۸ آماده‌سازی ترم)، و مراحل site_manager در SOP."
     },
     "finance": {
       "assigned_roles": [],
@@ -43,10 +46,18 @@
     "deputy_education": {
       "assigned_roles": [
         "deputy_education",
-        "deputy_education_director",
-        "scientific_officer_course_committee",
-        "course_committee_executive"
-      ]
+        "deputy_education_director"
+      ],
+      "note_fa": "معاون آموزش: شهریه، پروانه، مصاحبه‌گران — مراحل کمیته دروس در پنل course_committee."
+    },
+    "course_committee": {
+      "assigned_roles": [
+        "course_committee",
+        "course_committee_scientific",
+        "course_committee_executive",
+        "scientific_officer_course_committee"
+      ],
+      "note_fa": "پنل کمیته دروس: مراحل آماده‌سازی ترم (تقویم، لیست دروس، نهایی‌سازی) طبق process_role_user_resolver."
     },
     "monitoring_committee_officer": {
       "assigned_roles": ["monitoring_committee_officer"]

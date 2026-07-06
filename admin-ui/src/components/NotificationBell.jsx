@@ -3,6 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { panelApi } from '../services/api'
 import { appendNotificationFollow } from '../utils/appendNotificationFollow'
+import { PANEL_FLASH_CREATED_EVENT } from '../contexts/ToastContext'
+import { PANEL_NOTIFICATIONS_CHANGED_EVENT } from '../utils/panelNotifications'
+
+function isFlashItem(it) {
+  return it?.kind === 'flash_message'
+}
 
 export default function NotificationBell({ variant = 'sidebar' }) {
   const navigate = useNavigate()
@@ -17,7 +23,7 @@ export default function NotificationBell({ variant = 'sidebar' }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const r = await panelApi.actionNotifications({ limit: 5, offset: 0 })
+      const r = await panelApi.actionNotifications({ limit: 8, offset: 0 })
       setItems(Array.isArray(r.data?.items) ? r.data.items : [])
       setTotal(typeof r.data?.total === 'number' ? r.data.total : 0)
     } catch {
@@ -34,10 +40,16 @@ export default function NotificationBell({ variant = 'sidebar' }) {
     const onVis = () => {
       if (document.visibilityState === 'visible') load()
     }
+    const onFlash = () => load()
+    const onChanged = () => load()
     document.addEventListener('visibilitychange', onVis)
+    window.addEventListener(PANEL_FLASH_CREATED_EVENT, onFlash)
+    window.addEventListener(PANEL_NOTIFICATIONS_CHANGED_EVENT, onChanged)
     return () => {
       clearInterval(t)
       document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener(PANEL_FLASH_CREATED_EVENT, onFlash)
+      window.removeEventListener(PANEL_NOTIFICATIONS_CHANGED_EVENT, onChanged)
     }
   }, [load])
 
@@ -108,7 +120,7 @@ export default function NotificationBell({ variant = 'sidebar' }) {
             }}
             role="menu"
           >
-            <div className="notification-bell-dropdown-head">کارهای نیازمند اقدام</div>
+            <div className="notification-bell-dropdown-head">اعلان‌ها و پیام‌ها</div>
             {loading && items.length === 0 ? (
               <div className="notification-bell-empty muted">در حال بارگذاری…</div>
             ) : null}
@@ -116,21 +128,58 @@ export default function NotificationBell({ variant = 'sidebar' }) {
               <div className="notification-bell-empty muted">موردی برای نمایش نیست.</div>
             ) : null}
             <ul className="notification-bell-list">
-              {items.map((it) => (
-                <li key={it.notification_id || it.title_fa}>
-                  <Link
-                    role="menuitem"
-                    className="notification-bell-item"
-                    to={appendNotificationFollow(it.action_path || '/panel')}
-                    onClick={() => setOpen(false)}
-                  >
-                    <span className="notification-bell-item-title">{it.title_fa}</span>
+              {items.map((it) => {
+                const flash = isFlashItem(it)
+                const levelClass =
+                  flash && it.level === 'error'
+                    ? ' notification-bell-item--flash-error'
+                    : flash
+                      ? ' notification-bell-item--flash-success'
+                      : ''
+                const itemClass = `notification-bell-item${levelClass}`
+                const content = (
+                  <>
+                    <span className="notification-bell-item-title">
+                      {flash ? (
+                        <span className="notification-bell-flash-badge">پیام</span>
+                      ) : null}
+                      {it.title_fa}
+                    </span>
                     {it.summary_fa ? (
                       <span className="notification-bell-item-summary">{it.summary_fa}</span>
                     ) : null}
-                  </Link>
-                </li>
-              ))}
+                  </>
+                )
+                if (flash) {
+                  return (
+                    <li key={it.notification_id || it.title_fa}>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={itemClass}
+                        onClick={() => {
+                          setOpen(false)
+                          navigate('/panel/notifications?tab=messages')
+                        }}
+                      >
+                        {content}
+                      </button>
+                    </li>
+                  )
+                }
+                return (
+                  <li key={it.notification_id || it.title_fa}>
+                    <Link
+                      role="menuitem"
+                      className={itemClass}
+                      to={appendNotificationFollow(it.action_path || '/panel')}
+                      onClick={() => setOpen(false)}
+                    >
+                      {content}
+                    </Link>
+                  </li>
+                )
+              })}
             </ul>
             <div className="notification-bell-dropdown-foot">
               <button

@@ -293,6 +293,16 @@
           "options_source": {
             "type": "course_committee_tracks"
           }
+        },
+        {
+          "name": "courses",
+          "label_fa": "دروس مجاز کمک‌مدرس",
+          "type": "multi_select",
+          "required": true,
+          "options_source": {
+            "type": "course_catalog"
+          },
+          "description_fa": "فقط در دروس انتخاب‌شده می‌تواند کمک‌مدرس شود؛ در لیست انتساب سایر دروس نمایش داده نمی‌شود."
         }
       ]
     },

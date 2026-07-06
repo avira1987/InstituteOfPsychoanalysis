@@ -5,7 +5,7 @@ import { processExecApi, studentApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import DocumentsReviewPanel from '../components/DocumentsReviewPanel'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
@@ -42,14 +42,9 @@ export default function SiteManagerPortal() {
   const [availableTransitions, setAvailableTransitions] = useState([])
   const [decisionNotes, setDecisionNotes] = useState('')
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState(null)
   const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
   const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 4000)
-  }
+  const { showToast } = useToast()
 
   useEffect(() => { loadData() }, [])
 
@@ -180,7 +175,6 @@ export default function SiteManagerPortal() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
 
       <ResolvedProcessHistoryBanner
         instanceDetail={instanceDetail}

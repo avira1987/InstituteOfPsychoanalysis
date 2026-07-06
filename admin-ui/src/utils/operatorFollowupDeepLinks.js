@@ -12,14 +12,13 @@ const SEMESTER_PREP_CODES = new Set(['fall_semester_preparation', 'winter_semest
 const DEPUTY_PREP_ROLES = new Set([
   'deputy_education',
   'deputy_education_director',
-  'course_committee_executive',
-  'course_committee',
 ])
 
-const SCIENTIFIC_PREP_ROLES = new Set([
-  'scientific_officer_course_committee',
-  'course_committee_scientific',
+const COURSE_COMMITTEE_PREP_ROLES = new Set([
   'course_committee',
+  'course_committee_executive',
+  'course_committee_scientific',
+  'scientific_officer_course_committee',
 ])
 
 function workbenchHref(processCode) {
@@ -97,7 +96,11 @@ export function getOperatorFollowupDestination(item) {
   const base = { instance_id: instanceId, student_id: studentId }
 
   if (SEMESTER_PREP_CODES.has(processCode)) {
-    if (processCode === 'fall_semester_preparation' && stateCode === 'calendar_entry' && DEPUTY_PREP_ROLES.has(code)) {
+    if (
+      processCode === 'fall_semester_preparation' &&
+      stateCode === 'calendar_entry' &&
+      COURSE_COMMITTEE_PREP_ROLES.has(code)
+    ) {
       return {
         href: workbenchHref(processCode),
         hintFa: 'تدوین تقویم آموزشی دو ترم (پاییز و زمستان)',
@@ -106,7 +109,7 @@ export function getOperatorFollowupDestination(item) {
     if (
       processCode === 'winter_semester_preparation' &&
       stateCode === 'course_list_review' &&
-      (SCIENTIFIC_PREP_ROLES.has(code) || DEPUTY_PREP_ROLES.has(code))
+      COURSE_COMMITTEE_PREP_ROLES.has(code)
     ) {
       return {
         href: workbenchHref(processCode),
@@ -124,7 +127,7 @@ export function getOperatorFollowupDestination(item) {
     }
     if (
       ['course_list_creation', 'course_finalization'].includes(stateCode) &&
-      (SCIENTIFIC_PREP_ROLES.has(code) || DEPUTY_PREP_ROLES.has(code))
+      COURSE_COMMITTEE_PREP_ROLES.has(code)
     ) {
       return {
         href: workbenchHref(processCode),

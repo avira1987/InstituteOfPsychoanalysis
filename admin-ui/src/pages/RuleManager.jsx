@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ruleApi } from '../services/api'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 
 export default function RuleManager() {
   const [rules, setRules] = useState([])
@@ -10,15 +10,10 @@ export default function RuleManager() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [viewExpression, setViewExpression] = useState(null)
-  const [toast, setToast] = useState(null)
+  const { showToast } = useToast()
   const [form, setForm] = useState({
     code: '', name_fa: '', rule_type: 'condition', expression: '{}', error_message_fa: '',
   })
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3000)
-  }
 
   useEffect(() => {
     loadRules()
@@ -115,8 +110,6 @@ export default function RuleManager() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
-
       {/* Expression Modal */}
       {viewExpression && (
         <div className="modal-overlay" onClick={() => setViewExpression(null)}>

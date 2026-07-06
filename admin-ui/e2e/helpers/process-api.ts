@@ -38,3 +38,32 @@ export async function cancelProcessInstanceAsAdmin(
   }
   return r.json() as Promise<{ ok: boolean }>
 }
+
+export async function restartProcessInstance(
+  request: APIRequestContext,
+  baseURL: string,
+  token: string,
+  instanceId: string,
+  body: { reason?: string; confirm: boolean },
+): Promise<{
+  success: boolean
+  old_instance_id: string
+  new_instance_id: string
+  process_code: string
+  current_state: string
+}> {
+  const r = await request.post(`${baseURL}/api/process/${instanceId}/restart`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: body,
+  })
+  if (!r.ok()) {
+    throw new Error(`[E2E] POST restart instance ${r.status()}: ${await r.text()}`)
+  }
+  return r.json() as Promise<{
+    success: boolean
+    old_instance_id: string
+    new_instance_id: string
+    process_code: string
+    current_state: string
+  }>
+}

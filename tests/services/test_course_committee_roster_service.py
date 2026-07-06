@@ -128,12 +128,40 @@ async def test_enrich_course_table_rows_resolves_uuid(db_session):
 
 
 def test_list_course_catalog_options():
-    from app.services.course_committee_roster_service import list_course_catalog_options, reload_catalog_cache
+    from app.services.course_committee_roster_service import (
+        list_course_catalog_options,
+        reload_catalog_cache,
+        resolve_track_for_course,
+    )
 
     reload_catalog_cache()
     opts = list_course_catalog_options()
     labels = [o["label_fa"] for o in opts]
     assert "تئوری وراثت" in labels
+    inheritance = next(o for o in opts if o["label_fa"] == "تئوری وراثت")
+    assert inheritance.get("track") == "analytic_psychotherapy"
+    assert resolve_track_for_course("theory_inheritance") == "analytic_psychotherapy"
+    assert resolve_track_for_course("تئوری وراثت") == "analytic_psychotherapy"
+    assert resolve_track_for_course("theory_technique_1") == "technique_theory_1_3"
+
+
+def test_add_course_to_catalog(tmp_path, monkeypatch):
+    from app.services import course_committee_roster_service as svc
+
+    catalog_file = tmp_path / "course_catalog.json"
+    catalog_file.write_text('{"courses": []}', encoding="utf-8")
+    monkeypatch.setattr(svc, "_CATALOG_PATH", catalog_file)
+    svc.reload_catalog_cache()
+
+    created = svc.add_course_to_catalog("درس آزمایشی جدید")
+    assert created["label_fa"] == "درس آزمایشی جدید"
+    assert created["value"]
+
+    opts = svc.list_course_catalog_options()
+    assert any(o["label_fa"] == "درس آزمایشی جدید" for o in opts)
+
+    again = svc.add_course_to_catalog("درس آزمایشی جدید")
+    assert again["label_fa"] == "درس آزمایشی جدید"
 
 
 @pytest.mark.asyncio
@@ -175,3 +203,89 @@ async def test_sync_semester_course_assignments(db_session):
     await db_session.refresh(user)
     items = (user.profile_meta or {}).get("semester_course_assignments") or []
     assert any(i.get("course_name") == "تئوری وراثت" for i in items)
+
+
+@pytest.mark.asyncio
+async def test_list_members_filters_ta_by_authorized_course(db_session):
+    uid_ta1 = uuid.uuid4()
+    uid_ta2 = uuid.uuid4()
+    db_session.add(
+        User(
+            id=uid_ta1,
+            username="ta_course_a",
+            email="ta_a@test.local",
+            hashed_password=get_password_hash("demo123"),
+            full_name_fa="کمک‌مدرس درس الف",
+            role="teaching_assistant",
+            is_active=True,
+            profile_meta={
+                "course_committee_tracks": ["analytic_psychotherapy"],
+                "member_kind": "teaching_assistant",
+                "ta_authorized_courses": ["theory_inheritance"],
+            },
+        )
+    )
+    db_session.add(
+        User(
+            id=uid_ta2,
+            username="ta_course_b",
+            email="ta_b@test.local",
+            hashed_password=get_password_hash("demo123"),
+            full_name_fa="کمک‌مدرس درس ب",
+            role="teaching_assistant",
+            is_active=True,
+            profile_meta={
+                "course_committee_tracks": ["analytic_psychotherapy"],
+                "member_kind": "teaching_assistant",
+                "ta_authorized_courses": ["theory_psychoanalysis_1"],
+            },
+        )
+    )
+    await db_session.commit()
+
+    for_course_a = await list_members(
+        db_session,
+        track="analytic_psychotherapy",
+        kind="teaching_assistant",
+        course="theory_inheritance",
+    )
+    labels_a = {m["label_fa"] for m in for_course_a}
+    assert "کمک‌مدرس درس الف" in labels_a
+    assert "کمک‌مدرس درس ب" not in labels_a
+
+
+@pytest.mark.asyncio
+async def test_list_members_filters_instructor_by_authorized_course(db_session):
+    uid_inst = uuid.uuid4()
+    db_session.add(
+        User(
+            id=uid_inst,
+            username="inst_course_only",
+            email="inst@test.local",
+            hashed_password=get_password_hash("demo123"),
+            full_name_fa="مدرس فرایند ۴۹",
+            role="instructor",
+            is_active=True,
+            profile_meta={
+                "course_committee_tracks": ["analytic_psychotherapy"],
+                "member_kind": "instructor",
+                "instructor_authorized_courses": ["theory_psychoanalysis_2"],
+            },
+        )
+    )
+    await db_session.commit()
+
+    allowed = await list_members(
+        db_session,
+        track="analytic_psychotherapy",
+        kind="instructor",
+        course="theory_psychoanalysis_2",
+    )
+    blocked = await list_members(
+        db_session,
+        track="analytic_psychotherapy",
+        kind="instructor",
+        course="theory_inheritance",
+    )
+    assert any(m["label_fa"] == "مدرس فرایند ۴۹" for m in allowed)
+    assert not any(m["label_fa"] == "مدرس فرایند ۴۹" for m in blocked)

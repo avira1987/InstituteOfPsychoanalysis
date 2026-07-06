@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { ticketApi, studentApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 
 const CATEGORY_LABELS = {
@@ -62,7 +62,6 @@ export default function TicketsPage() {
   const [assignable, setAssignable] = useState([])
   const [triageInfo, setTriageInfo] = useState(null)
   const [directAssignAdmin, setDirectAssignAdmin] = useState(false)
-  const [toast, setToast] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   /** null = در حال بررسی؛ فقط برای نقش دانشجو */
   const [studentProfileExists, setStudentProfileExists] = useState(null)
@@ -79,11 +78,7 @@ export default function TicketsPage() {
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [commentText, setCommentText] = useState('')
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 4000)
-  }
+  const { showToast } = useToast()
 
   const loadList = useCallback(async () => {
     setLoading(true)
@@ -292,7 +287,6 @@ export default function TicketsPage() {
 
   return (
     <div className="page tickets-page" dir="rtl">
-      <PopupToast toast={toast} />
       <header className="page-header">
         <div>
           <h1 className="page-title">تیکت‌ها و درخواست‌های داخلی</h1>

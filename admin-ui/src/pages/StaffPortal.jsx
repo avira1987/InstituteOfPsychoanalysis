@@ -24,7 +24,7 @@ import TaUpgradeCourseCommitteePanel from '../components/TaUpgradeCourseCommitte
 import StudentTaTrackChangePanel from '../components/StudentTaTrackChangePanel'
 import TaTrackChangeCommitteePanel from '../components/TaTrackChangeCommitteePanel'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import InterviewSlotRecurringRules from '../components/InterviewSlotRecurringRules'
 import InterviewSlotsAdmin from '../components/InterviewSlotsAdmin'
 import InterviewBookingsPanel from '../components/InterviewBookingsPanel'
@@ -59,6 +59,8 @@ import TaToInstructorAutoReportPanel from '../components/TaToInstructorAutoRepor
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import CourseCommitteePrepPanel from '../components/CourseCommitteePrepPanel'
 import InstructionSemesterCoursesPanel from '../components/InstructionSemesterCoursesPanel'
+import InstructionTaPortfolioPanel from '../components/InstructionTaPortfolioPanel'
+import TaTrackCompletionInstancePanel from '../components/TaTrackCompletionInstancePanel'
 import InstructorEvaluationResultsPanel from '../components/InstructorEvaluationResultsPanel'
 import InstructorEvaluationCommitteePanel from '../components/InstructorEvaluationCommitteePanel'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
@@ -117,9 +119,9 @@ export default function StaffPortal() {
     interviewer_notes: '',
   })
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState(null)
   const [unlockFormsBusy, setUnlockFormsBusy] = useState(false)
   const [rollbackBusy, setRollbackBusy] = useState(false)
+  const [restartBusy, setRestartBusy] = useState(false)
   const [studentSearch, setStudentSearch] = useState('')
   const [showNewStudent, setShowNewStudent] = useState(false)
   const [newStudent, setNewStudent] = useState({
@@ -127,11 +129,7 @@ export default function StaffPortal() {
     weekly_sessions: 1, term_count: 1, current_term: 1,
   })
   const [newAssignment, setNewAssignment] = useState({ student_id: '', title_fa: '', description: '' })
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 4000)
-  }
+  const { showToast } = useToast()
 
   useEffect(() => { loadData() }, [])
 
@@ -285,6 +283,33 @@ export default function StaffPortal() {
       showToast(typeof d === 'string' ? d : (e.message || 'خطا در بازگشت'), 'error')
     } finally {
       setRollbackBusy(false)
+    }
+  }
+
+  const handleProcessRestart = async (reason) => {
+    if (!selectedInstance) return false
+    setRestartBusy(true)
+    try {
+      const res = await processExecApi.restart(selectedInstance, {
+        reason: reason || undefined,
+        confirm: true,
+      })
+      if (res.data?.success) {
+        const newId = res.data.new_instance_id
+        showToast('فرایند از ابتدا با پروندهٔ جدید باز شد')
+        setSelectedInstance(newId)
+        await viewInstance(newId)
+        loadData()
+        return true
+      }
+      showToast(res.data?.error || 'شروع دوباره انجام نشد', 'error')
+      return false
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast(typeof d === 'string' ? d : (e.message || 'خطا در شروع دوباره'), 'error')
+      return false
+    } finally {
+      setRestartBusy(false)
     }
   }
 
@@ -457,7 +482,6 @@ export default function StaffPortal() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
 
       <ResolvedProcessHistoryBanner
         instanceDetail={instanceDetail}
@@ -486,6 +510,8 @@ export default function StaffPortal() {
       {isCourseCommitteeLane && <InstructorEvaluationCommitteePanel showToast={showToast} />}
 
       {isInstructionLane && <InstructionSemesterCoursesPanel />}
+
+      {isInstructionLane && <InstructionTaPortfolioPanel user={user} />}
 
       {isInstructionLane && <InstructorEvaluationResultsPanel showToast={showToast} />}
 
@@ -782,6 +808,8 @@ export default function StaffPortal() {
             unlockFormsBusy={unlockFormsBusy}
             onRollback={handleProcessRollback}
             rollbackBusy={rollbackBusy}
+            onRestart={handleProcessRestart}
+            restartBusy={restartBusy}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
             showToast={showToast}
             onRefreshInstance={() => viewInstance(selectedInstance)}
@@ -953,6 +981,8 @@ export default function StaffPortal() {
             unlockFormsBusy={unlockFormsBusy}
             onRollback={handleProcessRollback}
             rollbackBusy={rollbackBusy}
+            onRestart={handleProcessRestart}
+            restartBusy={restartBusy}
             onClose={() => { setSelectedInstance(null); setInstanceDetail(null) }}
             showToast={showToast}
             onRefreshInstance={() => viewInstance(selectedInstance)}
@@ -1241,6 +1271,8 @@ function DetailPanel({
   unlockFormsBusy,
   onRollback,
   rollbackBusy,
+  onRestart,
+  restartBusy,
   onClose,
   showToast,
   onRefreshInstance,
@@ -1308,6 +1340,13 @@ function DetailPanel({
   return (
     <>
       <TaClassDutiesPanel detail={instanceDetail} user={user} />
+      <TaTrackCompletionInstancePanel
+        detail={instanceDetail}
+        studentId={instanceDetail?.student_id}
+        studentName={instanceDetail?.student_code}
+        portalRole={user?.role}
+        active={instanceDetail?.process_code === 'ta_track_completion'}
+      />
       <TherapistAssignmentReviewPanel detail={instanceDetail} />
       <StudentTaTrackChangePanel
         detail={instanceDetail}
@@ -1444,6 +1483,9 @@ function DetailPanel({
         showRollback
         onRollback={onRollback}
         rollbackBusy={rollbackBusy}
+        showRestart
+        onRestart={onRestart}
+        restartBusy={restartBusy}
         renderExtraBeforeActions={({ triggerTransition: trig, transitionsForActions }) => (
         <>
           <IntroductoryTermEndFollowupPanel detail={instanceDetail} user={user} />

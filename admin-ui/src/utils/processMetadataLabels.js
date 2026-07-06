@@ -1388,7 +1388,10 @@ export const PROCESS_STUDENT_TASK_LABELS_FA = {
     "track_applied": "رسته(های) جدید در پرونده کمک‌مدرسی شما اعمال شد.",
     "rejected": "درخواست در جلسه کمیته پذیرفته نشد.",
   },
-  "ta_track_completion": {},
+  "ta_track_completion": {
+    "end_of_track_check": "سیستم در حال بررسی تکمیل رسته است — نیازی به اقدام شما نیست.",
+    "track_completed": "تبریک! رسته کمک‌مدرسی شما خاتمه یافت. جزئیات در بخش «پرونده کمک‌مدرسی» پروفایل به‌روز شده است."
+  },
   "theory_course_completion": {},
   "therapist_session_cancellation": {
     "payment_required": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
@@ -1778,7 +1781,10 @@ export const PROCESS_OPERATOR_TASK_LABELS_FA = {
     "course_committee_review": "بررسی علمی و ثبت نظر.",
     "meeting_scheduled": "بررسی علمی و ثبت نظر."
   },
-  "ta_track_completion": {},
+  "ta_track_completion": {
+    "end_of_track_check": "فرایند خودکار — فقط مشاهدهٔ پرونده کمک‌مدرسی.",
+    "track_completed": "رسته خاتمه یافت؛ پیامک اطلاع‌رسانی ارسال شده است. برنامه‌ریزی رستهٔ بعدی در صورت نیاز."
+  },
   "theory_course_completion": {
     "awaiting_session_18": "منتظر باز شدن ثبت مشارکت در جلسه ۱۸.",
     "session_18_entry": "مشارکت (۰–۱۰) و پک آزمون (۸۲ نمره) را ثبت کنید. مهلت: ۲۴:۰۰ همان روز.",

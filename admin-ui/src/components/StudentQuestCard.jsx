@@ -940,6 +940,26 @@ export default function StudentQuestCard({
         </div>
       )}
 
+      {done && detail?.process_code === 'ta_track_completion' && (
+        <div
+          style={{
+            marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #ecfdf5 0%, #eff6ff 100%)',
+            borderRight: '4px solid #2563eb', fontSize: '0.86rem', lineHeight: 1.75,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#1e40af' }}>
+            تبریک — خاتمه رسته کمک‌مدرسی
+          </div>
+          <p style={{ margin: 0 }}>
+            تمام دروس رسته
+            {detail?.context_data?.track_name_fa ? ` «${detail.context_data.track_name_fa}»` : ''}
+            {' '}
+            با موفقیت به‌عنوان کمک‌مدرس طی شد. جزئیات در بخش «پرونده کمک‌مدرسی» پروفایل شما به‌روز شده است.
+          </p>
+        </div>
+      )}
+
       {!done && roadmapStates.length > 0 && (
         <div className="quest-steps" aria-label="مراحل فرایند">
           {roadmapStates.map((st, i) => {

@@ -84,7 +84,7 @@
       "code": "interview_scheduling",
       "name_fa": "زمان‌بندی دقیق مصاحبه‌های زمستان",
       "type": "intermediate",
-      "assigned_role": "site_manager",
+      "assigned_role": "staff",
       "sla_days": 3,
       "sla_warning_recipients": [
         "deputy_education_director"
@@ -244,7 +244,7 @@
           "notification_type": "in_app",
           "template": "winter_interviewers_set_schedule_times",
           "recipients": [
-            "site_manager"
+            "staff"
           ]
         }
       ]
@@ -270,7 +270,7 @@
       "from": "interview_scheduling",
       "to": "published",
       "trigger": "interview_times_set",
-      "required_role": "site_manager",
+      "required_role": "staff",
       "description_fa": "زمان‌بندی مصاحبه‌های زمستان ثبت شد — انتشار و اطلاع‌رسانی",
       "actions": [
         {
@@ -351,7 +351,7 @@
       "code": "winter_course_list_review_form",
       "name_fa": "فرم بازبینی لیست دروس زمستان",
       "used_in_state": "course_list_review",
-      "editable_by": ["admin", "staff", "deputy_education", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
+      "editable_by": ["admin", "staff", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
       "note": "فرم از داده‌های ترم پاییز پر شده و قابل ویرایش است",
       "fields": [
         {
@@ -377,6 +377,7 @@
               "type": "creatable_select",
               "creatable": true,
               "searchable": true,
+              "auto_fill_from": "course_name",
               "options_source": {
                 "type": "course_committee_tracks"
               }
@@ -409,7 +410,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "instructor",
-                "filter_by_column": "track"
+                "filter_by_column": "course_name"
               }
             },
             {
@@ -421,7 +422,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "teaching_assistant",
-                "filter_by_column": "track"
+                "filter_by_column": "course_name"
               }
             }
           ]
@@ -432,7 +433,7 @@
       "code": "winter_course_finalization_form",
       "name_fa": "فرم نهایی‌سازی دروس زمستان",
       "used_in_state": "course_finalization",
-      "editable_by": ["admin", "staff", "deputy_education", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
+      "editable_by": ["admin", "staff", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
       "fields": [
         {
           "name": "courses_finalized",
@@ -482,7 +483,7 @@
       "code": "winter_marketing_campaign_form",
       "name_fa": "فرم تأیید شروع کمپین بازاریابی زمستان",
       "used_in_state": "marketing_campaign",
-      "editable_by": ["admin", "staff", "deputy_education", "admissions_officer"],
+      "editable_by": ["admin", "staff", "admissions_officer"],
       "note_fa": "خروجی فعالیت‌های ۲ (لیست دروس) و ۳ (برنامه نهایی) را به‌صورت PDF بگیرید و برای مدیر مارکتینگ ارسال کنید.",
       "fields": [
         {

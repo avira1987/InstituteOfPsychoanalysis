@@ -65,6 +65,26 @@ class UnauthorizedError(EngineError):
     pass
 
 
+class RestartProcessResult:
+    """نتیجهٔ شروع دوباره فرایند (بایگانی + نمونهٔ جدید)."""
+
+    def __init__(
+        self,
+        success: bool,
+        old_instance_id: uuid.UUID,
+        new_instance_id: uuid.UUID,
+        process_code: str,
+        current_state: str,
+        error: Optional[str] = None,
+    ):
+        self.success = success
+        self.old_instance_id = old_instance_id
+        self.new_instance_id = new_instance_id
+        self.process_code = process_code
+        self.current_state = current_state
+        self.error = error
+
+
 def _normalize_json_list(raw) -> list:
     """JSONB گاهی به‌صورت رشتهٔ 'null' یا JSON رشته‌ای ذخیره می‌شود؛ همیشه لیست برگردان."""
     if raw is None:
@@ -1116,6 +1136,21 @@ class StateMachineEngine:
                     instance.id,
                 )
 
+        if instance.process_code == "upgrade_to_ta":
+            try:
+                from app.services.ta_upgrade_service import chain_after_transition as ta_upgrade_chain
+
+                await ta_upgrade_chain(
+                    self.db,
+                    instance,
+                    transition.to_state_code,
+                )
+            except Exception:
+                logger.exception(
+                    "upgrade_to_ta chain failed (instance=%s)",
+                    instance.id,
+                )
+
         if instance.process_code in ("comprehensive_term_start", "intro_second_semester_registration"):
             try:
                 from app.services.student_non_registration_chaining import (
@@ -1553,6 +1588,145 @@ class StateMachineEngine:
             trigger_event="manual_rollback",
             actions=[],
             rule_results=[],
+        )
+
+    async def restart_process_instance(
+        self,
+        instance_id: uuid.UUID,
+        actor_id: uuid.UUID,
+        actor_role: str,
+        reason: Optional[str] = None,
+        *,
+        is_own_instance: bool = False,
+    ) -> RestartProcessResult:
+        """
+        بایگانی نمونهٔ فعلی و ساخت نمونهٔ جدید از مرحلهٔ اول (شروع دوباره).
+        """
+        from app.meta.process_restart_policy import (
+            can_actor_restart_process,
+            student_restart_reason_required,
+        )
+
+        instance = await self.get_process_instance(instance_id)
+        if instance.is_cancelled:
+            raise InvalidTransitionError("این پرونده قبلاً بایگانی شده است؛ از منوی شروع فرایند استفاده کنید.")
+
+        process_def = await self.get_process_definition(instance.process_code)
+        process_config = self._as_mapping(process_def.config) if process_def.config else None
+
+        allowed, deny_msg = can_actor_restart_process(
+            actor_role=actor_role,
+            process_code=instance.process_code,
+            is_own_instance=is_own_instance,
+            process_config=process_config,
+        )
+        if not allowed:
+            role_norm = (actor_role or "").strip().lower()
+            from app.meta.process_restart_policy import RESTART_STAFF_ROLES
+
+            if role_norm == "student" and not is_own_instance:
+                raise UnauthorizedError(deny_msg)
+            if role_norm not in RESTART_STAFF_ROLES and role_norm != "student":
+                raise UnauthorizedError(deny_msg)
+            raise InvalidTransitionError(deny_msg)
+
+        if student_restart_reason_required(actor_role) and not (reason or "").strip():
+            raise InvalidTransitionError("لطفاً دلیل شروع دوباره را بنویسید.")
+
+        now = datetime.now(timezone.utc)
+        from_state = instance.current_state_code
+        reason_clean = (reason or "").strip()[:2000]
+
+        ctx = dict(self._as_mapping(instance.context_data))
+        ctx["__archived_reason"] = "user_restart"
+        ctx["__restarted_by"] = str(actor_id)
+        ctx["__restarted_at"] = now.isoformat()
+        if reason_clean:
+            ctx["__restart_reason"] = reason_clean
+
+        instance.is_cancelled = True
+        instance.is_completed = False
+        instance.completed_at = None
+        instance.last_transition_at = now
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+
+        archive_history = StateHistory(
+            id=uuid.uuid4(),
+            instance_id=instance.id,
+            from_state_code=from_state,
+            to_state_code=from_state,
+            trigger_event="process_restarted_archive",
+            actor_id=actor_id,
+            actor_role=actor_role,
+            payload={"reason": reason_clean} if reason_clean else None,
+            entered_at=now,
+        )
+        self.db.add(archive_history)
+
+        await self.audit_logger.log(
+            action_type="process_restart_archive",
+            actor_id=actor_id,
+            actor_role=actor_role,
+            instance_id=instance.id,
+            process_code=instance.process_code,
+            from_state=from_state,
+            to_state=from_state,
+            trigger_event="process_restarted_archive",
+            details={
+                "reason": reason_clean,
+                "archived_instance_id": str(instance.id),
+            },
+        )
+
+        new_instance = await self.start_process(
+            process_code=instance.process_code,
+            student_id=instance.student_id,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            initial_context={"__restarted_from_instance_id": str(instance.id)},
+        )
+
+        await self.audit_logger.log(
+            action_type="process_restart",
+            actor_id=actor_id,
+            actor_role=actor_role,
+            instance_id=new_instance.id,
+            process_code=instance.process_code,
+            details={
+                "reason": reason_clean,
+                "old_instance_id": str(instance.id),
+                "new_instance_id": str(new_instance.id),
+            },
+        )
+
+        await event_bus.publish(Event(
+            event_type=f"process.restarted.{instance.process_code}",
+            payload={
+                "old_instance_id": str(instance.id),
+                "new_instance_id": str(new_instance.id),
+                "process_code": instance.process_code,
+                "student_id": str(instance.student_id),
+                "actor_id": str(actor_id),
+                "actor_role": actor_role,
+                "reason": reason_clean,
+            },
+            source="state_machine_engine",
+        ))
+
+        logger.info(
+            "Restart: %s archived instance=%s -> new instance=%s",
+            instance.process_code,
+            instance.id,
+            new_instance.id,
+        )
+
+        return RestartProcessResult(
+            success=True,
+            old_instance_id=instance.id,
+            new_instance_id=new_instance.id,
+            process_code=instance.process_code,
+            current_state=new_instance.current_state_code,
         )
 
     # ─── Internal Helpers ───────────────────────────────────────────

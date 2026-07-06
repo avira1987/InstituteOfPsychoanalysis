@@ -90,10 +90,10 @@ class TestFallSemesterPreparationFlow:
         instance = await engine.get_process_instance(instance.id)
         assert instance.current_state_code == "tuition_entry"
 
-    async def test_deputy_education_can_advance_calendar_step(
+    async def test_deputy_education_cannot_advance_calendar_step(
         self, db_session: AsyncSession, sample_student, sample_user
     ):
-        """نقش پنل deputy_education باید بتواند مرحلهٔ course_committee_executive را جلو ببرد (RBAC فرایند ۲۹)."""
+        """معاون آموزش نباید مرحلهٔ تقویم (کمیته دروس) را ثبت کند."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
         await load_process(db_session, processes_dir / "fall_semester_preparation.json")
         await db_session.commit()
@@ -107,16 +107,185 @@ class TestFallSemesterPreparationFlow:
         )
         await db_session.commit()
 
-        # نقش پنل «معاون آموزش» به نقش متادیتای course_committee_executive نگاشت می‌شود.
+        from app.core.engine import UnauthorizedError
+
+        with pytest.raises(UnauthorizedError):
+            await engine.execute_transition(
+                instance_id=instance.id,
+                trigger_event="calendar_submitted",
+                actor_id=sample_user.id,
+                actor_role="deputy_education",
+            )
+
+    async def test_course_committee_portal_role_can_advance_calendar_step(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        """نقش پنل course_committee باید بتواند مرحلهٔ calendar_entry را جلو ببرد."""
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+        await db_session.commit()
+
+        engine = StateMachineEngine(db_session)
+        instance = await engine.start_process(
+            process_code="fall_semester_preparation",
+            student_id=sample_student.id,
+            actor_id=sample_user.id,
+            actor_role="admin",
+        )
+        await db_session.commit()
+
+        transitions = await engine.get_available_transitions(
+            instance.id,
+            "course_committee",
+        )
+        assert "calendar_submitted" in [t["trigger_event"] for t in transitions]
+
         result = await engine.execute_transition(
             instance_id=instance.id,
             trigger_event="calendar_submitted",
             actor_id=sample_user.id,
-            actor_role="deputy_education",
+            actor_role="course_committee",
         )
         await db_session.commit()
         assert result.success is True
         assert result.to_state == "tuition_entry"
+
+    async def test_course_committee_portal_role_sees_scientific_officer_transitions(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        """نقش پنل course_committee باید در course_list_creation هم transition ببیند."""
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+        await db_session.commit()
+
+        engine = StateMachineEngine(db_session)
+        instance = await engine.start_process(
+            process_code="fall_semester_preparation",
+            student_id=sample_student.id,
+            actor_id=sample_user.id,
+            actor_role="admin",
+        )
+        await db_session.commit()
+
+        for trigger, role in (
+            ("calendar_submitted", "course_committee"),
+            ("tuition_submitted", "deputy_education"),
+            ("license_reviewed", "deputy_education"),
+        ):
+            result = await engine.execute_transition(
+                instance_id=instance.id,
+                trigger_event=trigger,
+                actor_id=sample_user.id,
+                actor_role=role,
+            )
+            await db_session.commit()
+            assert result.success is True, f"{trigger} failed: {result.error}"
+
+        instance = await engine.get_process_instance(instance.id)
+        assert instance.current_state_code == "course_list_creation"
+
+        transitions = await engine.get_available_transitions(
+            instance.id,
+            "course_committee",
+        )
+        assert "course_list_submitted" in [t["trigger_event"] for t in transitions]
+
+    async def test_deputy_education_cannot_submit_course_list(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        """معاون آموزش نباید مرحلهٔ لیست دروس (کمیته دروس) را ثبت کند."""
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+        await db_session.commit()
+
+        engine = StateMachineEngine(db_session)
+        instance = await engine.start_process(
+            process_code="fall_semester_preparation",
+            student_id=sample_student.id,
+            actor_id=sample_user.id,
+            actor_role="admin",
+        )
+        await db_session.commit()
+
+        for trigger, role in (
+            ("calendar_submitted", "course_committee"),
+            ("tuition_submitted", "deputy_education"),
+            ("license_reviewed", "deputy_education"),
+        ):
+            result = await engine.execute_transition(
+                instance_id=instance.id,
+                trigger_event=trigger,
+                actor_id=sample_user.id,
+                actor_role=role,
+            )
+            await db_session.commit()
+            assert result.success is True, f"{trigger} failed: {result.error}"
+
+        instance = await engine.get_process_instance(instance.id)
+        assert instance.current_state_code == "course_list_creation"
+
+        transitions = await engine.get_available_transitions(
+            instance.id,
+            "deputy_education",
+        )
+        assert "course_list_submitted" not in [t["trigger_event"] for t in transitions]
+
+        from app.core.engine import UnauthorizedError
+
+        with pytest.raises(UnauthorizedError):
+            await engine.execute_transition(
+                instance_id=instance.id,
+                trigger_event="course_list_submitted",
+                actor_id=sample_user.id,
+                actor_role="deputy_education",
+            )
+
+    async def test_course_finalization_only_course_committee_can_advance(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        """مرحلهٔ نهایی‌سازی مکان‌ها فقط برای کمیته دروس (نه معاون آموزش)."""
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+        await db_session.commit()
+
+        engine = StateMachineEngine(db_session)
+        instance = await engine.start_process(
+            process_code="fall_semester_preparation",
+            student_id=sample_student.id,
+            actor_id=sample_user.id,
+            actor_role="admin",
+        )
+        await db_session.commit()
+
+        for trigger, role in (
+            ("calendar_submitted", "course_committee"),
+            ("tuition_submitted", "deputy_education"),
+            ("license_reviewed", "deputy_education"),
+            ("course_list_submitted", "course_committee"),
+        ):
+            result = await engine.execute_transition(
+                instance_id=instance.id,
+                trigger_event=trigger,
+                actor_id=sample_user.id,
+                actor_role=role,
+            )
+            await db_session.commit()
+            assert result.success is True, f"{trigger} failed: {result.error}"
+
+        instance = await engine.get_process_instance(instance.id)
+        assert instance.current_state_code == "course_finalization"
+
+        deputy_transitions = await engine.get_available_transitions(
+            instance.id,
+            "deputy_education",
+        )
+        assert "courses_finalized" not in [t["trigger_event"] for t in deputy_transitions]
+
+        committee_transitions = await engine.get_available_transitions(
+            instance.id,
+            "course_committee",
+        )
+        assert "courses_finalized" in [t["trigger_event"] for t in committee_transitions]
 
     async def test_sla_expired_records_warning_for_education_director(
         self, db_session: AsyncSession, sample_student, sample_user
@@ -209,4 +378,58 @@ class TestFallSemesterPreparationFlow:
 
         instance = await engine.get_process_instance(instance.id)
         assert instance.current_state_code == "published"
+        assert instance.is_completed is True
+
+    async def test_staff_can_complete_interview_scheduling_step(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        """مدیر داخلی (staff) باید مرحلهٔ ۸ — زمان‌بندی مصاحبه — را به انتشار برساند."""
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+        await db_session.commit()
+
+        engine = StateMachineEngine(db_session)
+        instance = await engine.start_process(
+            process_code="fall_semester_preparation",
+            student_id=sample_student.id,
+            actor_id=sample_user.id,
+            actor_role="admin",
+        )
+        await db_session.commit()
+
+        for trigger, role in (
+            ("calendar_submitted", "course_committee"),
+            ("tuition_submitted", "deputy_education"),
+            ("license_reviewed", "deputy_education"),
+            ("course_list_submitted", "course_committee"),
+            ("courses_finalized", "course_committee"),
+            ("marketing_started", "staff"),
+            ("interviewers_assigned", "deputy_education"),
+        ):
+            result = await engine.execute_transition(
+                instance_id=instance.id,
+                trigger_event=trigger,
+                actor_id=sample_user.id,
+                actor_role=role,
+            )
+            await db_session.commit()
+            assert result.success is True, f"{trigger} failed: {result.error}"
+
+        instance = await engine.get_process_instance(instance.id)
+        assert instance.current_state_code == "interview_scheduling"
+
+        transitions = await engine.get_available_transitions(instance.id, "staff")
+        assert "interview_times_set" in [t["trigger_event"] for t in transitions]
+
+        result = await engine.execute_transition(
+            instance_id=instance.id,
+            trigger_event="interview_times_set",
+            actor_id=sample_user.id,
+            actor_role="staff",
+        )
+        await db_session.commit()
+        assert result.success is True
+        assert result.to_state == "published"
+
+        instance = await engine.get_process_instance(instance.id)
         assert instance.is_completed is True

@@ -104,8 +104,16 @@ export const COMMITTEE_ROLE_CONFIG = {
     subtitle: 'مشاهده هشدارهای SLA و درخواست‌های مرخصی',
     icon: '📊',
     accentColor: 'var(--warning)',
-    reviewKeywords: ['deputy_review', 'sla_alert', 'escalation', 'deputy_education'],
-    assignedRoles: ['deputy_education', 'deputy_education_director', 'scientific_officer_course_committee', 'course_committee_executive'],
+    reviewKeywords: [
+      'deputy_review',
+      'sla_alert',
+      'escalation',
+      'deputy_education',
+      'tuition_entry',
+      'license_check',
+      'interviewer_assignment',
+    ],
+    assignedRoles: ['deputy_education', 'deputy_education_director'],
   },
   monitoring_committee_officer: {
     title: 'پنل مسئول کمیته نظارت',

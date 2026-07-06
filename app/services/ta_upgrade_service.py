@@ -1,14 +1,19 @@
 """Business logic for process 47 — upgrade_to_ta."""
 from __future__ import annotations
 
+import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
-from app.models.operational_models import Student
+from app.models.operational_models import ProcessInstance, Student, User
 from app.services.attendance_service import AttendanceService
+
+logger = logging.getLogger(__name__)
 
 TA_THERAPY_HOURS_TARGET = 50.0
 GPA_MIN_B = 14.0
@@ -167,3 +172,119 @@ def validate_conditions_met_trigger(ctx: dict[str, Any]) -> Optional[str]:
         "شرایط ارتقا به کمک‌مدرس احراز نشده است. "
         "چهار شرط (دروس ترم دوم جامع، معدل B، ۵۰ ساعت درمان، شروع انترنی) را در پنل بررسی کنید."
     )
+
+
+def _normalize_tracks(raw: Any) -> list[str]:
+    if isinstance(raw, list):
+        return [str(x).strip() for x in raw if x is not None and str(x).strip()]
+    if raw is not None and str(raw).strip():
+        return [str(raw).strip()]
+    return []
+
+
+def _resolve_member_name(student: Student, user: User | None) -> str:
+    if user and (user.full_name_fa or "").strip():
+        return str(user.full_name_fa).strip()
+    return (student.student_code or "").strip()
+
+
+def _normalize_courses(raw: Any) -> list[str]:
+    if isinstance(raw, list):
+        return [str(x).strip() for x in raw if x is not None and str(x).strip()]
+    if raw is not None and str(raw).strip():
+        return [str(raw).strip()]
+    return []
+
+
+async def apply_ta_registration(
+    db: AsyncSession,
+    student: Student,
+    *,
+    tracks: list[str],
+    courses: list[str] | None = None,
+    user: User | None = None,
+) -> None:
+    """پس از اتمام موفق فرایند ۴۷ — ثبت کمک‌مدرس در پرونده و چارت کمیته دروس."""
+    from app.services.course_committee_roster_service import (
+        merge_course_grants,
+        register_teaching_assistant_on_roster,
+    )
+
+    selected = _normalize_tracks(tracks)
+    if not selected:
+        logger.warning("apply_ta_registration: no tracks for student=%s", student.id)
+        return
+
+    name_fa = _resolve_member_name(student, user)
+    if not name_fa:
+        logger.warning("apply_ta_registration: no display name for student=%s", student.id)
+        return
+
+    extra = _as_mapping(student.extra_data)
+    lms = _as_mapping(extra.get("lms"))
+    lms["ta_active_tracks"] = list(dict.fromkeys(_normalize_tracks(lms.get("ta_active_tracks")) + selected))
+    extra["lms"] = lms
+    extra["ta_active_tracks"] = lms["ta_active_tracks"]
+    extra["ta_registered"] = True
+    extra["is_teaching_assistant"] = True
+    extra["ta_registered_at"] = datetime.now(timezone.utc).isoformat()
+    student.extra_data = extra
+    flag_modified(student, "extra_data")
+
+    authorized_courses = _normalize_courses(courses)
+    if not authorized_courses:
+        logger.warning(
+            "apply_ta_registration: no authorized courses for student=%s tracks=%s",
+            student.id,
+            selected,
+        )
+
+    if user:
+        user.role = "teaching_assistant"
+        user.is_active = True
+        meta = dict(user.profile_meta or {})
+        roster_tracks = list(meta.get("course_committee_tracks") or [])
+        for t in selected:
+            if t not in roster_tracks:
+                roster_tracks.append(t)
+        meta["course_committee_tracks"] = roster_tracks
+        meta["member_kind"] = "teaching_assistant"
+        if authorized_courses:
+            merge_course_grants(meta, "teaching_assistant", authorized_courses)
+        user.profile_meta = meta
+        flag_modified(user, "profile_meta")
+
+    for track_code in selected:
+        await register_teaching_assistant_on_roster(
+            db,
+            track=track_code,
+            name_fa=name_fa,
+            user=user,
+        )
+    await db.flush()
+
+
+async def chain_after_transition(
+    db: AsyncSession,
+    instance: ProcessInstance,
+    to_state: str,
+) -> None:
+    """پس از رسیدن به ta_registered — اضافه شدن به لیست کمک‌مدرسین."""
+    if instance.process_code != "upgrade_to_ta":
+        return
+    if to_state != "ta_registered":
+        return
+
+    stmt = select(Student).where(Student.id == instance.student_id)
+    student = (await db.execute(stmt)).scalars().first()
+    if not student:
+        return
+
+    ctx = _as_mapping(instance.context_data)
+    tracks = _normalize_tracks(ctx.get("tracks"))
+    courses = _normalize_courses(ctx.get("courses") or ctx.get("ta_authorized_courses"))
+    user: User | None = None
+    if student.user_id:
+        user = (await db.execute(select(User).where(User.id == student.user_id))).scalars().first()
+
+    await apply_ta_registration(db, student, tracks=tracks, courses=courses, user=user)

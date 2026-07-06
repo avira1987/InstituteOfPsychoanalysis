@@ -38,21 +38,19 @@ def _norm_list(values: Optional[Iterable[Any]]) -> list[str]:
 
 # نقش پورتال ↔ assigned_role متادیتا (آماده‌سازی ترم و نقش‌های مرتبط)
 _EDITABLE_ROLE_ALIASES: dict[str, frozenset[str]] = {
-    "deputy_education": frozenset(
-        {"deputy_education", "deputy_education_director", "course_committee_executive", "scientific_officer_course_committee"}
-    ),
+    "deputy_education": frozenset({"deputy_education", "deputy_education_director"}),
     "deputy_education_director": frozenset({"deputy_education_director", "deputy_education"}),
     "course_committee": frozenset(
         {"course_committee", "course_committee_executive", "course_committee_scientific", "scientific_officer_course_committee"}
     ),
-    "course_committee_executive": frozenset({"course_committee_executive", "course_committee", "deputy_education"}),
+    "course_committee_executive": frozenset({"course_committee_executive", "course_committee"}),
     "scientific_officer_course_committee": frozenset(
-        {"scientific_officer_course_committee", "course_committee_scientific", "course_committee", "deputy_education"}
+        {"scientific_officer_course_committee", "course_committee_scientific", "course_committee"}
     ),
     "course_committee_scientific": frozenset(
         {"course_committee_scientific", "scientific_officer_course_committee", "course_committee"}
     ),
-    "admissions_officer": frozenset({"admissions_officer", "admission_officer", "staff", "deputy_education"}),
+    "admissions_officer": frozenset({"admissions_officer", "admission_officer", "staff"}),
     "admission_officer": frozenset({"admission_officer", "admissions_officer", "staff"}),
 }
 

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { semesterPrepApi } from '../services/api'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 
 const PROCESS_LABELS = {
@@ -14,8 +14,8 @@ export default function SemesterPrepPage() {
   const { user } = useAuth()
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(true)
+  const { showToast } = useToast()
   const [busy, setBusy] = useState(null)
-  const [toast, setToast] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -23,7 +23,7 @@ export default function SemesterPrepPage() {
       const res = await semesterPrepApi.getStatus()
       setStatus(res.data)
     } catch (e) {
-      setToast({ message: 'خطا در بارگذاری وضعیت آماده‌سازی', type: 'error' })
+      showToast('خطا در بارگذاری وضعیت آماده‌سازی', 'error')
     } finally {
       setLoading(false)
     }
@@ -37,11 +37,11 @@ export default function SemesterPrepPage() {
     setBusy(processCode)
     try {
       await semesterPrepApi.start(processCode)
-      setToast({ message: `${PROCESS_LABELS[processCode] || processCode} شروع شد.`, type: 'success' })
+      showToast(`${PROCESS_LABELS[processCode] || processCode} شروع شد.`)
       await load()
     } catch (e) {
       const d = e?.response?.data?.detail
-      setToast({ message: typeof d === 'string' ? d : 'خطا در شروع فرایند', type: 'error' })
+      showToast(typeof d === 'string' ? d : 'خطا در شروع فرایند', 'error')
     } finally {
       setBusy(null)
     }
@@ -149,7 +149,6 @@ export default function SemesterPrepPage() {
         </div>
       )}
 
-      {toast && <PopupToast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

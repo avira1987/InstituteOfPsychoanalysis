@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { semesterPrepApi, schedulerApi } from '../services/api'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 
 const PROCESS_LABELS = {
@@ -15,8 +15,8 @@ export default function SemesterPrepSlaWarningsPage() {
   const [status, setStatus] = useState(null)
   const [warnings, setWarnings] = useState(null)
   const [loading, setLoading] = useState(true)
+  const { showToast } = useToast()
   const [running, setRunning] = useState(false)
-  const [toast, setToast] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -28,7 +28,7 @@ export default function SemesterPrepSlaWarningsPage() {
       setStatus(statusRes.data)
       setWarnings(warnRes.data)
     } catch (e) {
-      setToast({ message: 'خطا در بارگذاری هشدارهای مهلت', type: 'error' })
+      showToast('خطا در بارگذاری هشدارهای مهلت', 'error')
     } finally {
       setLoading(false)
     }
@@ -42,10 +42,10 @@ export default function SemesterPrepSlaWarningsPage() {
     setRunning(true)
     try {
       await schedulerApi.runPass()
-      setToast({ message: 'دور بررسی مهلت‌ها اجرا شد. در حال بازخوانی…', type: 'success' })
+      showToast('دور بررسی مهلت‌ها اجرا شد. در حال بازخوانی…')
       await load()
     } catch (e) {
-      setToast({ message: 'خطا در اجرای بررسی مهلت‌ها', type: 'error' })
+      showToast('خطا در اجرای بررسی مهلت‌ها', 'error')
     } finally {
       setRunning(false)
     }
@@ -182,7 +182,6 @@ export default function SemesterPrepSlaWarningsPage() {
         </>
       )}
 
-      {toast && <PopupToast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

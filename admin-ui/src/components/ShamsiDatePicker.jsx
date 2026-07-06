@@ -37,23 +37,16 @@ export default function ShamsiDatePicker({
     return Array.from({ length: n }, (_, i) => i + 1)
   }, [jy, jm])
 
+  const rootClass = `shamsi-datetime-picker shamsi-datetime-picker--date-only${compact ? ' shamsi-datetime-picker--compact' : ''}`
+  const gridClass = `shamsi-datetime-picker__grid shamsi-datetime-picker__grid--date-only${compact ? ' shamsi-datetime-picker__grid--compact' : ''}`
+
   const grid = (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: compact
-          ? 'repeat(3, minmax(3.75rem, 1fr))'
-          : 'repeat(auto-fill, minmax(7.5rem, 1fr))',
-        gap: compact ? '0.3rem' : '0.5rem',
-        alignItems: 'end',
-      }}
-    >
-      <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
+    <div className={gridClass}>
+      <label className="shamsi-datetime-picker__field">
         سال شمسی
         <select
           id={`${idPrefix}-y`}
           className="psf-input form-input"
-          style={{ width: '100%', marginTop: '0.2rem' }}
           value={jy}
           disabled={disabled}
           onChange={(e) => setPart({ jy: parseInt(e.target.value, 10) })}
@@ -63,12 +56,11 @@ export default function ShamsiDatePicker({
           ))}
         </select>
       </label>
-      <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
+      <label className="shamsi-datetime-picker__field">
         ماه
         <select
           id={`${idPrefix}-m`}
           className="psf-input form-input"
-          style={{ width: '100%', marginTop: '0.2rem' }}
           value={jm}
           disabled={disabled}
           onChange={(e) => setPart({ jm: parseInt(e.target.value, 10) })}
@@ -78,12 +70,11 @@ export default function ShamsiDatePicker({
           ))}
         </select>
       </label>
-      <label style={{ fontSize: compact ? '0.72rem' : '0.8rem' }}>
+      <label className="shamsi-datetime-picker__field">
         روز
         <select
           id={`${idPrefix}-d`}
           className="psf-input form-input"
-          style={{ width: '100%', marginTop: '0.2rem' }}
           value={Math.min(jd, maxDay)}
           disabled={disabled}
           onChange={(e) => setPart({ jd: parseInt(e.target.value, 10) })}
@@ -96,18 +87,13 @@ export default function ShamsiDatePicker({
     </div>
   )
 
-  if (!label) return grid
+  if (!label) {
+    return <div className={rootClass}>{grid}</div>
+  }
 
   return (
-    <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-      <legend
-        style={{
-          display: 'block',
-          marginBottom: compact ? '0.2rem' : '0.35rem',
-          fontSize: compact ? '0.82rem' : '0.88rem',
-          fontWeight: 600,
-        }}
-      >
+    <fieldset className={rootClass}>
+      <legend className="shamsi-datetime-picker__legend">
         {label}
       </legend>
       {grid}

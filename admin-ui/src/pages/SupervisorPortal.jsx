@@ -8,7 +8,7 @@ import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload
 import { isDocumentReviewState } from '../utils/documentReviewStates'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
@@ -63,15 +63,10 @@ export default function SupervisorPortal() {
   const [supervisorCancelMakeupTime, setSupervisorCancelMakeupTime] = useState('')
   const [startingCancelFor, setStartingCancelFor] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState(null)
   const [studentSearch, setStudentSearch] = useState('')
   const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
   const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 4000)
-  }
+  const { showToast } = useToast()
 
   useEffect(() => { loadData() }, [])
 
@@ -255,7 +250,6 @@ export default function SupervisorPortal() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
 
       <ResolvedProcessHistoryBanner
         instanceDetail={instanceDetail}

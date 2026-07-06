@@ -15,6 +15,32 @@ function labelState(code) {
   return STATE_LABELS_FA[code] || code || ''
 }
 
+/** برچسب فارسی assigned_role در متادیتای فرایند */
+export const ASSIGNED_ROLE_LABELS_FA = {
+  admissions_officer: 'مسئول پذیرش',
+  admission_officer: 'مسئول پذیرش',
+  deputy_education_director: 'معاون مدیر آموزش',
+  deputy_education: 'معاون آموزش',
+  scientific_officer_course_committee: 'مسئول علمی کمیته دروس',
+  course_committee: 'کمیته دروس',
+  site_manager: 'مسئول سایت',
+  staff: 'کارمند اداری',
+  interviewer: 'مصاحبه‌گر',
+}
+
+export function assignedRoleLabelFa(roleCode) {
+  const code = normalizeAssignedRole(roleCode)
+  return ASSIGNED_ROLE_LABELS_FA[code] || code || ''
+}
+
+export function buildWaitingForRoleTaskFa(assignedRole) {
+  const label = assignedRoleLabelFa(assignedRole)
+  if (label) {
+    return `در این مرحله فرایند منتظر «${label}» است — شما فقط می‌توانید مشاهده کنید.`
+  }
+  return 'این مرحله در انتظار نقش دیگر است؛ فقط مشاهده.'
+}
+
 const OPERATOR_FALLBACK_BY_ROLE = {
   therapist: 'بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.',
   supervisor: 'ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.',
@@ -96,7 +122,7 @@ export function buildOperatorGuidance({
       || ''
     ).trim()
     if (!canAct && portalRole !== 'admin') {
-      taskFa = 'این مرحله در انتظار نقش دیگر است؛ فقط مشاهده.'
+      taskFa = buildWaitingForRoleTaskFa(role)
     } else if (customTask) {
       taskFa = customTask
     } else if (canAct || portalRole === 'admin') {
@@ -109,6 +135,7 @@ export function buildOperatorGuidance({
     shortFa,
     taskFa: taskFa || '',
     role,
+    waitingRoleLabelFa: !canAct && !done ? assignedRoleLabelFa(role) : '',
     done,
     canAct,
   }

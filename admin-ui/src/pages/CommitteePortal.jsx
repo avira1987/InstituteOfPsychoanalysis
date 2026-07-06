@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 import { processExecApi, studentApi, panelApi } from '../services/api'
@@ -18,8 +18,9 @@ import {
 } from '../utils/interviewResultAccess'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import ProcessRollbackSection from '../components/ProcessRollbackSection'
+import ProcessRestartSection from '../components/ProcessRestartSection'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
@@ -53,6 +54,7 @@ import { mergeTaToAssistantFacultyTriggerPayload } from '../utils/taToAssistantF
 import { mergeUpgradeToTaTriggerPayload } from '../utils/upgradeToTaTriggerPayload'
 import { mergeTaTrackChangeTriggerPayload } from '../utils/taTrackChangeTriggerPayload'
 import TaTrackChangeCommitteePanel from '../components/TaTrackChangeCommitteePanel'
+import TaTrackCompletionInstancePanel from '../components/TaTrackCompletionInstancePanel'
 import InternBulkPatientReferralSupervisionPanel from '../components/InternBulkPatientReferralSupervisionPanel'
 import InternBulkPatientReferralTherapyCommitteePanel from '../components/InternBulkPatientReferralTherapyCommitteePanel'
 import { mergeNonRegistrationTriggerPayload } from '../utils/nonRegistrationTriggerPayload'
@@ -64,9 +66,23 @@ import {
   getCommitteeKindPath,
   getCommitteeRoleConfig,
 } from '../utils/portalCommitteeKinds'
+import { SEMESTER_PREP_PROCESSES } from '../utils/instituteProcesses'
+import { mergeProcessInboxIntoPending } from '../utils/mergeProcessInboxPending'
+import {
+  getPendingTaskDestination,
+  isSemesterPrepWorkbenchDestination,
+  resolvePendingInstanceId,
+} from '../utils/operatorFollowupDeepLinks'
+
+const DEPUTY_SEMESTER_PREP_STATES = new Set([
+  'tuition_entry',
+  'license_check',
+  'interviewer_assignment',
+])
 
 export default function CommitteePortal() {
   const { kind: kindParam } = useParams()
+  const navigate = useNavigate()
   const kind = kindParam || 'progress'
   const kindMeta = getCommitteeKindConfig(kind)
   const portalPath = getCommitteeKindPath(kind)
@@ -81,8 +97,8 @@ export default function CommitteePortal() {
   const [availableTransitions, setAvailableTransitions] = useState([])
   const [decisionNotes, setDecisionNotes] = useState('')
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState(null)
   const [rollbackBusy, setRollbackBusy] = useState(false)
+  const [restartBusy, setRestartBusy] = useState(false)
   const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
   const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
   /** فرم ارزیابی مصاحبهٔ ورود به دوره جامع (محرمانه) — همراه تریگر نتیجه ارسال می‌شود */
@@ -91,11 +107,7 @@ export default function CommitteePortal() {
     rejection_reason: '',
     suggestion_text: '',
   })
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 4000)
-  }
+  const { showToast } = useToast()
 
   useEffect(() => { loadData() }, [])
 
@@ -129,7 +141,8 @@ export default function CommitteePortal() {
           }
         } catch { /* skip */ }
       }
-      setPendingReviews(pending)
+      const followupItems = followupRes.data?.items || []
+      setPendingReviews(mergeProcessInboxIntoPending(followupItems, pending))
       setAllActiveInstances(allActive)
     } catch (err) {
       console.error('Load error:', err)
@@ -138,8 +151,28 @@ export default function CommitteePortal() {
     }
   }
 
+  const openPendingReview = (task) => {
+    const dest = getPendingTaskDestination(task)
+    if (isSemesterPrepWorkbenchDestination(dest.href)) {
+      navigate(dest.href)
+      return
+    }
+    const instanceId = resolvePendingInstanceId(task)
+    if (instanceId) {
+      viewInstance(instanceId)
+      setActiveTab('reviews')
+    }
+  }
+
   const isWaitingForReview = (state, processCode) => {
     if (!state) return false
+    if (
+      SEMESTER_PREP_PROCESSES.has(processCode)
+      && user?.role === 'deputy_education'
+      && DEPUTY_SEMESTER_PREP_STATES.has(state)
+    ) {
+      return true
+    }
     if (
       processCode === 'committees_review'
       && (state === 'supervision_review' || state === 'education_review')
@@ -280,6 +313,33 @@ export default function CommitteePortal() {
       showToast(typeof d === 'string' ? d : (e.message || 'خطا در بازگشت'), 'error')
     } finally {
       setRollbackBusy(false)
+    }
+  }
+
+  const handleProcessRestart = async (reason) => {
+    if (!selectedInstance) return false
+    setRestartBusy(true)
+    try {
+      const res = await processExecApi.restart(selectedInstance, {
+        reason: reason || undefined,
+        confirm: true,
+      })
+      if (res.data?.success) {
+        const newId = res.data.new_instance_id
+        showToast('فرایند از ابتدا با پروندهٔ جدید باز شد')
+        setSelectedInstance(newId)
+        await viewInstance(newId)
+        loadData()
+        return true
+      }
+      showToast(res.data?.error || 'شروع دوباره انجام نشد', 'error')
+      return false
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast(typeof d === 'string' ? d : (e.message || 'خطا در شروع دوباره'), 'error')
+      return false
+    } finally {
+      setRestartBusy(false)
     }
   }
 
@@ -449,7 +509,6 @@ export default function CommitteePortal() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
 
       <ResolvedProcessHistoryBanner
         instanceDetail={instanceDetail}
@@ -581,7 +640,7 @@ export default function CommitteePortal() {
                   {pendingReviews.slice(0, 6).map(p => (
                     <button
                       key={p.instance_id}
-                      onClick={() => { viewInstance(p.instance_id); setActiveTab('reviews') }}
+                      onClick={() => openPendingReview(p)}
                       style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer',
@@ -655,7 +714,7 @@ export default function CommitteePortal() {
                 {pendingReviews.map(p => (
                   <button
                     key={p.instance_id}
-                    onClick={() => viewInstance(p.instance_id)}
+                    onClick={() => openPendingReview(p)}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer',
@@ -745,6 +804,14 @@ export default function CommitteePortal() {
               <InternBulkPatientReferralSupervisionPanel detail={instanceDetail} />
               <InternBulkPatientReferralTherapyCommitteePanel detail={instanceDetail} />
 
+              <TaTrackCompletionInstancePanel
+                detail={instanceDetail}
+                studentId={instanceDetail?.student_id}
+                studentName={instanceDetail?.student_code}
+                portalRole={user?.role}
+                active={instanceDetail?.process_code === 'ta_track_completion'}
+              />
+
               <InstanceContextSummary
                 contextData={instanceDetail.context_data}
                 history={instanceDetail.history}
@@ -818,6 +885,13 @@ export default function CommitteePortal() {
                 instanceDetail={instanceDetail}
                 onRollback={handleProcessRollback}
                 busy={rollbackBusy}
+              />
+
+              <ProcessRestartSection
+                user={user}
+                instanceDetail={instanceDetail}
+                onRestart={handleProcessRestart}
+                busy={restartBusy}
               />
 
               {transitionsForActions.length > 0 && (

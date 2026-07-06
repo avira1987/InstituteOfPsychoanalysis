@@ -111,7 +111,7 @@
       "code": "interview_scheduling",
       "name_fa": "زمان‌بندی دقیق اسلات‌های مصاحبه",
       "type": "intermediate",
-      "assigned_role": "site_manager",
+      "assigned_role": "staff",
       "sla_days": 3,
       "sla_warning_recipients": [
         "deputy_education_director"
@@ -330,7 +330,7 @@
           "notification_type": "in_app",
           "template": "interviewers_set_schedule_times",
           "recipients": [
-            "site_manager"
+            "staff"
           ]
         }
       ]
@@ -356,7 +356,7 @@
       "from": "interview_scheduling",
       "to": "published",
       "trigger": "interview_times_set",
-      "required_role": "site_manager",
+      "required_role": "staff",
       "description_fa": "زمان‌بندی دقیق مصاحبه‌ها ثبت شد — انتشار تقویم و اطلاع‌رسانی",
       "actions": [
         {
@@ -404,7 +404,7 @@
       "code": "academic_calendar_form",
       "name_fa": "فرم تقویم آموزشی دو ترم",
       "used_in_state": "calendar_entry",
-      "editable_by": ["admin", "staff", "deputy_education", "deputy_education_director", "course_committee", "course_committee_executive"],
+      "editable_by": ["admin", "staff", "course_committee", "course_committee_executive"],
       "fields": [
         {
           "name": "fall_start_date",
@@ -550,8 +550,8 @@
       "code": "course_list_form",
       "name_fa": "فرم لیست دروس ترم",
       "used_in_state": "course_list_creation",
-      "editable_by": ["admin", "staff", "deputy_education", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
-      "note_fa": "دروس ترم پاییز و زمستان را در دو جدول جداگانه ثبت کنید.",
+      "editable_by": ["admin", "staff", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
+      "note_fa": "دروس ترم پاییز و زمستان را در دو جدول جداگانه ثبت کنید. اگر درسی در فهرست نیست، از بخش «افزودن درس جدید» در ستون نام درس استفاده کنید.",
       "fields": [
         {
           "name": "courses_fall",
@@ -575,6 +575,7 @@
               "type": "creatable_select",
               "creatable": true,
               "searchable": true,
+              "auto_fill_from": "course_name",
               "options_source": {
                 "type": "course_committee_tracks"
               }
@@ -607,7 +608,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "instructor",
-                "filter_by_column": "track"
+                "filter_by_column": "course_name"
               }
             },
             {
@@ -619,7 +620,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "teaching_assistant",
-                "filter_by_column": "track"
+                "filter_by_column": "course_name"
               }
             }
           ]
@@ -646,6 +647,7 @@
               "type": "creatable_select",
               "creatable": true,
               "searchable": true,
+              "auto_fill_from": "course_name",
               "options_source": {
                 "type": "course_committee_tracks"
               }
@@ -678,7 +680,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "instructor",
-                "filter_by_column": "track"
+                "filter_by_column": "course_name"
               }
             },
             {
@@ -690,7 +692,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "teaching_assistant",
-                "filter_by_column": "track"
+                "filter_by_column": "course_name"
               }
             }
           ]
@@ -701,7 +703,7 @@
       "code": "course_finalization_form",
       "name_fa": "فرم نهایی‌سازی دروس و مکان‌ها",
       "used_in_state": "course_finalization",
-      "editable_by": ["admin", "staff", "deputy_education", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
+      "editable_by": ["admin", "staff", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
       "fields": [
         {
           "name": "courses_finalized_fall",
@@ -817,7 +819,7 @@
       "code": "marketing_campaign_form",
       "name_fa": "فرم تأیید شروع کمپین بازاریابی پذیرش",
       "used_in_state": "marketing_campaign",
-      "editable_by": ["admin", "staff", "deputy_education", "admissions_officer"],
+      "editable_by": ["admin", "staff", "admissions_officer"],
       "note_fa": "خروجی فعالیت‌های ۱ (تقویم)، ۲ (شهریه) و ۵ (برنامه نهایی دروس) را به‌صورت PDF بگیرید و برای مدیر مارکتینگ ارسال کنید.",
       "fields": [
         {

@@ -18,6 +18,7 @@ from app.database import get_db
 from app.config import get_settings
 from app.api.auth import get_current_user, require_role
 from app.models.operational_models import User, ProcessInstance, Student, SupportTicket, TicketComment
+from app.services.panel_notification_dismiss import dismiss_notifications_for_instance
 from app.core.engine import (
     StateMachineEngine, ProcessNotFoundError,
     InstanceNotFoundError, InvalidTransitionError, UnauthorizedError,
@@ -25,7 +26,7 @@ from app.core.engine import (
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.meta.loader import MetadataLoader
-from app.meta.process_forms import get_process_forms, get_process_ui_requirements
+from app.meta.process_forms import get_process_forms, get_process_ui_requirements, get_state_assigned_role
 from app.meta.process_data_access import (
     apply_data_update_to_context,
     editable_field_names,
@@ -63,6 +64,39 @@ def _normalize_actor_role(role: Optional[str]) -> str:
     """نقش‌ها در متادیتا lowercase هستند؛ اگر DB رشتۀ متفاوت داشت، RBAC از بین نرود."""
     s = (role or "").strip().lower()
     return s or "student"
+
+
+def _portal_role_can_act_on_state(actor_role: str, process_code: str, state_code: str) -> bool:
+    from app.meta.operator_state_catalog import (
+        normalize_assigned_role,
+        portal_role_can_act_on_assigned_role,
+    )
+
+    if actor_role == "admin":
+        return True
+    assigned = get_state_assigned_role(process_code, state_code)
+    if not assigned:
+        return True
+    return portal_role_can_act_on_assigned_role(actor_role, normalize_assigned_role(assigned))
+
+
+def _lock_forms_when_cannot_act(forms: list, *, can_act: bool) -> list:
+    """اگر نقش جاری مسئول این مرحله نیست، همهٔ فیلدها را فقط‌خواندنی می‌کند."""
+    if can_act:
+        return forms
+    locked: list = []
+    for form in forms:
+        form_copy = dict(form)
+        fields = []
+        for field in form.get("fields") or []:
+            if not isinstance(field, dict):
+                continue
+            f = dict(field)
+            f["__editable"] = False
+            fields.append(f)
+        form_copy["fields"] = fields
+        locked.append(form_copy)
+    return locked
 
 
 async def _ensure_student_owns_instance(
@@ -873,6 +907,21 @@ class RollbackRequest(BaseModel):
     reason: Optional[str] = Field(None, max_length=2000)
 
 
+class RestartProcessRequest(BaseModel):
+    """شروع دوباره از ابتدا: بایگانی پروندهٔ فعلی و ساخت نمونهٔ جدید."""
+    reason: Optional[str] = Field(None, max_length=2000)
+    confirm: bool = Field(..., description="تأیید صریح کاربر الزامی است")
+
+
+class RestartProcessResponse(BaseModel):
+    success: bool
+    old_instance_id: str
+    new_instance_id: str
+    process_code: str
+    current_state: str
+    error: Optional[str] = None
+
+
 class StudentStepFormsRegisterRequest(BaseModel):
     form_values: dict
 
@@ -992,6 +1041,9 @@ async def get_process_forms_for_state(
     actor_role = _normalize_actor_role(current_user.role)
     raw_forms = get_process_forms(process_code, state_code=state)
     forms = visible_forms_for_role(raw_forms, actor_role) if actor_role != "student" else raw_forms
+    can_act_on_state = _portal_role_can_act_on_state(actor_role, process_code, state or "")
+    forms = _lock_forms_when_cannot_act(forms, can_act=can_act_on_state)
+    state_assigned_role = get_state_assigned_role(process_code, state or "") if state else None
     suggested_context: dict = {}
     if instance_id and state:
         try:
@@ -1011,6 +1063,8 @@ async def get_process_forms_for_state(
         "state": state,
         "forms": forms,
         "suggested_context": suggested_context,
+        "state_assigned_role": state_assigned_role,
+        "can_act_on_state": can_act_on_state,
     }
 
 
@@ -1248,6 +1302,12 @@ async def trigger_transition(
                 "error": result.error,
             },
         )
+        if result.success:
+            await dismiss_notifications_for_instance(
+                db,
+                user_id=current_user.id,
+                instance_id=uuid.UUID(instance_id),
+            )
         return TransitionResultResponse(
             success=result.success,
             from_state=result.from_state,
@@ -1300,6 +1360,57 @@ async def rollback_process_instance(
         raise HTTPException(status_code=404, detail=str(e))
     except InvalidTransitionError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{instance_id}/restart", response_model=RestartProcessResponse)
+async def restart_process_instance(
+    instance_id: str,
+    body: RestartProcessRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """بایگانی پروندهٔ فعلی و شروع دوباره از مرحلهٔ اول (پرسنل یا دانشجو برای پروندهٔ خود)."""
+    if not body.confirm:
+        raise HTTPException(status_code=400, detail="برای شروع دوباره باید تأیید صریح بدهید.")
+
+    inst = await _get_instance_or_404(db, instance_id)
+    actor_role = _normalize_actor_role(current_user.role)
+
+    is_own_instance = False
+    if actor_role == "student":
+        await _ensure_student_owns_instance(db, current_user, inst)
+        is_own_instance = True
+    elif actor_role not in ("admin", "deputy_education", "staff"):
+        raise HTTPException(status_code=403, detail="شما مجوز شروع دوباره این فرایند را ندارید.")
+
+    engine = StateMachineEngine(db)
+    try:
+        result = await engine.restart_process_instance(
+            instance_id=uuid.UUID(instance_id),
+            actor_id=current_user.id,
+            actor_role=actor_role,
+            reason=body.reason,
+            is_own_instance=is_own_instance,
+        )
+        await db.flush()
+        return RestartProcessResponse(
+            success=result.success,
+            old_instance_id=str(result.old_instance_id),
+            new_instance_id=str(result.new_instance_id),
+            process_code=result.process_code,
+            current_state=result.current_state,
+            error=result.error,
+        )
+    except InstanceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except UnauthorizedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except InvalidTransitionError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ProcessNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1650,6 +1761,11 @@ async def download_marketing_campaign_pack_pdf(
         raise HTTPException(status_code=400, detail="این خروجی فقط برای فرایند آماده‌سازی ترم است")
     if (instance.current_state_code or "") != "marketing_campaign":
         raise HTTPException(status_code=400, detail="خروجی PDF فقط در مرحلهٔ کمپین بازاریابی در دسترس است")
+    if not _portal_role_can_act_on_state(actor_role, instance.process_code, "marketing_campaign"):
+        raise HTTPException(
+            status_code=403,
+            detail="دانلود PDF این مرحله فقط برای مسئول پذیرش مجاز است.",
+        )
 
     from app.services.semester_prep_marketing_pdf import build_marketing_campaign_pdf_bytes
 
@@ -1698,6 +1814,12 @@ async def register_operator_step_forms(
         raise HTTPException(status_code=400, detail="No state code")
     if state != (instance.current_state_code or ""):
         raise HTTPException(status_code=400, detail="فقط فرم مرحلهٔ فعلی قابل ثبت است.")
+
+    if not _portal_role_can_act_on_state(actor_role, instance.process_code, state):
+        raise HTTPException(
+            status_code=403,
+            detail="شما مسئول اقدام در این مرحله نیستید؛ فقط مشاهده مجاز است.",
+        )
 
     raw_forms = get_process_forms(instance.process_code, state_code=state)
     forms = visible_forms_for_role(raw_forms, actor_role)
@@ -2007,6 +2129,17 @@ async def get_instance_dashboard(
             from app.services.registration_readiness_service import check_intro_registration_gate
 
             out["registration_gate"] = (await check_intro_registration_gate(db)).to_dict()
+        if status.get("process_code") == "ta_track_completion" and inst.student_id:
+            from app.services.ta_track_portfolio_service import build_ta_portfolio
+
+            student = (
+                await db.execute(select(Student).where(Student.id == inst.student_id))
+            ).scalars().first()
+            if student:
+                user = (
+                    await db.execute(select(User).where(User.id == student.user_id))
+                ).scalars().first() if student.user_id else None
+                out["ta_portfolio"] = build_ta_portfolio(student, user)
         return out
     except InstanceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

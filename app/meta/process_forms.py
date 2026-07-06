@@ -82,3 +82,10 @@ def get_process_state_metadata(process_code: str, state_code: str) -> dict:
         if isinstance(state, dict) and state.get("code") == code:
             return dict(state)
     return {}
+
+
+def get_state_assigned_role(process_code: str, state_code: str) -> Optional[str]:
+    """assigned_role مرحله از متادیتای فرایند."""
+    meta = get_process_state_metadata(process_code, state_code)
+    role = (meta.get("assigned_role") or "").strip()
+    return role or None

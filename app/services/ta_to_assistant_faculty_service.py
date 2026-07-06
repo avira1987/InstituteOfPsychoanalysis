@@ -11,7 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.operational_models import ProcessInstance, Student, User
-from app.services.course_committee_roster_service import list_course_catalog_options
+from app.services.course_committee_roster_service import (
+    list_course_catalog_options,
+    merge_course_grants,
+    promote_ta_to_instructor_on_roster,
+)
+from app.services.ta_track_change_service import get_active_ta_tracks
 
 logger = logging.getLogger(__name__)
 
@@ -325,6 +330,70 @@ async def propagate_on_start(
     return None
 
 
+def _resolve_track_for_course(
+    student: Student,
+    lms: dict[str, Any],
+    course_code: str,
+    user: User | None = None,
+) -> str | None:
+    code = str(course_code or "").strip()
+    if not code:
+        return None
+    tracks_map = lms.get("ta_course_tracks")
+    if isinstance(tracks_map, dict) and tracks_map.get(code):
+        return str(tracks_map[code]).strip() or None
+    active = get_active_ta_tracks(student)
+    if len(active) == 1:
+        return active[0]
+    if active:
+        return active[0]
+    if user and isinstance(user.profile_meta, dict):
+        profile_tracks = user.profile_meta.get("course_committee_tracks") or []
+        if isinstance(profile_tracks, list) and profile_tracks:
+            return str(profile_tracks[0]).strip() or None
+    return None
+
+
+def _resolve_member_name(student: Student, user: User | None) -> str:
+    if user and (user.full_name_fa or "").strip():
+        return str(user.full_name_fa).strip()
+    return (student.student_code or "").strip()
+
+
+async def apply_instructor_roster_upgrade(
+    db: AsyncSession,
+    student: Student,
+    *,
+    course_code: str,
+    user: User | None = None,
+) -> None:
+    """پس از اتمام موفق فرایند ۴۹ — حذف از کمک‌مدرسین و افزودن به مدرسین."""
+    extra = _as_mapping(student.extra_data)
+    lms = _as_mapping(extra.get("lms"))
+    track_code = _resolve_track_for_course(student, lms, course_code, user=user)
+    if not track_code:
+        logger.warning(
+            "apply_instructor_roster_upgrade: no track for student=%s course=%s",
+            student.id,
+            course_code,
+        )
+        return
+    name_fa = _resolve_member_name(student, user)
+    if not name_fa:
+        return
+    await promote_ta_to_instructor_on_roster(
+        db,
+        track=track_code,
+        name_fa=name_fa,
+        user=user,
+    )
+    if user and course_code:
+        meta = dict(user.profile_meta or {})
+        merge_course_grants(meta, "instructor", [course_code])
+        user.profile_meta = meta
+        flag_modified(user, "profile_meta")
+
+
 async def chain_after_transition(
     db: AsyncSession,
     instance: ProcessInstance,
@@ -345,6 +414,15 @@ async def chain_after_transition(
         flag_modified(instance, "context_data")
     elif to_state == "upgrade_applied" and course_code:
         mark_upgrade_applied(student, course_code)
+        user: User | None = None
+        if student.user_id:
+            user = (await db.execute(select(User).where(User.id == student.user_id))).scalars().first()
+        await apply_instructor_roster_upgrade(
+            db,
+            student,
+            course_code=course_code,
+            user=user,
+        )
         ctx["student_portal_message_fa"] = UPGRADE_SUCCESS_HINT_FA
         instance.context_data = ctx
         flag_modified(instance, "context_data")

@@ -112,24 +112,123 @@ def _option_from_roster_entry(entry: dict[str, Any], user: User | None) -> dict[
     }
 
 
+def _course_refs(course_value: str) -> set[str]:
+    """همهٔ ارجاعات ممکن یک درس (کد، برچسب فارسی)."""
+    raw = (course_value or "").strip()
+    if not raw:
+        return set()
+    refs = {raw}
+    for row in _load_catalog_file().get("courses") or []:
+        if not isinstance(row, dict):
+            continue
+        val = (row.get("value") or "").strip()
+        lab = (row.get("label_fa") or "").strip()
+        if raw == val or raw == lab:
+            if val:
+                refs.add(val)
+            if lab:
+                refs.add(lab)
+            break
+    return refs
+
+
+def _grants_include_course(grants: Any, course_value: str) -> bool:
+    if not grants:
+        return False
+    refs = _course_refs(course_value)
+    if not refs:
+        return False
+    items = grants if isinstance(grants, list) else [grants]
+    for item in items:
+        if isinstance(item, str):
+            if item in refs or _course_refs(item) & refs:
+                return True
+            continue
+        if not isinstance(item, dict):
+            continue
+        for key in ("course_code", "course_name", "value", "code"):
+            val = (item.get(key) or "").strip()
+            if val and (val in refs or bool(_course_refs(val) & refs)):
+                return True
+    return False
+
+
+def _authorized_courses_key(kind: MemberKind) -> str:
+    return "ta_authorized_courses" if kind == "teaching_assistant" else "instructor_authorized_courses"
+
+
+def _is_institutional_roster_entry(entry: dict[str, Any], kind: MemberKind) -> bool:
+    """مدرسین ثابت چارت (بدون محدودیت درس از فرایند ۴۹)."""
+    if kind != "instructor":
+        return False
+    tier = entry.get("tier")
+    return isinstance(tier, int) and tier <= 1
+
+
+def _user_authorized_for_course(user: User, kind: MemberKind, course_value: str) -> bool:
+    meta = user.profile_meta if isinstance(user.profile_meta, dict) else {}
+    grants = meta.get(_authorized_courses_key(kind)) or []
+    if kind == "teaching_assistant":
+        if not grants:
+            return False
+        return _grants_include_course(grants, course_value)
+    if not grants:
+        return True
+    return _grants_include_course(grants, course_value)
+
+
+def _roster_entry_authorized_for_course(
+    entry: dict[str, Any],
+    kind: MemberKind,
+    course_value: str,
+    matched_user: User | None,
+) -> bool:
+    if matched_user is not None:
+        return _user_authorized_for_course(matched_user, kind, course_value)
+    if _is_institutional_roster_entry(entry, kind):
+        return True
+    entry_grants = entry.get(_authorized_courses_key(kind)) or entry.get("authorized_courses")
+    if entry_grants:
+        return _grants_include_course(entry_grants, course_value)
+    return False
+
+
+def merge_course_grants(meta: dict[str, Any], kind: MemberKind, courses: list[str]) -> dict[str, Any]:
+    """ادغام دروس مجاز (فرایند ۴۷ برای TA، فرایند ۴۹ برای مدرس)."""
+    key = _authorized_courses_key(kind)
+    existing = list(meta.get(key) or [])
+    seen: set[str] = set()
+    merged: list[str] = []
+    for item in existing + list(courses or []):
+        val = str(item or "").strip()
+        if not val or val in seen:
+            continue
+        seen.add(val)
+        merged.append(val)
+    meta[key] = merged
+    return meta
+
+
 async def list_members(
     db: AsyncSession,
     *,
     track: str,
     kind: MemberKind,
+    course: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     ادغام اعضای چارت JSON با کاربران فعال سامانه برای یک رسته.
     value = user_id (UUID) در صورت وجود کاربر؛ در غیر این صورت roster_key.
+    اگر course داده شود، فقط اعضای مجاز برای آن درس (فرایند ۴۷/۴۹) برگردانده می‌شوند.
     """
     track_def = get_track_by_code(track)
     if track_def is None:
         return []
 
+    course_filter = (course or "").strip() or None
     role_for_kind = "instructor" if kind == "instructor" else "teaching_assistant"
     roster_entries = _roster_members_for_track(track_def, kind)
 
-    # کاربران فعال با نقش و رسته مناسب
     stmt = select(User).where(
         User.is_active.is_(True),
         User.role == role_for_kind,
@@ -137,7 +236,6 @@ async def list_members(
     result = await db.execute(stmt)
     db_users = [u for u in result.scalars().all() if _user_matches_track(u, track)]
 
-    # نگاشت نام فارسی → کاربر (برای ادغام با چارت)
     by_name: dict[str, User] = {}
     for u in db_users:
         name = (u.full_name_fa or "").strip()
@@ -150,6 +248,10 @@ async def list_members(
     for entry in roster_entries:
         name = (entry.get("name_fa") or "").strip()
         matched = by_name.get(name)
+        if course_filter and not _roster_entry_authorized_for_course(
+            entry, kind, course_filter, matched
+        ):
+            continue
         opt = _option_from_roster_entry(entry, matched)
         val = str(opt.get("value") or "")
         if not val or val in seen_values:
@@ -162,6 +264,8 @@ async def list_members(
         if uid in seen_values:
             continue
         if _user_member_kind(u) != kind:
+            continue
+        if course_filter and not _user_authorized_for_course(u, kind, course_filter):
             continue
         seen_values.add(uid)
         options.append(_option_from_user(u))
@@ -238,6 +342,10 @@ async def enrich_course_table_rows(
                             if str(opt.get("value")) == str(raw_name):
                                 r["course_name"] = opt.get("label_fa") or raw_name
                                 break
+                        if "track" in col_names and not (r.get("track") or "").strip():
+                            resolved = resolve_track_for_course(str(raw_name))
+                            if resolved:
+                                r["track"] = resolved
                 if "instructor" in col_names:
                     raw = r.get("instructor_id") or r.get("instructor")
                     if raw:
@@ -329,9 +437,29 @@ def list_course_catalog_options() -> list[dict[str, str]]:
         if not val or val in seen:
             continue
         seen.add(val)
-        out.append({"value": val, "label_fa": lab})
+        item: dict[str, str] = {"value": val, "label_fa": lab}
+        track = (row.get("track") or "").strip()
+        if track:
+            item["track"] = track
+        out.append(item)
     out.sort(key=lambda o: o.get("label_fa") or "")
     return out
+
+
+def resolve_track_for_course(course_value: str) -> str | None:
+    """نگاشت نام/کد درس به کد رسته از course_catalog.json."""
+    raw = (course_value or "").strip()
+    if not raw:
+        return None
+    for row in _load_catalog_file().get("courses") or []:
+        if not isinstance(row, dict):
+            continue
+        val = (row.get("value") or "").strip()
+        lab = (row.get("label_fa") or "").strip()
+        track = (row.get("track") or "").strip()
+        if track and (raw == val or raw == lab):
+            return track
+    return None
 
 
 def add_course_to_catalog(label_fa: str) -> dict[str, str]:
@@ -380,6 +508,39 @@ def add_track_to_roster(name_fa: str, code: str | None = None) -> dict[str, str]
     return {"value": track_code, "label_fa": label}
 
 
+def remove_member_from_roster(
+    *,
+    track: str,
+    kind: MemberKind,
+    name_fa: str,
+) -> bool:
+    """حذف عضو از چارت JSON بر اساس نام فارسی."""
+    label = (name_fa or "").strip()
+    track_code = (track or "").strip()
+    if not label or not track_code:
+        return False
+    data = _load_roster_file()
+    track_def = None
+    for t in data.get("tracks") or []:
+        if isinstance(t, dict) and t.get("code") == track_code:
+            track_def = t
+            break
+    if track_def is None:
+        return False
+
+    key_field = "instructors" if kind == "instructor" else "teaching_assistants"
+    members = list(track_def.get(key_field) or [])
+    filtered = [
+        m for m in members
+        if not (isinstance(m, dict) and (m.get("name_fa") or "").strip() == label)
+    ]
+    if len(filtered) == len(members):
+        return False
+    track_def[key_field] = filtered
+    _save_roster_file(data)
+    return True
+
+
 def add_member_to_roster(
     *,
     track: str,
@@ -425,6 +586,100 @@ def add_member_to_roster(
     track_def[key_field] = members
     _save_roster_file(data)
     return {"value": roster_key, "label_fa": label, "source": "roster"}
+
+
+async def sync_roster_profile_meta(
+    db: AsyncSession,
+    user: User,
+    *,
+    track: str,
+    kind: MemberKind,
+) -> None:
+    """به‌روزرسانی رسته و نوع عضویت در پروفایل بدون تغییر نقش سامانه."""
+    from sqlalchemy.orm.attributes import flag_modified
+
+    track_code = (track or "").strip()
+    if not track_code:
+        return
+    meta = dict(user.profile_meta or {})
+    tracks = list(meta.get("course_committee_tracks") or [])
+    if track_code not in tracks:
+        tracks.append(track_code)
+    meta["course_committee_tracks"] = tracks
+    meta["member_kind"] = kind
+    user.profile_meta = meta
+    flag_modified(user, "profile_meta")
+    await db.flush()
+
+
+async def register_teaching_assistant_on_roster(
+    db: AsyncSession,
+    *,
+    track: str,
+    name_fa: str,
+    user: User | None = None,
+) -> None:
+    """افزودن کمک‌مدرس به چارت و همگام‌سازی کاربر سامانه."""
+    label = (name_fa or "").strip()
+    track_code = (track or "").strip()
+    if not label or not track_code:
+        return
+    if not get_track_by_code(track_code):
+        add_track_to_roster(track_label_fa_from_code(track_code), code=track_code)
+    entry = add_member_to_roster(track=track_code, kind="teaching_assistant", name_fa=label)
+    if user:
+        if label and not (user.full_name_fa or "").strip():
+            user.full_name_fa = label
+        await sync_roster_profile_meta(db, user, track=track_code, kind="teaching_assistant")
+    else:
+        await ensure_roster_user(
+            db,
+            track=track_code,
+            kind="teaching_assistant",
+            name_fa=label,
+            roster_key=str(entry.get("value") or ""),
+        )
+
+
+async def promote_ta_to_instructor_on_roster(
+    db: AsyncSession,
+    *,
+    track: str,
+    name_fa: str,
+    user: User | None = None,
+) -> None:
+    """حذف از لیست کمک‌مدرسین و افزودن به لیست مدرسین یک رسته."""
+    label = (name_fa or "").strip()
+    track_code = (track or "").strip()
+    if not label or not track_code:
+        return
+    if not get_track_by_code(track_code):
+        add_track_to_roster(track_label_fa_from_code(track_code), code=track_code)
+    remove_member_from_roster(track=track_code, kind="teaching_assistant", name_fa=label)
+    entry = add_member_to_roster(track=track_code, kind="instructor", name_fa=label)
+    if user:
+        await sync_roster_profile_meta(db, user, track=track_code, kind="instructor")
+    else:
+        await ensure_roster_user(
+            db,
+            track=track_code,
+            kind="instructor",
+            name_fa=label,
+            roster_key=str(entry.get("value") or ""),
+        )
+
+
+def track_label_fa_from_code(track_code: str) -> str:
+    """برچسب فارسی رسته — از چارت یا خود کد."""
+    track_def = get_track_by_code(track_code)
+    if track_def:
+        return str(track_def.get("name_fa") or track_code)
+    try:
+        from app.services.ta_track_change_service import track_label_fa
+
+        return track_label_fa(track_code)
+    except Exception:
+        return str(track_code or "—")
 
 
 async def ensure_roster_user(

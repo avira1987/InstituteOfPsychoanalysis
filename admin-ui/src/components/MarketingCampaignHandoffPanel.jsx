@@ -33,6 +33,7 @@ export default function MarketingCampaignHandoffPanel({
   values = {},
   onChange,
   disabled = false,
+  readOnly = false,
 }) {
   const [busy, setBusy] = useState(false)
 
@@ -109,19 +110,23 @@ export default function MarketingCampaignHandoffPanel({
     window.open('https://web.bale.ai/', '_blank', 'noopener,noreferrer')
   }, [shareText, showToast])
 
+  const isLocked = disabled || readOnly
+
   return (
     <div
       data-testid="marketing-campaign-handoff-panel"
       style={{
         marginBottom: '1rem',
         padding: '0.85rem 1rem',
-        background: '#fffbeb',
+        background: isLocked ? '#f8fafc' : '#fffbeb',
         borderRadius: '8px',
-        border: '1px solid #fcd34d',
+        border: isLocked ? '1px solid #cbd5e1' : '1px solid #fcd34d',
         width: '100%',
         maxWidth: '100%',
         minWidth: 0,
         boxSizing: 'border-box',
+        opacity: isLocked ? 0.72 : 1,
+        pointerEvents: isLocked ? 'none' : 'auto',
       }}
     >
       <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.35rem', color: '#92400e' }}>

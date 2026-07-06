@@ -156,20 +156,20 @@ class TransitionManager:
         ):
             return True
         # آماده‌سازی ترم پاییز/زمستان (فرایند ۲۹ و ۳۰):
-        # نقش‌های متادیتا با نقش پنل «معاون آموزش» انجام می‌شوند.
-        if required in (
-            "deputy_education_director",
-            "course_committee_executive",
-            "scientific_officer_course_committee",
-        ) and actor_role == "deputy_education":
+        # معاون آموزش: شهریه، پروانه، مصاحبه‌گران — نه مراحل کمیته دروس.
+        if required == "deputy_education_director" and actor_role == "deputy_education":
             return True
-        # افسر علمی کمیته دروس در پنل کارمند هم در دسترس است.
-        if required == "scientific_officer_course_committee" and actor_role == "staff":
+        # کمیته دروس (پنل course_committee): تقویم، لیست دروس، نهایی‌سازی.
+        if required == "course_committee_executive" and actor_role == "course_committee":
+            return True
+        if required == "scientific_officer_course_committee" and actor_role in (
+            "course_committee",
+            "staff",
+        ):
             return True
         if required == "course_committee_scientific" and actor_role in (
             "course_committee",
             "scientific_officer_course_committee",
-            "deputy_education",
             "staff",
         ):
             return True
@@ -177,6 +177,9 @@ class TransitionManager:
             "teaching_assistant",
             "staff",
         ):
+            return True
+        # مدیر داخلی (staff): زمان‌بندی مصاحبه آماده‌سازی ترم و سایر مراحل site_manager در SOP
+        if required == "site_manager" and actor_role in ("staff", "site_manager"):
             return True
         return False
 

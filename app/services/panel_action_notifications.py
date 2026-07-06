@@ -13,6 +13,12 @@ from sqlalchemy.orm import aliased
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance, Student, User, InterviewSlot
 from app.services.panel_task_reminders import load_active_panel_reminders
+from app.services.panel_flash_messages import load_panel_flash_messages
+from app.services.panel_notification_dismiss import (
+    filter_dismissed_items,
+    load_dismissed_notification_ids,
+    prune_stale_task_reminders,
+)
 from app.services.operator_readiness import compute_operator_readiness_alerts
 from app.services.portal_role_inbox import build_portal_role_process_inbox
 from app.core.portal_role_home import (
@@ -408,10 +414,18 @@ async def build_action_notifications(
         r = await db.execute(select(Student).where(Student.user_id == user.id))
         student = r.scalars().first()
         if not student:
-            if persisted:
-                page = persisted[offset : offset + max(limit, 0)]
-                return {"items": page, "total": len(persisted)}
-            return {"items": [], "total": 0}
+            all_items = list(persisted)
+            flash_only = await load_panel_flash_messages(db, user.id, limit=100)
+            seen_ids = {i.get("notification_id") for i in all_items}
+            for f in flash_only:
+                if f.get("notification_id") not in seen_ids:
+                    all_items.append(f)
+            dismissed_ids = await load_dismissed_notification_ids(db, user.id)
+            all_items = filter_dismissed_items(all_items, dismissed_ids)
+            all_items.sort(key=lambda x: x.get("sort_at") or "", reverse=True)
+            total = len(all_items)
+            page = all_items[offset : offset + max(limit, 0)]
+            return {"items": page, "total": total}
         rows = await _student_pending_notification_sources(db, user, scan_cap=min(scan_cap, 2000))
         all_items: list[dict[str, Any]] = []
         for pi, proc_def, state_def in rows:
@@ -438,9 +452,35 @@ async def build_action_notifications(
 
     if persisted:
         seen_ids = {i.get("notification_id") for i in all_items}
+        active_instance_ids = {
+            str(i.get("instance_id"))
+            for i in all_items
+            if i.get("instance_id")
+        }
+        await prune_stale_task_reminders(
+            db,
+            user_id=user.id,
+            active_instance_ids=active_instance_ids,
+        )
+        persisted = await load_active_panel_reminders(db, user.id, limit=50)
         for p in persisted:
-            if p.get("notification_id") not in seen_ids:
-                all_items.insert(0, p)
+            pid = p.get("notification_id")
+            if pid in seen_ids:
+                continue
+            p_iid = p.get("instance_id")
+            if p_iid and f"process:{p_iid}" in seen_ids:
+                continue
+            all_items.insert(0, p)
+
+    flash_items = await load_panel_flash_messages(db, user.id, limit=100)
+    if flash_items:
+        seen_ids = {i.get("notification_id") for i in all_items}
+        for f in flash_items:
+            if f.get("notification_id") not in seen_ids:
+                all_items.append(f)
+
+    dismissed_ids = await load_dismissed_notification_ids(db, user.id)
+    all_items = filter_dismissed_items(all_items, dismissed_ids)
 
     all_items.sort(key=lambda x: x.get("sort_at") or "", reverse=True)
     total = len(all_items)

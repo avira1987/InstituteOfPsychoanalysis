@@ -1,6 +1,8 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { panelApi } from '../services/api'
 import { labelState, labelTriggerEvent, formatActorRole } from '../utils/processDisplay'
+import { dispatchPanelNotificationsChanged } from '../utils/panelNotifications'
 
 /**
  * وقتی از اعلان با nf=1 وارد می‌شوید و دیگر اقدامی برای نقش شما روی این نمونه نیست،
@@ -23,6 +25,16 @@ export default function ResolvedProcessHistoryBanner({ instanceDetail, available
     next.delete('nf')
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    if (!matches || !noAction || !detailId) return
+    panelApi
+      .dismissActionNotification(`process:${detailId}`)
+      .then(() => dispatchPanelNotificationsChanged())
+      .catch(() => {
+        /* ignore */
+      })
+  }, [matches, noAction, detailId])
 
   if (!matches || !noAction) return null
 

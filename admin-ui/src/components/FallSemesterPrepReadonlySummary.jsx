@@ -1,17 +1,23 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
+import {
+  fmtRialDisplay,
+  hasTuitionOrInterviewData,
+  resolveMarketingHandoffContext,
+} from '../utils/marketingHandoffDisplay'
 
 function formatDateDisplay(value) {
   if (!value) return null
   return formatShamsiTehran(value, { dateOnly: true })
 }
 
-function Row({ label, value }) {
-  if (value == null || value === '') return null
+function Row({ label, value, emptyLabel }) {
+  const display = value == null || value === '' ? emptyLabel : value
+  if (display == null || display === '') return null
   return (
     <div className="fall-semester-readonly-summary__row">
       <span className="fall-semester-readonly-summary__label">{label}</span>
-      <span className="fall-semester-readonly-summary__value">{value}</span>
+      <span className="fall-semester-readonly-summary__value">{display}</span>
     </div>
   )
 }
@@ -38,7 +44,13 @@ function formatCoursesTable(courses) {
  * خلاصهٔ فقط‌خواندنی مراحل قبلی فرایند ۲۹ (طبق SOP: فرم‌های بعدی خروجی مراحل قبل را نشان می‌دهند).
  */
 export default function FallSemesterPrepReadonlySummary({ currentState, contextData, processCode }) {
-  const ctx = contextData || {}
+  const ctx = useMemo(
+    () =>
+      currentState === 'marketing_campaign'
+        ? resolveMarketingHandoffContext(processCode, contextData || {})
+        : contextData || {},
+    [currentState, contextData, processCode],
+  )
   const isWinter = processCode === 'winter_semester_preparation'
   const isMarketing = currentState === 'marketing_campaign'
   const showCalendar = [
@@ -73,7 +85,18 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
     currentState,
   )
 
-  if (!showCalendar && !showTuition && !showCourses && !showFinalized) return null
+  const finalizedFall = ctx.courses_finalized_fall
+  const finalizedWinter = ctx.courses_finalized_winter
+  const finalizedLegacy = ctx.courses_finalized
+  const hasFinalizedCourses =
+    finalizedFall?.length > 0 ||
+    finalizedWinter?.length > 0 ||
+    finalizedLegacy?.length > 0
+
+  const showTuitionBlock =
+    showTuition && (hasTuitionOrInterviewData(ctx) || (isMarketing && !isWinter))
+
+  if (!showCalendar && !showTuitionBlock && !showCourses && !showFinalized) return null
 
   return (
     <div
@@ -104,15 +127,31 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
         </div>
       )}
 
-      {showTuition && ctx.per_unit_cost_introductory != null && (
+      {showTuitionBlock && (
         <div style={{ marginBottom: '0.65rem' }}>
           <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>
             {isMarketing && !isWinter ? 'فعالیت ۲ — شهریه و مصاحبه' : 'شهریه و مصاحبه'}
           </div>
-          <Row label="واحد آشنایی" value={ctx.per_unit_cost_introductory != null ? `${ctx.per_unit_cost_introductory} ریال` : null} />
-          <Row label="واحد جامع" value={ctx.per_unit_cost_comprehensive != null ? `${ctx.per_unit_cost_comprehensive} ریال` : null} />
-          <Row label="مصاحبه آشنایی" value={ctx.interview_fee_introductory != null ? `${ctx.interview_fee_introductory} ریال` : ctx.interview_fee} />
-          <Row label="مصاحبه جامع" value={ctx.interview_fee_comprehensive != null ? `${ctx.interview_fee_comprehensive} ریال` : null} />
+          <Row
+            label="واحد آشنایی"
+            value={fmtRialDisplay(ctx.per_unit_cost_introductory)}
+            emptyLabel={isMarketing && !isWinter ? 'ثبت نشده' : null}
+          />
+          <Row
+            label="واحد جامع"
+            value={fmtRialDisplay(ctx.per_unit_cost_comprehensive)}
+            emptyLabel={isMarketing && !isWinter ? 'ثبت نشده' : null}
+          />
+          <Row
+            label="مصاحبه آشنایی"
+            value={fmtRialDisplay(ctx.interview_fee_introductory) || ctx.interview_fee}
+            emptyLabel={isMarketing && !isWinter ? 'ثبت نشده' : null}
+          />
+          <Row
+            label="مصاحبه جامع"
+            value={fmtRialDisplay(ctx.interview_fee_comprehensive)}
+            emptyLabel={isMarketing && !isWinter ? 'ثبت نشده' : null}
+          />
         </div>
       )}
 
@@ -139,7 +178,7 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
         </div>
       )}
 
-      {showFinalized && (ctx.courses_finalized_fall?.length > 0 || ctx.courses_finalized_winter?.length > 0 || ctx.courses_finalized?.length > 0) && (
+      {showFinalized && (hasFinalizedCourses || isMarketing) && (
         <div style={{ marginBottom: '0.65rem' }}>
           <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>
             {isMarketing
@@ -148,20 +187,23 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
                 : 'فعالیت ۵ — برنامه نهایی دروس'
               : 'برنامه نهایی دروس'}
           </div>
-          {ctx.courses_finalized_fall?.length > 0 && (
+          {finalizedFall?.length > 0 && (
             <div style={{ marginBottom: '0.35rem' }}>
               <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.15rem' }}>ترم پاییز</div>
-              <p className="fall-semester-readonly-summary__text">{formatCoursesTable(ctx.courses_finalized_fall)}</p>
+              <p className="fall-semester-readonly-summary__text">{formatCoursesTable(finalizedFall)}</p>
             </div>
           )}
-          {ctx.courses_finalized_winter?.length > 0 && (
+          {finalizedWinter?.length > 0 && (
             <div style={{ marginBottom: '0.35rem' }}>
               <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.15rem' }}>ترم زمستان</div>
-              <p className="fall-semester-readonly-summary__text">{formatCoursesTable(ctx.courses_finalized_winter)}</p>
+              <p className="fall-semester-readonly-summary__text">{formatCoursesTable(finalizedWinter)}</p>
             </div>
           )}
-          {!ctx.courses_finalized_fall?.length && !ctx.courses_finalized_winter?.length && ctx.courses_finalized?.length > 0 && (
-            <p className="fall-semester-readonly-summary__text">{formatCoursesTable(ctx.courses_finalized)}</p>
+          {!finalizedFall?.length && !finalizedWinter?.length && finalizedLegacy?.length > 0 && (
+            <p className="fall-semester-readonly-summary__text">{formatCoursesTable(finalizedLegacy)}</p>
+          )}
+          {isMarketing && !hasFinalizedCourses && (
+            <p className="fall-semester-readonly-summary__text muted">(داده‌ای ثبت نشده)</p>
           )}
         </div>
       )}

@@ -12,6 +12,7 @@ import {
   createCourseCatalogEntry,
   createCourseCommitteeMember,
   createCourseCommitteeTrack,
+  resolveTrackForCourse,
 } from '../utils/resolveFormOptionsSource'
 import {
   defaultShamsiDate,
@@ -332,6 +333,11 @@ function tableBlankRow(columns) {
 
 function columnOptionsForRow(col, row) {
   const filterCol = col.filter_by_column || col.options_source?.filter_by_column
+  if (filterCol === 'course_name' && col._optionsByCourse && typeof col._optionsByCourse === 'object') {
+    const courseVal = row?.course_name
+    if (!courseVal) return []
+    return col._optionsByCourse[courseVal] || []
+  }
   if (filterCol && col._optionsByTrack && typeof col._optionsByTrack === 'object') {
     const trackVal = row?.[filterCol]
     if (!trackVal) return []
@@ -350,6 +356,31 @@ function rosterDependentColumns(columns) {
     }
   }
   return byFilter
+}
+
+function clearTrackDependents(updated, dependentsByTrack) {
+  const trackDeps = dependentsByTrack.track
+  if (!trackDeps?.length) return updated
+  const next = { ...updated }
+  for (const dep of trackDeps) {
+    next[dep] = ''
+    if (dep === 'instructor') next.instructor_id = ''
+    if (dep === 'teaching_assistant') next.teaching_assistant_id = ''
+  }
+  return next
+}
+
+function applyCourseTrackAutoFill(updated, columns, courseValue, dependentsByTrack) {
+  const courseCol = columns.find((c) => c.name === 'course_name')
+  const trackCol = columns.find((c) => c.name === 'track')
+  if (!courseCol || !trackCol) return updated
+  const trackCode = resolveTrackForCourse(courseValue, courseCol.options || [])
+  const prevTrack = updated.track
+  const next = { ...updated, track: trackCode || '' }
+  if (prevTrack !== next.track) {
+    return clearTrackDependents(next, dependentsByTrack)
+  }
+  return next
 }
 
 const TABLE_COLUMN_MIN_WIDTH = {
@@ -389,11 +420,81 @@ function buildCreateHandler(col, row) {
   return null
 }
 
+function optionValueForMerge(opt) {
+  return typeof opt === 'object' ? opt.value : opt
+}
+
+function creatableSelectProps(col, row, { showToast, onOptionCreated }) {
+  const src = col.options_source || {}
+  const base = {
+    allowCreate: col.creatable !== false,
+    onCreateError: showToast ? (msg) => showToast(msg, 'error') : null,
+    onCreated: onOptionCreated ? (opt) => onOptionCreated(col.name, opt) : null,
+  }
+  if (src.type === 'course_catalog') {
+    return {
+      ...base,
+      placeholder: 'جست‌وجو یا انتخاب درس…',
+      createSectionLabel: 'افزودن درس جدید به فهرست',
+      createInputPlaceholder: 'نام درس جدید',
+      createLabel: (text) => `افزودن درس «${text}»`,
+    }
+  }
+  if (src.type === 'course_committee_tracks') {
+    return {
+      ...base,
+      createSectionLabel: 'افزودن رسته جدید',
+      createInputPlaceholder: 'نام رسته جدید',
+      createLabel: (text) => `افزودن رسته «${text}»`,
+    }
+  }
+  if (src.type === 'course_committee_roster') {
+    const kind = src.kind === 'teaching_assistant' ? 'کمک‌مدرس' : 'مدرس'
+    return {
+      ...base,
+      createSectionLabel: `افزودن ${kind} جدید`,
+      createInputPlaceholder: `نام ${kind} جدید`,
+      createLabel: (text) => `افزودن ${kind} «${text}»`,
+    }
+  }
+  return base
+}
+
 // جدول قابل‌ویرایش — ستون‌ها از field.columns؛ هر ردیف یک شیء.
-function EditableTableField({ field, value, onChange, disabled }) {
+function EditableTableField({ field, value, onChange, disabled, showToast }) {
   const columns = Array.isArray(field.columns) ? field.columns : []
   const rows = Array.isArray(value) ? value : []
   const dependentsByTrack = useMemo(() => rosterDependentColumns(columns), [columns])
+  const [createdOptionsByCol, setCreatedOptionsByCol] = useState({})
+
+  const rememberCreatedOption = useCallback((colName, opt) => {
+    if (!colName || !opt) return
+    setCreatedOptionsByCol((prev) => {
+      const existing = prev[colName] || []
+      const v = String(typeof opt === 'object' ? opt.value : opt)
+      if (!v || existing.some((o) => String(typeof o === 'object' ? o.value : o) === v)) {
+        return prev
+      }
+      return { ...prev, [colName]: [...existing, opt] }
+    })
+  }, [])
+
+  const mergeCreatedOptions = useCallback(
+    (col, rowOptions) => {
+      const extras = createdOptionsByCol[col.name] || []
+      if (!extras.length) return rowOptions
+      const seen = new Set(rowOptions.map((o) => String(optionValueForMerge(o))))
+      const merged = [...rowOptions]
+      for (const opt of extras) {
+        const v = String(optionValueForMerge(opt))
+        if (!v || seen.has(v)) continue
+        seen.add(v)
+        merged.push(opt)
+      }
+      return merged
+    },
+    [createdOptionsByCol],
+  )
 
   useEffect(() => {
     if (disabled || !field.required) return
@@ -406,7 +507,10 @@ function EditableTableField({ field, value, onChange, disabled }) {
   const setCell = (rowIdx, colName, v) => {
     const next = rows.map((r, i) => {
       if (i !== rowIdx) return r
-      const updated = { ...r, [colName]: v }
+      let updated = { ...r, [colName]: v }
+      if (colName === 'course_name') {
+        updated = applyCourseTrackAutoFill(updated, columns, v, dependentsByTrack)
+      }
       const deps = dependentsByTrack[colName]
       if (deps?.length) {
         for (const dep of deps) {
@@ -433,44 +537,81 @@ function EditableTableField({ field, value, onChange, disabled }) {
     onChange(next)
   }
 
+  const courseCatalogOptions = useMemo(() => {
+    const courseCol = columns.find((c) => c.name === 'course_name')
+    return courseCol?.options || []
+  }, [columns])
+  const trackAutoFillFromCourse = Boolean(
+    columns.find((c) => c.name === 'track' && c.auto_fill_from === 'course_name'),
+  )
+
+  useEffect(() => {
+    if (disabled || !trackAutoFillFromCourse || !courseCatalogOptions.length) return
+    let changed = false
+    const next = rows.map((row) => {
+      const courseVal = row?.course_name
+      if (!courseVal) return row
+      const expected = resolveTrackForCourse(courseVal, courseCatalogOptions)
+      if (!expected || row.track === expected) return row
+      changed = true
+      return applyCourseTrackAutoFill({ ...row }, columns, courseVal, dependentsByTrack)
+    })
+    if (changed) onChange(next)
+    // همگام‌سازی اولیه پس از بارگذاری کاتالوگ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disabled, trackAutoFillFromCourse, courseCatalogOptions.length, columns, dependentsByTrack])
+
   const renderCell = (col, row, rowIdx) => {
     const ct = (col.type || 'text').toLowerCase()
     const v = row?.[col.name]
-    const cellDisabled = disabled || Boolean(col.auto_fill)
-    const readOnlyStyle = col.auto_fill ? { background: '#f1f5f9' } : undefined
+    const trackLocked =
+      col.name === 'track'
+      && col.auto_fill_from === 'course_name'
+      && Boolean(resolveTrackForCourse(row?.course_name, courseCatalogOptions))
+    const cellDisabled = disabled || Boolean(col.auto_fill) || trackLocked
+    const readOnlyStyle = col.auto_fill || trackLocked ? { background: '#f1f5f9' } : undefined
     const minW = columnMinWidth(col)
 
     if (isCreatableSelectColumn(col)) {
-      const rowOptions = columnOptionsForRow(col, row)
+      const rowOptions = mergeCreatedOptions(col, columnOptionsForRow(col, row))
       const filterCol = col.filter_by_column || col.options_source?.filter_by_column
-      const needsTrack = filterCol && !row?.[filterCol]
+      const needsPrerequisite = filterCol && !row?.[filterCol]
+      const needsTrack = filterCol === 'track' && needsPrerequisite
+      const needsCourse = filterCol === 'course_name' && needsPrerequisite
+      const creatableProps = creatableSelectProps(col, row, {
+        showToast,
+        onOptionCreated: rememberCreatedOption,
+      })
       return (
         <CreatableSearchSelect
           value={v ?? ''}
           onChange={(next) => setCell(rowIdx, col.name, next)}
           options={rowOptions}
           disabled={cellDisabled}
-          needsTrack={needsTrack}
-          allowCreate={col.creatable !== false}
+          needsTrack={needsTrack || needsCourse}
+          needsCourse={needsCourse}
           onCreateNew={cellDisabled ? null : buildCreateHandler(col, row)}
           style={readOnlyStyle}
           minWidth={minW}
           testId={`table-cell-${col.name}-${rowIdx}`}
+          {...creatableProps}
         />
       )
     }
 
-    if (ct === 'select' && (Array.isArray(col.options) || col._optionsByTrack)) {
+    if (ct === 'select' && (Array.isArray(col.options) || col._optionsByTrack || col._optionsByCourse)) {
       const rowOptions = columnOptionsForRow(col, row)
       const filterCol = col.filter_by_column || col.options_source?.filter_by_column
-      const needsTrack = filterCol && !row?.[filterCol]
-      const placeholder = needsTrack ? 'ابتدا رسته را انتخاب کنید' : '—'
+      const needsPrerequisite = filterCol && !row?.[filterCol]
+      const placeholder = needsPrerequisite
+        ? (filterCol === 'course_name' ? 'ابتدا درس را انتخاب کنید' : 'ابتدا رسته را انتخاب کنید')
+        : '—'
       return (
         <select
           className="psf-input form-input"
           style={readOnlyStyle}
           value={v ?? ''}
-          disabled={cellDisabled || needsTrack}
+          disabled={cellDisabled || needsPrerequisite}
           onChange={(e) => setCell(rowIdx, col.name, e.target.value)}
         >
           <option value="">{placeholder}</option>
@@ -863,7 +1004,7 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
       <div className="psf-field">
         {labelEl}
         {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
-        <EditableTableField field={field} value={value} onChange={onChange} disabled={disabled} />
+        <EditableTableField field={field} value={value} onChange={onChange} disabled={disabled} showToast={showToast} />
       </div>
     )
   }

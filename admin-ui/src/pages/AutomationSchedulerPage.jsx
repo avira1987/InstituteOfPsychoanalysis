@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { schedulerApi } from '../services/api'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import ShamsiDatePicker from '../components/ShamsiDatePicker'
 import ShamsiDateTimePicker from '../components/ShamsiDateTimePicker'
 import {
@@ -94,13 +94,8 @@ export default function AutomationSchedulerPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
-  const [toast, setToast] = useState(null)
   const [filter, setFilter] = useState('')
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3500)
-  }
+  const { showToast } = useToast()
 
   const loadAll = useCallback(async () => {
     setLoading(true)

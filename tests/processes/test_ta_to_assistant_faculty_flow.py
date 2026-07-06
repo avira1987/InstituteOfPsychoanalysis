@@ -15,6 +15,11 @@ from app.services.ta_to_assistant_faculty_service import (
     propagate_on_start,
     scan_ta_eligible_for_upgrade,
 )
+from app.services.course_committee_roster_service import (
+    _load_roster_file,
+    add_member_to_roster,
+    reload_roster_cache,
+)
 
 
 PROCESSES_DIR = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
@@ -35,6 +40,12 @@ def _seed_ta_passes(extra: dict, *, pass_count: int = 2) -> dict:
 
 @pytest.mark.asyncio
 class TestTaToAssistantFacultyFlow:
+
+    @pytest.fixture(autouse=True)
+    def _fresh_roster(self):
+        reload_roster_cache()
+        yield
+        reload_roster_cache()
 
     async def _load_process(self, db_session: AsyncSession) -> None:
         await load_rules(db_session)
@@ -95,12 +106,20 @@ class TestTaToAssistantFacultyFlow:
         assert refreshed.current_state_code == "already_assistant"
 
     async def test_supervision_approved_applies_upgrade(
-        self, db_session: AsyncSession, sample_student, sample_user
+        self, db_session: AsyncSession, sample_student, sample_user, sample_student_user
     ):
         await self._load_process(db_session)
         extra = _seed_ta_passes(dict(sample_student.extra_data or {}))
+        extra["lms"]["ta_course_tracks"] = {COURSE_CODE: "analytic_psychotherapy"}
+        extra["lms"]["ta_active_tracks"] = ["analytic_psychotherapy"]
         sample_student.extra_data = extra
         flag_modified(sample_student, "extra_data")
+        ta_name = (sample_student_user.full_name_fa or "دانشجوی تست").strip()
+        add_member_to_roster(
+            track="analytic_psychotherapy",
+            kind="teaching_assistant",
+            name_fa=ta_name,
+        )
         await db_session.commit()
 
         engine = StateMachineEngine(db_session)
@@ -129,6 +148,24 @@ class TestTaToAssistantFacultyFlow:
         st = await db_session.get(Student, sample_student.id)
         rank = (st.extra_data or {}).get("rank")
         assert rank == "assistant_faculty"
+
+        reload_roster_cache()
+        track_def = next(
+            t for t in _load_roster_file().get("tracks") or []
+            if isinstance(t, dict) and t.get("code") == "analytic_psychotherapy"
+        )
+        ta_names = {
+            (m.get("name_fa") or "").strip()
+            for m in (track_def.get("teaching_assistants") or [])
+            if isinstance(m, dict)
+        }
+        inst_names = {
+            (m.get("name_fa") or "").strip()
+            for m in (track_def.get("instructors") or [])
+            if isinstance(m, dict)
+        }
+        assert ta_name not in ta_names
+        assert ta_name in inst_names
 
     async def test_supervision_rejected_sets_manual_retry_flag(
         self, db_session: AsyncSession, sample_student, sample_user

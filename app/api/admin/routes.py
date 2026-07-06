@@ -1122,14 +1122,21 @@ async def create_course_catalog_entry(
 async def list_course_committee_roster(
     track: str = Query(..., description="کد رسته، مثلاً analytic_psychotherapy"),
     kind: Literal["instructor", "teaching_assistant"] = Query(...),
+    course: Optional[str] = Query(None, description="کد یا نام درس — فیلتر بر اساس مجوز فرایند ۴۷/۴۹"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin", "staff", "deputy_education", "site_manager", "course_committee")),
 ):
     """مدرسین یا کمک‌مدرسین یک رسته — ادغام چارت و کاربران سامانه."""
-    from app.services.course_committee_roster_service import list_members
+    from app.services.course_committee_roster_service import list_members, resolve_track_for_course
 
-    members = await list_members(db, track=track, kind=kind)
-    return {"track": track, "kind": kind, "members": members}
+    track_code = (track or "").strip()
+    course_val = (course or "").strip() or None
+    if course_val and not track_code:
+        resolved = resolve_track_for_course(course_val)
+        if resolved:
+            track_code = resolved
+    members = await list_members(db, track=track_code, kind=kind, course=course_val)
+    return {"track": track_code, "kind": kind, "course": course_val, "members": members}
 
 
 @router.get("/users")

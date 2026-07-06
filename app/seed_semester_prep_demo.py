@@ -35,20 +35,20 @@ logger = logging.getLogger(__name__)
 DEMO_PREP_TAG = "semester_prep_demo_seed"
 
 FALL_TRIGGERS: list[tuple[str, str]] = [
-    ("calendar_submitted", "deputy_education"),
+    ("calendar_submitted", "course_committee"),
     ("tuition_submitted", "deputy_education"),
     ("license_reviewed", "deputy_education"),
-    ("course_list_submitted", "deputy_education"),
-    ("courses_finalized", "deputy_education"),
+    ("course_list_submitted", "course_committee"),
+    ("courses_finalized", "course_committee"),
     ("marketing_started", "staff"),
     ("interviewers_assigned", "deputy_education"),
-    ("interview_times_set", "site_manager"),
+    ("interview_times_set", "staff"),
 ]
 
 WINTER_TRIGGERS_TO_SCHEDULING: list[tuple[str, str]] = [
     ("license_reviewed", "deputy_education"),
-    ("course_list_reviewed", "deputy_education"),
-    ("courses_finalized", "deputy_education"),
+    ("course_list_reviewed", "course_committee"),
+    ("courses_finalized", "course_committee"),
     ("marketing_started", "staff"),
     ("interviewers_assigned", "deputy_education"),
 ]
@@ -334,7 +334,7 @@ async def seed_semester_prep_demo(
 
     winter_triggers = list(WINTER_TRIGGERS_TO_SCHEDULING)
     if winter_stop_state == "published":
-        winter_triggers.append(("interview_times_set", "site_manager"))
+        winter_triggers.append(("interview_times_set", "staff"))
 
     for trigger, role in winter_triggers:
         actor = actors.admin_id
@@ -385,6 +385,6 @@ async def seed_semester_prep_demo(
         },
         "_note": (
             "پاییز منتشر شده؛ زمستان در مرحلهٔ زمان‌بندی اسلات — "
-            "site_manager1 می‌تواند اسلات بسازد و interview_times_set را بزند."
+            "staff1 می‌تواند اسلات بسازد و interview_times_set را بزند."
         ),
     }

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { dynamicFormsApi } from '../services/api'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 
 const EMPTY_SCHEMA = `{
   "fields": [
@@ -13,18 +13,13 @@ const EMPTY_SCHEMA = `{
 export default function DynamicFormsAdmin() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [toast, setToast] = useState(null)
   const [templates, setTemplates] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [schemaText, setSchemaText] = useState(EMPTY_SCHEMA)
   const [busy, setBusy] = useState(false)
   const [assignments, setAssignments] = useState([])
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 4000)
-  }
+  const { showToast } = useToast()
 
   const canManage = user?.role === 'admin' || user?.role === 'staff'
 
@@ -144,7 +139,6 @@ export default function DynamicFormsAdmin() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
       <div className="page-header">
         <div>
           <h1 className="page-title">فرم‌های داینامیک</h1>

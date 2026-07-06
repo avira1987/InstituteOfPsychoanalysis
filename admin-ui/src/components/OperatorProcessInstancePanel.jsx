@@ -9,6 +9,7 @@ import OperatorCourseSelectionEditor from './OperatorCourseSelectionEditor'
 import OperatorStepFormsSection from './OperatorStepFormsSection'
 import ProcessDataManager from './ProcessDataManager'
 import ProcessRollbackSection from './ProcessRollbackSection'
+import ProcessRestartSection from './ProcessRestartSection'
 import { isInstituteLevelProcess } from '../utils/instituteProcesses'
 
 /**
@@ -35,6 +36,10 @@ export default function OperatorProcessInstancePanel({
   showRollback = false,
   onRollback,
   rollbackBusy = false,
+  showRestart = false,
+  onRestart,
+  onRestartComplete,
+  restartBusy = false,
   showCourseSelection = true,
   contextSummaryTitle = 'پرونده و سابقه (قبل از اقدام)',
   actionsBoxStyle,
@@ -175,6 +180,16 @@ export default function OperatorProcessInstancePanel({
           instanceDetail={instanceDetail}
           onRollback={onRollback}
           busy={rollbackBusy}
+        />
+      )}
+
+      {showRestart && onRestart && (
+        <ProcessRestartSection
+          user={user}
+          instanceDetail={instanceDetail}
+          onRestart={onRestart}
+          onRestartComplete={onRestartComplete}
+          busy={restartBusy}
         />
       )}
 

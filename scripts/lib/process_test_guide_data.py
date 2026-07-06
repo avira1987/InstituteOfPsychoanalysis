@@ -1,0 +1,729 @@
+"""Extract process test specs and cross-process links from metadata."""
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parent.parent.parent
+PROCESSES_DIR = ROOT / "metadata" / "processes"
+INDEX_PATH = ROOT / "metadata" / "process_registry" / "INDEX.json"
+
+RESTART_BLOCKED = frozenset({
+    "fee_determination",
+    "session_payment",
+    "fall_semester_preparation",
+    "winter_semester_preparation",
+})
+
+SCHEDULER_HEAVY_PROCESSES = frozenset({
+    "class_attendance",
+    "ta_to_instructor_auto",
+    "ta_to_assistant_faculty",
+    "ta_student_consultation",
+    "mentor_private_sessions",
+    "student_instructor_evaluation",
+    "comprehensive_term_start",
+    "student_non_registration",
+    "lesson_start_per_term",
+    "intern_hours_increase",
+    "internship_12month_conditional_review",
+    "ta_track_completion",
+})
+
+ROLE_FA: dict[str, str] = {
+    "student": "دانشجو",
+    "applicant": "متقاضی",
+    "therapist": "درمانگر",
+    "supervisor": "سوپروایزر",
+    "staff": "کارمند",
+    "admissions_officer": "مسئول پذیرش",
+    "site_manager": "مسئول سایت",
+    "interviewer": "مصاحبه‌گر",
+    "instructor": "مدرس",
+    "teaching_assistant": "کمک‌مدرس",
+    "teaching_assistant_or_instructor": "کمک‌مدرس/مدرس",
+    "progress_committee": "کمیته پیشرفت",
+    "education_committee": "کمیته آموزش",
+    "supervision_committee": "کمیته نظارت",
+    "specialized_commission": "کمیسیون تخصصی",
+    "therapy_committee_chair": "رئیس کمیته درمان",
+    "therapy_committee_executor": "مجری کمیته درمان",
+    "deputy_education": "معاون آموزش",
+    "deputy_education_director": "معاون مدیر آموزش",
+    "course_committee": "کمیته دروس",
+    "course_committee_scientific": "کمیته علمی دروس",
+    "course_committee_executive": "کمیته اجرایی دروس",
+    "scientific_officer_course_committee": "مسئول علمی کمیته دروس",
+    "monitoring_committee_officer": "مسئول کمیته نظارت",
+    "therapy_education_coordinator": "هماهنگ‌کننده آموزش درمان",
+    "system": "سامانه (خودکار)",
+}
+
+ROLE_PORTAL: dict[str, tuple[str, str, str]] = {
+    "student": ("/panel/portal/student", "?tab=processes", "student1"),
+    "applicant": ("/panel/portal/student", "?tab=processes", "regdemo_intro_app"),
+    "therapist": ("/panel/portal/therapist", "?tab=pending", "therapist1"),
+    "supervisor": ("/panel/portal/supervisor", "?tab=reviews", "supervisor1"),
+    "staff": ("/panel/portal/staff/admissions", "?tab=pending", "staff1"),
+    "admissions_officer": ("/panel/portal/staff/admissions", "?tab=pending", "demo_admissions"),
+    "site_manager": ("/panel/portal/site-manager", "?tab=pending", "site_manager1"),
+    "interviewer": ("/panel/portal/interviewer", "", "demo_interviewer"),
+    "instructor": ("/panel/portal/staff/instruction", "?tab=pending", "staff1"),
+    "teaching_assistant": ("/panel/portal/staff/instruction", "?tab=pending", "staff1"),
+    "teaching_assistant_or_instructor": ("/panel/portal/staff/instruction", "?tab=pending", "staff1"),
+    "progress_committee": ("/panel/portal/committee/progress", "?tab=reviews", "progress_committee1"),
+    "education_committee": ("/panel/portal/committee/education", "?tab=reviews", "education_committee1"),
+    "supervision_committee": ("/panel/portal/committee/supervision", "?tab=reviews", "supervision_committee1"),
+    "specialized_commission": ("/panel/portal/committee/supervision", "?tab=reviews", "supervision_committee1"),
+    "therapy_committee_chair": ("/panel/portal/committee/therapy", "?tab=reviews", "therapy_committee_chair1"),
+    "therapy_committee_executor": ("/panel/portal/committee/therapy", "?tab=reviews", "therapy_committee_executor1"),
+    "deputy_education": ("/panel/semester-prep", "", "deputy_education1"),
+    "deputy_education_director": ("/panel/semester-prep", "", "deputy_education1"),
+    "course_committee": ("/panel/portal/staff/course-committee", "?tab=pending", "course_committee1"),
+    "course_committee_scientific": ("/panel/portal/staff/course-committee", "?tab=pending", "course_committee1"),
+    "course_committee_executive": ("/panel/portal/staff/course-committee", "?tab=pending", "course_committee1"),
+    "scientific_officer_course_committee": ("/panel/portal/staff/course-committee", "?tab=pending", "course_committee1"),
+    "monitoring_committee_officer": ("/panel/portal/committee/supervision", "?tab=reviews", "monitoring_committee_officer1"),
+    "therapy_education_coordinator": ("/panel/portal/staff/therapy-coord", "?tab=pending", "staff1"),
+    "system": ("", "", ""),
+}
+
+PROCESS_PORTAL_OVERRIDE: dict[str, tuple[str, str, str]] = {
+    "fall_semester_preparation": (
+        "/panel/semester-prep/workbench?process_code=fall_semester_preparation",
+        "",
+        "deputy_education1",
+    ),
+    "winter_semester_preparation": (
+        "/panel/semester-prep/workbench?process_code=winter_semester_preparation",
+        "",
+        "deputy_education1",
+    ),
+    "session_payment": ("/panel/portal/student", "?tab=processes", "student1"),
+    "fee_determination": ("/panel/portal/student", "?tab=processes", "student1"),
+    "student_instructor_evaluation": ("/panel/portal/student", "?tab=dashboard", "student1"),
+    "comprehensive_term_start": ("/panel/portal/student", "?tab=processes", "student2"),
+    "intro_second_semester_registration": ("/panel/portal/student", "?tab=processes", "student1"),
+    "introductory_course_registration": ("/panel/portal/student", "?tab=processes", "regdemo_intro_app"),
+    "comprehensive_course_registration": ("/panel/portal/student", "?tab=processes", "student2"),
+}
+
+LINK_TYPE_FA = {
+    "spawn": "ایجاد فرایند جدید",
+    "subprocess": "زیرفرایند",
+    "redirect": "هدایت به فرایند دیگر",
+    "prerequisite": "پیش‌نیاز",
+    "registry": "ارجاع ثبت‌شده",
+}
+
+# Enriched narrative overrides keyed by process_code
+ENRICHMENT_OVERRIDES: dict[str, dict[str, Any]] = {
+    "fall_semester_preparation": {
+        "who": "مدیر سامانه (admin) یا معاون آموزش؛ برای زمان مصاحبه: مسئول سایت",
+        "where": "منو → آماده‌سازی ترم → ادامه مرحله فعلی",
+        "steps": [
+            "با admin یا deputy_education1 وارد شوید.",
+            "به آماده‌سازی ترم بروید؛ در صورت نیاز «شروع فرایند» را بزنید.",
+            "مراحل: تقویم، شهریه، پروانه، لیست دروس، نهایی‌سازی، تبلیغات، مصاحبه‌گران، زمان‌بندی.",
+            "برای زمان‌بندی مصاحبه با site_manager1 وارد شوید.",
+            "تا وضعیت «انتشار» ادامه دهید.",
+        ],
+        "expect": "ترم پاییز منتشر شود؛ بدون انتشار ثبت‌نام آشنایی قفل می‌ماند.",
+        "tips": ["اگر فرمی خالی ماند دکمه بعدی کار نمی‌کند.", "بعضی مراحل فقط برای یک نقش خاص است."],
+    },
+    "introductory_course_registration": {
+        "who": "متقاضی/دانشجو؛ مصاحبه‌گر؛ مسئول پذیرش",
+        "where": "پورتال دانشجو → داشبورد/فرایندها؛ مصاحبه‌گر → ثبت نتیجه؛ پذیرش → بررسی مدارک",
+        "steps": [
+            "با regdemo_intro_app فرم پذیرش را پر کنید.",
+            "وقت مصاحبه و پرداخت مصاحبه را انجام دهید.",
+            "با demo_interviewer نتیجه مصاحبه را ثبت کنید.",
+            "با demo_admissions مدارک را تأیید کنید.",
+            "دوباره دانشجو: مدارک، انتخاب درس، پرداخت شهریه.",
+        ],
+        "expect": "مسیر از درخواست تا ثبت‌نام نهایی بدون گیر غیرمنطقی.",
+        "tips": ["میانبر: regdemo_intro_done_iv برای شروع از بعد مصاحبه."],
+    },
+    "start_therapy": {
+        "who": "دانشجو؛ درمانگر",
+        "where": "پورتال دانشجو → فرایندها؛ پورتال درمانگر → کارهای منتظر",
+        "steps": [
+            "دانشجو درمانگر را انتخاب کند.",
+            "درمانگر درخواست را تأیید کند.",
+            "دانشجو زمان اولین جلسه و پرداخت را انجام دهد.",
+        ],
+        "expect": "وضعیت درمان فعال شود.",
+    },
+    "attendance_tracking": {
+        "who": "درمانگر؛ در صورت نیاز مسئول سایت یا معاون آموزش",
+        "where": "پورتال درمانگر → کارهای منتظر",
+        "steps": [
+            "درمانگر حضور/غیاب جلسه را ثبت کند.",
+            "در صورت اسکیلیشن، مسئول سایت پرونده را بررسی کند.",
+        ],
+        "expect": "ساعات درمان در پروفایل دانشجو به‌روز شود.",
+    },
+    "therapy_early_termination": {
+        "who": "درمانگر؛ سپس دانشجو یا کمیته‌ها بسته به علت",
+        "where": "پورتال درمانگر؛ سپس پورتال کمیته نظارت برای زیرفرایندها",
+        "steps": [
+            "درمانگر یکی از ۴ علت قطع را انتخاب کند.",
+            "علت ۱/۲: مهلت ۵ روز برای آغاز مجدد توسط دانشجو.",
+            "علت ۳: زیرفرایند کمیسیون تخصصی.",
+            "علت ۴: زیرفرایند بررسی کمیته‌ها.",
+        ],
+        "expect": "فرایند فرزند (تخلف/کمیته) در inbox نقش مربوط ظاهر شود.",
+    },
+    "educational_leave": {
+        "who": "دانشجو؛ کمیته پیشرفت؛ معاون آموزش",
+        "where": "پورتال دانشجو؛ پورتال کمیته پیشرفت",
+        "steps": [
+            "دانشجو درخواست مرخصی آموزشی را ثبت کند.",
+            "کمیته جلسه برگزار و تصمیم بگیرد.",
+            "در صورت تأیید، وضعیت مرخصی فعال شود.",
+        ],
+        "expect": "ثبت‌نام کلاس‌ها قفل شود؛ در صورت تخلف فرایند violation_registration ایجاد شود.",
+    },
+    "upgrade_to_ta": {
+        "who": "دانشجو؛ کمیته نظارت؛ کمیته دروس",
+        "where": "پورتال دانشجو؛ پورتال کمیته نظارت؛ پورتال کمیته دروس",
+        "steps": [
+            "دانشجو درخواست ارتقا به کمک‌مدرس را بزند.",
+            "کمیته نظارت بررسی کند.",
+            "کمیته دروس مصاحبه و رسته را تعیین کند.",
+            "دانشجو تعهدنامه را امضا کند.",
+        ],
+        "expect": "وضعیت کمک‌مدرس ثبت شود.",
+    },
+    "violation_registration": {
+        "who": "مسئول کمیته نظارت؛ کمیته نظارت؛ کمیته آموزش",
+        "where": "پورتال کمیته نظارت → بررسی‌ها",
+        "steps": [
+            "پرونده تخلف را از صندوق باز کنید.",
+            "وضعیت بررسی و جلسه را ثبت کنید.",
+            "حکم صادر و در صورت نیاز به کمیته آموزش ارجاع دهید.",
+        ],
+        "expect": "پرونده تخلف بسته شود یا به کمیته آموزش برود.",
+    },
+    "fee_determination": {
+        "who": "سامانه (خودکار) — دانشجو نتیجه را می‌بیند",
+        "where": "پورتال دانشجو → فرایندها یا پروفایل مالی",
+        "steps": [
+            "پس از غیبت/کنسلی مرتبط، این فرایند خودکار شروع می‌شود.",
+            "فقط نتیجه (بدهی/اعتبار/بدون اقدام) را بررسی کنید.",
+        ],
+        "expect": "نتیجه مالی منطقی با رویداد قبلی باشد.",
+        "tips": ["این فرایند غیرقابل ریست است — در صورت گیرکردن GAP ثبت کنید."],
+    },
+    "committees_review": {
+        "who": "کمیته نظارت؛ کمیته آموزش؛ دانشجو",
+        "where": "پورتال کمیته نظارت و آموزش",
+        "steps": [
+            "کمیته نظارت بررسی اولیه را انجام دهد.",
+            "کمیته آموزش بررسی تکمیلی.",
+            "دانشجو در صورت مجاز بودن درمان را از نو آغاز کند.",
+        ],
+        "expect": "ارجاع بیمار یا ثبت تخلف در صورت عدم آغاز مجدد.",
+    },
+    "specialized_commission_review": {
+        "who": "کمیسیون تخصصی؛ دانشجو",
+        "where": "پورتال کمیته نظارت (کمیسیون تخصصی)",
+        "steps": [
+            "کمیسیون تصمیم خود را ثبت کند.",
+            "دانشجو در مهلت ۵ روز درمان را از نو آغاز کند یا تخلف ثبت شود.",
+        ],
+        "expect": "در صورت عدم آغاز مجدد، committees_review یا violation_registration ایجاد شود.",
+    },
+    "supervision_block_transition": {
+        "who": "دانشجو؛ سوپروایزر",
+        "where": "پورتال دانشجو → فرایندها",
+        "steps": [
+            "دانشجو در جلسه ۵۰ام قصد پرداخت را اعلام کند.",
+            "سوپروایزر بلوک بعدی را انتخاب کند.",
+            "پرداخت جلسه اول بلوک جدید را انجام دهد.",
+        ],
+        "expect": "بلوک سوپرویژن جدید فعال شود؛ در غیر ۵۰ام به session_payment هدایت شود.",
+    },
+    "internship_readiness_consultation": {
+        "who": "دانشجو؛ کمیته نظارت؛ کمیته پیشرفت",
+        "where": "پورتال دانشجو؛ پورتال کمیته‌ها",
+        "steps": [
+            "دانشجو درخواست آمادگی کارورزی را ثبت کند.",
+            "کمیته‌ها مصاحبه و قراردادها را بررسی کنند.",
+            "دانشجو سوپروایزر و پرداخت اولین جلسه را انجام دهد.",
+        ],
+        "expect": "وضعیت کارورزی فعال شود.",
+    },
+    "thesis_defense_request": {
+        "who": "دانشجو؛ کمیته پیشرفت؛ کمیته نظارت؛ کمیته آموزش",
+        "where": "پورتال دانشجو؛ پورتال کمیته‌ها",
+        "steps": [
+            "پیش‌نیاز: خاتمه درس مقاله‌نویسی.",
+            "دانشجو درخواست دفاع و فایل‌ها را آپلود کند.",
+            "کمیته‌ها بررسی و زمان دفاع تعیین کنند.",
+        ],
+        "expect": "مسیر دفاع قابل پیگیری باشد.",
+    },
+    "patient_referral": {
+        "who": "مسئول کمیته نظارت",
+        "where": "پورتال کمیته نظارت",
+        "steps": [
+            "فهرست بیماران انترن را ببینید.",
+            "درمانگر جدید برای هر بیمار تعیین کنید.",
+        ],
+        "expect": "ارجاع کامل و پرونده بسته شود.",
+    },
+    "return_to_full_education": {
+        "who": "دانشجو؛ هماهنگ‌کننده درمان",
+        "where": "پورتال دانشجو؛ پورتال کمیته پیشرفت",
+        "steps": [
+            "پس از پایان مرخصی کامل، دانشجو درخواست بازگشت دهد.",
+            "مسیر درمان و سوپرویژن از نو تنظیم شود.",
+        ],
+        "expect": "ثبت‌نام مجدد باز شود.",
+    },
+    "winter_semester_preparation": {
+        "who": "معاون آموزش؛ کمیته دروس؛ مسئول پذیرش",
+        "where": "آماده‌سازی ترم → workbench زمستان",
+        "steps": [
+            "پروانه و لیست دروس را بررسی کنید.",
+            "تبلیغات و مصاحبه‌گران را تنظیم کنید.",
+            "تا انتشار ادامه دهید.",
+        ],
+        "expect": "ترم زمستان منتشر شود.",
+    },
+}
+
+LIFECYCLE_ORDER: list[str] = [
+    "fall_semester_preparation",
+    "introductory_course_registration",
+    "lesson_start_per_term",
+    "introductory_term_end",
+    "intro_second_semester_registration",
+    "introductory_course_completion",
+    "comprehensive_course_registration",
+    "comprehensive_term_start",
+    "student_instructor_evaluation",
+    "comprehensive_term_end",
+    "start_therapy",
+    "attendance_tracking",
+    "session_payment",
+    "supervision_block_transition",
+    "supervision_50h_completion",
+    "educational_leave",
+    "internship_readiness_consultation",
+    "upgrade_to_ta",
+    "article_writing_completion",
+    "thesis_defense_request",
+]
+
+
+@dataclass
+class CrossProcessLink:
+    source_code: str
+    source_name_fa: str
+    from_state: str
+    trigger: str
+    target_code: str
+    target_name_fa: str
+    link_type: str
+    verifier_role: str
+    verify_portal: str
+    test_scenario: str
+
+    @property
+    def key(self) -> str:
+        return f"{self.source_code}:{self.from_state}:{self.target_code}:{self.link_type}"
+
+
+@dataclass
+class StateTestSpec:
+    index: int
+    code: str
+    name_fa: str
+    assigned_role: str
+    role_fa: str
+    is_automatic: bool
+    operator_task_fa: str
+    portal_path: str
+    demo_username: str
+    gap_id: str
+    state_type: str
+
+
+@dataclass
+class ProcessTestSpec:
+    code: str
+    number: int
+    name_fa: str
+    description: str
+    initial_state: str
+    initial_role: str
+    states: list[StateTestSpec]
+    portal_path: str
+    demo_username: str
+    gap_prefix: str
+    preconditions: list[str]
+    outbound_links: list[CrossProcessLink] = field(default_factory=list)
+    inbound_links: list[CrossProcessLink] = field(default_factory=list)
+    enrichment: dict[str, Any] | None = None
+    is_stub: bool = False
+    restart_blocked: bool = False
+    scheduler_note: str | None = None
+    human_state_count: int = 0
+
+
+def _load_json(path: Path) -> dict[str, Any]:
+    with path.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+def resolve_portal(role: str, process_code: str = "") -> tuple[str, str, str]:
+    if process_code in PROCESS_PORTAL_OVERRIDE:
+        return PROCESS_PORTAL_OVERRIDE[process_code]
+    return ROLE_PORTAL.get(role, ("/panel", "", "admin"))
+
+
+def _gap_prefix(number: int) -> str:
+    return f"GAP-{number:02d}"
+
+
+def _default_operator_task(role: str, state_name: str, state_code: str) -> str:
+    if role == "system":
+        return (
+            "خودکار — فقط بررسی کنید نتیجه در پرونده، پروفایل یا اعلان "
+            "به‌درستی نمایش داده شده باشد."
+        )
+    role_fa = ROLE_FA.get(role, role)
+    portal_path, tab, username = resolve_portal(role)
+    path = f"{portal_path}{tab}" if portal_path else "پورتال مربوطه"
+    return (
+        f"با حساب {username} ({role_fa}) وارد شوید، به {path} بروید، "
+        f"در «کارهای منتظر» پرونده را باز کنید، مرحله «{state_name}» را "
+        "تکمیل و ثبت کنید."
+    )
+
+
+def _extract_transition_links(
+    source_code: str,
+    source_name: str,
+    transitions: list[dict[str, Any]],
+    process_names: dict[str, str],
+) -> list[CrossProcessLink]:
+    links: list[CrossProcessLink] = []
+    seen: set[str] = set()
+    for tr in transitions or []:
+        from_state = str(tr.get("from") or "")
+        trigger = str(tr.get("trigger") or "")
+        for action in tr.get("actions") or []:
+            if not isinstance(action, dict):
+                continue
+            atype = action.get("type")
+            target = None
+            link_type = "spawn"
+            if atype == "start_process":
+                target = action.get("process_code")
+            elif atype == "call_bpms_subprocess":
+                target = action.get("subprocess_code") or action.get("process_code")
+                link_type = "subprocess"
+            elif atype == "redirect_to_process":
+                target = action.get("process_code")
+                link_type = "redirect"
+            if not target:
+                continue
+            target = str(target)
+            verifier_role = "staff1"
+            portal_path, _, verifier_role_user = resolve_portal(
+                _guess_role_for_process(target), target
+            )
+            verify_portal = f"{portal_path}?tab=pending" if portal_path else "/panel"
+            scenario = (
+                f"پس از رویداد «{trigger}» در مرحله «{from_state}»، "
+                f"با {verifier_role_user} در {verify_portal} پرونده "
+                f"«{process_names.get(target, target)}» را ببینید."
+            )
+            link = CrossProcessLink(
+                source_code=source_code,
+                source_name_fa=source_name,
+                from_state=from_state,
+                trigger=trigger,
+                target_code=target,
+                target_name_fa=process_names.get(target, target),
+                link_type=link_type,
+                verifier_role=verifier_role_user,
+                verify_portal=verify_portal,
+                test_scenario=scenario,
+            )
+            if link.key not in seen:
+                seen.add(link.key)
+                links.append(link)
+    return links
+
+
+def _guess_role_for_process(process_code: str) -> str:
+    overrides = {
+        "violation_registration": "supervision_committee",
+        "patient_referral": "monitoring_committee_officer",
+        "fee_determination": "student",
+        "session_payment": "student",
+        "committees_review": "supervision_committee",
+        "specialized_commission_review": "supervision_committee",
+        "intern_bulk_patient_referral": "therapy_committee_executor",
+    }
+    return overrides.get(process_code, "staff")
+
+
+def _extract_precondition_links(
+    source_code: str,
+    source_name: str,
+    preconditions: list[dict[str, Any]],
+    process_names: dict[str, str],
+) -> list[CrossProcessLink]:
+    links: list[CrossProcessLink] = []
+    for pre in preconditions or []:
+        if not isinstance(pre, dict):
+            continue
+        if pre.get("type") != "process_completed":
+            continue
+        target = str(pre.get("process_code") or "")
+        if not target:
+            continue
+        portal_path, _, user = resolve_portal("student", source_code)
+        links.append(
+            CrossProcessLink(
+                source_code=source_code,
+                source_name_fa=source_name,
+                from_state="(پیش‌نیاز)",
+                trigger="process_completed",
+                target_code=target,
+                target_name_fa=process_names.get(target, target),
+                link_type="prerequisite",
+                verifier_role=user,
+                verify_portal=f"{portal_path}",
+                test_scenario=(
+                    f"قبل از شروع «{source_name}»، فرایند "
+                    f"«{process_names.get(target, target)}» باید کامل شده باشد."
+                ),
+            )
+        )
+    return links
+
+
+def _order_states(states: list[dict[str, Any]], initial_state: str) -> list[dict[str, Any]]:
+    """Best-effort ordering: initial first, then intermediates, terminals last."""
+    by_code = {s["code"]: s for s in states}
+    initial = by_code.get(initial_state)
+    rest = [s for s in states if s.get("code") != initial_state]
+    type_order = {"initial": 0, "intermediate": 1, "terminal": 2}
+    rest.sort(key=lambda s: (type_order.get(s.get("type", ""), 1), s.get("code", "")))
+    ordered = []
+    if initial:
+        ordered.append(initial)
+    ordered.extend(rest)
+    return ordered
+
+
+def build_process_specs() -> list[ProcessTestSpec]:
+    raw_processes: dict[str, dict[str, Any]] = {}
+    process_names: dict[str, str] = {}
+    all_links: list[CrossProcessLink] = []
+
+    for path in sorted(PROCESSES_DIR.glob("*.json")):
+        data = _load_json(path)
+        proc = data.get("process") or {}
+        code = proc.get("code") or path.stem
+        raw_processes[code] = data
+        process_names[code] = proc.get("name_fa") or code
+
+    index_data = _load_json(INDEX_PATH) if INDEX_PATH.is_file() else {"processes": []}
+    registry_refs: dict[str, list[str]] = {}
+    for entry in index_data.get("processes") or []:
+        code = entry.get("code")
+        refs = entry.get("sub_process_refs") or []
+        if code and refs:
+            registry_refs[str(code)] = [str(r) for r in refs]
+
+    for code, data in raw_processes.items():
+        proc = data.get("process") or {}
+        name_fa = proc.get("name_fa") or code
+        transitions = data.get("transitions") or []
+        all_links.extend(_extract_transition_links(code, name_fa, transitions, process_names))
+        preconds = proc.get("preconditions") or []
+        all_links.extend(_extract_precondition_links(code, name_fa, preconds, process_names))
+
+    for source, refs in registry_refs.items():
+        source_name = process_names.get(source, source)
+        for target in refs:
+            if target not in process_names:
+                continue
+            portal_path, _, user = resolve_portal(_guess_role_for_process(target), target)
+            link = CrossProcessLink(
+                source_code=source,
+                source_name_fa=source_name,
+                from_state="(ثبت رجیستری)",
+                trigger="sub_process_refs",
+                target_code=target,
+                target_name_fa=process_names.get(target, target),
+                link_type="registry",
+                verifier_role=user,
+                verify_portal=portal_path or "/panel",
+                test_scenario=(
+                    f"پس از تکمیل/رویداد در «{source_name}»، پرونده "
+                    f"«{process_names.get(target, target)}» در inbox نقش مربوط ظاهر شود."
+                ),
+            )
+            all_links.append(link)
+
+    outbound_by_source: dict[str, list[CrossProcessLink]] = {}
+    inbound_by_target: dict[str, list[CrossProcessLink]] = {}
+    seen_keys: set[str] = set()
+    for link in all_links:
+        if link.key in seen_keys:
+            continue
+        seen_keys.add(link.key)
+        outbound_by_source.setdefault(link.source_code, []).append(link)
+        inbound_by_target.setdefault(link.target_code, []).append(link)
+
+    specs: list[ProcessTestSpec] = []
+    for code, data in raw_processes.items():
+        proc = data.get("process") or {}
+        number = proc.get("number")
+        if number is None:
+            m = re.search(r"(\d+)", code)
+            number = int(m.group(1)) if m else 9000 + len(specs)
+        number = int(number)
+
+        initial_state = proc.get("initial_state") or ""
+        initial_role = proc.get("initial_role") or ""
+        states_raw = data.get("states") or []
+        if not initial_role and states_raw:
+            for s in states_raw:
+                if s.get("code") == initial_state:
+                    initial_role = s.get("assigned_role") or ""
+                    break
+
+        portal_path, tab, demo_user = resolve_portal(initial_role, code)
+        full_portal = f"{portal_path}{tab}" if portal_path else ""
+
+        ordered_states = _order_states(states_raw, initial_state)
+        state_specs: list[StateTestSpec] = []
+        gap_pfx = _gap_prefix(number)
+        human_count = 0
+
+        for idx, st in enumerate(ordered_states, 1):
+            role = str(st.get("assigned_role") or "system")
+            meta = st.get("metadata") or {}
+            task = meta.get("operator_task_fa") or ""
+            if not task:
+                task = _default_operator_task(role, st.get("name_fa", ""), st.get("code", ""))
+            is_auto = role == "system"
+            if not is_auto:
+                human_count += 1
+            st_portal, st_tab, st_user = resolve_portal(role, code)
+            st_full = f"{st_portal}{st_tab}" if st_portal else full_portal
+            state_specs.append(
+                StateTestSpec(
+                    index=idx,
+                    code=str(st.get("code") or ""),
+                    name_fa=str(st.get("name_fa") or ""),
+                    assigned_role=role,
+                    role_fa=ROLE_FA.get(role, role),
+                    is_automatic=is_auto,
+                    operator_task_fa=task,
+                    portal_path=st_full,
+                    demo_username=st_user,
+                    gap_id=f"{gap_pfx}-{st.get('code', '')}",
+                    state_type=str(st.get("type") or ""),
+                )
+            )
+
+        precond_texts = []
+        for pre in proc.get("preconditions") or []:
+            if isinstance(pre, dict) and pre.get("description_fa"):
+                precond_texts.append(str(pre["description_fa"]))
+            elif isinstance(pre, dict) and pre.get("process_code"):
+                pc = pre["process_code"]
+                precond_texts.append(
+                    f"فرایند {process_names.get(pc, pc)} باید تکمیل شده باشد"
+                )
+
+        sched_note = None
+        if code in SCHEDULER_HEAVY_PROCESSES:
+            sched_note = (
+                "این فرایند اغلب توسط زمان‌بند خودکار (/panel/automation-scheduler) "
+                "یا seed دمو شروع می‌شود — در صورت نبود پرونده از مسئول فنی بخواهید."
+            )
+
+        specs.append(
+            ProcessTestSpec(
+                code=code,
+                number=number,
+                name_fa=proc.get("name_fa") or code,
+                description=str(proc.get("description") or "").strip(),
+                initial_state=initial_state,
+                initial_role=initial_role,
+                states=state_specs,
+                portal_path=full_portal,
+                demo_username=demo_user,
+                gap_prefix=gap_pfx,
+                preconditions=precond_texts,
+                outbound_links=outbound_by_source.get(code, []),
+                inbound_links=inbound_by_target.get(code, []),
+                enrichment=ENRICHMENT_OVERRIDES.get(code),
+                is_stub=code == "process_merged_to_one",
+                restart_blocked=code in RESTART_BLOCKED,
+                scheduler_note=sched_note,
+                human_state_count=human_count,
+            )
+        )
+
+    specs.sort(key=lambda s: (s.number, s.code))
+    return specs
+
+
+def collect_cross_process_links(specs: list[ProcessTestSpec]) -> list[CrossProcessLink]:
+    seen: set[str] = set()
+    links: list[CrossProcessLink] = []
+    for spec in specs:
+        for link in spec.outbound_links + spec.inbound_links:
+            if link.key in seen:
+                continue
+            seen.add(link.key)
+            links.append(link)
+    links.sort(key=lambda l: (l.source_code, l.target_code, l.link_type))
+    return links
+
+
+def processes_missing_operator_tasks(specs: list[ProcessTestSpec]) -> list[str]:
+    missing = []
+    for spec in specs:
+        if spec.is_stub:
+            continue
+        for st in spec.states:
+            if st.is_automatic:
+                continue
+            if "با حساب" in st.operator_task_fa and "کارهای منتظر" in st.operator_task_fa:
+                missing.append(f"{spec.code}:{st.code}")
+    return missing
+
+
+DEMO_ACCOUNTS: list[tuple[str, str, str]] = [
+    ("مدیر سامانه", "admin", "admin123"),
+    ("معاون آموزش", "deputy_education1", "demo123"),
+    ("کارمند پذیرش", "demo_admissions", "demo123"),
+    ("مصاحبه‌گر", "demo_interviewer", "demo123"),
+    ("مسئول سایت", "site_manager1", "demo123"),
+    ("دانشجو", "student1", "demo123"),
+    ("متقاضی آشنایی", "regdemo_intro_app", "demo123"),
+    ("دانشجوی جامع", "student2", "demo123"),
+    ("درمانگر", "therapist1", "demo123"),
+    ("سوپروایزر", "supervisor1", "demo123"),
+    ("کمیته پیشرفت", "progress_committee1", "demo123"),
+    ("کمیته نظارت", "supervision_committee1", "demo123"),
+    ("کمیته آموزش", "education_committee1", "demo123"),
+    ("کمیته دروس", "course_committee1", "demo123"),
+    ("مدرس/کارمند", "staff1", "demo123"),
+]

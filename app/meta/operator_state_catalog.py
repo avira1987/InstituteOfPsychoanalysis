@@ -125,6 +125,17 @@ def get_state_catalog_for_portal_role(portal_role: str) -> list[dict[str, Any]]:
     return merged
 
 
+def portal_role_can_act_on_assigned_role(portal_role: str, state_assigned_role: str | None) -> bool:
+    """آیا نقش پورتال می‌تواند روی مرحله‌ای با assigned_role داده‌شده اقدام کند؟"""
+    if not portal_role or not state_assigned_role:
+        return False
+    allowed = resolve_portal_role_to_assigned_roles(portal_role)
+    if allowed is None:
+        return True
+    normalized = normalize_assigned_role(state_assigned_role)
+    return normalized in allowed
+
+
 def invalidate_caches() -> None:
     """برای تست یا بارگذاری مجدد فرایندها."""
     _load_portal_role_map_raw.cache_clear()

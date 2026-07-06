@@ -284,6 +284,59 @@ async def load_fall_prep_context_field(
     return None
 
 
+def _build_courses_finalized_from_draft(courses: Any) -> Optional[list[dict[str, Any]]]:
+    """لیست دروس مرحلهٔ ۴ را برای جدول نهایی‌سازی (مرحلهٔ ۵) نگاشت می‌کند."""
+    if not isinstance(courses, list) or not courses:
+        return None
+    rows: list[dict[str, Any]] = []
+    for row in courses:
+        if not isinstance(row, dict):
+            continue
+        rows.append(
+            {
+                "course_name": row.get("course_name") or "",
+                "track": row.get("track") or "",
+                "day": row.get("proposed_day") or row.get("day") or "",
+                "time": row.get("proposed_time") or row.get("time") or "",
+                "instructor": row.get("instructor") or "",
+                "teaching_assistant": row.get("teaching_assistant") or "",
+                "classroom_location": row.get("classroom_location") or "",
+                "instructor_coordinated": bool(row.get("instructor_coordinated")),
+            }
+        )
+    return rows or None
+
+
+def _apply_course_finalization_prefill(
+    process_code: str,
+    state_code: str,
+    context_data: dict[str, Any],
+) -> dict[str, Any]:
+    """پیش‌پر جدول نهایی از لیست دروس همان نمونه (مرحلهٔ ۴ → ۵)."""
+    out = dict(context_data or {})
+    if process_code == FALL_PREP and state_code == "course_finalization":
+        pairs = (
+            ("courses_finalized_fall", "courses_fall"),
+            ("courses_finalized_winter", "courses_winter"),
+        )
+        for final_name, draft_name in pairs:
+            if out.get(final_name) not in (None, "", []):
+                continue
+            draft = out.get(draft_name)
+            if not draft and draft_name == "courses_fall":
+                draft = out.get("courses")
+            built = _build_courses_finalized_from_draft(draft)
+            if built:
+                out[final_name] = built
+    if process_code == WINTER_PREP and state_code == "course_finalization":
+        if out.get("courses_finalized") in (None, "", []):
+            draft = out.get("courses")
+            built = _build_courses_finalized_from_draft(draft)
+            if built:
+                out["courses_finalized"] = built
+    return out
+
+
 async def apply_pre_filled_fields(
     db: AsyncSession,
     process_code: str,
@@ -293,8 +346,8 @@ async def apply_pre_filled_fields(
     """Merge pre_filled_from field values into context for operator forms."""
     from app.meta.process_forms import get_process_forms
 
+    out = _apply_course_finalization_prefill(process_code, state_code, context_data)
     forms = get_process_forms(process_code, state_code=state_code)
-    out = dict(context_data or {})
     for form in forms:
         for field in form.get("fields") or []:
             if not isinstance(field, dict):

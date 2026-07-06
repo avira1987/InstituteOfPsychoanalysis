@@ -177,6 +177,7 @@ export function stateMatchesStaffLane(state, laneId, processCode) {
       return s.includes('therapy_education') || s.includes('therapy_coord') || s.includes('coordinator')
     case 'course-committee':
       if (processCode === 'ta_to_instructor_auto') return true
+      if (processCode === 'ta_track_completion') return true
       if (processCode === 'class_session_cancellation') return true
       if (
         processCode === 'upgrade_to_ta'

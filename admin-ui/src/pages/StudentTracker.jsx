@@ -1,24 +1,27 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { studentApi, processExecApi, processApi, userApi } from '../services/api'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { notesPayload } from '../utils/decisionPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import InstanceContextSummary from '../components/InstanceContextSummary'
+import ProcessRestartSection from '../components/ProcessRestartSection'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import OperatorCourseSelectionEditor from '../components/OperatorCourseSelectionEditor'
 import RegistrationCourseTypeEditor from '../components/RegistrationCourseTypeEditor'
 import { isInstituteLevelProcess } from '../utils/instituteProcesses'
 
 export default function StudentTracker() {
+  const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
-  const [toast, setToast] = useState(null)
+  const [restartBusy, setRestartBusy] = useState(false)
 
   // Selected student
   const [selectedStudent, setSelectedStudent] = useState(null)
@@ -40,11 +43,7 @@ export default function StudentTracker() {
 
   // Users for user_id selection
   const [users, setUsers] = useState([])
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3000)
-  }
+  const { showToast } = useToast()
 
   useEffect(() => {
     loadStudents()
@@ -130,6 +129,32 @@ export default function StudentTracker() {
     }
   }
 
+  const handleProcessRestart = async (reason) => {
+    if (!instanceStatus?.instance_id) return false
+    const instanceId = instanceStatus.instance_id
+    setRestartBusy(true)
+    try {
+      const res = await processExecApi.restart(instanceId, {
+        reason: reason || undefined,
+        confirm: true,
+      })
+      if (res.data?.success) {
+        const newId = res.data.new_instance_id
+        showToast('فرایند از ابتدا با پروندهٔ جدید باز شد')
+        await loadStudentInstances(selectedStudent)
+        await loadInstanceStatus(newId)
+        return true
+      }
+      showToast(res.data?.error || 'شروع دوباره انجام نشد', 'error')
+      return false
+    } catch (err) {
+      showToast('خطا: ' + (err.response?.data?.detail || err.message), 'error')
+      return false
+    } finally {
+      setRestartBusy(false)
+    }
+  }
+
   const handleCreateStudent = async (e) => {
     e.preventDefault()
     try {
@@ -202,7 +227,6 @@ export default function StudentTracker() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
 
       <ResolvedProcessHistoryBanner
         instanceDetail={instanceStatus}
@@ -513,6 +537,13 @@ export default function StudentTracker() {
                     contextData={instanceStatus.context_data}
                     history={instanceStatus.history}
                     title="پرونده و سابقه (زمینهٔ تصمیم)"
+                  />
+
+                  <ProcessRestartSection
+                    user={user}
+                    instanceDetail={instanceStatus}
+                    onRestart={handleProcessRestart}
+                    busy={restartBusy}
                   />
 
                   {availableTransitions.length > 0 && !instanceStatus.is_completed && !instanceStatus.is_cancelled && (

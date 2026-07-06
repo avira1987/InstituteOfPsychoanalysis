@@ -1119,7 +1119,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 52,
-      "notes": "رح ۵۲ (SOP برز). ۱۰۰٪ خدکار پاا تر  درس رست ۲ ف رست خات داشبرد پرد ۲ SMS صب (داشج+کت). processes/ta_track_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_track_completion"
+      "notes": "مرحله ۵۲ (SOP برز). ۱۰۰٪ خودکار پس از ۲ بار TA هر درس رسته → خاتمه رسته + داشبورد پرونده TA در UI + ۲ SMS (دانشجو+کمیته). UI: TaTrackPortfolioPanel در همه پورتال‌ها. processes/ta_track_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_track_completion"
     },
     {
       "code": "ta_instructor_leave",

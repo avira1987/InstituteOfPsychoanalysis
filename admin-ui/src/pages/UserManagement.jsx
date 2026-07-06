@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { userApi, studentApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import StudentRegistrationExtendedFields from '../components/StudentRegistrationExtendedFields'
 import RegistrationCourseTypeEditor from '../components/RegistrationCourseTypeEditor'
 import {
@@ -38,7 +38,6 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
-  const [toast, setToast] = useState(null)
 
   const [showCreate, setShowCreate] = useState(false)
   const [createForm, setCreateForm] = useState(emptyCreate)
@@ -57,11 +56,7 @@ export default function UserManagement() {
 
   /** تأیید حذف دائمی از DB (فقط ادمین) */
   const [deleteTarget, setDeleteTarget] = useState(null)
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3000)
-  }
+  const { showToast } = useToast()
 
   const closeAllModals = useCallback(() => {
     setShowCreate(false)
@@ -269,7 +264,6 @@ export default function UserManagement() {
 
   return (
     <div className="user-management-page">
-      <PopupToast toast={toast} />
 
       {/* مودال: ایجاد کاربر */}
       {showCreate && currentUser?.role === 'admin' && (

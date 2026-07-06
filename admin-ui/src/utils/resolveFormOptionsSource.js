@@ -52,12 +52,15 @@ export async function resolveCourseCommitteeTracks() {
   }
 }
 
-export async function resolveCourseCommitteeRoster(track, kind) {
+export async function resolveCourseCommitteeRoster(track, kind, course) {
   const t = (track || '').trim()
   if (!t || !kind) return []
   try {
+    const params = { track: t, kind, _ts: Date.now() }
+    const courseVal = (course || '').trim()
+    if (courseVal) params.course = courseVal
     const res = await api.get('admin/course-committee-roster', {
-      params: { track: t, kind, _ts: Date.now() },
+      params,
       headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
     })
     const members = res.data?.members
@@ -115,6 +118,21 @@ export async function createCourseCommitteeMember({ track, kind, nameFa }) {
   return res.data?.member
 }
 
+/** نگاشت نام/کد درس به کد رسته از گزینه‌های کاتالوگ */
+export function resolveTrackForCourse(courseValue, catalogOptions) {
+  const raw = String(courseValue || '').trim()
+  if (!raw || !Array.isArray(catalogOptions)) return ''
+  for (const opt of catalogOptions) {
+    if (typeof opt !== 'object') continue
+    const val = String(opt.value || '').trim()
+    const lab = String(opt.label_fa || '').trim()
+    if (val === raw || lab === raw) {
+      return String(opt.track || '').trim()
+    }
+  }
+  return ''
+}
+
 export async function resolveTraitCatalogOptions(kind) {
   const k = (kind || 'positive').trim().toLowerCase()
   try {
@@ -135,25 +153,46 @@ export async function resolveTraitCatalogOptions(kind) {
 
 /** resolve options_source برای فیلد یا ستون جدول */
 export async function resolveFormOptionsSource(source, contextData = null) {
-  if (!source || typeof source !== 'object') return { options: [], optionsByTrack: null }
+  if (!source || typeof source !== 'object') return { options: [], optionsByTrack: null, optionsByCourse: null }
 
   if (source.type === 'users') {
     const options = await resolveUsersOptionsSource(source)
-    return { options, optionsByTrack: null }
+    return { options, optionsByTrack: null, optionsByCourse: null }
   }
 
   if (source.type === 'course_catalog') {
     const options = await resolveCourseCatalog()
-    return { options, optionsByTrack: null }
+    return { options, optionsByTrack: null, optionsByCourse: null }
   }
 
   if (source.type === 'course_committee_tracks') {
     const options = await resolveCourseCommitteeTracks()
-    return { options, optionsByTrack: null }
+    return { options, optionsByTrack: null, optionsByCourse: null }
   }
 
   if (source.type === 'course_committee_roster') {
     const kind = source.kind || 'instructor'
+    const filterCol = source.filter_by_column || 'track'
+
+    if (filterCol === 'course_name') {
+      const catalog = await resolveCourseCatalog()
+      const optionsByCourse = {}
+      await Promise.all(
+        catalog.map(async (courseOpt) => {
+          const trackCode = (courseOpt.track || '').trim()
+          const value = courseOpt.value
+          const label = courseOpt.label_fa
+          if (!trackCode || !value) return
+          const members = await resolveCourseCommitteeRoster(trackCode, kind, value)
+          optionsByCourse[value] = members
+          if (label && label !== value) {
+            optionsByCourse[label] = members
+          }
+        }),
+      )
+      return { options: [], optionsByTrack: null, optionsByCourse }
+    }
+
     const trackCodes = await loadAllTrackCodes()
     const optionsByTrack = {}
     await Promise.all(
@@ -161,7 +200,7 @@ export async function resolveFormOptionsSource(source, contextData = null) {
         optionsByTrack[code] = await resolveCourseCommitteeRoster(code, kind)
       }),
     )
-    return { options: [], optionsByTrack }
+    return { options: [], optionsByTrack, optionsByCourse: null }
   }
 
   if (source.type === 'course_class_roster') {
@@ -173,15 +212,15 @@ export async function resolveFormOptionsSource(source, contextData = null) {
       || ctx.lesson_course_label
       || ctx.course_name
     const options = await resolveCourseClassRoster(courseCode)
-    return { options, optionsByTrack: null }
+    return { options, optionsByTrack: null, optionsByCourse: null }
   }
 
   if (source.type === 'trait_catalog') {
     const options = await resolveTraitCatalogOptions(source.kind || 'positive')
-    return { options, optionsByTrack: null }
+    return { options, optionsByTrack: null, optionsByCourse: null }
   }
 
-  return { options: [], optionsByTrack: null }
+  return { options: [], optionsByTrack: null, optionsByCourse: null }
 }
 
 /** نرمال‌سازی مقدار ذخیره‌شده ردیف جدول برای select مدرس/کمک‌مدرس */
@@ -206,6 +245,13 @@ export function denormalizeCourseRosterTableRows(tableField, rows) {
     const byTrack = col._optionsByTrack
     if (byTrack && typeof byTrack === 'object') {
       for (const opts of Object.values(byTrack)) {
+        const hit = (opts || []).find((o) => String(o.value) === v)
+        if (hit) return hit.label_fa || v
+      }
+    }
+    const byCourse = col._optionsByCourse
+    if (byCourse && typeof byCourse === 'object') {
+      for (const opts of Object.values(byCourse)) {
         const hit = (opts || []).find((o) => String(o.value) === v)
         if (hit) return hit.label_fa || v
       }

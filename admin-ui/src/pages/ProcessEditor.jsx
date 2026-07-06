@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { processApi, ruleApi, getApiBase } from '../services/api'
 import { resolveProcessSopOrder } from '../utils/processSopOrder'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 
 export default function ProcessEditor() {
   const { processId } = useParams()
@@ -13,7 +13,6 @@ export default function ProcessEditor() {
   const [allRules, setAllRules] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('visual')
-  const [toast, setToast] = useState(null)
   const [flowchartObjectUrl, setFlowchartObjectUrl] = useState(null)
   const [flowchartUploading, setFlowchartUploading] = useState(false)
 
@@ -33,11 +32,7 @@ export default function ProcessEditor() {
   // Process edit
   const [editingProcess, setEditingProcess] = useState(false)
   const [processForm, setProcessForm] = useState({})
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3000)
-  }
+  const { showToast } = useToast()
 
   useEffect(() => {
     loadData()
@@ -309,7 +304,6 @@ export default function ProcessEditor() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
 
       <div className="page-header">
         <div>

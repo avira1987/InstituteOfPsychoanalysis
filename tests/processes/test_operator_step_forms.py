@@ -142,6 +142,7 @@ def test_course_list_form_roster_select_columns():
     track_src = (columns["track"].get("options_source") or {})
     assert track_src.get("type") == "course_committee_tracks"
     assert columns["track"].get("type") == "creatable_select"
+    assert columns["track"].get("auto_fill_from") == "course_name"
 
     inst_src = columns["instructor"].get("options_source") or {}
     assert inst_src.get("type") == "course_committee_roster"

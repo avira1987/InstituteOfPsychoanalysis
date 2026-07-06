@@ -8,6 +8,7 @@ import StudentSmsHistorySection from '../components/StudentSmsHistorySection'
 import StudentProcessStepReview from '../components/StudentProcessStepReview'
 import StudentDynamicFormsSection from '../components/StudentDynamicFormsSection'
 import InstanceContextSummary from '../components/InstanceContextSummary'
+import ProcessRestartSection from '../components/ProcessRestartSection'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import { buildRoadmapStates } from '../utils/studentRoadmap'
 import { buildStudentProcessVisitSequence } from '../utils/studentProcessStepReview'
@@ -22,7 +23,7 @@ import {
 } from '../utils/processFormsStudent'
 import ProcessStepForms from '../components/ProcessStepForms'
 import StudentProcessGuidancePanel from '../components/StudentProcessGuidancePanel'
-import PopupToast from '../components/PopupToast'
+import { useToast } from '../contexts/ToastContext'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import { buildStudentGuidance } from '../utils/studentProcessGuidance'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
@@ -43,6 +44,8 @@ import StudentRegistrationProfileView from '../components/StudentRegistrationPro
 import StudentTranscriptsPanel from '../components/StudentTranscriptsPanel'
 import StudentAcademicCalendarPanel from '../components/StudentAcademicCalendarPanel'
 import StudentCourseStatusPanel from '../components/StudentCourseStatusPanel'
+import StudentTaTrackPortfolioSection from '../components/StudentTaTrackPortfolioSection'
+import TaTrackCompletionInstancePanel from '../components/TaTrackCompletionInstancePanel'
 import StudentSessionPaymentPanel from '../components/StudentSessionPaymentPanel'
 import StudentTherapyHoursPanel from '../components/StudentTherapyHoursPanel'
 import StudentTherapyReductionPanel from '../components/StudentTherapyReductionPanel'
@@ -149,7 +152,7 @@ export default function StudentPortal() {
   const [decisionNotes, setDecisionNotes] = useState('')
   const [activeTab, setActiveTab] = useState('dashboard')
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState(null)
+  const [restartBusy, setRestartBusy] = useState(false)
   const [processFilter, setProcessFilter] = useState('')
   const [processDefinition, setProcessDefinition] = useState(null)
   const [onlineSessions, setOnlineSessions] = useState([])
@@ -168,11 +171,7 @@ export default function StudentPortal() {
   const [reviewRoadmapFocus, setReviewRoadmapFocus] = useState(null)
   /** فرم‌های همهٔ وضعیت‌های طی‌شده برای برچسب‌های InstanceContextSummary */
   const [instanceContextExtraLabelForms, setInstanceContextExtraLabelForms] = useState([])
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 4000)
-  }
+  const { showToast } = useToast()
 
   /** بازگشت از درگاه پرداخت (ریدایرکت کال‌بک با ?payment=success|failed) */
   const paymentReturnHandled = useRef(false)
@@ -496,6 +495,33 @@ export default function StudentPortal() {
       }
     } catch (err) {
       console.error('View error:', err)
+    }
+  }
+
+  const handleProcessRestart = async (reason) => {
+    if (!selectedInstance) return false
+    setRestartBusy(true)
+    try {
+      const res = await processExecApi.restart(selectedInstance, {
+        reason: reason || undefined,
+        confirm: true,
+      })
+      if (res.data?.success) {
+        const newId = res.data.new_instance_id
+        showToast('فرایند از ابتدا با پروندهٔ جدید باز شد')
+        setSelectedInstance(newId)
+        await viewInstance(newId)
+        loadData()
+        return true
+      }
+      showToast(res.data?.error || 'شروع دوباره انجام نشد', 'error')
+      return false
+    } catch (e) {
+      const d = e.response?.data?.detail
+      showToast(typeof d === 'string' ? d : (e.message || 'خطا در شروع دوباره'), 'error')
+      return false
+    } finally {
+      setRestartBusy(false)
     }
   }
 
@@ -990,7 +1016,6 @@ export default function StudentPortal() {
 
   return (
     <div>
-      <PopupToast toast={toast} />
 
       <ResolvedProcessHistoryBanner
         instanceDetail={instanceDetail}
@@ -1470,6 +1495,13 @@ export default function StudentPortal() {
                 title="پرونده و سابقه (قبل از اقدام)"
               />
 
+              <ProcessRestartSection
+                user={user}
+                instanceDetail={instanceDetail}
+                onRestart={handleProcessRestart}
+                busy={restartBusy}
+              />
+
               {instanceDetail.process_code === 'session_payment' && !instanceDetailDone && (
                 <>
                   <div style={{ marginBottom: '1.25rem' }}>
@@ -1746,6 +1778,16 @@ export default function StudentPortal() {
                     detail={instanceDetail}
                     active={activeTab === 'processes'}
                     onOpenProcesses={() => setActiveTab('processes')}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'ta_track_completion' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <TaTrackCompletionInstancePanel
+                    detail={instanceDetail}
+                    portalRole="student"
+                    active={activeTab === 'processes'}
                   />
                 </div>
               )}
@@ -2387,6 +2429,12 @@ export default function StudentPortal() {
             <StudentCourseStatusPanel
               extraData={studentProfile.extra_data}
               activeProcesses={activeProcesses}
+            />
+          )}
+          {studentProfile && (
+            <StudentTaTrackPortfolioSection
+              extraData={studentProfile.extra_data}
+              active={activeTab === 'profile'}
             />
           )}
           {studentProfile?.therapy_started && (

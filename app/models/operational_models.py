@@ -561,6 +561,42 @@ class PanelTaskReminder(Base):
     user = relationship("User", foreign_keys=[user_id])
 
 
+class PanelActionNotificationDismissal(Base):
+    """اعلان‌های بسته‌شدهٔ دستی توسط کاربر (فرایند، آمادگی، مصاحبه و …)."""
+
+    __tablename__ = "panel_action_notification_dismissals"
+    __table_args__ = (
+        Index("ix_panel_notif_dismiss_user", "user_id"),
+        UniqueConstraint("user_id", "notification_id", name="uq_panel_notif_dismiss_user_nid"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    notification_id = Column(String(255), nullable=False)
+    dismissed_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
+class PanelFlashMessage(Base):
+    """پیام‌های پاپ‌آپ UI ذخیره‌شده برای مرور در پنل اعلان‌ها."""
+
+    __tablename__ = "panel_flash_messages"
+    __table_args__ = (
+        Index("ix_panel_flash_messages_user", "user_id"),
+        Index("ix_panel_flash_messages_created", "created_at"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    message = Column(Text, nullable=False)
+    level = Column(String(20), nullable=False, default="success")
+    source_path = Column(String(1024), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
 class DailyOverdueRunLog(Base):
     """گزارش اجرای موتور چک روزانه کارهای عقب‌افتاده."""
 

@@ -54,6 +54,69 @@ def _fmt_break_periods(periods: Any) -> str:
     return "؛ ".join(parts) if parts else "—"
 
 
+def _nonempty_table(value: Any) -> list[dict[str, Any]]:
+  if not isinstance(value, list):
+    return []
+  return [row for row in value if isinstance(row, dict) and any(v not in (None, "", False) for v in row.values())]
+
+
+def _draft_row_to_finalized(row: dict[str, Any]) -> dict[str, Any]:
+  return {
+    "course_name": row.get("course_name") or "",
+    "track": row.get("track") or "",
+    "day": row.get("day") or row.get("proposed_day") or "",
+    "time": row.get("time") or row.get("proposed_time") or "",
+    "instructor": row.get("instructor") or "",
+    "teaching_assistant": row.get("teaching_assistant") or "",
+    "classroom_location": row.get("classroom_location") or "",
+    "instructor_coordinated": row.get("instructor_coordinated"),
+  }
+
+
+def resolve_marketing_handoff_context(process_code: str, ctx: dict[str, Any]) -> dict[str, Any]:
+  """نرمال‌سازی context برای گزارش/PDF کمپین — fallback از پیش‌نویس مرحلهٔ ۴ اگر نهایی‌سازی خالی باشد."""
+  code = (process_code or "").strip()
+  raw = dict(ctx) if isinstance(ctx, dict) else {}
+  out = dict(raw)
+
+  if code == FALL_PREP:
+    fall_final = _nonempty_table(raw.get("courses_finalized_fall"))
+    if not fall_final:
+      fall_final = _nonempty_table(raw.get("courses_finalized"))
+    if not fall_final:
+      fall_final = _nonempty_table(raw.get("courses_fall"))
+    if not fall_final:
+      fall_final = _nonempty_table(raw.get("courses"))
+    if fall_final and not _nonempty_table(raw.get("courses_finalized_fall")):
+      out["courses_finalized_fall"] = [
+        _draft_row_to_finalized(row) if row.get("proposed_day") or row.get("proposed_time") else row
+        for row in fall_final
+      ]
+
+    winter_final = _nonempty_table(raw.get("courses_finalized_winter"))
+    if not winter_final:
+      winter_final = _nonempty_table(raw.get("courses_winter"))
+    if winter_final and not _nonempty_table(raw.get("courses_finalized_winter")):
+      out["courses_finalized_winter"] = [
+        _draft_row_to_finalized(row) if row.get("proposed_day") or row.get("proposed_time") else row
+        for row in winter_final
+      ]
+
+  elif code == WINTER_PREP:
+    winter_final = _nonempty_table(raw.get("courses_finalized"))
+    if not winter_final:
+      winter_final = _nonempty_table(raw.get("courses_winter"))
+    if not winter_final:
+      winter_final = _nonempty_table(raw.get("courses"))
+    if winter_final and not _nonempty_table(raw.get("courses_finalized")):
+      out["courses_finalized"] = [
+        _draft_row_to_finalized(row) if row.get("proposed_day") or row.get("proposed_time") else row
+        for row in winter_final
+      ]
+
+  return out
+
+
 def _course_rows(courses: Any) -> list[list[str]]:
     if not isinstance(courses, list) or not courses:
         return []
@@ -137,7 +200,7 @@ def _append_courses_table(
 def build_marketing_campaign_pdf_rows(process_code: str, ctx: dict[str, Any]) -> list[list[Any]]:
     """Build tabular rows for marketing handoff PDF."""
     code = (process_code or "").strip()
-    context = ctx if isinstance(ctx, dict) else {}
+    context = resolve_marketing_handoff_context(code, ctx if isinstance(ctx, dict) else {})
     rows: list[list[Any]] = []
 
     if code == FALL_PREP:
@@ -169,10 +232,14 @@ def build_marketing_campaign_pdf_rows(process_code: str, ctx: dict[str, Any]) ->
         _append_courses_table(
             rows,
             title="فعالیت ۲ — لیست دروس ترم زمستان",
-            courses=context.get("courses"),
+            courses=context.get("courses") or context.get("courses_winter"),
             finalized=False,
         )
-        finalized = context.get("courses_finalized") or context.get("courses")
+        finalized = (
+            context.get("courses_finalized")
+            or context.get("courses_winter")
+            or context.get("courses")
+        )
         _append_courses_table(
             rows,
             title="فعالیت ۳ — برنامه نهایی دروس زمستان",

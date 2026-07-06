@@ -17,7 +17,8 @@ from app.services.nav_pending_counts import compute_nav_pending_counts
 from app.services.operator_followup_inbox import build_operator_followup_inbox_full
 from app.services.operator_readiness import compute_operator_readiness_alerts
 from app.services.panel_action_notifications import build_action_notifications
-from app.services.panel_task_reminders import dismiss_panel_task_reminder, load_active_panel_reminders
+from app.services.panel_notification_dismiss import dismiss_action_notification
+from app.services.panel_flash_messages import create_panel_flash_message
 from app.services.portal_role_inbox import build_portal_role_process_inbox
 from app.services import sms_simulation_service
 from app.services.student_online_sessions_service import list_student_online_sessions
@@ -165,11 +166,64 @@ async def panel_dismiss_task_reminder(
     user: User = Depends(get_current_user),
 ):
     """بستن نوتیفیکیشن ثبت‌شده (مثلاً یادآوری روزانه کار عقب‌افتاده)."""
-    ok = await dismiss_panel_task_reminder(db, reminder_id=reminder_id, user_id=user.id)
+    ok = await dismiss_action_notification(
+        db,
+        user_id=user.id,
+        notification_id=f"daily_overdue:{reminder_id}",
+    )
     if not ok:
         raise HTTPException(status_code=404, detail="reminder not found")
     await db.commit()
     return {"ok": True}
+
+
+class ActionNotificationDismiss(BaseModel):
+    notification_id: str = Field(..., min_length=3, max_length=255)
+
+
+@router.post("/action-notifications/dismiss")
+async def panel_dismiss_action_notification(
+    body: ActionNotificationDismiss,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """بستن یک اعلان از فید (کار معلق، پیام فلش، یادآوری روزانه و …)."""
+    ok = await dismiss_action_notification(
+        db,
+        user_id=user.id,
+        notification_id=body.notification_id.strip(),
+    )
+    if not ok:
+        raise HTTPException(status_code=404, detail="notification not found")
+    await db.commit()
+    return {"ok": True}
+
+
+class FlashMessageCreate(BaseModel):
+    message: str = Field(..., min_length=1, max_length=4000)
+    level: str = Field(default="success", pattern="^(success|error)$")
+    source_path: Optional[str] = Field(default=None, max_length=1024)
+
+
+@router.post("/flash-messages")
+async def panel_create_flash_message(
+    body: FlashMessageCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """ثبت پیام پاپ‌آپ UI برای مرور در پنل اعلان‌ها."""
+    try:
+        row = await create_panel_flash_message(
+            db,
+            user_id=user.id,
+            message=body.message,
+            level=body.level,
+            source_path=body.source_path,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()
+    return {"ok": True, "id": str(row.id)}
 
 
 @router.get("/simulated-sms")

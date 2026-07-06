@@ -331,6 +331,39 @@ async def get_my_intro_registration_gate(
     return (await check_intro_registration_gate(db)).to_dict()
 
 
+@router.get("/me/ta-portfolio")
+async def get_my_ta_portfolio(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """داشبورد پرونده کمک‌مدرسی — فرایند ۵۲."""
+    from app.services.ta_track_portfolio_service import build_ta_portfolio
+
+    stmt = select(Student).where(Student.user_id == current_user.id)
+    result = await db.execute(stmt)
+    student = result.scalars().first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student profile not found")
+    return build_ta_portfolio(student, current_user)
+
+
+@router.get("/{student_id}/ta-portfolio")
+async def get_student_ta_portfolio(
+    student_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """داشبورد پرونده کمک‌مدرسی برای اپراتور/کمیته."""
+    from app.core.resource_access import ensure_can_read_student
+    from app.services.ta_track_portfolio_service import build_ta_portfolio
+
+    student = await ensure_can_read_student(db, current_user, uuid.UUID(student_id))
+    user = None
+    if student.user_id:
+        user = (await db.execute(select(User).where(User.id == student.user_id))).scalars().first()
+    return build_ta_portfolio(student, user)
+
+
 @router.get("/me", response_model=StudentResponse)
 async def get_my_student_profile(
     db: AsyncSession = Depends(get_db),

@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { ToastProvider } from './contexts/ToastContext'
 import { SimulatedSmsProvider } from './contexts/SimulatedSmsContext'
 import { getRouterBasename } from './utils/routerBasename'
 import PersianDigitsBoundary from './components/PersianDigitsBoundary'
@@ -16,11 +17,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter basename={basename}>
       <AuthProvider>
-        <SimulatedSmsProvider>
-          <PersianDigitsBoundary>
-            <App />
-          </PersianDigitsBoundary>
-        </SimulatedSmsProvider>
+        <ToastProvider>
+          <SimulatedSmsProvider>
+            <PersianDigitsBoundary>
+              <App />
+            </PersianDigitsBoundary>
+          </SimulatedSmsProvider>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>
