@@ -1523,11 +1523,28 @@ async def start_semester_prep(
         build_prep_status,
         ensure_fall_prep_started,
         ensure_winter_prep_started,
+        get_active_prep_instance,
+        get_completed_prep_instance,
+        _term_end_date_from_ctx,
+        _ctx,
     )
+    from app.utils.shamsi_calendar_utils import tehran_today
 
     code = (body.process_code or "").strip()
     if code not in (FALL_PREP, WINTER_PREP):
         raise HTTPException(status_code=400, detail="process_code نامعتبر")
+
+    # قفل «شروع ترم جدید» تا پایان ترم فعلی: اگر نمونهٔ فعالی نیست ولی نمونهٔ
+    # تکمیل‌شده‌ای وجود دارد که هنوز به پایان ترم نرسیده، شروع دوباره مجاز نیست.
+    if await get_active_prep_instance(db, code) is None:
+        completed = await get_completed_prep_instance(db, code)
+        if completed is not None:
+            term_end = _term_end_date_from_ctx(_ctx(completed))
+            if term_end is not None and tehran_today() <= term_end:
+                raise HTTPException(
+                    status_code=400,
+                    detail="تا پایان ترم فعلی امکان شروع ترم جدید نیست؛ برای اصلاح از «ویرایش/بازگشت» استفاده کنید.",
+                )
     try:
         if code == FALL_PREP:
             result = await ensure_fall_prep_started(

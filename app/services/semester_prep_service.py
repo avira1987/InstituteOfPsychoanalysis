@@ -161,6 +161,39 @@ async def get_completed_fall_prep_instance(
     return (await db.execute(stmt)).scalars().first()
 
 
+async def get_completed_prep_instance(
+    db: AsyncSession,
+    process_code: str,
+    *,
+    student_id: uuid.UUID | None = None,
+) -> ProcessInstance | None:
+    """آخرین نمونهٔ تکمیل‌شدهٔ (منتشرشدهٔ) یک فرایند آماده‌سازی ترم."""
+    if process_code not in PREP_PROCESS_CODES:
+        return None
+    if student_id is None:
+        anchor = await ensure_institute_operational_student(db)
+        student_id = anchor.id
+    stmt = (
+        select(ProcessInstance)
+        .where(
+            ProcessInstance.process_code == process_code,
+            ProcessInstance.student_id == student_id,
+            ProcessInstance.is_completed.is_(True),
+            ProcessInstance.is_cancelled.is_(False),
+        )
+        .order_by(desc(ProcessInstance.completed_at))
+        .limit(1)
+    )
+    return (await db.execute(stmt)).scalars().first()
+
+
+def _term_end_date_from_ctx(ctx: dict[str, Any]):
+    """تاریخ پایان ترم برای تصمیم «شروع ترم جدید» (پایان زمستان، سپس پاییز)."""
+    return parse_iso_date(ctx.get("winter_end_date")) or parse_iso_date(
+        ctx.get("fall_end_date")
+    )
+
+
 async def get_or_start_prep_instance(
     db: AsyncSession,
     process_code: str,
@@ -505,8 +538,30 @@ async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
                 except (TypeError, ValueError):
                     pass
         else:
+            completed = await get_completed_prep_instance(db, code, student_id=anchor.id)
+            if completed is not None:
+                entry["completed"] = True
+                entry["completed_instance_id"] = str(completed.id)
+                entry["completed_current_state"] = completed.current_state_code
+                entry["completed_at"] = (
+                    completed.completed_at.isoformat() if completed.completed_at else None
+                )
+                cctx = _ctx(completed)
+                term_end = _term_end_date_from_ctx(cctx)
+                entry["term_end_date"] = term_end.isoformat() if term_end else None
+                if term_end is not None:
+                    from app.utils.shamsi_calendar_utils import tehran_today
+
+                    # تا پایان ترم قفل؛ فقط بعد از پایان ترم شروع ترم جدید مجاز است.
+                    entry["can_start_new_term"] = tehran_today() > term_end
+                else:
+                    entry["can_start_new_term"] = True
+            else:
+                entry["can_start_new_term"] = True
             if code == FALL_PREP:
-                last = await get_completed_fall_prep_instance(db, student_id=anchor.id)
+                last = completed or await get_completed_fall_prep_instance(
+                    db, student_id=anchor.id
+                )
                 entry["last_completed_at"] = (
                     last.completed_at.isoformat() if last and last.completed_at else None
                 )

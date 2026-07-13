@@ -119,6 +119,48 @@ LINK_TYPE_FA = {
     "registry": "ارجاع ثبت‌شده",
 }
 
+# نام منوی سایدبار — منبع: portalRoleNav.js، portalStaffLanes.js، portalCommitteeKinds.js
+PATH_MENU_FA: dict[str, str] = {
+    "/panel": "داشبورد",
+    "/panel/portal/student": "پنل آموزشی",
+    "/panel/portal/therapist": "پنل درمانگر",
+    "/panel/portal/supervisor": "پنل سوپروایزر",
+    "/panel/portal/interviewer": "پنل مصاحبه‌گر",
+    "/panel/portal/site-manager": "پنل مسئول سایت",
+    "/panel/portal/staff/admissions": "پنل پذیرش",
+    "/panel/portal/staff/instruction": "پنل مدرس",
+    "/panel/portal/staff/content-ops": "تولید محتوا",
+    "/panel/portal/staff/therapy-coord": "هماهنگی درمان",
+    "/panel/portal/staff/course-committee": "کمیته درس",
+    "/panel/portal/committee/progress": "کمیته پیشرفت",
+    "/panel/portal/committee/education": "کمیته آموزش",
+    "/panel/portal/committee/supervision": "کمیته نظارت",
+    "/panel/portal/committee/therapy": "کمیته درمان",
+    "/panel/semester-prep/workbench": "مرحلهٔ آماده‌سازی ترم",
+    "/panel/semester-prep/calendar": "تدوین تقویم آموزشی دو ترم",
+    "/panel/semester-prep/course-list-review": "بازبینی و ویرایش لیست دروس ترم زمستان",
+    "/panel/semester-prep/sla-warnings": "هشدارهای مهلت آماده‌سازی ترم",
+    "/panel/semester-prep": "آماده‌سازی ترم",
+    "/panel/automation-scheduler": "اتوماسیون زمان‌محور",
+    "/panel/tickets": "تیکت‌ها و درخواست‌ها",
+    "/panel/students": "ردیابی دانشجو",
+    "/panel/reports": "گزارشات",
+    "/panel/guide": "راهنمای جامع",
+}
+
+TAB_FA: dict[str, str] = {
+    "processes": "فرایندها",
+    "pending": "کارهای من",
+    "reviews": "بررسی‌ها",
+    "dashboard": "داشبورد",
+    "documentsReview": "بررسی مدارک",
+    "students": "دانشجویان",
+    "interviewSlots": "وقت مصاحبه",
+    "onlineClasses": "کلاس آنلاین",
+    "all": "همه",
+    "activity": "فعالیت‌ها",
+}
+
 # Enriched narrative overrides keyed by process_code
 ENRICHMENT_OVERRIDES: dict[str, dict[str, Any]] = {
     "fall_semester_preparation": {
@@ -320,6 +362,64 @@ LIFECYCLE_ORDER: list[str] = [
     "thesis_defense_request",
 ]
 
+# فاز ۱ — فرایندهای حیاتی برای تست سریع با اپراتور غیرفنی (ساخت از صفر، بدون seed پرونده)
+PHASE_1_CRITICAL: list[tuple[str, str]] = [
+    (
+        "fall_semester_preparation",
+        "بدون انتشار ترم پاییز، ثبت‌نام و اکثر مسیر آموزشی قفل می‌ماند.",
+    ),
+    (
+        "introductory_course_registration",
+        "درگاه ورود متقاضی — مصاحبه، مدارک، پرداخت و ثبت‌نام آشنایی.",
+    ),
+    (
+        "lesson_start_per_term",
+        "آغاز دروس هر ترم — پایهٔ حضور و غیاب و عملیات کلاسی.",
+    ),
+    (
+        "start_therapy",
+        "شروع درمان شخصی — هستهٔ آموزش سه‌وجهی انستیتو.",
+    ),
+    (
+        "attendance_tracking",
+        "ثبت حضور/غیاب جلسات درمان — پیگیری ساعات دانشجو.",
+    ),
+    (
+        "session_payment",
+        "پرداخت جلسات درمان — مسیر مالی حیاتی.",
+    ),
+    (
+        "supervision_block_transition",
+        "سوپرویژن فردی و انتقال بلوک — مسیر اصلی پیشرفت درمان.",
+    ),
+    (
+        "educational_leave",
+        "مرخصی آموزشی — تعامل دانشجو با کمیته پیشرفت.",
+    ),
+    (
+        "violation_registration",
+        "ثبت و رسیدگی تخلف — حاکمیت انضباطی مجموعه.",
+    ),
+    (
+        "comprehensive_course_registration",
+        "ثبت‌نام دوره جامع — مسیر اصلی دانشجویان پس از آشنایی.",
+    ),
+    (
+        "comprehensive_term_start",
+        "آغاز ترم دوره جامع — عملیات ترم جامع.",
+    ),
+]
+
+
+def filter_phase1_specs(specs: list[ProcessTestSpec]) -> list[ProcessTestSpec]:
+    by_code = {s.code: s for s in specs if not s.is_stub}
+    result: list[ProcessTestSpec] = []
+    for code, _why in PHASE_1_CRITICAL:
+        spec = by_code.get(code)
+        if spec:
+            result.append(spec)
+    return result
+
 
 @dataclass
 class CrossProcessLink:
@@ -349,6 +449,7 @@ class StateTestSpec:
     is_automatic: bool
     operator_task_fa: str
     portal_path: str
+    portal_menu_nav: str
     demo_username: str
     gap_id: str
     state_type: str
@@ -364,6 +465,7 @@ class ProcessTestSpec:
     initial_role: str
     states: list[StateTestSpec]
     portal_path: str
+    portal_menu_nav: str
     demo_username: str
     gap_prefix: str
     preconditions: list[str]
@@ -387,23 +489,68 @@ def resolve_portal(role: str, process_code: str = "") -> tuple[str, str, str]:
     return ROLE_PORTAL.get(role, ("/panel", "", "admin"))
 
 
+def _extract_tab_key(path_or_tab: str) -> str:
+    """Extract tab key from ?tab=... query or bare tab id."""
+    if not path_or_tab:
+        return ""
+    if path_or_tab.startswith("?tab="):
+        return path_or_tab[5:].split("&")[0]
+    if "tab=" in path_or_tab:
+        for part in path_or_tab.split("?")[-1].split("&"):
+            if part.startswith("tab="):
+                return part[4:].split("&")[0]
+    if path_or_tab.startswith("?"):
+        return ""
+    return path_or_tab
+
+
+def menu_nav(portal_path: str = "", tab: str = "") -> str:
+    """Return non-technical sidebar navigation (no URLs)."""
+    combined = (portal_path or "").strip()
+    base = combined.split("?")[0]
+
+    tab_key = _extract_tab_key(tab)
+    if not tab_key:
+        tab_key = _extract_tab_key(combined)
+
+    menu_name = "پورتال مربوطه"
+    if base:
+        for path_key in sorted(PATH_MENU_FA.keys(), key=len, reverse=True):
+            if base == path_key or base.startswith(path_key + "/"):
+                menu_name = PATH_MENU_FA[path_key]
+                break
+        else:
+            if base.startswith("/panel/portal/staff/"):
+                menu_name = "پنل کارمند"
+            elif base.startswith("/panel/portal/committee/"):
+                menu_name = "پنل کمیته"
+
+    if tab_key and tab_key in TAB_FA:
+        return f"منوی کناری / {menu_name} / تب «{TAB_FA[tab_key]}»"
+    return f"منوی کناری / {menu_name}"
+
+
 def _gap_prefix(number: int) -> str:
     return f"GAP-{number:02d}"
 
 
-def _default_operator_task(role: str, state_name: str, state_code: str) -> str:
+def _default_operator_task(
+    role: str,
+    state_name: str,
+    state_code: str,
+    process_code: str = "",
+) -> str:
     if role == "system":
         return (
             "خودکار — فقط بررسی کنید نتیجه در پرونده، پروفایل یا اعلان "
             "به‌درستی نمایش داده شده باشد."
         )
     role_fa = ROLE_FA.get(role, role)
-    portal_path, tab, username = resolve_portal(role)
-    path = f"{portal_path}{tab}" if portal_path else "پورتال مربوطه"
+    portal_path, tab, username = resolve_portal(role, process_code)
+    nav = menu_nav(portal_path, tab)
     return (
-        f"با حساب {username} ({role_fa}) وارد شوید، به {path} بروید، "
-        f"در «کارهای منتظر» پرونده را باز کنید، مرحله «{state_name}» را "
-        "تکمیل و ثبت کنید."
+        f"با حساب {username} ({role_fa}) وارد شوید، از {nav} "
+        f"پرونده را باز کنید، مرحله «{state_name}» را تکمیل و ثبت کنید."
     )
 
 
@@ -436,13 +583,13 @@ def _extract_transition_links(
                 continue
             target = str(target)
             verifier_role = "staff1"
-            portal_path, _, verifier_role_user = resolve_portal(
+            portal_path, tab, verifier_role_user = resolve_portal(
                 _guess_role_for_process(target), target
             )
-            verify_portal = f"{portal_path}?tab=pending" if portal_path else "/panel"
+            verify_portal = menu_nav(portal_path, tab or "?tab=pending")
             scenario = (
                 f"پس از رویداد «{trigger}» در مرحله «{from_state}»، "
-                f"با {verifier_role_user} در {verify_portal} پرونده "
+                f"با حساب {verifier_role_user} از {verify_portal} پرونده "
                 f"«{process_names.get(target, target)}» را ببینید."
             )
             link = CrossProcessLink(
@@ -491,7 +638,7 @@ def _extract_precondition_links(
         target = str(pre.get("process_code") or "")
         if not target:
             continue
-        portal_path, _, user = resolve_portal("student", source_code)
+        portal_path, tab, user = resolve_portal("student", source_code)
         links.append(
             CrossProcessLink(
                 source_code=source_code,
@@ -502,7 +649,7 @@ def _extract_precondition_links(
                 target_name_fa=process_names.get(target, target),
                 link_type="prerequisite",
                 verifier_role=user,
-                verify_portal=f"{portal_path}",
+                verify_portal=menu_nav(portal_path, tab),
                 test_scenario=(
                     f"قبل از شروع «{source_name}»، فرایند "
                     f"«{process_names.get(target, target)}» باید کامل شده باشد."
@@ -559,7 +706,7 @@ def build_process_specs() -> list[ProcessTestSpec]:
         for target in refs:
             if target not in process_names:
                 continue
-            portal_path, _, user = resolve_portal(_guess_role_for_process(target), target)
+            portal_path, tab, user = resolve_portal(_guess_role_for_process(target), target)
             link = CrossProcessLink(
                 source_code=source,
                 source_name_fa=source_name,
@@ -569,7 +716,7 @@ def build_process_specs() -> list[ProcessTestSpec]:
                 target_name_fa=process_names.get(target, target),
                 link_type="registry",
                 verifier_role=user,
-                verify_portal=portal_path or "/panel",
+                verify_portal=menu_nav(portal_path, tab or "?tab=pending"),
                 test_scenario=(
                     f"پس از تکمیل/رویداد در «{source_name}»، پرونده "
                     f"«{process_names.get(target, target)}» در inbox نقش مربوط ظاهر شود."
@@ -607,6 +754,7 @@ def build_process_specs() -> list[ProcessTestSpec]:
 
         portal_path, tab, demo_user = resolve_portal(initial_role, code)
         full_portal = f"{portal_path}{tab}" if portal_path else ""
+        full_menu_nav = menu_nav(portal_path, tab)
 
         ordered_states = _order_states(states_raw, initial_state)
         state_specs: list[StateTestSpec] = []
@@ -618,12 +766,15 @@ def build_process_specs() -> list[ProcessTestSpec]:
             meta = st.get("metadata") or {}
             task = meta.get("operator_task_fa") or ""
             if not task:
-                task = _default_operator_task(role, st.get("name_fa", ""), st.get("code", ""))
+                task = _default_operator_task(
+                    role, st.get("name_fa", ""), st.get("code", ""), code
+                )
             is_auto = role == "system"
             if not is_auto:
                 human_count += 1
             st_portal, st_tab, st_user = resolve_portal(role, code)
             st_full = f"{st_portal}{st_tab}" if st_portal else full_portal
+            st_menu_nav = menu_nav(st_portal, st_tab)
             state_specs.append(
                 StateTestSpec(
                     index=idx,
@@ -634,6 +785,7 @@ def build_process_specs() -> list[ProcessTestSpec]:
                     is_automatic=is_auto,
                     operator_task_fa=task,
                     portal_path=st_full,
+                    portal_menu_nav=st_menu_nav,
                     demo_username=st_user,
                     gap_id=f"{gap_pfx}-{st.get('code', '')}",
                     state_type=str(st.get("type") or ""),
@@ -653,8 +805,9 @@ def build_process_specs() -> list[ProcessTestSpec]:
         sched_note = None
         if code in SCHEDULER_HEAVY_PROCESSES:
             sched_note = (
-                "این فرایند اغلب توسط زمان‌بند خودکار (/panel/automation-scheduler) "
-                "یا seed دمو شروع می‌شود — در صورت نبود پرونده از مسئول فنی بخواهید."
+                "این فرایند اغلب توسط زمان‌بند خودکار "
+                "(منوی کناری / اتوماسیون زمان‌محور) یا seed دمو شروع می‌شود — "
+                "در صورت نبود پرونده از مسئول فنی بخواهید."
             )
 
         specs.append(
@@ -667,6 +820,7 @@ def build_process_specs() -> list[ProcessTestSpec]:
                 initial_role=initial_role,
                 states=state_specs,
                 portal_path=full_portal,
+                portal_menu_nav=full_menu_nav,
                 demo_username=demo_user,
                 gap_prefix=gap_pfx,
                 preconditions=precond_texts,
@@ -705,25 +859,307 @@ def processes_missing_operator_tasks(specs: list[ProcessTestSpec]) -> list[str]:
         for st in spec.states:
             if st.is_automatic:
                 continue
-            if "با حساب" in st.operator_task_fa and "کارهای منتظر" in st.operator_task_fa:
+            if "با حساب" in st.operator_task_fa and "منوی کناری" in st.operator_task_fa:
                 missing.append(f"{spec.code}:{st.code}")
     return missing
 
 
-DEMO_ACCOUNTS: list[tuple[str, str, str]] = [
-    ("مدیر سامانه", "admin", "admin123"),
-    ("معاون آموزش", "deputy_education1", "demo123"),
-    ("کارمند پذیرش", "demo_admissions", "demo123"),
-    ("مصاحبه‌گر", "demo_interviewer", "demo123"),
-    ("مسئول سایت", "site_manager1", "demo123"),
-    ("دانشجو", "student1", "demo123"),
-    ("متقاضی آشنایی", "regdemo_intro_app", "demo123"),
-    ("دانشجوی جامع", "student2", "demo123"),
-    ("درمانگر", "therapist1", "demo123"),
-    ("سوپروایزر", "supervisor1", "demo123"),
-    ("کمیته پیشرفت", "progress_committee1", "demo123"),
-    ("کمیته نظارت", "supervision_committee1", "demo123"),
-    ("کمیته آموزش", "education_committee1", "demo123"),
-    ("کمیته دروس", "course_committee1", "demo123"),
-    ("مدرس/کارمند", "staff1", "demo123"),
+@dataclass
+class DemoAccountGuide:
+    role_fa: str
+    username: str
+    password: str
+    sidebar_menu: str
+    when_to_use: str
+    what_to_expect: str
+
+
+DEMO_ACCOUNT_GUIDES: list[DemoAccountGuide] = [
+    DemoAccountGuide(
+        "مدیر سامانه", "admin", "admin123",
+        "داشبورد و همهٔ منوهای سایدبار",
+        "فقط وقتی راهنما صریحاً گفته؛ معمولاً برای آماده‌سازی ترم یا رفع گیرکردن.",
+        "به همهٔ پنل‌ها دسترسی دارید؛ منوی کناری پر از گزینه است.",
+    ),
+    DemoAccountGuide(
+        "معاون آموزش", "deputy_education1", "demo123",
+        "منوی کناری / آماده‌سازی ترم",
+        "فرایندهای آماده‌سازی ترم پاییز و زمستان.",
+        "صفحهٔ مراحل ترم؛ دکمهٔ ادامه و فرم‌های هر مرحله.",
+    ),
+    DemoAccountGuide(
+        "کارمند پذیرش", "demo_admissions", "demo123",
+        "منوی کناری / پنل پذیرش / تب کارهای من",
+        "بررسی مدارک، تأیید ثبت‌نام، کارهای پذیرش.",
+        "لیست پرونده‌های منتظر؛ با کلیک روی هر پرونده فرم و دکمهٔ ثبت.",
+    ),
+    DemoAccountGuide(
+        "مصاحبه‌گر", "demo_interviewer", "demo123",
+        "منوی کناری / پنل مصاحبه‌گر",
+        "ثبت نتیجهٔ مصاحبهٔ پذیرش.",
+        "پروندهٔ مصاحبه با فرم نتیجه و دکمهٔ تأیید.",
+    ),
+    DemoAccountGuide(
+        "مسئول سایت", "site_manager1", "demo123",
+        "منوی کناری / پنل مسئول سایت",
+        "زمان‌بندی مصاحبه، موارد اسکیلیشن حضور.",
+        "کارهای منتظر سایت؛ فرم زمان‌بندی یا بررسی.",
+    ),
+    DemoAccountGuide(
+        "دانشجو", "student1", "demo123",
+        "منوی کناری / پنل آموزشی / تب فرایندها",
+        "اکثر فرایندهای دانشجویی (درمان، مرخصی، ثبت‌نام).",
+        "لیست فرایندهای فعال؛ وضعیت هر مرحله قابل مشاهده است.",
+    ),
+    DemoAccountGuide(
+        "متقاضی آشنایی", "regdemo_intro_app", "demo123",
+        "منوی کناری / پنل آموزشی / تب فرایندها",
+        "ثبت‌نام دورهٔ آشنایی از ابتدا.",
+        "فرم درخواست، وقت مصاحبه، پرداخت و انتخاب درس.",
+    ),
+    DemoAccountGuide(
+        "دانشجوی جامع", "student2", "demo123",
+        "منوی کناری / پنل آموزشی / تب فرایندها",
+        "فرایندهای دورهٔ جامع (ثبت‌نام جامع، شروع ترم).",
+        "فرایندهای مربوط به دانشجوی جامع در لیست فرایندها.",
+    ),
+    DemoAccountGuide(
+        "درمانگر", "therapist1", "demo123",
+        "منوی کناری / پنل درمانگر / تب کارهای من",
+        "شروع درمان، حضور و غیاب، قطع درمان.",
+        "پرونده‌های درمان در صندوق کارهای من.",
+    ),
+    DemoAccountGuide(
+        "سوپروایزر", "supervisor1", "demo123",
+        "منوی کناری / پنل سوپروایزر / تب بررسی‌ها",
+        "سوپرویژن، انتخاب بلوک، بررسی جلسات.",
+        "پرونده‌های سوپرویژن در تب بررسی‌ها.",
+    ),
+    DemoAccountGuide(
+        "کمیته پیشرفت", "progress_committee1", "demo123",
+        "منوی کناری / کمیته پیشرفت / تب بررسی‌ها",
+        "مرخصی آموزشی، بازگشت به آموزش، پیشرفت.",
+        "پرونده‌های منتظر بررسی کمیته.",
+    ),
+    DemoAccountGuide(
+        "کمیته نظارت", "supervision_committee1", "demo123",
+        "منوی کناری / کمیته نظارت / تب بررسی‌ها",
+        "تخلف، کمیسیون تخصصی، بررسی انضباطی.",
+        "پروندهٔ تخلف یا بررسی در صندوق کمیته.",
+    ),
+    DemoAccountGuide(
+        "کمیته آموزش", "education_committee1", "demo123",
+        "منوی کناری / کمیته آموزش / تب بررسی‌ها",
+        "تصمیم نهایی آموزشی پس از کمیته نظارت.",
+        "پروندهٔ حکم یا ادامه/توقف تحصیل.",
+    ),
+    DemoAccountGuide(
+        "کمیته دروس", "course_committee1", "demo123",
+        "منوی کناری / کمیته درس / تب کارهای من",
+        "ارتقا به کمک‌مدرس، لیست دروس، مصاحبهٔ رسته.",
+        "پرونده‌های مربوط به دروس و کمک‌مدرس.",
+    ),
+    DemoAccountGuide(
+        "مدرس/کارمند", "staff1", "demo123",
+        "منوی کناری / پنل مدرس یا پنل پذیرش",
+        "کلاس، حضور و غیاب، تکالیف کمک‌مدرس.",
+        "بسته به فرایند، پنل مدرس یا پذیرش باز می‌شود.",
+    ),
 ]
+
+DEMO_ACCOUNTS: list[tuple[str, str, str]] = [
+    (g.role_fa, g.username, g.password) for g in DEMO_ACCOUNT_GUIDES
+]
+
+OPERATOR_TEST_INTRO = (
+    "شما نیازی به دانستن جزئیات فنی ندارید. فقط مسیری را که راهنما می‌گوید "
+    "در سامانه طی کنید و ببینید آیا همان چیزی که نوشته شده اتفاق می‌افتد یا نه."
+)
+
+OPERATOR_FAILURE_STEPS = [
+    "در جدول مراحل همان ردیف را «خیر» علامت بزنید.",
+    "در ستون «یادداشت» همان ردیف بنویسید چه انتظار داشتید و چه دیدید.",
+    "شناسه GAP همان مرحله را در یادداشت یا جعبهٔ پایین صفحه بنویسید.",
+    "نوع مشکل را مشخص کنید: UI (دکمه/فرم)، logic (رفتار اشتباه)، text (متن گیج‌کننده)، "
+    "missing_step (مرحله نیست)، cross_process (فرایند بعدی ظاهر نشد).",
+    "در صورت امکان عکس از صفحه (Print Screen) بگیرید.",
+    "معمولاً به مرحلهٔ بعد بروید؛ فقط وقتی راهنما گفته «توقف» متوقف شوید.",
+]
+
+TABLE_STEP_COLUMN_GUIDE: list[tuple[str, str]] = [
+    ("ردیف", "شمارهٔ ترتیب مرحله در این فرایند."),
+    ("نام مرحله", "عنوان مرحله در سامانه."),
+    ("نقش", "با کدام نقش (چه کسی) باید این مرحله انجام شود."),
+    ("مسیر منو", "از منوی کناری کجا بروید."),
+    ("اقدام شما", "دقیقاً چه کاری در صفحه انجام دهید."),
+    ("نتیجه مورد انتظار", "اگر همه‌چیز درست باشد چه می‌بینید."),
+    ("شناسه GAP", "اگر مشکل بود این کد را در گزارش بنویسید."),
+    ("بله / خیر", "آیا نتیجه مورد انتظار رخ داد؟"),
+    ("یادداشت", "در صورت «خیر»: انتظار داشتید … / دیدید …"),
+]
+
+TABLE_ACCOUNT_COLUMN_GUIDE: list[tuple[str, str]] = [
+    ("نقش", "نام فارسی نقش — فقط برای فهم شما."),
+    ("نام کاربری", "دقیقاً همین را در صفحهٔ ورود تایپ کنید."),
+    ("رمز", "رمز همان حساب."),
+    ("منوی سایدبار", "بعد از ورود از کدام منو شروع کنید."),
+    ("کی استفاده کنم", "در کدام فرایندها به این حساب نیاز دارید."),
+    ("باید ببینم", "نشانهٔ درست بودن ورود و مسیر."),
+]
+
+
+def state_expected_outcome(state_name_fa: str, is_automatic: bool, role_fa: str) -> str:
+    if is_automatic:
+        return (
+            f"بدون کلیک شما، سامانه مرحلهٔ «{state_name_fa}» را انجام دهد "
+            "و وضعیت/اعلان/پروفایل درست به‌روز شود."
+        )
+    return (
+        f"نقش {role_fa}: فرم را پر و «ثبت» کنید؛ "
+        f"سپس مرحلهٔ «{state_name_fa}» رد شده و مرحلهٔ بعدی نمایان شود."
+    )
+
+
+# ── From-scratch test guide (بدون seed پرونده) ───────────────────────────
+
+SCRATCH_SEED_RUN = [
+    ("python scripts/seed_all_roles.py", "فقط حساب‌های ورود — حتماً یک‌بار"),
+]
+
+SCRATCH_SEED_DO_NOT_RUN = [
+    (
+        "python scripts/seed_semester_prep_demo.py",
+        "ترم و آماده‌سازی از قبل ساخته می‌شود — برای تست «خودم می‌سازم» نزنید.",
+    ),
+    (
+        "python scripts/seed_operator_pending_demo.py",
+        "پروندهٔ آماده در inbox می‌گذارد — برای کشف کمبود UI نزنید.",
+    ),
+]
+
+UI_GAP_CHECKLIST: list[tuple[str, str]] = [
+    ("منوی شروع را پیدا کردم", "بدون راهنمای PDF می‌دانستم از کدام منو بروم."),
+    ("دکمه/لینک شروع فرایند بود", "«شروع»، «درخواست جدید»، «ادامه» یا معادل آن دیده شد."),
+    ("فرم یا پروندهٔ اول باز شد", "صفحهٔ خالی یا خطای گیج‌کننده نبود."),
+    ("بدون seed جلو رفتم", "هیچ پروندهٔ ازپیش‌ساخته لازم نبود (مگر فرایند والد را خودم ساخته باشم)."),
+    ("مرحلهٔ اول قابل ثبت بود", "توانستم اولین اقدام انسانی را انجام دهم."),
+]
+
+UI_START_OVERRIDES: dict[str, dict[str, str]] = {
+    "fall_semester_preparation": {
+        "mode_fa": "شروع دستی از UI",
+        "first_click": "منوی کناری / آماده‌سازی ترم → ادامه یا شروع فرایند پاییز",
+        "success": "صفحهٔ مراحل آماده‌سازی با تقویم/شهریه/… دیده شود.",
+    },
+    "winter_semester_preparation": {
+        "mode_fa": "شروع دستی از UI",
+        "first_click": "منوی کناری / آماده‌سازی ترم → workbench زمستان",
+        "success": "مراحل پروانه و لیست دروس زمستان نمایان شود.",
+    },
+    "introductory_course_registration": {
+        "mode_fa": "شروع توسط متقاضی",
+        "first_click": "ورود regdemo_intro_app → پنل آموزشی / تب فرایندها → شروع ثبت‌نام آشنایی",
+        "success": "فرم درخواست پذیرش یا اولین مرحلهٔ ثبت‌نام باز شود.",
+    },
+    "start_therapy": {
+        "mode_fa": "شروع توسط دانشجو",
+        "first_click": "ورود student1 → پنل آموزشی / فرایندها → درخواست شروع درمان",
+        "success": "فرایند درمان در لیست با مرحلهٔ انتخاب درمانگر.",
+    },
+    "class_attendance": {
+        "mode_fa": "اغلب رویداد/زمان‌بند",
+        "first_click": "پس از شروع درس (lesson_start_per_term)؛ یا منوی اتوماسیون زمان‌محور",
+        "success": "اگر از UI نمی‌توانید شروع کنید → missing_step ثبت کنید.",
+    },
+    "fee_determination": {
+        "mode_fa": "خودکار پس از رویداد",
+        "first_click": "ابتدا غیبت/کنسلی مرتبط را خودتان بسازید؛ سپس پنل دانشجو / فرایندها",
+        "success": "فرایند تعیین تکلیف مالی بدون اقدام دستی ظاهر شود.",
+    },
+    "session_payment": {
+        "mode_fa": "خودکار یا پس از جلسه",
+        "first_click": "پس از ثبت جلسه درمان؛ پنل دانشجو / فرایندها",
+        "success": "پرداخت جلسه در لیست فرایندها.",
+    },
+}
+
+
+@dataclass
+class UiStartGuide:
+    mode_fa: str
+    account: str
+    role_fa: str
+    menu_nav: str
+    first_click: str
+    first_step_name: str
+    build_first: list[str]
+    success_signal: str
+    empty_inbox_means: str
+
+
+def derive_ui_start(spec: ProcessTestSpec) -> UiStartGuide:
+    """How to start this process from UI without demo seeds."""
+    enrich = spec.enrichment or {}
+    override = UI_START_OVERRIDES.get(spec.code, {})
+    first_human = next((s for s in spec.states if not s.is_automatic), None)
+    first_any = spec.states[0] if spec.states else None
+
+    account = (first_human or first_any).demo_username if (first_human or first_any) else spec.demo_username
+    role = (first_human or first_any).role_fa if (first_human or first_any) else ROLE_FA.get(spec.initial_role, "")
+    menu = (first_human.portal_menu_nav if first_human else spec.portal_menu_nav) or "پورتال نقش مربوط"
+    step_name = (first_human.name_fa if first_human else (first_any.name_fa if first_any else "—"))
+
+    build_first: list[str] = []
+    for p in spec.preconditions:
+        build_first.append(p)
+    for link in spec.inbound_links:
+        if link.link_type in ("spawn", "subprocess", "redirect", "prerequisite", "registry"):
+            build_first.append(
+                f"ابتدا «{link.source_name_fa}» را خودتان تا رویداد «{link.from_state}» بسازید"
+            )
+    build_first = build_first[:5]
+
+    if spec.code in SCHEDULER_HEAVY_PROCESSES:
+        mode = override.get("mode_fa") or "رویداد یا زمان‌بند — نه inbox آماده"
+        first_click = override.get(
+            "first_click",
+            "فرایند والد را بسازید؛ یا منوی کناری / اتوماسیون زمان‌محور. "
+            "اگر هیچ مسیر UI نیست → GAP نوع missing_step.",
+        )
+        empty = "طبیعی است تا رویداد قبلی رخ ندهد؛ اگر رخ داد و نیامد → cross_process"
+    elif build_first and not override:
+        mode = "پس از ساخت فرایند والد"
+        first_click = (
+            f"بعد از تکمیل پیش‌نیازها، با {account} ({role}) از {menu} "
+            f"دنبال پروندهٔ «{spec.name_fa}» بگردید یا دکمهٔ شروع را بزنید."
+        )
+        empty = "اگر والد را ساختید ولی اینجا نیست → cross_process یا missing_step"
+    else:
+        mode = override.get("mode_fa") or "شروع دستی از UI"
+        if enrich.get("steps"):
+            first_click = override.get("first_click") or enrich["steps"][0]
+        elif first_human:
+            first_click = override.get("first_click") or (
+                f"با {account} وارد شوید → {menu} → پرونده/دکمهٔ شروع «{step_name}»"
+            )
+        else:
+            first_click = override.get("first_click") or (
+                f"با {account} ({role}) از {menu} فرایند را پیدا یا شروع کنید."
+            )
+        empty = "اگر منو/دکمهٔ شروع نیست → missing_step یا UI"
+
+    success = override.get("success") or enrich.get("expect") or (
+        f"پروندهٔ «{spec.name_fa}» در {menu} با مرحلهٔ «{step_name}» قابل اقدام باشد."
+    )
+
+    return UiStartGuide(
+        mode_fa=mode,
+        account=account,
+        role_fa=role,
+        menu_nav=menu,
+        first_click=first_click,
+        first_step_name=step_name,
+        build_first=build_first,
+        success_signal=success,
+        empty_inbox_means=empty,
+    )

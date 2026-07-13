@@ -154,20 +154,27 @@ class PdfSectionBuilder:
         headers: list[str],
         rows: list[list[str]],
         col_widths: list[float] | None = None,
+        fa_cols: list[bool] | None = None,
+        line_height: float = 5.0,
+        font_size: float | None = None,
     ) -> None:
         self.ensure_space(12 + len(rows) * 6)
         p = self.pdf
+        if font_size:
+            p.set_font("Vazir", "", font_size)
         hs = heading_style()
         n_cols = len(headers)
         if col_widths is None:
             col_widths = [p.epw / n_cols] * n_cols
+        if fa_cols is None:
+            fa_cols = [True] * n_cols
         with p.table(
             col_widths=col_widths,
             width=p.epw,
             first_row_as_headings=False,
             text_align=Align.R,
             v_align=VAlign.M,
-            line_height=5.0,
+            line_height=line_height,
             borders_layout=TableBordersLayout.ALL,
             cell_fill_color=COLOR_STRIPE,
             cell_fill_mode=TableCellFillMode.ROWS,
@@ -179,9 +186,13 @@ class PdfSectionBuilder:
             for row in rows:
                 r = table.row()
                 for j, cell in enumerate(row):
-                    align = Align.C if j > 0 and len(cell) < 12 else Align.R
-                    r.cell(fa(cell) if cell else "", align=align)
+                    use_fa = fa_cols[j] if j < len(fa_cols) else True
+                    text = fa(cell) if use_fa and cell else (cell or "")
+                    align = Align.C if j > 0 and len(cell) < 14 and not use_fa else Align.R
+                    r.cell(text, align=align)
         p.ln(2)
+        if font_size:
+            p.set_font("Vazir", "", BODY)
 
     def check_table(self, questions: list[str]) -> None:
         self.ensure_space(12 + len(questions) * 6)

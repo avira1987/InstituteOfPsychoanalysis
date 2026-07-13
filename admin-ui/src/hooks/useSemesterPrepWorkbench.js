@@ -34,9 +34,12 @@ export function useSemesterPrepWorkbench(processCode) {
   }, [processCode, status])
 
   const entry = status?.processes?.[resolvedCode] || {}
-  const instanceId = entry.instance_id
-  const currentState = entry.current_state
-  const isActive = Boolean(entry.active && instanceId && currentState)
+  const instanceId = entry.instance_id || entry.completed_instance_id
+  const currentState = entry.current_state || entry.completed_current_state
+  const isActive = Boolean(entry.active && entry.instance_id && entry.current_state)
+  const isCompletedEditable = Boolean(
+    !entry.active && entry.completed_instance_id && entry.completed_current_state,
+  )
 
   const loadInstance = useCallback(async (id) => {
     if (!id) {
@@ -64,8 +67,10 @@ export function useSemesterPrepWorkbench(processCode) {
             processCode ||
             SEMESTER_PREP_CODES[0]
       const instEntry = res.data?.processes?.[code] || {}
-      if (instEntry.active && instEntry.instance_id) {
-        await loadInstance(instEntry.instance_id)
+      const loadableId =
+        (instEntry.active && instEntry.instance_id) || instEntry.completed_instance_id
+      if (loadableId) {
+        await loadInstance(loadableId)
       } else {
         setInstanceDetail(null)
         setTransitions([])
@@ -137,6 +142,7 @@ export function useSemesterPrepWorkbench(processCode) {
     instanceId,
     currentState,
     isActive,
+    isCompletedEditable,
     instanceDetail,
     transitions,
     actionTransitions,

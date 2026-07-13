@@ -30,6 +30,7 @@ from fpdf.enums import Align
 from scripts.lib.pdf_fa_utils import (
     BODY,
     MARGIN,
+    SMALL,
     TITLE,
     GuidePDF,
     PdfSectionBuilder,
@@ -37,15 +38,22 @@ from scripts.lib.pdf_fa_utils import (
     register_fonts,
 )
 from scripts.lib.process_test_guide_data import (
+    DEMO_ACCOUNT_GUIDES,
     DEMO_ACCOUNTS,
     LIFECYCLE_ORDER,
     LINK_TYPE_FA,
+    OPERATOR_FAILURE_STEPS,
+    OPERATOR_TEST_INTRO,
     ROLE_FA,
+    TABLE_ACCOUNT_COLUMN_GUIDE,
+    TABLE_STEP_COLUMN_GUIDE,
     CrossProcessLink,
     ProcessTestSpec,
+    StateTestSpec,
     build_process_specs,
     collect_cross_process_links,
     processes_missing_operator_tasks,
+    state_expected_outcome,
 )
 
 OUT_PDF = ROOT / "docs" / "راهنمای_جامع_تست_همه_فرایندها.pdf"
@@ -110,6 +118,71 @@ class ComprehensiveGuideBuilder:
             "فقط جدول‌ها را پر کنید و GAP ثبت کنید."
         )
 
+    # ── Section 0b: Operator training ─────────────────────────────────
+
+    def part_operator_training(self) -> None:
+        self.pdf.add_page()
+        self.sb.section_bar("آموزش اپراتور تست — قبل از شروع")
+        self.sb.body(OPERATOR_TEST_INTRO)
+        self.sb.body("هدف کلی این تست چیست؟", bold=True)
+        self.sb.body(
+            "مطمئن شویم هر فرایند آموزشی/درمانی از ابتدا تا انتها در سامانه "
+            "قابل انجام است، متن‌ها قابل فهم است، دکمه‌ها درست کار می‌کنند، "
+            "و وقتی یک فرایند تمام می‌شود فرایند بعدی در جای درست ظاهر می‌شود."
+        )
+        self.sb.body("شما دقیقاً چه کاری می‌کنید؟", bold=True)
+        self.sb.numbered_list([
+            "با حساب گفته‌شده وارد سامانه می‌شوید.",
+            "مسیر منو را طبق راهنما باز می‌کنید.",
+            "هر مرحله را انجام می‌دهید و در جدول «بله» یا «خیر» می‌زنید.",
+            "اگر «خیر» بود، در جعبهٔ GAP توضیح می‌دهید چه انتظار داشتید و چه دیدید.",
+        ])
+        self.sb.body("نتیجهٔ درست یعنی چه؟", bold=True)
+        self.sb.bullet_list([
+            "صفحهٔ خالی یا خطای قرمز نمی‌بینید.",
+            "دکمهٔ «ثبت» یا «ادامه» کار می‌کند و وضعیت عوض می‌شود.",
+            "متن وضعیت با راهنما هم‌خوان است (مثلاً «منتظر تأیید درمانگر»).",
+            "پس از پایان، فرایند بعدی در پنل نقش مربوط دیده می‌شود.",
+        ])
+        self.sb.section_bar("اگر نتیجهٔ مورد نظر را نگرفتید")
+        self.sb.numbered_list(OPERATOR_FAILURE_STEPS)
+        self.sb.ok_box(
+            "مثال ثبت GAP: «انتظار داشتم بعد از ثبت، وضعیت به منتظر پذیرش برود؛ "
+            "در عوض همان صفحه ماند و پیامی نیامد.» — GAP-01-document_review — UI — high"
+        )
+        self._part_table_reading_guide()
+
+    def _part_table_reading_guide(self) -> None:
+        self.pdf.add_page()
+        self.sb.section_bar("راهنمای خواندن جدول‌ها")
+        self.sb.body(
+            "در این سند سه نوع جدول اصلی دارید. قبل از شروع تست، "
+            "یک‌بار این راهنما را بخوانید."
+        )
+        self.sb.body("۱) جدول حساب‌های آزمایشی", bold=True)
+        self.sb.simple_table(
+            headers=["ستون", "معنی برای شما"],
+            rows=list(TABLE_ACCOUNT_COLUMN_GUIDE),
+            col_widths=[35, 135],
+        )
+        self.sb.body("۲) جدول مراحل هر فرایند (مهم‌ترین جدول تست)", bold=True)
+        self.sb.simple_table(
+            headers=["ستون", "معنی برای شما"],
+            rows=list(TABLE_STEP_COLUMN_GUIDE),
+            col_widths=[35, 135],
+        )
+        self.sb.body("۳) جدول مپ بین‌فرایندی", bold=True)
+        self.sb.bullet_list([
+            "بعد از پایان یک فرایند، بررسی کنید فرایند مقصد در منوی گفته‌شده ظاهر شده باشد.",
+            "ستون «انتظار»: پروندهٔ جدید باید در همان منو دیده شود.",
+            "اگر ندیدید: در یادداشت بنویسید و GAP با نوع cross_process ثبت کنید.",
+        ])
+        self.sb.tip_box(
+            "روش پیشنهادی: هر ردیف جدول مراحل را یک‌به‌یک انجام دهید؛ "
+            "بلافاصله «بله» یا «خیر» بزنید؛ بعد به ردیف بعد بروید. "
+            "یادداشت را همان لحظه بنویسید تا فراموش نکنید."
+        )
+
     # ── Section 1: Methodology ───────────────────────────────────────
 
     def part_methodology(self) -> None:
@@ -119,9 +192,9 @@ class ComprehensiveGuideBuilder:
             "برای هر فرایند این پنج گام را تکرار کنید:"
         )
         self.sb.numbered_list([
-            "با نقش درست (جدول حساب‌ها) وارد شوید: /login?staff=1",
-            "به پورتال و تب مشخص‌شده در راهنمای همان فرایند بروید.",
-            "پرونده را در «کارهای منتظر» یا «بررسی‌ها» باز کنید.",
+            "از صفحهٔ ورود با حساب نقش درست (جدول حساب‌ها) وارد شوید.",
+            "از منوی کناری، پنل نقش خود را باز کنید و به تب گفته‌شده در راهنمای همان فرایند بروید.",
+            "پرونده را در «کارهای من»، «فرایندها» یا «بررسی‌ها» (بسته به نقش) باز کنید.",
             "فرم را پر کنید → «ثبت» → در صورت وجود «ادامه» یا «تأیید».",
             "وضعیت جدید را در همان پرونده یا پورتال نقش بعدی بررسی کنید.",
         ])
@@ -143,12 +216,61 @@ class ComprehensiveGuideBuilder:
     def part_accounts(self) -> None:
         self.pdf.add_page()
         self.sb.section_bar("جدول حساب‌های آزمایشی")
-        rows = [[user, pw] for _, user, pw in DEMO_ACCOUNTS]
-        self.sb.simple_table(
-            headers=["نقش", "نام کاربری", "رمز"],
-            rows=[[fa(role), user, pw] for role, user, pw in DEMO_ACCOUNTS],
-            col_widths=[70, 58, 28],
+        self.sb.body(
+            "برای هر مرحلهٔ راهنما، با «نام کاربری» و «رمز» همان نقش وارد شوید. "
+            "ستون‌های لاتین را دقیقاً همان‌طور که نوشته شده تایپ کنید. "
+            "پس از ورود، مسیر «منوی سایدبار» را باز کنید و ببینید آیا «باید ببینم» "
+            "با صفحهٔ واقعی یکی است — اگر نه، در ستون یادداشت بنویسید."
         )
+        account_rows = [
+            [
+                g.role_fa,
+                g.username,
+                g.password,
+                g.sidebar_menu[:32],
+                g.when_to_use[:38],
+                g.what_to_expect[:38],
+                "[ ]",
+                "[ ]",
+                "",
+            ]
+            for g in DEMO_ACCOUNT_GUIDES
+        ]
+        chunk_size = 5
+        for start in range(0, len(account_rows), chunk_size):
+            if start > 0:
+                self.pdf.add_page()
+                self.sb.section_bar("جدول حساب‌های آزمایشی (ادامه)")
+            self.sb.simple_table(
+                headers=[
+                    "نقش",
+                    "کاربری",
+                    "رمز",
+                    "منوی سایدبار",
+                    "کی استفاده کنم",
+                    "باید ببینم",
+                    "بله",
+                    "خیر",
+                    "یادداشت",
+                ],
+                rows=account_rows[start : start + chunk_size],
+                col_widths=[16, 20, 10, 28, 34, 34, 7, 7, 22],
+                fa_cols=[True, False, False, True, True, True, False, False, True],
+                line_height=5.2,
+                font_size=SMALL,
+            )
+        self.sb.section_bar("توضیح تکمیلی هر حساب (اگر جدول بالا کافی نبود)")
+        for i, g in enumerate(DEMO_ACCOUNT_GUIDES, 1):
+            self.sb.ensure_space(36)
+            self.sb.body(f"{i}. {g.role_fa} — ورود با {g.username} / {g.password}", bold=True)
+            self.sb.body(f"مسیر: {g.sidebar_menu}")
+            self.sb.body(f"هدف تست با این حساب: {g.when_to_use}")
+            self.sb.body(f"نشانهٔ موفقیت: {g.what_to_expect}")
+            self.sb.body(
+                "چک ورود: [ ] منوی گفته‌شده را می‌بینم  "
+                "[ ] پرونده/فرم نمونه وجود دارد  "
+                "[ ] مشکل: _________________________"
+            )
 
     def part_limits(self) -> None:
         self.sb.section_bar("محدودیت‌های شفاف (باگ نیستند)")
@@ -156,17 +278,37 @@ class ComprehensiveGuideBuilder:
             "پرداخت واقعی نیست — فقط مسیر UI را طی کنید.",
             "LMS بیرونی شبیه‌سازی شده است.",
             "کارنامه و گواهی ممکن است متن روی صفحه باشد نه PDF چاپی.",
-            "فرایندهای زمان‌بند: از /panel/automation-scheduler یا seed دمو.",
+            "فرایندهای زمان‌بند: از منوی کناری / اتوماسیون زمان‌محور یا seed دمو.",
             "فرایندهای غیرقابل ریست: fee_determination، session_payment، آماده‌سازی ترم.",
         ])
 
     def part_gap_howto(self) -> None:
         self.pdf.add_page()
-        self.sb.section_bar("روش ثبت کمبود (GAP) برای Cursor")
+        self.sb.section_bar("روش ثبت کمبود (GAP) — زبان ساده")
         self.sb.body(
-            "هر کمبود یک شناسه دارد: GAP-{شماره فرایند}-{کد مرحله} "
-            "مثال: GAP-06-therapist_recording"
+            "هر کمبود یک شناسه دارد که در جدول مراحل همان فرایند نوشته شده: "
+            "GAP-{شماره فرایند}-{کد مرحله} — مثال: GAP-06-therapist_recording"
         )
+        self.sb.body("چه زمانی GAP بنویسم؟", bold=True)
+        self.sb.bullet_list([
+            "دکمه‌ای که راهنما گفته نیست یا کار نمی‌کند.",
+            "متن گیج‌کننده یا اشتباه روی صفحه.",
+            "وضعیت عوض نمی‌شود بعد از ثبت.",
+            "فرایند بعدی در پنل نقش بعدی ظاهر نمی‌شود.",
+            "صفحهٔ خطا یا صفحهٔ سفید.",
+        ])
+        self.sb.simple_table(
+            headers=["فیلد", "چه بنویسم (مثال ساده)"],
+            rows=[
+                ["شناسه GAP", "GAP-06-therapist_recording"],
+                ["انتظار داشتم", "بعد از ثبت، وضعیت به «فعال» برود"],
+                ["در عوض دیدم", "همان صفحه ماند؛ پیامی نیامد"],
+                ["نوع", "UI / logic / text / missing_step / cross_process"],
+                ["اولویت", "high = نمی‌توان ادامه داد؛ medium = سخت؛ low = ظاهری"],
+            ],
+            col_widths=[40, 130],
+        )
+        self.sb.section_bar("جدول فنی (برای مدیر پروژه)")
         self.sb.simple_table(
             headers=["ستون", "توضیح"],
             rows=[
@@ -208,10 +350,26 @@ class ComprehensiveGuideBuilder:
         self.sb.section_bar("بخش ۲ — مپ بین‌فرایندی")
         self.sb.body(
             f"تعداد {len(self.links)} ارتباط بین فرایندها. "
-            "پس از هر رویداد، پرونده فرایند مقصد را در inbox نقش مربوط بررسی کنید."
+            "پس از هر رویداد، پرونده فرایند مقصد را در inbox نقش مربوط بررسی کنید. "
+            "برای هر ردیف: ابتدا فرایند مبدأ را تمام کنید، سپس با حساب گفته‌شده "
+            "به منوی مقصد بروید و ببینید پروندهٔ جدید هست یا نه."
+        )
+        self.sb.simple_table(
+            headers=["ستون", "چه کار کنید"],
+            rows=[
+                ["فرایند مبدأ", "فرایندی که الان تست کردید و تمام/نزدیک پایان است."],
+                ["مرحله/رویداد", "در کدام نقطه باید فرایند بعدی ساخته شود."],
+                ["فرایند مقصد", "فرایندی که باید خودکار ظاهر شود."],
+                ["حساب بررسی", "با این نام کاربری وارد شوید."],
+                ["کجا بررسی", "از این منو پرونده را پیدا کنید."],
+                ["انتظار", "پروندهٔ مقصد باید در لیست باشد."],
+                ["بله/خیر", "آیا دیدید؟ اگر خیر → cross_process GAP."],
+                ["یادداشت", "چه انتظار داشتید / چه دیدید."],
+            ],
+            col_widths=[32, 143],
         )
 
-        chunk_size = 18
+        chunk_size = 10
         for start in range(0, len(self.links), chunk_size):
             if start > 0:
                 self.pdf.add_page()
@@ -220,22 +378,32 @@ class ComprehensiveGuideBuilder:
             rows = []
             for link in chunk:
                 rows.append([
-                    link.source_name_fa[:28],
-                    link.from_state[:18],
-                    link.target_name_fa[:28],
-                    ROLE_FA.get(link.verifier_role, link.verifier_role)[:16],
+                    link.source_name_fa[:20],
+                    link.from_state[:14],
+                    link.target_name_fa[:20],
+                    link.verifier_role[:14],
+                    link.verify_portal[:24],
+                    "پرونده مقصد دیده شود",
+                    "[ ]",
+                    "[ ]",
                     "",
                 ])
             self.sb.simple_table(
                 headers=[
-                    "فرایند مبدأ",
-                    "مرحله/رویداد",
-                    "فرایند مقصد",
-                    "نقش بررسی",
-                    "نتیجه [ ]",
+                    "مبدأ",
+                    "رویداد",
+                    "مقصد",
+                    "حساب",
+                    "منو",
+                    "انتظار",
+                    "بله",
+                    "خیر",
+                    "یادداشت",
                 ],
                 rows=rows,
-                col_widths=[38, 32, 38, 28, 18],
+                col_widths=[18, 16, 18, 16, 26, 22, 7, 7, 20],
+                line_height=5.0,
+                font_size=SMALL,
             )
 
         self.pdf.add_page()
@@ -248,9 +416,16 @@ class ComprehensiveGuideBuilder:
                 bold=True,
             )
             self.sb.body(f"رویداد: {link.trigger} | مرحله: {link.from_state}")
-            self.sb.body(f"بررسی با: {link.verifier_role} در {link.verify_portal}")
+            self.sb.body(f"۱) با حساب {link.verifier_role} وارد شوید.")
+            self.sb.body(f"۲) از {link.verify_portal} پروندهٔ «{link.target_name_fa}» را بجوید.")
             self.sb.body(link.test_scenario)
-            self.sb.body("نتیجه تست: [ ] موفق  [ ] ناموفق  |  GAP-ID: _______________")
+            self.sb.body("۳) انتظار: پروندهٔ فرایند مقصد در لیست دیده شود.", bold=True)
+            self.sb.body(
+                "۴) اگر ندیدید: در یادداشت بنویسید «انتظار داشتم پروندهٔ … ظاهر شود؛ "
+                "در عوض لیست خالی بود» و GAP با نوع cross_process ثبت کنید."
+            )
+            self.sb.body("نتیجه: [ ] موفق  [ ] ناموفق  |  GAP-ID: _______________")
+            self.sb.body("یادداشت: _________________________________________________")
             self.sb.body("")
 
     # ── Section 3: All processes ──────────────────────────────────────
@@ -280,6 +455,25 @@ class ComprehensiveGuideBuilder:
         if spec.scheduler_note:
             self.sb.tip_box(spec.scheduler_note)
 
+        enrich = spec.enrichment or {}
+        self.sb.body("هدف این تست", bold=True)
+        goal = enrich.get("expect") or (
+            f"فرایند «{spec.name_fa}» از اولین مرحله تا پایان بدون گیر، "
+            "خطای گیج‌کننده یا صفحهٔ خالی طی شود."
+        )
+        self.sb.body(goal)
+
+        self.sb.body("نتیجهٔ درست (موفقیت تست)", bold=True)
+        success_items = [
+            "همهٔ مراحل انسانی در جدول پایین «بله» خورده باشند.",
+            "وضعیت نهایی با توضیح راهنما هم‌خوان باشد.",
+        ]
+        if spec.outbound_links:
+            success_items.append(
+                "اگر فرایند بعدی باید ایجاد شود، در پنل نقش مربوط دیده شود."
+            )
+        self.sb.bullet_list(success_items)
+
         self.sb.body("این فرایند چیست؟", bold=True)
         desc = spec.description[:600] + ("..." if len(spec.description) > 600 else "")
         self.sb.body(desc or "—")
@@ -296,7 +490,6 @@ class ComprehensiveGuideBuilder:
                     f"• از {link.source_name_fa} ({LINK_TYPE_FA.get(link.link_type, '')})"
                 )
 
-        enrich = spec.enrichment or {}
         self.sb.body("چه کسی شروع می‌کند؟", bold=True)
         who = enrich.get("who") or (
             f"{ROLE_FA.get(spec.initial_role, spec.initial_role)} "
@@ -305,7 +498,7 @@ class ComprehensiveGuideBuilder:
         self.sb.body(who)
 
         self.sb.body("کجا بروم؟", bold=True)
-        where = enrich.get("where") or spec.portal_path or "پورتال نقش مربوط"
+        where = enrich.get("where") or spec.portal_menu_nav or "پورتال نقش مربوط"
         self.sb.body(where)
 
         if enrich.get("steps"):
@@ -317,47 +510,138 @@ class ComprehensiveGuideBuilder:
         for tip in enrich.get("tips") or []:
             self.sb.tip_box(tip)
 
-        self.sb.body("جدول مراحل — نتیجه را علامت بزنید:", bold=True)
-        state_rows = []
-        for st in spec.states:
-            kind = "خودکار" if st.is_automatic else "انسانی"
-            task_short = st.operator_task_fa[:55] + ("…" if len(st.operator_task_fa) > 55 else "")
-            state_rows.append([
-                str(st.index),
-                st.name_fa[:22],
-                st.role_fa[:14],
-                kind,
-                task_short,
-                "[ ]",
-                "[ ]",
-            ])
-        chunk_size = 14
-        for i in range(0, len(state_rows), chunk_size):
-            if i > 0:
-                self.pdf.add_page()
-                self.sb.section_bar(f"فرایند #{spec.number}: {spec.name_fa} (ادامه مراحل)")
-            self.sb.simple_table(
-                headers=["#", "مرحله", "نقش", "نوع", "چه کار کنم", "بله", "خیر"],
-                rows=state_rows[i : i + chunk_size],
-                col_widths=[8, 30, 22, 14, 58, 10, 10],
-            )
+        self._render_state_tables(spec)
 
         if spec.outbound_links:
             self.sb.body("اگر فرایند فرزند ایجاد شد — کجا بررسی کنم:", bold=True)
             for link in spec.outbound_links[:4]:
                 self.sb.body(
                     f"• {link.target_name_fa}: {link.verify_portal} "
-                    f"({link.verifier_role})"
+                    f"(حساب: {link.verifier_role})"
                 )
 
-        self.sb.blank_lines("ثبت GAP (شناسه / نوع / اولویت / توضیح):", 2)
+        self.sb.section_bar("اگر مرحله‌ای «خیر» شد")
+        self.sb.numbered_list(OPERATOR_FAILURE_STEPS[:4])
+        self.sb.blank_lines("ثبت GAP (شناسه / نوع / اولویت / انتظار داشتم / در عوض دیدم):", 3)
+
+    def _build_state_row(self, st: StateTestSpec) -> list[str]:
+        expected = state_expected_outcome(st.name_fa, st.is_automatic, st.role_fa)
+        task = st.operator_task_fa
+        if len(task) > 72:
+            task = task[:72] + "…"
+        menu = st.portal_menu_nav or "—"
+        if len(menu) > 30:
+            menu = menu[:30] + "…"
+        if len(expected) > 36:
+            expected = expected[:36] + "…"
+        gap_short = st.gap_id
+        if len(gap_short) > 18:
+            gap_short = "…" + gap_short[-17:]
+        return [
+            str(st.index),
+            st.name_fa[:16],
+            st.role_fa[:10],
+            menu,
+            task,
+            expected,
+            gap_short,
+            "[ ]",
+            "[ ]",
+            "",
+        ]
+
+    def _render_state_tables(self, spec: ProcessTestSpec) -> None:
+        self.sb.section_bar("جدول مراحل تست — راهنمای پر کردن")
+        self.sb.body(
+            "هر ردیف = یک مرحله. ابتدا «اقدام شما» را انجام دهید، "
+            "سپس ببینید «نتیجه مورد انتظار» رخ داده یا نه. "
+            "اگر نشد: «خیر» بزنید و در «یادداشت» بنویسید + شناسه GAP همان ردیف."
+        )
+        self.sb.simple_table(
+            headers=["ستون", "معنی"],
+            rows=list(TABLE_STEP_COLUMN_GUIDE),
+            col_widths=[32, 143],
+            font_size=SMALL,
+        )
+        state_rows = [self._build_state_row(st) for st in spec.states]
+        chunk_size = 6
+        for i in range(0, len(state_rows), chunk_size):
+            if i > 0:
+                self.pdf.add_page()
+                self.sb.section_bar(f"فرایند #{spec.number}: {spec.name_fa} — جدول مراحل (ادامه)")
+            self.sb.simple_table(
+                headers=[
+                    "ردیف",
+                    "مرحله",
+                    "نقش",
+                    "مسیر منو",
+                    "اقدام شما",
+                    "انتظار",
+                    "GAP",
+                    "بله",
+                    "خیر",
+                    "یادداشت",
+                ],
+                rows=state_rows[i : i + chunk_size],
+                col_widths=[7, 15, 12, 24, 38, 28, 17, 6, 6, 18],
+                fa_cols=[False, True, True, True, True, True, False, False, False, True],
+                line_height=5.4,
+                font_size=SMALL,
+            )
+        self._render_human_step_details(spec)
+
+    def _render_human_step_details(self, spec: ProcessTestSpec) -> None:
+        human_states = [st for st in spec.states if not st.is_automatic]
+        if not human_states:
+            return
+        self.pdf.add_page()
+        self.sb.section_bar(f"شرح آموزشی مراحل انسانی — فرایند #{spec.number}")
+        self.sb.body(
+            "این بخش همان جدول بالا را با توضیح کامل‌تر می‌نویسد. "
+            "اگر در جدول جا کم بود، اینجا بخوانید و همان‌جا نتیجه را علامت بزنید."
+        )
+        for st in human_states:
+            self.sb.ensure_space(44)
+            expected = state_expected_outcome(st.name_fa, st.is_automatic, st.role_fa)
+            self.sb.body(f"مرحله {st.index}: {st.name_fa}", bold=True)
+            self.sb.body(f"هدف این مرحله: {expected}")
+            self.sb.body(f"ورود: حساب {st.demo_username} ({st.role_fa})")
+            self.sb.body(f"مسیر: {st.portal_menu_nav}")
+            self.sb.body("اقدام گام‌به‌گام:", bold=True)
+            self.sb.body(st.operator_task_fa)
+            self.sb.body(f"شناسه GAP (در صورت مشکل): {st.gap_id}")
+            self.sb.body(
+                "چک‌لیست: [ ] وارد شدم  [ ] مسیر درست بود  [ ] فرم/دکمه بود  "
+                "[ ] ثبت شد  [ ] نتیجه درست بود"
+            )
+            self.sb.body("نتیجه: [ ] بله  [ ] خیر  |  یادداشت: ________________________________")
+            self.sb.body("")
 
     # ── Section 4: Summary matrix ─────────────────────────────────────
 
     def part_summary_matrix(self) -> None:
         self.pdf.add_page()
         self.sb.section_bar("بخش ۴ — ماتریس خلاصه همه فرایندها")
-        chunk_size = 35
+        self.sb.body(
+            "پس از تست هر فرایند، این جدول را پر کنید. "
+            "ستون «هدف تست» یادآور است که چه چیزی را بررسی می‌کنید. "
+            "ستون «یادداشت» برای جمع‌بندی کوتاه یا تعداد GAP."
+        )
+        self.sb.simple_table(
+            headers=["ستون", "معنی"],
+            rows=[
+                ["شماره / نام", "کدام فرایند را تست کردید."],
+                ["هدف تست", "چه انتظاری دارید — خلاصهٔ یک خط."],
+                ["مسیر منو", "از کجا شروع می‌شود."],
+                ["مراحل انسانی", "تقریباً چند مرحله دستی دارید."],
+                ["تست شد", "آیا کل فرایند را یک‌بار طی کردید؟"],
+                ["تعداد GAP", "چند مشکل پیدا کردید."],
+                ["یادداشت", "جمع‌بندی یا اولویت مشکلات."],
+            ],
+            col_widths=[30, 145],
+            font_size=SMALL,
+        )
+        chunk_size = 20
         for start in range(0, len(self.specs), chunk_size):
             if start > 0:
                 self.pdf.add_page()
@@ -365,28 +649,36 @@ class ComprehensiveGuideBuilder:
             chunk = self.specs[start : start + chunk_size]
             rows = []
             for spec in chunk:
-                portal_short = (spec.portal_path or "—")[:30]
+                enrich = spec.enrichment or {}
+                goal = enrich.get("expect") or f"تکمیل «{spec.name_fa[:20]}»"
+                if len(goal) > 28:
+                    goal = goal[:28] + "…"
+                portal_short = (spec.portal_menu_nav or "—")[:22]
                 rows.append([
                     str(spec.number),
-                    spec.name_fa[:24],
-                    spec.code[:22],
+                    spec.name_fa[:18],
+                    goal,
                     portal_short,
                     str(spec.human_state_count),
                     "[ ]",
+                    "",
                     "",
                 ])
             self.sb.simple_table(
                 headers=[
                     "شماره",
                     "نام",
-                    "کد",
-                    "پورتال",
-                    "مراحل انسانی",
+                    "هدف تست",
+                    "مسیر منو",
+                    "مراحل",
                     "تست شد",
-                    "تعداد GAP",
+                    "GAP",
+                    "یادداشت",
                 ],
                 rows=rows,
-                col_widths=[12, 38, 32, 38, 18, 14, 14],
+                col_widths=[10, 22, 30, 26, 12, 12, 10, 28],
+                line_height=5.0,
+                font_size=SMALL,
             )
 
     # ── Section 5: GAP appendix ───────────────────────────────────────
@@ -494,6 +786,7 @@ def main() -> int:
 
     builder = ComprehensiveGuideBuilder(specs, links)
     builder.cover()
+    builder.part_operator_training()
     builder.part_methodology()
     builder.part_accounts()
     builder.part_limits()

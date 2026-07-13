@@ -1603,6 +1603,7 @@ class StateMachineEngine:
         بایگانی نمونهٔ فعلی و ساخت نمونهٔ جدید از مرحلهٔ اول (شروع دوباره).
         """
         from app.meta.process_restart_policy import (
+            build_restart_initial_context,
             can_actor_restart_process,
             student_restart_reason_required,
         )
@@ -1679,12 +1680,18 @@ class StateMachineEngine:
             },
         )
 
+        new_initial_context = build_restart_initial_context(
+            old_context=ctx,
+            old_instance_id=str(instance.id),
+            process_config=process_config,
+        )
+
         new_instance = await self.start_process(
             process_code=instance.process_code,
             student_id=instance.student_id,
             actor_id=actor_id,
             actor_role=actor_role,
-            initial_context={"__restarted_from_instance_id": str(instance.id)},
+            initial_context=new_initial_context,
         )
 
         await self.audit_logger.log(

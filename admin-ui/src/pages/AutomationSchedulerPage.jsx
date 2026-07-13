@@ -228,8 +228,6 @@ export default function AutomationSchedulerPage() {
 
   return (
     <div>
-      {toast ? <PopupToast toast={toast} /> : null}
-
       <div className="page-header">
         <div>
           <h1 className="page-title">اتوماسیون زمان‌محور</h1>

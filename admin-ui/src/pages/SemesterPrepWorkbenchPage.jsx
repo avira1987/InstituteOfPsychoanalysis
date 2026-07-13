@@ -60,6 +60,7 @@ export default function SemesterPrepWorkbenchPage() {
     instanceId,
     currentState,
     isActive,
+    isCompletedEditable,
     instanceDetail,
     actionTransitions,
     loading,
@@ -193,6 +194,50 @@ export default function SemesterPrepWorkbenchPage() {
 
       {loading ? (
         <p className="muted">در حال بارگذاری…</p>
+      ) : isCompletedEditable ? (
+        <>
+          <div
+            style={{
+              border: '1px solid #bae6fd',
+              background: '#f0f9ff',
+              borderRadius: '10px',
+              padding: '1rem 1.15rem',
+              marginBottom: '1rem',
+              lineHeight: 1.7,
+            }}
+          >
+            <p style={{ margin: 0, fontWeight: 600 }}>این فرایند برای ترم فعلی منتشر شده است.</p>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: '#475569' }}>
+              فرم‌های مراحل به‌صورت فقط‌خواندنی نمایش داده می‌شوند. برای اصلاح، از بخش «بازگشت به
+              مرحلهٔ قبلی» در انتهای صفحه استفاده کنید تا فرایند دوباره برای ویرایش باز شود.
+            </p>
+          </div>
+
+          <OperatorStepFormsSection
+            instanceId={instanceId}
+            processCode={resolvedCode}
+            currentState={currentState}
+            contextData={instanceDetail?.context_data}
+            isCompleted={instanceDetail?.is_completed}
+            isCancelled={instanceDetail?.is_cancelled}
+            role={user?.role}
+            stateAssignedRole={entry?.assigned_role}
+            showToast={showToast}
+            onUpdated={() => loadInstance(instanceId)}
+            actionTransitions={actionTransitions}
+            decisionNotes={decisionNotes}
+            onDecisionNotesChange={setDecisionNotes}
+            onActionTrigger={handleTrigger}
+            actionBusy={busy}
+          />
+
+          <ProcessRollbackSection
+            user={user}
+            instanceDetail={instanceDetail}
+            onRollback={handleRollback}
+            busy={rollbackBusy}
+          />
+        </>
       ) : !isActive ? (
         <div
           style={{

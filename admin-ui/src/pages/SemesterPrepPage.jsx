@@ -65,6 +65,11 @@ export default function SemesterPrepPage() {
           {['fall_semester_preparation', 'winter_semester_preparation'].map((code) => {
             const entry = processes[code] || {}
             const active = entry.active
+            const completed = !active && !!entry.completed_instance_id
+            const canStartNewTerm = entry.can_start_new_term !== false
+            const termEndLabel = entry.term_end_date
+              ? formatShamsiTehran(entry.term_end_date, { dateOnly: true })
+              : null
             return (
               <div
                 key={code}
@@ -72,7 +77,7 @@ export default function SemesterPrepPage() {
                   border: '1px solid #e2e8f0',
                   borderRadius: '10px',
                   padding: '1rem 1.15rem',
-                  background: active ? '#f0fdf4' : '#fff',
+                  background: active ? '#f0fdf4' : completed ? '#f0f9ff' : '#fff',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -102,6 +107,17 @@ export default function SemesterPrepPage() {
                           </p>
                         ) : null}
                       </>
+                    ) : completed ? (
+                      <>
+                        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}>
+                          <strong>این ترم تنظیم و منتشر شده است.</strong>
+                        </p>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: '#475569', lineHeight: 1.7 }}>
+                          {canStartNewTerm
+                            ? 'ترم فعلی به پایان رسیده است؛ می‌توانید ترم جدید را از ابتدا شروع کنید یا همین فرایند را ویرایش کنید.'
+                            : `تا پایان ترم فعلی${termEndLabel ? ` (${termEndLabel})` : ''} امکان شروع ترم جدید نیست. برای هر اصلاحی از «ویرایش» استفاده کنید.`}
+                        </p>
+                      </>
                     ) : (
                       <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
                         {code === 'winter_semester_preparation' && !processes.fall_semester_preparation?.last_completed_at
@@ -111,7 +127,7 @@ export default function SemesterPrepPage() {
                     )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
-                    {!active && (
+                    {!active && !completed && (
                       <button
                         type="button"
                         className="btn btn-primary"
@@ -124,6 +140,32 @@ export default function SemesterPrepPage() {
                       >
                         {busy === code ? '…' : 'شروع فرایند'}
                       </button>
+                    )}
+                    {completed && (
+                      <>
+                        <Link
+                          className="btn btn-primary"
+                          to={`/panel/semester-prep/workbench?process_code=${code}`}
+                        >
+                          ویرایش (بازگشت به مراحل قبلی)
+                        </Link>
+                        <Link
+                          className="btn btn-secondary"
+                          to={`/panel/students?student_id=${anchorId}&instance_id=${entry.completed_instance_id}`}
+                        >
+                          باز کردن پرونده
+                        </Link>
+                        {canStartNewTerm && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            disabled={!!busy}
+                            onClick={() => start(code)}
+                          >
+                            {busy === code ? '…' : 'شروع ترم جدید (از ابتدا)'}
+                          </button>
+                        )}
+                      </>
                     )}
                     {active && entry.instance_id && (
                       <>

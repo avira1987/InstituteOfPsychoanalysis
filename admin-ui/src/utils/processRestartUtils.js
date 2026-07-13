@@ -2,11 +2,11 @@
 export const RESTART_STAFF_ROLES = ['admin', 'deputy_education', 'staff']
 
 /** فرایندهای غیرقابل ریست — هم‌تراز app/meta/process_restart_policy.py */
+// فرایندهای آماده‌سازی ترم دیگر مسدود نیستند تا اپراتور بتواند برای تنظیم دوباره
+// آن‌ها را از ابتدا شروع کند. فقط فرایندهای مالی همچنان مسدود می‌مانند.
 export const RESTART_BLOCKED_PROCESS_CODES = new Set([
   'fee_determination',
   'session_payment',
-  'fall_semester_preparation',
-  'winter_semester_preparation',
 ])
 
 export function isProcessRestartBlocked(processCode) {
