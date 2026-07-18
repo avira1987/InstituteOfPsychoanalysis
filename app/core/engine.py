@@ -833,6 +833,20 @@ class StateMachineEngine:
             instance.context_data = ctx_cs
             flag_modified(instance, "context_data")
 
+        if (
+            instance.process_code in ("fall_semester_preparation", "winter_semester_preparation")
+            and transition.to_state_code == "course_finalization"
+        ):
+            from app.services.semester_prep_service import _apply_course_finalization_prefill
+
+            ctx_cf = _apply_course_finalization_prefill(
+                instance.process_code,
+                "course_finalization",
+                self._as_mapping(instance.context_data),
+            )
+            instance.context_data = ctx_cf
+            flag_modified(instance, "context_data")
+
         # 6. Post-transition actions
         actions = _normalize_json_list(transition.actions)
         action_results = []
@@ -1421,6 +1435,20 @@ class StateMachineEngine:
                 logger.exception(
                     "thesis_defense_request fresh context for status failed (instance=%s)", instance.id
                 )
+        if (
+            instance.process_code in ("fall_semester_preparation", "winter_semester_preparation")
+            and instance.current_state_code == "marketing_campaign"
+        ):
+            try:
+                from app.services.semester_prep_marketing_pdf import enrich_marketing_handoff_context
+
+                ctx_out = await enrich_marketing_handoff_context(
+                    self.db, instance.process_code, ctx_out
+                )
+            except Exception:
+                logger.exception(
+                    "semester prep marketing handoff enrich failed (instance=%s)", instance.id
+                )
 
         student_extra_data = None
         if instance.process_code == "violation_registration" and instance.student_id:
@@ -1482,17 +1510,18 @@ class StateMachineEngine:
         if len(history) < 2:
             raise InvalidTransitionError("مرحلهٔ قبلی برای بازگشت وجود ندارد.")
 
-        last = history[-1]
-        if last.from_state_code is None:
-            raise InvalidTransitionError("امکان بازگشت از وضعیت اولیهٔ فرایند نیست.")
+        from app.meta.process_rollback import resolve_rollback_target_from_history
 
-        if last.to_state_code != instance.current_state_code:
+        from_current = instance.current_state_code
+        target_state = resolve_rollback_target_from_history(history, from_current)
+        if not target_state:
+            raise InvalidTransitionError("مرحلهٔ قبلی برای بازگشت وجود ندارد.")
+
+        if not any(h.to_state_code == from_current for h in history):
             raise InvalidTransitionError(
-                "وضعیت فعلی نمونه با آخرین رکورد تاریخچه هم‌خوان نیست؛ با پشتیبانی تماس بگیرید."
+                "وضعیت فعلی نمونه در تاریخچه یافت نشد؛ با پشتیبانی تماس بگیرید."
             )
 
-        target_state = last.from_state_code
-        from_current = instance.current_state_code
         now = datetime.now(timezone.utc)
 
         process_def = await self.get_process_definition(instance.process_code)

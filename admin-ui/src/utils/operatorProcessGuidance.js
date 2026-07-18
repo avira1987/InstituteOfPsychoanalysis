@@ -5,6 +5,7 @@ import {
   STATE_LABELS_FA,
 } from './processMetadataLabels.js'
 import { normalizeAssignedRole, portalRoleCanActOnState } from './portalRoleAccess.js'
+import { labelRoleFa } from './roleLabels.js'
 
 function findStateDefinition(definition, stateCode) {
   if (!definition?.states || !stateCode) return null
@@ -15,22 +16,9 @@ function labelState(code) {
   return STATE_LABELS_FA[code] || code || ''
 }
 
-/** برچسب فارسی assigned_role در متادیتای فرایند */
-export const ASSIGNED_ROLE_LABELS_FA = {
-  admissions_officer: 'مسئول پذیرش',
-  admission_officer: 'مسئول پذیرش',
-  deputy_education_director: 'معاون مدیر آموزش',
-  deputy_education: 'معاون آموزش',
-  scientific_officer_course_committee: 'مسئول علمی کمیته دروس',
-  course_committee: 'کمیته دروس',
-  site_manager: 'مسئول سایت',
-  staff: 'کارمند اداری',
-  interviewer: 'مصاحبه‌گر',
-}
-
+/** برچسب فارسی assigned_role — از منبع واحد roleLabels.js */
 export function assignedRoleLabelFa(roleCode) {
-  const code = normalizeAssignedRole(roleCode)
-  return ASSIGNED_ROLE_LABELS_FA[code] || code || ''
+  return labelRoleFa(roleCode)
 }
 
 export function buildWaitingForRoleTaskFa(assignedRole) {
@@ -56,7 +44,7 @@ const OPERATOR_FALLBACK_BY_ROLE = {
   deputy_education: 'بررسی پرونده و تأیید یا ارجاع.',
   deputy_education_director: 'بررسی پرونده و ثبت تصمیم مدیریتی.',
   education_committee: 'بررسی پرونده در جلسه کمیته آموزش.',
-  course_committee: 'بررسی موضوع در کمیته درس.',
+  course_committee: 'بررسی موضوع در کمیته دروس.',
   course_committee_scientific: 'بررسی علمی و ثبت نظر.',
   course_committee_executive: 'هماهنگی اجرایی و ثبت تصمیم.',
   scientific_officer_course_committee: 'بررسی علمی و ثبت نظر.',

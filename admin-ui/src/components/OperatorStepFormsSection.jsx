@@ -5,14 +5,16 @@ import FallSemesterPrepReadonlySummary from './FallSemesterPrepReadonlySummary'
 import MarketingCampaignHandoffPanel, { isMarketingHandoffField } from './MarketingCampaignHandoffPanel'
 import SemesterPrepStepDeadlineBanner from './SemesterPrepStepDeadlineBanner'
 import InterviewSlotsAdmin from './InterviewSlotsAdmin'
+import { canManageInterviewSlots } from '../utils/interviewSlotAccess'
 import DecisionNotesBlock from './DecisionNotesBlock'
-import { validateUnifiedAnswers } from '../utils/unifiedFormValidation'
+import { validateUnifiedAnswers, isEffectivelyEmptyCourseTable } from '../utils/unifiedFormValidation'
 import {
   denormalizeCourseRosterTableRows,
   normalizeCourseTableInitialRows,
   resolveFormOptionsSource,
 } from '../utils/resolveFormOptionsSource'
 import { SEMESTER_PREP_PROCESSES } from '../utils/instituteProcesses'
+import { interviewSlotDefaultsFromContext } from '../utils/semesterPrepInterviewDefaults'
 import { buildWaitingForRoleTaskFa } from '../utils/operatorProcessGuidance'
 import { portalRoleCanActOnState } from '../utils/portalRoleAccess'
 import { resolveCheckboxListOptions } from '../utils/resolveCourseFieldOptions'
@@ -23,6 +25,8 @@ import {
   shamsiDateTimeToUtcIso,
 } from '../utils/shamsiDateTime'
 
+const CTX_SUBMITTED = '__student_forms_submitted_states'
+
 /** گام‌های فرایند ۲۹ — هشت مرحلهٔ عملیاتی قبل از انتشار */
 const FALL_SEMESTER_STEPS = [
   { code: 'calendar_entry', label: 'تقویم آموزشی دو ترم' },
@@ -32,7 +36,7 @@ const FALL_SEMESTER_STEPS = [
   { code: 'course_finalization', label: 'مکان‌ها و هماهنگی با مدرسین' },
   { code: 'marketing_campaign', label: 'کمپین بازاریابی پذیرش' },
   { code: 'interviewer_assignment', label: 'تعیین مصاحبه‌کنندگان و بازه زمانی' },
-  { code: 'interview_scheduling', label: 'زمان‌بندی دقیق اسلات‌های مصاحبه' },
+  { code: 'interview_scheduling', label: 'زمان‌بندی و ثبت اسلات‌های مصاحبه' },
 ]
 
 function collectFieldNames(forms) {
@@ -59,6 +63,39 @@ function buildCoursesFinalizedFromDraft(courses) {
   }))
 }
 
+function applyCourseFinalizationPrefill(init, ctx, processCode) {
+  if (processCode === 'fall_semester_preparation') {
+    const draftPairs = [
+      ['courses_finalized_fall', 'courses_fall'],
+      ['courses_finalized_winter', 'courses_winter'],
+    ]
+    for (const [finalName, draftName] of draftPairs) {
+      if (!isEffectivelyEmptyCourseTable(init[finalName])) continue
+      let draft = ctx[draftName]
+      if ((!draft || !draft.length) && draftName === 'courses_fall') {
+        draft = ctx.courses
+      }
+      if (Array.isArray(draft) && draft.length) {
+        init[finalName] = buildCoursesFinalizedFromDraft(draft)
+      }
+    }
+  }
+  if (processCode === 'winter_semester_preparation') {
+    if (isEffectivelyEmptyCourseTable(init.courses_finalized) && Array.isArray(ctx.courses) && ctx.courses.length) {
+      init.courses_finalized = buildCoursesFinalizedFromDraft(ctx.courses)
+    }
+  }
+}
+
+function hasCourseFinalizationDraftSource(ctx) {
+  if (!ctx || typeof ctx !== 'object') return false
+  return (
+    (Array.isArray(ctx.courses_fall) && ctx.courses_fall.length > 0)
+    || (Array.isArray(ctx.courses_winter) && ctx.courses_winter.length > 0)
+    || (Array.isArray(ctx.courses) && ctx.courses.length > 0)
+  )
+}
+
 function buildInitialValues(forms, contextData, processCode, currentState, suggestedContext) {
   const names = collectFieldNames(forms)
   const ctx = { ...(suggestedContext || {}), ...(contextData || {}) }
@@ -70,34 +107,8 @@ function buildInitialValues(forms, contextData, processCode, currentState, sugge
   const isCourseFinalization =
     currentState === 'course_finalization' &&
     (processCode === 'fall_semester_preparation' || processCode === 'winter_semester_preparation')
-  if (isCourseFinalization && processCode === 'fall_semester_preparation') {
-    const draftPairs = [
-      ['courses_finalized_fall', 'courses_fall'],
-      ['courses_finalized_winter', 'courses_winter'],
-    ]
-    for (const [finalName, draftName] of draftPairs) {
-      if ((!init[finalName] || !init[finalName].length) && Array.isArray(ctx[draftName]) && ctx[draftName].length) {
-        init[finalName] = buildCoursesFinalizedFromDraft(ctx[draftName])
-      }
-    }
-  }
-  if (
-    isCourseFinalization &&
-    processCode === 'winter_semester_preparation' &&
-    (!init.courses_finalized || !init.courses_finalized.length) &&
-    Array.isArray(ctx.courses) &&
-    ctx.courses.length
-  ) {
-    init.courses_finalized = buildCoursesFinalizedFromDraft(ctx.courses)
-  }
-  if (
-    isCourseFinalization &&
-    processCode === 'fall_semester_preparation' &&
-    (!init.courses_finalized_fall || !init.courses_finalized_fall.length) &&
-    Array.isArray(ctx.courses) &&
-    ctx.courses.length
-  ) {
-    init.courses_finalized_fall = buildCoursesFinalizedFromDraft(ctx.courses)
+  if (isCourseFinalization) {
+    applyCourseFinalizationPrefill(init, ctx, processCode)
   }
 
   for (const form of forms || []) {
@@ -105,9 +116,17 @@ function buildInitialValues(forms, contextData, processCode, currentState, sugge
       if ((field.type || '').toLowerCase() !== 'table' || !field.required) continue
       const name = field.name
       let rows = init[name]
-      if (Array.isArray(rows) && rows.length) {
+      if (isCourseFinalization && isEffectivelyEmptyCourseTable(rows, field.columns)) {
+        const draftInit = { ...init }
+        applyCourseFinalizationPrefill(draftInit, ctx, processCode)
+        if (!isEffectivelyEmptyCourseTable(draftInit[name], field.columns)) {
+          rows = draftInit[name]
+          init[name] = rows
+        }
+      }
+      if (Array.isArray(rows) && rows.length && !isEffectivelyEmptyCourseTable(rows, field.columns)) {
         init[name] = normalizeCourseTableInitialRows(field, rows)
-      } else if (!Array.isArray(rows) || rows.length === 0) {
+      } else if (!Array.isArray(rows) || rows.length === 0 || isEffectivelyEmptyCourseTable(rows, field.columns)) {
         const blank = {}
         for (const col of field.columns || []) {
           const ct = (col.type || 'text').toLowerCase()
@@ -154,9 +173,11 @@ async function enrichColumnOptions(col, contextData = null) {
   const { options, optionsByTrack, optionsByCourse } = await resolveFormOptionsSource(next.options_source, contextData)
   if (optionsByCourse) {
     next._optionsByCourse = optionsByCourse
-    next.filter_by_column = next.options_source.filter_by_column || next.filter_by_column
-  } else if (optionsByTrack) {
+  }
+  if (optionsByTrack) {
     next._optionsByTrack = optionsByTrack
+  }
+  if (optionsByCourse || optionsByTrack) {
     next.filter_by_column = next.options_source.filter_by_column || next.filter_by_column
   } else if (options.length) {
     next.options = options
@@ -196,8 +217,8 @@ async function enrichFormsWithDynamicOptions(forms, contextData) {
       } else if (next.options_source && !(Array.isArray(next.options) && next.options.length)) {
         const { options, optionsByTrack, optionsByCourse } = await resolveFormOptionsSource(next.options_source, contextData)
         if (optionsByCourse) next._optionsByCourse = optionsByCourse
-        else if (optionsByTrack) next._optionsByTrack = optionsByTrack
-        else if (options.length) next.options = options
+        if (optionsByTrack) next._optionsByTrack = optionsByTrack
+        if (!optionsByCourse && !optionsByTrack && options.length) next.options = options
       } else if (ft === 'user_select' && !(Array.isArray(next.options) && next.options.length)) {
         const { options } = await resolveFormOptionsSource({ type: 'users' }, contextData)
         if (options.length) next.options = options
@@ -229,7 +250,7 @@ const WINTER_SEMESTER_STEPS = [
   { code: 'course_finalization', label: 'نهایی‌سازی مکان و مدرسین' },
   { code: 'marketing_campaign', label: 'کمپین بازاریابی زمستان' },
   { code: 'interviewer_assignment', label: 'تعیین مصاحبه‌کنندگان' },
-  { code: 'interview_scheduling', label: 'زمان‌بندی مصاحبه‌ها' },
+  { code: 'interview_scheduling', label: 'زمان‌بندی و ثبت اسلات‌های مصاحبه' },
 ]
 
 function SemesterPrepStepper({ steps, currentState, testId = 'semester-prep-stepper' }) {
@@ -347,6 +368,12 @@ export default function OperatorStepFormsSection({
     [isWinter, forms, suggestedContext],
   )
 
+  const showFallFinalizationPrefillBanner = useMemo(() => {
+    if (!isFall || currentState !== 'course_finalization') return false
+    const ctx = { ...suggestedContext, ...(contextData || {}) }
+    return hasCourseFinalizationDraftSource(ctx)
+  }, [isFall, currentState, suggestedContext, contextData])
+
   const editableFieldNames = useMemo(() => {
     const names = new Set()
     let hasEditableFlag = false
@@ -411,7 +438,7 @@ export default function OperatorStepFormsSection({
     return () => {
       active = false
     }
-  }, [visible, processCode, currentState, instanceId])
+  }, [visible, processCode, currentState, instanceId, contextData])
 
   useEffect(() => {
     if (!forms.length || !visible) return
@@ -424,7 +451,21 @@ export default function OperatorStepFormsSection({
   const onChange = useCallback((next) => setValues(next), [])
 
   const hasInlineActions = actionTransitions.length > 0 && typeof onActionTrigger === 'function'
-  const canAdvanceOnSave = !!(primaryTransition && onAdvanceAfterSave && !hasInlineActions)
+  const canAdvanceOnSave = !!(
+    primaryTransition
+    && onAdvanceAfterSave
+    && (isSemesterPrep || !hasInlineActions)
+  )
+
+  const stepFormSubmitted = useMemo(() => {
+    if (!isSemesterPrep || !currentState) return true
+    const submitted = contextData?.[CTX_SUBMITTED]
+    if (!submitted || typeof submitted !== 'object') return false
+    return !!submitted[currentState]
+  }, [isSemesterPrep, currentState, contextData])
+
+  const showSeparateActionButtons = hasInlineActions && !canAdvanceOnSave
+  const actionButtonsDisabled = busy || actionBusy || (isSemesterPrep && !stepFormSubmitted)
 
   const isMarketingStep = currentState === 'marketing_campaign' && (isFall || isWinter)
   const marketingForm = useMemo(
@@ -435,6 +476,16 @@ export default function OperatorStepFormsSection({
   const filterHandoffFields = useCallback(
     (fields) => (isMarketingStep ? (fields || []).filter((f) => !isMarketingHandoffField(f?.name)) : fields || []),
     [isMarketingStep],
+  )
+
+  const showSlotsAdmin =
+    isSemesterPrep
+    && currentState === 'interview_scheduling'
+    && (canEditForms || canManageInterviewSlots(role))
+
+  const interviewSlotDefaults = useMemo(
+    () => (showSlotsAdmin ? interviewSlotDefaultsFromContext(contextData) : null),
+    [showSlotsAdmin, contextData],
   )
 
   const save = async () => {
@@ -500,8 +551,6 @@ export default function OperatorStepFormsSection({
       </div>
     )
   }
-  const showSlotsAdmin =
-    isSemesterPrep && currentState === 'interview_scheduling'
 
   if (!forms.length && !showSlotsAdmin) return null
 
@@ -533,11 +582,13 @@ export default function OperatorStepFormsSection({
       )}
 
       <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#1e40af' }}>
-        فرم این مرحله
+        {showSlotsAdmin ? 'زمان‌بندی و ثبت اسلات‌های مصاحبه' : 'فرم این مرحله'}
       </h4>
       <p style={{ fontSize: '0.82rem', color: '#334155', margin: '0 0 0.85rem', lineHeight: 1.65 }}>
         {roleLocked
           ? 'این مرحله در انتظار نقش مسئول دیگر است — فقط مشاهده.'
+          : showSlotsAdmin
+          ? 'ابتدا نوع برگزاری را مشخص کنید، سپس اسلات‌های قابل رزرو را در جدول پایین ثبت کنید. در پایان «ثبت فرم این مرحله» را بزنید و دکمهٔ اقدام را برای انتشار تقویم فشار دهید.'
           : isMarketingStep
           ? 'خروجی فعالیت‌های قبلی را بررسی کنید، PDF بگیرید و برای مدیر مارکتینگ ارسال کنید؛ سپس تأیید ارسال را تیک بزنید و فرم را ثبت کنید.'
           : canAdvanceOnSave
@@ -603,13 +654,36 @@ export default function OperatorStepFormsSection({
         </div>
       )}
 
+      {showFallFinalizationPrefillBanner && (
+        <div
+          data-testid="fall-finalization-prefill-banner"
+          style={{
+            marginBottom: '0.85rem',
+            padding: '0.65rem 0.85rem',
+            background: '#fef3c7',
+            borderRadius: '6px',
+            border: '1px solid #fcd34d',
+            fontSize: '0.82rem',
+            color: '#92400e',
+            lineHeight: 1.6,
+          }}
+        >
+          جدول از لیست دروس مرحلهٔ قبل پر شده است — فقط «مکان کلاس» و «هماهنگی با مدرس» را تکمیل کنید.
+        </div>
+      )}
+
       {forms.map((form) => {
         const visibleFields = filterHandoffFields(form.fields)
         if (!visibleFields.length) return null
         return (
         <div key={form.code || form.name_fa} style={{ marginBottom: '1rem', minWidth: 0, maxWidth: '100%' }}>
-          {form.name_fa && !isMarketingStep && (
+          {form.name_fa && !isMarketingStep && !showSlotsAdmin && (
             <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem' }}>{form.name_fa}</div>
+          )}
+          {showSlotsAdmin && form.name_fa && (
+            <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: '#1e293b' }}>
+              {form.name_fa}
+            </div>
           )}
           {form.note_fa && !isMarketingStep && (
             <p style={{ fontSize: '0.82rem', color: '#475569', margin: '0 0 0.5rem', lineHeight: 1.6 }}>{form.note_fa}</p>
@@ -633,13 +707,12 @@ export default function OperatorStepFormsSection({
           data-testid="fall-interview-slots-admin"
         >
           <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.35rem', color: '#1e293b' }}>
-            ثبت اسلات‌های دقیق مصاحبه
+            اسلات‌های قابل رزرو
           </div>
           <p style={{ fontSize: '0.8rem', color: '#475569', margin: '0 0 0.75rem', lineHeight: 1.6 }}>
-            با مصاحبه‌گران تماس بگیرید و برای هر بازه، اسلات‌های قابل رزرو را در جدول زیر ایجاد کنید.
-            پس از ثبت اسلات‌ها، تنظیمات کلی بالا را ذخیره کرده و دکمهٔ اقدام را بزنید.
+            با مصاحبه‌گران هماهنگ کنید و برای هر نوبت، تاریخ و ساعت دقیق را در جدول زیر ثبت کنید.
           </p>
-          <InterviewSlotsAdmin showToast={showToast} />
+          <InterviewSlotsAdmin showToast={showToast} slotDefaults={interviewSlotDefaults} />
         </div>
       )}
 
@@ -651,7 +724,7 @@ export default function OperatorStepFormsSection({
             borderTop: hasInlineActions ? '1px solid #bfdbfe' : 'none',
           }}
         >
-          {hasInlineActions && typeof onDecisionNotesChange === 'function' && (
+          {showSeparateActionButtons && typeof onDecisionNotesChange === 'function' && (
             <DecisionNotesBlock
               value={decisionNotes}
               onChange={onDecisionNotesChange}
@@ -659,10 +732,15 @@ export default function OperatorStepFormsSection({
               hint="متن همراه دکمهٔ اقدام در پرونده ثبت می‌شود."
             />
           )}
+          {isSemesterPrep && showSeparateActionButtons && !stepFormSubmitted && (
+            <p style={{ fontSize: '0.78rem', color: '#b45309', margin: '0 0 0.5rem', lineHeight: 1.55 }}>
+              ابتدا فرم این مرحله را با دکمهٔ «ثبت فرم این مرحله» ذخیره کنید؛ سپس دکمهٔ اقدام فعال می‌شود.
+            </p>
+          )}
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button
               type="button"
-              className={hasInlineActions ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'}
+              className={showSeparateActionButtons ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'}
               data-testid="operator-step-forms-save"
               disabled={busy || advanceBusy || actionBusy}
               onClick={save}
@@ -673,14 +751,14 @@ export default function OperatorStepFormsSection({
                   ? 'ثبت و رفتن به مرحله بعد'
                   : 'ثبت فرم این مرحله'}
             </button>
-            {hasInlineActions &&
+            {showSeparateActionButtons &&
               actionTransitions.map((t) => (
                 <button
                   key={`${t.trigger_event}-${t.to_state || ''}`}
                   type="button"
                   className="btn btn-primary btn-sm"
                   data-testid="operator-step-forms-action"
-                  disabled={busy || actionBusy}
+                  disabled={actionButtonsDisabled}
                   onClick={() => onActionTrigger(t)}
                 >
                   {t.description || t.description_fa || t.trigger_event}

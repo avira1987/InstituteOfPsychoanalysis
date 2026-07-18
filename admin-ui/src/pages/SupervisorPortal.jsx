@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
+import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
 import { processExecApi, studentApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
@@ -162,6 +163,18 @@ export default function SupervisorPortal() {
     allowedTabs: SUPERVISOR_DEEP_LINK_TABS,
   })
 
+  const { processCodeFilter, filteredItems: pendingReviewsFiltered } = useProcessCodeUrlFilter({
+    loading,
+    items: pendingReviews,
+    getProcessCode: (p) => p.process_code,
+    getInstanceId: (p) => p.instance_id || p.id,
+    viewInstance,
+    setActiveTab,
+    tabWhenFiltered: 'reviews',
+  })
+
+  const displayPendingReviews = processCodeFilter ? pendingReviewsFiltered : pendingReviews
+
   const triggerTransition = async (transition) => {
     if (!selectedInstance) return
     const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
@@ -242,7 +255,7 @@ export default function SupervisorPortal() {
   })
 
   const tabs = [
-    { id: 'reviews', label: `کارهای من (${pendingReviews.length})`, icon: '📥' },
+    { id: 'reviews', label: `کارهای من (${displayPendingReviews.length})`, icon: '📥' },
     { id: 'dashboard', label: 'داشبورد', icon: '📊' },
     { id: 'students', label: 'دانشجویان', icon: '👨‍🎓' },
     { id: 'processes', label: 'فرایندها', icon: '🔄' },
@@ -304,7 +317,7 @@ export default function SupervisorPortal() {
             >
               <div className="stat-icon warning">📥</div>
               <div>
-                <div className="stat-value">{pendingReviews.length}</div>
+                <div className="stat-value">{displayPendingReviews.length}</div>
                 <div className="stat-label">منتظر بررسی</div>
               </div>
             </div>
@@ -357,20 +370,20 @@ export default function SupervisorPortal() {
             <div className="card">
               <div className="card-header">
                 <h3 className="card-title">درخواست‌های منتظر تصمیم</h3>
-                {pendingReviews.length > 0 && (
+                {displayPendingReviews.length > 0 && (
                   <button className="btn btn-outline btn-sm" onClick={() => setActiveTab('reviews')}>
                     بررسی
                   </button>
                 )}
               </div>
-              {pendingReviews.length === 0 ? (
+              {displayPendingReviews.length === 0 ? (
                 <div className="empty-state" style={{ padding: '2rem' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>✅</div>
                   <p>درخواست منتظری وجود ندارد</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {pendingReviews.slice(0, 5).map(p => (
+                  {displayPendingReviews.slice(0, 5).map(p => (
                     <button
                       key={p.instance_id}
                       onClick={() => { viewInstance(p.instance_id); setActiveTab('reviews') }}
@@ -444,7 +457,7 @@ export default function SupervisorPortal() {
         <div style={{ display: 'grid', gridTemplateColumns: instanceDetail ? '1fr 1.5fr' : '1fr', gap: '1.5rem' }}>
           <div className="card">
             <div className="card-header">
-              <h3 className="card-title">بررسی‌ها ({pendingReviews.length})</h3>
+              <h3 className="card-title">بررسی‌ها ({displayPendingReviews.length})</h3>
             </div>
             {pendingReviews.length === 0 ? (
               <div className="empty-state" style={{ padding: '3rem' }}>
@@ -453,7 +466,7 @@ export default function SupervisorPortal() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {pendingReviews.map(p => (
+                {displayPendingReviews.map(p => (
                   <button
                     key={p.instance_id}
                     onClick={() => viewInstance(p.instance_id)}

@@ -131,7 +131,7 @@ PATH_MENU_FA: dict[str, str] = {
     "/panel/portal/staff/instruction": "پنل مدرس",
     "/panel/portal/staff/content-ops": "تولید محتوا",
     "/panel/portal/staff/therapy-coord": "هماهنگی درمان",
-    "/panel/portal/staff/course-committee": "کمیته درس",
+    "/panel/portal/staff/course-committee": "کمیته دروس",
     "/panel/portal/committee/progress": "کمیته پیشرفت",
     "/panel/portal/committee/education": "کمیته آموزش",
     "/panel/portal/committee/supervision": "کمیته نظارت",
@@ -955,7 +955,7 @@ DEMO_ACCOUNT_GUIDES: list[DemoAccountGuide] = [
     ),
     DemoAccountGuide(
         "کمیته دروس", "course_committee1", "demo123",
-        "منوی کناری / کمیته درس / تب کارهای من",
+        "منوی کناری / کمیته دروس / تب کارهای من",
         "ارتقا به کمک‌مدرس، لیست دروس، مصاحبهٔ رسته.",
         "پرونده‌های مربوط به دروس و کمک‌مدرس.",
     ),

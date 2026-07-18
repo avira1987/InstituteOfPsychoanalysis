@@ -74,3 +74,23 @@ const TUITION_KEYS = [
 export function hasTuitionOrInterviewData(ctx) {
   return TUITION_KEYS.some((k) => ctx[k] != null && ctx[k] !== '')
 }
+
+export function hasMarketingHandoffData(processCode, ctx) {
+  const resolved = resolveMarketingHandoffContext(processCode, ctx)
+  if (processCode === 'fall_semester_preparation') {
+    if (resolved.fall_start_date || resolved.per_unit_cost_introductory) return true
+    return (
+      nonemptyTable(resolved.courses_finalized_fall).length > 0
+      || nonemptyTable(resolved.courses_finalized_winter).length > 0
+      || nonemptyTable(resolved.courses_fall).length > 0
+      || nonemptyTable(resolved.courses_winter).length > 0
+    )
+  }
+  if (processCode === 'winter_semester_preparation') {
+    return (
+      nonemptyTable(resolved.courses).length > 0
+      || nonemptyTable(resolved.courses_finalized).length > 0
+    )
+  }
+  return false
+}

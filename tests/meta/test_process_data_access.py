@@ -99,15 +99,33 @@ def test_portal_role_can_act_on_marketing_campaign_state():
     from app.meta.operator_state_catalog import portal_role_can_act_on_assigned_role
 
     assert portal_role_can_act_on_assigned_role("staff", "admissions_officer")
+    assert portal_role_can_act_on_assigned_role("admissions_officer", "admissions_officer")
     assert not portal_role_can_act_on_assigned_role("deputy_education", "admissions_officer")
     assert portal_role_can_act_on_assigned_role("deputy_education", "deputy_education_director")
     assert portal_role_can_act_on_assigned_role("admin", "admissions_officer")
     assert portal_role_can_act_on_assigned_role("staff", "staff")
     assert portal_role_can_act_on_assigned_role("staff", "site_manager")
+    assert portal_role_can_act_on_assigned_role("staff", "scientific_officer_course_committee")
+    assert portal_role_can_act_on_assigned_role("staff", "course_committee_executive")
 
 
 def test_staff_can_edit_interview_scheduling_form():
     forms = get_process_forms("fall_semester_preparation", state_code="interview_scheduling")
     names = editable_field_names(forms, "staff")
-    assert "interview_start_time" in names
-    assert "slot_duration_minutes" in names
+    assert "interview_mode" in names
+    assert "interview_location_fa" in names
+
+
+def test_site_manager_can_edit_interview_scheduling_form():
+    forms = get_process_forms("fall_semester_preparation", state_code="interview_scheduling")
+    names = editable_field_names(forms, "site_manager")
+    assert "interview_mode" in names
+    assert "interview_location_fa" in names
+
+
+def test_site_manager_can_act_on_interview_scheduling_state():
+    from app.meta.operator_state_catalog import portal_role_can_act_on_assigned_role
+
+    assert portal_role_can_act_on_assigned_role("site_manager", "site_manager")
+    assert portal_role_can_act_on_assigned_role("staff", "site_manager")
+    assert not portal_role_can_act_on_assigned_role("deputy_education", "site_manager")

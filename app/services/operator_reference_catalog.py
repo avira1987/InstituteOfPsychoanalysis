@@ -9,29 +9,14 @@ from typing import Any
 
 from app.meta.student_lifecycle_matrix import ROLE_ACTION_PATTERNS
 
+from app.meta.role_labels import role_label_fa_only
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _INDEX_PATH = _REPO_ROOT / "metadata" / "process_registry" / "INDEX.json"
 
-_ROLE_LABELS_FA: dict[str, str] = {
-    "admin": "مدیر سیستم",
-    "staff": "کارمند دفتر",
-    "finance": "اپراتور مالی",
-    "therapist": "درمانگر",
-    "supervisor": "سوپروایزر",
-    "site_manager": "مسئول سایت",
-    "deputy_education": "معاون مدیر آموزش",
-    "monitoring_committee_officer": "مسئول علمی اجرایی کمیته نظارت",
-    "progress_committee": "کمیته پیشرفت",
-    "education_committee": "کمیته آموزش",
-    "supervision_committee": "کمیته نظارت",
-    "specialized_commission": "کمیسیون تخصصی",
-    "therapy_committee_chair": "مسئول کمیته درمان",
-    "therapy_committee_executor": "مجری کمیته درمان",
-}
-
 
 def _label_role(role: str) -> str:
-    return _ROLE_LABELS_FA.get(role, role)
+    return role_label_fa_only(role)
 
 
 def build_reference_role_tasks() -> list[dict[str, Any]]:

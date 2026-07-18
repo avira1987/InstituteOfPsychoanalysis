@@ -15,7 +15,7 @@ function formatSlotAdmin(iso) {
   return formatShamsiTehran(iso)
 }
 
-export default function InterviewSlotsAdmin({ showToast, onCapacityChanged }) {
+export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slotDefaults = null }) {
   const [slots, setSlots] = useState([])
   const [includePast, setIncludePast] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -30,6 +30,22 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged }) {
   const [editingId, setEditingId] = useState(null)
   const [togglingJoinId, setTogglingJoinId] = useState(null)
   const [rescheduleSlot, setRescheduleSlot] = useState(null)
+
+  const applySlotDefaults = (defaults) => {
+    if (!defaults) return
+    setMode(defaults.mode === 'online' ? 'online' : 'in_person')
+    setLocationFa(defaults.locationFa || '')
+    if (defaults.mode === 'online') {
+      setMeetingLink('')
+    }
+  }
+
+  useEffect(() => {
+    applySlotDefaults(slotDefaults)
+  }, [slotDefaults?.mode, slotDefaults?.locationFa, slotDefaults?.lockMode])
+
+  const lockMode = !!slotDefaults?.lockMode
+  const isOnlineMode = mode === 'online'
 
   const toggleStudentJoinOpen = async (slot, nextOpen) => {
     setTogglingJoinId(slot.id)
@@ -63,11 +79,14 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged }) {
     setStartsParts(now)
     setEndsParts(addMinutesToShamsiParts(now, 60) || now)
     setCourseType('')
-    setMode('online')
-    setLocationFa('')
-    setMeetingLink('')
     setLabelFa('')
     setEditingId(null)
+    applySlotDefaults(slotDefaults)
+    if (!slotDefaults) {
+      setMode('online')
+      setLocationFa('')
+      setMeetingLink('')
+    }
   }
 
   const startEdit = (s) => {
@@ -168,6 +187,26 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged }) {
         </p>
       </div>
       <div style={{ padding: '0 1.25rem 1rem' }}>
+        {lockMode && (
+          <div
+            style={{
+              marginBottom: '0.75rem',
+              padding: '0.55rem 0.75rem',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: '8px',
+              fontSize: '0.82rem',
+              color: '#1e40af',
+              lineHeight: 1.6,
+            }}
+            data-testid="interview-slots-semester-prep-defaults-banner"
+          >
+            نوع برگزاری از تنظیمات این مرحله اعمال شده است.
+            {isOnlineMode
+              ? ' لینک جلسهٔ آنلاین پس از پرداخت دانشجو به‌صورت خودکار ساخته می‌شود.'
+              : ' آدرس پیش‌فرض از فرم مرحله قابل ویرایش است.'}
+          </div>
+        )}
         <form onSubmit={createSlot} className="interview-slots-admin__form">
           {editingId && (
             <p className="muted" style={{ margin: 0, fontSize: '0.86rem', padding: '0.35rem 0.5rem', background: 'var(--bg-muted)', borderRadius: '8px' }}>
@@ -210,7 +249,13 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged }) {
             </label>
             <label style={{ margin: 0 }}>
               <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>برگزاری</span>
-              <select className="psf-input" value={mode} onChange={(e) => setMode(e.target.value)} style={{ width: '100%', minHeight: '2.35rem' }}>
+              <select
+                className="psf-input"
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+                disabled={lockMode}
+                style={{ width: '100%', minHeight: '2.35rem' }}
+              >
                 <option value="online">آنلاین</option>
                 <option value="in_person">حضوری</option>
               </select>
@@ -223,14 +268,18 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged }) {
               gap: '0.45rem',
             }}
           >
-            <label style={{ margin: 0 }}>
-              <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>مکان (حضوری)</span>
-              <input className="psf-input" value={locationFa} onChange={(e) => setLocationFa(e.target.value)} style={{ width: '100%', minHeight: '2.35rem' }} dir="rtl" />
-            </label>
-            <label style={{ margin: 0 }}>
-              <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>لینک جلسه (آنلاین)</span>
-              <input className="psf-input" value={meetingLink} onChange={(e) => setMeetingLink(e.target.value)} style={{ width: '100%', minHeight: '2.35rem' }} dir="ltr" />
-            </label>
+            {(mode === 'in_person' || locationFa) && (
+              <label style={{ margin: 0 }}>
+                <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>مکان (حضوری)</span>
+                <input className="psf-input" value={locationFa} onChange={(e) => setLocationFa(e.target.value)} style={{ width: '100%', minHeight: '2.35rem' }} dir="rtl" />
+              </label>
+            )}
+            {mode === 'online' && !lockMode && (
+              <label style={{ margin: 0 }}>
+                <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>لینک جلسه (آنلاین)</span>
+                <input className="psf-input" value={meetingLink} onChange={(e) => setMeetingLink(e.target.value)} style={{ width: '100%', minHeight: '2.35rem' }} dir="ltr" />
+              </label>
+            )}
           </div>
           <label style={{ margin: 0, maxWidth: '28rem' }}>
             <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>برچسب کوتاه (اختیاری)</span>

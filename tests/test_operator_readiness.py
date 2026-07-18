@@ -148,3 +148,16 @@ def test_my_operator_followup_admin_returns_shape(client: TestClient):
     assert "readiness_alerts" in data
     assert isinstance(data["readiness_alerts"], list)
     assert data["summary"].get("readiness_count") == len(data["readiness_alerts"])
+
+
+def test_staff_interview_readiness_action_href_uses_admissions_lane():
+    """لینک «تعریف وقت مصاحبه» باید به تب وقت مصاحبه در پنل پذیرش برود (نه مسیر legacy بدون lane)."""
+    import json
+    from pathlib import Path
+
+    rules_path = Path(__file__).resolve().parents[1] / "metadata" / "operator_readiness_rules.json"
+    cfg = json.loads(rules_path.read_text(encoding="utf-8"))
+    staff_rule = next(r for r in cfg["rules"] if r["id"] == "staff_interview_pool_free_slots")
+    href = staff_rule["ui"]["action_href"]
+    assert href == "/panel/portal/staff/admissions?tab=interviewSlots"
+    assert "interviewSlots" in href

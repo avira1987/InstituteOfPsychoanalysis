@@ -34,6 +34,41 @@ _COURSE_LABEL_FA = {
 }
 
 
+def interview_mode_fa_to_slot_mode(mode_fa: str | None) -> str:
+    """interview_mode فارسی فرم آماده‌سازی ترم → mode اسلات."""
+    if (mode_fa or "").strip() == "آنلاین":
+        return "online"
+    return "in_person"
+
+
+def resolve_semester_prep_interview_location(ctx: dict[str, Any]) -> str | None:
+    loc = (ctx.get("interview_location_fa") or ctx.get("interview_location_or_link") or "").strip()
+    return loc or None
+
+
+async def apply_semester_prep_interview_defaults_to_open_slots(
+    db: AsyncSession,
+    *,
+    mode: str,
+    location_fa: str | None = None,
+) -> int:
+    """اسلات‌های آزاد را با تنظیمات مرحلهٔ مصاحبهٔ آماده‌سازی ترم همگام می‌کند."""
+    stmt = select(InterviewSlot).where(InterviewSlot.assigned_student_id.is_(None))
+    rows = (await db.execute(stmt)).scalars().all()
+    updated = 0
+    for slot in rows:
+        slot.mode = mode
+        if mode == "in_person":
+            if location_fa:
+                slot.location_fa = location_fa
+        else:
+            slot.location_fa = None
+        updated += 1
+    if updated:
+        await db.flush()
+    return updated
+
+
 def interviewer_capacity_slot_filter(user_id: uuid.UUID):
     """
     اسلات‌هایی که برای ظرفیت رزرو این مصاحبه‌گر شمرده می‌شوند:

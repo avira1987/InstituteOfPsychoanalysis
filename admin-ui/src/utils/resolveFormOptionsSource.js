@@ -174,9 +174,18 @@ export async function resolveFormOptionsSource(source, contextData = null) {
     const kind = source.kind || 'instructor'
     const filterCol = source.filter_by_column || 'track'
 
+    const trackCodes = await loadAllTrackCodes()
+    const optionsByTrack = {}
+    await Promise.all(
+      trackCodes.map(async (code) => {
+        optionsByTrack[code] = await resolveCourseCommitteeRoster(code, kind)
+      }),
+    )
+
+    let optionsByCourse = null
     if (filterCol === 'course_name') {
       const catalog = await resolveCourseCatalog()
-      const optionsByCourse = {}
+      optionsByCourse = {}
       await Promise.all(
         catalog.map(async (courseOpt) => {
           const trackCode = (courseOpt.track || '').trim()
@@ -190,17 +199,9 @@ export async function resolveFormOptionsSource(source, contextData = null) {
           }
         }),
       )
-      return { options: [], optionsByTrack: null, optionsByCourse }
     }
 
-    const trackCodes = await loadAllTrackCodes()
-    const optionsByTrack = {}
-    await Promise.all(
-      trackCodes.map(async (code) => {
-        optionsByTrack[code] = await resolveCourseCommitteeRoster(code, kind)
-      }),
-    )
-    return { options: [], optionsByTrack, optionsByCourse: null }
+    return { options: [], optionsByTrack, optionsByCourse }
   }
 
   if (source.type === 'course_class_roster') {
@@ -221,6 +222,81 @@ export async function resolveFormOptionsSource(source, contextData = null) {
   }
 
   return { options: [], optionsByTrack: null, optionsByCourse: null }
+}
+
+function lookupMapEntry(map, key) {
+  if (!map || key == null || key === '') return []
+  const raw = String(key).trim()
+  if (!raw) return []
+  const direct = map[raw]
+  if (Array.isArray(direct) && direct.length) return direct
+  for (const [k, opts] of Object.entries(map)) {
+    if (String(k).trim() === raw && Array.isArray(opts) && opts.length) return opts
+  }
+  return []
+}
+
+/** گزینه‌های مدرس/کمک‌مدرس برای یک ردیف جدول — با fallback رسته و کاتالوگ درس */
+export function lookupRosterOptionsForRow(col, row, columns = []) {
+  if (!col || !row) return []
+
+  const filterCol = col.filter_by_column || col.options_source?.filter_by_column
+
+  if (col._optionsByCourse && row.course_name) {
+    const byCourse = lookupMapEntry(col._optionsByCourse, row.course_name)
+    if (byCourse.length) return byCourse
+  }
+
+  const trackKeys = []
+  if (row.track) trackKeys.push(String(row.track).trim())
+  const courseCol = (columns || []).find((c) => c.name === 'course_name')
+  if (row.course_name && courseCol) {
+    const derived = resolveTrackForCourse(row.course_name, courseCol.options || [])
+    if (derived) trackKeys.push(derived)
+  }
+
+  if (col._optionsByTrack) {
+    for (const tk of trackKeys) {
+      if (!tk) continue
+      const byTrack = lookupMapEntry(col._optionsByTrack, tk)
+      if (byTrack.length) return byTrack
+    }
+  }
+
+  if (filterCol && filterCol !== 'course_name' && col._optionsByTrack) {
+    const byFilter = lookupMapEntry(col._optionsByTrack, row[filterCol])
+    if (byFilter.length) return byFilter
+  }
+
+  return Array.isArray(col.options) ? col.options : []
+}
+
+/** آیا پیش‌نیاز فیلتر ستون مدرس/کمک‌مدرس برآورده شده است؟ */
+export function rowMeetsRosterPrerequisite(col, row, columns = []) {
+  const filterCol = col?.filter_by_column || col?.options_source?.filter_by_column
+  if (!filterCol) return true
+  if (String(row?.[filterCol] ?? '').trim()) return true
+  if (filterCol === 'course_name') {
+    return Boolean(resolveRosterTrackForRow(col, row, columns))
+  }
+  return false
+}
+
+/** کد رستهٔ مؤثر برای افزودن مدرس/کمک‌مدرس جدید */
+export function resolveRosterTrackForRow(col, row, columns = []) {
+  if (!row) return ''
+  const track = String(row.track || '').trim()
+  if (track) return track
+  const courseCol = (columns || []).find((c) => c.name === 'course_name')
+  if (row.course_name && courseCol) {
+    const derived = resolveTrackForCourse(row.course_name, courseCol.options || [])
+    if (derived) return derived
+  }
+  const filterCol = col?.options_source?.filter_by_column || col?.filter_by_column
+  if (filterCol && filterCol !== 'course_name') {
+    return String(row[filterCol] || '').trim()
+  }
+  return ''
 }
 
 /** نرمال‌سازی مقدار ذخیره‌شده ردیف جدول برای select مدرس/کمک‌مدرس */

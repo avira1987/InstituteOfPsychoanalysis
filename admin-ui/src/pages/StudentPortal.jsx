@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
+import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
 import { processExecApi, studentApi, panelApi, assignmentApi } from '../services/api'
 import GamificationPanel from '../components/GamificationPanel'
 import StudentQuestCard from '../components/StudentQuestCard'
@@ -137,6 +139,10 @@ const STUDENT_SUB_TABS_BY_GROUP = {
     { id: 'profile', label: 'پروفایل', icon: '👤' },
   ],
 }
+
+const STUDENT_DEEP_LINK_TABS = [
+  'dashboard', 'processes', 'requests', 'sessions', 'assignments', 'gamification', 'profile',
+]
 
 export default function StudentPortal() {
   const { user } = useAuth()
@@ -498,6 +504,25 @@ export default function StudentPortal() {
     }
   }
 
+  usePortalInstanceDeepLink({
+    loading,
+    setActiveTab,
+    viewInstance,
+    allowedTabs: STUDENT_DEEP_LINK_TABS,
+  })
+
+  const { processCodeFilter, filteredItems: activeProcessesFiltered } = useProcessCodeUrlFilter({
+    loading,
+    items: activeProcesses,
+    getProcessCode: (p) => p.process_code,
+    getInstanceId: (p) => p.instance_id,
+    viewInstance,
+    setActiveTab,
+    tabWhenFiltered: 'processes',
+  })
+
+  const displayActiveProcesses = processCodeFilter ? activeProcessesFiltered : activeProcesses
+
   const handleProcessRestart = async (reason) => {
     if (!selectedInstance) return false
     setRestartBusy(true)
@@ -846,17 +871,17 @@ export default function StudentPortal() {
             تقویم آموزشی منتشر شد
           </strong>
           <p className="student-portal-alert-card-p">
-            تاریخ‌های ترم و مهلت ثبت‌نام در بخش «تقویم آموزشی» تب پروفایل به‌روز است. در صورت باز بودن
+            تاریخ‌های ترم و مهلت ثبت‌نام در صفحهٔ «تقویم آموزشی» به‌روز است. در صورت باز بودن
             مهلت، می‌توانید از تب فرایندها ثبت‌نام ترم را ادامه دهید.
           </p>
-          <button
-            type="button"
+          <Link
+            to="/panel/academic-calendar"
             className="btn btn-primary btn-sm"
-            style={{ marginTop: '0.5rem' }}
-            onClick={() => setActiveTab('profile')}
+            style={{ marginTop: '0.5rem', display: 'inline-block' }}
+            data-testid="student-academic-calendar-alert-link"
           >
             مشاهده تقویم آموزشی
-          </button>
+          </Link>
         </div>
       ),
     })
@@ -1305,13 +1330,13 @@ export default function StudentPortal() {
               <h3 className="card-title">همه فرایندها</h3>
             </div>
 
-            {activeProcesses.length > 0 && (
+            {displayActiveProcesses.length > 0 && (
               <>
                 <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--warning)', marginBottom: '0.5rem' }}>
-                  فعال ({activeProcesses.length})
+                  فعال ({displayActiveProcesses.length})
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                  {activeProcesses.map(p => (
+                  {displayActiveProcesses.map(p => (
                     <button
                       key={p.instance_id}
                       onClick={() => viewInstance(p.instance_id)}
@@ -1359,7 +1384,7 @@ export default function StudentPortal() {
               </>
             )}
 
-            {activeProcesses.length === 0 && completedProcesses.length === 0 && (
+            {displayActiveProcesses.length === 0 && completedProcesses.length === 0 && (
               <div className="empty-state" style={{ padding: '2rem' }}>
                 <p>فرایندی ثبت نشده است</p>
               </div>

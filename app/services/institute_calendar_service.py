@@ -11,6 +11,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.operational_models import InstituteCalendar, ProcessInstance, Student
+from app.services.semester_prep_service import WINTER_PREP
+
+ACADEMIC_CALENDAR_SNAPSHOT_KEYS: tuple[str, ...] = (
+    "nowruz_holiday_start",
+    "nowruz_holiday_end",
+    "fall_start_date",
+    "fall_end_date",
+    "winter_start_date",
+    "winter_end_date",
+    "registration_payment_window_start",
+    "registration_payment_window_end",
+    "fall_break_periods",
+    "winter_break_periods",
+    "intern_interview_deadline",
+    "teaching_assistant_interview_deadline",
+)
 
 
 def _parse_date(value: Any) -> Optional[date]:
@@ -164,8 +180,48 @@ async def upsert_active_calendar(
     return row
 
 
+def _snapshot_value_present(value: Any) -> bool:
+    if value is None or value == "":
+        return False
+    if isinstance(value, list):
+        return len(value) > 0
+    return True
+
+
+async def _enrich_context_for_calendar_publish(
+    db: AsyncSession,
+    instance: ProcessInstance,
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    """برای publish زمستان، فیلدهای تقویم دو ترم را از instance پاییز تکمیل می‌کند."""
+    merged = dict(context)
+    if instance.process_code != WINTER_PREP:
+        return merged
+    from app.services.semester_prep_service import load_fall_prep_context_field
+
+    for key in ACADEMIC_CALENDAR_SNAPSHOT_KEYS:
+        if _snapshot_value_present(merged.get(key)):
+            continue
+        val = await load_fall_prep_context_field(db, key)
+        if _snapshot_value_present(val):
+            merged[key] = val
+    return merged
+
+
+def _calendar_extra_data_snapshot(
+    instance: ProcessInstance,
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    extra: dict[str, Any] = {"source_process_code": instance.process_code}
+    for key in ACADEMIC_CALENDAR_SNAPSHOT_KEYS:
+        val = context.get(key)
+        if _snapshot_value_present(val):
+            extra[key] = val
+    return extra
+
+
 async def sync_term_dates_to_students(db: AsyncSession, calendar: InstituteCalendar) -> int:
-    """term_start_date / term_end_date را روی extra_data دانشجویان فعال sync می‌کند."""
+    """term_start_date / term_end_date و پرچم انتشار را روی extra_data دانشجویان فعال sync می‌کند."""
     if not calendar or not calendar.term_start_date:
         return 0
     stmt = select(Student).where(Student.is_sample_data.is_(False))
@@ -173,6 +229,11 @@ async def sync_term_dates_to_students(db: AsyncSession, calendar: InstituteCalen
     n = 0
     ts = calendar.term_start_date.isoformat()
     te = calendar.term_end_date.isoformat() if calendar.term_end_date else None
+    published_at = (
+        calendar.published_at.isoformat()
+        if calendar.published_at
+        else datetime.now(timezone.utc).isoformat()
+    )
     for st in students:
         extra = dict(st.extra_data or {})
         changed = False
@@ -184,6 +245,12 @@ async def sync_term_dates_to_students(db: AsyncSession, calendar: InstituteCalen
             changed = True
         if calendar.term_code and extra.get("active_term_code") != calendar.term_code:
             extra["active_term_code"] = calendar.term_code
+            changed = True
+        if not extra.get("academic_calendar_published"):
+            extra["academic_calendar_published"] = True
+            changed = True
+        if not extra.get("academic_calendar_published_at"):
+            extra["academic_calendar_published_at"] = published_at
             changed = True
         if changed:
             st.extra_data = extra
@@ -198,21 +265,9 @@ async def publish_calendar_from_instance_context(
     context: dict[str, Any],
     published_by: Optional[uuid.UUID] = None,
 ) -> InstituteCalendar:
-    payload = calendar_payload_from_context(context, source_process_code=instance.process_code)
-    snapshot_keys = (
-        "nowruz_holiday_start",
-        "nowruz_holiday_end",
-        "fall_start_date",
-        "fall_end_date",
-        "winter_start_date",
-        "winter_end_date",
-        "registration_payment_window_start",
-        "registration_payment_window_end",
-    )
-    payload["extra_data"] = {
-        "source_process_code": instance.process_code,
-        **{k: context.get(k) for k in snapshot_keys if context.get(k)},
-    }
+    enriched = await _enrich_context_for_calendar_publish(db, instance, context)
+    payload = calendar_payload_from_context(enriched, source_process_code=instance.process_code)
+    payload["extra_data"] = _calendar_extra_data_snapshot(instance, enriched)
     cal = await upsert_active_calendar(
         db,
         payload=payload,
@@ -232,13 +287,81 @@ async def publish_calendar_from_instance_context(
         logging.getLogger(__name__).exception(
             "unlock_intro_students_after_calendar_publish failed"
         )
+    try:
+        await notify_institute_members_calendar_published(db, term_code=cal.term_code)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "notify_institute_members_calendar_published failed"
+        )
     return cal
+
+
+_INSTITUTE_CALENDAR_NOTIFY_ROLES = frozenset(
+    {
+        "student",
+        "applicant",
+        "admin",
+        "staff",
+        "finance",
+        "therapist",
+        "supervisor",
+        "instructor",
+        "site_manager",
+        "interviewer",
+        "deputy_education",
+        "course_committee",
+        "teaching_assistant",
+        "monitoring_committee_officer",
+        "progress_committee",
+        "education_committee",
+        "supervision_committee",
+        "specialized_commission",
+        "therapy_committee_chair",
+        "therapy_committee_executor",
+    }
+)
+
+ACADEMIC_CALENDAR_PAGE_PATH = "/panel/academic-calendar"
+
+
+async def notify_institute_members_calendar_published(
+    db: AsyncSession,
+    *,
+    term_code: str | None = None,
+) -> int:
+    """اعلان پاپ‌آپ با لینک تقویم آموزشی برای همهٔ کاربران فعال پرتال."""
+    from app.models.operational_models import User
+    from app.services.panel_flash_messages import create_panel_flash_message
+
+    term_part = f" ({term_code})" if term_code else ""
+    message = (
+        f"تقویم آموزشی انستیتو{term_part} منتشر شد. "
+        "تاریخ‌های ترم پاییز و زمستان و مهلت‌های مهم را مشاهده کنید."
+    )
+    stmt = select(User.id).where(
+        User.is_active.is_(True),
+        User.role.in_(tuple(_INSTITUTE_CALENDAR_NOTIFY_ROLES)),
+    )
+    user_ids = list((await db.execute(stmt)).scalars().all())
+    for uid in user_ids:
+        await create_panel_flash_message(
+            db,
+            user_id=uid,
+            message=message,
+            level="success",
+            source_path=ACADEMIC_CALENDAR_PAGE_PATH,
+        )
+    return len(user_ids)
 
 
 def calendar_to_response_dict(cal: InstituteCalendar | None) -> dict[str, Any] | None:
     """سریال‌سازی تقویم فعال برای API (admin و panel)."""
     if cal is None:
         return None
+    extra = cal.extra_data if isinstance(cal.extra_data, dict) else {}
+    source_process_code = (extra.get("source_process_code") or "").strip() or None
     return {
         "id": str(cal.id),
         "term_code": cal.term_code,
@@ -250,5 +373,9 @@ def calendar_to_response_dict(cal: InstituteCalendar | None) -> dict[str, Any] |
         "evaluation_open_at": cal.evaluation_open_at.isoformat() if cal.evaluation_open_at else None,
         "evaluation_close_at": cal.evaluation_close_at.isoformat() if cal.evaluation_close_at else None,
         "published_at": cal.published_at.isoformat() if cal.published_at else None,
-        "extra_data": cal.extra_data if isinstance(cal.extra_data, dict) else {},
+        "source_process_instance_id": str(cal.source_process_instance_id)
+        if cal.source_process_instance_id
+        else None,
+        "source_process_code": source_process_code,
+        "extra_data": extra,
     }

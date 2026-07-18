@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
+import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
 import { processExecApi, studentApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
@@ -121,6 +122,18 @@ export default function SiteManagerPortal() {
     allowedTabs: SITE_MANAGER_DEEP_LINK_TABS,
   })
 
+  const { processCodeFilter, filteredItems: pendingActionsFiltered } = useProcessCodeUrlFilter({
+    loading,
+    items: pendingActions,
+    getProcessCode: (p) => p.process_code,
+    getInstanceId: (p) => p.instance_id || p.id,
+    viewInstance,
+    setActiveTab,
+    tabWhenFiltered: 'pending',
+  })
+
+  const displayPendingActions = processCodeFilter ? pendingActionsFiltered : pendingActions
+
   const triggerTransition = async (transition) => {
     if (!selectedInstance) return
     const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
@@ -166,7 +179,7 @@ export default function SiteManagerPortal() {
   }
 
   const tabs = [
-    { id: 'pending', label: `کارهای من (${pendingActions.length})`, icon: '📥' },
+    { id: 'pending', label: `کارهای من (${displayPendingActions.length})`, icon: '📥' },
     { id: 'dashboard', label: 'داشبورد', icon: '📊' },
     { id: 'alerts', label: `هشدارها (${attendanceAlerts.length})`, icon: '🔔' },
     { id: 'documentsReview', label: `بررسی مدارک (${documentReviewQueue.length})`, icon: '📎' },
@@ -239,7 +252,7 @@ export default function SiteManagerPortal() {
             >
               <div className="stat-icon warning">📋</div>
               <div>
-                <div className="stat-value">{pendingActions.length}</div>
+                <div className="stat-value">{displayPendingActions.length}</div>
                 <div className="stat-label">پیگیری منتظر</div>
               </div>
             </div>
@@ -321,14 +334,14 @@ export default function SiteManagerPortal() {
               <div className="card-header">
                 <h3 className="card-title">پیگیری‌های منتظر</h3>
               </div>
-              {pendingActions.length === 0 ? (
+              {displayPendingActions.length === 0 ? (
                 <div className="empty-state" style={{ padding: '2rem' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📭</div>
                   <p>پیگیری منتظری وجود ندارد</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {pendingActions.slice(0, 5).map(p => (
+                  {displayPendingActions.slice(0, 5).map(p => (
                     <button
                       key={p.instance_id}
                       onClick={() => { viewInstance(p.instance_id); setActiveTab('pending') }}
@@ -413,7 +426,7 @@ export default function SiteManagerPortal() {
         <div style={{ display: 'grid', gridTemplateColumns: instanceDetail ? '1fr 1.5fr' : '1fr', gap: '1.5rem' }}>
           <div className="card">
             <div className="card-header">
-              <h3 className="card-title">پیگیری‌ها ({pendingActions.length})</h3>
+              <h3 className="card-title">پیگیری‌ها ({displayPendingActions.length})</h3>
             </div>
             {pendingActions.length === 0 ? (
               <div className="empty-state" style={{ padding: '3rem' }}>
@@ -422,7 +435,7 @@ export default function SiteManagerPortal() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {pendingActions.map(p => (
+                {displayPendingActions.map(p => (
                   <button
                     key={p.instance_id}
                     onClick={() => viewInstance(p.instance_id)}

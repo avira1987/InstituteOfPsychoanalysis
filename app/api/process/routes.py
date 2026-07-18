@@ -760,6 +760,45 @@ def _operator_form_submitted(ctx: dict, state_code: str) -> bool:
     return bool(submitted.get(state_code))
 
 
+def _validate_semester_prep_interview_scheduling_form(form_values: dict) -> None:
+    """اعتبارسنجی فرم زمان‌بندی مصاحبه در آماده‌سازی ترم."""
+    mode_fa = (form_values.get("interview_mode") or "").strip()
+    if mode_fa not in ("حضوری", "آنلاین"):
+        raise HTTPException(
+            status_code=400,
+            detail="نوع مصاحبه را مشخص کنید: حضوری یا آنلاین.",
+        )
+    if mode_fa == "حضوری":
+        loc = (
+            (form_values.get("interview_location_fa") or form_values.get("interview_location_or_link") or "")
+            .strip()
+        )
+        if not loc:
+            raise HTTPException(
+                status_code=400,
+                detail="برای مصاحبهٔ حضوری، آدرس یا محل برگزاری (interview_location_fa) الزامی است.",
+            )
+
+
+def _validate_semester_prep_step_form_submitted(instance: ProcessInstance, trigger_event: str) -> None:
+    """قبل از پیشروی در آماده‌سازی ترم، فرم مرحلهٔ فعلی باید ثبت شده باشد."""
+    from app.services.semester_prep_service import PREP_PROCESS_CODES
+
+    if instance.process_code not in PREP_PROCESS_CODES:
+        return
+    if trigger_event == "sla_expired":
+        return
+    state = (instance.current_state_code or "").strip()
+    if not state:
+        return
+    ctx = StateMachineEngine._as_mapping(instance.context_data)
+    if not _operator_form_submitted(ctx, state):
+        raise HTTPException(
+            status_code=400,
+            detail="ابتدا فرم این مرحله را با دکمهٔ «ثبت فرم این مرحله» تکمیل و ثبت کنید.",
+        )
+
+
 def _validate_intern_bulk_meeting_logged(instance: ProcessInstance, payload: dict) -> None:
     ctx = StateMachineEngine._as_mapping(instance.context_data)
     if not _operator_form_submitted(ctx, "supervision_start"):
@@ -1276,6 +1315,12 @@ async def trigger_transition(
             if result != "reject":
                 raise HTTPException(status_code=400, detail="در فرم «عدم موافقت» انتخاب نشده است.")
 
+    inst_prep = (
+        await db.execute(select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id)))
+    ).scalars().first()
+    if inst_prep:
+        _validate_semester_prep_step_form_submitted(inst_prep, request.trigger_event)
+
     role_norm = _normalize_actor_role(current_user.role)
     if role_norm == "student" and request.trigger_event in ("timeslot_selected", "interview_time_selected"):
         raise HTTPException(
@@ -1767,9 +1812,10 @@ async def download_marketing_campaign_pack_pdf(
             detail="دانلود PDF این مرحله فقط برای مسئول پذیرش مجاز است.",
         )
 
-    from app.services.semester_prep_marketing_pdf import build_marketing_campaign_pdf_bytes
+    from app.services.semester_prep_marketing_pdf import build_marketing_campaign_pdf_bytes, enrich_marketing_handoff_context
 
     ctx = StateMachineEngine._as_mapping(instance.context_data)
+    ctx = await enrich_marketing_handoff_context(db, instance.process_code, ctx)
     name = (current_user.full_name_fa or current_user.username or "").strip()
     try:
         pdf_bytes = build_marketing_campaign_pdf_bytes(
@@ -1779,6 +1825,14 @@ async def download_marketing_campaign_pack_pdf(
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).exception("marketing_campaign_pdf_generation_failed")
+        raise HTTPException(
+            status_code=500,
+            detail="تولید فایل PDF ممکن نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.",
+        ) from e
 
     safe_slug = "winter" if instance.process_code == "winter_semester_preparation" else "fall"
     filename = f"marketing_campaign_{safe_slug}.pdf"
@@ -1861,6 +1915,14 @@ async def register_operator_step_forms(
     if not ok:
         raise HTTPException(status_code=400, detail={"error": "validation_failed", "missing": missing})
 
+    from app.services.semester_prep_service import PREP_PROCESS_CODES
+
+    if (
+        state == "interview_scheduling"
+        and instance.process_code in PREP_PROCESS_CODES
+    ):
+        _validate_semester_prep_interview_scheduling_form(form_values)
+
     sanitized = sanitize_operator_form_values(forms, form_values)
     from app.services.course_committee_roster_service import enrich_course_table_rows
 
@@ -1919,6 +1981,27 @@ async def register_operator_step_forms(
     ctx = apply_register_to_context(instance.context_data or {}, state, sanitized)
     instance.context_data = ctx
     flag_modified(instance, "context_data")
+    if (
+        state == "interview_scheduling"
+        and instance.process_code in PREP_PROCESS_CODES
+    ):
+        from app.services.interview_slot_service import (
+            apply_semester_prep_interview_defaults_to_open_slots,
+            interview_mode_fa_to_slot_mode,
+            resolve_semester_prep_interview_location,
+        )
+
+        slot_mode = interview_mode_fa_to_slot_mode(sanitized.get("interview_mode"))
+        slot_loc = (
+            resolve_semester_prep_interview_location(sanitized)
+            if slot_mode == "in_person"
+            else None
+        )
+        await apply_semester_prep_interview_defaults_to_open_slots(
+            db,
+            mode=slot_mode,
+            location_fa=slot_loc,
+        )
     await db.flush()
     await db.refresh(instance)
     return {"success": True, "state_code": state, "context_data": instance.context_data}

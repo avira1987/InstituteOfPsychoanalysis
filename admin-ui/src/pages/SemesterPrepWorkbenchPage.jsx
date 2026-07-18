@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import React, { useCallback, useMemo, useState } from 'react'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
@@ -32,7 +32,7 @@ const STATE_HINTS = {
       'خروجی فعالیت‌های ۱، ۲ و ۵ را به‌صورت PDF برای مدیر مارکتینگ ارسال کنید و تأیید ارسال را ثبت کنید.',
     interviewer_assignment: 'تعیین مصاحبه‌کنندگان و بازهٔ زمانی مصاحبه‌های ورودی.',
     interview_scheduling:
-      'زمان‌بندی دقیق اسلات‌های مصاحبه (ساعت شروع/پایان، مدت نوبت، حضوری یا آنلاین).',
+      'نوع برگزاری را مشخص کنید و اسلات‌های قابل رزرو را ثبت کنید.',
   },
   winter_semester_preparation: {
     license_check: 'بررسی پروانه فعالیت برای ترم زمستان.',
@@ -41,12 +41,13 @@ const STATE_HINTS = {
     marketing_campaign:
       'خروجی فعالیت‌های ۲ و ۳ را به‌صورت PDF برای مدیر مارکتینگ ارسال کنید و تأیید ارسال را ثبت کنید.',
     interviewer_assignment: 'تعیین مصاحبه‌کنندگان و بازهٔ زمانی مصاحبه‌های زمستان.',
-    interview_scheduling: 'ثبت اسلات‌های دقیق مصاحبه برای متقاضیان.',
+    interview_scheduling: 'نوع برگزاری را مشخص کنید و اسلات‌های قابل رزرو را ثبت کنید.',
   },
 }
 
 export default function SemesterPrepWorkbenchPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const processParam = searchParams.get('process_code')
   const { showToast } = useToast()
@@ -65,16 +66,20 @@ export default function SemesterPrepWorkbenchPage() {
     actionTransitions,
     loading,
     busy,
+    load,
     loadInstance,
     startProcess,
     triggerTransition,
   } = useSemesterPrepWorkbench(processParam)
 
+  const fallPublished = Boolean(status?.processes?.fall_semester_preparation?.last_completed_at)
   const canStart =
     user?.role === 'admin' ||
     user?.role === 'deputy_education' ||
     user?.role === 'course_committee' ||
-    (user?.role === 'staff' && resolvedCode === 'fall_semester_preparation')
+    (user?.role === 'staff' &&
+      (resolvedCode === 'fall_semester_preparation' ||
+        (resolvedCode === 'winter_semester_preparation' && fallPublished)))
 
   const winterBlocked =
     resolvedCode === 'winter_semester_preparation' &&
@@ -101,6 +106,12 @@ export default function SemesterPrepWorkbenchPage() {
     }
   }, [entry, currentState])
 
+  const isPublished = currentState === 'published'
+
+  const goToAcademicCalendar = useCallback(() => {
+    navigate('/panel/academic-calendar')
+  }, [navigate])
+
   const handleStart = async () => {
     const result = await startProcess(resolvedCode)
     if (result.ok) {
@@ -114,11 +125,32 @@ export default function SemesterPrepWorkbenchPage() {
     const result = await triggerTransition(transition, (text) => notesPayload(text || decisionNotes))
     if (result.ok) {
       setDecisionNotes('')
+      if (result.toState === 'published') {
+        showToast('تقویم آموزشی منتشر شد — در حال انتقال به صفحهٔ تقویم…')
+        goToAcademicCalendar()
+        return
+      }
       showToast(`مرحله ثبت شد — بعدی: ${labelState(result.toState)}`)
     } else {
       showToast(result.error, 'error')
     }
   }
+
+  const primaryTransition = actionTransitions[0] ?? null
+
+  const handleAdvanceAfterSave = useCallback(
+    async (transition) => {
+      const result = await triggerTransition(transition, (text) => notesPayload(text || decisionNotes))
+      if (result.ok) {
+        setDecisionNotes('')
+        if (result.toState === 'published') {
+          goToAcademicCalendar()
+        }
+      }
+      return result
+    },
+    [triggerTransition, decisionNotes, goToAcademicCalendar],
+  )
 
   const handleRollback = async (reason) => {
     if (!instanceId) return
@@ -126,8 +158,9 @@ export default function SemesterPrepWorkbenchPage() {
     try {
       const res = await processExecApi.rollback(instanceId, { reason: reason || undefined })
       if (res.data?.success) {
+        setDecisionNotes('')
         showToast(`بازگشت به مرحلهٔ ${labelState(res.data.to_state)}`)
-        await loadInstance(instanceId)
+        await load()
       } else {
         showToast(res.data?.error || 'بازگشت انجام نشد', 'error')
       }
@@ -211,6 +244,13 @@ export default function SemesterPrepWorkbenchPage() {
               فرم‌های مراحل به‌صورت فقط‌خواندنی نمایش داده می‌شوند. برای اصلاح، از بخش «بازگشت به
               مرحلهٔ قبلی» در انتهای صفحه استفاده کنید تا فرایند دوباره برای ویرایش باز شود.
             </p>
+            {isPublished ? (
+              <div style={{ marginTop: '0.85rem' }}>
+                <Link to="/panel/academic-calendar" className="btn btn-primary btn-sm">
+                  مشاهده تقویم آموزشی منتشرشده
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <OperatorStepFormsSection
@@ -224,6 +264,9 @@ export default function SemesterPrepWorkbenchPage() {
             stateAssignedRole={entry?.assigned_role}
             showToast={showToast}
             onUpdated={() => loadInstance(instanceId)}
+            primaryTransition={primaryTransition}
+            onAdvanceAfterSave={handleAdvanceAfterSave}
+            advanceBusy={busy}
             actionTransitions={actionTransitions}
             decisionNotes={decisionNotes}
             onDecisionNotesChange={setDecisionNotes}

@@ -88,6 +88,22 @@ async def semester_prep_instance(db_session: AsyncSession, sample_student, sampl
 
 
 @pytest_asyncio.fixture
+async def winter_semester_prep_instance(db_session: AsyncSession, sample_student, sample_user):
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "winter_semester_preparation.json")
+    await db_session.commit()
+    engine = StateMachineEngine(db_session)
+    instance = await engine.start_process(
+        process_code="winter_semester_preparation",
+        student_id=sample_student.id,
+        actor_id=sample_user.id,
+        actor_role="admin",
+    )
+    await db_session.commit()
+    return instance
+
+
+@pytest_asyncio.fixture
 async def other_student(db_session: AsyncSession):
     uid = uuid.uuid4().hex[:12]
     user = User(
@@ -374,6 +390,31 @@ async def test_engine_restart_semester_prep_now_allowed(
     assert old_row.is_cancelled is True
     new_row = await db_session.get(ProcessInstance, result.new_instance_id)
     assert new_row.is_cancelled is False
+
+
+@pytest.mark.asyncio
+async def test_engine_restart_winter_semester_prep_allowed(
+    db_session: AsyncSession,
+    sample_user,
+    winter_semester_prep_instance: ProcessInstance,
+):
+    """فرایند آماده‌سازی ترم زمستان هم قابل شروع دوباره است."""
+    engine = StateMachineEngine(db_session)
+    result = await engine.restart_process_instance(
+        instance_id=winter_semester_prep_instance.id,
+        actor_id=sample_user.id,
+        actor_role="admin",
+        reason="تنظیم دوبارهٔ آماده‌سازی زمستان",
+        is_own_instance=False,
+    )
+    await db_session.commit()
+
+    assert result.success is True
+    old_row = await db_session.get(ProcessInstance, winter_semester_prep_instance.id)
+    assert old_row.is_cancelled is True
+    new_row = await db_session.get(ProcessInstance, result.new_instance_id)
+    assert new_row.is_cancelled is False
+    assert new_row.process_code == "winter_semester_preparation"
 
 
 @pytest.mark.asyncio

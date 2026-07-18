@@ -34,16 +34,16 @@ def _slot(*, created_by: uuid.UUID, interviewer_user_id: Optional[uuid.UUID]) ->
     )
 
 
-def test_only_staff_and_admin_can_define_interview_slots() -> None:
+def test_staff_admin_and_site_manager_can_define_interview_slots() -> None:
     staff = SimpleNamespace(id=uuid.uuid4(), role="staff")
     interviewer = SimpleNamespace(id=uuid.uuid4(), role="interviewer")
     admin = SimpleNamespace(id=uuid.uuid4(), role="admin")
     site_manager = SimpleNamespace(id=uuid.uuid4(), role="site_manager")
     assert _can_define_interview_slots(staff) is True
     assert _can_define_interview_slots(admin) is True
+    assert _can_define_interview_slots(site_manager) is True
     assert _can_define_interview_slots(interviewer) is False
-    assert _can_define_interview_slots(site_manager) is False
-    assert SLOT_DEFINE_ROLES == ("staff", "admin")
+    assert SLOT_DEFINE_ROLES == ("staff", "admin", "site_manager")
 
 
 def test_interviewer_does_not_own_staff_pool_slot_but_can_view_booking() -> None:

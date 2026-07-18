@@ -49,10 +49,23 @@ const SHARED_NAV = [
   },
   { path: '/panel/users', label: 'مدیریت کاربران', icon: '👥', roles: ['admin'], priority: 21.5 },
   {
+    path: '/panel/academic-calendar',
+    label: 'تقویم آموزشی',
+    icon: '📆',
+    roles: [
+      'student', 'admin', 'staff', 'finance', 'therapist', 'supervisor', 'site_manager', 'interviewer',
+      'deputy_education', 'course_committee', 'teaching_assistant', 'monitoring_committee_officer',
+      'progress_committee', 'education_committee', 'supervision_committee', 'specialized_commission',
+      'therapy_committee_chair', 'therapy_committee_executor', 'applicant', 'instructor',
+      'admissions_officer',
+    ],
+    priority: 44,
+  },
+  {
     path: '/panel/semester-prep/workbench',
     label: 'مرحلهٔ آماده‌سازی ترم',
     icon: '📋',
-    roles: ['admin', 'deputy_education', 'staff', 'course_committee'],
+    roles: ['admin', 'deputy_education', 'staff', 'course_committee', 'admissions_officer'],
     priority: 45.14,
   },
   {
@@ -81,7 +94,7 @@ const SHARED_NAV = [
     path: '/panel/semester-prep',
     label: 'آماده‌سازی ترم',
     icon: '📅',
-    roles: ['admin', 'deputy_education', 'staff', 'course_committee'],
+    roles: ['admin', 'deputy_education', 'staff', 'course_committee', 'admissions_officer'],
     priority: 45.2,
   },
   {
@@ -104,6 +117,30 @@ const SHARED_NAV = [
 ]
 
 export const SCHEDULER_AUTOMATION_ROLES = ['admin', 'staff', 'deputy_education']
+
+/** مسیرهای آماده‌سازی ترم که پس از آمدن دکمهٔ per-process در سایدبار تکراری می‌شوند */
+const SEMESTER_PREP_DEDUP_PATHS = new Set([
+  '/panel/semester-prep/workbench',
+  '/panel/semester-prep/calendar',
+  '/panel/semester-prep/course-list-review',
+])
+
+const SEMESTER_PREP_PROCESS_CODES = new Set([
+  'fall_semester_preparation',
+  'winter_semester_preparation',
+])
+
+/**
+ * حذف آیتم‌های ثابت آماده‌سازی ترم وقتی همان فرایندها در منوی فرایندها هستند.
+ * @param {Array<{ path: string }>} navItems
+ * @param {string[]} processNavCodes
+ */
+export function dedupSemesterPrepNavForProcessNav(navItems, processNavCodes = []) {
+  const codes = new Set((processNavCodes || []).map((c) => String(c).toLowerCase()))
+  const hasSemesterPrep = [...codes].some((c) => SEMESTER_PREP_PROCESS_CODES.has(c))
+  if (!hasSemesterPrep) return navItems
+  return (navItems || []).filter((item) => !SEMESTER_PREP_DEDUP_PATHS.has(item.path))
+}
 
 export function canViewSchedulerAutomation(portalRole) {
   return portalRole === 'admin' || SCHEDULER_AUTOMATION_ROLES.includes(portalRole)
@@ -180,6 +217,9 @@ export function isNavPathVisibleForRole(path, portalRole) {
   ]
   const item = all.find((i) => i.path === path)
   if (!item) {
+    if (path.startsWith('/panel/process-nav/')) {
+      return true
+    }
     if (path.startsWith('/panel/portal/staff/')) {
       const laneId = path.replace('/panel/portal/staff/', '')
       return Object.values(STAFF_LANES).some((l) => l.id === laneId && l.allowedPortalRoles.includes(portalRole))

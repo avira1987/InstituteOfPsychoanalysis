@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { userApi, studentApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
@@ -10,18 +10,9 @@ import {
   extendedFieldsFromExtra,
   validateExtendedRegistrationClient,
 } from '../utils/studentRegistrationProfile'
+import { labelRoleFa, ROLE_LABELS_FA_MAP } from '../utils/roleLabels'
 
-const roleLabels = {
-  admin: 'مدیر سیستم',
-  staff: 'کارمند دفتر',
-  finance: 'اپراتور مالی',
-  therapist: 'درمانگر',
-  student: 'دانشجو',
-  supervisor: 'سوپروایزر',
-  progress_committee: 'کمیته پیشرفت',
-}
-
-const roles = Object.keys(roleLabels)
+const portalRoleOptions = Object.keys(ROLE_LABELS_FA_MAP).sort()
 
 const emptyCreate = () => ({
   username: '',
@@ -57,6 +48,11 @@ export default function UserManagement() {
   /** تأیید حذف دائمی از DB (فقط ادمین) */
   const [deleteTarget, setDeleteTarget] = useState(null)
   const { showToast } = useToast()
+
+  const rolesInUse = useMemo(
+    () => [...new Set(users.map((u) => u.role).filter(Boolean))].sort(),
+    [users],
+  )
 
   const closeAllModals = useCallback(() => {
     setShowCreate(false)
@@ -290,7 +286,7 @@ export default function UserManagement() {
                 <div className="form-group">
                   <label className="form-label">نقش *</label>
                   <select className="form-input" value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}>
-                    {roles.map((r) => <option key={r} value={r}>{roleLabels[r]} ({r})</option>)}
+                    {portalRoleOptions.map((r) => <option key={r} value={r}>{labelRoleFa(r)}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -328,7 +324,7 @@ export default function UserManagement() {
                 <div className="form-group">
                   <label className="form-label">نقش</label>
                   <select className="form-input" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
-                    {roles.map((r) => <option key={r} value={r}>{roleLabels[r]}</option>)}
+                    {portalRoleOptions.map((r) => <option key={r} value={r}>{labelRoleFa(r)}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -481,9 +477,9 @@ export default function UserManagement() {
           />
           <div className="user-mgmt-role-chips">
             <button type="button" className={`btn ${roleFilter === '' ? 'btn-primary' : 'btn-outline'} btn-sm`} onClick={() => setRoleFilter('')}>همه</button>
-            {roles.map((r) => (
+            {rolesInUse.map((r) => (
               <button key={r} type="button" className={`btn ${roleFilter === r ? 'btn-primary' : 'btn-outline'} btn-sm`} onClick={() => setRoleFilter(r)}>
-                {roleLabels[r]}
+                {labelRoleFa(r)}
               </button>
             ))}
           </div>
@@ -517,7 +513,7 @@ export default function UserManagement() {
                   <tr key={u.id} className="table-users-row" style={{ opacity: u.is_active ? 1 : 0.55 }}>
                     <td className="table-users-cell table-users-cell-ellipsis" title={u.username}><strong>{u.username}</strong></td>
                     <td className="table-users-cell table-users-cell-ellipsis" title={u.full_name_fa || ''}>{u.full_name_fa || '-'}</td>
-                    <td className="table-users-cell table-users-cell-role"><span className="badge badge-primary badge-tight">{roleLabels[u.role] || u.role}</span></td>
+                    <td className="table-users-cell table-users-cell-role"><span className="badge badge-primary badge-tight">{labelRoleFa(u.role)}</span></td>
                     <td className="table-users-cell table-users-cell-ltr table-users-cell-ellipsis" title={u.national_code || ''}>{u.national_code || '-'}</td>
                     <td className="table-users-cell">
                       <span className={`badge ${u.is_active ? 'badge-success' : 'badge-danger'} badge-tight`}>

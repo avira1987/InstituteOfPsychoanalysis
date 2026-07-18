@@ -20,6 +20,7 @@ from app.services.panel_action_notifications import build_action_notifications
 from app.services.panel_notification_dismiss import dismiss_action_notification
 from app.services.panel_flash_messages import create_panel_flash_message
 from app.services.portal_role_inbox import build_portal_role_process_inbox
+from app.services.process_nav_service import build_process_nav_items
 from app.services import sms_simulation_service
 from app.services.student_online_sessions_service import list_student_online_sessions
 from sqlalchemy import select
@@ -137,6 +138,15 @@ async def panel_nav_pending_counts(
     شمارش کارهای منتظر برای آیتم‌های منو (همان منطق پنل‌های نقش + تیکت‌های باز/در حال رسیدگی).
     """
     return await compute_nav_pending_counts(db, user)
+
+
+@router.get("/process-nav-items")
+async def panel_process_nav_items(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """آیتم‌های منوی سایدبار — یک ورودی به ازای هر فرایند قابل اقدام برای نقش جاری."""
+    return await build_process_nav_items(db, user)
 
 
 @router.get("/action-notifications")
@@ -277,7 +287,29 @@ async def panel_simulated_sms_dismiss(
 
 
 _PANEL_CALENDAR_ROLES = frozenset(
-    {"student", "applicant", "admin", "staff", "deputy_education", "supervisor", "therapist", "instructor"}
+    {
+        "student",
+        "applicant",
+        "admin",
+        "staff",
+        "finance",
+        "therapist",
+        "supervisor",
+        "instructor",
+        "site_manager",
+        "interviewer",
+        "deputy_education",
+        "course_committee",
+        "teaching_assistant",
+        "monitoring_committee_officer",
+        "progress_committee",
+        "education_committee",
+        "supervision_committee",
+        "specialized_commission",
+        "therapy_committee_chair",
+        "therapy_committee_executor",
+        "admissions_officer",
+    }
 )
 
 

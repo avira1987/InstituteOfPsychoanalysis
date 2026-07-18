@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
-import { processExecApi, studentApi, userApi, auditApi, assignmentApi, therapyApi, alocomApi, panelApi } from '../services/api'
+import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
+import { processExecApi, studentApi, userApi, auditApi, assignmentApi, therapyApi, alocomApi, panelApi, semesterPrepApi } from '../services/api'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import {
   mergeInterviewResultFormPayload,
@@ -58,6 +59,7 @@ import TaToAssistantFacultyTaPanel from '../components/TaToAssistantFacultyTaPan
 import TaToInstructorAutoReportPanel from '../components/TaToInstructorAutoReportPanel'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import CourseCommitteePrepPanel from '../components/CourseCommitteePrepPanel'
+import CourseCommitteeRosterPanel from '../components/CourseCommitteeRosterPanel'
 import InstructionSemesterCoursesPanel from '../components/InstructionSemesterCoursesPanel'
 import InstructionTaPortfolioPanel from '../components/InstructionTaPortfolioPanel'
 import TaTrackCompletionInstancePanel from '../components/TaTrackCompletionInstancePanel'
@@ -75,12 +77,14 @@ import {
   isSemesterPrepWorkbenchDestination,
   resolvePendingInstanceId,
 } from '../utils/operatorFollowupDeepLinks'
+import { resolveSemesterPrepWorkbenchHref } from '../utils/semesterPrepPortalLinks'
 
 const STAFF_DEEP_LINK_TABS = [
   'dashboard',
   'pending',
   'students',
   'processes',
+  'roster',
   'interviewSlots',
   'documentsReview',
   'onlineClasses',
@@ -129,9 +133,23 @@ export default function StaffPortal() {
     weekly_sessions: 1, term_count: 1, current_term: 1,
   })
   const [newAssignment, setNewAssignment] = useState({ student_id: '', title_fa: '', description: '' })
+  const [semesterPrepProcesses, setSemesterPrepProcesses] = useState(null)
   const { showToast } = useToast()
 
   useEffect(() => { loadData() }, [])
+
+  useEffect(() => {
+    if (!isCourseCommitteeLane) return
+    let cancelled = false
+    semesterPrepApi.getStatus()
+      .then((res) => {
+        if (!cancelled) setSemesterPrepProcesses(res.data?.processes || {})
+      })
+      .catch(() => {
+        if (!cancelled) setSemesterPrepProcesses({})
+      })
+    return () => { cancelled = true }
+  }, [isCourseCommitteeLane])
 
   useEffect(() => {
     setInterviewResultForm({ interviewer_notes: '' })
@@ -244,6 +262,18 @@ export default function StaffPortal() {
     viewInstance,
     allowedTabs: laneConfig?.tabIds || STAFF_DEEP_LINK_TABS,
   })
+
+  const { processCodeFilter, filteredItems: pendingActionsFiltered } = useProcessCodeUrlFilter({
+    loading,
+    items: pendingActions,
+    getProcessCode: (p) => p.process_code,
+    getInstanceId: (p) => p.instance_id || p.id,
+    viewInstance,
+    setActiveTab,
+    tabWhenFiltered: 'pending',
+  })
+
+  const displayPendingActions = processCodeFilter ? pendingActionsFiltered : pendingActions
 
   useEffect(() => {
     const sid = searchParams.get('student_id')
@@ -458,10 +488,10 @@ export default function StaffPortal() {
 
   const tabs = useMemo(
     () => buildStaffTabsForLane(lane, {
-      pending: pendingActions.length,
+      pending: displayPendingActions.length,
       documentsReview: documentReviewQueue.length,
     }),
-    [lane, pendingActions.length, documentReviewQueue.length],
+    [lane, displayPendingActions.length, documentReviewQueue.length],
   )
 
   if (loading) {
@@ -516,7 +546,7 @@ export default function StaffPortal() {
       {isInstructionLane && <InstructorEvaluationResultsPanel showToast={showToast} />}
 
       {isInstructionLane && (
-        <InstructorClassAttendanceInboxHint pendingActions={pendingActions} />
+        <InstructorClassAttendanceInboxHint pendingActions={displayPendingActions} />
       )}
 
       <div className="tab-bar">
@@ -546,7 +576,7 @@ export default function StaffPortal() {
             >
               <div className="stat-icon warning">📥</div>
               <div>
-                <div className="stat-value">{pendingActions.length}</div>
+                <div className="stat-value">{displayPendingActions.length}</div>
                 <div className="stat-label">وظایف منتظر</div>
               </div>
             </div>
@@ -637,20 +667,20 @@ export default function StaffPortal() {
             <div className="card">
               <div className="card-header">
                 <h3 className="card-title">وظایف فوری</h3>
-                {pendingActions.length > 0 && (
+                {displayPendingActions.length > 0 && (
                   <button className="btn btn-outline btn-sm" onClick={() => setActiveTab('pending')}>
                     مشاهده همه
                   </button>
                 )}
               </div>
-              {pendingActions.length === 0 ? (
+              {displayPendingActions.length === 0 ? (
                 <div className="empty-state" style={{ padding: '2rem' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>✅</div>
                   <p>{isCourseCommitteeLane ? 'وظیفه پرونده‌ای منتظر نیست — کار اصلی در کارت آماده‌سازی ترم بالاست.' : 'وظیفه منتظری وجود ندارد'}</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {pendingActions.slice(0, 6).map(p => {
+                  {displayPendingActions.slice(0, 6).map(p => {
                     const pid = resolvePendingInstanceId(p)
                     return (
                     <button
@@ -716,7 +746,11 @@ export default function StaffPortal() {
             <div className="quick-actions-grid">
               {isCourseCommitteeLane ? (
                 <>
-                  <Link className="quick-action-btn" to="/panel/semester-prep/workbench?process_code=fall_semester_preparation" style={{ textDecoration: 'none' }}>
+                  <Link
+                    className="quick-action-btn"
+                    to={resolveSemesterPrepWorkbenchHref(semesterPrepProcesses)}
+                    style={{ textDecoration: 'none' }}
+                  >
                     <span className="quick-action-icon">📆</span>
                     <span>workbench آماده‌سازی</span>
                   </Link>
@@ -759,7 +793,7 @@ export default function StaffPortal() {
         <div style={{ display: 'grid', gridTemplateColumns: instanceDetail ? '1fr 1.5fr' : '1fr', gap: '1.5rem' }}>
           <div className="card">
             <div className="card-header">
-              <h3 className="card-title">وظایف منتظر ({pendingActions.length})</h3>
+              <h3 className="card-title">وظایف منتظر ({displayPendingActions.length})</h3>
             </div>
             {pendingActions.length === 0 ? (
               <div className="empty-state" style={{ padding: '3rem' }}>
@@ -768,7 +802,7 @@ export default function StaffPortal() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {pendingActions.map(p => {
+                {displayPendingActions.map(p => {
                   const pid = resolvePendingInstanceId(p)
                   return (
                   <button
@@ -928,6 +962,10 @@ export default function StaffPortal() {
       )}
 
       {/* Processes Tab */}
+      {activeTab === 'roster' && isCourseCommitteeLane && (
+        <CourseCommitteeRosterPanel showToast={showToast} />
+      )}
+
       {activeTab === 'processes' && (
         <div style={{ display: 'grid', gridTemplateColumns: instanceDetail ? '1fr 1.5fr' : '1fr', gap: '1.5rem' }}>
           <div className="card">

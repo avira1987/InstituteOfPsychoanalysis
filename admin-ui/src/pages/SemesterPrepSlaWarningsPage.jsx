@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { semesterPrepApi, schedulerApi } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
+import { labelRoleFa } from '../utils/roleLabels'
 
 const PROCESS_LABELS = {
   fall_semester_preparation: 'آماده‌سازی ترم پاییز',
@@ -155,7 +156,7 @@ export default function SemesterPrepSlaWarningsPage() {
                         <td style={td}>
                           {(r.recipients || []).map((rec, j) => (
                             <div key={j} style={{ marginBottom: '0.2rem' }}>
-                              <span style={{ fontWeight: 600 }}>{rec.role_fa || rec.role}</span>
+                              <span style={{ fontWeight: 600 }}>{rec.role_fa || labelRoleFa(rec.role)}</span>
                               {rec.delivered ? (
                                 <span style={{ color: '#15803d', marginRight: '0.35rem' }}>✓ ارسال شد</span>
                               ) : (

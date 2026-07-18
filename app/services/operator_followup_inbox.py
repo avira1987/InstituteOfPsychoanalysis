@@ -29,32 +29,11 @@ _EXCLUDE_ASSIGNED_ROLES = frozenset(
     }
 )
 
-# نقش‌های متادیتا → برچسب فارسی (در صورت نبود، خود کد نقش نمایش داده می‌شود)
-_ROLE_LABELS_FA: dict[str, str] = {
-    "staff": "کارمند دفتر",
-    "finance": "اپراتور مالی",
-    "therapist": "درمانگر",
-    "supervisor": "سوپروایزر",
-    "site_manager": "مسئول سایت",
-    "instructor": "مدرس / دستیار آموزشی",
-    "admissions_officer": "پذیرش / امور ثبت‌نام",
-    "deputy_education_director": "معاون آموزش",
-    "deputy_education": "معاون آموزش",
-    "scientific_officer_course_committee": "مسئول علمی کمیته دروس",
-    "progress_committee": "کمیته پیشرفت",
-    "education_committee": "کمیته آموزش",
-    "supervision_committee": "کمیته نظارت",
-    "specialized_commission": "کمیسیون تخصصی",
-    "therapy_committee_chair": "مسئول کمیته درمان",
-    "therapy_committee_executor": "مجری کمیته درمان",
-    "monitoring_committee_officer": "مسئول کمیته نظارت",
-    "interviewer": "مصاحبه‌گر",
-    "admin": "مدیر سیستم",
-}
+from app.meta.role_labels import role_label_fa_only
 
 
 def _label_for_role(code: str) -> str:
-    return _ROLE_LABELS_FA.get(code, code)
+    return role_label_fa_only(code)
 
 
 def _infer_fallback_role(state: str) -> Optional[tuple[str, str]]:

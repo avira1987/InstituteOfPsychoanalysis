@@ -10,6 +10,7 @@ import {
   CTX_DOCUMENTS_RESUBMIT_FIELDS,
 } from '../utils/processFormsStudent'
 import { labelProcess, labelState, resolveStateDisplayLabel } from '../utils/processDisplay'
+import { labelRoleFa } from '../utils/roleLabels'
 import {
   STUDENT_TRANSITION_CTA_INTRO,
   getStudentTransitionButtonMain,
@@ -47,16 +48,6 @@ function hasRegistrationInterviewBooking(detail) {
 
 /** نقش‌هایی که «منتظر اقدام همکار» برایشان بلوک جدا می‌گذاریم — نه system */
 const STAFF_HUMAN_ROLES = ['interviewer', 'admissions_officer', 'progress_committee', 'supervision_committee']
-
-const ASSIGNED_ROLE_LABELS_FA = {
-  interviewer: 'مصاحبه‌کننده',
-  admissions_officer: 'مسئول پذیرش',
-  system: 'سامانه / واحد آموزش',
-  progress_committee: 'کمیته پیشرفت',
-  supervision_committee: 'کمیته نظارت',
-  applicant: 'متقاضی',
-  student: 'دانشجو',
-}
 
 function resolveSepPaymentDescription(detail) {
   const pc = detail?.process_code
@@ -355,7 +346,7 @@ export default function StudentQuestCard({
               <span>
                 {' '}
                 (
-                {ASSIGNED_ROLE_LABELS_FA[assignRole] || assignRole}
+                {labelRoleFa(assignRole)}
                 )
               </span>
             )}

@@ -258,6 +258,7 @@ export const CONTEXT_KEY_LABELS = {
   interview_end_time: 'ساعت پایان مصاحبه‌ها',
   slot_duration_minutes: 'مدت هر نوبت مصاحبه (دقیقه)',
   interview_mode: 'نوع مصاحبه',
+  interview_location_fa: 'آدرس یا محل برگزاری (حضوری)',
   interview_location_or_link: 'محل یا لینک مصاحبه',
   classroom_location: 'محل برگزاری کلاس',
   instructor_coordinated: 'هماهنگی با مدرس انجام شد',

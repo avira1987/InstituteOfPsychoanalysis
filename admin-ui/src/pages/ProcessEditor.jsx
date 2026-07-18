@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { processApi, ruleApi, getApiBase } from '../services/api'
 import { resolveProcessSopOrder } from '../utils/processSopOrder'
 import { useToast } from '../contexts/ToastContext'
+import { labelRoleFa, ROLE_LABELS_FA_MAP } from '../utils/roleLabels'
 
 export default function ProcessEditor() {
   const { processId } = useParams()
@@ -295,7 +296,7 @@ export default function ProcessEditor() {
     }
   }
 
-  const roles = ['student', 'therapist', 'supervisor', 'admin', 'staff', 'progress_committee', 'system']
+  const roles = Object.keys(ROLE_LABELS_FA_MAP).sort()
 
   if (loading) return <div className="empty-state">در حال بارگذاری...</div>
   if (!process) return <div className="empty-state">فرایند یافت نشد</div>
@@ -392,7 +393,7 @@ export default function ProcessEditor() {
                       </div>
                       {s.assigned_role && (
                         <div style={{ fontSize: '0.7rem', marginTop: '0.25rem' }}>
-                          <span className="badge badge-info">{s.assigned_role}</span>
+                          <span className="badge badge-info">{labelRoleFa(s.assigned_role)}</span>
                         </div>
                       )}
                       {s.sla_hours && (
@@ -524,7 +525,7 @@ export default function ProcessEditor() {
                 <label className="form-label">نقش مسئول</label>
                 <select className="form-input" value={stateForm.assigned_role} onChange={(e) => setStateForm({ ...stateForm, assigned_role: e.target.value })}>
                   <option value="">بدون نقش</option>
-                  {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+                  {roles.map((r) => <option key={r} value={r}>{labelRoleFa(r)}</option>)}
                 </select>
               </div>
               <div className="form-group">
@@ -552,7 +553,7 @@ export default function ProcessEditor() {
                       <td><code>{s.code}</code></td>
                       <td>{s.name_fa}</td>
                       <td><span className={`badge badge-${s.state_type === 'initial' ? 'success' : s.state_type === 'terminal' ? 'danger' : 'info'}`}>{s.state_type}</span></td>
-                      <td>{s.assigned_role || '-'}</td>
+                      <td>{s.assigned_role ? labelRoleFa(s.assigned_role) : '-'}</td>
                       <td>{s.sla_hours ? `${s.sla_hours} ساعت` : '-'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -606,7 +607,7 @@ export default function ProcessEditor() {
                 <label className="form-label">نقش مورد نیاز</label>
                 <select className="form-input" value={transForm.required_role} onChange={(e) => setTransForm({ ...transForm, required_role: e.target.value })}>
                   <option value="">بدون محدودیت</option>
-                  {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+                  {roles.map((r) => <option key={r} value={r}>{labelRoleFa(r)}</option>)}
                 </select>
               </div>
               <div className="form-group">

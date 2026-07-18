@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
+import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
 import { processExecApi, studentApi, therapyApi, alocomApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
@@ -172,6 +173,18 @@ export default function TherapistPortal() {
     allowedTabs: THERAPIST_DEEP_LINK_TABS,
   })
 
+  const { processCodeFilter, filteredItems: pendingActionsFiltered } = useProcessCodeUrlFilter({
+    loading,
+    items: pendingActions,
+    getProcessCode: (p) => p.process_code,
+    getInstanceId: (p) => p.instance_id || p.id,
+    viewInstance,
+    setActiveTab,
+    tabWhenFiltered: 'pending',
+  })
+
+  const displayPendingActions = processCodeFilter ? pendingActionsFiltered : pendingActions
+
   const triggerTransition = async (transition) => {
     if (!selectedInstance) return
     const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
@@ -250,7 +263,7 @@ export default function TherapistPortal() {
   })
 
   const tabs = [
-    { id: 'pending', label: `کارهای من (${pendingActions.length})`, icon: '📥' },
+    { id: 'pending', label: `کارهای من (${displayPendingActions.length})`, icon: '📥' },
     { id: 'attendance', label: `حضور و غیاب (${attendanceNeedsCount})`, icon: '✅' },
     { id: 'dashboard', label: 'داشبورد', icon: '📊' },
     { id: 'students', label: 'دانشجویان', icon: '👨‍🎓' },
@@ -310,7 +323,7 @@ export default function TherapistPortal() {
             >
               <div className="stat-icon warning">📥</div>
               <div>
-                <div className="stat-value">{pendingActions.length}</div>
+                <div className="stat-value">{displayPendingActions.length}</div>
                 <div className="stat-label">منتظر تصمیم شما</div>
               </div>
             </div>
@@ -363,20 +376,20 @@ export default function TherapistPortal() {
             <div className="card">
               <div className="card-header">
                 <h3 className="card-title">درخواست‌های فوری</h3>
-                {pendingActions.length > 0 && (
+                {displayPendingActions.length > 0 && (
                   <button className="btn btn-outline btn-sm" onClick={() => setActiveTab('pending')}>
                     مشاهده همه
                   </button>
                 )}
               </div>
-              {pendingActions.length === 0 ? (
+              {displayPendingActions.length === 0 ? (
                 <div className="empty-state" style={{ padding: '2rem' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>✅</div>
                   <p>درخواست منتظری وجود ندارد</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {pendingActions.slice(0, 5).map(p => (
+                  {displayPendingActions.slice(0, 5).map(p => (
                     <button
                       key={p.instance_id}
                       onClick={() => { viewInstance(p.instance_id); setActiveTab('pending') }}
@@ -441,16 +454,16 @@ export default function TherapistPortal() {
         <div style={{ display: 'grid', gridTemplateColumns: instanceDetail ? '1fr 1.5fr' : '1fr', gap: '1.5rem' }}>
           <div className="card">
             <div className="card-header">
-              <h3 className="card-title">درخواست‌های منتظر تصمیم ({pendingActions.length})</h3>
+              <h3 className="card-title">درخواست‌های منتظر تصمیم ({displayPendingActions.length})</h3>
             </div>
-            {pendingActions.length === 0 ? (
+            {displayPendingActions.length === 0 ? (
               <div className="empty-state" style={{ padding: '3rem' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>✅</div>
                 <p>همه درخواست‌ها بررسی شده‌اند</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {pendingActions.map(p => (
+                {displayPendingActions.map(p => (
                   <button
                     key={p.instance_id}
                     onClick={() => viewInstance(p.instance_id)}

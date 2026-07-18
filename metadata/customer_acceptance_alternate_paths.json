@@ -440,14 +440,14 @@
       "note_fa": "Pass/Fail و ساعات سوپرویژن گروهی پس از ثبت مدرس"
     },
     "fall_semester_preparation": {
-      "frontend": "admin-ui/src/components/StudentAcademicCalendarPanel.jsx",
+      "frontend": "admin-ui/src/pages/AcademicCalendarPage.jsx",
       "field": "GET /api/panel/academic-calendar/active",
-      "note_fa": "تقویم آموزشی read-only پس از publish_academic_calendar_to_profiles"
+      "note_fa": "تقویم آموزشی read-only پس از publish_academic_calendar_to_profiles — صفحهٔ سراسری /panel/academic-calendar"
     },
     "winter_semester_preparation": {
-      "frontend": "admin-ui/src/components/StudentAcademicCalendarPanel.jsx",
+      "frontend": "admin-ui/src/pages/AcademicCalendarPage.jsx",
       "field": "GET /api/panel/academic-calendar/active",
-      "note_fa": "تقویم آموزشی read-only پس از انتشار ترم زمستان"
+      "note_fa": "تقویم آموزشی read-only پس از انتشار ترم زمستان — صفحهٔ سراسری /panel/academic-calendar"
     },
     "film_observation_ta_attendance_completion": {
       "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",

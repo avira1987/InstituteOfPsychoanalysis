@@ -161,7 +161,7 @@ export const STATE_LABELS_FA = {
   "course_finalization": "نهایی‌سازی مکان‌ها و هماهنگی با مدرسین",
   "marketing_campaign": "شروع کمپین بازاریابی پذیرش",
   "interviewer_assignment": "تعیین مصاحبه‌کنندگان و بازه‌های زمانی",
-  "interview_scheduling": "زمان‌بندی دقیق اسلات‌های مصاحبه",
+  "interview_scheduling": "زمان‌بندی و ثبت اسلات‌های مصاحبه",
   "published": "انتشار تقویم و اطلاع‌رسانی",
   "triggered": "راه‌اندازی شده",
   "excluded": "خارج از شمول",
@@ -619,7 +619,7 @@ export const PROCESS_STATE_LABELS_FA = {
     "course_finalization": "نهایی‌سازی مکان‌ها و هماهنگی با مدرسین",
     "marketing_campaign": "شروع کمپین بازاریابی پذیرش",
     "interviewer_assignment": "تعیین مصاحبه‌کنندگان و بازه‌های زمانی",
-    "interview_scheduling": "زمان‌بندی دقیق اسلات‌های مصاحبه",
+    "interview_scheduling": "زمان‌بندی و ثبت اسلات‌های مصاحبه",
     "published": "انتشار تقویم و اطلاع‌رسانی"
   },
   "fee_determination": {
@@ -1182,7 +1182,7 @@ export const PROCESS_STATE_LABELS_FA = {
     "course_finalization": "نهایی‌سازی مکان‌ها و تایید مدرسین",
     "marketing_campaign": "شروع کمپین بازاریابی زمستان",
     "interviewer_assignment": "تعیین مصاحبه‌کنندگان زمستان",
-    "interview_scheduling": "زمان‌بندی دقیق مصاحبه‌های زمستان",
+    "interview_scheduling": "زمان‌بندی و ثبت اسلات‌های مصاحبه",
     "published": "انتشار تقویم زمستان و اطلاع‌رسانی"
   }
 }
@@ -1548,7 +1548,7 @@ export const OPERATOR_TASK_LABELS_FA = {
   "monitoring_review": "بررسی/صدور مجوز طبق دستور کار.",
   "therapy_frequency_escalation": "پیگیری عدم فعال‌سازی درمان هفتگی در مهلت ۱۰ روز.",
   "therapist_committee_review": "تایید یا رد درمانگر پیشنهادی متقاضی.",
-  "track_selection": "بررسی موضوع در کمیته درس.",
+  "track_selection": "بررسی موضوع در کمیته دروس.",
   "violation_reported": "بررسی گزارش و ثبت اقدام.",
   "review_status_set": "بررسی/صدور مجوز طبق دستور کار.",
   "suspension_next_term": "بررسی/صدور مجوز طبق دستور کار.",
@@ -1843,9 +1843,9 @@ export const PROCESS_OPERATOR_TASK_LABELS_FA = {
   },
   "upgrade_to_ta": {
     "supervision_review": "بررسی/صدور مجوز طبق دستور کار.",
-    "interview_scheduling": "بررسی موضوع در کمیته درس.",
-    "interview_held": "بررسی موضوع در کمیته درس.",
-    "track_selection": "بررسی موضوع در کمیته درس."
+    "interview_scheduling": "بررسی موضوع در کمیته دروس.",
+    "interview_held": "بررسی موضوع در کمیته دروس.",
+    "track_selection": "بررسی موضوع در کمیته دروس."
   },
   "violation_registration": {
     "violation_reported": "بررسی گزارش و ثبت اقدام.",

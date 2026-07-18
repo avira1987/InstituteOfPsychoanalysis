@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { getSiteLogoUrl } from '../utils/siteLogo'
+import { labelRoleFa } from '../utils/roleLabels'
 
 const NAV_ITEMS = [
   { path: '/', label: 'خانه' },
@@ -9,24 +10,6 @@ const NAV_ITEMS = [
   { path: '/guide', label: 'راهنما' },
   { path: '/student-lifecycle', label: 'مسیر تحصیلی' },
 ]
-
-const roleLabels = {
-  admin: 'مدیر سیستم',
-  staff: 'کارمند دفتر',
-  therapist: 'درمانگر',
-  student: 'دانشجو',
-  supervisor: 'سوپروایزر',
-  site_manager: 'مسئول سایت',
-  progress_committee: 'کمیته پیشرفت',
-  education_committee: 'کمیته آموزش',
-  supervision_committee: 'کمیته نظارت',
-  specialized_commission: 'کمیسیون تخصصی',
-  therapy_committee_chair: 'مسئول کمیته درمان',
-  therapy_committee_executor: 'مجری کمیته درمان',
-  deputy_education: 'معاون آموزش',
-  monitoring_committee_officer: 'مسئول کمیته نظارت',
-  finance: 'اپراتور مالی',
-}
 
 export default function PublicLayout() {
   const location = useLocation()
@@ -75,7 +58,7 @@ export default function PublicLayout() {
                 className="pub-navbar-cta"
                 onClick={() => navigate('/panel')}
               >
-                پنل {roleLabels[user.role] || user.role}
+                پنل {labelRoleFa(user.role)}
               </button>
             ) : (
               <Link to="/login" className="pub-navbar-cta">

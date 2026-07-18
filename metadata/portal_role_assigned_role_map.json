@@ -23,9 +23,11 @@
         "teaching_assistant_or_instructor",
         "therapy_education_coordinator",
         "course_committee",
-        "course_committee_scientific"
+        "course_committee_scientific",
+        "course_committee_executive",
+        "scientific_officer_course_committee"
       ],
-      "note_fa": "مدیر داخلی / کارمند دفتر: پذیرش، زمان‌بندی مصاحبه (مرحله ۸ آماده‌سازی ترم)، و مراحل site_manager در SOP."
+      "note_fa": "مدیر داخلی / کارمند دفتر: پذیرش، زمان‌بندی مصاحبه (مرحله ۸ آماده‌سازی ترم)، مراحل کمیته دروس در lane مربوط، و مراحل site_manager در SOP."
     },
     "finance": {
       "assigned_roles": [],
@@ -42,6 +44,10 @@
     },
     "interviewer": {
       "assigned_roles": ["interviewer"]
+    },
+    "admissions_officer": {
+      "assigned_roles": ["admissions_officer"],
+      "note_fa": "مسئول پذیرش: کمپین بازاریابی ترم، بررسی مدارک ثبت‌نام."
     },
     "deputy_education": {
       "assigned_roles": [

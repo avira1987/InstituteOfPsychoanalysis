@@ -1,5 +1,6 @@
 """صف نمونهٔ فرایند برای نقش پنل — API و سرویس."""
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -89,4 +90,61 @@ async def test_deputy_inbox_shows_interviewer_assignment_after_marketing(
         and i.get("state_code") == "interviewer_assignment"
     ]
     assert matching, "deputy_education inbox should list interviewer_assignment after marketing_started"
+    assert matching[0].get("responsible_role_code") == "deputy_education_director"
+
+
+@pytest.mark.asyncio
+async def test_deputy_inbox_shows_winter_interviewer_assignment_after_marketing(
+    db_session, sample_user
+):
+    """پس از بازاریابی زمستان، معاون آموزش باید مرحلهٔ تعیین مصاحبه‌گران را در کارتابل ببیند."""
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+    await load_process(db_session, processes_dir / "winter_semester_preparation.json")
+    await db_session.commit()
+
+    engine = StateMachineEngine(db_session)
+    fall, _ = await get_or_start_prep_instance(
+        db_session,
+        "fall_semester_preparation",
+        actor_id=sample_user.id,
+        actor_role="admin",
+    )
+    fall.is_completed = True
+    fall.current_state_code = "published"
+    fall.completed_at = datetime.now(timezone.utc)
+    await db_session.commit()
+
+    inst, _ = await get_or_start_prep_instance(
+        db_session,
+        "winter_semester_preparation",
+        actor_id=sample_user.id,
+        actor_role="admin",
+    )
+    await db_session.commit()
+
+    for trigger in (
+        "license_reviewed",
+        "course_list_reviewed",
+        "courses_finalized",
+        "marketing_started",
+    ):
+        result = await engine.execute_transition(
+            instance_id=inst.id,
+            trigger_event=trigger,
+            actor_id=sample_user.id,
+            actor_role="admin",
+        )
+        await db_session.commit()
+        assert result.success is True, result.error
+
+    out = await build_portal_role_process_inbox(db_session, portal_role="deputy_education")
+    process_items = [i for i in out["items"] if i.get("kind") == "process"]
+    matching = [
+        i
+        for i in process_items
+        if i.get("process_code") == "winter_semester_preparation"
+        and i.get("state_code") == "interviewer_assignment"
+    ]
+    assert matching, "deputy_education inbox should list winter interviewer_assignment after marketing_started"
     assert matching[0].get("responsible_role_code") == "deputy_education_director"

@@ -1,24 +1,13 @@
 import { PROCESS_LABELS_FA, PROCESS_STATE_LABELS_FA, STATE_LABELS_FA } from './processMetadataLabels'
 import { toFaDigits } from './persianDigits'
+import { labelRoleFa } from './roleLabels'
 
-/** نقش کاربر در رابط کاربری فارسی */
-export const ROLE_LABELS_FA = {
-  staff: 'کارمند اداری',
-  student: 'دانشجو',
-  therapist: 'درمانگر آموزشی',
-  supervisor: 'سوپروایزر',
-  admin: 'مدیر سیستم',
-  committee: 'عضو کمیته',
-  site_manager: 'مدیر سایت',
-  financial: 'مالی',
-  instructor: 'مدرس',
-  ta: 'کمک‌مدرس',
-}
+/** @deprecated از roleLabels.js استفاده کنید — برای سازگاری عقب‌رو export می‌شود */
+export { ROLE_LABELS_FA_MAP as ROLE_LABELS_FA } from './roleLabels'
 
-/** برچسب فارسی نقش؛ در نبود نقشه، متن اصلی نمایش داده می‌شود. */
+/** برچسب فارسی نقش؛ در نبود نقشه، «نقش نامشخص (کد)». */
 export function formatActorRole(role) {
-  if (role == null || role === '') return '—'
-  return ROLE_LABELS_FA[role] || role
+  return labelRoleFa(role)
 }
 
 /** رویداد/تریگر: همان واژه‌نامهٔ وضعیت‌ها (بسیاری از تریگرها در همان فهرست‌اند). */

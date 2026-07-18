@@ -91,16 +91,25 @@ def make_tar() -> Path:
 
 
 def ensure_admin_ui_dist() -> None:
-    idx = ROOT / "admin-ui" / "dist" / "index.html"
-    if idx.is_file():
-        return
-    print("=== Building admin-ui (npm run build) ===", flush=True)
+    """همیشه قبل از دیپلوی dist تازه بساز — وجود index.html قدیمی کافی نیست."""
+    print("=== Building admin-ui (docker compose admin-ui-build) ===", flush=True)
     subprocess.run(
-        "npm run build",
-        cwd=str(ROOT / "admin-ui"),
-        shell=True,
+        [
+            "docker",
+            "compose",
+            "--profile",
+            "admin-ui-build",
+            "run",
+            "-T",
+            "--rm",
+            "admin-ui-build",
+        ],
+        cwd=str(ROOT),
         check=True,
     )
+    idx = ROOT / "admin-ui" / "dist" / "index.html"
+    if not idx.is_file():
+        raise FileNotFoundError(f"admin-ui build failed: {idx} missing")
 
 
 def run_pg_dump_local() -> Path:
@@ -164,8 +173,18 @@ docker stop anistito-api 2>/dev/null || true
 {db_block}
 
 echo "=== Rebuild and start API (Dockerfile.prod — no Node image pull) ==="
-docker compose -f docker-compose.prod.yml build --pull=false api
+# اگر POSTGRES_PASSWORD در .env نیست، compose خطا می‌دهد — از مقدار قبلی کانتینر db بازیابی کن
+if ! grep -q '^POSTGRES_PASSWORD=' .env 2>/dev/null; then
+  echo "POSTGRES_PASSWORD missing in .env — restoring from anistito-db container"
+  PG_PW=$(docker exec anistito-db printenv POSTGRES_PASSWORD 2>/dev/null || echo anistito)
+  echo "POSTGRES_PASSWORD=${{PG_PW}}" >> .env
+fi
+docker compose -f docker-compose.prod.yml build --pull=false --no-cache api
 docker compose -f docker-compose.prod.yml up -d api
+
+echo "=== UI bundle on server ==="
+grep -o 'index-[^"]*\\.js' /opt/anistito/admin-ui/dist/index.html 2>/dev/null || true
+curl -s http://127.0.0.1:3000/ | grep -o 'index-[^"]*\\.js' || true
 
 echo "=== Health ==="
 sleep 10

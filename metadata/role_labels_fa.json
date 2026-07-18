@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "description_fa": "برچسب فارسی یکپارچه برای User.role و assigned_role فرایندها — منبع واحد UI و API.",
+  "typo_aliases": {
+    "admission_officer": "admissions_officer"
+  },
+  "labels": {
+    "admin": "مدیر سیستم",
+    "staff": "کارمند دفتر",
+    "finance": "اپراتور مالی",
+    "therapist": "درمانگر",
+    "supervisor": "سوپروایزر",
+    "student": "دانشجو",
+    "applicant": "متقاضی",
+    "site_manager": "مسئول سایت",
+    "interviewer": "مصاحبه‌گر",
+    "instructor": "مدرس",
+    "teaching_assistant": "کمک‌مدرس",
+    "teaching_assistant_or_instructor": "کمک‌مدرس / مدرس",
+    "assistant_faculty": "دستیار آموزشی",
+    "deputy_education": "معاون مدیر آموزش",
+    "deputy_education_director": "معاون مدیر آموزش",
+    "monitoring_committee_officer": "مسئول علمی اجرایی کمیته نظارت",
+    "progress_committee": "کمیته پیشرفت",
+    "progress_committee_project": "کمیته پیشرفت (پروژه)",
+    "progress_committee_scientific": "کمیته پیشرفت (علمی)",
+    "education_committee": "کمیته آموزش",
+    "supervision_committee": "کمیته نظارت",
+    "specialized_commission": "کمیسیون تخصصی",
+    "therapy_committee_chair": "مسئول پروژه کمیته درمان آموزشی و سوپرویژن",
+    "therapy_committee_executor": "مجری کمیته درمان آموزشی و سوپرویژن",
+    "course_committee": "کمیته دروس",
+    "course_committee_executive": "مسئول اجرایی کمیته دروس",
+    "course_committee_scientific": "مسئول علمی کمیته دروس",
+    "scientific_officer_course_committee": "مسئول علمی کمیته دروس",
+    "admissions_officer": "مسئول پذیرش",
+    "therapy_education_coordinator": "هماهنگ‌کننده آموزش درمان",
+    "reference_center": "مرکز مرجع",
+    "marketing": "مارکتینگ",
+    "system": "سامانه (خودکار)"
+  }
+}

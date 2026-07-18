@@ -38,8 +38,8 @@ from app.services.interview_slot_recurring_generation import (
 router = APIRouter(prefix="/api/interview-slots", tags=["Interview slots"])
 logger = logging.getLogger(__name__)
 
-# مسئول پذیر و مدیر داخلی (staff) + مدیر سیستم (admin)
-SLOT_DEFINE_ROLES = ("staff", "admin")
+# مسئول پذیر، مدیر داخلی (staff)، مسئول سایت (گام ۸ آماده‌سازی ترم) + مدیر سیستم (admin)
+SLOT_DEFINE_ROLES = ("staff", "admin", "site_manager")
 
 # مشاهده/عملیات رزرو (بدون تعریف وقت جدید)
 BOOKINGS_ROLES = ("interviewer", "admin", "staff", "site_manager", "deputy_education")

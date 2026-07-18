@@ -13,6 +13,7 @@ from app.core.engine import StateMachineEngine
 from app.meta.seed import load_process, load_rules
 from app.models.operational_models import InstituteCalendar, ProcessInstance, Student
 from app.services.institute_calendar_service import upsert_active_calendar, sync_term_dates_to_students
+from app.services.institute_operational_anchor import ensure_institute_operational_student
 from app.services.process_scheduler import (
     dispatch_installment_overdue,
     dispatch_scheduled_reminders,
@@ -231,3 +232,50 @@ async def test_dispatch_semester_prep_starts_farvardin_window(
 
     hits2 = await dispatch_semester_prep_starts(db_session, today=farvardin_day)
     assert not any(h.get("created") for h in hits2)
+
+
+@pytest.mark.asyncio
+async def test_dispatch_semester_prep_starts_winter_window(
+    db_session: AsyncSession, sample_user
+):
+    from datetime import date
+
+    from app.services.semester_prep_service import ensure_winter_prep_started
+
+    processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+    await load_process(db_session, processes_dir / "winter_semester_preparation.json")
+    await db_session.commit()
+
+    engine = StateMachineEngine(db_session)
+    fall = await engine.start_process(
+        process_code="fall_semester_preparation",
+        student_id=(await ensure_institute_operational_student(db_session)).id,
+        actor_id=sample_user.id,
+        actor_role="admin",
+    )
+    fall.context_data = {
+        "winter_start_date": (date.today() + timedelta(days=10)).isoformat(),
+    }
+    flag_modified(fall, "context_data")
+    fall.is_completed = True
+    fall.current_state_code = "published"
+    fall.completed_at = datetime.now(timezone.utc)
+    await db_session.commit()
+
+    today = date.today()
+    hits = await dispatch_semester_prep_starts(db_session, today=today)
+    assert any(
+        h.get("process_code") == "winter_semester_preparation" and h.get("created")
+        for h in hits
+    )
+
+    hit = await ensure_winter_prep_started(db_session, actor_id=sample_user.id, actor_role="admin")
+    assert hit is not None
+    assert hit["process_code"] == "winter_semester_preparation"
+
+    hits2 = await dispatch_semester_prep_starts(db_session, today=today)
+    assert not any(
+        h.get("process_code") == "winter_semester_preparation" and h.get("created")
+        for h in hits2
+    )

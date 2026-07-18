@@ -34,7 +34,7 @@ DEFAULT_OPERATOR_TASK_FA: dict[str, str] = {
     "deputy_education": "بررسی پرونده و تأیید یا ارجاع.",
     "deputy_education_director": "بررسی پرونده و ثبت تصمیم مدیریتی.",
     "education_committee": "بررسی پرونده در جلسه کمیته آموزش.",
-    "course_committee": "بررسی موضوع در کمیته درس.",
+    "course_committee": "بررسی موضوع در کمیته دروس.",
     "course_committee_scientific": "بررسی علمی و ثبت نظر.",
     "course_committee_executive": "هماهنگی اجرایی و ثبت تصمیم.",
     "scientific_officer_course_committee": "بررسی علمی و ثبت نظر.",

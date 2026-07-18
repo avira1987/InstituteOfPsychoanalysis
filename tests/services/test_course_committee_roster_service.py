@@ -11,6 +11,7 @@ from app.api.auth import get_password_hash
 from app.models.operational_models import User
 from app.services.course_committee_roster_service import (
     enrich_course_table_rows,
+    link_user_to_roster,
     list_members,
     list_track_options,
     reload_roster_cache,
@@ -289,3 +290,118 @@ async def test_list_members_filters_instructor_by_authorized_course(db_session):
     )
     assert any(m["label_fa"] == "مدرس فرایند ۴۹" for m in allowed)
     assert not any(m["label_fa"] == "مدرس فرایند ۴۹" for m in blocked)
+
+
+@pytest.mark.asyncio
+async def test_list_members_legacy_ta_visible_for_any_course(db_session):
+    uid = uuid.uuid4()
+    db_session.add(
+        User(
+            id=uid,
+            username="ta_legacy_test",
+            email="ta_legacy@test.local",
+            hashed_password=get_password_hash("demo123"),
+            full_name_fa="کمک‌مدرس قدیمی",
+            role="teaching_assistant",
+            is_active=True,
+            profile_meta={
+                "course_committee_tracks": ["analytic_psychotherapy"],
+                "member_kind": "teaching_assistant",
+                "roster_legacy": True,
+            },
+        )
+    )
+    await db_session.commit()
+
+    filtered = await list_members(
+        db_session,
+        track="analytic_psychotherapy",
+        kind="teaching_assistant",
+        course="theory_inheritance",
+    )
+    labels = {m["label_fa"] for m in filtered}
+    assert "کمک‌مدرس قدیمی" in labels
+
+
+@pytest.mark.asyncio
+async def test_list_members_include_all_skips_course_filter(db_session):
+    uid = uuid.uuid4()
+    db_session.add(
+        User(
+            id=uid,
+            username="ta_no_grants",
+            email="ta_nog@test.local",
+            hashed_password=get_password_hash("demo123"),
+            full_name_fa="کمک‌مدرس بدون مجوز",
+            role="teaching_assistant",
+            is_active=True,
+            profile_meta={
+                "course_committee_tracks": ["analytic_psychotherapy"],
+                "member_kind": "teaching_assistant",
+            },
+        )
+    )
+    await db_session.commit()
+
+    blocked = await list_members(
+        db_session,
+        track="analytic_psychotherapy",
+        kind="teaching_assistant",
+        course="theory_inheritance",
+    )
+    assert not any(m["label_fa"] == "کمک‌مدرس بدون مجوز" for m in blocked)
+
+    all_members = await list_members(
+        db_session,
+        track="analytic_psychotherapy",
+        kind="teaching_assistant",
+        course="theory_inheritance",
+        include_all=True,
+    )
+    assert any(m["label_fa"] == "کمک‌مدرس بدون مجوز" for m in all_members)
+
+
+@pytest.mark.asyncio
+async def test_link_user_to_roster_sets_role_and_legacy(db_session):
+    from app.models.operational_models import Student
+
+    uid = uuid.uuid4()
+    sid = uuid.uuid4()
+    user = User(
+        id=uid,
+        username="student_link_roster",
+        email="student_link@test.local",
+        hashed_password=get_password_hash("demo123"),
+        full_name_fa="دانشجوی کمک‌مدرس",
+        role="student",
+        is_active=True,
+        profile_meta={},
+    )
+    student = Student(
+        id=sid,
+        user_id=uid,
+        student_code="ST-LINK-001",
+        course_type="comprehensive",
+        extra_data={},
+    )
+    db_session.add(user)
+    db_session.add(student)
+    await db_session.commit()
+
+    linked = await link_user_to_roster(
+        db_session,
+        user,
+        track="analytic_psychotherapy",
+        kind="teaching_assistant",
+        roster_legacy=True,
+        authorized_courses=[],
+    )
+    await db_session.commit()
+    await db_session.refresh(linked)
+    await db_session.refresh(student)
+
+    assert linked.role == "teaching_assistant"
+    assert (linked.profile_meta or {}).get("roster_legacy") is True
+    assert "analytic_psychotherapy" in (linked.profile_meta or {}).get("course_committee_tracks", [])
+    assert (student.extra_data or {}).get("is_teaching_assistant") is True
+    assert (student.extra_data or {}).get("ta_registered") is True

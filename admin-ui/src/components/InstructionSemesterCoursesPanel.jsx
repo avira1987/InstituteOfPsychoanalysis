@@ -1,10 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { panelApi } from '../services/api'
-
-const ROLE_LABELS = {
-  instructor: 'مدرس',
-  teaching_assistant: 'کمک‌مدرس',
-}
+import { labelRoleFa } from '../utils/roleLabels'
 
 /**
  * دروس انتساب‌یافته از آماده‌سازی ترم — نمایش در پنل مدرس/کمک‌مدرس.
@@ -76,7 +72,7 @@ export default function InstructionSemesterCoursesPanel() {
               {c.day ? ` · ${c.day}` : ''}
               {c.time ? ` · ${c.time}` : ''}
               {c.term_label_fa ? ` · ترم ${c.term_label_fa}` : ''}
-              {c.role_kind ? ` · نقش: ${ROLE_LABELS[c.role_kind] || c.role_kind}` : ''}
+              {c.role_kind ? ` · نقش: ${labelRoleFa(c.role_kind)}` : ''}
             </div>
           </div>
         ))}

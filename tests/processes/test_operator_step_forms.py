@@ -98,6 +98,44 @@ def test_winter_license_visible_if_field_not_required_when_hidden():
     assert ok is True
 
 
+def _interview_scheduling_base_values():
+    return {}
+
+
+def test_interview_scheduling_online_skips_location_field():
+    forms = get_process_forms("fall_semester_preparation", state_code="interview_scheduling")
+    values = {**_interview_scheduling_base_values(), "interview_mode": "آنلاین"}
+    ok, missing = validate_operator_step_forms(forms, values, {})
+    assert ok is True, missing
+
+
+def test_interview_scheduling_in_person_requires_location():
+    forms = get_process_forms("fall_semester_preparation", state_code="interview_scheduling")
+    values = {**_interview_scheduling_base_values(), "interview_mode": "حضوری"}
+    ok, missing = validate_operator_step_forms(forms, values, {})
+    assert ok is False
+    assert missing
+
+
+def test_interview_scheduling_in_person_passes_with_location():
+    forms = get_process_forms("fall_semester_preparation", state_code="interview_scheduling")
+    values = {
+        **_interview_scheduling_base_values(),
+        "interview_mode": "حضوری",
+        "interview_location_fa": "انستیتو روانکاوی تهران — سالن جلسات",
+    }
+    ok, missing = validate_operator_step_forms(forms, values, {})
+    assert ok is True, missing
+
+
+def test_winter_interview_scheduling_form_has_location_visible_if():
+    forms = get_process_forms("winter_semester_preparation", state_code="interview_scheduling")
+    scheduling_form = next(f for f in forms if f.get("code") == "winter_interview_scheduling_form")
+    field_names = {fld.get("name") for fld in scheduling_form.get("fields") or []}
+    assert "interview_location_fa" in field_names
+    assert "interview_location_or_link" not in field_names
+
+
 def test_winter_marketing_campaign_form_exists():
     forms = get_process_forms("winter_semester_preparation", state_code="marketing_campaign")
     codes = {f.get("code") for f in forms}
@@ -125,6 +163,7 @@ def test_interviewer_assignment_options_source_metadata():
         assert src.get("type") == "users"
         assert src.get("role") == "interviewer"
         assert src.get("is_active") is True
+        assert field.get("creatable") is True
 
 
 def test_course_list_form_roster_select_columns():
@@ -147,7 +186,7 @@ def test_course_list_form_roster_select_columns():
     inst_src = columns["instructor"].get("options_source") or {}
     assert inst_src.get("type") == "course_committee_roster"
     assert inst_src.get("kind") == "instructor"
-    assert inst_src.get("filter_by_column") == "track"
+    assert inst_src.get("filter_by_column") == "course_name"
     assert columns["instructor"].get("type") == "creatable_select"
 
     course_src = (columns["course_name"].get("options_source") or {})

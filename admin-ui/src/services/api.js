@@ -511,6 +511,7 @@ export const panelApi = {
   committeeEvaluationResults: (params) =>
     api.get('panel/committee/evaluation-results', { params }),
   navPendingCounts: () => api.get('panel/nav-pending-counts'),
+  processNavItems: () => api.get('panel/process-nav-items'),
   /** فید اعلان‌های اقدام (زنگوله + صفحهٔ همه اعلان‌ها) */
   actionNotifications: (params) => api.get('panel/action-notifications', { params }),
   /** بستن یک اعلان از فید (کار انجام‌شده یا حذف دستی) */
@@ -623,6 +624,20 @@ export const reportsApi = {
       throw err
     }
   },
+}
+
+// ─── چارت کمیته دروس ─────────────────────────────────────────────
+export const courseCommitteeRosterApi = {
+  listTracks: () => api.get('admin/course-committee-roster/tracks'),
+  getDetail: (track) =>
+    api.get('admin/course-committee-roster/detail', { params: { track } }),
+  listMembers: (params) => api.get('admin/course-committee-roster', { params }),
+  listCourses: () => api.get('admin/course-catalog'),
+  createMember: (body) => api.post('admin/course-committee-roster/members', body),
+  linkMember: (body) => api.post('admin/course-committee-roster/members/link', body),
+  updateMember: (userId, body) =>
+    api.patch(`admin/course-committee-roster/members/${userId}`, body),
+  deleteMember: (body) => api.delete('admin/course-committee-roster/members', { data: body }),
 }
 
 export default api

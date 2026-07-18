@@ -5,10 +5,30 @@ from __future__ import annotations
 from typing import Any
 
 import jdatetime
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.reports_formatters import rows_to_pdf_bytes
-from app.services.semester_prep_service import FALL_PREP, WINTER_PREP
+from app.services.semester_prep_service import FALL_PREP, WINTER_PREP, load_fall_prep_context_field
 from app.utils.shamsi_calendar_utils import parse_iso_date
+
+FALL_CALENDAR_TUITION_FALLBACK_KEYS: tuple[str, ...] = (
+    "fall_start_date",
+    "fall_end_date",
+    "winter_start_date",
+    "winter_end_date",
+    "registration_payment_window_start",
+    "registration_payment_window_end",
+    "intern_interview_deadline",
+    "teaching_assistant_interview_deadline",
+    "nowruz_holiday_start",
+    "nowruz_holiday_end",
+    "fall_break_periods",
+    "winter_break_periods",
+    "per_unit_cost_introductory",
+    "per_unit_cost_comprehensive",
+    "interview_fee_introductory",
+    "interview_fee_comprehensive",
+)
 
 
 def _fmt_date(value: Any) -> str:
@@ -115,6 +135,56 @@ def resolve_marketing_handoff_context(process_code: str, ctx: dict[str, Any]) ->
       ]
 
   return out
+
+
+async def enrich_marketing_handoff_context(
+    db: AsyncSession,
+    process_code: str,
+    ctx: dict[str, Any],
+) -> dict[str, Any]:
+    """تجمیع context با fallback از instance پاییز برای خروجی کمپین."""
+    code = (process_code or "").strip()
+    raw = dict(ctx) if isinstance(ctx, dict) else {}
+    merged = dict(raw)
+
+    if code == FALL_PREP:
+        for key in FALL_CALENDAR_TUITION_FALLBACK_KEYS:
+            if merged.get(key) in (None, "", []):
+                val = await load_fall_prep_context_field(db, key)
+                if val is not None:
+                    merged[key] = val
+    elif code == WINTER_PREP:
+        if not _nonempty_table(merged.get("courses")):
+            val = await load_fall_prep_context_field(db, "courses_winter")
+            if val is not None:
+                merged["courses"] = val
+        if not _nonempty_table(merged.get("courses_finalized")):
+            val = await load_fall_prep_context_field(db, "courses_finalized_winter")
+            if val is not None:
+                merged["courses_finalized"] = val
+
+    return resolve_marketing_handoff_context(code, merged)
+
+
+def has_marketing_handoff_data(process_code: str, ctx: dict[str, Any]) -> bool:
+    """آیا context نرمال‌شده دادهٔ معنادار برای کمپین دارد؟"""
+    resolved = resolve_marketing_handoff_context(process_code, ctx)
+    code = (process_code or "").strip()
+    if code == FALL_PREP:
+        if resolved.get("fall_start_date") or resolved.get("per_unit_cost_introductory"):
+            return True
+        return bool(
+            _nonempty_table(resolved.get("courses_finalized_fall"))
+            or _nonempty_table(resolved.get("courses_finalized_winter"))
+            or _nonempty_table(resolved.get("courses_fall"))
+            or _nonempty_table(resolved.get("courses_winter"))
+        )
+    if code == WINTER_PREP:
+        return bool(
+            _nonempty_table(resolved.get("courses"))
+            or _nonempty_table(resolved.get("courses_finalized"))
+        )
+    return False
 
 
 def _course_rows(courses: Any) -> list[list[str]]:

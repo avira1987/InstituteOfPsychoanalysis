@@ -1045,6 +1045,29 @@ class RosterMemberCreate(BaseModel):
     track: str = Field(..., min_length=1)
     kind: Literal["instructor", "teaching_assistant"]
     name_fa: str = Field(..., min_length=1)
+    roster_legacy: Optional[bool] = None
+    authorized_courses: Optional[list[str]] = None
+
+
+class RosterMemberLink(BaseModel):
+    user_id: uuid.UUID
+    track: str = Field(..., min_length=1)
+    kind: Literal["instructor", "teaching_assistant"]
+    roster_legacy: Optional[bool] = None
+    authorized_courses: Optional[list[str]] = None
+
+
+class RosterMemberUpdate(BaseModel):
+    track: str = Field(..., min_length=1)
+    kind: Literal["instructor", "teaching_assistant"]
+    roster_legacy: Optional[bool] = None
+    authorized_courses: Optional[list[str]] = None
+
+
+class RosterMemberDelete(BaseModel):
+    track: str = Field(..., min_length=1)
+    kind: Literal["instructor", "teaching_assistant"]
+    name_fa: str = Field(..., min_length=1)
 
 
 class CourseCatalogCreate(BaseModel):
@@ -1075,24 +1098,134 @@ async def create_course_committee_member(
     from app.services.course_committee_roster_service import add_member_to_roster, ensure_roster_user
 
     try:
-        member = add_member_to_roster(track=body.track, kind=body.kind, name_fa=body.name_fa)
+        member = add_member_to_roster(
+            track=body.track,
+            kind=body.kind,
+            name_fa=body.name_fa,
+            roster_legacy=body.roster_legacy,
+            authorized_courses=body.authorized_courses,
+        )
         user = await ensure_roster_user(
             db,
             track=body.track,
             kind=body.kind,
             name_fa=body.name_fa,
             roster_key=str(member.get("value") or ""),
+            roster_legacy=body.roster_legacy,
+            authorized_courses=body.authorized_courses,
         )
-        await db.flush()
+        await db.commit()
         return {
             "member": {
                 "value": str(user.id),
                 "label_fa": user.full_name_fa or body.name_fa,
                 "source": "user",
+                "roster_legacy": (user.profile_meta or {}).get("roster_legacy"),
+                "authorized_courses": (user.profile_meta or {}).get(
+                    "ta_authorized_courses" if body.kind == "teaching_assistant" else "instructor_authorized_courses"
+                )
+                or [],
             }
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/course-committee-roster/members/link")
+async def link_course_committee_member(
+    body: RosterMemberLink,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    from app.services.course_committee_roster_service import link_user_to_roster
+
+    user = await db.get(User, body.user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="کاربر یافت نشد")
+    try:
+        user = await link_user_to_roster(
+            db,
+            user,
+            track=body.track,
+            kind=body.kind,
+            roster_legacy=body.roster_legacy,
+            authorized_courses=body.authorized_courses,
+        )
+        await db.commit()
+        grants_key = "ta_authorized_courses" if body.kind == "teaching_assistant" else "instructor_authorized_courses"
+        return {
+            "member": {
+                "value": str(user.id),
+                "label_fa": user.full_name_fa or user.username,
+                "source": "user",
+                "roster_legacy": (user.profile_meta or {}).get("roster_legacy"),
+                "authorized_courses": (user.profile_meta or {}).get(grants_key) or [],
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/course-committee-roster/members/{user_id}")
+async def update_course_committee_member(
+    user_id: uuid.UUID,
+    body: RosterMemberUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    from app.services.course_committee_roster_service import update_member_grants
+
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="کاربر یافت نشد")
+    try:
+        user = await update_member_grants(
+            db,
+            user,
+            track=body.track,
+            kind=body.kind,
+            roster_legacy=body.roster_legacy,
+            authorized_courses=body.authorized_courses,
+        )
+        await db.commit()
+        grants_key = "ta_authorized_courses" if body.kind == "teaching_assistant" else "instructor_authorized_courses"
+        return {
+            "member": {
+                "value": str(user.id),
+                "label_fa": user.full_name_fa or user.username,
+                "roster_legacy": (user.profile_meta or {}).get("roster_legacy"),
+                "authorized_courses": (user.profile_meta or {}).get(grants_key) or [],
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/course-committee-roster/members")
+async def delete_course_committee_member(
+    body: RosterMemberDelete,
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    from app.services.course_committee_roster_service import remove_member_from_roster
+
+    removed = remove_member_from_roster(track=body.track, kind=body.kind, name_fa=body.name_fa)
+    if not removed:
+        raise HTTPException(status_code=404, detail="عضو در چارت یافت نشد")
+    return {"ok": True}
+
+
+@router.get("/course-committee-roster/detail")
+async def get_course_committee_roster_detail(
+    track: str = Query(..., description="کد رسته"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "site_manager", "course_committee")),
+):
+    """فهرست کامل مدرسین و کمک‌مدرسین یک رسته — برای پنل مدیریت چارت."""
+    from app.services.course_committee_roster_service import list_track_roster_detail
+
+    track_code = (track or "").strip()
+    roster = await list_track_roster_detail(db, track=track_code)
+    return {"track": track_code, "roster": roster}
 
 
 @router.get("/course-catalog")
@@ -1123,6 +1256,7 @@ async def list_course_committee_roster(
     track: str = Query(..., description="کد رسته، مثلاً analytic_psychotherapy"),
     kind: Literal["instructor", "teaching_assistant"] = Query(...),
     course: Optional[str] = Query(None, description="کد یا نام درس — فیلتر بر اساس مجوز فرایند ۴۷/۴۹"),
+    include_all: bool = Query(False, description="نادیده گرفتن فیلتر درس — پنل مدیریت چارت"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin", "staff", "deputy_education", "site_manager", "course_committee")),
 ):
@@ -1135,7 +1269,13 @@ async def list_course_committee_roster(
         resolved = resolve_track_for_course(course_val)
         if resolved:
             track_code = resolved
-    members = await list_members(db, track=track_code, kind=kind, course=course_val)
+    members = await list_members(
+        db,
+        track=track_code,
+        kind=kind,
+        course=course_val,
+        include_all=include_all,
+    )
     return {"track": track_code, "kind": kind, "course": course_val, "members": members}
 
 
@@ -1143,16 +1283,29 @@ async def list_course_committee_roster(
 async def list_users(
     role: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
+    search: Optional[str] = Query(None, description="جست‌وجو در نام فارسی یا نام کاربری"),
+    limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "site_manager")),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "site_manager", "course_committee")),
 ):
     """List all users (admin and staff; staff use this to set passwords for students)."""
+    from sqlalchemy import or_
+
     stmt = select(User)
     if role:
         stmt = stmt.where(User.role == role)
     if is_active is not None:
         stmt = stmt.where(User.is_active == is_active)
-    stmt = stmt.order_by(User.created_at.desc()).options(selectinload(User.student_profile))
+    q = (search or "").strip()
+    if q:
+        term = f"%{q}%"
+        stmt = stmt.where(
+            or_(
+                User.full_name_fa.ilike(term),
+                User.username.ilike(term),
+            )
+        )
+    stmt = stmt.order_by(User.created_at.desc()).limit(limit).options(selectinload(User.student_profile))
     result = await db.execute(stmt)
     users = result.scalars().unique().all()
     return [
@@ -1493,7 +1646,7 @@ class SemesterPrepStartBody(BaseModel):
 @router.get("/semester-prep/status")
 async def get_semester_prep_status(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "deputy_education", "staff", "course_committee")),
+    current_user: User = Depends(require_role("admin", "deputy_education", "staff", "course_committee", "admissions_officer")),
 ):
     from app.services.semester_prep_service import build_prep_status
 
@@ -1509,6 +1662,25 @@ async def get_semester_prep_sla_warnings(
     from app.services.semester_prep_service import build_prep_sla_warning_log
 
     return await build_prep_sla_warning_log(db)
+
+
+@router.get("/semester-prep/marketing-handoff-diagnostic")
+async def get_semester_prep_marketing_handoff_diagnostic(
+    process_code: str | None = Query(None, description="fall_semester_preparation یا winter_semester_preparation"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "deputy_education", "staff", "course_committee", "admissions_officer")),
+):
+    """تشخیص خالی بودن خروجی کمپین: submitted_states و کلیدهای context."""
+    from app.services.semester_prep_service import (
+        FALL_PREP,
+        WINTER_PREP,
+        build_marketing_handoff_diagnostic,
+    )
+
+    code = (process_code or "").strip() or None
+    if code and code not in (FALL_PREP, WINTER_PREP):
+        raise HTTPException(status_code=400, detail="process_code نامعتبر")
+    return await build_marketing_handoff_diagnostic(db, process_code=code)
 
 
 @router.post("/semester-prep/start")

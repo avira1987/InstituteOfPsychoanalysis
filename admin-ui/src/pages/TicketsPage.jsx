@@ -3,6 +3,7 @@ import { ticketApi, studentApi } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
+import { labelRoleFa } from '../utils/roleLabels'
 
 const CATEGORY_LABELS = {
   profile_edit_unlock: 'باز کردن پروفایل / ویرایش مرحلهٔ ثبت‌شده',
@@ -22,28 +23,10 @@ const STATUS_LABELS = {
 
 const PRIORITY_LABELS = { low: 'کم', normal: 'عادی', high: 'بالا' }
 
-const ROLE_LABELS = {
-  admin: 'مدیر',
-  staff: 'کارمند',
-  finance: 'مالی',
-  therapist: 'درمانگر',
-  supervisor: 'سوپروایزر',
-  site_manager: 'مسئول سایت',
-  progress_committee: 'کمیته',
-  education_committee: 'کمیته',
-  supervision_committee: 'کمیته',
-  specialized_commission: 'کمیسیون',
-  therapy_committee_chair: 'کمیته درمان',
-  therapy_committee_executor: 'مجری',
-  deputy_education: 'معاون آموزش',
-  monitoring_committee_officer: 'کمیته نظارت',
-}
-
 function formatUser(u) {
   if (!u) return '—'
   const name = u.full_name_fa || u.username
-  const rl = ROLE_LABELS[u.role] || u.role
-  return `${name} (${rl})`
+  return `${name} (${labelRoleFa(u.role)})`
 }
 
 function formatDateTime(iso) {
@@ -403,7 +386,7 @@ export default function TicketsPage() {
                         {triageInfo.primary_handler.full_name_fa || triageInfo.primary_handler.username}
                       </strong>
                       <span className="muted" style={{ display: 'block', marginTop: '0.2rem' }}>
-                        {ROLE_LABELS[triageInfo.primary_handler.role] || triageInfo.primary_handler.role}
+                        {labelRoleFa(triageInfo.primary_handler.role)}
                       </span>
                       <p className="muted" style={{ margin: '0.5rem 0 0', fontSize: '0.82rem' }}>
                         {triageInfo.hint_fa}
@@ -568,7 +551,7 @@ export default function TicketsPage() {
                           <option value="">— انتخاب —</option>
                           {assignable.map((u) => (
                             <option key={u.id} value={u.id}>
-                              {(u.full_name_fa || u.username) + ` (${ROLE_LABELS[u.role] || u.role})`}
+                              {(u.full_name_fa || u.username) + ` (${labelRoleFa(u.role)})`}
                             </option>
                           ))}
                         </select>
@@ -751,7 +734,7 @@ export default function TicketsPage() {
                       >
                         {assignable.map((u) => (
                           <option key={u.id} value={u.id}>
-                            {(u.full_name_fa || u.username) + ` (${ROLE_LABELS[u.role] || u.role})`}
+                            {(u.full_name_fa || u.username) + ` (${labelRoleFa(u.role)})`}
                           </option>
                         ))}
                       </select>

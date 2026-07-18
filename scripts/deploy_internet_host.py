@@ -185,7 +185,8 @@ PROXY_AND_XRAY_BLOCK_PLACEHOLDER
 export COMPOSE_DOCKER_CLI_BUILD=1
 export DOCKER_BUILDKIT=1
 
-if docker compose -f docker-compose.prod.yml up -d --build api; then
+if docker compose -f docker-compose.prod.yml build --no-cache api; then
+  docker compose -f docker-compose.prod.yml up -d api
   BUILD_OK=1
 else
   BUILD_OK=0

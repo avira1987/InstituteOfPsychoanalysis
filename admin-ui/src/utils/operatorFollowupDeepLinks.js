@@ -126,7 +126,7 @@ export function getOperatorFollowupDestination(item) {
       }
     }
     if (
-      ['course_list_creation', 'course_finalization'].includes(stateCode) &&
+      ['course_list_creation', 'course_list_review', 'course_finalization'].includes(stateCode) &&
       COURSE_COMMITTEE_PREP_ROLES.has(code)
     ) {
       return {
@@ -143,7 +143,7 @@ export function getOperatorFollowupDestination(item) {
     if (stateCode === 'interview_scheduling' && code === 'site_manager') {
       return {
         href: workbenchHref(processCode),
-        hintFa: 'زمان‌بندی دقیق اسلات‌های مصاحبه',
+        hintFa: 'زمان‌بندی و ثبت اسلات‌های مصاحبه',
       }
     }
     if (SEMESTER_PREP_CODES.has(processCode) && stateCode && stateCode !== 'published') {
@@ -155,11 +155,19 @@ export function getOperatorFollowupDestination(item) {
   }
 
   const tracker = {
-    href: `/panel/students${qs({ student_id: studentId, instance_id: instanceId })}`,
+    href: `/panel/students${qs({ student_id: studentId, instance_id: instanceId, process_code: processCode || undefined })}`,
     hintFa: FALLBACK_HINT,
   }
 
-  if (!instanceId || !studentId) return tracker
+  if (!instanceId || !studentId) {
+    const processOnly = getOperatorFollowupDestinationForProcess({
+      process_code: processCode,
+      responsible_role_code: code,
+      state_code: stateCode,
+    })
+    if (processOnly) return processOnly
+    return tracker
+  }
 
   if (
     processCode === 'live_supervision_session_prep'
@@ -286,7 +294,7 @@ export function getOperatorFollowupDestination(item) {
     ) {
       return {
         href: staffHref({ ...base, tab: 'pending' }, 'course-committee'),
-        hintFa: 'پنل کمیته درس — مصاحبه/رسته ارتقا به کمک‌مدرس (فرایند ۴۷)',
+        hintFa: 'پنل کمیته دروس — مصاحبه/رسته ارتقا به کمک‌مدرس (فرایند ۴۷)',
       }
     }
   }
@@ -327,7 +335,7 @@ export function getOperatorFollowupDestination(item) {
     }
     return {
       href: staffHref({ ...base, tab: 'pending' }, 'course-committee'),
-      hintFa: 'پنل کمیته درس — گزارش ارتقای خودکار کمک‌مدرس به مدرس (فرایند ۵۰)',
+      hintFa: 'پنل کمیته دروس — گزارش ارتقای خودکار کمک‌مدرس به مدرس (فرایند ۵۰)',
     }
   }
 
@@ -433,4 +441,106 @@ export function getOperatorFollowupDestination(item) {
   }
 
   return tracker
+}
+
+/**
+ * مقصد پیش‌فرض برای فرایند بدون نمونهٔ مشخص — سایدبار و صفحهٔ process-nav.
+ * @param {{ process_code: string, responsible_role_code?: string, state_code?: string, portal_role?: string }} opts
+ * @returns {{ href: string, hintFa: string } | null}
+ */
+export function getOperatorFollowupDestinationForProcess(opts) {
+  const processCode = (opts.process_code || '').toLowerCase()
+  const code = (opts.responsible_role_code || '').toLowerCase()
+  const stateCode = (opts.state_code || '').toLowerCase()
+  const portalRole = (opts.portal_role || '').toLowerCase()
+  const filter = { process_code: processCode }
+
+  if (SEMESTER_PREP_CODES.has(processCode)) {
+    return {
+      href: workbenchHref(processCode),
+      hintFa: 'میز کار آماده‌سازی ترم',
+    }
+  }
+
+  if (portalRole === 'student' || code === 'student' || code === 'applicant') {
+    return {
+      href: `/panel/portal/student${qs({ tab: 'processes', ...filter })}`,
+      hintFa: 'پنل آموزشی — فرایندهای من',
+    }
+  }
+
+  if (code === 'therapist') {
+    return {
+      href: `/panel/portal/therapist${qs({ tab: 'pending', ...filter })}`,
+      hintFa: 'پنل درمانگر — درخواست‌های منتظر',
+    }
+  }
+  if (code === 'supervisor') {
+    return {
+      href: `/panel/portal/supervisor${qs({ tab: 'reviews', ...filter })}`,
+      hintFa: 'پنل سوپروایزر — بررسی‌ها',
+    }
+  }
+  if (code === 'site_manager') {
+    return {
+      href: `/panel/portal/site-manager${qs({ tab: 'pending', ...filter })}`,
+      hintFa: 'پنل مسئول سایت — پیگیری‌ها',
+    }
+  }
+  if (code === 'interviewer') {
+    return {
+      href: `/panel/portal/interviewer${qs({ tab: 'result', ...filter })}`,
+      hintFa: 'پنل مصاحبه‌گر — ثبت نتیجهٔ مصاحبه',
+    }
+  }
+
+  const committeeRoles = new Set([
+    'committee',
+    'progress_committee',
+    'progress_committee_project',
+    'education_committee',
+    'supervision_committee',
+    'specialized_commission',
+    'therapy_committee_chair',
+    'therapy_committee_executor',
+    'deputy_education',
+    'deputy_education_director',
+    'monitoring_committee_officer',
+    'course_committee_executive',
+    'scientific_officer_course_committee',
+  ])
+  if (committeeRoles.has(code)) {
+    return {
+      href: committeeHref({ tab: 'reviews', ...filter }, code),
+      hintFa: 'پنل کمیته — بررسی‌ها',
+    }
+  }
+
+  const staffLike = new Set([
+    'staff',
+    'finance',
+    'admissions_officer',
+    'admission_officer',
+    'instructor',
+    'teaching_assistant',
+    'teaching_assistant_or_instructor',
+    'therapy_education_coordinator',
+    'course_committee',
+    'course_committee_scientific',
+  ])
+  if (staffLike.has(code)) {
+    const lane = staffLaneForAssignedRole(code)
+    return {
+      href: staffHref({ tab: 'pending', ...filter }, lane),
+      hintFa: 'پنل کارمند — وظایف منتظر',
+    }
+  }
+
+  if (processCode) {
+    return {
+      href: `/panel/students${qs(filter)}`,
+      hintFa: FALLBACK_HINT,
+    }
+  }
+  return null
 }

@@ -3,6 +3,9 @@ import { processExecApi } from '../services/api'
 
 const HANDOFF_FIELD_NAMES = new Set(['marketing_info_sent_to_manager', 'marketing_notes'])
 
+const ADVANCE_HINT =
+  'پس از دانلود PDF: تیک «ارسال شد» را بزنید، «ثبت فرم این مرحله» را بزنید، سپس دکمهٔ پیشروی را بزنید.'
+
 export function isMarketingHandoffField(name) {
   return HANDOFF_FIELD_NAMES.has(name)
 }
@@ -16,6 +19,45 @@ function buildShareText(processCode) {
     `بستهٔ اطلاعات شروع کمپین بازاریابی ترم ${term} (خروجی فعالیت‌های ${activities}) را از پورتال انستیتو دریافت و پیوست می‌کنم.\n` +
     `لطفاً برای شروع تبلیغات پذیرش ${term} اقدام فرمایید.`
   )
+}
+
+async function parseApiErrorDetail(error) {
+  const status = error?.response?.status
+  const d = error?.response?.data
+  let msg = error?.message || 'خطا در دریافت PDF'
+
+  if (d instanceof Blob) {
+    try {
+      const txt = await d.text()
+      const parsed = JSON.parse(txt)
+      if (parsed?.detail) {
+        msg = typeof parsed.detail === 'string' ? parsed.detail : msg
+      }
+    } catch {
+      /* ignore */
+    }
+  } else if (typeof d?.detail === 'string') {
+    msg = d.detail
+  }
+
+  if (status === 401) {
+    return 'نشست ورود منقضی شده — دوباره وارد شوید.'
+  }
+  if (status === 403) {
+    return msg.includes('Only operators')
+      ? 'فقط اپراتورها می‌توانند PDF بگیرند.'
+      : msg || 'شما مجوز دانلود PDF این مرحله را ندارید.'
+  }
+  if (status === 400) {
+    return msg || 'دانلود PDF فقط در مرحلهٔ کمپین بازاریابی ممکن است.'
+  }
+  if (status === 503) {
+    return msg || 'فونت PDF روی سرور موجود نیست — با پشتیبانی تماس بگیرید.'
+  }
+  if (status === 500) {
+    return msg || 'تولید PDF با خطا مواجه شد.'
+  }
+  return msg
 }
 
 function fieldMeta(form, name) {
@@ -66,22 +108,10 @@ export default function MarketingCampaignHandoffPanel({
     setBusy(true)
     try {
       await processExecApi.downloadMarketingCampaignPack(instanceId)
-      showToast?.('فایل PDF دانلود شد — برای مدیر مارکتینگ ارسال کنید (واتساپ، بل یا ایمیل)')
+      showToast?.(`فایل PDF دانلود شد — برای مدیر مارکتینگ ارسال کنید (واتساپ، بل یا ایمیل). ${ADVANCE_HINT}`)
     } catch (e) {
-      const d = e?.response?.data
-      let msg = e?.message || 'خطا در دریافت PDF'
-      if (d instanceof Blob) {
-        try {
-          const txt = await d.text()
-          const parsed = JSON.parse(txt)
-          if (parsed?.detail) msg = parsed.detail
-        } catch {
-          /* ignore */
-        }
-      } else if (typeof d?.detail === 'string') {
-        msg = d.detail
-      }
-      showToast?.(msg, 'error')
+      const msg = await parseApiErrorDetail(e)
+      showToast?.(`${msg} ${ADVANCE_HINT}`, 'error')
     } finally {
       setBusy(false)
     }

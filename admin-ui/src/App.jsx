@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react'
 import { lazyWithRetry as lazy } from './utils/lazyWithRetry'
-import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 
 import Layout from './components/Layout'
@@ -41,6 +41,9 @@ const SemesterPrepCalendarPage = lazy(() => import('./pages/SemesterPrepCalendar
 const SemesterPrepWorkbenchPage = lazy(() => import('./pages/SemesterPrepWorkbenchPage'))
 const SemesterPrepCourseListReviewPage = lazy(() => import('./pages/SemesterPrepCourseListReviewPage'))
 const SemesterPrepSlaWarningsPage = lazy(() => import('./pages/SemesterPrepSlaWarningsPage'))
+const AcademicCalendarPage = lazy(() => import('./pages/AcademicCalendarPage'))
+const CourseCommitteeRosterPage = lazy(() => import('./pages/CourseCommitteeRosterPage'))
+const ProcessNavLandingPage = lazy(() => import('./pages/ProcessNavLandingPage'))
 const HomePage = lazy(() => import('./pages/public/HomePage'))
 const BlogList = lazy(() => import('./pages/public/BlogList'))
 const BlogPost = lazy(() => import('./pages/public/BlogPost'))
@@ -170,7 +173,7 @@ function RequireSemesterPrepRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  const ok = ['admin', 'staff', 'deputy_education', 'site_manager', 'course_committee'].includes(user.role)
+  const ok = ['admin', 'staff', 'deputy_education', 'site_manager', 'course_committee', 'admissions_officer'].includes(user.role)
   if (!ok) return <Navigate to="/panel" replace />
   return children
 }
@@ -225,7 +228,8 @@ function CommitteeHomeRedirect() {
 }
 
 function StaffLegacyRedirect() {
-  return <Navigate to="/panel/portal/staff/admissions" replace />
+  const location = useLocation()
+  return <Navigate to={`/panel/portal/staff/admissions${location.search}`} replace />
 }
 
 export default function App() {
@@ -332,6 +336,15 @@ export default function App() {
               </RequireSchedulerViewRole>
             }
           />
+          <Route path="academic-calendar" element={<AcademicCalendarPage />} />
+          <Route
+            path="course-committee-roster"
+            element={
+              <RequireSemesterPrepRole>
+                <CourseCommitteeRosterPage />
+              </RequireSemesterPrepRole>
+            }
+          />
           <Route
             path="finance"
             element={
@@ -385,6 +398,7 @@ export default function App() {
               </RequireCommitteeKind>
             }
           />
+          <Route path="process-nav/:processCode" element={<ProcessNavLandingPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="guide" element={<GuidePage />} />
         </Route>

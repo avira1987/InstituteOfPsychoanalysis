@@ -33,7 +33,7 @@ const PORTAL_LABELS_FA = {
   therapist: 'پنل درمانگر',
   supervisor: 'پنل سوپروایزر',
   staff: 'پنل پذیرش',
-  course_committee: 'پنل کمیته درس',
+  course_committee: 'پنل کمیته دروس',
   teaching_assistant: 'پنل مدرس و کمک‌مدرس',
   site_manager: 'پنل مسئول سایت',
   interviewer: 'پنل مصاحبه‌گر',

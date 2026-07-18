@@ -3,32 +3,11 @@ import { Link } from 'react-router-dom'
 import { semesterPrepApi } from '../services/api'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import { labelState } from '../utils/processDisplay'
+import { COMMITTEE_PREP_STATES, pickActiveSemesterPrep } from '../utils/semesterPrepPortalLinks'
 
 const PROCESS_LABELS = {
   fall_semester_preparation: 'آماده‌سازی ترم پاییز',
   winter_semester_preparation: 'آماده‌سازی ترم زمستان',
-}
-
-/** مراحلی که نقش کمیته دروس (اجرایی/علمی) در آن مسئول است. */
-const COMMITTEE_STATES = new Set([
-  'calendar_entry',
-  'course_list_creation',
-  'course_finalization',
-  'course_list_review',
-])
-
-function pickActivePrep(processes) {
-  for (const code of ['fall_semester_preparation', 'winter_semester_preparation']) {
-    const entry = processes?.[code]
-    if (entry?.active && COMMITTEE_STATES.has(entry.current_state)) {
-      return { code, entry }
-    }
-  }
-  for (const code of ['fall_semester_preparation', 'winter_semester_preparation']) {
-    const entry = processes?.[code]
-    if (entry?.active) return { code, entry }
-  }
-  return null
 }
 
 /**
@@ -37,7 +16,7 @@ function pickActivePrep(processes) {
 export default function CourseCommitteePrepPanel({ showToast }) {
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -57,20 +36,22 @@ export default function CourseCommitteePrepPanel({ showToast }) {
   }, [load])
 
   const processes = status?.processes || {}
-  const active = pickActivePrep(processes)
+  const active = pickActiveSemesterPrep(processes)
   const fallDone = Boolean(processes.fall_semester_preparation?.last_completed_at)
+  const winterActive = Boolean(processes.winter_semester_preparation?.active)
+  const winterDone = Boolean(processes.winter_semester_preparation?.last_completed_at)
 
-  const startFall = async () => {
-    setBusy(true)
+  const startPrep = async (processCode) => {
+    setBusy(processCode)
     try {
-      await semesterPrepApi.start('fall_semester_preparation')
-      showToast?.('آماده‌سازی ترم پاییز شروع شد.')
+      await semesterPrepApi.start(processCode)
+      showToast?.(`${PROCESS_LABELS[processCode] || processCode} شروع شد.`)
       await load()
     } catch (e) {
       const d = e?.response?.data?.detail
       showToast?.(typeof d === 'string' ? d : 'خطا در شروع فرایند', 'error')
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
@@ -130,7 +111,7 @@ export default function CourseCommitteePrepPanel({ showToast }) {
             className="btn btn-primary btn-sm"
             to={`/panel/semester-prep/workbench?process_code=${active.code}`}
           >
-            {COMMITTEE_STATES.has(active.entry.current_state) ? 'ادامه کار کمیته' : 'مشاهده workbench'}
+            {COMMITTEE_PREP_STATES.has(active.entry.current_state) ? 'ادامه کار کمیته' : 'مشاهده workbench'}
           </Link>
         </div>
       ) : (
@@ -138,11 +119,27 @@ export default function CourseCommitteePrepPanel({ showToast }) {
           <p style={{ margin: '0 0 0.65rem', fontSize: '0.85rem', color: '#64748b' }}>
             {!processes.fall_semester_preparation?.active && !fallDone
               ? 'فرایند آماده‌سازی پاییز هنوز شروع نشده است.'
-              : 'در حال حاضر مرحله‌ای در اختیار کمیته دروس نیست یا فرایند به پایان رسیده است.'}
+              : fallDone && !winterActive && !winterDone
+                ? 'پاییز منتشر شده است؛ آماده‌سازی زمستان هنوز شروع نشده.'
+                : 'در حال حاضر مرحله‌ای در اختیار کمیته دروس نیست یا فرایند به پایان رسیده است.'}
           </p>
           {!processes.fall_semester_preparation?.active && !fallDone ? (
-            <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={startFall}>
-              {busy ? '…' : 'شروع آماده‌سازی پاییز'}
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={!!busy}
+              onClick={() => startPrep('fall_semester_preparation')}
+            >
+              {busy === 'fall_semester_preparation' ? '…' : 'شروع آماده‌سازی پاییز'}
+            </button>
+          ) : fallDone && !winterActive && !winterDone ? (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={!!busy}
+              onClick={() => startPrep('winter_semester_preparation')}
+            >
+              {busy === 'winter_semester_preparation' ? '…' : 'شروع آماده‌سازی زمستان'}
             </button>
           ) : (
             <Link className="btn btn-secondary btn-sm" to="/panel/semester-prep">

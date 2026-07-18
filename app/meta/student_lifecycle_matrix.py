@@ -87,11 +87,13 @@ _ROLE_FALLBACK_FA: dict[str, str] = {
 
 @lru_cache(maxsize=1)
 def _role_labels_fa() -> dict[str, str]:
+    from app.meta.role_labels import role_labels_map
+
+    out: dict[str, str] = dict(role_labels_map())
     root = Path(__file__).resolve().parents[2]
     path = root / "metadata" / "roles.json"
     with path.open(encoding="utf-8") as f:
         data = json.load(f)
-    out: dict[str, str] = {}
     for entry in data:
         code = entry.get("code")
         name = entry.get("name_fa")

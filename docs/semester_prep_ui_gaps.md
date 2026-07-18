@@ -145,3 +145,34 @@ flowchart TD
 | زمستان | ۶ | ۶ | ۰ | ۰ |
 
 **نتیجه (به‌روز ۲۰۲۶-۰۶-۲۲):** UI اپراتوری آماده‌سازی ترم (ویجت‌های فرم پیشرفته + workbench + هاب SLA) تکمیل شد.
+
+---
+
+## ۸. هم‌ترازی زمستان با پاییز (به‌روز ۲۰۲۶-۰۷-۱۶)
+
+UI اصلی زمستان از قبل مشترک بود؛ این به‌روزرسانی **میانبرها، RBAC و تست‌ها** را با پاییز هم‌تراز کرد.
+
+### UI و میانبرها
+
+| مورد | فایل | وضعیت |
+|------|------|--------|
+| quick-action هوشمند workbench | `StaffPortal.jsx` + `semesterPrepPortalLinks.js` | ✅ زمستان فعال → workbench زمستان |
+| شروع زمستان از پنل کمیته | `CourseCommitteePrepPanel.jsx` | ✅ دکمهٔ «شروع آماده‌سازی زمستان» پس از publish پاییز |
+| شروع زمستان توسط staff | `SemesterPrepWorkbenchPage.jsx` | ✅ وقتی پاییز منتشر شده باشد |
+| deep-link صندوق پیگیری | `operatorFollowupDeepLinks.js` | ✅ `course_list_review` در مسیر کمیته |
+
+### تست‌ها
+
+| فایل | پوشش زمستان |
+|------|-------------|
+| `test_winter_semester_preparation_flow.py` | ۱۲ تست: RBAC، prefill، SLA، publish تقویم، اسلات مصاحبه |
+| `test_semester_prep_marketing_handoff.py` | marketing handoff end-to-end زمستان |
+| `test_process_scheduler.py` | auto-start زمستان (۳۰ روز قبل از شروع ترم) |
+| `test_portal_role_inbox.py` | کارتابل معاون پس از بازاریابی زمستان |
+| `test_process_restart.py` | restart فرایند زمستان |
+
+### عمداً متفاوت (نیازی به هم‌ترازی ندارد)
+
+- مراحل `calendar_entry` و `tuition_entry` فقط در پاییز
+- gate ثبت‌نام دانشجو فقط به publish پاییز وابسته است
+- PDF مارکتینگ زمستان: فعالیت‌های ۲ و ۳ (نه ۱، ۲ و ۵)

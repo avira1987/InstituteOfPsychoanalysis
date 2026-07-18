@@ -2,14 +2,54 @@
   "version": "1.0",
   "description_fa": "فهرست دروس قابل انتخاب در آماده‌سازی ترم",
   "courses": [
-    { "value": "theory_inheritance", "label_fa": "تئوری وراثت", "track": "analytic_psychotherapy" },
-    { "value": "theory_psychoanalysis_1", "label_fa": "تئوری روانکاوی ۱", "track": "analytic_psychotherapy" },
-    { "value": "theory_psychoanalysis_2", "label_fa": "تئوری روانکاوی ۲", "track": "analytic_psychotherapy" },
-    { "value": "theory_psychoanalysis_3", "label_fa": "تئوری روانکاوی ۳", "track": "analytic_psychotherapy" },
-    { "value": "theory_psychoanalysis_4", "label_fa": "تئوری روانکاوی ۴", "track": "analytic_psychotherapy" },
-    { "value": "theory_psychoanalysis_5", "label_fa": "تئوری روانکاوی ۵", "track": "analytic_psychotherapy" },
-    { "value": "theory_technique_1", "label_fa": "تئوری تکنیک‌ها ۱", "track": "technique_theory_1_3" },
-    { "value": "theory_technique_2", "label_fa": "تئوری تکنیک‌ها ۲", "track": "technique_theory_1_3" },
-    { "value": "theory_technique_3", "label_fa": "تئوری تکنیک‌ها ۳", "track": "technique_theory_1_3" }
+    {
+      "value": "theory_inheritance",
+      "label_fa": "تئوری وراثت",
+      "track": "analytic_psychotherapy"
+    },
+    {
+      "value": "theory_psychoanalysis_1",
+      "label_fa": "تئوری روانکاوی ۱",
+      "track": "analytic_psychotherapy"
+    },
+    {
+      "value": "theory_psychoanalysis_2",
+      "label_fa": "تئوری روانکاوی ۲",
+      "track": "analytic_psychotherapy"
+    },
+    {
+      "value": "theory_psychoanalysis_3",
+      "label_fa": "تئوری روانکاوی ۳",
+      "track": "analytic_psychotherapy"
+    },
+    {
+      "value": "theory_psychoanalysis_4",
+      "label_fa": "تئوری روانکاوی ۴",
+      "track": "analytic_psychotherapy"
+    },
+    {
+      "value": "theory_psychoanalysis_5",
+      "label_fa": "تئوری روانکاوی ۵",
+      "track": "analytic_psychotherapy"
+    },
+    {
+      "value": "theory_technique_1",
+      "label_fa": "تئوری تکنیک‌ها ۱",
+      "track": "technique_theory_1_3"
+    },
+    {
+      "value": "theory_technique_2",
+      "label_fa": "تئوری تکنیک‌ها ۲",
+      "track": "technique_theory_1_3"
+    },
+    {
+      "value": "theory_technique_3",
+      "label_fa": "تئوری تکنیک‌ها ۳",
+      "track": "technique_theory_1_3"
+    },
+    {
+      "value": "course_تست",
+      "label_fa": "تست"
+    }
   ]
 }

@@ -19,7 +19,7 @@
         "title_fa": "زمان آزاد مصاحبه تعریف نشده",
         "detail_fa": "حداقل یک وقت آیندهٔ آزاد برای مصاحبه ثبت کنید تا دانشجویان بتوانند وقت بگیرند.",
         "action_label_fa": "تعریف وقت مصاحبه",
-        "action_href": "/panel/portal/staff?tab=interviewSlots"
+        "action_href": "/panel/portal/staff/admissions?tab=interviewSlots"
       }
     },
     {

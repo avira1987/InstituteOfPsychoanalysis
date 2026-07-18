@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { canManageInterviewSlots } from '../utils/interviewSlotAccess'
 import { interviewSlotsApi } from '../services/api'
+import { labelRoleFa } from '../utils/roleLabels'
 
 /** همان قرارداد بک‌اند: weekday پایتون تقویم میلادی در تهران، دوشنبه=0 … یکشنبه=6 — نمایش از شنبه. */
 const WEEKDAY_OPTS = [
@@ -15,14 +16,7 @@ const WEEKDAY_OPTS = [
 ]
 
 function roleFa(role) {
-  const r = {
-    interviewer: 'مصاحبه‌گر',
-    staff: 'کارمند',
-    site_manager: 'مدیر سایت',
-    deputy_education: 'معاون آموزش',
-    admin: 'مدیر سیستم',
-  }
-  return r[role] || role || ''
+  return labelRoleFa(role)
 }
 
 function sortDays(arr) {

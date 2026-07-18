@@ -13,6 +13,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.engine import StateMachineEngine
 from app.meta.process_forms import get_process_state_metadata
+from app.meta.role_labels import label_role_fa
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance
 from app.services.institute_operational_anchor import ensure_institute_operational_student
@@ -317,6 +318,16 @@ async def load_fall_prep_context_field(
     return None
 
 
+def _is_effectively_empty_course_table(rows: Any) -> bool:
+    """جدول دروس خالی است یا فقط ردیف placeholder (بدون نام درس) دارد."""
+    if not isinstance(rows, list) or not rows:
+        return True
+    for row in rows:
+        if isinstance(row, dict) and str(row.get("course_name") or "").strip():
+            return False
+    return True
+
+
 def _build_courses_finalized_from_draft(courses: Any) -> Optional[list[dict[str, Any]]]:
     """لیست دروس مرحلهٔ ۴ را برای جدول نهایی‌سازی (مرحلهٔ ۵) نگاشت می‌کند."""
     if not isinstance(courses, list) or not courses:
@@ -353,7 +364,7 @@ def _apply_course_finalization_prefill(
             ("courses_finalized_winter", "courses_winter"),
         )
         for final_name, draft_name in pairs:
-            if out.get(final_name) not in (None, "", []):
+            if not _is_effectively_empty_course_table(out.get(final_name)):
                 continue
             draft = out.get(draft_name)
             if not draft and draft_name == "courses_fall":
@@ -362,7 +373,7 @@ def _apply_course_finalization_prefill(
             if built:
                 out[final_name] = built
     if process_code == WINTER_PREP and state_code == "course_finalization":
-        if out.get("courses_finalized") in (None, "", []):
+        if _is_effectively_empty_course_table(out.get("courses_finalized")):
             draft = out.get("courses")
             built = _build_courses_finalized_from_draft(draft)
             if built:
@@ -505,6 +516,8 @@ async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
             sd = (await db.execute(sd_stmt)).scalars().first()
             entry["state_name_fa"] = sd.name_fa if sd else inst.current_state_code
             entry["assigned_role"] = sd.assigned_role if sd else None
+            if entry["assigned_role"]:
+                entry["assigned_role_fa"] = label_role_fa(entry["assigned_role"])
             if sd and sd.sla_hours:
                 entry["sla_hours"] = sd.sla_hours
             ctx = _ctx(inst)
@@ -567,3 +580,134 @@ async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
                 )
         out["processes"][code] = entry
     return out
+
+
+FALL_MARKETING_CONTEXT_KEYS: tuple[str, ...] = (
+    "fall_start_date",
+    "fall_end_date",
+    "winter_start_date",
+    "winter_end_date",
+    "registration_payment_window_start",
+    "registration_payment_window_end",
+    "per_unit_cost_introductory",
+    "per_unit_cost_comprehensive",
+    "interview_fee_introductory",
+    "interview_fee_comprehensive",
+    "courses_finalized_fall",
+    "courses_finalized_winter",
+    "courses_fall",
+    "courses_winter",
+)
+
+WINTER_MARKETING_CONTEXT_KEYS: tuple[str, ...] = (
+    "courses",
+    "courses_finalized",
+    "courses_winter",
+)
+
+FALL_PREP_STEP_STATES: tuple[str, ...] = (
+    "calendar_entry",
+    "tuition_entry",
+    "license_check",
+    "course_list_creation",
+    "course_finalization",
+    "marketing_campaign",
+    "interviewer_assignment",
+    "interview_scheduling",
+)
+
+WINTER_PREP_STEP_STATES: tuple[str, ...] = (
+    "license_check",
+    "course_list_review",
+    "course_finalization",
+    "marketing_campaign",
+    "interviewer_assignment",
+    "interview_scheduling",
+)
+
+
+def _context_key_present(ctx: dict[str, Any], key: str) -> bool:
+    val = ctx.get(key)
+    if val in (None, ""):
+        return False
+    if isinstance(val, list):
+        return len(val) > 0 and any(
+            isinstance(row, dict) and any(v not in (None, "", False) for v in row.values())
+            for row in val
+        )
+    return True
+
+
+def _table_row_count(value: Any) -> int:
+    if not isinstance(value, list):
+        return 0
+    return sum(
+        1
+        for row in value
+        if isinstance(row, dict) and any(v not in (None, "", False) for v in row.values())
+    )
+
+
+def build_instance_marketing_diagnostic(
+    inst: ProcessInstance,
+    process_code: str,
+) -> dict[str, Any]:
+    """خلاصهٔ تشخیصی context برای مرحلهٔ کمپین بازاریابی (read-only)."""
+    from app.meta.student_step_forms import CTX_SUBMITTED
+
+    ctx = _ctx(inst)
+    submitted = StateMachineEngine._as_mapping(ctx.get(CTX_SUBMITTED))
+    step_states = FALL_PREP_STEP_STATES if process_code == FALL_PREP else WINTER_PREP_STEP_STATES
+    marketing_keys = (
+        FALL_MARKETING_CONTEXT_KEYS if process_code == FALL_PREP else WINTER_MARKETING_CONTEXT_KEYS
+    )
+
+    submitted_states = {
+        state: bool(submitted.get(state))
+        for state in step_states
+    }
+    key_presence = {key: _context_key_present(ctx, key) for key in marketing_keys}
+    table_counts = {
+        key: _table_row_count(ctx.get(key))
+        for key in marketing_keys
+        if key.startswith("courses")
+    }
+
+    return {
+        "process_code": process_code,
+        "instance_id": str(inst.id),
+        "current_state": inst.current_state_code,
+        "submitted_states": submitted_states,
+        "marketing_keys_present": key_presence,
+        "course_table_row_counts": table_counts,
+        "has_marketing_data": any(key_presence.values()),
+    }
+
+
+async def build_marketing_handoff_diagnostic(
+    db: AsyncSession,
+    *,
+    process_code: str | None = None,
+) -> dict[str, Any]:
+    """تشخیص خروجی کمپین برای instance فعال آماده‌سازی ترم روی anchor انستیتو."""
+    anchor = await ensure_institute_operational_student(db)
+    codes = (process_code,) if process_code in PREP_PROCESS_CODES else (FALL_PREP, WINTER_PREP)
+    processes: dict[str, Any] = {}
+    for code in codes:
+        inst = await get_active_prep_instance(db, code, student_id=anchor.id)
+        if inst is None:
+            completed = await get_completed_prep_instance(db, code, student_id=anchor.id)
+            if completed is not None:
+                processes[code] = build_instance_marketing_diagnostic(completed, code)
+                processes[code]["active"] = False
+            else:
+                processes[code] = {"process_code": code, "active": False, "instance_id": None}
+            continue
+        entry = build_instance_marketing_diagnostic(inst, code)
+        entry["active"] = True
+        processes[code] = entry
+
+    return {
+        "anchor_student_code": anchor.student_code,
+        "processes": processes,
+    }

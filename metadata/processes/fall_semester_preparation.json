@@ -109,17 +109,17 @@
     },
     {
       "code": "interview_scheduling",
-      "name_fa": "زمان‌بندی دقیق اسلات‌های مصاحبه",
+      "name_fa": "زمان‌بندی و ثبت اسلات‌های مصاحبه",
       "type": "intermediate",
-      "assigned_role": "staff",
+      "assigned_role": "site_manager",
       "sla_days": 3,
       "sla_warning_recipients": [
         "deputy_education_director"
       ],
       "editable_anytime": true,
       "metadata": {
-        "operator_task_fa": "بررسی درخواست و ثبت تصمیم.",
-        "operator_short_fa": "زمان‌بندی دقیق اسلات‌های مصاحبه"
+        "operator_task_fa": "نوع برگزاری را مشخص کنید، اسلات‌های قابل رزرو را ثبت کنید و فرم را ذخیره کنید.",
+        "operator_short_fa": "زمان‌بندی و ثبت اسلات‌های مصاحبه"
       }
     },
     {
@@ -356,8 +356,8 @@
       "from": "interview_scheduling",
       "to": "published",
       "trigger": "interview_times_set",
-      "required_role": "staff",
-      "description_fa": "زمان‌بندی دقیق مصاحبه‌ها ثبت شد — انتشار تقویم و اطلاع‌رسانی",
+      "required_role": "site_manager",
+      "description_fa": "اسلات‌های مصاحبه ثبت شد — انتشار تقویم و اطلاع‌رسانی",
       "actions": [
         {
           "type": "publish_academic_calendar_to_profiles"
@@ -703,6 +703,7 @@
       "code": "course_finalization_form",
       "name_fa": "فرم نهایی‌سازی دروس و مکان‌ها",
       "used_in_state": "course_finalization",
+      "note_fa": "اطلاعات دروس از مرحلهٔ قبل خودکار پر می‌شود. فقط «مکان کلاس» و «هماهنگی با مدرس» را تکمیل کنید.",
       "editable_by": ["admin", "staff", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
       "fields": [
         {
@@ -848,6 +849,8 @@
           "label_fa": "مصاحبه‌کنندگان دوره جامع",
           "type": "multi_select",
           "required": true,
+          "creatable": true,
+          "note_fa": "از فهرست انتخاب کنید یا با جست‌وجو نام مصاحبه‌گر جدید را اضافه کنید.",
           "options_source": {
             "type": "users",
             "role": "interviewer",
@@ -871,6 +874,8 @@
           "label_fa": "مصاحبه‌کنندگان دوره مقدماتی",
           "type": "multi_select",
           "required": true,
+          "creatable": true,
+          "note_fa": "از فهرست انتخاب کنید یا با جست‌وجو نام مصاحبه‌گر جدید را اضافه کنید.",
           "options_source": {
             "type": "users",
             "role": "interviewer",
@@ -893,35 +898,12 @@
     },
     {
       "code": "interview_scheduling_form",
-      "name_fa": "فرم زمان‌بندی دقیق مصاحبه‌ها",
+      "name_fa": "تنظیمات برگزاری مصاحبه",
       "used_in_state": "interview_scheduling",
       "editable_by": ["admin", "staff", "site_manager", "deputy_education"],
       "editable_anytime": true,
+      "note_fa": "برای مصاحبهٔ آنلاین، لینک جلسه پس از پرداخت هزینهٔ مصاحبه توسط دانشجو به‌صورت خودکار ساخته می‌شود و دکمهٔ «ورود به جلسه» در پروفایل دانشجو و مصاحبه‌گر نمایش داده می‌شود.",
       "fields": [
-        {
-          "name": "interview_start_time",
-          "label_fa": "ساعت شروع مصاحبه‌ها",
-          "type": "time",
-          "required": true
-        },
-        {
-          "name": "interview_end_time",
-          "label_fa": "ساعت پایان مصاحبه‌ها",
-          "type": "time",
-          "required": true
-        },
-        {
-          "name": "slot_duration_minutes",
-          "label_fa": "مدت هر نوبت (دقیقه)",
-          "type": "select",
-          "options": [
-            15,
-            30,
-            45,
-            60
-          ],
-          "required": true
-        },
         {
           "name": "interview_mode",
           "label_fa": "نوع مصاحبه",
@@ -933,10 +915,13 @@
           "required": true
         },
         {
-          "name": "interview_location_or_link",
-          "label_fa": "مکان یا لینک مصاحبه",
-          "type": "text",
-          "required": true
+          "name": "interview_location_fa",
+          "label_fa": "آدرس یا محل برگزاری (حضوری)",
+          "type": "textarea",
+          "required": true,
+          "visible_if": {
+            "interview_mode": "حضوری"
+          }
         }
       ]
     }

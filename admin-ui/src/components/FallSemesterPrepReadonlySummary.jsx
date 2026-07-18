@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import {
   fmtRialDisplay,
+  hasMarketingHandoffData,
   hasTuitionOrInterviewData,
   resolveMarketingHandoffContext,
 } from '../utils/marketingHandoffDisplay'
@@ -85,6 +86,17 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
     currentState,
   )
 
+  const showInterviewScheduling =
+    currentState === 'interview_scheduling'
+    && ctx.interview_mode
+
+  const interviewLocationDisplay =
+    ctx.interview_mode === 'حضوری'
+      ? (ctx.interview_location_fa || ctx.interview_location_or_link || null)
+      : ctx.interview_mode === 'آنلاین'
+        ? 'لینک پس از پرداخت دانشجو (خودکار)'
+        : null
+
   const finalizedFall = ctx.courses_finalized_fall
   const finalizedWinter = ctx.courses_finalized_winter
   const finalizedLegacy = ctx.courses_finalized
@@ -96,7 +108,12 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
   const showTuitionBlock =
     showTuition && (hasTuitionOrInterviewData(ctx) || (isMarketing && !isWinter))
 
-  if (!showCalendar && !showTuitionBlock && !showCourses && !showFinalized) return null
+  const marketingDataMissing = isMarketing && !hasMarketingHandoffData(processCode, ctx)
+
+  const showCalendarBlock =
+    showCalendar && (ctx.fall_start_date || (isMarketing && !isWinter))
+
+  if (!showCalendarBlock && !showTuitionBlock && !showCourses && !showFinalized && !showInterviewScheduling) return null
 
   return (
     <div
@@ -109,13 +126,47 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
           : 'خلاصهٔ مراحل قبلی (فقط مشاهده)'}
       </div>
 
-      {showCalendar && ctx.fall_start_date && (
+      {marketingDataMissing && (
+        <div
+          style={{
+            marginBottom: '0.65rem',
+            padding: '0.55rem 0.75rem',
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '8px',
+            fontSize: '0.8rem',
+            color: '#991b1b',
+            lineHeight: 1.6,
+          }}
+          data-testid="marketing-handoff-missing-banner"
+        >
+          دادهٔ مراحل قبل یافت نشد — از بخش «بازگشت به مرحلهٔ قبلی» برای تکمیل مجدد استفاده کنید.
+        </div>
+      )}
+
+      {showCalendarBlock && (
         <div style={{ marginBottom: '0.65rem' }}>
           <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>
             {isMarketing && !isWinter ? 'فعالیت ۱ — تقویم آموزشی' : 'تقویم آموزشی'}
           </div>
-          <Row label="پاییز" value={ctx.fall_start_date && ctx.fall_end_date ? `${formatDateDisplay(ctx.fall_start_date)} تا ${formatDateDisplay(ctx.fall_end_date)}` : null} />
-          <Row label="زمستان" value={ctx.winter_start_date && ctx.winter_end_date ? `${formatDateDisplay(ctx.winter_start_date)} تا ${formatDateDisplay(ctx.winter_end_date)}` : null} />
+          <Row
+            label="پاییز"
+            value={
+              ctx.fall_start_date && ctx.fall_end_date
+                ? `${formatDateDisplay(ctx.fall_start_date)} تا ${formatDateDisplay(ctx.fall_end_date)}`
+                : null
+            }
+            emptyLabel={isMarketing && !isWinter ? 'ثبت نشده' : null}
+          />
+          <Row
+            label="زمستان"
+            value={
+              ctx.winter_start_date && ctx.winter_end_date
+                ? `${formatDateDisplay(ctx.winter_start_date)} تا ${formatDateDisplay(ctx.winter_end_date)}`
+                : null
+            }
+            emptyLabel={isMarketing && !isWinter ? 'ثبت نشده' : null}
+          />
           <Row
             label="ثبت‌نام/پرداخت"
             value={
@@ -123,6 +174,7 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
                 ? `${formatDateDisplay(ctx.registration_payment_window_start)} تا ${formatDateDisplay(ctx.registration_payment_window_end)}`
                 : null
             }
+            emptyLabel={isMarketing && !isWinter ? 'ثبت نشده' : null}
           />
         </div>
       )}
@@ -155,7 +207,7 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
         </div>
       )}
 
-      {showCourses && (ctx.courses_fall?.length > 0 || ctx.courses_winter?.length > 0 || ctx.courses?.length > 0) && (
+      {showCourses && (isMarketing && isWinter || ctx.courses_fall?.length > 0 || ctx.courses_winter?.length > 0 || ctx.courses?.length > 0) && (
         <div style={{ marginBottom: '0.65rem' }}>
           <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>
             {isMarketing && isWinter ? 'فعالیت ۲ — لیست دروس زمستان' : 'لیست دروس (پیش‌نویس)'}
@@ -174,6 +226,9 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
           )}
           {!ctx.courses_fall?.length && !ctx.courses_winter?.length && ctx.courses?.length > 0 && (
             <p className="fall-semester-readonly-summary__text">{formatCoursesTable(ctx.courses)}</p>
+          )}
+          {isMarketing && isWinter && !ctx.courses?.length && !ctx.courses_winter?.length && (
+            <p className="fall-semester-readonly-summary__text muted">(داده‌ای ثبت نشده)</p>
           )}
         </div>
       )}
@@ -205,6 +260,16 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
           {isMarketing && !hasFinalizedCourses && (
             <p className="fall-semester-readonly-summary__text muted">(داده‌ای ثبت نشده)</p>
           )}
+        </div>
+      )}
+
+      {showInterviewScheduling && (
+        <div style={{ marginBottom: '0.65rem' }} data-testid="interview-scheduling-readonly-summary">
+          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', marginBottom: '0.25rem' }}>
+            تنظیمات برگزاری (این مرحله)
+          </div>
+          <Row label="نوع مصاحبه" value={ctx.interview_mode} />
+          <Row label="مکان / لینک" value={interviewLocationDisplay} />
         </div>
       )}
     </div>

@@ -240,5 +240,10 @@ async def compute_nav_pending_counts(db: AsyncSession, user: User) -> dict[str, 
 
     counts["/panel/tickets"] = await _ticket_pending_count(db, user)
 
-    filtered = {k: v for k, v in counts.items() if _user_sees_nav_path(role, k)}
+    from app.services.process_nav_service import compute_process_nav_pending_counts
+
+    process_nav_counts = await compute_process_nav_pending_counts(db, user)
+    counts.update(process_nav_counts)
+
+    filtered = {k: v for k, v in counts.items() if _user_sees_nav_path(role, k) or k.startswith("/panel/process-nav/")}
     return {"counts": filtered}

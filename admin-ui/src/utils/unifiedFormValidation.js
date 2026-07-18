@@ -83,14 +83,27 @@ export function checkRules(field, val) {
   return null
 }
 
-function isTableRowEmpty(row, columns) {
+export function isEffectivelyEmptyCourseTableRow(row, columns) {
   if (!row || typeof row !== 'object') return true
-  return (columns || []).every((col) => {
-    const ct = (col.type || 'text').toLowerCase()
-    const v = row[col.name]
-    if (ct === 'checkbox') return !v
-    return isEmpty(v)
-  })
+  if (Array.isArray(columns) && columns.length) {
+    return columns.every((col) => {
+      const ct = (col.type || 'text').toLowerCase()
+      const v = row[col.name]
+      if (ct === 'checkbox') return !v
+      return isEmpty(v)
+    })
+  }
+  return isEmpty(row.course_name)
+}
+
+/** جدول دروس خالی است یا فقط ردیف placeholder دارد. */
+export function isEffectivelyEmptyCourseTable(rows, columns) {
+  if (!Array.isArray(rows) || rows.length === 0) return true
+  return rows.every((r) => isEffectivelyEmptyCourseTableRow(r, columns))
+}
+
+function isTableRowEmpty(row, columns) {
+  return isEffectivelyEmptyCourseTableRow(row, columns)
 }
 
 export function validateTableField(field, val) {

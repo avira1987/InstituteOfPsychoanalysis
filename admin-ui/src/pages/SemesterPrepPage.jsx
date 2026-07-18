@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { semesterPrepApi } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
+import { labelRoleFa } from '../utils/roleLabels'
 
 const PROCESS_LABELS = {
   fall_semester_preparation: 'آماده‌سازی ترم پاییز',
@@ -92,7 +93,7 @@ export default function SemesterPrepPage() {
                           ) : null}
                         </p>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
-                          مسئول: {entry.assigned_role || '—'}
+                          مسئول: {entry.assigned_role_fa || (entry.assigned_role ? labelRoleFa(entry.assigned_role) : '—')}
                         </p>
                         {entry.sla_hours ? (
                           <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: entry.sla_overdue ? '#b91c1c' : '#475569' }}>
@@ -143,8 +144,13 @@ export default function SemesterPrepPage() {
                     )}
                     {completed && (
                       <>
+                        {entry.completed_current_state === 'published' ? (
+                          <Link className="btn btn-primary" to="/panel/academic-calendar">
+                            مشاهده تقویم آموزشی
+                          </Link>
+                        ) : null}
                         <Link
-                          className="btn btn-primary"
+                          className={entry.completed_current_state === 'published' ? 'btn btn-secondary' : 'btn btn-primary'}
                           to={`/panel/semester-prep/workbench?process_code=${code}`}
                         >
                           ویرایش (بازگشت به مراحل قبلی)

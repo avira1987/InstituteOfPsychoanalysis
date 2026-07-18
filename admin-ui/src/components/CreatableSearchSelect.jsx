@@ -46,6 +46,7 @@ export default function CreatableSearchSelect({
   const inputRef = useRef(null)
   const dropdownRef = useRef(null)
   const [open, setOpen] = useState(false)
+  const [openUp, setOpenUp] = useState(false)
   const [panelPos, setPanelPos] = useState(null)
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState(false)
@@ -87,8 +88,9 @@ export default function CreatableSearchSelect({
     const spaceBelow = window.innerHeight - r.bottom - margin
     const spaceAbove = r.top - margin
     const maxHeight = Math.min(DROPDOWN_MAX_H, Math.max(spaceBelow, spaceAbove, 100))
-    const openUp = spaceBelow < 140 && spaceAbove > spaceBelow
-    const top = openUp
+    const openUpward = spaceBelow < 140 && spaceAbove > spaceBelow
+    setOpenUp(openUpward)
+    const top = openUpward
       ? Math.max(margin, r.top - maxHeight - 2)
       : Math.round(r.bottom + 2)
     setPanelPos({
@@ -112,6 +114,11 @@ export default function CreatableSearchSelect({
       window.removeEventListener('scroll', updatePanelPosition, true)
     }
   }, [open, updatePanelPosition, filtered.length])
+
+  useLayoutEffect(() => {
+    if (!open || !dropdownRef.current) return
+    dropdownRef.current.scrollTop = 0
+  }, [open, openUp, filtered.length])
 
   useEffect(() => {
     if (!open) return
@@ -305,6 +312,8 @@ export default function CreatableSearchSelect({
               borderRadius: '8px',
               boxShadow: '0 8px 20px rgba(15,23,42,0.12)',
               boxSizing: 'border-box',
+              display: 'flex',
+              flexDirection: openUp ? 'column-reverse' : 'column',
             }}
           >
             {dropdownList}

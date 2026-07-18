@@ -1,38 +1,26 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { getAvatarUrl, panelApi, dynamicFormsApi } from '../services/api'
 import NotificationBell from './NotificationBell'
 import { getSiteLogoUrl } from '../utils/siteLogo'
-import { navItemsForRole } from '../utils/portalRoleNav'
+import { navItemsForRole, dedupSemesterPrepNavForProcessNav } from '../utils/portalRoleNav'
+import { mapProcessNavItemsFromApi, PROCESS_NAV_PATH_PREFIX } from '../utils/processNavLinks'
 import { PANEL_NOTIFICATIONS_CHANGED_EVENT } from '../utils/panelNotifications'
-
-const roleLabels = {
-  admin: 'مدیر سیستم',
-  staff: 'کارمند دفتر',
-  therapist: 'درمانگر',
-  student: 'دانشجو',
-  supervisor: 'سوپروایزر',
-  site_manager: 'مسئول سایت',
-  progress_committee: 'کمیته پیشرفت',
-  education_committee: 'کمیته آموزش',
-  supervision_committee: 'کمیته نظارت',
-  specialized_commission: 'کمیسیون تخصصی',
-  therapy_committee_chair: 'مسئول کمیته درمان',
-  therapy_committee_executor: 'مجری کمیته درمان',
-  deputy_education: 'معاون آموزش',
-  monitoring_committee_officer: 'مسئول کمیته نظارت',
-  finance: 'اپراتور مالی',
-  interviewer: 'مصاحبه‌گر',
-}
+import { labelRoleFa } from '../utils/roleLabels'
+import { normalizeNavPath, resolveActiveSidebarNavPath } from '../utils/sidebarNavActive'
 
 export default function Layout() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const sidebarNavRef = useRef(null)
   const { user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [navPendingByPath, setNavPendingByPath] = useState({})
   const [dynamicNavItems, setDynamicNavItems] = useState([])
   const [dynamicNavMergeMode, setDynamicNavMergeMode] = useState('append')
+  const [processNavItems, setProcessNavItems] = useState([])
+  const [processNavOpen, setProcessNavOpen] = useState(true)
 
   const loadNavPending = useCallback(async () => {
     if (!user) return
@@ -74,9 +62,26 @@ export default function Layout() {
     }
   }, [user])
 
+  const loadProcessNav = useCallback(async () => {
+    if (!user) {
+      setProcessNavItems([])
+      return
+    }
+    try {
+      const res = await panelApi.processNavItems()
+      const mapped = mapProcessNavItemsFromApi(res.data?.items || [], user.role)
+      setProcessNavItems(mapped)
+      const hasPending = mapped.some((it) => it.pendingCount > 0)
+      setProcessNavOpen(hasPending || mapped.length <= 12)
+    } catch {
+      setProcessNavItems([])
+    }
+  }, [user])
+
   useEffect(() => {
     loadNavPending()
     loadDynamicNav()
+    loadProcessNav()
     const t = setInterval(loadNavPending, 60000)
     const onVis = () => {
       if (document.visibilityState === 'visible') loadNavPending()
@@ -89,7 +94,7 @@ export default function Layout() {
       document.removeEventListener('visibilitychange', onVis)
       window.removeEventListener(PANEL_NOTIFICATIONS_CHANGED_EVENT, onNotifChanged)
     }
-  }, [loadNavPending, loadDynamicNav])
+  }, [loadNavPending, loadDynamicNav, loadProcessNav])
 
   const handleLogout = () => {
     logout()
@@ -97,7 +102,11 @@ export default function Layout() {
   }
 
   const visibleNav = useMemo(() => {
-    const filtered = navItemsForRole(user?.role)
+    const processCodes = processNavItems.map((p) => p.processCode)
+    const filtered = dedupSemesterPrepNavForProcessNav(
+      navItemsForRole(user?.role),
+      processCodes,
+    )
     const dyn = dynamicNavItems.filter((item) => {
       if (!item.roles || !Array.isArray(item.roles) || item.roles.length === 0) return true
       return item.roles.includes(user?.role) || user?.role === 'admin'
@@ -122,7 +131,49 @@ export default function Layout() {
       if (pa !== pb) return pa - pb
       return a.path.localeCompare(b.path)
     })
-  }, [user?.role, dynamicNavItems, dynamicNavMergeMode])
+  }, [user?.role, dynamicNavItems, dynamicNavMergeMode, processNavItems])
+
+  const processNavForSidebar = useMemo(
+    () => processNavItems.map((item) => ({
+      path: item.path,
+      label: item.label,
+      icon: item.icon,
+      priority: item.priority,
+      isProcessNav: true,
+    })),
+    [processNavItems],
+  )
+
+  const allNavForActive = useMemo(
+    () => [...visibleNav, ...processNavForSidebar],
+    [visibleNav, processNavForSidebar],
+  )
+
+  const activeNavPath = useMemo(() => {
+    const processCode = new URLSearchParams(location.search).get('process_code')
+    if (processCode) {
+      const processPath = normalizeNavPath(`${PROCESS_NAV_PATH_PREFIX}${processCode}`)
+      if (allNavForActive.some((n) => normalizeNavPath(n.path) === processPath)) {
+        return processPath
+      }
+    }
+    return resolveActiveSidebarNavPath(allNavForActive, location.pathname)
+  }, [allNavForActive, location.pathname, location.search])
+
+  const activeNavLabel = useMemo(() => {
+    if (!activeNavPath) return null
+    const item = allNavForActive.find((nav) => normalizeNavPath(nav.path) === activeNavPath)
+    return item?.label || null
+  }, [activeNavPath, allNavForActive])
+
+  useEffect(() => {
+    const nav = sidebarNavRef.current
+    if (!nav || !activeNavPath) return
+    const activeEl = nav.querySelector('.sidebar-link.active')
+    if (activeEl && typeof activeEl.scrollIntoView === 'function') {
+      activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [activeNavPath, location.pathname])
 
   return (
     <div className="layout">
@@ -146,20 +197,21 @@ export default function Layout() {
             <NotificationBell variant="sidebar" />
           </div>
         </div>
-        <nav className="sidebar-nav" aria-label="منوی اصلی">
+        <nav className="sidebar-nav" ref={sidebarNavRef} aria-label="منوی اصلی">
           {visibleNav.map((item, idx) => {
             const raw = navPendingByPath[item.path]
             const n = typeof raw === 'number' && raw > 0 ? raw : 0
             const badge =
               n > 0 ? (n > 99 ? '۹۹+' : n.toLocaleString('fa-IR')) : null
+            const itemPath = normalizeNavPath(item.path)
+            const isItemActive = activeNavPath === itemPath
             return (
               <NavLink
                 key={`${item.path}-${idx}`}
                 to={item.path}
                 end={item.path === '/panel' || item.path === '/panel/portal/student'}
-                className={({ isActive }) =>
-                  `sidebar-link ${isActive ? 'active' : ''}`
-                }
+                aria-current={isItemActive ? 'page' : undefined}
+                className={`sidebar-link${isItemActive ? ' active' : ''}`}
                 onClick={() => setMobileOpen(false)}
               >
                 <span className="sidebar-link-icon" aria-hidden="true">{item.icon}</span>
@@ -174,6 +226,53 @@ export default function Layout() {
               </NavLink>
             )
           })}
+
+          {processNavForSidebar.length > 0 && (
+            <div className="sidebar-process-group">
+              <button
+                type="button"
+                className="sidebar-process-group-toggle"
+                onClick={() => setProcessNavOpen((v) => !v)}
+                aria-expanded={processNavOpen}
+              >
+                <span className="sidebar-link-icon" aria-hidden="true">📋</span>
+                <span className="sidebar-link-label">فرایندها</span>
+                <span className="sidebar-process-group-count">
+                  {processNavForSidebar.length.toLocaleString('fa-IR')}
+                </span>
+                <span className="sidebar-process-group-chevron" aria-hidden="true">
+                  {processNavOpen ? '▾' : '◂'}
+                </span>
+              </button>
+              {processNavOpen && processNavForSidebar.map((item) => {
+                const raw = navPendingByPath[item.path]
+                const n = typeof raw === 'number' && raw > 0 ? raw : 0
+                const badge =
+                  n > 0 ? (n > 99 ? '۹۹+' : n.toLocaleString('fa-IR')) : null
+                const itemPath = normalizeNavPath(item.path)
+                const isItemActive = activeNavPath === itemPath
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    aria-current={isItemActive ? 'page' : undefined}
+                    className={`sidebar-link sidebar-link-nested${isItemActive ? ' active' : ''}`}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <span className="sidebar-link-icon" aria-hidden="true">{item.icon}</span>
+                    <span className="sidebar-link-text">
+                      <span className="sidebar-link-label">{item.label}</span>
+                      {badge != null ? (
+                        <span className="sidebar-nav-badge" title="کار منتظر">
+                          {badge}
+                        </span>
+                      ) : null}
+                    </span>
+                  </NavLink>
+                )
+              })}
+            </div>
+          )}
         </nav>
 
         <div className="sidebar-footer">
@@ -188,7 +287,7 @@ export default function Layout() {
               </div>
               <div className="sidebar-user-info">
                 <div className="sidebar-user-name">{user.full_name_fa || user.username}</div>
-                <div className="sidebar-user-role">{roleLabels[user.role] || user.role}</div>
+                <div className="sidebar-user-role">{labelRoleFa(user.role)}</div>
               </div>
             </div>
           )}
@@ -207,7 +306,7 @@ export default function Layout() {
           </button>
           <NotificationBell variant="mobile" />
           <img src={getSiteLogoUrl()} alt="" className="mobile-header-logo site-logo-img" width={32} height={37} />
-          <span className="mobile-title">انستیتو روانکاوری تهران</span>
+          <span className="mobile-title">{activeNavLabel || 'انستیتو روانکاوری تهران'}</span>
           <button
             className="header-logout-btn"
             onClick={handleLogout}

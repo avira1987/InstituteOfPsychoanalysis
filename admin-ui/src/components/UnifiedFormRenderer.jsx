@@ -12,7 +12,10 @@ import {
   createCourseCatalogEntry,
   createCourseCommitteeMember,
   createCourseCommitteeTrack,
+  lookupRosterOptionsForRow,
+  resolveRosterTrackForRow,
   resolveTrackForCourse,
+  rowMeetsRosterPrerequisite,
 } from '../utils/resolveFormOptionsSource'
 import {
   defaultShamsiDate,
@@ -150,60 +153,174 @@ function RialNumberField({ id, labelEl, field, value, onChange, disabled, rules 
   )
 }
 
-// انتخاب چندتایی — اگر options موجود باشد چک‌باکسی؛ وگرنه ورودی برچسبی (نام‌ها).
-function MultiSelectField({ field, value, onChange, disabled }) {
-  const selected = Array.isArray(value) ? value : []
+function multiSelectOptionValue(opt) {
+  return typeof opt === 'object' ? opt.value : opt
+}
+
+function multiSelectOptionLabel(opt) {
+  if (typeof opt === 'object') return opt.label_fa || opt.value || ''
+  return String(opt)
+}
+
+function multiSelectCreatableProps(field, { showToast }) {
+  const src = field.options_source || {}
+  const base = {
+    allowCreate: field.creatable !== false,
+    onCreateError: showToast ? (msg) => showToast(msg, 'error') : null,
+  }
+  if (src.type === 'users') {
+    return {
+      ...base,
+      placeholder: 'جست‌وجو یا انتخاب مصاحبه‌گر…',
+      createSectionLabel: 'افزودن مصاحبه‌گر جدید',
+      createInputPlaceholder: 'نام مصاحبه‌گر',
+      createLabel: (text) => `افزودن «${text}»`,
+    }
+  }
+  return {
+    ...base,
+    placeholder: 'جست‌وجو یا افزودن…',
+    createSectionLabel: 'افزودن مورد جدید',
+    createInputPlaceholder: 'نام جدید',
+    createLabel: (text) => `افزودن «${text}»`,
+  }
+}
+
+// انتخاب چندتایی — برچسب‌های قابل حذف + افزودن از فهرست یا نام جدید.
+function MultiSelectField({ field, value, onChange, disabled, showToast }) {
+  const selected = Array.isArray(value) ? value.map(String) : []
   const [draft, setDraft] = useState('')
+  const [pickerKey, setPickerKey] = useState(0)
+  const [extraOptions, setExtraOptions] = useState([])
+  const hasDynamicOptions = Boolean(field.options_source) || (Array.isArray(field.options) && field.options.length > 0)
+
   const labelMap = useMemo(() => {
     const m = new Map()
-    if (Array.isArray(field.options)) {
-      field.options.forEach((opt) => {
-        const v = typeof opt === 'object' ? opt.value : opt
-        const lab = typeof opt === 'object' ? (opt.label_fa || v) : opt
-        m.set(String(v), lab)
-      })
+    const add = (opt) => {
+      const v = multiSelectOptionValue(opt)
+      if (v == null || v === '') return
+      m.set(String(v), multiSelectOptionLabel(opt))
     }
+    ;(field.options || []).forEach(add)
+    extraOptions.forEach(add)
+    selected.forEach((v) => {
+      if (!m.has(v)) m.set(v, v)
+    })
     return m
-  }, [field.options])
-  if (Array.isArray(field.options) && field.options.length) {
-    const toggle = (v) => {
-      const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]
-      onChange(next)
+  }, [field.options, extraOptions, selected])
+
+  const baseOptions = useMemo(() => {
+    const seen = new Set()
+    const out = []
+    const push = (opt) => {
+      const v = String(multiSelectOptionValue(opt) ?? '')
+      if (!v || seen.has(v)) return
+      seen.add(v)
+      out.push(typeof opt === 'object' ? opt : { value: opt, label_fa: opt })
     }
+    ;(field.options || []).forEach(push)
+    extraOptions.forEach(push)
+    return out
+  }, [field.options, extraOptions])
+
+  const availableOptions = useMemo(
+    () => baseOptions.filter((opt) => !selected.includes(String(multiSelectOptionValue(opt)))),
+    [baseOptions, selected],
+  )
+
+  const addValue = useCallback((raw) => {
+    const v = String(raw || '').trim()
+    if (!v || selected.includes(v)) return
+    onChange([...selected, v])
+    setPickerKey((k) => k + 1)
+  }, [onChange, selected])
+
+  const removeValue = useCallback((raw) => {
+    const v = String(raw)
+    onChange(selected.filter((x) => x !== v))
+  }, [onChange, selected])
+
+  const chips = (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: hasDynamicOptions ? '0.5rem' : '0.4rem' }}>
+      {selected.map((v) => (
+        <span
+          key={v}
+          className="badge"
+          style={{
+            display: 'inline-flex',
+            gap: '0.3rem',
+            alignItems: 'center',
+            padding: '0.2rem 0.5rem',
+            borderRadius: '999px',
+            background: '#eef2ff',
+          }}
+        >
+          {labelMap.get(v) || v}
+          {!disabled && (
+            <button
+              type="button"
+              aria-label={`حذف ${labelMap.get(v) || v}`}
+              onClick={() => removeValue(v)}
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#6366f1' }}
+            >
+              ×
+            </button>
+          )}
+        </span>
+      ))}
+      {selected.length === 0 && <span className="muted">{hasDynamicOptions ? 'موردی انتخاب نشده' : 'موردی افزوده نشده'}</span>}
+    </div>
+  )
+
+  if (hasDynamicOptions) {
+    const creatableProps = multiSelectCreatableProps(field, { showToast })
+    const allowCreate = field.creatable !== false
+    const onCreateNew = allowCreate
+      ? async (nameFa) => {
+          const trimmed = (nameFa || '').trim()
+          if (!trimmed) return null
+          const norm = (s) => String(s || '').trim().toLowerCase()
+          const hit = baseOptions.find((o) => norm(multiSelectOptionLabel(o)) === norm(trimmed))
+          if (hit) return hit
+          return { value: trimmed, label_fa: trimmed }
+        }
+      : null
+
     return (
-      <div className="psf-checkbox-grid" role="group">
-        {field.options.map((opt) => {
-          const v = typeof opt === 'object' ? opt.value : opt
-          const lab = typeof opt === 'object' ? (opt.label_fa || v) : opt
-          return (
-            <label key={String(v)} className="psf-check-row" style={{ display: 'flex', gap: '0.35rem' }}>
-              <input type="checkbox" checked={selected.includes(v)} disabled={disabled} onChange={() => toggle(v)} />
-              <span>{lab}</span>
-            </label>
-          )
-        })}
+      <div>
+        {chips}
+        {!disabled && (
+          <CreatableSearchSelect
+            key={pickerKey}
+            value=""
+            onChange={addValue}
+            options={availableOptions}
+            disabled={disabled}
+            onCreateNew={onCreateNew}
+            onCreated={(opt) => {
+              const v = String(multiSelectOptionValue(opt))
+              setExtraOptions((prev) => {
+                if (prev.some((o) => String(multiSelectOptionValue(o)) === v)) return prev
+                return [...prev, opt]
+              })
+            }}
+            {...creatableProps}
+          />
+        )}
       </div>
     )
   }
+
   const add = () => {
     const v = draft.trim()
     if (!v || selected.includes(v)) { setDraft(''); return }
     onChange([...selected, v])
     setDraft('')
   }
+
   return (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.4rem' }}>
-        {selected.map((v) => (
-          <span key={v} className="badge" style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', padding: '0.2rem 0.5rem', borderRadius: '999px', background: '#eef2ff' }}>
-            {labelMap.get(String(v)) || v}
-            {!disabled && (
-              <button type="button" onClick={() => onChange(selected.filter((x) => x !== v))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#6366f1' }}>×</button>
-            )}
-          </span>
-        ))}
-        {selected.length === 0 && <span className="muted">موردی افزوده نشده</span>}
-      </div>
+      {chips}
       {!disabled && (
         <div style={{ display: 'flex', gap: '0.4rem' }}>
           <input
@@ -331,7 +448,10 @@ function tableBlankRow(columns) {
   return blank
 }
 
-function columnOptionsForRow(col, row) {
+function columnOptionsForRow(col, row, columns = []) {
+  if (col._optionsByCourse || col._optionsByTrack) {
+    return lookupRosterOptionsForRow(col, row, columns)
+  }
   const filterCol = col.filter_by_column || col.options_source?.filter_by_column
   if (filterCol === 'course_name' && col._optionsByCourse && typeof col._optionsByCourse === 'object') {
     const courseVal = row?.course_name
@@ -401,7 +521,7 @@ function isCreatableSelectColumn(col) {
   return t === 'creatable_select' || (t === 'select' && (col.creatable || col.searchable))
 }
 
-function buildCreateHandler(col, row) {
+function buildCreateHandler(col, row, columns = []) {
   const src = col.options_source || {}
   if (src.type === 'course_catalog') {
     return async (nameFa) => createCourseCatalogEntry(nameFa)
@@ -410,9 +530,9 @@ function buildCreateHandler(col, row) {
     return async (nameFa) => createCourseCommitteeTrack(nameFa)
   }
   if (src.type === 'course_committee_roster') {
-    const track = row?.[src.filter_by_column || col.filter_by_column]
     const kind = src.kind || 'instructor'
     return async (nameFa) => {
+      const track = resolveRosterTrackForRow(col, row, columns)
       if (!track) throw new Error('ابتدا رسته را انتخاب کنید')
       return createCourseCommitteeMember({ track, kind, nameFa })
     }
@@ -573,9 +693,9 @@ function EditableTableField({ field, value, onChange, disabled, showToast }) {
     const minW = columnMinWidth(col)
 
     if (isCreatableSelectColumn(col)) {
-      const rowOptions = mergeCreatedOptions(col, columnOptionsForRow(col, row))
+      const rowOptions = mergeCreatedOptions(col, columnOptionsForRow(col, row, columns))
       const filterCol = col.filter_by_column || col.options_source?.filter_by_column
-      const needsPrerequisite = filterCol && !row?.[filterCol]
+      const needsPrerequisite = filterCol && !rowMeetsRosterPrerequisite(col, row, columns)
       const needsTrack = filterCol === 'track' && needsPrerequisite
       const needsCourse = filterCol === 'course_name' && needsPrerequisite
       const creatableProps = creatableSelectProps(col, row, {
@@ -588,9 +708,9 @@ function EditableTableField({ field, value, onChange, disabled, showToast }) {
           onChange={(next) => setCell(rowIdx, col.name, next)}
           options={rowOptions}
           disabled={cellDisabled}
-          needsTrack={needsTrack || needsCourse}
+          needsTrack={needsTrack}
           needsCourse={needsCourse}
-          onCreateNew={cellDisabled ? null : buildCreateHandler(col, row)}
+          onCreateNew={cellDisabled ? null : buildCreateHandler(col, row, columns)}
           style={readOnlyStyle}
           minWidth={minW}
           testId={`table-cell-${col.name}-${rowIdx}`}
@@ -600,9 +720,9 @@ function EditableTableField({ field, value, onChange, disabled, showToast }) {
     }
 
     if (ct === 'select' && (Array.isArray(col.options) || col._optionsByTrack || col._optionsByCourse)) {
-      const rowOptions = columnOptionsForRow(col, row)
+      const rowOptions = columnOptionsForRow(col, row, columns)
       const filterCol = col.filter_by_column || col.options_source?.filter_by_column
-      const needsPrerequisite = filterCol && !row?.[filterCol]
+      const needsPrerequisite = filterCol && !rowMeetsRosterPrerequisite(col, row, columns)
       const placeholder = needsPrerequisite
         ? (filterCol === 'course_name' ? 'ابتدا درس را انتخاب کنید' : 'ابتدا رسته را انتخاب کنید')
         : '—'
@@ -969,7 +1089,7 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
       <div className="psf-field">
         {labelEl}
         {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
-        <MultiSelectField field={field} value={value} onChange={onChange} disabled={disabled} />
+        <MultiSelectField field={field} value={value} onChange={onChange} disabled={disabled} showToast={showToast} />
       </div>
     )
   }
