@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
@@ -137,6 +137,20 @@ export default function StaffPortal() {
   const { showToast } = useToast()
 
   useEffect(() => { loadData() }, [])
+
+  const reloadFollowup = useCallback(() => (
+    panelApi
+      .myOperatorFollowup()
+      .then((inboxRes) => {
+        const inboxItems = inboxRes.data?.items || []
+        setProcessInboxItems(inboxItems)
+        setOperatorReadinessAlerts(inboxRes.data?.readiness_alerts || [])
+      })
+      .catch(() => {
+        setProcessInboxItems([])
+        setOperatorReadinessAlerts([])
+      })
+  ), [])
 
   useEffect(() => {
     if (!isCourseCommitteeLane) return
@@ -1030,8 +1044,8 @@ export default function StaffPortal() {
 
       {activeTab === 'interviewSlots' && (
         <>
-          <InterviewSlotRecurringRules showToast={showToast} />
-          <InterviewSlotsAdmin showToast={showToast} />
+          <InterviewSlotRecurringRules showToast={showToast} onCapacityChanged={reloadFollowup} />
+          <InterviewSlotsAdmin showToast={showToast} onCapacityChanged={reloadFollowup} />
           <InterviewBookingsPanel showToast={showToast} />
         </>
       )}

@@ -113,6 +113,84 @@ async def test_interviewer_readiness_alert_when_no_free_slots() -> None:
 
 
 @pytest.mark.asyncio
+async def test_pool_free_slots_alert_clears_when_future_slot_exists() -> None:
+    from app.models.operational_models import InterviewSlot
+    from app.services.operator_readiness import _check_pool_free_slots
+
+    now = datetime.now(timezone.utc)
+    slot = InterviewSlot(
+        id=uuid.uuid4(),
+        starts_at=now + timedelta(hours=2),
+        ends_at=now + timedelta(hours=3),
+        course_type="introductory",
+        mode="online",
+        assigned_student_id=None,
+    )
+
+    from unittest.mock import AsyncMock, MagicMock
+
+    db = MagicMock()
+    result = MagicMock()
+    result.scalar.return_value = 1
+    db.execute = AsyncMock(return_value=result)
+
+    alerts = await _check_pool_free_slots(
+        db,
+        1,
+        {"title_fa": "زمان آزاد مصاحبه تعریف نشده"},
+        "staff_interview_pool_free_slots",
+    )
+    assert alerts == []
+
+    result.scalar.return_value = 0
+    alerts = await _check_pool_free_slots(
+        db,
+        1,
+        {"title_fa": "زمان آزاد مصاحبه تعریف نشده"},
+        "staff_interview_pool_free_slots",
+    )
+    assert len(alerts) == 1
+    assert slot.starts_at > now
+
+
+@pytest.mark.asyncio
+async def test_admin_pool_free_slots_emits_single_global_alert() -> None:
+    from unittest.mock import AsyncMock, patch
+
+    from app.services.operator_readiness import _compute_readiness_for_admin
+
+    rules = [
+        {
+            "id": "staff_interview_pool_free_slots",
+            "check": "interview_pool_free_slots",
+            "enabled": True,
+            "params": {"min_count": 1},
+            "ui": {"title_fa": "زمان آزاد مصاحبه تعریف نشده"},
+        }
+    ]
+
+    with patch(
+        "app.services.operator_readiness._check_pool_free_slots",
+        new_callable=AsyncMock,
+        return_value=[
+            {
+                "id": "staff_interview_pool_free_slots",
+                "severity": "warning",
+                "title_fa": "زمان آزاد مصاحبه تعریف نشده",
+                "detail_fa": "جزئیات",
+                "action_label_fa": "تعریف وقت مصاحبه",
+                "action_href": "/panel/portal/staff/admissions?tab=interviewSlots",
+            }
+        ],
+    ) as pool_check:
+        out = await _compute_readiness_for_admin(None, rules, {})
+
+    pool_check.assert_awaited_once()
+    assert len(out) == 1
+    assert out[0]["title_fa"] == "زمان آزاد مصاحبه تعریف نشده"
+
+
+@pytest.mark.asyncio
 async def test_compute_readiness_empty_for_student():
     from unittest.mock import MagicMock
 

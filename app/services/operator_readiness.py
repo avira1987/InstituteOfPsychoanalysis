@@ -88,7 +88,7 @@ async def _check_pool_free_slots(
     """اسلات آزاد آینده در استخر عمومی (تعریف‌شده توسط کارمند دفتر)."""
     now = _now_utc()
     q = select(func.count(InterviewSlot.id)).where(
-        InterviewSlot.starts_at > now,
+        InterviewSlot.ends_at >= now,
         InterviewSlot.assigned_student_id.is_(None),
     )
     r = await db.execute(q)
@@ -121,7 +121,7 @@ async def _check_interviewer_free_slots(
     now = _now_utc()
     q = select(func.count(InterviewSlot.id)).where(
         interviewer_capacity_slot_filter(user_id),
-        InterviewSlot.starts_at > now,
+        InterviewSlot.ends_at >= now,
         InterviewSlot.assigned_student_id.is_(None),
     )
     r = await db.execute(q)
@@ -225,10 +225,8 @@ async def _compute_readiness_for_admin(
 
         if check == "interview_pool_free_slots":
             min_count = int(params.get("interview_pool_free_slots", params.get("min_count", 1)))
-            for subj in await _list_users_by_role(db, "staff", max_ops):
-                alerts = await _check_pool_free_slots(db, min_count, ui, rule_id)
-                for a in alerts:
-                    out.append(_enrich_admin_readiness_alert(a, subj, "کارمند دفتر"))
+            # استخر مصاحبه سراسری است — یک هشدار کافی است (نه تکرار برای هر کارمند).
+            out.extend(await _check_pool_free_slots(db, min_count, ui, rule_id))
 
         elif check == "interviewer_min_free_slots":
             min_count = int(params.get("interviewer_min_free_slots", params.get("min_count", 1)))
