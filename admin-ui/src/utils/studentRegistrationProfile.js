@@ -16,6 +16,15 @@ export const REGISTRATION_FIELD_LABELS = {
   psychiatric_hospitalization_history: 'سابقه بستری روانپزشکی',
   has_work_permit: 'پروانه اشتغال به کار',
   has_university_degree: 'مدرک دانشگاهی',
+  psychotherapy_approach: 'رویکرد درمان روان‌شناختی',
+  psychotherapy_therapist_name: 'نام درمانگر',
+  psychotherapy_total_hours: 'تعداد کل ساعات درمان',
+  work_permit_issuer: 'سازمان صادرکنندهٔ پروانه',
+  work_permit_type: 'نوع پروانه',
+  education_level: 'مقطع تحصیلی',
+  field_of_study: 'رشتهٔ تحصیلی',
+  university: 'دانشگاه',
+  graduation_year: 'سال فارغ‌التحصیلی',
   course_participation_mode: 'نحوه شرکت در دوره',
   referral_source: 'نحوه آشنایی با انستیتو',
   referral_inviter_name: 'نام شخص معرف',
@@ -33,6 +42,16 @@ const REFERRAL_LABELS = {
   social_media: 'شبکه‌های اجتماعی',
   search: 'جستجو در اینترنت',
   other: 'سایر',
+}
+const PSYCHOTHERAPY_APPROACH_LABELS = {
+  analytical: 'تحلیلی',
+  other: 'رویکرد دیگر',
+}
+const EDUCATION_LEVEL_LABELS = {
+  bachelor: 'کارشناسی',
+  master: 'کارشناسی ارشد',
+  phd: 'دکتری',
+  specialist: 'تخصصی',
 }
 
 export function emptyExtendedRegistrationFields() {
@@ -52,6 +71,15 @@ export function emptyExtendedRegistrationFields() {
     psychiatric_hospitalization_history: '',
     has_work_permit: '',
     has_university_degree: '',
+    psychotherapy_approach: '',
+    psychotherapy_therapist_name: '',
+    psychotherapy_total_hours: '',
+    work_permit_issuer: '',
+    work_permit_type: '',
+    education_level: '',
+    field_of_study: '',
+    university: '',
+    graduation_year: '',
     course_participation_mode: '',
     referral_source: '',
     referral_inviter_name: '',
@@ -83,6 +111,10 @@ function isLandlineValid(raw) {
 
 function isBirthDateValid(raw) {
   return /^\d{4}\/\d{2}\/\d{2}$/.test(String(raw || '').trim())
+}
+
+function isGraduationYearValid(raw) {
+  return /^\d{4}$/.test(String(raw || '').trim())
 }
 
 /** @returns {string[]} */
@@ -117,6 +149,37 @@ export function validateExtendedRegistrationClient(form) {
       break
     }
   }
+
+  if (form.had_psychotherapy === 'yes') {
+    if (form.psychotherapy_approach !== 'analytical' && form.psychotherapy_approach !== 'other') {
+      errors.push('رویکرد درمان روان‌شناختی را انتخاب کنید.')
+    }
+    if (!(form.psychotherapy_therapist_name || '').trim()) {
+      errors.push('نام درمانگر را وارد کنید.')
+    }
+  }
+
+  if (form.has_work_permit === 'yes') {
+    if (!(form.work_permit_issuer || '').trim()) {
+      errors.push('سازمان صادرکنندهٔ پروانه را وارد کنید.')
+    }
+  }
+
+  if (form.has_university_degree === 'yes') {
+    if (!form.education_level) {
+      errors.push('مقطع تحصیلی را انتخاب کنید.')
+    }
+    if (!(form.field_of_study || '').trim()) {
+      errors.push('رشتهٔ تحصیلی را وارد کنید.')
+    }
+    if (!(form.university || '').trim()) {
+      errors.push('نام دانشگاه را وارد کنید.')
+    }
+    if (!isGraduationYearValid(form.graduation_year)) {
+      errors.push('سال فارغ‌التحصیلی را به‌صورت چهار رقم وارد کنید (مثال: ۱۳۹۵).')
+    }
+  }
+
   if (form.course_participation_mode !== 'in_person' && form.course_participation_mode !== 'online') {
     errors.push('نحوه شرکت در دوره را انتخاب کنید.')
   }
@@ -150,6 +213,32 @@ export function buildRegistrationProfilePayload(form) {
     course_participation_mode: form.course_participation_mode || undefined,
     referral_source: form.referral_source || undefined,
   }
+
+  if (form.had_psychotherapy === 'yes') {
+    payload.psychotherapy_approach = form.psychotherapy_approach || undefined
+    const therapist = (form.psychotherapy_therapist_name || '').trim()
+    if (therapist) payload.psychotherapy_therapist_name = therapist
+    const hours = (form.psychotherapy_total_hours || '').trim()
+    if (hours) payload.psychotherapy_total_hours = hours
+  }
+
+  if (form.has_work_permit === 'yes') {
+    const issuer = (form.work_permit_issuer || '').trim()
+    if (issuer) payload.work_permit_issuer = issuer
+    const permitType = (form.work_permit_type || '').trim()
+    if (permitType) payload.work_permit_type = permitType
+  }
+
+  if (form.has_university_degree === 'yes') {
+    payload.education_level = form.education_level || undefined
+    const fos = (form.field_of_study || '').trim()
+    if (fos) payload.field_of_study = fos
+    const uni = (form.university || '').trim()
+    if (uni) payload.university = uni
+    const gradYear = (form.graduation_year || '').trim()
+    if (gradYear) payload.graduation_year = gradYear
+  }
+
   const inviter = (form.referral_inviter_name || '').trim()
   if (inviter) payload.referral_inviter_name = inviter
   return payload
@@ -158,6 +247,8 @@ export function buildRegistrationProfilePayload(form) {
 export function formatRegistrationProfileValue(key, value) {
   if (value == null || value === '') return '—'
   if (key in YES_NO_LABELS) return YES_NO_LABELS[value] || value
+  if (key === 'psychotherapy_approach') return PSYCHOTHERAPY_APPROACH_LABELS[value] || value
+  if (key === 'education_level') return EDUCATION_LEVEL_LABELS[value] || value
   if (key === 'course_participation_mode') return PARTICIPATION_LABELS[value] || value
   if (key === 'referral_source') return REFERRAL_LABELS[value] || value
   return String(value)
@@ -176,10 +267,19 @@ export const REGISTRATION_PROFILE_DISPLAY_ORDER = [
   'home_phone',
   'work_phone',
   'had_psychotherapy',
+  'psychotherapy_approach',
+  'psychotherapy_therapist_name',
+  'psychotherapy_total_hours',
   'used_psychiatric_meds',
   'psychiatric_hospitalization_history',
   'has_work_permit',
+  'work_permit_issuer',
+  'work_permit_type',
   'has_university_degree',
+  'education_level',
+  'field_of_study',
+  'university',
+  'graduation_year',
   'course_participation_mode',
   'referral_source',
   'referral_inviter_name',

@@ -34,6 +34,8 @@ import StudentSupervisionCancellationPanel from './StudentSupervisionCancellatio
 import StudentExtraSupervisionSessionPanel from './StudentExtraSupervisionSessionPanel'
 import SupervisorSessionCancellationPanel from './SupervisorSessionCancellationPanel'
 import StudentComprehensiveTermStartPanel from './StudentComprehensiveTermStartPanel'
+import { labelIntroTermEndState } from '../utils/introductoryTermEndDisplay'
+import { labelComprehensiveTermEndState } from '../utils/comprehensiveTermEndDisplay'
 import StudentClassAttendancePanel from './StudentClassAttendancePanel'
 import StudentInstructorEvaluationPanel from './StudentInstructorEvaluationPanel'
 import StudentProcessStepReview from './StudentProcessStepReview'
@@ -113,6 +115,14 @@ export default function StudentQuestCard({
   smsRefreshKey = null,
   /** وضعیت قفل ثبت‌نام آشنایی (از API) */
   registrationGate = null,
+  /** instance فعال پایان ترم (۳۲/۳۶) — جدا از مسیر اصلی */
+  termEndDetail = null,
+  /** باز کردن پنل پایان ترم در تب فرایندها */
+  onOpenTermEnd = null,
+  /** در تب پروفایل خلاصهٔ مصاحبه جداگانه نمایش داده می‌شود */
+  hidePaidInterviewSummary = false,
+  /** هدایت به تب جلسات آنلاین */
+  onGoToOnlineSessions = null,
 }) {
   const [selectedTransitionIdx, setSelectedTransitionIdx] = useState(0)
   const transitionList = transitions || []
@@ -264,7 +274,8 @@ export default function StudentQuestCard({
     || (detail.process_code === 'comprehensive_course_registration' && detail.current_state === 'interview_scheduled')
   )
 
-  const showInterviewPaidSummary = !done
+  const showInterviewPaidSummary = !hidePaidInterviewSummary
+    && !done
     && REGISTRATION_PROCESS_CODES.includes(detail?.process_code)
     && hasRegistrationInterviewBooking(detail)
     && !['application_submitted', 'interview_scheduled', 'interview_payment'].includes(detail?.current_state)
@@ -372,7 +383,7 @@ export default function StudentQuestCard({
       )}
 
       {showInterviewPaidSummary && (
-        <InterviewPaidBookingSummary />
+        <InterviewPaidBookingSummary onGoToOnlineSessions={onGoToOnlineSessions} />
       )}
 
       {showRegistrationSep && (
@@ -560,6 +571,42 @@ export default function StudentQuestCard({
           active
           compact
         />
+      )}
+
+      {termEndDetail
+        && detail?.process_code !== 'introductory_term_end'
+        && detail?.process_code !== 'comprehensive_term_end' && (
+        <div
+          data-testid="quest-term-end-block"
+          style={{
+            marginTop: '0.75rem',
+            padding: '0.85rem 1rem',
+            borderRadius: '10px',
+            background: '#f0f9ff',
+            borderRight: '4px solid #0284c7',
+          }}
+        >
+          <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.35rem', color: '#0c4a6e' }}>
+            {termEndDetail.process_code === 'introductory_term_end'
+              ? 'پایان ترم دوره آشنایی'
+              : 'پایان ترم دوره جامع'}
+          </div>
+          <p style={{ margin: '0 0 0.5rem', fontSize: '0.84rem', color: '#0369a1', lineHeight: 1.65 }}>
+            {termEndDetail.process_code === 'introductory_term_end'
+              ? labelIntroTermEndState(termEndDetail.current_state)
+              : labelComprehensiveTermEndState(termEndDetail.current_state)}
+          </p>
+          {typeof onOpenTermEnd === 'function' && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              data-testid="quest-term-end-open"
+              onClick={() => onOpenTermEnd(termEndDetail.instance_id)}
+            >
+              مشاهده کارنامه و وضعیت
+            </button>
+          )}
+        </div>
       )}
 
       {detail?.process_code === 'class_attendance' && (

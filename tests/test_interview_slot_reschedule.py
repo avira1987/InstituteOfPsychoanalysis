@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_password_hash
 from app.api.interview_slots_routes import (
+    CreateInterviewSlotBody,
     _can_reschedule_booked_slot,
     _is_meeting_link_visible_for_user,
 )
@@ -197,7 +198,10 @@ async def test_reschedule_syncs_process_context(
     )
     await db_session.refresh(instance)
     ctx = instance.context_data or {}
-    assert ctx.get("interview_date") == new_start.date().isoformat()
+    from app.utils.shamsi_calendar_utils import tehran_datetime_parts
+
+    expected_date, _ = tehran_datetime_parts(new_start)
+    assert ctx.get("interview_date") == expected_date
 
 
 def test_can_reschedule_staff_and_own_interviewer() -> None:
@@ -225,3 +229,20 @@ def test_can_reschedule_staff_and_own_interviewer() -> None:
 
     slot.interviewer_user_id = colleague.id
     assert _can_reschedule_booked_slot(interviewer, slot) is False
+
+
+@pytest.mark.asyncio
+async def test_create_slot_requires_interviewer_field(
+    db_session: AsyncSession,
+) -> None:
+    """فیلد interviewer_user_id در بدنهٔ ایجاد اسلات الزامی است."""
+    from pydantic import ValidationError
+
+    t0 = datetime.now(timezone.utc) + timedelta(days=4)
+    with pytest.raises(ValidationError):
+        CreateInterviewSlotBody(
+            starts_at=t0,
+            ends_at=t0 + timedelta(hours=1),
+            course_type="introductory",
+            mode="online",
+        )

@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { formatShamsiTehran } from './shamsiDateTime'
+export { resolveTermTranscriptRows } from './termEndTranscriptRows'
 
 /** مراحل اصلی (milestone) فرایند پایان ترم دوره جامع. */
 export const COMPREHENSIVE_TERM_END_FLOW_STEPS = [

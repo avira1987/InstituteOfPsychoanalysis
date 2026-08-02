@@ -18,8 +18,10 @@ FALL_CALENDAR_TUITION_FALLBACK_KEYS: tuple[str, ...] = (
     "winter_end_date",
     "registration_payment_window_start",
     "registration_payment_window_end",
-    "intern_interview_deadline",
-    "teaching_assistant_interview_deadline",
+    "intern_interview_deadline_start",
+    "intern_interview_deadline_end",
+    "teaching_assistant_interview_deadline_start",
+    "teaching_assistant_interview_deadline_end",
     "nowruz_holiday_start",
     "nowruz_holiday_end",
     "fall_break_periods",
@@ -225,9 +227,23 @@ def _append_calendar_section(rows: list[list[Any]], ctx: dict[str, Any]) -> None
             ),
         ]
     )
-    rows.append(["مهلت مصاحبه انترن‌ها", _fmt_date(ctx.get("intern_interview_deadline"))])
     rows.append(
-        ["مهلت مصاحبه کمک‌مدرس", _fmt_date(ctx.get("teaching_assistant_interview_deadline"))]
+        [
+            "بازه مصاحبه انترن‌ها",
+            _fmt_range(
+                ctx.get("intern_interview_deadline_start"),
+                ctx.get("intern_interview_deadline_end"),
+            ),
+        ]
+    )
+    rows.append(
+        [
+            "بازه مصاحبه کمک‌مدرس",
+            _fmt_range(
+                ctx.get("teaching_assistant_interview_deadline_start"),
+                ctx.get("teaching_assistant_interview_deadline_end"),
+            ),
+        ]
     )
     rows.append(["تعطیلات نوروز", _fmt_range(ctx.get("nowruz_holiday_start"), ctx.get("nowruz_holiday_end"))])
     rows.append(["تعطیلات ترم پاییز", _fmt_break_periods(ctx.get("fall_break_periods"))])

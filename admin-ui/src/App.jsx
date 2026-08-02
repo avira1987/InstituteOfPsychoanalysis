@@ -41,6 +41,7 @@ const SemesterPrepCalendarPage = lazy(() => import('./pages/SemesterPrepCalendar
 const SemesterPrepWorkbenchPage = lazy(() => import('./pages/SemesterPrepWorkbenchPage'))
 const SemesterPrepCourseListReviewPage = lazy(() => import('./pages/SemesterPrepCourseListReviewPage'))
 const SemesterPrepSlaWarningsPage = lazy(() => import('./pages/SemesterPrepSlaWarningsPage'))
+const SemesterPrepReadinessPage = lazy(() => import('./pages/SemesterPrepReadinessPage'))
 const AcademicCalendarPage = lazy(() => import('./pages/AcademicCalendarPage'))
 const CourseCommitteeRosterPage = lazy(() => import('./pages/CourseCommitteeRosterPage'))
 const ProcessNavLandingPage = lazy(() => import('./pages/ProcessNavLandingPage'))
@@ -121,6 +122,16 @@ function ProtectedRoute({ children }) {
   return children
 }
 
+/** ردیابی دانشجو — فقط نقش‌های عملیاتی */
+function RequireStudentTrackerRole({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  const ok = ['admin', 'staff', 'supervisor', 'therapist'].includes(user.role)
+  if (!ok) return <Navigate to={getPortalHomeHref(user.role)} replace />
+  return children
+}
+
 /** فقط کاربر با نقش دانشجو؛ بقیه به داشبورد هدایت می‌شوند */
 function RequireStudentRole({ children }) {
   const { user, loading } = useAuth()
@@ -146,7 +157,7 @@ function RequireInterviewerPortalRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  if (user.role !== 'interviewer' && user.role !== 'admin') return <Navigate to="/panel" replace />
+  if (user.role !== 'interviewer' && user.role !== 'admin' && user.role !== 'staff') return <Navigate to="/panel" replace />
   return children
 }
 
@@ -265,7 +276,7 @@ export default function App() {
           <Route path="processes/:processId" element={<ProcessEditor />} />
           <Route path="dynamic-forms" element={<DynamicFormsAdmin />} />
           <Route path="rules" element={<RuleManager />} />
-          <Route path="students" element={<StudentTracker />} />
+          <Route path="students" element={<RequireStudentTrackerRole><StudentTracker /></RequireStudentTrackerRole>} />
           <Route path="users" element={<UserManagement />} />
           <Route path="audit" element={<AuditViewer />} />
           <Route
@@ -309,6 +320,14 @@ export default function App() {
             element={
               <RequireSemesterPrepRole>
                 <SemesterPrepWorkbenchPage />
+              </RequireSemesterPrepRole>
+            }
+          />
+          <Route
+            path="semester-prep/readiness"
+            element={
+              <RequireSemesterPrepRole>
+                <SemesterPrepReadinessPage />
               </RequireSemesterPrepRole>
             }
           />

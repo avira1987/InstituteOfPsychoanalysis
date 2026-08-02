@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
+import { processExecApi } from '../services/api'
 import { resolveCompletionContext } from '../utils/introductoryCourseCompletionDisplay'
 import { formatStudentCodeDisplay } from '../utils/processDisplay'
 
@@ -9,14 +10,37 @@ export default function IntroductoryCourseCompletionReviewPanel({
   detail = null,
   user = null,
   extraData = null,
+  studentId = null,
 }) {
   const ctx = detail?.context_data || {}
   const currentState = detail?.current_state
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState(null)
 
   const completion = useMemo(
     () => resolveCompletionContext(ctx, extraData || {}),
     [ctx, extraData],
   )
+
+  const resolvedStudentId = studentId || detail?.student_id || null
+  const certDoc = completion.certificateDoc
+
+  const downloadDraftPdf = useCallback(async () => {
+    if (!resolvedStudentId || !certDoc?.id) return
+    setDownloading(true)
+    setDownloadError(null)
+    try {
+      await processExecApi.downloadStudentDocumentPdf(
+        resolvedStudentId,
+        certDoc.id,
+        'certificate-draft.pdf',
+      )
+    } catch (_) {
+      setDownloadError('دانلود پیش‌نویس PDF ممکن نشد.')
+    } finally {
+      setDownloading(false)
+    }
+  }, [resolvedStudentId, certDoc?.id])
 
   if (
     !detail
@@ -104,28 +128,26 @@ export default function IntroductoryCourseCompletionReviewPanel({
         </div>
       )}
 
-      {completion.certificateBodyFa && (
+      {certDoc?.id && (
         <div
-          data-testid="intro-completion-review-certificate-preview"
-          style={{
-            marginBottom: '0.75rem',
-            padding: '0.75rem 1rem',
-            borderRadius: '8px',
-            background: '#fff',
-            border: '1px solid #fde68a',
-            fontSize: '0.84rem',
-            lineHeight: 1.75,
-            color: '#1e293b',
-          }}
+          data-testid="intro-completion-review-certificate-download"
+          style={{ marginBottom: '0.75rem' }}
         >
-          <strong style={{ display: 'block', marginBottom: '0.35rem', color: '#92400e' }}>
-            پیش‌نمایش متن گواهی
-          </strong>
-          {completion.certificateBodyFa}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            disabled={downloading}
+            onClick={downloadDraftPdf}
+          >
+            {downloading ? 'در حال دانلود…' : 'دانلود پیش‌نویس PDF گواهی'}
+          </button>
+          {downloadError && (
+            <p style={{ margin: '0.4rem 0 0', color: '#b91c1c', fontSize: '0.82rem' }}>{downloadError}</p>
+          )}
         </div>
       )}
 
-      {completion.certificateDraftPending && !completion.certificateBodyFa && (
+      {completion.certificateDraftPending && !certDoc?.id && (
         <p className="muted" style={{ margin: '0 0 0.5rem', fontSize: '0.82rem' }}>
           پیش‌نویس گواهی در پرونده ثبت شده است؛ جزئیات را در بخش «پرونده و سابقه» بررسی کنید.
         </p>

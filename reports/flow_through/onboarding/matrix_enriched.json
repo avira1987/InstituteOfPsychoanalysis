@@ -1,0 +1,1007 @@
+{
+  "meta": {
+    "generated_at": "2026-07-25T15:59:06.469830+00:00",
+    "wave": null,
+    "track": "onboarding",
+    "process_count": 3,
+    "row_count": 18,
+    "per_process": {
+      "fall_semester_preparation": 8,
+      "introductory_course_registration": 9,
+      "introductory_term_end": 1
+    },
+    "ui_missing_count": 0,
+    "enriched": true
+  },
+  "rows": [
+    {
+      "step_id": "fall_semester_preparation/calendar_entry@staff",
+      "process_code": "fall_semester_preparation",
+      "process_name_fa": "فرایند آماده‌سازی ترم پاییز",
+      "state_code": "calendar_entry",
+      "state_name_fa": "تدوین تقویم آموزشی دو ترم (پاییز و زمستان)",
+      "state_assigned_role": "course_committee_executive",
+      "required_role": "course_committee_executive",
+      "portal_role": "staff",
+      "trigger": "calendar_submitted",
+      "to_state": "tuition_entry",
+      "is_terminal_target": false,
+      "form_codes": [
+        "academic_calendar_form"
+      ],
+      "field_specs": [
+        {
+          "name": "fall_start_date",
+          "type": "date",
+          "label_fa": "تاریخ شروع ترم پاییز",
+          "required": true
+        },
+        {
+          "name": "fall_end_date",
+          "type": "date",
+          "label_fa": "تاریخ پایان ترم پاییز",
+          "required": true
+        },
+        {
+          "name": "winter_start_date",
+          "type": "date",
+          "label_fa": "تاریخ شروع ترم زمستان",
+          "required": true
+        },
+        {
+          "name": "winter_end_date",
+          "type": "date",
+          "label_fa": "تاریخ پایان ترم زمستان",
+          "required": true
+        },
+        {
+          "name": "fall_break_periods",
+          "type": "date_range_list",
+          "label_fa": "دوره‌های تعطیلی ترم پاییز",
+          "required": false
+        },
+        {
+          "name": "winter_break_periods",
+          "type": "date_range_list",
+          "label_fa": "دوره‌های تعطیلی ترم زمستان",
+          "required": false
+        },
+        {
+          "name": "registration_payment_window_start",
+          "type": "date",
+          "label_fa": "شروع پنجره ثبت‌نام، پرداخت و شهریه",
+          "required": true
+        },
+        {
+          "name": "registration_payment_window_end",
+          "type": "date",
+          "label_fa": "پایان پنجره ثبت‌نام، پرداخت و شهریه",
+          "required": true
+        },
+        {
+          "name": "intern_interview_deadline_start",
+          "type": "date",
+          "label_fa": "شروع بازه مصاحبه انترن‌ها",
+          "required": true
+        },
+        {
+          "name": "intern_interview_deadline_end",
+          "type": "date",
+          "label_fa": "پایان بازه مصاحبه انترن‌ها",
+          "required": true
+        },
+        {
+          "name": "teaching_assistant_interview_deadline_start",
+          "type": "date",
+          "label_fa": "شروع بازه مصاحبه کمک مدرسی",
+          "required": true
+        },
+        {
+          "name": "teaching_assistant_interview_deadline_end",
+          "type": "date",
+          "label_fa": "پایان بازه مصاحبه کمک مدرسی",
+          "required": true
+        },
+        {
+          "name": "nowruz_holiday_start",
+          "type": "date",
+          "label_fa": "شروع تعطیلات نوروز",
+          "required": true
+        },
+        {
+          "name": "nowruz_holiday_end",
+          "type": "date",
+          "label_fa": "پایان تعطیلات نوروز",
+          "required": true
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "operator_semester_prep",
+      "ui_component": "SemesterPrepWorkbenchPage + OperatorStepFormsSection",
+      "portal_page": "SemesterPrepWorkbenchPage",
+      "deep_link_template": "/panel/semester-prep/workbench?process_code=fall_semester_preparation&state_code=calendar_entry",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "fall_semester_preparation/course_finalization@staff",
+      "process_code": "fall_semester_preparation",
+      "process_name_fa": "فرایند آماده‌سازی ترم پاییز",
+      "state_code": "course_finalization",
+      "state_name_fa": "نهایی‌سازی مکان‌ها و هماهنگی با مدرسین",
+      "state_assigned_role": "scientific_officer_course_committee",
+      "required_role": "scientific_officer_course_committee",
+      "portal_role": "staff",
+      "trigger": "courses_finalized",
+      "to_state": "marketing_campaign",
+      "is_terminal_target": false,
+      "form_codes": [
+        "course_finalization_form"
+      ],
+      "field_specs": [
+        {
+          "name": "courses_finalized_fall",
+          "type": "table",
+          "label_fa": "جدول نهایی دروس ترم پاییز",
+          "required": true,
+          "columns": [
+            {
+              "name": "course_name",
+              "label_fa": "نام درس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "track",
+              "label_fa": "رسته",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "day",
+              "label_fa": "روز",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "time",
+              "label_fa": "ساعت",
+              "type": "time",
+              "auto_fill": true
+            },
+            {
+              "name": "instructor",
+              "label_fa": "مدرس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "teaching_assistant",
+              "label_fa": "کمک‌مدرس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "classroom_location",
+              "label_fa": "مکان کلاس",
+              "type": "text"
+            },
+            {
+              "name": "instructor_coordinated",
+              "label_fa": "هماهنگی با مدرس انجام شد",
+              "type": "checkbox"
+            }
+          ]
+        },
+        {
+          "name": "courses_finalized_winter",
+          "type": "table",
+          "label_fa": "جدول نهایی دروس ترم زمستان",
+          "required": true,
+          "columns": [
+            {
+              "name": "course_name",
+              "label_fa": "نام درس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "track",
+              "label_fa": "رسته",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "day",
+              "label_fa": "روز",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "time",
+              "label_fa": "ساعت",
+              "type": "time",
+              "auto_fill": true
+            },
+            {
+              "name": "instructor",
+              "label_fa": "مدرس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "teaching_assistant",
+              "label_fa": "کمک‌مدرس",
+              "type": "text",
+              "auto_fill": true
+            },
+            {
+              "name": "classroom_location",
+              "label_fa": "مکان کلاس",
+              "type": "text"
+            },
+            {
+              "name": "instructor_coordinated",
+              "label_fa": "هماهنگی با مدرس انجام شد",
+              "type": "checkbox"
+            }
+          ]
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "operator_semester_prep",
+      "ui_component": "SemesterPrepWorkbenchPage + OperatorStepFormsSection",
+      "portal_page": "SemesterPrepWorkbenchPage",
+      "deep_link_template": "/panel/semester-prep/workbench?process_code=fall_semester_preparation&state_code=course_finalization",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "fall_semester_preparation/course_list_creation@staff",
+      "process_code": "fall_semester_preparation",
+      "process_name_fa": "فرایند آماده‌سازی ترم پاییز",
+      "state_code": "course_list_creation",
+      "state_name_fa": "لیست دروس، مدرسین، کمک‌مدرسین",
+      "state_assigned_role": "scientific_officer_course_committee",
+      "required_role": "scientific_officer_course_committee",
+      "portal_role": "staff",
+      "trigger": "course_list_submitted",
+      "to_state": "course_finalization",
+      "is_terminal_target": false,
+      "form_codes": [
+        "course_list_form"
+      ],
+      "field_specs": [
+        {
+          "name": "courses_fall",
+          "type": "table",
+          "label_fa": "جدول دروس ترم پاییز",
+          "required": true,
+          "columns": [
+            {
+              "name": "course_name",
+              "label_fa": "نام درس",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_catalog"
+              }
+            },
+            {
+              "name": "track",
+              "label_fa": "رسته",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "auto_fill_from": "course_name",
+              "options_source": {
+                "type": "course_committee_tracks"
+              }
+            },
+            {
+              "name": "proposed_day",
+              "label_fa": "روز پیشنهادی",
+              "type": "select",
+              "options": [
+                "شنبه",
+                "یکشنبه",
+                "دوشنبه",
+                "سه‌شنبه",
+                "چهارشنبه",
+                "پنجشنبه",
+                "جمعه"
+              ]
+            },
+            {
+              "name": "proposed_time",
+              "label_fa": "ساعت پیشنهادی",
+              "type": "time"
+            },
+            {
+              "name": "instructor",
+              "label_fa": "مدرس",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_committee_roster",
+                "kind": "instructor",
+                "filter_by_column": "track"
+              }
+            },
+            {
+              "name": "teaching_assistant",
+              "label_fa": "کمک‌مدرس",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_committee_roster",
+                "kind": "teaching_assistant",
+                "filter_by_column": "track"
+              }
+            }
+          ]
+        },
+        {
+          "name": "courses_winter",
+          "type": "table",
+          "label_fa": "جدول دروس ترم زمستان",
+          "required": true,
+          "columns": [
+            {
+              "name": "course_name",
+              "label_fa": "نام درس",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_catalog"
+              }
+            },
+            {
+              "name": "track",
+              "label_fa": "رسته",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "auto_fill_from": "course_name",
+              "options_source": {
+                "type": "course_committee_tracks"
+              }
+            },
+            {
+              "name": "proposed_day",
+              "label_fa": "روز پیشنهادی",
+              "type": "select",
+              "options": [
+                "شنبه",
+                "یکشنبه",
+                "دوشنبه",
+                "سه‌شنبه",
+                "چهارشنبه",
+                "پنجشنبه",
+                "جمعه"
+              ]
+            },
+            {
+              "name": "proposed_time",
+              "label_fa": "ساعت پیشنهادی",
+              "type": "time"
+            },
+            {
+              "name": "instructor",
+              "label_fa": "مدرس",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_committee_roster",
+                "kind": "instructor",
+                "filter_by_column": "track"
+              }
+            },
+            {
+              "name": "teaching_assistant",
+              "label_fa": "کمک‌مدرس",
+              "type": "creatable_select",
+              "creatable": true,
+              "searchable": true,
+              "options_source": {
+                "type": "course_committee_roster",
+                "kind": "teaching_assistant",
+                "filter_by_column": "track"
+              }
+            }
+          ]
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "operator_semester_prep",
+      "ui_component": "SemesterPrepWorkbenchPage + OperatorStepFormsSection",
+      "portal_page": "SemesterPrepWorkbenchPage",
+      "deep_link_template": "/panel/semester-prep/workbench?process_code=fall_semester_preparation&state_code=course_list_creation",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "fall_semester_preparation/interview_scheduling@staff",
+      "process_code": "fall_semester_preparation",
+      "process_name_fa": "فرایند آماده‌سازی ترم پاییز",
+      "state_code": "interview_scheduling",
+      "state_name_fa": "زمان‌بندی و ثبت اسلات‌های مصاحبه",
+      "state_assigned_role": "staff",
+      "required_role": "staff",
+      "portal_role": "staff",
+      "trigger": "interview_times_set",
+      "to_state": "published",
+      "is_terminal_target": true,
+      "form_codes": [
+        "interview_scheduling_form"
+      ],
+      "field_specs": [
+        {
+          "name": "interview_mode",
+          "type": "select",
+          "label_fa": "نوع مصاحبه",
+          "required": true,
+          "options": [
+            "حضوری",
+            "آنلاین"
+          ]
+        },
+        {
+          "name": "interview_location_fa",
+          "type": "textarea",
+          "label_fa": "آدرس یا محل برگزاری (حضوری)",
+          "required": true,
+          "visible_if": {
+            "interview_mode": "حضوری"
+          }
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "operator_semester_prep",
+      "ui_component": "SemesterPrepWorkbenchPage + OperatorStepFormsSection",
+      "portal_page": "SemesterPrepWorkbenchPage",
+      "deep_link_template": "/panel/semester-prep/workbench?process_code=fall_semester_preparation&state_code=interview_scheduling",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "fall_semester_preparation/interviewer_assignment@deputy_education",
+      "process_code": "fall_semester_preparation",
+      "process_name_fa": "فرایند آماده‌سازی ترم پاییز",
+      "state_code": "interviewer_assignment",
+      "state_name_fa": "تعیین مصاحبه‌کنندگان و بازه‌های زمانی",
+      "state_assigned_role": "deputy_education_director",
+      "required_role": "deputy_education_director",
+      "portal_role": "deputy_education",
+      "trigger": "interviewers_assigned",
+      "to_state": "interview_scheduling",
+      "is_terminal_target": false,
+      "form_codes": [
+        "interviewer_assignment_form"
+      ],
+      "field_specs": [
+        {
+          "name": "comprehensive_interviewers",
+          "type": "multi_select",
+          "label_fa": "مصاحبه‌کنندگان دوره جامع",
+          "required": true,
+          "options_source": {
+            "type": "users",
+            "role": "interviewer",
+            "is_active": true
+          }
+        },
+        {
+          "name": "comprehensive_date_range_start",
+          "type": "date",
+          "label_fa": "شروع بازه مصاحبه دوره جامع",
+          "required": true
+        },
+        {
+          "name": "comprehensive_date_range_end",
+          "type": "date",
+          "label_fa": "پایان بازه مصاحبه دوره جامع",
+          "required": true
+        },
+        {
+          "name": "introductory_interviewers",
+          "type": "multi_select",
+          "label_fa": "مصاحبه‌کنندگان دوره آشنایی",
+          "required": true,
+          "options_source": {
+            "type": "users",
+            "role": "interviewer",
+            "is_active": true
+          }
+        },
+        {
+          "name": "introductory_date_range_start",
+          "type": "date",
+          "label_fa": "شروع بازه مصاحبه دوره آشنایی",
+          "required": true
+        },
+        {
+          "name": "introductory_date_range_end",
+          "type": "date",
+          "label_fa": "پایان بازه مصاحبه دوره آشنایی",
+          "required": true
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "operator_semester_prep",
+      "ui_component": "SemesterPrepWorkbenchPage + OperatorStepFormsSection",
+      "portal_page": "SemesterPrepWorkbenchPage",
+      "deep_link_template": "/panel/semester-prep/workbench?process_code=fall_semester_preparation&state_code=interviewer_assignment",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "fall_semester_preparation/license_check@deputy_education",
+      "process_code": "fall_semester_preparation",
+      "process_name_fa": "فرایند آماده‌سازی ترم پاییز",
+      "state_code": "license_check",
+      "state_name_fa": "بررسی وضعیت پروانه فعالیت",
+      "state_assigned_role": "deputy_education_director",
+      "required_role": "deputy_education_director",
+      "portal_role": "deputy_education",
+      "trigger": "license_reviewed",
+      "to_state": "course_list_creation",
+      "is_terminal_target": false,
+      "form_codes": [
+        "license_check_form"
+      ],
+      "field_specs": [
+        {
+          "name": "license_status",
+          "type": "radio",
+          "label_fa": "وضعیت پروانه",
+          "required": true,
+          "options": [
+            "بدون تغییر",
+            "تغییر کرده"
+          ]
+        },
+        {
+          "name": "new_license_number",
+          "type": "text",
+          "label_fa": "شماره پروانه جدید",
+          "required": false,
+          "visible_if": {
+            "license_status": "تغییر کرده"
+          }
+        },
+        {
+          "name": "license_notes",
+          "type": "textarea",
+          "label_fa": "توضیحات",
+          "required": false
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "operator_semester_prep",
+      "ui_component": "SemesterPrepWorkbenchPage + OperatorStepFormsSection",
+      "portal_page": "SemesterPrepWorkbenchPage",
+      "deep_link_template": "/panel/semester-prep/workbench?process_code=fall_semester_preparation&state_code=license_check",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "fall_semester_preparation/marketing_campaign@staff",
+      "process_code": "fall_semester_preparation",
+      "process_name_fa": "فرایند آماده‌سازی ترم پاییز",
+      "state_code": "marketing_campaign",
+      "state_name_fa": "شروع کمپین بازاریابی پذیرش",
+      "state_assigned_role": "admissions_officer",
+      "required_role": "admissions_officer",
+      "portal_role": "staff",
+      "trigger": "marketing_started",
+      "to_state": "interviewer_assignment",
+      "is_terminal_target": false,
+      "form_codes": [
+        "marketing_campaign_form"
+      ],
+      "field_specs": [
+        {
+          "name": "marketing_info_sent_to_manager",
+          "type": "checkbox",
+          "label_fa": "اطلاعات لازم برای شروع کمپین تبلیغاتی (خروجی فعالیت‌های ۱، ۲ و ۵) برای مدیر مارکتینگ ارسال شد",
+          "required": true
+        },
+        {
+          "name": "marketing_notes",
+          "type": "textarea",
+          "label_fa": "یادداشت انتقال به مدیر مارکتینگ (اختیاری)",
+          "required": false
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "operator_semester_prep",
+      "ui_component": "SemesterPrepWorkbenchPage + OperatorStepFormsSection",
+      "portal_page": "SemesterPrepWorkbenchPage",
+      "deep_link_template": "/panel/semester-prep/workbench?process_code=fall_semester_preparation&state_code=marketing_campaign",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "fall_semester_preparation/tuition_entry@deputy_education",
+      "process_code": "fall_semester_preparation",
+      "process_name_fa": "فرایند آماده‌سازی ترم پاییز",
+      "state_code": "tuition_entry",
+      "state_name_fa": "تعیین شهریه و هزینه مصاحبه",
+      "state_assigned_role": "deputy_education_director",
+      "required_role": "deputy_education_director",
+      "portal_role": "deputy_education",
+      "trigger": "tuition_submitted",
+      "to_state": "license_check",
+      "is_terminal_target": false,
+      "form_codes": [
+        "tuition_form"
+      ],
+      "field_specs": [
+        {
+          "name": "per_unit_cost_introductory",
+          "type": "number",
+          "label_fa": "هزینه هر واحد دوره مقدماتی (ریال)",
+          "required": true
+        },
+        {
+          "name": "per_unit_cost_comprehensive",
+          "type": "number",
+          "label_fa": "هزینه هر واحد دوره جامع (ریال)",
+          "required": true
+        },
+        {
+          "name": "interview_fee_introductory",
+          "type": "number",
+          "label_fa": "هزینه مصاحبه دوره آشنایی (ریال)",
+          "required": true
+        },
+        {
+          "name": "interview_fee_comprehensive",
+          "type": "number",
+          "label_fa": "هزینه مصاحبه دوره جامع (ریال)",
+          "required": true
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "operator_semester_prep",
+      "ui_component": "SemesterPrepWorkbenchPage + OperatorStepFormsSection",
+      "portal_page": "SemesterPrepWorkbenchPage",
+      "deep_link_template": "/panel/semester-prep/workbench?process_code=fall_semester_preparation&state_code=tuition_entry",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "introductory_course_registration/application_submitted@student",
+      "process_code": "introductory_course_registration",
+      "process_name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "state_code": "application_submitted",
+      "state_name_fa": "فرم پذیرش تکمیل شد",
+      "state_assigned_role": "applicant",
+      "required_role": "applicant",
+      "portal_role": "student",
+      "trigger": "timeslot_selected",
+      "to_state": "interview_payment",
+      "is_terminal_target": false,
+      "form_codes": [],
+      "field_specs": [],
+      "has_forms": false,
+      "action_type": "interview_book",
+      "ui_layer": "custom_panel",
+      "ui_component": "StudentIntroductoryCourseRegistrationPanel + InterviewSlotPicker + SepPaymentPanel",
+      "portal_page": "StudentPortal",
+      "deep_link_template": "/panel/portal/student?tab=processes",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "introductory_course_registration/course_selection@student",
+      "process_code": "introductory_course_registration",
+      "process_name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "state_code": "course_selection",
+      "state_name_fa": "انتخاب دروس مجاز در LMS",
+      "state_assigned_role": "student",
+      "required_role": "student",
+      "portal_role": "student",
+      "trigger": "courses_selected",
+      "to_state": "payment",
+      "is_terminal_target": false,
+      "form_codes": [
+        "course_selection_form"
+      ],
+      "field_specs": [
+        {
+          "name": "selected_courses",
+          "type": "checkbox_list",
+          "label_fa": "انتخاب درس",
+          "required": true
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "custom_panel",
+      "ui_component": "StudentIntroductoryCourseRegistrationPanel + InterviewSlotPicker + SepPaymentPanel",
+      "portal_page": "StudentPortal",
+      "deep_link_template": "/panel/portal/student?tab=processes",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "introductory_course_registration/credentials_created@student",
+      "process_code": "introductory_course_registration",
+      "process_name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "state_code": "credentials_created",
+      "state_name_fa": "حساب کاربری ایجاد شد — ارسال اطلاعات ورود",
+      "state_assigned_role": "system",
+      "required_role": "student",
+      "portal_role": "student",
+      "trigger": "student_logged_in",
+      "to_state": "course_selection",
+      "is_terminal_target": false,
+      "form_codes": [],
+      "field_specs": [],
+      "has_forms": false,
+      "action_type": "standard",
+      "ui_layer": "custom_panel",
+      "ui_component": "StudentIntroductoryCourseRegistrationPanel + InterviewSlotPicker + SepPaymentPanel",
+      "portal_page": "StudentPortal",
+      "deep_link_template": "/panel/portal/student?tab=processes",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "introductory_course_registration/documents_incomplete@student",
+      "process_code": "introductory_course_registration",
+      "process_name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "state_code": "documents_incomplete",
+      "state_name_fa": "مدارک ناقص — در انتظار تکمیل",
+      "state_assigned_role": "applicant",
+      "required_role": "applicant",
+      "portal_role": "student",
+      "trigger": "documents_resubmitted",
+      "to_state": "documents_review",
+      "is_terminal_target": false,
+      "form_codes": [],
+      "field_specs": [],
+      "has_forms": false,
+      "action_type": "standard",
+      "ui_layer": "custom_panel",
+      "ui_component": "StudentIntroductoryCourseRegistrationPanel + InterviewSlotPicker + SepPaymentPanel",
+      "portal_page": "StudentPortal",
+      "deep_link_template": "/panel/portal/student?tab=processes",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "introductory_course_registration/documents_review@staff",
+      "process_code": "introductory_course_registration",
+      "process_name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "state_code": "documents_review",
+      "state_name_fa": "بررسی مدارک توسط مسئول پذیرش",
+      "state_assigned_role": "admissions_officer",
+      "required_role": "admissions_officer",
+      "portal_role": "staff",
+      "trigger": "documents_approved",
+      "to_state": "credentials_created",
+      "is_terminal_target": false,
+      "form_codes": [],
+      "field_specs": [],
+      "has_forms": false,
+      "action_type": "standard",
+      "ui_layer": "operator_generic",
+      "ui_component": "OperatorProcessInstancePanel (StaffPortal)",
+      "portal_page": "StaffPortal",
+      "deep_link_template": "/panel/portal/staff/admissions?instance_id={instance_id}&student_id={student_id}&process_code=introductory_course_registration&state_code=documents_review",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "introductory_course_registration/documents_review@staff",
+      "process_code": "introductory_course_registration",
+      "process_name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "state_code": "documents_review",
+      "state_name_fa": "بررسی مدارک توسط مسئول پذیرش",
+      "state_assigned_role": "admissions_officer",
+      "required_role": "admissions_officer",
+      "portal_role": "staff",
+      "trigger": "documents_rejected",
+      "to_state": "documents_incomplete",
+      "is_terminal_target": false,
+      "form_codes": [],
+      "field_specs": [],
+      "has_forms": false,
+      "action_type": "standard",
+      "ui_layer": "operator_generic",
+      "ui_component": "OperatorProcessInstancePanel (StaffPortal)",
+      "portal_page": "StaffPortal",
+      "deep_link_template": "/panel/portal/staff/admissions?instance_id={instance_id}&student_id={student_id}&process_code=introductory_course_registration&state_code=documents_review",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "introductory_course_registration/documents_upload@student",
+      "process_code": "introductory_course_registration",
+      "process_name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "state_code": "documents_upload",
+      "state_name_fa": "در انتظار آپلود مدارک و تأیید قوانین",
+      "state_assigned_role": "applicant",
+      "required_role": "applicant",
+      "portal_role": "student",
+      "trigger": "documents_submitted",
+      "to_state": "documents_review",
+      "is_terminal_target": false,
+      "form_codes": [
+        "documents_upload_form"
+      ],
+      "field_specs": [
+        {
+          "name": "digital_commitment",
+          "type": "checkbox",
+          "label_fa": "پذیرش قوانین و تعهدنامه ورود به دوره آشنایی",
+          "required": true
+        },
+        {
+          "name": "photo",
+          "type": "file_upload",
+          "label_fa": "عکس پرسنلی",
+          "required": true
+        },
+        {
+          "name": "id_card",
+          "type": "file_upload",
+          "label_fa": "تصویر صفحه اول شناسنامه",
+          "required": true
+        },
+        {
+          "name": "national_card_front",
+          "type": "file_upload",
+          "label_fa": "تصویر روی کارت ملی",
+          "required": true
+        },
+        {
+          "name": "national_card_back",
+          "type": "file_upload",
+          "label_fa": "تصویر پشت کارت ملی",
+          "required": true
+        },
+        {
+          "name": "bachelor_degree",
+          "type": "file_upload",
+          "label_fa": "مدرک کارشناسی یا پزشکی عمومی",
+          "required": true
+        },
+        {
+          "name": "master_degree",
+          "type": "file_upload",
+          "label_fa": "مدرک کارشناسی ارشد (در صورت وجود)",
+          "required": false
+        },
+        {
+          "name": "latest_certificate",
+          "type": "file_upload",
+          "label_fa": "آخرین مدرک تحصیلی",
+          "required": true
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "custom_panel",
+      "ui_component": "StudentIntroductoryCourseRegistrationPanel + InterviewSlotPicker + SepPaymentPanel",
+      "portal_page": "StudentPortal",
+      "deep_link_template": "/panel/portal/student?tab=processes",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "introductory_course_registration/interview_completed@interviewer",
+      "process_code": "introductory_course_registration",
+      "process_name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "state_code": "interview_completed",
+      "state_name_fa": "مصاحبه انجام شد — در انتظار ثبت نتیجه",
+      "state_assigned_role": "interviewer",
+      "required_role": "interviewer",
+      "portal_role": "interviewer",
+      "trigger": "interview_result_submitted",
+      "to_state": "result_conditional_therapy",
+      "is_terminal_target": false,
+      "form_codes": [
+        "interview_result_form"
+      ],
+      "field_specs": [
+        {
+          "name": "interview_result",
+          "type": "radio",
+          "label_fa": "نتیجه مصاحبه",
+          "required": true,
+          "options": [
+            {
+              "value": "conditional_therapy",
+              "label_fa": "پذیرش مشروط به شروع درمان شخصی"
+            },
+            {
+              "value": "single_course",
+              "label_fa": "فقط مجاز به اخذ درس تئوری روانکاوی ۱"
+            },
+            {
+              "value": "full_admission",
+              "label_fa": "پذیرش کامل (بدون شرط)"
+            },
+            {
+              "value": "rejected",
+              "label_fa": "رد درخواست"
+            }
+          ]
+        },
+        {
+          "name": "allowed_course_count",
+          "type": "number",
+          "label_fa": "تعداد درس جاز",
+          "required": false
+        },
+        {
+          "name": "rejection_reason",
+          "type": "textarea",
+          "label_fa": "علت عدم پذیرش (محرمانه)",
+          "required": false
+        },
+        {
+          "name": "interviewer_notes",
+          "type": "textarea",
+          "label_fa": "یادداشت‌های مصاحبه‌گر",
+          "required": false
+        }
+      ],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "operator_generic",
+      "ui_component": "OperatorStepFormsSection (InterviewerPortal)",
+      "portal_page": "InterviewerPortal",
+      "deep_link_template": "/panel/portal/interviewer?instance_id={instance_id}&student_id={student_id}&process_code=introductory_course_registration&state_code=interview_completed",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "introductory_course_registration/interview_scheduled@student",
+      "process_code": "introductory_course_registration",
+      "process_name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "state_code": "interview_scheduled",
+      "state_name_fa": "زمان مصاحبه انتخاب شد",
+      "state_assigned_role": "applicant",
+      "required_role": "applicant",
+      "portal_role": "student",
+      "trigger": "proceed_to_payment",
+      "to_state": "interview_payment",
+      "is_terminal_target": false,
+      "form_codes": [],
+      "field_specs": [],
+      "has_forms": false,
+      "action_type": "standard",
+      "ui_layer": "custom_panel",
+      "ui_component": "StudentIntroductoryCourseRegistrationPanel + InterviewSlotPicker + SepPaymentPanel",
+      "portal_page": "StudentPortal",
+      "deep_link_template": "/panel/portal/student?tab=processes",
+      "ui_surface_ok": true
+    },
+    {
+      "step_id": "introductory_term_end/followup_in_progress@staff",
+      "process_code": "introductory_term_end",
+      "process_name_fa": "فرایند پایان ترم‌های دوره آشنایی",
+      "state_code": "followup_in_progress",
+      "state_name_fa": "پیگیری تماس با دانشجویان افت تحصیلی",
+      "state_assigned_role": "admissions_officer",
+      "required_role": "admissions_officer",
+      "portal_role": "staff",
+      "trigger": "all_followups_done",
+      "to_state": "followup_complete",
+      "is_terminal_target": true,
+      "form_codes": [
+        "academic_decline_followup_form"
+      ],
+      "field_specs": [],
+      "has_forms": true,
+      "action_type": "standard",
+      "ui_layer": "operator_generic",
+      "ui_component": "OperatorStepFormsSection (StaffPortal)",
+      "portal_page": "StaffPortal",
+      "deep_link_template": "/panel/portal/staff/admissions?instance_id={instance_id}&student_id={student_id}&process_code=introductory_term_end&state_code=followup_in_progress",
+      "ui_surface_ok": true
+    }
+  ]
+}

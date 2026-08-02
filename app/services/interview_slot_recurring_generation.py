@@ -15,10 +15,6 @@ from app.models.operational_models import InterviewSlot, InterviewSlotRecurringR
 
 TEHRAN = ZoneInfo("Asia/Tehran")
 
-# مالک الگو با نقش staff/admin → اسلات در استخر عمومی (بدون مصاحبه‌گر اختصاصی)
-_POOL_RULE_OWNER_ROLES = frozenset({"admin", "staff"})
-
-
 def _combine_tehran(day: date, t: time) -> datetime:
     return datetime.combine(day, t).replace(tzinfo=TEHRAN)
 
@@ -112,9 +108,6 @@ async def generate_interview_slots_from_recurring_rules(
 
             interviewer_uid = rule.interviewer_user_id
             created_by = rule.interviewer_user_id
-            owner = await db.get(User, rule.interviewer_user_id)
-            if owner and (owner.role or "").strip() in _POOL_RULE_OWNER_ROLES:
-                interviewer_uid = None
 
             slot = InterviewSlot(
                 id=uuid.uuid4(),

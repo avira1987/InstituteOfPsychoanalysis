@@ -63,9 +63,34 @@
   ],
   "forms": [
     {
+      "code": "live_therapy_observation_final_report_form",
+      "name_fa": "آپلود گزارش پایانی درس",
+      "used_in_state": "grades_entry",
+      "visible_to": ["student"],
+      "fields": [
+        {
+          "name": "course_name",
+          "label_fa": "نام درس",
+          "type": "readonly"
+        },
+        {
+          "name": "final_report_pdf",
+          "label_fa": "گزارش پایانی PDF",
+          "type": "file_upload",
+          "accept": ".pdf,application/pdf",
+          "required": true,
+          "validation": {
+            "max_size_mb": 25
+          },
+          "note_fa": "فقط PDF — از پایان جلسه ۱۷ تا ۲۴:۰۰ روز جلسه ۱۸."
+        }
+      ]
+    },
+    {
       "code": "live_therapy_observation_grades_form",
       "name_fa": "ثبت نمرات مشاهده زنده درمان",
       "used_in_state": "grades_entry",
+      "visible_to": ["instructor", "teaching_assistant", "admin", "staff"],
       "fields": [
         {
           "name": "course_name",

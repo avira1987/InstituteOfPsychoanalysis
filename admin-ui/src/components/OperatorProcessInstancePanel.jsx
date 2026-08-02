@@ -216,6 +216,7 @@ export default function OperatorProcessInstancePanel({
                 <button
                   key={`${t.trigger_event}-${t.to_state || idx}`}
                   type="button"
+                  data-testid={`operator-transition-${t.trigger_event}`}
                   disabled={triggerBusy}
                   onClick={() => triggerTransition(t)}
                   style={{

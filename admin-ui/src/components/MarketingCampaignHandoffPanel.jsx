@@ -108,7 +108,7 @@ export default function MarketingCampaignHandoffPanel({
     setBusy(true)
     try {
       await processExecApi.downloadMarketingCampaignPack(instanceId)
-      showToast?.(`فایل PDF دانلود شد — برای مدیر مارکتینگ ارسال کنید (واتساپ، بل یا ایمیل). ${ADVANCE_HINT}`)
+      showToast?.(`فایل PDF دانلود شد — برای مدیر مارکتینگ ارسال کنید (واتساپ، بله یا ایمیل). ${ADVANCE_HINT}`)
     } catch (e) {
       const msg = await parseApiErrorDetail(e)
       showToast?.(`${msg} ${ADVANCE_HINT}`, 'error')
@@ -133,9 +133,9 @@ export default function MarketingCampaignHandoffPanel({
   const openBale = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(shareText)
-      showToast?.('متن پیام کپی شد — در بل پیام بدهید و PDF را پیوست کنید')
+      showToast?.('متن پیام کپی شد — در بله پیام بدهید و PDF را پیوست کنید')
     } catch {
-      showToast?.('متن را دستی کپی کرده و در بل ارسال کنید', 'error')
+      showToast?.('متن را دستی کپی کرده و در بله ارسال کنید', 'error')
     }
     window.open('https://web.bale.ai/', '_blank', 'noopener,noreferrer')
   }, [shareText, showToast])
@@ -177,7 +177,7 @@ export default function MarketingCampaignHandoffPanel({
         }}
       >
         <li>خروجی فعالیت‌های {activitiesLabel} (بالا) را به‌صورت PDF بگیرید.</li>
-        <li>فایل را با واتساپ، بل یا ایمیل برای مدیر مارکتینگ ارسال کنید.</li>
+        <li>فایل را با واتساپ، بله یا ایمیل برای مدیر مارکتینگ ارسال کنید.</li>
         <li>پس از ارسال، گزینهٔ تأیید پایین را تیک بزنید و فرم را ثبت کنید.</li>
       </ol>
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.85rem' }}>
@@ -194,7 +194,7 @@ export default function MarketingCampaignHandoffPanel({
           واتساپ
         </button>
         <button type="button" className="btn btn-outline btn-sm" disabled={disabled} onClick={openBale}>
-          بل
+          بله
         </button>
         <button type="button" className="btn btn-outline btn-sm" disabled={disabled} onClick={openEmail}>
           ایمیل
@@ -234,7 +234,7 @@ export default function MarketingCampaignHandoffPanel({
           disabled={disabled}
           value={notesValue}
           onChange={(e) => patchValues({ marketing_notes: e.target.value })}
-          placeholder="مثلاً زمان ارسال یا کانال ارتباطی (واتساپ، بل، ایمیل)"
+          placeholder="مثلاً زمان ارسال یا کانال ارتباطی (واتساپ، بله، ایمیل)"
         />
       </label>
     </div>

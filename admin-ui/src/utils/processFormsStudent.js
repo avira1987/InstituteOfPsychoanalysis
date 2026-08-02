@@ -57,9 +57,27 @@ export function validateStepForms(forms, values, opts = {}) {
       if (!fieldVisible(field, values)) continue
       if (!fieldRequired(field, values)) continue
       const t = field.type || 'text'
-      if (t === 'checkbox') {
-        if (field.required && !values[field.name]) {
+      if (t === 'hidden') {
+        if (fieldRequired(field, values)) {
+          const v = values[field.name]
+          const empty = Array.isArray(v) ? v.length === 0 : isEmpty(v)
+          if (empty) missing.push(field.label_fa || field.name)
+        }
+        continue
+      }
+      if (t === 'therapist_slot_picker') {
+        if (!fieldRequired(field, values)) continue
+        const therapistVal = values[field.name]
+        const slotIds = values.slot_ids
+        if (isEmpty(therapistVal)) {
           missing.push(field.label_fa || field.name)
+        }
+        const weekly = Number(values.weekly_sessions)
+        const slotCount = Array.isArray(slotIds) ? slotIds.length : 0
+        if (weekly > 0 && slotCount !== weekly) {
+          missing.push(`انتخاب ${weekly} اسلات هفتگی از شیت وقت‌های آزاد`)
+        } else if (slotCount === 0) {
+          missing.push('اسلات‌های هفتگی')
         }
         continue
       }

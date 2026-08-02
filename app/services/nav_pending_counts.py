@@ -56,7 +56,6 @@ _SITE_MANAGER_REVIEW_STATES = (
     "attendance_check",
     "followup_required",
     "site_review",
-    "interview_scheduling",
 )
 
 # CommitteePortal.jsx — roleConfig + defaultConfig

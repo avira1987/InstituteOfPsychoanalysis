@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_password_hash
-from app.api.interview_slots_routes import _is_meeting_link_visible_for_user
+from app.api.interview_slots_routes import _is_meeting_link_visible_for_user, _slot_to_dict
 from app.models.operational_models import InterviewSlot, ProcessInstance, Student, User
 from app.services.action_handler import ActionHandler
 from app.services.interview_slot_service import enrich_interview_notification_context
@@ -53,6 +53,41 @@ async def test_enrich_interview_notification_context_online_link(
     assert ctx.get("interview_link") == "https://meet.example/iv"
     assert "interview_date" in ctx
     assert ctx.get("student_name")
+
+
+@pytest.mark.asyncio
+async def test_enrich_interview_notification_context_tehran_time(
+    db_session: AsyncSession,
+    sample_student: Student,
+    sample_student_user: User,
+) -> None:
+    inst_id = uuid.uuid4()
+    instance = ProcessInstance(
+        id=inst_id,
+        process_code="introductory_course_registration",
+        student_id=sample_student.id,
+        current_state_code="interview_payment_confirmed",
+        context_data={},
+    )
+    db_session.add(instance)
+    await db_session.flush()
+    # 10:30 Tehran on 2026-05-07
+    t0 = datetime(2026, 5, 7, 7, 0, tzinfo=timezone.utc)
+    slot = InterviewSlot(
+        id=uuid.uuid4(),
+        starts_at=t0,
+        ends_at=t0 + timedelta(hours=1),
+        mode="online",
+        meeting_link="https://meet.example/iv",
+        assigned_student_id=sample_student.id,
+        assigned_instance_id=inst_id,
+    )
+    db_session.add(slot)
+    await db_session.flush()
+
+    ctx = await enrich_interview_notification_context(db_session, instance)
+    assert ctx.get("interview_time") == "10:30"
+    assert ctx.get("interview_date") == "1405/02/17"
 
 
 @pytest.mark.asyncio
@@ -138,7 +173,7 @@ async def test_interviewer_link_visible_after_payment_deadline_cleared(
     )
     db_session.add(interviewer)
     await db_session.flush()
-    t0 = datetime.now(timezone.utc) + timedelta(days=3)
+    t0 = datetime.now(timezone.utc) + timedelta(minutes=20)
     slot = InterviewSlot(
         id=uuid.uuid4(),
         starts_at=t0,
@@ -157,7 +192,7 @@ async def test_interviewer_link_visible_after_payment_deadline_cleared(
 
 
 @pytest.mark.asyncio
-async def test_student_link_visible_after_payment_deadline_cleared(
+async def test_student_link_marked_ready_but_withheld_until_join_window(
     db_session: AsyncSession,
     sample_student: Student,
     sample_student_user: User,
@@ -177,7 +212,10 @@ async def test_student_link_visible_after_payment_deadline_cleared(
     db_session.add(slot)
     await db_session.flush()
     now = datetime.now(timezone.utc)
-    assert _is_meeting_link_visible_for_user(slot, sample_student_user, now) is True
+    out = _slot_to_dict(slot, viewer=sample_student_user, now=now)
+    assert out["meeting_link"] is None
+    assert out["meeting_link_ready"] is True
+    assert out["meeting_link_is_visible"] is False
 
 
 @pytest.mark.asyncio

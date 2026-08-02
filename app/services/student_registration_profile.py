@@ -7,6 +7,8 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 YesNo = Literal["yes", "no"]
+PsychotherapyApproach = Literal["analytical", "other"]
+EducationLevel = Literal["bachelor", "master", "phd", "specialist"]
 ParticipationMode = Literal["in_person", "online"]
 ReferralSource = Literal[
     "person_referral",
@@ -32,6 +34,15 @@ REGISTRATION_PROFILE_EXTRA_KEYS = (
     "psychiatric_hospitalization_history",
     "has_work_permit",
     "has_university_degree",
+    "psychotherapy_approach",
+    "psychotherapy_therapist_name",
+    "psychotherapy_total_hours",
+    "work_permit_issuer",
+    "work_permit_type",
+    "education_level",
+    "field_of_study",
+    "university",
+    "graduation_year",
     "course_participation_mode",
     "referral_source",
     "referral_inviter_name",
@@ -77,6 +88,15 @@ class StudentRegistrationProfileFields(BaseModel):
     psychiatric_hospitalization_history: Optional[YesNo] = None
     has_work_permit: Optional[YesNo] = None
     has_university_degree: Optional[YesNo] = None
+    psychotherapy_approach: Optional[PsychotherapyApproach] = None
+    psychotherapy_therapist_name: Optional[str] = None
+    psychotherapy_total_hours: Optional[str] = None
+    work_permit_issuer: Optional[str] = None
+    work_permit_type: Optional[str] = None
+    education_level: Optional[EducationLevel] = None
+    field_of_study: Optional[str] = None
+    university: Optional[str] = None
+    graduation_year: Optional[str] = None
     course_participation_mode: Optional[ParticipationMode] = None
     referral_source: Optional[ReferralSource] = None
     referral_inviter_name: Optional[str] = None
@@ -196,6 +216,54 @@ def validate_registration_profile_fields(
         elif require_all:
             raise HTTPException(status_code=400, detail=_missing_message(yn_key))
 
+    if out.get("had_psychotherapy") == "yes":
+        approach = raw.get("psychotherapy_approach")
+        if approach not in ("analytical", "other"):
+            raise HTTPException(
+                status_code=400,
+                detail="رویکرد درمان روان‌شناختی را انتخاب کنید.",
+            )
+        out["psychotherapy_approach"] = approach
+        therapist = _strip_str(raw.get("psychotherapy_therapist_name"))
+        if not therapist:
+            raise HTTPException(status_code=400, detail="نام درمانگر را وارد کنید.")
+        out["psychotherapy_therapist_name"] = therapist
+        hours = _strip_str(raw.get("psychotherapy_total_hours"))
+        if hours:
+            out["psychotherapy_total_hours"] = hours
+
+    if out.get("has_work_permit") == "yes":
+        issuer = _strip_str(raw.get("work_permit_issuer"))
+        if not issuer:
+            raise HTTPException(status_code=400, detail="سازمان صادرکنندهٔ پروانه را وارد کنید.")
+        out["work_permit_issuer"] = issuer
+        permit_type = _strip_str(raw.get("work_permit_type"))
+        if permit_type:
+            out["work_permit_type"] = permit_type
+
+    if out.get("has_university_degree") == "yes":
+        edu = raw.get("education_level")
+        if edu not in ("bachelor", "master", "phd", "specialist"):
+            raise HTTPException(status_code=400, detail="مقطع تحصیلی را انتخاب کنید.")
+        out["education_level"] = edu
+        fos = _strip_str(raw.get("field_of_study"))
+        if not fos:
+            raise HTTPException(status_code=400, detail="رشتهٔ تحصیلی را وارد کنید.")
+        out["field_of_study"] = fos
+        uni = _strip_str(raw.get("university"))
+        if not uni:
+            raise HTTPException(status_code=400, detail="نام دانشگاه را وارد کنید.")
+        out["university"] = uni
+        grad_year = _strip_str(raw.get("graduation_year"))
+        if not grad_year:
+            raise HTTPException(status_code=400, detail="سال فارغ‌التحصیلی را وارد کنید.")
+        if not re.match(r"^\d{4}$", grad_year):
+            raise HTTPException(
+                status_code=400,
+                detail="سال فارغ‌التحصیلی را به‌صورت چهار رقم وارد کنید (مثال: ۱۳۹۵).",
+            )
+        out["graduation_year"] = grad_year
+
     mode = raw.get("course_participation_mode")
     if mode in ("in_person", "online"):
         out["course_participation_mode"] = mode
@@ -251,6 +319,15 @@ def _missing_message(key: str) -> str:
         "psychiatric_hospitalization_history": "سابقه بستری روانپزشکی",
         "has_work_permit": "پروانه اشتغال",
         "has_university_degree": "مدرک دانشگاهی",
+        "psychotherapy_approach": "رویکرد درمان روان‌شناختی",
+        "psychotherapy_therapist_name": "نام درمانگر",
+        "psychotherapy_total_hours": "تعداد کل ساعات درمان",
+        "work_permit_issuer": "سازمان صادرکنندهٔ پروانه",
+        "work_permit_type": "نوع پروانه",
+        "education_level": "مقطع تحصیلی",
+        "field_of_study": "رشتهٔ تحصیلی",
+        "university": "دانشگاه",
+        "graduation_year": "سال فارغ‌التحصیلی",
         "course_participation_mode": "نحوه شرکت در دوره",
         "referral_source": "نحوه آشنایی با انستیتو",
         "referral_inviter_name": "نام شخص معرف",

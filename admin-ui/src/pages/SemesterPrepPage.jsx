@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { semesterPrepApi } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
+import SemesterPrepReadinessPanel from '../components/SemesterPrepReadinessPanel'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import { labelRoleFa } from '../utils/roleLabels'
 
@@ -58,6 +59,51 @@ export default function SemesterPrepPage() {
         شروع و پیگیری فرایندهای آماده‌سازی پاییز و زمستان. شروع خودکار پاییز در ۱۵–۲۰ فروردین و زمستان
         در پنجرهٔ قبل از شروع ترم انجام می‌شود؛ در صورت نیاز می‌توانید دستی هم شروع کنید.
       </p>
+
+      {!loading && status?.readiness ? (
+        <div style={{ marginBottom: '1.25rem' }}>
+          <SemesterPrepReadinessPanel readiness={status.readiness} showTitle />
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.65rem',
+              marginTop: '0.85rem',
+              padding: '0.85rem 1rem',
+              background: '#fff',
+              border: '1px solid #93c5fd',
+              borderRadius: '10px',
+              boxShadow: '0 1px 3px rgba(37, 99, 235, 0.08)',
+            }}
+            data-testid="semester-prep-hub-actions"
+          >
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e40af', marginLeft: '0.15rem' }}>
+              دسترسی سریع:
+            </span>
+            <Link
+              to="/panel/semester-prep/readiness"
+              className="btn btn-primary btn-sm"
+              style={{ fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}
+            >
+              مدیریت و تکمیل پیش‌نیازها
+            </Link>
+            <Link
+              to="/panel/course-committee-roster"
+              className="btn btn-outline btn-sm"
+              style={{
+                fontWeight: 700,
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+                borderColor: '#2563eb',
+                color: '#1d4ed8',
+              }}
+            >
+              چارت کمیته دروس
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       {loading ? (
         <p className="muted">در حال بارگذاری…</p>

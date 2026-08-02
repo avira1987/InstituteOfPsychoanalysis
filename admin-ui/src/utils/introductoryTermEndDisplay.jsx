@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { formatShamsiTehran } from './shamsiDateTime'
+export { resolveTermTranscriptRows, resolveDeclineFollowupRows } from './termEndTranscriptRows'
 
 /** مراحل اصلی (milestone) فرایند پایان ترم آشنایی. */
 export const INTRO_TERM_END_FLOW_STEPS = [

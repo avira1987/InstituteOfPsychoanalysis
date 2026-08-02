@@ -1,20 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { processExecApi } from '../services/api'
 import UnifiedFormRenderer from './UnifiedFormRenderer'
 import FallSemesterPrepReadonlySummary from './FallSemesterPrepReadonlySummary'
 import MarketingCampaignHandoffPanel, { isMarketingHandoffField } from './MarketingCampaignHandoffPanel'
 import SemesterPrepStepDeadlineBanner from './SemesterPrepStepDeadlineBanner'
-import InterviewSlotsAdmin from './InterviewSlotsAdmin'
-import { canManageInterviewSlots } from '../utils/interviewSlotAccess'
+import SemesterPrepInterviewSetupPanel from './SemesterPrepInterviewSetupPanel'
 import DecisionNotesBlock from './DecisionNotesBlock'
-import { validateUnifiedAnswers, isEffectivelyEmptyCourseTable } from '../utils/unifiedFormValidation'
+import { validateUnifiedAnswers, isEffectivelyEmptyCourseTable, validateSemesterPrepInterviewDateRanges } from '../utils/unifiedFormValidation'
+import { validateSemesterPrepCalendarDates } from '../utils/semesterPrepCalendarValidation'
 import {
   denormalizeCourseRosterTableRows,
   normalizeCourseTableInitialRows,
+  propagateRosterMemberToForms,
+  replaceRosterTrackMembersInForms,
+  resolveCourseCommitteeRoster,
+  resolveRosterTrackStorageKey,
   resolveFormOptionsSource,
 } from '../utils/resolveFormOptionsSource'
 import { SEMESTER_PREP_PROCESSES } from '../utils/instituteProcesses'
-import { interviewSlotDefaultsFromContext } from '../utils/semesterPrepInterviewDefaults'
 import { buildWaitingForRoleTaskFa } from '../utils/operatorProcessGuidance'
 import { portalRoleCanActOnState } from '../utils/portalRoleAccess'
 import { resolveCheckboxListOptions } from '../utils/resolveCourseFieldOptions'
@@ -27,7 +31,13 @@ import {
 
 const CTX_SUBMITTED = '__student_forms_submitted_states'
 
-/** گام‌های فرایند ۲۹ — هشت مرحلهٔ عملیاتی قبل از انتشار */
+/** گام‌های ۷ و ۸ آماده‌سازی ترم که در یک مرحلهٔ واحد «مصاحبه‌ها» ادغام شده‌اند */
+const SEMESTER_PREP_INTERVIEW_STATES = new Set([
+  'interviewer_assignment',
+  'interview_scheduling',
+])
+
+/** گام‌های فرایند ۲۹ — مراحل عملیاتی قبل از انتشار (مصاحبه‌ها یک مرحلهٔ واحد است) */
 const FALL_SEMESTER_STEPS = [
   { code: 'calendar_entry', label: 'تقویم آموزشی دو ترم' },
   { code: 'tuition_entry', label: 'شهریه و هزینه مصاحبه' },
@@ -35,8 +45,11 @@ const FALL_SEMESTER_STEPS = [
   { code: 'course_list_creation', label: 'لیست دروس، مدرسین، کمک‌مدرسین' },
   { code: 'course_finalization', label: 'مکان‌ها و هماهنگی با مدرسین' },
   { code: 'marketing_campaign', label: 'کمپین بازاریابی پذیرش' },
-  { code: 'interviewer_assignment', label: 'تعیین مصاحبه‌کنندگان و بازه زمانی' },
-  { code: 'interview_scheduling', label: 'زمان‌بندی و ثبت اسلات‌های مصاحبه' },
+  {
+    code: 'interviewer_assignment',
+    label: 'مصاحبه‌ها: مصاحبه‌گرها و زمان‌بندی',
+    aliases: ['interview_scheduling'],
+  },
 ]
 
 function collectFieldNames(forms) {
@@ -145,6 +158,7 @@ function buildInitialValues(forms, contextData, processCode, currentState, sugge
       const current = init[name]
       if (current !== undefined && current !== null && current !== '') continue
       if (ft === 'date') {
+        if (field.required) continue
         const d = defaultShamsiDate()
         try {
           init[name] = shamsiDateToIsoDate(d.jy, d.jm, d.jd)
@@ -152,6 +166,7 @@ function buildInitialValues(forms, contextData, processCode, currentState, sugge
           /* ignore */
         }
       } else if (ft === 'datetime') {
+        if (field.required) continue
         const d = defaultShamsiTehranNow()
         try {
           init[name] = shamsiDateTimeToUtcIso(d.jy, d.jm, d.jd, d.hour, d.minute)
@@ -163,6 +178,41 @@ function buildInitialValues(forms, contextData, processCode, currentState, sugge
   }
 
   return init
+}
+
+/** هنگام به‌روزرسانی schema فرم (مثلاً افزودن مدرس جدید به لیست) — ورودی‌های در حال ویرایش حفظ شود. */
+function mergeFormValuesPreservingEdits(prev, next, forms) {
+  const merged = { ...next }
+  for (const form of forms || []) {
+    for (const field of form?.fields || []) {
+      const name = field.name
+      if (!name || prev[name] === undefined) continue
+      const ft = (field.type || '').toLowerCase()
+      if (ft === 'table') {
+        if (Array.isArray(prev[name])) merged[name] = prev[name]
+      } else if (prev[name] !== undefined && prev[name] !== null && prev[name] !== '') {
+        merged[name] = prev[name]
+      }
+    }
+  }
+  return merged
+}
+
+function rosterTrackStorageKeyFromForms(forms, kind, track) {
+  for (const form of forms || []) {
+    for (const field of form?.fields || []) {
+      if ((field.type || '').toLowerCase() !== 'table' || !Array.isArray(field.columns)) continue
+      const trackCol = field.columns.find((c) => c.name === 'track')
+      const rosterCol = field.columns.find((c) => {
+        const src = c.options_source || {}
+        return src.type === 'course_committee_roster' && (src.kind || 'instructor') === kind
+      })
+      if (rosterCol?._optionsByTrack) {
+        return resolveRosterTrackStorageKey(track, trackCol, rosterCol._optionsByTrack)
+      }
+    }
+  }
+  return String(track || '').trim()
 }
 
 async function enrichColumnOptions(col, contextData = null) {
@@ -249,12 +299,19 @@ const WINTER_SEMESTER_STEPS = [
   { code: 'course_list_review', label: 'بازبینی لیست دروس زمستان' },
   { code: 'course_finalization', label: 'نهایی‌سازی مکان و مدرسین' },
   { code: 'marketing_campaign', label: 'کمپین بازاریابی زمستان' },
-  { code: 'interviewer_assignment', label: 'تعیین مصاحبه‌کنندگان' },
-  { code: 'interview_scheduling', label: 'زمان‌بندی و ثبت اسلات‌های مصاحبه' },
+  {
+    code: 'interviewer_assignment',
+    label: 'مصاحبه‌ها: مصاحبه‌گرها و زمان‌بندی',
+    aliases: ['interview_scheduling'],
+  },
 ]
 
+function stepMatchesState(step, state) {
+  return step.code === state || (step.aliases || []).includes(state)
+}
+
 function SemesterPrepStepper({ steps, currentState, testId = 'semester-prep-stepper' }) {
-  const idx = steps.findIndex((s) => s.code === currentState)
+  const idx = steps.findIndex((s) => stepMatchesState(s, currentState))
   if (idx < 0) return null
 
   return (
@@ -350,6 +407,8 @@ export default function OperatorStepFormsSection({
   onDecisionNotesChange = null,
   onActionTrigger = null,
   actionBusy = false,
+  /** پس از ثبت مرحلهٔ یکپارچهٔ مصاحبه‌ها و انتشار تقویم */
+  onSemesterPrepPublished = null,
 }) {
   const isSemesterPrep = SEMESTER_PREP_PROCESSES.has(processCode)
   const isFall = processCode === 'fall_semester_preparation'
@@ -362,6 +421,22 @@ export default function OperatorStepFormsSection({
   const [loading, setLoading] = useState(false)
   const effectiveStateAssignedRole = fetchedStateAssignedRole ?? stateAssignedRole
   const [busy, setBusy] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
+  const contextDataRef = useRef(contextData)
+
+  const handleRosterMemberCreated = useCallback((member, { kind, track }) => {
+    setForms((prev) => {
+      const next = propagateRosterMemberToForms(prev, member, { kind, track })
+      const trackKey = rosterTrackStorageKeyFromForms(prev, kind, track)
+      resolveCourseCommitteeRoster(trackKey, kind)
+        .then((members) => {
+          if (!Array.isArray(members) || !members.length) return
+          setForms((current) => replaceRosterTrackMembersInForms(current, members, { kind, track: trackKey }))
+        })
+        .catch(() => {})
+      return next
+    })
+  }, [])
 
   const showPrefillBanner = useMemo(
     () => isWinter && hasVisiblePrefill(forms, suggestedContext),
@@ -442,13 +517,25 @@ export default function OperatorStepFormsSection({
 
   useEffect(() => {
     if (!forms.length || !visible) return
+    const contextChanged = contextDataRef.current !== contextData
+    contextDataRef.current = contextData
     setValues((prev) => {
       const next = buildInitialValues(forms, contextData, processCode, currentState, suggestedContext)
-      return JSON.stringify(prev) === JSON.stringify(next) ? prev : next
+      if (contextChanged || !prev || Object.keys(prev).length === 0) {
+        return JSON.stringify(prev) === JSON.stringify(next) ? prev : next
+      }
+      return mergeFormValuesPreservingEdits(prev, next, forms)
     })
   }, [forms, contextData, suggestedContext, processCode, currentState, visible])
 
-  const onChange = useCallback((next) => setValues(next), [])
+  useEffect(() => {
+    setFieldErrors({})
+  }, [processCode, currentState, instanceId])
+
+  const onChange = useCallback((next) => {
+    setValues(next)
+    setFieldErrors({})
+  }, [])
 
   const hasInlineActions = actionTransitions.length > 0 && typeof onActionTrigger === 'function'
   const canAdvanceOnSave = !!(
@@ -478,26 +565,44 @@ export default function OperatorStepFormsSection({
     [isMarketingStep],
   )
 
-  const showSlotsAdmin =
-    isSemesterPrep
-    && currentState === 'interview_scheduling'
-    && (canEditForms || canManageInterviewSlots(role))
-
-  const interviewSlotDefaults = useMemo(
-    () => (showSlotsAdmin ? interviewSlotDefaultsFromContext(contextData) : null),
-    [showSlotsAdmin, contextData],
-  )
+  /** گام‌های ۷ و ۸ در یک مرحلهٔ واحد «مصاحبه‌ها» ادغام شده‌اند */
+  const showInterviewSetup =
+    isSemesterPrep && SEMESTER_PREP_INTERVIEW_STATES.has(currentState)
 
   const save = async () => {
     const allMissing = []
+    const allFieldErrors = {}
     for (const form of forms) {
-      const { ok, missing } = validateUnifiedAnswers({ fields: form.fields || [] }, values, { role })
-      if (!ok) allMissing.push(...missing)
+      const { ok, missing, fieldErrors: formFieldErrors } = validateUnifiedAnswers(
+        { fields: form.fields || [] },
+        values,
+        { role },
+      )
+      if (!ok) {
+        allMissing.push(...missing)
+        Object.assign(allFieldErrors, formFieldErrors)
+      }
+    }
+    if (currentState === 'interviewer_assignment' && isSemesterPrep) {
+      const rangeErrors = validateSemesterPrepInterviewDateRanges(values)
+      for (const item of rangeErrors) {
+        allMissing.push(item.message)
+        if (item.field && !allFieldErrors[item.field]) allFieldErrors[item.field] = item.message
+      }
+    }
+    if (currentState === 'calendar_entry' && isFall) {
+      const calendarErrors = validateSemesterPrepCalendarDates(values)
+      for (const item of calendarErrors) {
+        allMissing.push(item.message)
+        if (item.field && !allFieldErrors[item.field]) allFieldErrors[item.field] = item.message
+      }
     }
     if (allMissing.length) {
-      showToast?.(`لطفاً موارد زیر را تکمیل کنید: ${allMissing.join('؛ ')}`, 'error')
+      setFieldErrors(allFieldErrors)
+      showToast?.(`لطفاً فیلدهای مشخص‌شده را تکمیل کنید (${allMissing.length} مورد)`, 'error')
       return
     }
+    setFieldErrors({})
     setBusy(true)
     try {
       const payloadValues = { ...values }
@@ -552,7 +657,48 @@ export default function OperatorStepFormsSection({
     )
   }
 
-  if (!forms.length && !showSlotsAdmin) return null
+  if (showInterviewSetup) {
+    return (
+      <div
+        className="operator-step-forms-section"
+        style={{
+          marginBottom: '1.25rem',
+          padding: '1rem 1.25rem',
+          background: '#eff6ff',
+          borderRadius: '10px',
+          borderRight: '4px solid #2563eb',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box',
+        }}
+        data-testid="operator-step-forms-section"
+      >
+        {isFall && <FallSemesterStepper currentState={currentState} />}
+        {isWinter && <WinterSemesterStepper currentState={currentState} />}
+        {stepSla?.deadlineAt && (
+          <SemesterPrepStepDeadlineBanner
+            deadlineAt={stepSla.deadlineAt}
+            overdue={!!stepSla.overdue}
+            warningRecipientsFa={stepSla.warningRecipientsFa}
+          />
+        )}
+        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#1e40af' }}>
+          مصاحبه‌ها: مصاحبه‌گرها و زمان‌بندی
+        </h4>
+        <SemesterPrepInterviewSetupPanel
+          instanceId={instanceId}
+          contextData={contextData}
+          role={role}
+          showToast={showToast}
+          onUpdated={onUpdated}
+          onPublished={onSemesterPrepPublished}
+        />
+      </div>
+    )
+  }
+
+  if (!forms.length) return null
 
   return (
     <div
@@ -582,13 +728,11 @@ export default function OperatorStepFormsSection({
       )}
 
       <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#1e40af' }}>
-        {showSlotsAdmin ? 'زمان‌بندی و ثبت اسلات‌های مصاحبه' : 'فرم این مرحله'}
+        فرم این مرحله
       </h4>
       <p style={{ fontSize: '0.82rem', color: '#334155', margin: '0 0 0.85rem', lineHeight: 1.65 }}>
         {roleLocked
           ? 'این مرحله در انتظار نقش مسئول دیگر است — فقط مشاهده.'
-          : showSlotsAdmin
-          ? 'ابتدا نوع برگزاری را مشخص کنید، سپس اسلات‌های قابل رزرو را در جدول پایین ثبت کنید. در پایان «ثبت فرم این مرحله» را بزنید و دکمهٔ اقدام را برای انتشار تقویم فشار دهید.'
           : isMarketingStep
           ? 'خروجی فعالیت‌های قبلی را بررسی کنید، PDF بگیرید و برای مدیر مارکتینگ ارسال کنید؛ سپس تأیید ارسال را تیک بزنید و فرم را ثبت کنید.'
           : canAdvanceOnSave
@@ -621,18 +765,33 @@ export default function OperatorStepFormsSection({
 
       {isFall && currentState === 'tuition_entry' && (
         <div
+          data-testid="tuition-finance-sync-banner"
           style={{
             marginBottom: '0.85rem',
-            padding: '0.65rem 0.85rem',
-            background: '#fef3c7',
+            padding: '0.75rem 0.9rem',
+            background: '#eff6ff',
             borderRadius: '6px',
-            border: '1px solid #fcd34d',
-            fontSize: '0.82rem',
-            fontWeight: 600,
-            color: '#92400e',
+            border: '1px solid #93c5fd',
+            fontSize: '0.85rem',
+            lineHeight: 1.7,
+            color: '#1e3a8a',
           }}
         >
-          هزینه مصاحبه ورود باید همخوان با شأن علمی انستیتو باشد.
+          <div style={{ fontWeight: 700, marginBottom: '0.35rem' }}>
+            یکپارچگی با داشبورد مالی
+          </div>
+          <p style={{ margin: '0 0 0.5rem' }}>
+            با ثبت این فرم، مبالغ شهریه، هزینهٔ مصاحبه و <strong>سایر پیش‌فرض‌های پرداخت</strong>{' '}
+            (درمان، کلاس، فاکتور پشتیبان، …) در <strong>داشبورد مالی</strong> نیز ذخیره می‌شوند (یک منبع
+            داده). هزینهٔ مصاحبه ورود باید همخوان با شأن علمی انستیتو باشد.
+          </p>
+          <p style={{ margin: 0 }}>
+            پس از به‌روزرسانی، برای ویرایش بعدی همین مبالغ یا تنظیمات اقساط به{' '}
+            <Link to="/panel/finance" style={{ fontWeight: 700, color: '#1d4ed8' }}>
+              پنل مالی
+            </Link>{' '}
+            بروید.
+          </p>
         </div>
       )}
 
@@ -677,13 +836,8 @@ export default function OperatorStepFormsSection({
         if (!visibleFields.length) return null
         return (
         <div key={form.code || form.name_fa} style={{ marginBottom: '1rem', minWidth: 0, maxWidth: '100%' }}>
-          {form.name_fa && !isMarketingStep && !showSlotsAdmin && (
+          {form.name_fa && !isMarketingStep && (
             <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem' }}>{form.name_fa}</div>
-          )}
-          {showSlotsAdmin && form.name_fa && (
-            <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: '#1e293b' }}>
-              {form.name_fa}
-            </div>
           )}
           {form.note_fa && !isMarketingStep && (
             <p style={{ fontSize: '0.82rem', color: '#475569', margin: '0 0 0.5rem', lineHeight: 1.6 }}>{form.note_fa}</p>
@@ -696,27 +850,14 @@ export default function OperatorStepFormsSection({
             editableFieldNames={editableFieldNames}
             disabled={!canEditForms}
             showToast={showToast}
+            fieldErrors={fieldErrors}
+            onRosterMemberCreated={handleRosterMemberCreated}
           />
         </div>
         )
       })}
 
-      {showSlotsAdmin && (
-        <div
-          style={{ marginTop: '1rem', marginBottom: '1rem' }}
-          data-testid="fall-interview-slots-admin"
-        >
-          <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.35rem', color: '#1e293b' }}>
-            اسلات‌های قابل رزرو
-          </div>
-          <p style={{ fontSize: '0.8rem', color: '#475569', margin: '0 0 0.75rem', lineHeight: 1.6 }}>
-            با مصاحبه‌گران هماهنگ کنید و برای هر نوبت، تاریخ و ساعت دقیق را در جدول زیر ثبت کنید.
-          </p>
-          <InterviewSlotsAdmin showToast={showToast} slotDefaults={interviewSlotDefaults} />
-        </div>
-      )}
-
-      {(forms.length > 0 || showSlotsAdmin) && canEditForms && (
+      {forms.length > 0 && canEditForms && (
         <div
           style={{
             marginTop: hasInlineActions ? '1rem' : 0,
@@ -756,8 +897,8 @@ export default function OperatorStepFormsSection({
                 <button
                   key={`${t.trigger_event}-${t.to_state || ''}`}
                   type="button"
-                  className="btn btn-primary btn-sm"
-                  data-testid="operator-step-forms-action"
+                  className="btn btn-primary btn-sm operator-step-forms-action"
+                  data-testid={`operator-transition-${t.trigger_event}`}
                   disabled={actionButtonsDisabled}
                   onClick={() => onActionTrigger(t)}
                 >

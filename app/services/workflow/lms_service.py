@@ -70,14 +70,40 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
         result = f"enrolled n={len(courses)} total={len(enrolled)}"
 
     elif action_type in ("load_available_courses", "load_term3_courses"):
-        courses = _course_list(ctx, action)
-        if not courses:
-            # Default catalog by course type / term when not provided.
-            term = 3 if action_type == "load_term3_courses" else int(student.current_term or 1)
-            courses = [f"{student.course_type}_term{term}_course{i}" for i in range(1, 4)]
-        lms["available_courses"] = courses
+        from app.services.term_course_offering_service import (
+            NO_OFFERINGS_REASON_FA,
+            merge_offerings_into_instance_context,
+            resolve_program_term_for_process,
+        )
+
+        program_term = await resolve_program_term_for_process(
+            instance.process_code, student=student
+        )
+        if program_term:
+            pk, tn = program_term
+            merged_ctx = await merge_offerings_into_instance_context(
+                db, instance.process_code, ctx, student=student
+            )
+            courses = merged_ctx.get("available_courses") or []
+            lms.update(merged_ctx.get("lms") or {})
+            if not courses:
+                lms["unavailable_reason_fa"] = merged_ctx.get(
+                    "course_selection_hint_fa"
+                ) or NO_OFFERINGS_REASON_FA
+        else:
+            courses = _course_list(ctx, action)
+        lms["available_courses"] = list(courses) if isinstance(courses, list) else []
         lms["available_loaded_at"] = C.now_iso()
-        result = f"available_courses n={len(courses)}"
+        result = f"available_courses n={len(lms['available_courses'])}"
+
+    elif action_type == "publish_courses_to_website":
+        from app.services.term_course_offering_service import publish_offerings_from_prep
+
+        pub = await publish_offerings_from_prep(db, instance, ctx)
+        lms["published"] = pub.get("published", False)
+        lms["published_at"] = C.now_iso()
+        lms["published_count"] = pub.get("count", 0)
+        result = f"publish_term_course_offerings n={pub.get('count', 0)}"
 
     elif action_type == "create_lms_course_links":
         courses = _course_list(ctx, action) or list(lms.get("enrolled_courses") or [])
@@ -99,13 +125,6 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
         track["updated_at"] = C.now_iso()
         lms["track_progress"] = track
         result = f"unlocked_course={nxt}"
-
-    elif action_type == "publish_courses_to_website":
-        lms["published"] = True
-        lms["published_at"] = C.now_iso()
-        published = list(lms.get("available_courses") or lms.get("enrolled_courses") or [])
-        lms["published_courses"] = published
-        result = f"published n={len(published)}"
 
     elif action_type in ("send_unlock_to_lms", "unlock_student_therapist_selection"):
         flags = dict(lms.get("access_flags") or {})

@@ -13,6 +13,8 @@ export default function ShamsiDatePicker({
   idPrefix = 'shamsi-date',
   compact = false,
   disabled = false,
+  minJy = null,
+  maxJy = null,
 }) {
   const { jy, jm, jd } = value
   const maxDay = useMemo(() => jalaaliMonthLength(jy, jm), [jy, jm])
@@ -27,10 +29,12 @@ export default function ShamsiDatePicker({
 
   const years = useMemo(() => {
     const set = new Set()
-    for (let y = 1398; y <= 1416; y += 1) set.add(y)
+    const lo = minJy != null ? minJy : 1398
+    const hi = maxJy != null ? maxJy : 1416
+    for (let y = lo; y <= hi; y += 1) set.add(y)
     set.add(jy)
     return [...set].sort((a, b) => a - b)
-  }, [jy])
+  }, [jy, minJy, maxJy])
 
   const days = useMemo(() => {
     const n = jalaaliMonthLength(jy, jm)
@@ -46,6 +50,7 @@ export default function ShamsiDatePicker({
         سال شمسی
         <select
           id={`${idPrefix}-y`}
+          data-testid={`${idPrefix}-y`}
           className="psf-input form-input"
           value={jy}
           disabled={disabled}
@@ -60,6 +65,7 @@ export default function ShamsiDatePicker({
         ماه
         <select
           id={`${idPrefix}-m`}
+          data-testid={`${idPrefix}-m`}
           className="psf-input form-input"
           value={jm}
           disabled={disabled}
@@ -74,6 +80,7 @@ export default function ShamsiDatePicker({
         روز
         <select
           id={`${idPrefix}-d`}
+          data-testid={`${idPrefix}-d`}
           className="psf-input form-input"
           value={Math.min(jd, maxDay)}
           disabled={disabled}

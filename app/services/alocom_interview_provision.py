@@ -103,14 +103,20 @@ async def _persist_interview_slot_links(
     slot: InterviewSlot,
     *,
     event_id: Optional[str],
-    meeting_link: str,
+    meeting_link: Optional[str],
     host_link: Optional[str],
     interviewer_link: Optional[str],
 ) -> None:
-    slot.meeting_link = meeting_link
-    slot.host_meeting_link = host_link or meeting_link
-    slot.interviewer_meeting_link = interviewer_link
-    slot.alocom_event_id = event_id
+    if meeting_link:
+        slot.meeting_link = meeting_link
+    elif not _link_has_join_token(slot.meeting_link):
+        slot.meeting_link = None
+    if host_link:
+        slot.host_meeting_link = host_link
+    if interviewer_link:
+        slot.interviewer_meeting_link = interviewer_link
+    if event_id:
+        slot.alocom_event_id = event_id
     await db.flush()
 
 
@@ -136,25 +142,34 @@ async def _build_links_for_event(
 
     if fetch_student_event_link:
         direct = await _register_event_role_link(client, event_id, user=student_user, role="participant")
-        if direct:
+        if direct and _link_has_join_token(direct):
             meeting_link = direct
-
-    if not meeting_link:
-        meeting_link = host_link or default_link
-
-    if fetch_student_event_link and not _link_has_join_token(meeting_link):
-        raise AlocomAPIError(
-            f"Alocom participant link missing join token for event_id={event_id}",
-            body={"default_link": default_link, "host_link": host_link},
-        )
-
-    if not meeting_link:
-        raise AlocomAPIError(f"Alocom did not return an interview meeting link for event_id={event_id}")
+        elif direct:
+            logger.warning(
+                "Alocom participant link without join token event_id=%s user=%s",
+                event_id,
+                student_user.id,
+            )
 
     if interviewer_user and not interviewer_meeting_link:
         interviewer_meeting_link = host_link or default_link
 
-    return meeting_link, host_link or meeting_link, interviewer_meeting_link
+    staff_link = interviewer_meeting_link or host_link or default_link
+    student_ok = bool(meeting_link and _link_has_join_token(meeting_link))
+    staff_ok = bool(staff_link and _link_has_join_token(staff_link))
+
+    if fetch_student_event_link and not student_ok and not staff_ok:
+        raise AlocomAPIError(
+            f"Alocom did not return tokenized interview links for event_id={event_id}",
+            body={"default_link": default_link, "host_link": host_link},
+        )
+    if not fetch_student_event_link and not staff_ok:
+        raise AlocomAPIError(
+            f"Alocom did not return a host/interviewer link for event_id={event_id}",
+            body={"default_link": default_link, "host_link": host_link},
+        )
+
+    return meeting_link or "", host_link or staff_link, interviewer_meeting_link
 
 
 async def provision_interview_slot_alocom(
@@ -193,30 +208,48 @@ async def provision_interview_slot_alocom(
 
     existing_event_id = (getattr(slot, "alocom_event_id", None) or "").strip()
     if existing_event_id:
-        meeting_link, host_link, interviewer_link = await _build_links_for_event(
-            client,
-            event_id=existing_event_id,
-            default_link=None,
-            student_user=student_user,
-            interviewer_user=interviewer_user,
-            fetch_student_event_link=fetch_student_event_link,
+        default_link = (
+            (getattr(slot, "host_meeting_link", None) or "").strip()
+            or (slot.meeting_link or "").strip()
+            or None
         )
-        await _persist_interview_slot_links(
-            db,
-            slot,
-            event_id=existing_event_id,
-            meeting_link=meeting_link,
-            host_link=host_link,
-            interviewer_link=interviewer_link,
-        )
-        return {
-            "alocom_event_id": existing_event_id,
-            "meeting_link": meeting_link,
-            "host_meeting_link": slot.host_meeting_link,
-            "interviewer_meeting_link": interviewer_link,
-            "slug": base_slug,
-            "recovered_existing_event": True,
-        }
+        try:
+            meeting_link, host_link, interviewer_link = await _build_links_for_event(
+                client,
+                event_id=existing_event_id,
+                default_link=default_link,
+                student_user=student_user,
+                interviewer_user=interviewer_user,
+                fetch_student_event_link=fetch_student_event_link,
+            )
+        except AlocomAPIError as recover_err:
+            logger.warning(
+                "Recover existing Alocom event failed slot=%s event=%s: %s — will create new event",
+                slot.id,
+                existing_event_id,
+                recover_err,
+            )
+            slot.alocom_event_id = None
+            if not _link_has_join_token(slot.meeting_link):
+                slot.meeting_link = None
+            await db.flush()
+        else:
+            await _persist_interview_slot_links(
+                db,
+                slot,
+                event_id=existing_event_id,
+                meeting_link=meeting_link or None,
+                host_link=host_link,
+                interviewer_link=interviewer_link,
+            )
+            return {
+                "alocom_event_id": existing_event_id,
+                "meeting_link": meeting_link,
+                "host_meeting_link": slot.host_meeting_link,
+                "interviewer_meeting_link": interviewer_link,
+                "slug": base_slug,
+                "recovered_existing_event": True,
+            }
 
     raw, slug = await _create_interview_alocom_event(
         client,
@@ -242,7 +275,7 @@ async def provision_interview_slot_alocom(
         db,
         slot,
         event_id=eid,
-        meeting_link=meeting_link,
+        meeting_link=meeting_link or None,
         host_link=host_link,
         interviewer_link=interviewer_link,
     )
@@ -310,7 +343,13 @@ async def refresh_interview_slot_alocom_links(
     if host_link:
         slot.host_meeting_link = host_link
     await db.flush()
-    return _link_has_join_token(slot.meeting_link)
+    student_ok = _link_has_join_token(slot.meeting_link)
+    iv_ok = _link_has_join_token(getattr(slot, "interviewer_meeting_link", None))
+    if student_ok:
+        return True
+    if slot.interviewer_user_id and iv_ok:
+        return True
+    return _link_has_join_token(getattr(slot, "host_meeting_link", None))
 
 
 async def ensure_interview_slot_host_meeting_link(

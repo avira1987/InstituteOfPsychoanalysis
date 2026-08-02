@@ -394,10 +394,15 @@ class StateMachineEngine:
 
         if instance.process_code == "introductory_course_registration":
             # ثبت نتیجهٔ مصاحبه/پیشروی مصاحبه‌گر نباید با قفل ثبت‌نام (انتشار تقویم) مسدود شود؛
+            # بررسی/اصلاح مدارک پروندهٔ از قبل شروع‌شده هم نباید با بسته بودن پنجرهٔ ثبت‌نام قطع شود.
             # قفل فقط برای پیشروی دانشجو (شروع/انتخاب درس/پرداخت) است.
             _gate_exempt_triggers = {
                 "interview_result_submitted",
                 "interview_time_reached",
+                "documents_submitted",
+                "documents_resubmitted",
+                "documents_approved",
+                "documents_rejected",
             }
             if (
                 actor_role != "interviewer"
@@ -643,7 +648,7 @@ class StateMachineEngine:
         # 3b. DB ممکن است required_role قدیمی داشته باشد؛ لیست انحصاری «فقط system» در متادیتا را اعمال کن.
         if actor_role == "student" and trigger_event in STUDENT_FORBIDDEN_TRIGGER_EVENTS:
             raise UnauthorizedError(
-                f"Trigger '{trigger_event}' is not available for students (system/callback only)."
+                "این اقدام برای دانشجو در دسترس نیست (فقط سیستم/فراخوانی خودکار)."
             )
 
         actor_user = await self.db.get(User, actor_id)
@@ -659,9 +664,11 @@ class StateMachineEngine:
         if not self.transition_manager.validate_role(
             transition, actor_role, trigger_event=trigger_event
         ):
+            from app.meta.role_labels import role_label_fa_only
+
             raise UnauthorizedError(
-                f"Role '{actor_role}' is not authorized to trigger '{trigger_event}' "
-                f"(requires '{transition.required_role}')"
+                f"نقش «{role_label_fa_only(actor_role)}» مجاز به انجام این اقدام نیست "
+                f"(نیاز به نقش «{role_label_fa_only(transition.required_role)}»)."
             )
 
         # 5. Apply transition
@@ -682,28 +689,68 @@ class StateMachineEngine:
             instance.is_completed = True
             instance.completed_at = datetime.now(timezone.utc)
 
-        # Update context data if payload provided
-        if payload and isinstance(payload, dict):
+        # Update context data if payload provided; document-review housekeeping
+        # also runs when payload is empty/None (e.g. auto-advance after resubmit).
+        _doc_triggers = (
+            "documents_approved",
+            "documents_resubmitted",
+            "documents_rejected",
+        )
+        if (payload and isinstance(payload, dict)) or trigger_event in _doc_triggers:
             ctx = dict(self._as_mapping(instance.context_data))
-            ctx.update(payload)
-            if instance.process_code == "educational_leave" and "leave_terms" in ctx:
-                try:
-                    ctx["leave_terms"] = int(ctx["leave_terms"])
-                except (TypeError, ValueError):
-                    pass
-            if instance.process_code == "full_education_leave" and "leave_terms" in ctx:
-                try:
-                    ctx["leave_terms"] = int(ctx["leave_terms"])
-                except (TypeError, ValueError):
-                    pass
+            if payload and isinstance(payload, dict):
+                ctx.update(payload)
+            if payload and isinstance(payload, dict):
+                if instance.process_code == "educational_leave" and "leave_terms" in ctx:
+                    try:
+                        ctx["leave_terms"] = int(ctx["leave_terms"])
+                    except (TypeError, ValueError):
+                        pass
+                if instance.process_code == "full_education_leave" and "leave_terms" in ctx:
+                    try:
+                        ctx["leave_terms"] = int(ctx["leave_terms"])
+                    except (TypeError, ValueError):
+                        pass
             if trigger_event == "documents_approved":
                 ctx.pop("__documents_resubmit_fields", None)
                 ctx.pop("__document_field_status", None)
                 ctx.pop("__document_field_rejection_notes", None)
+                ctx.pop("__auto_from_student_step_forms", None)
             elif trigger_event == "documents_resubmitted":
+                # مدارک قبلاً تأییدشده را نگه دار؛ فقط وضعیت موارد رد/ارسال‌مجدد را پاک کن
+                # تا اپراتور فقط مدارک جدید را دوباره تأیید/رد کند.
+                resubmit_raw = ctx.get("__documents_resubmit_fields") or []
+                resubmit_names = {
+                    str(x) for x in resubmit_raw if x is not None and str(x).strip()
+                }
+                prev_status = ctx.get("__document_field_status")
+                kept_status: dict = {}
+                if isinstance(prev_status, dict):
+                    for k, v in prev_status.items():
+                        key = str(k)
+                        if key in resubmit_names:
+                            continue
+                        if v == "approved":
+                            kept_status[key] = "approved"
+                if kept_status:
+                    ctx["__document_field_status"] = kept_status
+                else:
+                    ctx.pop("__document_field_status", None)
+                prev_notes = ctx.get("__document_field_rejection_notes")
+                if isinstance(prev_notes, dict) and resubmit_names:
+                    notes = {
+                        str(k): v
+                        for k, v in prev_notes.items()
+                        if str(k) not in resubmit_names
+                    }
+                    if notes:
+                        ctx["__document_field_rejection_notes"] = notes
+                    else:
+                        ctx.pop("__document_field_rejection_notes", None)
                 ctx.pop("__documents_resubmit_fields", None)
-                ctx.pop("__document_field_status", None)
-                ctx.pop("__document_field_rejection_notes", None)
+                ctx.pop("__auto_from_student_step_forms", None)
+            elif trigger_event == "documents_submitted":
+                ctx.pop("__auto_from_student_step_forms", None)
             elif (
                 trigger_event == "documents_rejected"
                 and instance.process_code == "introductory_course_registration"
@@ -732,7 +779,6 @@ class StateMachineEngine:
 
         if instance.process_code == "ta_track_change" and trigger_event == "approved":
             try:
-                from app.models.operational_models import Student
                 from app.services.ta_track_change_service import apply_track_change
 
                 student = await self.db.get(Student, instance.student_id)
@@ -818,17 +864,32 @@ class StateMachineEngine:
             )
 
         if (
-            instance.process_code == "introductory_course_registration"
-            and transition.to_state_code == "course_selection"
-            and trigger_event == "student_logged_in"
+            instance.process_code
+            in (
+                "introductory_course_registration",
+                "intro_second_semester_registration",
+                "comprehensive_course_registration",
+            )
+            and transition.to_state_code
+            in (
+                "course_selection",
+                "course_display",
+                "payment",
+                "payment_method",
+                "payment_processing",
+            )
         ):
-            from app.services.registration_readiness_service import (
-                merge_prep_courses_into_instance_context,
+            from app.services.term_course_offering_service import (
+                merge_offerings_into_instance_context,
             )
 
-            ctx_cs = await merge_prep_courses_into_instance_context(
+            st_stmt = select(Student).where(Student.id == instance.student_id)
+            student = (await self.db.execute(st_stmt)).scalar_one_or_none()
+            ctx_cs = await merge_offerings_into_instance_context(
                 self.db,
+                instance.process_code,
                 self._as_mapping(instance.context_data),
+                student=student,
             )
             instance.context_data = ctx_cs
             flag_modified(instance, "context_data")
@@ -1254,8 +1315,20 @@ class StateMachineEngine:
             from app.services.registration_readiness_service import check_intro_registration_gate
 
             gate = await check_intro_registration_gate(self.db)
+            # وقتی دروازه بسته است، فقط ترنزیشن‌های مستثنی (مدارک/مصاحبه) را برگردان؛
+            # وگرنه اپراتور در documents_review دکمه‌های تأیید/رد را نمی‌بیند.
+            _gate_exempt_list_triggers = {
+                "interview_result_submitted",
+                "interview_time_reached",
+                "documents_submitted",
+                "documents_resubmitted",
+                "documents_approved",
+                "documents_rejected",
+            }
             if not gate.allowed:
-                return []
+                transitions = [
+                    t for t in transitions if t.trigger_event in _gate_exempt_list_triggers
+                ]
 
         portal_registration = actor_role in ("student", "applicant")
         has_booked_slot = False
@@ -1321,9 +1394,28 @@ class StateMachineEngine:
             ctx_out = await self._merge_session_payment_financial_context(instance, ctx_out)
         if instance.process_code in (
             "introductory_course_registration",
+            "intro_second_semester_registration",
             "comprehensive_course_registration",
         ):
             ctx_out = await self._merge_registration_payment_context_for_status(instance, ctx_out)
+            try:
+                from app.services.term_course_offering_service import (
+                    merge_offerings_into_instance_context,
+                )
+
+                st_stmt = select(Student).where(Student.id == instance.student_id)
+                student = (await self.db.execute(st_stmt)).scalar_one_or_none()
+                ctx_out = await merge_offerings_into_instance_context(
+                    self.db,
+                    instance.process_code,
+                    ctx_out,
+                    student=student,
+                )
+            except Exception:
+                logger.exception(
+                    "merge_offerings_into_instance_context for status failed (instance=%s)",
+                    instance.id,
+                )
         if instance.process_code == "therapy_completion":
             try:
                 fresh = await self._therapy_completion_resolved_fields(instance)
@@ -1828,9 +1920,18 @@ class StateMachineEngine:
         registration_tuition_invoice_toman: float,
     ) -> Tuple[dict, bool]:
         """مبلغ پرداخت مصاحبه/شهریه اگر در context نباشد از پیش‌فرض‌های مالی سامانه پر می‌کند."""
-        if process_code not in ("introductory_course_registration", "comprehensive_course_registration"):
+        if process_code not in (
+            "introductory_course_registration",
+            "intro_second_semester_registration",
+            "comprehensive_course_registration",
+        ):
             return ctx, False
-        if current_state not in ("interview_payment", "payment"):
+        if current_state not in (
+            "interview_payment",
+            "payment",
+            "payment_method",
+            "payment_processing",
+        ):
             return ctx, False
 
         def _valid_rial(v) -> bool:
@@ -1847,7 +1948,7 @@ class StateMachineEngine:
                 out["payment_amount_rial"] = fee
                 out["invoice_amount"] = float(fee) / 10.0
                 changed = True
-        elif current_state == "payment":
+        elif current_state in ("payment", "payment_method", "payment_processing"):
             if not _valid_rial(out.get("payment_amount_rial")):
                 tom = float(registration_tuition_invoice_toman)
                 out["invoice_amount"] = tom
@@ -1857,18 +1958,27 @@ class StateMachineEngine:
 
     async def persist_registration_payment_defaults_if_needed(self, instance: ProcessInstance) -> bool:
         """پس از انتقال یا برای نمونهٔ قدیمی: ذخیرهٔ مبلغ در DB اگر خالی باشد."""
-        from app.services.financial_program_defaults_service import get_effective_financial_program_defaults
+        from app.services.term_course_offering_service import resolve_registration_fees
 
-        fd = await get_effective_financial_program_defaults(self.db)
         ctx = dict(self._as_mapping(instance.context_data))
+        fees = await resolve_registration_fees(
+            self.db,
+            instance.process_code,
+            ctx,
+            instance.current_state_code or "",
+        )
         new_ctx, changed = self._apply_registration_payment_defaults_to_ctx(
             instance.process_code,
             instance.current_state_code,
             ctx,
-            registration_interview_fee_rial=int(fd["registration_interview_fee_rial"]),
-            registration_tuition_invoice_toman=float(fd["registration_tuition_invoice_toman"]),
+            registration_interview_fee_rial=int(fees["registration_interview_fee_rial"]),
+            registration_tuition_invoice_toman=float(fees["registration_tuition_invoice_toman"]),
         )
-        if changed:
+        if fees.get("fee_source"):
+            new_ctx["fee_source"] = fees["fee_source"]
+        if fees.get("tuition_reason_fa"):
+            new_ctx["tuition_reason_fa"] = fees["tuition_reason_fa"]
+        if changed or fees.get("fee_source"):
             instance.context_data = new_ctx
             flag_modified(instance, "context_data")
         return changed
@@ -1877,16 +1987,25 @@ class StateMachineEngine:
         self, instance: ProcessInstance, merged: dict
     ) -> dict:
         """فقط برای پاسخ status/dashboard — بدون نوشتن DB."""
-        from app.services.financial_program_defaults_service import get_effective_financial_program_defaults
+        from app.services.term_course_offering_service import resolve_registration_fees
 
-        fd = await get_effective_financial_program_defaults(self.db)
+        fees = await resolve_registration_fees(
+            self.db,
+            instance.process_code,
+            merged,
+            instance.current_state_code or "",
+        )
         out, _ = self._apply_registration_payment_defaults_to_ctx(
             instance.process_code,
             instance.current_state_code,
             merged,
-            registration_interview_fee_rial=int(fd["registration_interview_fee_rial"]),
-            registration_tuition_invoice_toman=float(fd["registration_tuition_invoice_toman"]),
+            registration_interview_fee_rial=int(fees["registration_interview_fee_rial"]),
+            registration_tuition_invoice_toman=float(fees["registration_tuition_invoice_toman"]),
         )
+        if fees.get("fee_source"):
+            out["fee_source"] = fees["fee_source"]
+        if fees.get("tuition_reason_fa"):
+            out["tuition_reason_fa"] = fees["tuition_reason_fa"]
         return out
 
     async def _merge_therapy_session_reduction_instance_context(

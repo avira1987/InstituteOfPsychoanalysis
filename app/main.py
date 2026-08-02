@@ -382,8 +382,10 @@ from app.api.ticket_routes import router as ticket_router
 from app.api.reports_routes import router as reports_router
 from app.api.panel_routes import router as panel_router
 from app.api.interview_slots_routes import router as interview_slots_router
+from app.api.educational_therapist_slots_routes import router as educational_therapist_slots_router
 from app.api.alocom_routes import router as alocom_router
 from app.api.dynamic_form_routes import router as dynamic_forms_router, nav_router as portal_nav_dynamic_router
+from app.flow_through.routes import router as flow_through_router
 
 app.include_router(auth_router)
 app.include_router(process_router)
@@ -401,7 +403,9 @@ app.include_router(panel_router)
 app.include_router(dynamic_forms_router)
 app.include_router(portal_nav_dynamic_router)
 app.include_router(interview_slots_router)
+app.include_router(educational_therapist_slots_router)
 app.include_router(alocom_router)
+app.include_router(flow_through_router)
 
 # ─── Serve uploaded files (avatars) ─────────────────────────────
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / settings.UPLOAD_DIR

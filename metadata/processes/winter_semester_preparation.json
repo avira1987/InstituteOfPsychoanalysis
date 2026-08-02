@@ -84,7 +84,7 @@
       "code": "interview_scheduling",
       "name_fa": "زمان‌بندی و ثبت اسلات‌های مصاحبه",
       "type": "intermediate",
-      "assigned_role": "site_manager",
+      "assigned_role": "staff",
       "sla_days": 3,
       "sla_warning_recipients": [
         "deputy_education_director"
@@ -169,7 +169,7 @@
       "description_fa": "مکان‌ها و تایید مدرسین نهایی شد",
       "actions": [
         {
-          "type": "publish_courses_to_website"
+          "type": "publish_term_course_offerings"
         },
         {
           "type": "notification",
@@ -270,7 +270,7 @@
       "from": "interview_scheduling",
       "to": "published",
       "trigger": "interview_times_set",
-      "required_role": "site_manager",
+      "required_role": "staff",
       "description_fa": "زمان‌بندی مصاحبه‌های زمستان ثبت شد — انتشار و اطلاع‌رسانی",
       "actions": [
         {
@@ -410,7 +410,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "instructor",
-                "filter_by_column": "course_name"
+                "filter_by_column": "track"
               }
             },
             {
@@ -422,7 +422,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "teaching_assistant",
-                "filter_by_column": "course_name"
+                "filter_by_column": "track"
               }
             }
           ]
@@ -512,11 +512,11 @@
           "label_fa": "مصاحبه‌کنندگان دوره جامع",
           "type": "multi_select",
           "required": true,
-          "creatable": true,
-          "note_fa": "از فهرست انتخاب کنید یا با جست‌وجو نام مصاحبه‌گر جدید را اضافه کنید.",
+          "creatable": false,
+          "note_fa": "از میان کارمندان اتوماسیون انتخاب کنید.",
           "options_source": {
             "type": "users",
-            "role": "interviewer",
+            "roles": ["interviewer", "staff"],
             "is_active": true
           }
         },
@@ -534,26 +534,26 @@
         },
         {
           "name": "introductory_interviewers",
-          "label_fa": "مصاحبه‌کنندگان دوره مقدماتی",
+          "label_fa": "مصاحبه‌کنندگان دوره آشنایی",
           "type": "multi_select",
           "required": true,
-          "creatable": true,
-          "note_fa": "از فهرست انتخاب کنید یا با جست‌وجو نام مصاحبه‌گر جدید را اضافه کنید.",
+          "creatable": false,
+          "note_fa": "از میان کارمندان اتوماسیون انتخاب کنید.",
           "options_source": {
             "type": "users",
-            "role": "interviewer",
+            "roles": ["interviewer", "staff"],
             "is_active": true
           }
         },
         {
           "name": "introductory_date_range_start",
-          "label_fa": "شروع بازه مصاحبه دوره مقدماتی",
+          "label_fa": "شروع بازه مصاحبه دوره آشنایی",
           "type": "date",
           "required": true
         },
         {
           "name": "introductory_date_range_end",
-          "label_fa": "پایان بازه مصاحبه دوره مقدماتی",
+          "label_fa": "پایان بازه مصاحبه دوره آشنایی",
           "type": "date",
           "required": true
         }
@@ -563,7 +563,7 @@
       "code": "winter_interview_scheduling_form",
       "name_fa": "تنظیمات برگزاری مصاحبه",
       "used_in_state": "interview_scheduling",
-      "editable_by": ["admin", "staff", "site_manager", "deputy_education"],
+      "editable_by": ["admin", "staff", "deputy_education"],
       "editable_anytime": true,
       "note_fa": "برای مصاحبهٔ آنلاین، لینک جلسه پس از پرداخت هزینهٔ مصاحبه توسط دانشجو به‌صورت خودکار ساخته می‌شود و دکمهٔ «ورود به جلسه» در پروفایل دانشجو و مصاحبه‌گر نمایش داده می‌شود.",
       "fields": [

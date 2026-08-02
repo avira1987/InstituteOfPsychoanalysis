@@ -69,3 +69,13 @@ class TestLiveTherapyObservationCourseCompletionFlow:
         assert instance.current_state_code == "grades_locked"
         assert instance.is_completed is True
 
+    async def test_live_therapy_has_student_final_report_form(
+        self, db_session: AsyncSession,
+    ):
+        """متادیتا شامل فرم آپلود گزارش PDF دانشجو باشد."""
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        process_file = processes_dir / "live_therapy_observation_course_completion.json"
+        data = process_file.read_text(encoding="utf-8")
+        assert "live_therapy_observation_final_report_form" in data
+        assert "final_report_pdf" in data
+

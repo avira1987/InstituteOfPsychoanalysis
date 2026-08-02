@@ -1,7 +1,7 @@
 /**
  * حل کردن گزینه‌های checkbox_list از روی source و context_data نمونه فرایند.
  */
-import { INTRODUCTORY_TERM1_COURSES } from './introCourseCatalog'
+import { NO_OFFERINGS_HINT_FA, optionsFromContext } from './introCourseCatalog'
 
 /** نرمال‌سازی نوع پذیرش از پرونده */
 function resolveAdmissionKind(contextData) {
@@ -21,73 +21,77 @@ function parseAllowedCount(ctx) {
   return Number.isFinite(x) && x > 0 ? x : null
 }
 
+function completedCourseCodes(ctx) {
+  const out = new Set()
+  const lms = ctx.lms && typeof ctx.lms === 'object' ? ctx.lms : {}
+  const enrolled = lms.enrolled_courses || ctx.completed_courses || ctx.enrolled_courses || []
+  if (!Array.isArray(enrolled)) return out
+  for (const item of enrolled) {
+    if (item && typeof item === 'object') {
+      const code = item.code || item.course_code
+      if (code) out.add(String(code))
+    } else if (item != null) {
+      out.add(String(item))
+    }
+  }
+  return out
+}
+
+function filterByPrerequisites(options, completed) {
+  return options.filter((opt) => {
+    const prereqs = opt.prerequisite_codes
+    if (!Array.isArray(prereqs) || !prereqs.length) return true
+    return prereqs.every((p) => completed.has(String(p)))
+  })
+}
+
+function applyAdmissionFilter(options, contextData, termNumber = 1) {
+  const kind = resolveAdmissionKind(contextData)
+  if (!kind) {
+    return {
+      options: [],
+      maxSelect: null,
+      hint: 'نتیجهٔ مصاحبه در پرونده ثبت نشده است؛ تا زمان ثبت نتیجه توسط مصاحبه‌گر انتخاب درس ممکن نیست.',
+      useFallback: false,
+    }
+  }
+  if (!options.length) {
+    return {
+      options: [],
+      maxSelect: null,
+      hint: contextData?.course_selection_hint_fa || NO_OFFERINGS_HINT_FA,
+      useFallback: false,
+    }
+  }
+  if (kind === 'single_course') {
+    const pick = termNumber <= 1 ? options.slice(0, 1) : options.slice(1, 2).length ? options.slice(1, 2) : options.slice(0, 1)
+    return { options: pick, maxSelect: 1, hint: null, useFallback: false }
+  }
+  const cap = parseAllowedCount(contextData)
+  const maxSelect = cap != null ? cap : options.length
+  return { options: [...options], maxSelect, hint: null, useFallback: false }
+}
+
 /**
  * @returns {{ options: Array<{value: string, label_fa: string}>|null, maxSelect: number|null, hint: string|null, useFallback: boolean }}
  */
 export function resolveCheckboxListOptions(field, contextData) {
   const src = field?.source
+  const ctx = contextData && typeof contextData === 'object' ? contextData : {}
+
   if (src === 'available_courses_by_admission_type') {
-    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
-    const kind = resolveAdmissionKind(ctx)
-    const all = INTRODUCTORY_TERM1_COURSES
-    const offeredRaw = ctx.available_courses || ctx.lms?.available_courses
-    const offeredSet =
-      Array.isArray(offeredRaw) && offeredRaw.length
-        ? new Set(offeredRaw.map((c) => String(c)))
-        : null
-    let options
-    let maxSelect
-    let hint = null
-
-    if (!kind) {
-      return {
-        options: [],
-        maxSelect: null,
-        hint: 'نتیجهٔ مصاحبه در پرونده ثبت نشده است؛ تا زمان ثبت نتیجه توسط مصاحبه‌گر انتخاب درس ممکن نیست.',
-        useFallback: true,
-      }
-    }
-
-    if (kind === 'single_course') {
-      options = all.filter(o => o.value === 'theory_1')
-      maxSelect = 1
-    } else if (kind === 'conditional_therapy' || kind === 'full_admission') {
-      options = [...all]
-      const cap = parseAllowedCount(ctx)
-      maxSelect = cap != null ? cap : 5
-    } else {
-      options = []
-      maxSelect = null
-      hint = 'نوع پذیرش شناخته نشد.'
-      return { options, maxSelect, hint, useFallback: true }
-    }
-
-    if (offeredSet) {
-      options = options.filter((o) => offeredSet.has(o.value))
-      if (!options.length) {
-        return {
-          options: [],
-          maxSelect: null,
-          hint: 'لیست دروس این ترم از آماده‌سازی ترم منتشر نشده یا با نوع پذیرش شما هم‌خوان نیست.',
-          useFallback: true,
-        }
-      }
-    }
-
-    return { options, maxSelect, hint, useFallback: false }
+    const options = optionsFromContext(ctx)
+    return applyAdmissionFilter(options, ctx, 1)
   }
 
   if (src === 'filtered_courses_by_admission_type_and_prerequisites') {
-    return {
-      options: null,
-      maxSelect: null,
-      hint: 'لیست دروس این ترم از سامانهٔ آموزشی بارگذاری نشده؛ در صورت نیاز مقدار را دستی ثبت کنید یا با پذیرش هماهنگ کنید.',
-      useFallback: true,
-    }
+    let options = optionsFromContext(ctx)
+    const completed = completedCourseCodes(ctx)
+    options = filterByPrerequisites(options, completed)
+    return applyAdmissionFilter(options, ctx, 2)
   }
 
   if (src === 'lms_available_courses') {
-    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const lms = ctx.lms && typeof ctx.lms === 'object' ? ctx.lms : {}
     const raw =
       lms.available_courses ||
@@ -95,12 +99,12 @@ export function resolveCheckboxListOptions(field, contextData) {
       ctx.available_courses ||
       ctx.selected_courses ||
       []
-    const codes = Array.isArray(raw) ? raw : []
-    const options = codes
-      .filter(x => x != null && String(x).trim() !== '')
-      .map(code => {
+    const labelMap = ctx.course_labels || {}
+    const options = (Array.isArray(raw) ? raw : [])
+      .filter((x) => x != null && String(x).trim() !== '')
+      .map((code) => {
         const s = String(code)
-        return { value: s, label_fa: s }
+        return { value: s, label_fa: labelMap[s] || s }
       })
     const maxSelect =
       typeof field?.max_select === 'number' && field.max_select > 0
@@ -113,14 +117,13 @@ export function resolveCheckboxListOptions(field, contextData) {
       maxSelect,
       hint:
         options.length === 0
-          ? 'هنوز درسی در پروندهٔ آموزشی شما ثبت نشده؛ پس از ثبت‌نام ترم یا با پذیرش هماهنگ کنید.'
+          ? ctx.course_selection_hint_fa || lms.unavailable_reason_fa || NO_OFFERINGS_HINT_FA
           : null,
-      useFallback: options.length === 0,
+      useFallback: false,
     }
   }
 
   if (src === 'therapy_reduction_upcoming_sessions') {
-    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const raw = ctx.upcoming_therapy_sessions
     const options = Array.isArray(raw) ? raw : []
     const minR = ctx.therapy_reduction_min_remove_count
@@ -138,7 +141,6 @@ export function resolveCheckboxListOptions(field, contextData) {
   }
 
   if (src === 'supervision_reduction_upcoming_sessions') {
-    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const raw = ctx.upcoming_supervision_sessions
     const options = Array.isArray(raw) ? raw : []
     let weekly = ctx.supervision_weekly_sessions
@@ -160,7 +162,6 @@ export function resolveCheckboxListOptions(field, contextData) {
   }
 
   if (src === 'student_cancellation_upcoming_sessions') {
-    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const raw = ctx.upcoming_cancellation_sessions
     const options = Array.isArray(raw) ? raw : []
     return {
@@ -176,7 +177,6 @@ export function resolveCheckboxListOptions(field, contextData) {
   }
 
   if (src === 'student_supervision_upcoming_sessions') {
-    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const raw = ctx.upcoming_cancellation_sessions
     const options = Array.isArray(raw) ? raw : []
     const supCount = ctx.active_supervisor_count != null ? Number(ctx.active_supervisor_count) : 1
@@ -195,7 +195,6 @@ export function resolveCheckboxListOptions(field, contextData) {
   }
 
   if (src === 'supervisor_sessions_next_4_weeks') {
-    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const raw = ctx.supervisor_sessions_next_4_weeks
     const options = Array.isArray(raw) ? raw : []
     const maxSel =
@@ -217,7 +216,6 @@ export function resolveCheckboxListOptions(field, contextData) {
   }
 
   if (src === 'assignable_courses') {
-    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const raw = ctx.assignable_courses
     const options = Array.isArray(raw) ? raw : []
     return {
@@ -233,7 +231,6 @@ export function resolveCheckboxListOptions(field, contextData) {
   }
 
   if (src === 'class_cancellable_sessions') {
-    const ctx = contextData && typeof contextData === 'object' ? contextData : {}
     const raw = ctx.cancellable_sessions || ctx.upcoming_cancellable_sessions
     const options = (Array.isArray(raw) ? raw : []).filter((o) => o?.cancellable !== false)
     return {
@@ -254,7 +251,7 @@ export function resolveCheckboxListOptions(field, contextData) {
 /** مقدار ذخیره‌شده را به آرایهٔ کد درس تبدیل می‌کند */
 export function normalizeSelectedCoursesValue(raw) {
   if (Array.isArray(raw)) {
-    return raw.filter(x => x != null && String(x).trim() !== '').map(x => String(x))
+    return raw.filter((x) => x != null && String(x).trim() !== '').map((x) => String(x))
   }
   if (raw == null || raw === '') return []
   if (typeof raw === 'string') {
@@ -267,7 +264,7 @@ export function normalizeSelectedCoursesValue(raw) {
         return []
       }
     }
-    return s.split(/[,،]/).map(x => x.trim()).filter(Boolean)
+    return s.split(/[,،]/).map((x) => x.trim()).filter(Boolean)
   }
   return []
 }

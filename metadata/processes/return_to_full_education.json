@@ -139,6 +139,9 @@
       "description_fa": "درمانگر و برنامه هفتگی انتخاب شد",
       "actions": [
         {
+          "type": "book_educational_therapist_slots"
+        },
+        {
           "type": "apply_return_therapy_session_schedule"
         }
       ]
@@ -288,7 +291,14 @@
         {
           "name": "therapist_id",
           "label_fa": "درمانگر آموزشی",
-          "type": "therapist_select",
+          "type": "therapist_slot_picker",
+          "required": true,
+          "description_fa": "درمانگر و روز/ساعت جلسات هفتگی را از شیت وقت‌های آزاد انتخاب کنید."
+        },
+        {
+          "name": "slot_ids",
+          "label_fa": "اسلات‌های هفتگی",
+          "type": "hidden",
           "required": true
         },
         {

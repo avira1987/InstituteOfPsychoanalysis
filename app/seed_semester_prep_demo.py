@@ -34,6 +34,9 @@ logger = logging.getLogger(__name__)
 
 DEMO_PREP_TAG = "semester_prep_demo_seed"
 
+# تاریخ ثابت برای دمو — با هر اجرای seed یا دیپلوی جابه‌جا نمی‌شود.
+_DEMO_CALENDAR_REF = date(2026, 4, 1)
+
 FALL_TRIGGERS: list[tuple[str, str]] = [
     ("calendar_submitted", "course_committee"),
     ("tuition_submitted", "deputy_education"),
@@ -62,16 +65,18 @@ _PREP_STAFF_PHONES: dict[str, str] = {
 
 
 def _demo_calendar_context(*, ref: date | None = None) -> dict[str, Any]:
-    """تاریخ‌های نسبی برای تقویم دو ترم (قابل نمایش در فرم‌ها)."""
-    base = ref or date.today()
+    """تاریخ‌های ثابت/نسبی برای تقویم دو ترم (قابل نمایش در فرم‌ها)."""
+    base = ref or _DEMO_CALENDAR_REF
     fall_start = base + timedelta(days=75)
     fall_end = fall_start + timedelta(days=120)
     winter_start = fall_end + timedelta(days=14)
     winter_end = winter_start + timedelta(days=130)
     reg_start = fall_start - timedelta(days=30)
     reg_end = fall_start - timedelta(days=7)
-    intern_dl = fall_start - timedelta(days=21)
-    ta_dl = fall_start - timedelta(days=14)
+    intern_dl_start = fall_start - timedelta(days=28)
+    intern_dl_end = fall_start - timedelta(days=21)
+    ta_dl_start = fall_start - timedelta(days=21)
+    ta_dl_end = fall_start - timedelta(days=14)
     nowruz_start = winter_end - timedelta(days=45)
     nowruz_end = nowruz_start + timedelta(days=18)
 
@@ -85,8 +90,10 @@ def _demo_calendar_context(*, ref: date | None = None) -> dict[str, Any]:
         "winter_end_date": iso(winter_end),
         "registration_payment_window_start": iso(reg_start),
         "registration_payment_window_end": iso(reg_end),
-        "intern_interview_deadline": iso(intern_dl),
-        "teaching_assistant_interview_deadline": iso(ta_dl),
+        "intern_interview_deadline_start": iso(intern_dl_start),
+        "intern_interview_deadline_end": iso(intern_dl_end),
+        "teaching_assistant_interview_deadline_start": iso(ta_dl_start),
+        "teaching_assistant_interview_deadline_end": iso(ta_dl_end),
         "nowruz_holiday_start": iso(nowruz_start),
         "nowruz_holiday_end": iso(nowruz_end),
         "fall_break_periods": [{"start": iso(fall_start + timedelta(days=40)), "end": iso(fall_start + timedelta(days=47))}],
@@ -100,6 +107,13 @@ def _demo_tuition_context() -> dict[str, Any]:
         "per_unit_cost_comprehensive": 22_000_000,
         "interview_fee_introductory": 3_500_000,
         "interview_fee_comprehensive": 4_500_000,
+        "registration_interview_fee_rial": 3_500_000,
+        "registration_tuition_invoice_toman": 120_000_000,
+        "start_therapy_first_session_fee_rial": 10_000_000,
+        "extra_session_fee_rial": 7_500_000,
+        "default_therapy_session_fee_toman": 500_000,
+        "class_session_fee_toman": 0,
+        "course_session_fee_toman": 0,
     }
 
 
@@ -152,7 +166,7 @@ def _demo_marketing_context() -> dict[str, Any]:
 
 
 def _demo_interviewer_context(interviewer_label: str = "مصاحبه‌گر دمو") -> dict[str, Any]:
-    base = date.today() + timedelta(days=45)
+    base = _DEMO_CALENDAR_REF + timedelta(days=45)
     end = base + timedelta(days=21)
     return {
         "comprehensive_interviewers": [interviewer_label],
@@ -289,7 +303,7 @@ async def seed_semester_prep_demo(
             "courses_winter": courses_winter,
             **_demo_marketing_context(),
             **interviewer_ctx,
-            "interview_scheduling_notes": "دمو — منتظر ثبت اسلات توسط مسئول سایت",
+            "interview_scheduling_notes": "دمو — منتظر ثبت اسلات توسط مدیر داخلی",
         },
     )
 
@@ -312,6 +326,10 @@ async def seed_semester_prep_demo(
     fall_final = await engine.get_process_instance(fall_inst.id)
     assert fall_final.current_state_code == "published"
     assert fall_final.is_completed is True
+
+    from app.services.term_course_offering_service import publish_offerings_from_prep
+
+    await publish_offerings_from_prep(db, fall_final, fall_final.context_data)
 
     winter_hit = await ensure_winter_prep_started(
         db, actor_id=actors.admin_id, actor_role="admin"
@@ -353,6 +371,7 @@ async def seed_semester_prep_demo(
         await _exec(engine, db, winter_inst.id, trigger, actor, role)
 
     winter_final = await engine.get_process_instance(winter_inst.id)
+    await publish_offerings_from_prep(db, winter_final, winter_final.context_data)
 
     return {
         "removed_prior_instances": removed,

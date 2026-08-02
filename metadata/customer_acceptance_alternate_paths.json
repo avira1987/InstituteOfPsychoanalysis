@@ -148,13 +148,6 @@
       "frontend": "admin-ui/src/components/StudentInstructorEvaluationPanel.jsx",
       "mechanism": "StudentInstructorEvaluationPanel per-course anonymous API + InstructorEvaluationResultsPanel + InstructorEvaluationCommitteePanel"
     },
-    "live_supervision_course_completion": {
-      "states": [
-        "mirror_implementation_pending"
-      ],
-      "frontend": "admin-ui/src/components/StudentLiveSupervisionMirrorWritePanel.jsx",
-      "mechanism": "StudentPortal + ProcessStepForms mirror_write_submitted"
-    },
     "article_writing_completion": {
       "states": [
         "class_closed_student"
@@ -171,11 +164,12 @@
       "mechanism": "StudentQuestCard generic transitions + guidance labels"
     },
     "theory_course_completion": {
-      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
-      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
-      "backend": "app/api/process/routes.py",
+      "frontend": "admin-ui/src/components/TheoryCourseCompletionPanel.jsx",
+      "mechanism": "StaffPortal instruction lane + TheoryCourseCompletionPanel + OperatorStepFormsSection",
+      "backend": "app/services/theory_course_completion_service.py",
       "states": [
-        "grades_entry"
+        "session_18_entry",
+        "qualitative_eval_pending"
       ]
     },
     "skills_course_completion": {
@@ -190,9 +184,9 @@
       ]
     },
     "film_observation_course_completion": {
-      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
-      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
-      "backend": "app/api/process/routes.py",
+      "frontend": "admin-ui/src/components/FilmObservationCourseCompletionPanel.jsx",
+      "mechanism": "StaffPortal instruction lane + FilmObservationCourseCompletionPanel + triggerTransition",
+      "backend": "app/services/film_observation_course_service.py",
       "states": [
         "grades_entry"
       ]
@@ -208,9 +202,9 @@
       ]
     },
     "live_therapy_observation_course_completion": {
-      "frontend": "admin-ui/src/components/OperatorProcessInstancePanel.jsx",
-      "mechanism": "StaffPortal instruction lane + OperatorStepFormsSection + triggerTransition",
-      "backend": "app/api/process/routes.py",
+      "frontend": "admin-ui/src/components/LiveTherapyObservationCourseCompletionPanel.jsx",
+      "mechanism": "StaffPortal instruction lane + LiveTherapyObservationCourseCompletionPanel + triggerTransition",
+      "backend": "app/services/live_therapy_observation_course_service.py",
       "states": [
         "grades_entry"
       ]
@@ -389,13 +383,15 @@
     "introductory_term_end": {
       "frontend": "admin-ui/src/components/StudentIntroductoryTermEndPanel.jsx",
       "secondary_frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
+      "staff_frontend": "admin-ui/src/components/AcademicDeclineFollowupForm.jsx",
       "field": "extra_data.documents",
-      "note_fa": "پنل راهنمای فرایند ۳۲ در تب فرایندها؛ کارنامه ترمی/تجمیعی در تب پروفایل پس از generate_term_transcript"
+      "note_fa": "پنل راهنمای فرایند ۳۲ با جدول نمرات و کارنامه درون‌صفحه؛ فرم پیگیری افت تحصیلی در پنل پذیرش"
     },
     "comprehensive_term_end": {
-      "frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
+      "frontend": "admin-ui/src/components/StudentComprehensiveTermEndPanel.jsx",
+      "secondary_frontend": "admin-ui/src/components/StudentTranscriptsPanel.jsx",
       "field": "extra_data.documents",
-      "note_fa": "کارنامه ترمی/تجمیعی پس از generate_term_transcript"
+      "note_fa": "پنل اختصاصی فرایند ۳۶ با جدول نمرات و کارنامه درون‌صفحه؛ کارنامه در تب پروفایل نیز در دسترس است"
     },
     "introductory_course_completion": {
       "frontend": "admin-ui/src/components/StudentIntroductoryCourseCompletionPanel.jsx",
@@ -410,19 +406,22 @@
       "note_fa": "شمارنده غیبت N از ۵ و وضعیت دروس"
     },
     "theory_course_completion": {
-      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
-      "field": "extra_data.lms",
-      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+      "frontend": "admin-ui/src/components/StudentTheoryCourseCompletionPanel.jsx",
+      "secondary_frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms.enrolled_courses",
+      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس — پنل اختصاصی + جدول LMS"
     },
     "skills_course_completion": {
-      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
-      "field": "extra_data.lms",
-      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+      "frontend": "admin-ui/src/components/StudentSkillsCourseCompletionPanel.jsx",
+      "secondary_frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms.enrolled_courses",
+      "note_fa": "نمره نهایی و Pass/Fail — پنل اختصاصی + جدول LMS"
     },
     "film_observation_course_completion": {
-      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
-      "field": "extra_data.lms",
-      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+      "frontend": "admin-ui/src/components/StudentFilmObservationCourseCompletionPanel.jsx",
+      "secondary_frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms.enrolled_courses",
+      "note_fa": "آپلود گزارش PDF و نمره نهایی"
     },
     "live_supervision_course_completion": {
       "frontend": "admin-ui/src/components/StudentLiveSupervisionCoursePanel.jsx",
@@ -430,9 +429,10 @@
       "note_fa": "پیشرفت ۱۵+۳ و پرداخت جبرانی"
     },
     "live_therapy_observation_course_completion": {
-      "frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
-      "field": "extra_data.lms",
-      "note_fa": "نمره/وضعیت درس پس از ثبت مدرس"
+      "frontend": "admin-ui/src/components/StudentLiveTherapyObservationCourseCompletionPanel.jsx",
+      "secondary_frontend": "admin-ui/src/components/StudentCourseStatusPanel.jsx",
+      "field": "extra_data.lms.enrolled_courses",
+      "note_fa": "آپلود گزارش PDF و نمره نهایی — فرایند ۶۵"
     },
     "group_supervision_course_completion": {
       "frontend": "admin-ui/src/components/StudentGroupSupervisionCourseCompletionPanel.jsx",

@@ -51,3 +51,26 @@ def test_attach_pending_counts():
 def test_admin_has_many_process_nav_items():
     rows = pnc.get_process_nav_catalog_for_portal_role("admin")
     assert len(rows) >= 10
+
+
+def test_process_nav_catalog_onboarding_priority_order():
+    rows = pnc.get_process_nav_catalog_for_portal_role("admin")
+    codes = [r["process_code"] for r in rows]
+    if "fall_semester_preparation" in codes and "therapy_changes" in codes:
+        assert codes.index("fall_semester_preparation") < codes.index("therapy_changes")
+    if "introductory_course_registration" in codes and "educational_leave" in codes:
+        assert codes.index("introductory_course_registration") < codes.index("educational_leave")
+    if "educational_leave" in codes and "therapy_changes" in codes:
+        assert codes.index("educational_leave") < codes.index("therapy_changes")
+
+
+def test_process_nav_catalog_includes_nav_tier():
+    rows = pnc.get_process_nav_catalog_for_portal_role("admin")
+    assert len(rows) >= 1
+    for row in rows:
+        assert row.get("nav_tier") in (0, 1, 2, 3)
+    codes = {r["process_code"]: r["nav_tier"] for r in rows}
+    if "fall_semester_preparation" in codes:
+        assert codes["fall_semester_preparation"] == 0
+    if "educational_leave" in codes:
+        assert codes["educational_leave"] == 1

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import InterviewBookingsPanel from '../components/InterviewBookingsPanel'
-import InterviewSlotRecurringRules from '../components/InterviewSlotRecurringRules'
-import InterviewSlotsAdmin from '../components/InterviewSlotsAdmin'
+import InterviewerAssignedSlotsPanel from '../components/InterviewerAssignedSlotsPanel'
+import InterviewSlotsManageSection from '../components/InterviewSlotsManageSection'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import InterviewerResultPanel from '../components/InterviewerResultPanel'
+import InterviewResultQueuePanel from '../components/InterviewResultQueuePanel'
 import { useToast } from '../contexts/ToastContext'
 import { panelApi } from '../services/api'
 import { canManageInterviewSlots } from '../utils/interviewSlotAccess'
@@ -61,10 +62,18 @@ export default function InterviewerPortal() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       next.delete('instance_id')
-      if (next.get('tab') === 'result') next.set('tab', 'dashboard')
+      if (next.get('tab') === 'result') next.set('tab', 'result')
       return next
     })
-    setActiveTab('dashboard')
+  }, [setSearchParams])
+
+  const openResultTab = useCallback(() => {
+    setActiveTab('result')
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', 'result')
+      return next
+    })
   }, [setSearchParams])
 
   usePortalInstanceDeepLink({
@@ -80,6 +89,7 @@ export default function InterviewerPortal() {
   }, [searchParams])
 
   const canManageSlots = canManageInterviewSlots(user?.role)
+  const isStaffCreator = user?.role === 'staff'
 
   return (
     <div>
@@ -94,15 +104,19 @@ export default function InterviewerPortal() {
           <p className="muted" style={{ marginTop: '0.6rem', fontSize: '0.9rem', maxWidth: '46rem' }}>
             {canManageSlots ? (
               <>
-                به‌عنوان مدیر سیستم می‌توانید وقت مصاحبه را اینجا یا از{' '}
+                به‌عنوان مدیر می‌توانید وقت مصاحبه را اینجا یا از{' '}
                 <Link to="/panel/portal/staff/admissions?tab=interviewSlots">پنل پذیرش — وقت مصاحبه</Link> تعریف کنید.
-                برای ثبت نتیجه از <strong>صندوق اقدام</strong> همان پرونده را باز کنید.
+                برای ثبت نتیجه به تب <strong>ثبت نتیجهٔ مصاحبه</strong> بروید و پرونده را از فهرست انتخاب کنید.
+              </>
+            ) : isStaffCreator ? (
+              <>
+                به‌عنوان ایجادکنندهٔ وقت مصاحبه، از تب <strong>ثبت نتیجهٔ مصاحبه</strong> پرونده را انتخاب و نتیجه را ثبت کنید.
               </>
             ) : (
               <>
                 تعریف وقت مصاحبه از{' '}
                 <Link to="/panel/portal/staff/admissions?tab=interviewSlots">پنل پذیرش</Link> انجام می‌شود.
-                پس از برگزاری مصاحبه، از صندوق زیر «ثبت نتیجه» را در همین صفحه تکمیل کنید.
+                برای ثبت نتیجه به تب <strong>ثبت نتیجهٔ مصاحبه</strong> بروید.
               </>
             )}
           </p>
@@ -120,21 +134,43 @@ export default function InterviewerPortal() {
         <button
           type="button"
           className={`tab-item ${activeTab === 'result' ? 'active' : ''}`}
-          onClick={() => setActiveTab('result')}
-          disabled={!selectedInstance}
+          onClick={openResultTab}
+          data-testid="interviewer-tab-result"
         >
           ثبت نتیجهٔ مصاحبه
         </button>
       </div>
 
-      {activeTab === 'result' && selectedInstance && (
-        <InterviewerResultPanel
-          user={user}
-          instanceId={selectedInstance}
-          onClose={closeResultPanel}
-          showToast={showToast}
-          onAfterTransition={reloadFollowup}
-        />
+      {activeTab === 'result' && (
+        <>
+          {!selectedInstance ? (
+            <InterviewResultQueuePanel
+              showToast={showToast}
+              onOpenResult={viewInstance}
+              onAfterAction={reloadFollowup}
+            />
+          ) : (
+            <>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  data-testid="interviewer-result-back-to-queue"
+                  onClick={closeResultPanel}
+                >
+                  بازگشت به فهرست
+                </button>
+              </div>
+              <InterviewerResultPanel
+                user={user}
+                instanceId={selectedInstance}
+                onClose={closeResultPanel}
+                showToast={showToast}
+                onAfterTransition={reloadFollowup}
+              />
+            </>
+          )}
+        </>
       )}
 
       {activeTab === 'dashboard' && (
@@ -147,13 +183,16 @@ export default function InterviewerPortal() {
           />
 
           {canManageSlots ? (
-            <>
-              <InterviewSlotRecurringRules showToast={showToast} onCapacityChanged={reloadFollowup} />
-              <InterviewSlotsAdmin showToast={showToast} onCapacityChanged={reloadFollowup} />
-            </>
+            <InterviewSlotsManageSection
+              showToast={showToast}
+              onCapacityChanged={reloadFollowup}
+              showBookings={false}
+            />
           ) : null}
 
-          <InterviewBookingsPanel showToast={showToast} />
+          {!canManageSlots ? <InterviewerAssignedSlotsPanel showToast={showToast} /> : null}
+
+          <InterviewBookingsPanel showToast={showToast} onOpenResult={viewInstance} />
         </>
       )}
     </div>

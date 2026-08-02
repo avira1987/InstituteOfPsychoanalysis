@@ -55,13 +55,48 @@ function MeetingLinkCopyButton({ meetingLink, compact = false }) {
   )
 }
 
+function StudentJoinOpenControl({
+  studentJoinOpen,
+  onToggleStudentJoinOpen,
+  togglingStudentJoin = false,
+  compact = false,
+}) {
+  if (!onToggleStudentJoinOpen) return null
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.35rem',
+        fontSize: compact ? '0.75rem' : '0.82rem',
+        marginTop: '0.35rem',
+        cursor: togglingStudentJoin ? 'wait' : 'pointer',
+      }}
+      title="با فعال‌سازی، دانشجو می‌تواند قبل از ۳۰ دقیقه مانده به مصاحبه وارد جلسه شود."
+    >
+      <input
+        type="checkbox"
+        checked={!!studentJoinOpen}
+        disabled={togglingStudentJoin}
+        onChange={(e) => onToggleStudentJoinOpen(e.target.checked)}
+        data-testid="student-join-open-toggle"
+      />
+      <span>{studentJoinOpen ? 'ورود زودهنگام دانشجو: فعال' : 'ورود زودهنگام دانشجو'}</span>
+    </label>
+  )
+}
+
 /**
- * دکمهٔ برجستهٔ ورود به جلسهٔ آنلاین؛ قبل از زمان مجاز غیرفعال است.
+ * دکمهٔ برجستهٔ ورود به جلسهٔ آنلاین.
+ * دانشجو: قبل از زمان مجاز (۳۰ دقیقه قبل یا فعال‌سازی دستی) غیرفعال است.
+ * پذیرش/ادمین (allowStaffCopy): همیشه می‌توانند وارد شوند.
  */
 export default function OnlineMeetingJoinCta({
   mode = 'online',
   locationFa = '',
   meetingLink = null,
+  /** لینک ساخته شده ولی ممکن است هنوز به دلیل قفل زمانی برای بیننده فرستاده نشده باشد */
+  meetingLinkReady = null,
   meetingLinkOpenAt = null,
   meetingLinkIsVisible = false,
   startsAt = null,
@@ -71,9 +106,14 @@ export default function OnlineMeetingJoinCta({
   preparingText = 'لینک آنلاین در حال آماده‌سازی است؛ همین صفحه را کمی بعد تازه کنید.',
   preparingErrorText = 'آماده‌سازی لینک آنلاین بیش از حد معمول طول کشید. لطفاً با پذیرش تماس بگیرید یا صفحه را تازه کنید.',
   preparingFailed = false,
+  /** نتیجهٔ مصاحبه ثبت شده؛ کلاس بسته است تا رزرو وقت جدید */
+  resultRecorded = false,
+  resultRecordedText = 'نتیجهٔ این مصاحبه ثبت شده و کلاس آن بسته است. در صورت نیاز به مصاحبهٔ دوباره، وقت جدیدی رزرو کنید.',
   studentJoinOpen = false,
-  /** برای پذیرش/ادمین: کپی لینک میزبان حتی قبل از باز شدن پنجرهٔ ورود */
+  /** برای پذیرش/ادمین: ورود و کپی لینک میزبان بدون محدودیت زمانی */
   allowStaffCopy = false,
+  onToggleStudentJoinOpen = null,
+  togglingStudentJoin = false,
 }) {
   const [now, setNow] = useState(() => Date.now())
 
@@ -91,13 +131,44 @@ export default function OnlineMeetingJoinCta({
     )
   }
 
-  const openMs = meetingLinkOpenAt ? new Date(meetingLinkOpenAt).getTime() : null
-  const canEnterByTime = studentJoinOpen || openMs == null || now >= openMs
-  const linkReady = Boolean((meetingLink || '').trim())
-  const canJoin = linkReady && meetingLinkIsVisible && canEnterByTime
-  const showStaffCopy = allowStaffCopy && linkReady && meetingLinkIsVisible
+  if (resultRecorded) {
+    return (
+      <div className={`online-meeting-join-cta online-meeting-join-cta--closed${compact ? ' online-meeting-join-cta--compact' : ''}`}>
+        <div className="online-meeting-join-cta__actions">
+          <button
+            type="button"
+            className="online-meeting-join-cta__btn"
+            disabled
+            aria-disabled="true"
+            data-testid="online-meeting-closed-btn"
+          >
+            <span className="online-meeting-join-cta__icon" aria-hidden>🔒</span>
+            {label}
+          </button>
+        </div>
+        <p className="online-meeting-join-cta__hint">{resultRecordedText}</p>
+      </div>
+    )
+  }
 
-  if (!canEnterByTime && meetingLinkOpenAt && !studentJoinOpen) {
+  const openMs = meetingLinkOpenAt ? new Date(meetingLinkOpenAt).getTime() : null
+  const studentCanEnterByTime = studentJoinOpen || openMs == null || now >= openMs
+  const canEnterByTime = studentCanEnterByTime || allowStaffCopy
+  const linkPresent = Boolean((meetingLink || '').trim())
+  const linkReady = meetingLinkReady == null ? linkPresent : Boolean(meetingLinkReady)
+  const linkVisibleForViewer = meetingLinkIsVisible || (allowStaffCopy && linkReady)
+  const canJoin = linkPresent && linkVisibleForViewer && canEnterByTime
+  const showStaffCopy = allowStaffCopy && linkPresent && linkVisibleForViewer
+  const studentJoinControl = allowStaffCopy ? (
+    <StudentJoinOpenControl
+      studentJoinOpen={studentJoinOpen}
+      onToggleStudentJoinOpen={onToggleStudentJoinOpen}
+      togglingStudentJoin={togglingStudentJoin}
+      compact={compact}
+    />
+  ) : null
+
+  if (!studentCanEnterByTime && meetingLinkOpenAt && !studentJoinOpen && !allowStaffCopy) {
     return (
       <div className={`online-meeting-join-cta online-meeting-join-cta--locked${compact ? ' online-meeting-join-cta--compact' : ''}`}>
         <div className="online-meeting-join-cta__actions">
@@ -105,7 +176,6 @@ export default function OnlineMeetingJoinCta({
             <span className="online-meeting-join-cta__icon" aria-hidden>🎥</span>
             {label}
           </button>
-          {showStaffCopy ? <MeetingLinkCopyButton meetingLink={meetingLink} compact={compact} /> : null}
         </div>
         <p className="online-meeting-join-cta__hint">
           ورود پس از فعال‌سازی توسط مصاحبه‌گر/پذیرش، یا از{' '}
@@ -129,6 +199,7 @@ export default function OnlineMeetingJoinCta({
         <p className={`online-meeting-join-cta__hint${preparingFailed ? ' online-meeting-join-cta__hint--warn' : ''}`}>
           {preparingFailed ? preparingErrorText : preparingText}
         </p>
+        {studentJoinControl}
       </div>
     )
   }
@@ -150,8 +221,11 @@ export default function OnlineMeetingJoinCta({
           {showStaffCopy ? <MeetingLinkCopyButton meetingLink={meetingLink} compact={compact} /> : null}
         </div>
         <p className="online-meeting-join-cta__hint online-meeting-join-cta__hint--success">
-          برای ورود به کلاس الوکام روی دکمه بالا کلیک کنید.
+          {allowStaffCopy && !studentCanEnterByTime
+            ? 'ورود برای شما باز است؛ دانشجو هنوز نمی‌تواند وارد شود مگر «ورود زودهنگام دانشجو» را فعال کنید.'
+            : 'برای ورود به کلاس الوکام روی دکمه بالا کلیک کنید.'}
         </p>
+        {studentJoinControl}
       </div>
     )
   }
@@ -163,6 +237,7 @@ export default function OnlineMeetingJoinCta({
         <p className="online-meeting-join-cta__hint">
           لینک میزبان آماده است؛ برای ورود از «کپی لینک» استفاده کنید.
         </p>
+        {studentJoinControl}
       </div>
     )
   }
@@ -172,6 +247,7 @@ export default function OnlineMeetingJoinCta({
       <p className="online-meeting-join-cta__hint">
         {preparingText}
       </p>
+      {studentJoinControl}
     </div>
   )
 }

@@ -64,6 +64,54 @@ def collect_allowed_keys(schema: dict) -> set[str]:
     return keys
 
 
+def _table_row_effectively_empty(row: Any, columns: list) -> bool:
+    if not isinstance(row, dict):
+        return True
+    if not isinstance(columns, list) or not columns:
+        return _is_empty(row.get("course_name"))
+    for col in columns:
+        if not isinstance(col, dict):
+            continue
+        ct = (col.get("type") or "text").lower()
+        val = row.get(col.get("name"))
+        if ct == "checkbox":
+            if val:
+                return False
+            continue
+        if not _is_empty(val):
+            return False
+    return True
+
+
+def validate_table_field(field: dict, val: Any) -> Optional[str]:
+    """اعتبارسنجی ستون‌های جدول برای هر ردیف پرشده — هم‌تراز validateTableField در فرانت."""
+    label = field.get("label_fa") or field.get("name") or "جدول"
+    columns = field.get("columns") if isinstance(field.get("columns"), list) else []
+    rows = val if isinstance(val, list) else []
+    filled_rows = [r for r in rows if not _table_row_effectively_empty(r, columns)]
+    if field.get("required") and not filled_rows:
+        return f"{label}: حداقل یک ردیف کامل لازم است"
+    row_errors: list[str] = []
+    for i, row in enumerate(filled_rows, start=1):
+        if not isinstance(row, dict):
+            continue
+        for col in columns:
+            if not isinstance(col, dict) or col.get("auto_fill"):
+                continue
+            ct = (col.get("type") or "text").lower()
+            col_label = col.get("label_fa") or col.get("name") or "ستون"
+            cell_val = row.get(col.get("name"))
+            if ct == "checkbox":
+                if not cell_val:
+                    row_errors.append(f"{label} — ردیف {i}: «{col_label}» باید تیک بخورد")
+                continue
+            if _is_empty(cell_val):
+                row_errors.append(f"{label} — ردیف {i}: «{col_label}» خالی است")
+    if row_errors:
+        return "؛ ".join(row_errors)
+    return None
+
+
 def _check_validation_rules(field: dict, val: Any) -> Optional[str]:
     """قواعد min/max/min_len/max_len/pattern/max_selection. خطا یا None."""
     rules = field.get("validation")

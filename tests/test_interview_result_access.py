@@ -107,7 +107,7 @@ async def test_other_interviewer_cannot_submit_result(
 
 
 @pytest.mark.asyncio
-async def test_staff_cannot_submit_interview_result(
+async def test_staff_non_creator_cannot_submit_interview_result(
     db_session: AsyncSession, sample_student
 ) -> None:
     iv = await _make_user(db_session, role="interviewer", prefix="iv")
@@ -122,6 +122,46 @@ async def test_staff_cannot_submit_interview_result(
         db_session,
         instance=inst,
         user=staff,
+        trigger_event="interview_result_submitted",
+    )
+
+
+@pytest.mark.asyncio
+async def test_staff_slot_creator_can_submit_result(
+    db_session: AsyncSession, sample_student
+) -> None:
+    iv = await _make_user(db_session, role="interviewer", prefix="iv")
+    staff = await _make_user(db_session, role="staff", prefix="staff")
+    inst, _slot = await _make_instance_with_slot(
+        db_session,
+        sample_student=sample_student,
+        interviewer_user_id=iv.id,
+        slot_created_by=staff.id,
+    )
+    assert await can_submit_interview_result(
+        db_session,
+        instance=inst,
+        user=staff,
+        trigger_event="interview_result_submitted",
+    )
+
+
+@pytest.mark.asyncio
+async def test_interviewer_creator_cannot_submit_when_other_interviewer_assigned(
+    db_session: AsyncSession, sample_student
+) -> None:
+    assigned = await _make_user(db_session, role="interviewer", prefix="iv_assigned")
+    creator = await _make_user(db_session, role="interviewer", prefix="iv_creator")
+    inst, _slot = await _make_instance_with_slot(
+        db_session,
+        sample_student=sample_student,
+        interviewer_user_id=assigned.id,
+        slot_created_by=creator.id,
+    )
+    assert not await can_submit_interview_result(
+        db_session,
+        instance=inst,
+        user=creator,
         trigger_event="interview_result_submitted",
     )
 
@@ -147,7 +187,7 @@ async def test_admin_can_submit_any_interview_result(
 
 
 @pytest.mark.asyncio
-async def test_assert_rejects_staff_interview_result_trigger(
+async def test_assert_rejects_staff_non_creator_interview_result_trigger(
     db_session: AsyncSession, sample_student
 ) -> None:
     iv = await _make_user(db_session, role="interviewer", prefix="iv")

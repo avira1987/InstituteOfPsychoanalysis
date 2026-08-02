@@ -26,9 +26,8 @@ import StudentTaTrackChangePanel from '../components/StudentTaTrackChangePanel'
 import TaTrackChangeCommitteePanel from '../components/TaTrackChangeCommitteePanel'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { useToast } from '../contexts/ToastContext'
-import InterviewSlotRecurringRules from '../components/InterviewSlotRecurringRules'
-import InterviewSlotsAdmin from '../components/InterviewSlotsAdmin'
-import InterviewBookingsPanel from '../components/InterviewBookingsPanel'
+import InterviewSlotsManageSection from '../components/InterviewSlotsManageSection'
+import EducationalTherapistSlotsAdmin from '../components/EducationalTherapistSlotsAdmin'
 import DocumentsReviewPanel from '../components/DocumentsReviewPanel'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
 import OperatorFollowupSection from '../components/OperatorFollowupSection'
@@ -40,6 +39,7 @@ import InstructorClassAttendanceInboxHint from '../components/InstructorClassAtt
 import LiveTherapyObservationTaAttendancePanel from '../components/LiveTherapyObservationTaAttendancePanel'
 import FilmObservationTaAttendancePanel from '../components/FilmObservationTaAttendancePanel'
 import FilmObservationCourseCompletionPanel from '../components/FilmObservationCourseCompletionPanel'
+import LiveTherapyObservationCourseCompletionPanel from '../components/LiveTherapyObservationCourseCompletionPanel'
 import SkillsCourseCompletionPanel from '../components/SkillsCourseCompletionPanel'
 import TheoryCourseCompletionPanel from '../components/TheoryCourseCompletionPanel'
 import GroupSupervisionCourseCompletionPanel from '../components/GroupSupervisionCourseCompletionPanel'
@@ -52,6 +52,7 @@ import LiveSupervisionDualAttendancePanel from '../components/LiveSupervisionDua
 import LiveSupervisionMirrorEvalPanel from '../components/LiveSupervisionMirrorEvalPanel'
 import LiveSupervisionFinalEvalPanel from '../components/LiveSupervisionFinalEvalPanel'
 import IntroductoryTermEndFollowupPanel from '../components/IntroductoryTermEndFollowupPanel'
+import AcademicDeclineFollowupForm from '../components/AcademicDeclineFollowupForm'
 import InternBulkPatientReferralCoordinationPanel from '../components/InternBulkPatientReferralCoordinationPanel'
 import TaClassDutiesPanel from '../components/TaClassDutiesPanel'
 import TherapistAssignmentReviewPanel from '../components/TherapistAssignmentReviewPanel'
@@ -86,6 +87,7 @@ const STAFF_DEEP_LINK_TABS = [
   'processes',
   'roster',
   'interviewSlots',
+  'etTherapistSlots',
   'documentsReview',
   'onlineClasses',
   'activity',
@@ -1043,11 +1045,11 @@ export default function StaffPortal() {
       )}
 
       {activeTab === 'interviewSlots' && (
-        <>
-          <InterviewSlotRecurringRules showToast={showToast} onCapacityChanged={reloadFollowup} />
-          <InterviewSlotsAdmin showToast={showToast} onCapacityChanged={reloadFollowup} />
-          <InterviewBookingsPanel showToast={showToast} />
-        </>
+        <InterviewSlotsManageSection showToast={showToast} onCapacityChanged={reloadFollowup} />
+      )}
+
+      {activeTab === 'etTherapistSlots' && (
+        <EducationalTherapistSlotsAdmin showToast={showToast} />
       )}
 
       {activeTab === 'documentsReview' && (
@@ -1494,6 +1496,14 @@ function DetailPanel({
         onRefreshInstance={onRefreshInstance}
         active={instanceDetail?.process_code === 'film_observation_course_completion'}
       />
+      <LiveTherapyObservationCourseCompletionPanel
+        detail={instanceDetail}
+        instanceId={instanceDetail?.instance_id}
+        availableTransitions={availableTransitions}
+        showToast={showToast}
+        onRefreshInstance={onRefreshInstance}
+        active={instanceDetail?.process_code === 'live_therapy_observation_course_completion'}
+      />
       <SkillsCourseCompletionPanel
         detail={instanceDetail}
         instanceId={instanceDetail?.instance_id}
@@ -1541,6 +1551,12 @@ function DetailPanel({
         renderExtraBeforeActions={({ triggerTransition: trig, transitionsForActions }) => (
         <>
           <IntroductoryTermEndFollowupPanel detail={instanceDetail} user={user} />
+          <AcademicDeclineFollowupForm
+            detail={instanceDetail}
+            user={user}
+            showToast={showToast}
+            onUpdated={onRefreshInstance}
+          />
           <InternBulkPatientReferralCoordinationPanel detail={instanceDetail} user={user} />
           <LiveSessionPrepPanel detail={instanceDetail} user={user} />
           <TaUpgradeCourseCommitteePanel detail={instanceDetail} user={user} />

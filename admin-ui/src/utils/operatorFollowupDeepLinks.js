@@ -9,6 +9,16 @@ const FALLBACK_HINT = 'ردیابی دانشجو (همه نقش‌ها)'
 
 const SEMESTER_PREP_CODES = new Set(['fall_semester_preparation', 'winter_semester_preparation'])
 
+const STUDENT_LIKE_ROLES = new Set(['student', 'applicant'])
+
+function isStudentLikeRole(code) {
+  return STUDENT_LIKE_ROLES.has((code || '').toLowerCase())
+}
+
+function studentPortalProcessesHref(params = {}) {
+  return `/panel/portal/student${qs({ tab: 'processes', ...params })}`
+}
+
 const DEPUTY_PREP_ROLES = new Set([
   'deputy_education',
   'deputy_education_director',
@@ -140,17 +150,45 @@ export function getOperatorFollowupDestination(item) {
         hintFa: 'شروع کمپین بازاریابی پذیرش',
       }
     }
-    if (stateCode === 'interview_scheduling' && code === 'site_manager') {
+    if (stateCode === 'interview_scheduling' && code === 'staff' && SEMESTER_PREP_CODES.has(processCode)) {
       return {
         href: workbenchHref(processCode),
-        hintFa: 'زمان‌بندی و ثبت اسلات‌های مصاحبه',
+        hintFa: 'زمان‌بندی و ثبت اسلات‌های مصاحبه — مدیر داخلی',
       }
     }
     if (SEMESTER_PREP_CODES.has(processCode) && stateCode && stateCode !== 'published') {
+      if (isStudentLikeRole(code)) {
+        return {
+          href: '/panel/academic-calendar',
+          hintFa: 'تقویم آموزشی — آماده‌سازی ترم توسط کادر اجرایی انجام می‌شود',
+        }
+      }
       return {
         href: workbenchHref(processCode),
         hintFa: 'ادامه مرحلهٔ آماده‌سازی ترم',
       }
+    }
+    if (SEMESTER_PREP_CODES.has(processCode)) {
+      if (isStudentLikeRole(code)) {
+        return {
+          href: '/panel/academic-calendar',
+          hintFa: 'تقویم آموزشی منتشرشده',
+        }
+      }
+      return {
+        href: workbenchHref(processCode),
+        hintFa: 'میز کار آماده‌سازی ترم',
+      }
+    }
+  }
+
+  if (isStudentLikeRole(code)) {
+    return {
+      href: studentPortalProcessesHref({
+        ...base,
+        process_code: processCode || undefined,
+      }),
+      hintFa: 'پنل آموزشی — فرایندهای من',
     }
   }
 
@@ -167,6 +205,13 @@ export function getOperatorFollowupDestination(item) {
     })
     if (processOnly) return processOnly
     return tracker
+  }
+
+  if (processCode === 'introductory_term_end' && stateCode === 'followup_in_progress') {
+    return {
+      href: staffHref({ ...base, tab: 'pending' }, 'admissions'),
+      hintFa: 'پنل پذیرش — پیگیری افت تحصیلی پایان ترم آشنایی',
+    }
   }
 
   if (
@@ -277,6 +322,27 @@ export function getOperatorFollowupDestination(item) {
       return {
         href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
         hintFa: 'پنل مدرس — خاتمه سوپرویژن گروهی (فرایند ۶۲)',
+      }
+    }
+  }
+
+  if (processCode === 'live_therapy_observation_course_completion') {
+    if (stateCode === 'grades_entry' || code === 'instructor') {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — خاتمه درس مشاهده زنده درمان: گزارش PDF (فرایند ۶۵)',
+      }
+    }
+  }
+
+  if (processCode === 'live_supervision_course_completion') {
+    if (
+      ['sessions_in_progress', 'mirror_eval_pending', 'final_eval_pending'].includes(stateCode)
+      || code === 'instructor'
+    ) {
+      return {
+        href: staffHref({ ...base, tab: 'pending' }, 'instruction'),
+        hintFa: 'پنل مدرس — خاتمه درس سوپرویژن زنده (فرایند ۶۷)',
       }
     }
   }
@@ -456,15 +522,28 @@ export function getOperatorFollowupDestinationForProcess(opts) {
   const filter = { process_code: processCode }
 
   if (SEMESTER_PREP_CODES.has(processCode)) {
+    if (portalRole === 'student' || isStudentLikeRole(code)) {
+      return {
+        href: '/panel/academic-calendar',
+        hintFa: 'تقویم آموزشی — آماده‌سازی ترم توسط کادر اجرایی انجام می‌شود',
+      }
+    }
     return {
       href: workbenchHref(processCode),
       hintFa: 'میز کار آماده‌سازی ترم',
     }
   }
 
-  if (portalRole === 'student' || code === 'student' || code === 'applicant') {
+  if (processCode === 'introductory_term_end' && stateCode === 'followup_in_progress') {
     return {
-      href: `/panel/portal/student${qs({ tab: 'processes', ...filter })}`,
+      href: staffHref({ tab: 'pending', process_code: processCode }, 'admissions'),
+      hintFa: 'پنل پذیرش — پیگیری افت تحصیلی پایان ترم آشنایی',
+    }
+  }
+
+  if (portalRole === 'student' || isStudentLikeRole(code)) {
+    return {
+      href: studentPortalProcessesHref(filter),
       hintFa: 'پنل آموزشی — فرایندهای من',
     }
   }

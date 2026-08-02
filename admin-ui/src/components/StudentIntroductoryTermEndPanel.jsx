@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react'
+import TermTranscriptGradesTable from './TermTranscriptGradesTable'
+import TermEndArtifactsSection from './TermEndArtifactsSection'
 import {
   IntroTermEndFlowStepper,
   labelIntroTermEndState,
@@ -56,8 +58,11 @@ export default function StudentIntroductoryTermEndPanel({
   extraData = null,
   active = true,
   compact = false,
+  studentId = null,
+  activeProcesses = [],
   onGoToProfile = null,
   onGoToProcesses = null,
+  onViewInstance = null,
 }) {
   const ctx = detail?.context_data || {}
   const currentState = detail?.current_state || null
@@ -74,6 +79,22 @@ export default function StudentIntroductoryTermEndPanel({
   const showTranscripts = hasTranscriptsReady(currentState)
   const showTherapyBlock = currentState === 'therapy_blocked' || termEnd.therapyBlocked
   const showRegDeadline = showRegistrationReminder(currentState) && termEnd.nextTermDeadline
+  const showGradesTable = hasTranscriptsReady(currentState) || (termEnd.failedCourses?.length > 0)
+  const nextTermReg = activeProcesses?.find(
+    (p) => p.process_code === 'intro_second_semester_registration' && !p.is_completed,
+  )
+  const showNextTermCta = (
+    currentState === 'registration_notification_sent'
+    || currentState === 'followup_complete'
+  ) && !termEnd.therapyBlocked
+
+  const openNextTermRegistration = () => {
+    if (typeof onViewInstance === 'function' && nextTermReg?.instance_id) {
+      onViewInstance(nextTermReg.instance_id)
+      return
+    }
+    if (typeof onGoToProcesses === 'function') onGoToProcesses()
+  }
 
   const fmtGpa = (v) => {
     const n = Number(v)
@@ -146,6 +167,46 @@ export default function StudentIntroductoryTermEndPanel({
           </div>
         )}
 
+        {termEnd.failedCourses?.length > 0 && (
+          <div
+            data-testid="intro-term-end-failed-courses"
+            style={{
+              marginBottom: compact ? '0.65rem' : '0.85rem',
+              padding: '0.75rem 1rem',
+              borderRadius: '10px',
+              background: '#fef2f2',
+              borderRight: '4px solid #dc2626',
+              fontSize: '0.84rem',
+              lineHeight: 1.7,
+              color: '#991b1b',
+            }}
+          >
+            <strong>دروس مردود این ترم:</strong>
+            <ul style={{ margin: '0.5rem 0 0', paddingRight: '1.25rem' }}>
+              {termEnd.failedCourses.map((course, idx) => (
+                <li key={idx}>{typeof course === 'string' ? course : course?.course_name ?? String(course)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {showGradesTable && (
+          <TermTranscriptGradesTable
+            detail={detail}
+            extraData={extraData}
+            termGpa={termEnd.termGpa}
+            compact={compact}
+          />
+        )}
+
+        {showTranscripts && studentId && (
+          <TermEndArtifactsSection
+            studentId={studentId}
+            processCode="introductory_term_end"
+            compact={compact}
+          />
+        )}
+
         {showTranscripts && (
           <div
             data-testid="intro-term-end-transcripts-ready"
@@ -202,6 +263,21 @@ export default function StudentIntroductoryTermEndPanel({
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {showNextTermCta && (
+          <div
+            data-testid="intro-term-end-next-term-cta"
+            style={{ marginBottom: '0.85rem' }}
+          >
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              onClick={openNextTermRegistration}
+            >
+              {nextTermReg ? 'ثبت‌نام ترم دوم' : 'رفتن به فرایند ثبت‌نام ترم دوم'}
+            </button>
           </div>
         )}
 

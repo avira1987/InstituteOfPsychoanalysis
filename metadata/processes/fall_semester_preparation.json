@@ -111,7 +111,7 @@
       "code": "interview_scheduling",
       "name_fa": "زمان‌بندی و ثبت اسلات‌های مصاحبه",
       "type": "intermediate",
-      "assigned_role": "site_manager",
+      "assigned_role": "staff",
       "sla_days": 3,
       "sla_warning_recipients": [
         "deputy_education_director"
@@ -170,7 +170,12 @@
       "to": "license_check",
       "trigger": "tuition_submitted",
       "required_role": "deputy_education_director",
-      "description_fa": "شهریه و هزینه‌ها ثبت شد"
+      "description_fa": "شهریه و هزینه‌ها ثبت شد — همگام با داشبورد مالی",
+      "actions": [
+        {
+          "type": "sync_financial_defaults_from_prep"
+        }
+      ]
     },
     {
       "from": "tuition_entry",
@@ -255,7 +260,7 @@
       "description_fa": "مکان‌ها و هماهنگی با مدرسین نهایی شد — انتشار خودکار در سایت",
       "actions": [
         {
-          "type": "publish_courses_to_website"
+          "type": "publish_term_course_offerings"
         },
         {
           "type": "notification",
@@ -323,7 +328,7 @@
       "to": "interview_scheduling",
       "trigger": "interviewers_assigned",
       "required_role": "deputy_education_director",
-      "description_fa": "مصاحبه‌کنندگان و بازه‌های زمانی برای دوره‌های جامع و مقدماتی تعیین شد",
+      "description_fa": "مصاحبه‌کنندگان و بازه‌های زمانی برای دوره‌های جامع و آشنایی تعیین شد",
       "actions": [
         {
           "type": "notification",
@@ -356,7 +361,7 @@
       "from": "interview_scheduling",
       "to": "published",
       "trigger": "interview_times_set",
-      "required_role": "site_manager",
+      "required_role": "staff",
       "description_fa": "اسلات‌های مصاحبه ثبت شد — انتشار تقویم و اطلاع‌رسانی",
       "actions": [
         {
@@ -404,6 +409,7 @@
       "code": "academic_calendar_form",
       "name_fa": "فرم تقویم آموزشی دو ترم",
       "used_in_state": "calendar_entry",
+      "editable_anytime": true,
       "editable_by": ["admin", "staff", "course_committee", "course_committee_executive"],
       "fields": [
         {
@@ -455,14 +461,26 @@
           "required": true
         },
         {
-          "name": "intern_interview_deadline",
-          "label_fa": "مهلت مصاحبه انترن‌ها",
+          "name": "intern_interview_deadline_start",
+          "label_fa": "شروع بازه مصاحبه انترن‌ها",
           "type": "date",
           "required": true
         },
         {
-          "name": "teaching_assistant_interview_deadline",
-          "label_fa": "مهلت مصاحبه کمک مدرسی",
+          "name": "intern_interview_deadline_end",
+          "label_fa": "پایان بازه مصاحبه انترن‌ها",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "teaching_assistant_interview_deadline_start",
+          "label_fa": "شروع بازه مصاحبه کمک مدرسی",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "teaching_assistant_interview_deadline_end",
+          "label_fa": "پایان بازه مصاحبه کمک مدرسی",
           "type": "date",
           "required": true
         },
@@ -490,7 +508,8 @@
           "name": "per_unit_cost_introductory",
           "label_fa": "هزینه هر واحد دوره مقدماتی (ریال)",
           "type": "number",
-          "required": true
+          "required": true,
+          "note_fa": "پس از ثبت، همین مبلغ در داشبورد مالی نیز ذخیره می‌شود."
         },
         {
           "name": "per_unit_cost_comprehensive",
@@ -510,6 +529,52 @@
           "label_fa": "هزینه مصاحبه دوره جامع (ریال)",
           "type": "number",
           "required": true
+        },
+        {
+          "name": "registration_interview_fee_rial",
+          "label_fa": "هزینه مصاحبه ثبت‌نام — پشتیبان (ریال)",
+          "type": "number",
+          "required": true,
+          "note_fa": "سایر پیش‌فرض‌های پرداخت — مشترک با داشبورد مالی"
+        },
+        {
+          "name": "registration_tuition_invoice_toman",
+          "label_fa": "شهریه / فاکتور ثبت‌نام — پشتیبان (تومان)",
+          "type": "number",
+          "required": true,
+          "note_fa": "فقط وقتی محاسبهٔ واحد × هزینهٔ هر واحد ممکن نباشد استفاده می‌شود."
+        },
+        {
+          "name": "start_therapy_first_session_fee_rial",
+          "label_fa": "اولین جلسه درمان آموزشی (ریال)",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "extra_session_fee_rial",
+          "label_fa": "جلسه اضافه درمان (ریال)",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "default_therapy_session_fee_toman",
+          "label_fa": "پیش‌فرض هر جلسه درمان آموزشی (تومان)",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "class_session_fee_toman",
+          "label_fa": "پیش‌فرض هر جلسه کلاس آموزشی (تومان، اختیاری)",
+          "type": "number",
+          "required": false,
+          "note_fa": "خالی یا صفر = بدون مرجع مبلغ"
+        },
+        {
+          "name": "course_session_fee_toman",
+          "label_fa": "پیش‌فرض هر جلسه دوره جلسه‌ای (تومان، اختیاری)",
+          "type": "number",
+          "required": false,
+          "note_fa": "برای ویرایش بعدی این مبالغ به داشبورد مالی بروید."
         }
       ]
     },
@@ -608,7 +673,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "instructor",
-                "filter_by_column": "course_name"
+                "filter_by_column": "track"
               }
             },
             {
@@ -620,7 +685,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "teaching_assistant",
-                "filter_by_column": "course_name"
+                "filter_by_column": "track"
               }
             }
           ]
@@ -680,7 +745,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "instructor",
-                "filter_by_column": "course_name"
+                "filter_by_column": "track"
               }
             },
             {
@@ -692,7 +757,7 @@
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "teaching_assistant",
-                "filter_by_column": "course_name"
+                "filter_by_column": "track"
               }
             }
           ]
@@ -849,11 +914,11 @@
           "label_fa": "مصاحبه‌کنندگان دوره جامع",
           "type": "multi_select",
           "required": true,
-          "creatable": true,
-          "note_fa": "از فهرست انتخاب کنید یا با جست‌وجو نام مصاحبه‌گر جدید را اضافه کنید.",
+          "creatable": false,
+          "note_fa": "از میان کارمندان اتوماسیون انتخاب کنید.",
           "options_source": {
             "type": "users",
-            "role": "interviewer",
+            "roles": ["interviewer", "staff"],
             "is_active": true
           }
         },
@@ -871,26 +936,26 @@
         },
         {
           "name": "introductory_interviewers",
-          "label_fa": "مصاحبه‌کنندگان دوره مقدماتی",
+          "label_fa": "مصاحبه‌کنندگان دوره آشنایی",
           "type": "multi_select",
           "required": true,
-          "creatable": true,
-          "note_fa": "از فهرست انتخاب کنید یا با جست‌وجو نام مصاحبه‌گر جدید را اضافه کنید.",
+          "creatable": false,
+          "note_fa": "از میان کارمندان اتوماسیون انتخاب کنید.",
           "options_source": {
             "type": "users",
-            "role": "interviewer",
+            "roles": ["interviewer", "staff"],
             "is_active": true
           }
         },
         {
           "name": "introductory_date_range_start",
-          "label_fa": "شروع بازه مصاحبه دوره مقدماتی",
+          "label_fa": "شروع بازه مصاحبه دوره آشنایی",
           "type": "date",
           "required": true
         },
         {
           "name": "introductory_date_range_end",
-          "label_fa": "پایان بازه مصاحبه دوره مقدماتی",
+          "label_fa": "پایان بازه مصاحبه دوره آشنایی",
           "type": "date",
           "required": true
         }
@@ -900,7 +965,7 @@
       "code": "interview_scheduling_form",
       "name_fa": "تنظیمات برگزاری مصاحبه",
       "used_in_state": "interview_scheduling",
-      "editable_by": ["admin", "staff", "site_manager", "deputy_education"],
+      "editable_by": ["admin", "staff", "deputy_education"],
       "editable_anytime": true,
       "note_fa": "برای مصاحبهٔ آنلاین، لینک جلسه پس از پرداخت هزینهٔ مصاحبه توسط دانشجو به‌صورت خودکار ساخته می‌شود و دکمهٔ «ورود به جلسه» در پروفایل دانشجو و مصاحبه‌گر نمایش داده می‌شود.",
       "fields": [

@@ -145,14 +145,17 @@ async def send_sms(
     context: dict | None = None,
 ) -> dict:
     """ارسال پیامک؛ اگر برای template_key در sms_template_pattern_map.json نگاشت باشد، ابتدا BaseServiceNumber."""
+    from app.utils.shamsi_calendar_utils import normalize_sms_context_dates
+
     provider = (settings.SMS_PROVIDER or "log").lower()
     tk = (template_key or "").strip() or None
     sms_kind = "notification" if tk else "free_text"
+    ctx = normalize_sms_context_dates(dict(context or {}))
 
     if provider == "mellipayamak" and tk:
         from app.services.sms_template_pattern_map import resolve_sms_pattern_for_template
 
-        resolved = resolve_sms_pattern_for_template(str(tk).strip(), dict(context or {}))
+        resolved = resolve_sms_pattern_for_template(str(tk).strip(), ctx)
         if resolved:
             bid, ptext = resolved
             return await send_sms_pattern(
@@ -160,7 +163,7 @@ async def send_sms(
                 bid,
                 ptext,
                 template_key=tk,
-                context=context,
+                context=ctx,
             )
 
     if provider == "mellipayamak":
@@ -171,7 +174,7 @@ async def send_sms(
             message=message,
             kind=sms_kind,
             template_key=tk,
-            context=context,
+            context=ctx,
         )
     return await _simulate_sms_async(phone, message, kind=sms_kind, template_key=tk)
 

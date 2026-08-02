@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database import get_db
+from app.meta.role_labels import format_role_forbidden_message
 from app.models.operational_models import User
 
 settings = get_settings()
@@ -113,7 +114,7 @@ async def get_current_user(
     """Get the current authenticated user from JWT token."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="اعتبارسنجی ناموفق بود. لطفاً دوباره وارد شوید.",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -156,7 +157,7 @@ def require_role(*roles: str):
         if current_user.role not in roles and current_user.role != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Role '{current_user.role}' is not authorized. Required: {', '.join(roles)}",
+                detail=format_role_forbidden_message(current_user.role, *roles),
             )
         return current_user
     return role_checker

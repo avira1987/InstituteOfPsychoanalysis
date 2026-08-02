@@ -554,7 +554,7 @@
       "conditions": [
         "installment_not_paid"
       ],
-      "description_fa": "سط ع  باک ثبت حضر  غاب",
+      "description_fa": "قسط معوق — بلاک ثبت حضور و غیاب",
       "actions": [
         {
           "type": "block_attendance_registration"

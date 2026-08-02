@@ -41,6 +41,19 @@ class TestIntroductoryTermEndFlow:
         """از grades_submitted با trigger auto_generate_transcripts به transcript_generated می‌رود."""
         processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
         await load_process(db_session, processes_dir / "introductory_term_end.json")
+        extra = sample_student.extra_data or {}
+        extra["lms"] = {
+            "enrolled_courses": [
+                {
+                    "code": "intro_1",
+                    "course_name": "درس آشنایی ۱",
+                    "units": 2,
+                    "numeric_grade": 15,
+                    "pass_fail_status": "قبول",
+                },
+            ],
+        }
+        sample_student.extra_data = extra
         await db_session.commit()
 
         engine = StateMachineEngine(db_session)
@@ -65,3 +78,4 @@ class TestIntroductoryTermEndFlow:
         assert result.to_state == "transcript_generated"
         instance = await engine.get_process_instance(instance.id)
         assert instance.current_state_code == "transcript_generated"
+        assert len(instance.context_data.get("term_transcript_rows") or []) == 1

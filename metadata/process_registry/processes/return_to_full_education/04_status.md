@@ -20,6 +20,7 @@
 
 - پنل اختصاصی با stepper سه‌فازی، راهنمای فارسی، و `SepPaymentPanel`
 - CTA داشبورد: «شروع بازگشت به کل آموزش»
+- انتخاب درمانگر از شیت وقت آزاد: `therapist_slot_picker` + `book_educational_therapist_slots`
 
 ## نواقص احتمالی آینده
 

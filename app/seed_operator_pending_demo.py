@@ -196,7 +196,7 @@ async def _seed_site_manager_pending(
         await _exec(engine, db, inst.id, trigger, actors.admin_id, role, None)
     cur = await engine.get_process_instance(inst.id)
     assert cur.current_state_code == "interview_scheduling"
-    return "fall_semester_preparation @ interview_scheduling (مسئول سایت — زمان‌بندی مصاحبه‌ها)"
+    return "fall_semester_preparation @ interview_scheduling (مدیر داخلی — زمان‌بندی مصاحبه‌ها)"
 
 
 async def _seed_assignment_grading_pending(

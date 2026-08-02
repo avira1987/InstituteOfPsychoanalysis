@@ -1,5 +1,15 @@
 import React, { useMemo } from 'react'
 import { labelAttendanceSessionStatus, fmtIsoDate } from '../utils/lessonStartPerTermDisplay'
+import { labelProcess } from '../utils/processDisplay'
+
+const COURSE_COMPLETION_CODES = new Set([
+  'theory_course_completion',
+  'skills_course_completion',
+  'film_observation_course_completion',
+  'live_therapy_observation_course_completion',
+  'live_supervision_course_completion',
+  'group_supervision_course_completion',
+])
 
 function courseLabel(entry) {
   if (typeof entry === 'string') return entry
@@ -84,6 +94,44 @@ export default function StudentCourseStatusPanel({ extraData, activeProcesses = 
   const activeLessonStart = (activeProcesses || []).filter(
     (p) => p.process_code === 'lesson_start_per_term' && !p.is_completed,
   )
+  const activeCourseCompletions = (activeProcesses || []).filter(
+    (p) => COURSE_COMPLETION_CODES.has(p.process_code) && !p.is_completed && !p.is_cancelled,
+  )
+
+  const completionByCourse = useMemo(() => {
+    const map = {}
+    const gs = lms.group_supervision || {}
+    Object.entries(gs).forEach(([code, row]) => {
+      if (row && typeof row === 'object') {
+        map[code] = { ...map[code], ...row, source: 'group_supervision' }
+      }
+    })
+    const fo = lms.film_observation || {}
+    Object.entries(fo).forEach(([code, row]) => {
+      if (row && typeof row === 'object') {
+        map[code] = { ...map[code], ...row, source: 'film_observation' }
+      }
+    })
+    const lt = lms.live_therapy_observation || {}
+    Object.entries(lt).forEach(([code, row]) => {
+      if (row && typeof row === 'object') {
+        map[code] = { ...map[code], ...row, source: 'live_therapy_observation' }
+      }
+    })
+    const th = lms.theory || {}
+    Object.entries(th).forEach(([code, row]) => {
+      if (row && typeof row === 'object') {
+        map[code] = { ...map[code], ...row, source: 'theory' }
+      }
+    })
+    const sk = lms.skills || {}
+    Object.entries(sk).forEach(([code, row]) => {
+      if (row && typeof row === 'object') {
+        map[code] = { ...map[code], ...row, source: 'skills' }
+      }
+    })
+    return map
+  }, [lms])
 
   return (
     <div className="card" data-testid="student-course-status-panel">
@@ -129,6 +177,33 @@ export default function StudentCourseStatusPanel({ extraData, activeProcesses = 
           >
             {activeLessonStart.length.toLocaleString('fa-IR')} فرایند ثبت‌نام درس فعال دارید — از بخش فرایندها ادامه دهید.
           </p>
+        )}
+
+        {activeCourseCompletions.length > 0 && (
+          <div
+            data-testid="student-course-completion-active-hint"
+            style={{
+              marginBottom: '0.85rem',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              background: '#fffbeb',
+              borderRight: '4px solid #d97706',
+              fontSize: '0.84rem',
+              lineHeight: 1.65,
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#92400e' }}>
+              خاتمه درس — اقدام یا پیگیری لازم
+            </div>
+            {activeCourseCompletions.map((p) => (
+              <div key={p.instance_id || p.process_code} style={{ marginBottom: '0.25rem' }}>
+                {labelProcess(p.process_code)}
+                {p.current_state ? ` — ${p.current_state}` : ''}
+                {' '}
+                <span className="muted">(تب فرایندها)</span>
+              </div>
+            ))}
+          </div>
         )}
 
         {incompleteClassAttendance.length > 0 && (
@@ -202,11 +277,17 @@ export default function StudentCourseStatusPanel({ extraData, activeProcesses = 
                   {courses.map((c, idx) => {
                     const code = courseCode(c)
                     const courseAbs = perCourseAbsenceCount(code, lessonAttendance)
+                    const completionRow = completionByCourse[code] || completionByCourse[String(code)] || {}
                     const locked = c.grades_locked || c.grade_locked || c.incomplete || c.status === 'I'
-                    const grade = c.letter_grade || c.grade || c.numeric_grade || '—'
-                    const status = c.incomplete || c.status === 'I'
+                      || completionRow.grades_locked
+                    const grade = c.letter_grade || c.grade || c.numeric_grade
+                      || completionRow.total_score
+                      || completionRow.grade
+                      || completionRow.pass_fail
+                      || '—'
+                    const status = c.incomplete || c.status === 'I' || completionRow.incomplete
                       ? 'Incomplete / قفل'
-                      : (c.pass_fail || c.status_fa || (locked ? 'ثبت‌شده' : c.status) || 'در جریان')
+                      : (completionRow.pass_fail || c.pass_fail || c.status_fa || (locked ? 'ثبت‌شده' : c.status) || 'در جریان')
                     const link = portalLinks[code] || portalLinks[String(code)] || ''
                     return (
                       <tr key={code || idx}>

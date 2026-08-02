@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from typing import Optional
 
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 from app.api.interview_slots_routes import (
     SLOT_DEFINE_ROLES,
@@ -15,6 +16,7 @@ from app.api.interview_slots_routes import (
     _interviewer_owns_slot,
     _is_meeting_link_visible_for_user,
     _meeting_link_for_viewer,
+    _slot_to_dict,
 )
 
 
@@ -24,26 +26,38 @@ def _user(uid: uuid.UUID) -> SimpleNamespace:
 
 def _slot(*, created_by: uuid.UUID, interviewer_user_id: Optional[uuid.UUID]) -> SimpleNamespace:
     return SimpleNamespace(
+        id=uuid.uuid4(),
         created_by=created_by,
         interviewer_user_id=interviewer_user_id,
         assigned_student_id=uuid.uuid4(),
+        assigned_instance_id=None,
         booking_payment_deadline_at=None,
         mode="online",
         meeting_link="https://meeting.example.com/room/1",
+        host_meeting_link=None,
+        interviewer_meeting_link=None,
         starts_at=datetime(2026, 5, 7, 15, 0, tzinfo=timezone.utc),
+        ends_at=datetime(2026, 5, 7, 16, 0, tzinfo=timezone.utc),
+        course_type="introductory",
+        location_fa=None,
+        label_fa=None,
+        student_join_open=False,
+        alocom_event_id=None,
+        reminder_sent_at=None,
+        created_at=datetime(2026, 5, 1, 12, 0, tzinfo=timezone.utc),
     )
 
 
-def test_staff_admin_and_site_manager_can_define_interview_slots() -> None:
+def test_staff_and_admin_can_define_interview_slots() -> None:
     staff = SimpleNamespace(id=uuid.uuid4(), role="staff")
     interviewer = SimpleNamespace(id=uuid.uuid4(), role="interviewer")
     admin = SimpleNamespace(id=uuid.uuid4(), role="admin")
     site_manager = SimpleNamespace(id=uuid.uuid4(), role="site_manager")
     assert _can_define_interview_slots(staff) is True
     assert _can_define_interview_slots(admin) is True
-    assert _can_define_interview_slots(site_manager) is True
+    assert _can_define_interview_slots(site_manager) is False
     assert _can_define_interview_slots(interviewer) is False
-    assert SLOT_DEFINE_ROLES == ("staff", "admin", "site_manager")
+    assert SLOT_DEFINE_ROLES == ("staff", "admin")
 
 
 def test_interviewer_does_not_own_staff_pool_slot_but_can_view_booking() -> None:
@@ -96,12 +110,34 @@ def test_online_link_visible_for_student_inside_window() -> None:
     assert _is_meeting_link_visible_for_user(slot, student, now) is True
 
 
-def test_paid_student_cannot_see_link_before_interview_window() -> None:
+def test_paid_student_cannot_join_before_interview_window() -> None:
     slot = _slot(created_by=uuid.uuid4(), interviewer_user_id=None)
     slot.booking_payment_deadline_at = None
     student = SimpleNamespace(id=uuid.uuid4(), role="student")
     now = datetime(2026, 5, 7, 14, 20, tzinfo=timezone.utc)
     assert _is_meeting_link_visible_for_user(slot, student, now) is False
+
+
+def test_paid_student_link_withheld_but_marked_ready_before_join_window() -> None:
+    slot = _slot(created_by=uuid.uuid4(), interviewer_user_id=None)
+    slot.booking_payment_deadline_at = None
+    student = SimpleNamespace(id=uuid.uuid4(), role="student")
+    now = datetime(2026, 5, 7, 14, 20, tzinfo=timezone.utc)
+    out = _slot_to_dict(slot, viewer=student, now=now)
+    assert out["meeting_link"] is None
+    assert out["meeting_link_ready"] is True
+    assert out["meeting_link_is_visible"] is False
+
+
+def test_paid_student_gets_link_inside_join_window() -> None:
+    slot = _slot(created_by=uuid.uuid4(), interviewer_user_id=None)
+    slot.booking_payment_deadline_at = None
+    student = SimpleNamespace(id=uuid.uuid4(), role="student")
+    now = datetime(2026, 5, 7, 14, 31, tzinfo=timezone.utc)
+    out = _slot_to_dict(slot, viewer=student, now=now)
+    assert out["meeting_link"] == "https://meeting.example.com/room/1"
+    assert out["meeting_link_ready"] is True
+    assert out["meeting_link_is_visible"] is True
 
 
 def test_student_join_open_allows_link_before_interview_window() -> None:
@@ -136,6 +172,34 @@ def test_interviewer_gets_teacher_link() -> None:
     )
     interviewer = SimpleNamespace(id=iv_id, role="interviewer")
     assert _meeting_link_for_viewer(slot, interviewer) == "https://alocom.test/teacher-token"
+
+
+def test_interviewer_sees_link_before_join_window_after_payment() -> None:
+    iv_id = uuid.uuid4()
+    slot = _slot(created_by=uuid.uuid4(), interviewer_user_id=iv_id)
+    slot.booking_payment_deadline_at = None
+    slot.meeting_link = "https://meeting.example.com/room/1?token=abc"
+    interviewer = SimpleNamespace(id=iv_id, role="interviewer")
+    now = datetime(2026, 5, 7, 14, 20, tzinfo=timezone.utc)
+    out = _slot_to_dict(slot, viewer=interviewer, now=now)
+    assert out["meeting_link"] == "https://meeting.example.com/room/1?token=abc"
+    assert out["meeting_link_is_visible"] is True
+    assert out["meeting_link_provision_status"] is None
+
+
+def test_paid_slot_reports_alocom_not_configured() -> None:
+    slot = _slot(created_by=uuid.uuid4(), interviewer_user_id=None)
+    slot.booking_payment_deadline_at = None
+    slot.meeting_link = None
+    staff = SimpleNamespace(id=uuid.uuid4(), role="staff")
+    now = datetime(2026, 5, 7, 14, 20, tzinfo=timezone.utc)
+    with patch(
+        "app.api.interview_slots_routes.interview_meeting_link_provision_status",
+        return_value="alocom_not_configured",
+    ):
+        out = _slot_to_dict(slot, viewer=staff, now=now)
+    assert out["meeting_link"] is None
+    assert out["meeting_link_provision_status"] == "alocom_not_configured"
 
 
 def test_legacy_slot_admin_prefers_interviewer_link_over_student() -> None:

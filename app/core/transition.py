@@ -13,6 +13,12 @@ from app.core.interview_result_access import is_interview_result_trigger
 from app.core.rule_engine import RuleEvaluator, RuleResult
 
 
+# گام‌های ۷ و ۸ آماده‌سازی ترم در رابط کاربری یک مرحلهٔ واحد («مصاحبه‌ها») هستند
+SEMESTER_PREP_INTERVIEW_SETUP_TRIGGERS = frozenset(
+    {"interviewers_assigned", "interview_times_set"}
+)
+
+
 class TransitionError(Exception):
     """Raised when a transition cannot be performed."""
     def __init__(self, message: str, details: Optional[dict] = None):
@@ -158,6 +164,14 @@ class TransitionManager:
         # آماده‌سازی ترم پاییز/زمستان (فرایند ۲۹ و ۳۰):
         # معاون آموزش: شهریه، پروانه، مصاحبه‌گران — نه مراحل کمیته دروس.
         if required == "deputy_education_director" and actor_role == "deputy_education":
+            return True
+        # مرحلهٔ یکپارچهٔ «مصاحبه‌ها»: تعیین مصاحبه‌گر و زمان‌بندی در یک اقدام ثبت
+        # می‌شود، پس معاون آموزش و مدیر داخلی هر دو ترنزیشن را می‌زنند.
+        if te in SEMESTER_PREP_INTERVIEW_SETUP_TRIGGERS and actor_role in (
+            "staff",
+            "site_manager",
+            "deputy_education",
+        ):
             return True
         # کمیته دروس (پنل course_committee): تقویم، لیست دروس، نهایی‌سازی.
         if required == "course_committee_executive" and actor_role == "course_committee":

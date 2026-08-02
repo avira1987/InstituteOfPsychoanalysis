@@ -112,3 +112,94 @@ async def test_provision_creates_event_without_users_payload(monkeypatch: pytest
     client.create_event.assert_awaited_once()
     kwargs = client.create_event.await_args.kwargs
     assert kwargs.get("users") is None
+
+
+@pytest.mark.asyncio
+async def test_build_links_persists_staff_when_student_enroll_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.alocom_interview_provision import _build_links_for_event
+
+    settings = types.SimpleNamespace(ALOCOM_ENABLED=True)
+    monkeypatch.setattr("app.services.alocom_interview_provision.get_settings", lambda: settings)
+
+    student_user = types.SimpleNamespace(
+        id=uuid.uuid4(), full_name_fa="Student", username="stu", phone="09120000000"
+    )
+    interviewer_user = types.SimpleNamespace(
+        id=uuid.uuid4(), full_name_fa="Teacher", username="tch", phone="09121111111"
+    )
+    client = AsyncMock()
+
+    async def fake_register(event_id, **kwargs):
+        role = kwargs.get("role")
+        if role == "teacher":
+            return {"eventLink": "https://class.test/host?token=teachertok"}
+        return None
+
+    client.register_user_in_event = AsyncMock(side_effect=fake_register)
+
+    meeting_link, host_link, iv_link = await _build_links_for_event(
+        client,
+        event_id="77",
+        default_link="https://class.test/default?token=defaulttok",
+        student_user=student_user,
+        interviewer_user=interviewer_user,
+        fetch_student_event_link=True,
+    )
+
+    assert meeting_link == ""
+    assert host_link == "https://class.test/host?token=teachertok"
+    assert iv_link == "https://class.test/host?token=teachertok"
+
+
+@pytest.mark.asyncio
+async def test_maybe_provision_clears_bare_link_and_reprovisions(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.interview_slot_service import maybe_provision_interview_slot_alocom_link
+
+    slot = types.SimpleNamespace(
+        id=uuid.uuid4(),
+        mode="online",
+        meeting_link="https://class.test/bare-without-token",
+        assigned_student_id=uuid.uuid4(),
+        assigned_instance_id=uuid.uuid4(),
+        booking_payment_deadline_at=None,
+        interviewer_user_id=None,
+        alocom_event_id="stale-event",
+    )
+
+    refresh = AsyncMock(return_value=False)
+    provision = AsyncMock(
+        side_effect=lambda *_a, **_kw: setattr(
+            slot, "meeting_link", "https://class.test/student?token=new"
+        )
+    )
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=types.SimpleNamespace(student_code="ST-1"))
+    db.flush = AsyncMock()
+
+    monkeypatch.setattr(
+        "app.services.interview_slot_service.refresh_interview_slot_alocom_links",
+        refresh,
+    )
+    monkeypatch.setattr(
+        "app.services.interview_slot_service.is_alocom_configured",
+        lambda: (True, 42),
+    )
+    monkeypatch.setattr(
+        "app.services.interview_slot_service.provision_interview_slot_alocom",
+        provision,
+    )
+    monkeypatch.setattr(
+        "app.services.interview_slot_service.ensure_interview_slot_host_meeting_link",
+        AsyncMock(),
+    )
+    monkeypatch.setattr(
+        "app.services.interview_slot_service.sync_registration_interview_context_from_slot",
+        AsyncMock(),
+    )
+
+    ok = await maybe_provision_interview_slot_alocom_link(db, slot, payment_confirmed=True)
+
+    assert ok is True
+    assert slot.alocom_event_id is None
+    assert slot.meeting_link == "https://class.test/student?token=new"
+    provision.assert_awaited_once()

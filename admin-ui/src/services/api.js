@@ -205,8 +205,26 @@ export const schedulerApi = {
 
 export const semesterPrepApi = {
   getStatus: () => api.get('admin/semester-prep/status'),
+  getReadiness: () => api.get('admin/semester-prep/readiness'),
   start: (processCode) => api.post('admin/semester-prep/start', { process_code: processCode }),
   getSlaWarnings: () => api.get('admin/semester-prep/sla-warnings'),
+  /** کارمندان اتوماسیون قابل انتخاب به‌عنوان مصاحبه‌گر */
+  getInterviewCandidates: () =>
+    api.get('admin/semester-prep/interview-candidates', {
+      params: { _ts: Date.now() },
+      headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
+    }),
+  /** مرحلهٔ یکپارچهٔ مصاحبه‌ها: مصاحبه‌گرها + روز و ساعت در یک ثبت */
+  saveInterviewSetup: (body) => api.post('admin/semester-prep/interview-setup', body),
+}
+
+export const interviewerApi = {
+  list: (params) =>
+    api.get('admin/interviewers', {
+      params: { ...params, _ts: Date.now() },
+      headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
+    }),
+  create: (body) => api.post('admin/interviewers', body),
 }
 
 // ─── Dashboard ─────────────────────────────────────────────────
@@ -235,6 +253,11 @@ export const studentApi = {
   completeRegistration: (data) => api.post('students/complete-registration', data),
   /** فهرست درمانگران آموزشی برای انتخاب (نام نمایشی + شناسه) */
   therapists: () => api.get('students/therapists'),
+  /** شیت وقت‌های آزاد درمانگران — گروه‌بندی‌شده */
+  therapistSlotsAvailable: (courseType) =>
+    api.get('educational-therapist-slots/available', {
+      params: courseType ? { course_type: courseType } : {},
+    }),
   getRegistrationProfileByUser: (userId) => api.get(`students/by-user/${userId}/registration-profile`),
   updateRegistrationProfileByUser: (userId, data) =>
     api.patch(`students/by-user/${userId}/registration-profile`, data),
@@ -281,6 +304,25 @@ export const processExecApi = {
   /** محتوای یک کارنامه/گواهی برای نمایش/دانلود */
   studentDocument: (studentId, docId) =>
     api.get(`process/student/${studentId}/documents/${docId}`),
+  /** دانلود PDF کارنامه/گواهی/سند رسمی */
+  async downloadStudentDocumentPdf(studentId, docId, fallbackFilename = 'document.pdf') {
+    const res = await api.get(`process/student/${studentId}/documents/${docId}.pdf`, {
+      responseType: 'blob',
+    })
+    const blob = res.data
+    const cd = res.headers['content-disposition'] || res.headers['Content-Disposition']
+    let filename = fallbackFilename
+    if (cd && /filename/i.test(cd)) {
+      const m = cd.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)["']?/i)
+      if (m) filename = decodeURIComponent(m[1].trim())
+    }
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  },
   /** دانشجو: ثبت فرم مرحله (قفل تا باز شدن توسط کارمند) */
   registerStudentStepForms: (instanceId, body) =>
     api.post(`process/${instanceId}/student-step-forms/register`, body),
@@ -350,9 +392,13 @@ export const interviewSlotsApi = {
   book: (body) => api.post('interview-slots/book', body),
   myBookings: (includePast) =>
     api.get('interview-slots/my-bookings', { params: { include_past: !!includePast } }),
+  myAssigned: (includePast) =>
+    api.get('interview-slots/my-assigned', { params: { include_past: !!includePast } }),
   /** رزروهای انجام‌شده با اطلاعات دانشجو — مصاحبه‌گر / دفتر */
   bookings: (includePast) =>
     api.get('interview-slots/bookings', { params: { include_past: !!includePast } }),
+  resultQueue: (includePast) =>
+    api.get('interview-slots/result-queue', { params: { include_past: !!includePast } }),
   manageList: (includePast) =>
     api.get('interview-slots/manage', { params: { include_past: !!includePast } }),
   manageCreate: (body) => api.post('interview-slots/manage', body),
@@ -366,6 +412,26 @@ export const interviewSlotsApi = {
   recurringRuleCreate: (body) => api.post('interview-slots/recurring-rules', body),
   recurringRuleUpdate: (id, body) => api.patch(`interview-slots/recurring-rules/${id}`, body),
   recurringRuleDelete: (id) => api.delete(`interview-slots/recurring-rules/${id}`),
+}
+
+// ─── شیت وقت آزاد درمانگران آموزشی ─────────────────────────
+export const educationalTherapistSlotsApi = {
+  available: (courseType) =>
+    api.get('educational-therapist-slots/available', {
+      params: courseType ? { course_type: courseType } : {},
+    }),
+  book: (body) => api.post('educational-therapist-slots/book', body),
+  manageList: (includeBooked = true, therapistUserId) =>
+    api.get('educational-therapist-slots/manage', {
+      params: {
+        include_booked: !!includeBooked,
+        ...(therapistUserId ? { therapist_user_id: therapistUserId } : {}),
+      },
+    }),
+  manageCreate: (body) => api.post('educational-therapist-slots/manage', body),
+  manageUpdate: (id, body) => api.patch(`educational-therapist-slots/manage/${id}`, body),
+  manageDelete: (id) => api.delete(`educational-therapist-slots/manage/${id}`),
+  manageRelease: (id) => api.post(`educational-therapist-slots/manage/${id}/release`),
 }
 
 // ─── Therapy sessions (student / therapist) ───────────────────
@@ -476,6 +542,7 @@ export const panelApi = {
       params: {
         course_code: courseCode,
         ...(options.enrichFilmReports ? { enrich_film_reports: true } : {}),
+        ...(options.enrichLiveTherapyReports ? { enrich_live_therapy_reports: true } : {}),
       },
     }),
   classCancellationPreview: (courseCode, sessionKey = null) =>
@@ -633,6 +700,8 @@ export const courseCommitteeRosterApi = {
     api.get('admin/course-committee-roster/detail', { params: { track } }),
   listMembers: (params) => api.get('admin/course-committee-roster', { params }),
   listCourses: () => api.get('admin/course-catalog'),
+  createTrack: (body) => api.post('admin/course-committee-roster/tracks', body),
+  createCourse: (body) => api.post('admin/course-catalog', body),
   createMember: (body) => api.post('admin/course-committee-roster/members', body),
   linkMember: (body) => api.post('admin/course-committee-roster/members/link', body),
   updateMember: (userId, body) =>

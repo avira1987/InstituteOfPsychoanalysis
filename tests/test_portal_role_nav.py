@@ -15,6 +15,10 @@ def test_interviewer_sees_admissions_lane_only():
     assert user_sees_nav_path("interviewer", staff_lane_path("instruction")) is False
 
 
+def test_staff_sees_interviewer_portal_nav() -> None:
+    assert user_sees_nav_path("staff", "/panel/portal/interviewer") is True
+
+
 def test_admin_only_paths_frozen():
     assert "/panel/rules" in ADMIN_ONLY_PATHS
     assert "/panel/dynamic-forms" in ADMIN_ONLY_PATHS

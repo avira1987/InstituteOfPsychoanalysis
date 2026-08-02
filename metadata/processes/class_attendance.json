@@ -45,7 +45,7 @@
       "to": "session_recorded",
       "trigger": "attendance_submitted",
       "required_role": "instructor",
-      "description_fa": "ثبت حاضر و غایب",
+      "description_fa": "ثبت حضور و غیاب",
       "actions": [
         {
           "type": "record_class_attendance"

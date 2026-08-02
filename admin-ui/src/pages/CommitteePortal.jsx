@@ -784,7 +784,12 @@ export default function CommitteePortal() {
               />
 
               <CommitteesReviewPanel detail={instanceDetail} />
-              <IntroductoryCourseCompletionReviewPanel detail={instanceDetail} user={user} />
+              <IntroductoryCourseCompletionReviewPanel
+                detail={instanceDetail}
+                user={user}
+                studentId={instanceDetail?.student_id}
+                extraData={instanceDetail?.student_extra_data}
+              />
               <TaToInstructorAutoReportPanel
                 detail={instanceDetail}
                 active={instanceDetail?.process_code === 'ta_to_instructor_auto'}

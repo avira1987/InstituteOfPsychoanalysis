@@ -59,3 +59,12 @@ def label_role_fa(code: str | None, *, include_code: bool = True) -> str:
     if not include_code:
         return fa
     return f"{fa} ({normalized})"
+
+
+def format_role_forbidden_message(actor_role: str | None, *required_roles: str) -> str:
+    """پیام فارسی برای خطای ۴۰۳ — نقش فعلی مجاز نیست."""
+    current = role_label_fa_only(actor_role)
+    required_labels = [role_label_fa_only(r) for r in required_roles if r]
+    if not required_labels:
+        return f"نقش «{current}» مجاز نیست."
+    return f"نقش «{current}» مجاز نیست. نقش‌های مجاز: {'، '.join(required_labels)}"

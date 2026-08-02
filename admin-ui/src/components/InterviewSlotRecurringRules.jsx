@@ -49,7 +49,6 @@ export default function InterviewSlotRecurringRules({ showToast, onCapacityChang
   const [courseType, setCourseType] = useState('')
   const [mode, setMode] = useState('online')
   const [locationFa, setLocationFa] = useState('')
-  const [meetingLink, setMeetingLink] = useState('')
   const [labelFa, setLabelFa] = useState('مصاحبه تکراری')
   const [horizonDays, setHorizonDays] = useState(21)
   const [isActive, setIsActive] = useState(true)
@@ -95,7 +94,6 @@ export default function InterviewSlotRecurringRules({ showToast, onCapacityChang
     setCourseType('')
     setMode('online')
     setLocationFa('')
-    setMeetingLink('')
     setLabelFa('مصاحبه تکراری')
     setHorizonDays(21)
     setIsActive(true)
@@ -113,7 +111,6 @@ export default function InterviewSlotRecurringRules({ showToast, onCapacityChang
     setCourseType(row.course_type || '')
     setMode(row.mode === 'in_person' ? 'in_person' : 'online')
     setLocationFa(row.location_fa || '')
-    setMeetingLink(row.meeting_link || '')
     setLabelFa(row.label_fa || '')
     setHorizonDays(Number(row.horizon_days) || 21)
     setIsActive(row.is_active !== false)
@@ -141,16 +138,18 @@ export default function InterviewSlotRecurringRules({ showToast, onCapacityChang
       end_local_time: endT,
       course_type: courseType || null,
       mode,
-      location_fa: locationFa || null,
-      meeting_link: meetingLink || null,
+      location_fa: mode === 'in_person' ? (locationFa || null) : null,
+      meeting_link: null,
       label_fa: labelFa || null,
       is_active: isActive,
       horizon_days: Number(horizonDays) || 21,
     }
     if (canPickRuleOwner && !editingId) {
-      if (targetIvId) {
-        body.interviewer_user_id = targetIvId
+      if (!targetIvId) {
+        showToast?.('انتخاب مصاحبه‌گر برای الگو الزامی است.', 'error')
+        return
       }
+      body.interviewer_user_id = targetIvId
     }
     setSaving(true)
     try {
@@ -316,14 +315,17 @@ export default function InterviewSlotRecurringRules({ showToast, onCapacityChang
               gap: '0.45rem',
             }}
           >
-            <label style={{ margin: 0 }}>
-              <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>مکان (حضوری)</span>
-              <input className="psf-input" value={locationFa} onChange={(e) => setLocationFa(e.target.value)} dir="rtl" />
-            </label>
-            <label style={{ margin: 0 }}>
-              <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>لینک (آنلاین)</span>
-              <input className="psf-input" value={meetingLink} onChange={(e) => setMeetingLink(e.target.value)} dir="ltr" />
-            </label>
+            {mode === 'in_person' && (
+              <label style={{ margin: 0 }}>
+                <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>مکان (حضوری)</span>
+                <input className="psf-input" value={locationFa} onChange={(e) => setLocationFa(e.target.value)} dir="rtl" />
+              </label>
+            )}
+            {mode === 'online' && (
+              <p className="muted" style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.6, alignSelf: 'end' }}>
+                لینک جلسهٔ آنلاین پس از پرداخت دانشجو به‌صورت خودکار در الوکام ساخته می‌شود.
+              </p>
+            )}
           </div>
           <label style={{ margin: 0, maxWidth: '28rem' }}>
             <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>برچسب روی وقت</span>

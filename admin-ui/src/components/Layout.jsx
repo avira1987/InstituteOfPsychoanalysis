@@ -4,8 +4,9 @@ import { useAuth } from '../contexts/AuthContext'
 import { getAvatarUrl, panelApi, dynamicFormsApi } from '../services/api'
 import NotificationBell from './NotificationBell'
 import { getSiteLogoUrl } from '../utils/siteLogo'
-import { navItemsForRole, dedupSemesterPrepNavForProcessNav } from '../utils/portalRoleNav'
+import { navItemsForRole } from '../utils/portalRoleNav'
 import { mapProcessNavItemsFromApi, PROCESS_NAV_PATH_PREFIX } from '../utils/processNavLinks'
+import ProcessNavSidebarSection from './ProcessNavSidebarSection'
 import { PANEL_NOTIFICATIONS_CHANGED_EVENT } from '../utils/panelNotifications'
 import { labelRoleFa } from '../utils/roleLabels'
 import { normalizeNavPath, resolveActiveSidebarNavPath } from '../utils/sidebarNavActive'
@@ -20,7 +21,6 @@ export default function Layout() {
   const [dynamicNavItems, setDynamicNavItems] = useState([])
   const [dynamicNavMergeMode, setDynamicNavMergeMode] = useState('append')
   const [processNavItems, setProcessNavItems] = useState([])
-  const [processNavOpen, setProcessNavOpen] = useState(true)
 
   const loadNavPending = useCallback(async () => {
     if (!user) return
@@ -71,8 +71,6 @@ export default function Layout() {
       const res = await panelApi.processNavItems()
       const mapped = mapProcessNavItemsFromApi(res.data?.items || [], user.role)
       setProcessNavItems(mapped)
-      const hasPending = mapped.some((it) => it.pendingCount > 0)
-      setProcessNavOpen(hasPending || mapped.length <= 12)
     } catch {
       setProcessNavItems([])
     }
@@ -102,11 +100,7 @@ export default function Layout() {
   }
 
   const visibleNav = useMemo(() => {
-    const processCodes = processNavItems.map((p) => p.processCode)
-    const filtered = dedupSemesterPrepNavForProcessNav(
-      navItemsForRole(user?.role),
-      processCodes,
-    )
+    const filtered = navItemsForRole(user?.role)
     const dyn = dynamicNavItems.filter((item) => {
       if (!item.roles || !Array.isArray(item.roles) || item.roles.length === 0) return true
       return item.roles.includes(user?.role) || user?.role === 'admin'
@@ -227,51 +221,13 @@ export default function Layout() {
             )
           })}
 
-          {processNavForSidebar.length > 0 && (
-            <div className="sidebar-process-group">
-              <button
-                type="button"
-                className="sidebar-process-group-toggle"
-                onClick={() => setProcessNavOpen((v) => !v)}
-                aria-expanded={processNavOpen}
-              >
-                <span className="sidebar-link-icon" aria-hidden="true">📋</span>
-                <span className="sidebar-link-label">فرایندها</span>
-                <span className="sidebar-process-group-count">
-                  {processNavForSidebar.length.toLocaleString('fa-IR')}
-                </span>
-                <span className="sidebar-process-group-chevron" aria-hidden="true">
-                  {processNavOpen ? '▾' : '◂'}
-                </span>
-              </button>
-              {processNavOpen && processNavForSidebar.map((item) => {
-                const raw = navPendingByPath[item.path]
-                const n = typeof raw === 'number' && raw > 0 ? raw : 0
-                const badge =
-                  n > 0 ? (n > 99 ? '۹۹+' : n.toLocaleString('fa-IR')) : null
-                const itemPath = normalizeNavPath(item.path)
-                const isItemActive = activeNavPath === itemPath
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    aria-current={isItemActive ? 'page' : undefined}
-                    className={`sidebar-link sidebar-link-nested${isItemActive ? ' active' : ''}`}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <span className="sidebar-link-icon" aria-hidden="true">{item.icon}</span>
-                    <span className="sidebar-link-text">
-                      <span className="sidebar-link-label">{item.label}</span>
-                      {badge != null ? (
-                        <span className="sidebar-nav-badge" title="کار منتظر">
-                          {badge}
-                        </span>
-                      ) : null}
-                    </span>
-                  </NavLink>
-                )
-              })}
-            </div>
+          {processNavItems.length > 0 && (
+            <ProcessNavSidebarSection
+              items={processNavItems}
+              activeNavPath={activeNavPath}
+              navPendingByPath={navPendingByPath}
+              onNavigate={() => setMobileOpen(false)}
+            />
           )}
         </nav>
 

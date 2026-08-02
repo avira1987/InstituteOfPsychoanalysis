@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { processExecApi } from '../services/api'
-import { INTRODUCTORY_TERM1_COURSES, formatCourseCodesDisplay } from '../utils/introCourseCatalog'
+import { formatCourseCodesDisplay, NO_OFFERINGS_HINT_FA } from '../utils/introCourseCatalog'
 import {
   resolveCheckboxListOptions,
   normalizeSelectedCoursesValue,
@@ -88,12 +88,10 @@ export default function OperatorCourseSelectionEditor({
   const options =
     resolved.options && resolved.options.length > 0 && !resolved.useFallback
       ? resolved.options
-      : processCode === 'introductory_course_registration'
-        ? INTRODUCTORY_TERM1_COURSES
-        : []
+      : []
 
   const maxSelect = resolved.maxSelect
-  const useFreeform = options.length === 0
+  const noOfferings = options.length === 0
 
   const toggle = (code) => {
     setSelected((prev) => {
@@ -104,10 +102,7 @@ export default function OperatorCourseSelectionEditor({
   }
 
   const save = async () => {
-    let codes = selected
-    if (useFreeform) {
-      codes = normalizeSelectedCoursesValue(selected.join ? selected : String(selected))
-    }
+    const codes = selected
     if (!codes.length) {
       showToast?.('حداقل یک درس انتخاب کنید.', 'error')
       return
@@ -129,7 +124,10 @@ export default function OperatorCourseSelectionEditor({
     }
   }
 
-  const currentLabel = formatCourseCodesDisplay(currentCodes)
+  const currentLabel = formatCourseCodesDisplay(
+    currentCodes,
+    contextData?.course_labels || {},
+  )
 
   return (
     <div
@@ -154,20 +152,10 @@ export default function OperatorCourseSelectionEditor({
         )}
       </p>
 
-      {useFreeform ? (
-        <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.88rem' }}>
-          <span style={{ fontWeight: 600 }}>کد دروس (با ویرگول جدا کنید)</span>
-          <input
-            className="form-input"
-            dir="ltr"
-            style={{ marginTop: '0.35rem' }}
-            value={Array.isArray(selected) ? selected.join(', ') : ''}
-            onChange={(e) =>
-              setSelected(normalizeSelectedCoursesValue(e.target.value))
-            }
-            placeholder="theory_2, theory_3"
-          />
-        </label>
+      {noOfferings ? (
+        <p className="muted" style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', lineHeight: 1.65 }}>
+          {resolved.hint || NO_OFFERINGS_HINT_FA}
+        </p>
       ) : (
         <div style={{ display: 'grid', gap: '0.4rem', marginBottom: '0.75rem' }}>
           {options.map((opt) => (
@@ -212,7 +200,7 @@ export default function OperatorCourseSelectionEditor({
         type="button"
         className="btn btn-primary btn-sm"
         data-testid="operator-course-selection-save"
-        disabled={busy}
+        disabled={busy || noOfferings}
         onClick={save}
       >
         {busy ? 'در حال ذخیره…' : 'ذخیرهٔ دروس انتخاب‌شده'}

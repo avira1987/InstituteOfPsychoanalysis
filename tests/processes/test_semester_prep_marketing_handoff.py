@@ -28,8 +28,10 @@ CALENDAR_VALUES = {
     "winter_end_date": "2027-03-20",
     "registration_payment_window_start": "2026-08-01",
     "registration_payment_window_end": "2026-09-01",
-    "intern_interview_deadline": "2026-08-15",
-    "teaching_assistant_interview_deadline": "2026-08-20",
+    "intern_interview_deadline_start": "2026-08-10",
+    "intern_interview_deadline_end": "2026-08-15",
+    "teaching_assistant_interview_deadline_start": "2026-08-15",
+    "teaching_assistant_interview_deadline_end": "2026-08-20",
     "nowruz_holiday_start": "2027-03-21",
     "nowruz_holiday_end": "2027-04-02",
 }

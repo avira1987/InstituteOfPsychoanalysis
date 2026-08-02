@@ -1,10 +1,15 @@
 """تست واحد برای ثبت فرم مرحلهٔ اپراتور (فرایند ۲۹/۳۰ — آماده‌سازی ترم)."""
 
+import pytest
+from fastapi import HTTPException
+
+from app.api.process.routes import _validate_semester_prep_interviewer_assignment_form
 from app.meta.process_forms import get_process_forms
 from app.meta.student_step_forms import (
     sanitize_operator_form_values,
     validate_operator_step_forms,
 )
+from app.services.semester_prep_service import semester_prep_interview_date_range_errors
 
 
 def test_fall_calendar_form_requires_dates():
@@ -26,8 +31,10 @@ def test_fall_calendar_form_passes_with_required_values():
         "winter_end_date": "2027-03-20",
         "registration_payment_window_start": "2026-08-01",
         "registration_payment_window_end": "2026-09-01",
-        "intern_interview_deadline": "2026-08-15",
-        "teaching_assistant_interview_deadline": "2026-08-20",
+        "intern_interview_deadline_start": "2026-08-10",
+        "intern_interview_deadline_end": "2026-08-15",
+        "teaching_assistant_interview_deadline_start": "2026-08-15",
+        "teaching_assistant_interview_deadline_end": "2026-08-20",
         "nowruz_holiday_start": "2027-03-21",
         "nowruz_holiday_end": "2027-04-02",
         # فیلدهای اختیاری بازه‌ای
@@ -37,6 +44,53 @@ def test_fall_calendar_form_passes_with_required_values():
     assert ok is True, f"باید معتبر باشد ولی نواقص: {missing}"
 
 
+def test_fall_calendar_rejects_outlier_year():
+    from app.services.semester_prep_service import semester_prep_calendar_date_errors
+
+    errors = semester_prep_calendar_date_errors(
+        {
+            "fall_start_date": "2010-09-23",
+            "fall_end_date": "2010-12-21",
+            "winter_start_date": "2011-01-10",
+            "winter_end_date": "2011-03-20",
+            "registration_payment_window_start": "2010-08-01",
+            "registration_payment_window_end": "2010-09-01",
+            "intern_interview_deadline_start": "2010-08-10",
+            "intern_interview_deadline_end": "2010-08-15",
+            "teaching_assistant_interview_deadline_start": "2010-08-15",
+            "teaching_assistant_interview_deadline_end": "2010-08-20",
+            "nowruz_holiday_start": "2011-03-21",
+            "nowruz_holiday_end": "2011-04-02",
+        },
+        today=__import__("datetime").date(2026, 7, 20),
+    )
+    assert errors
+    assert any("سال" in e for e in errors)
+
+
+def test_fall_calendar_rejects_winter_before_fall_end():
+    from app.services.semester_prep_service import semester_prep_calendar_date_errors
+
+    errors = semester_prep_calendar_date_errors(
+        {
+            "fall_start_date": "2026-09-23",
+            "fall_end_date": "2026-12-21",
+            "winter_start_date": "2026-11-01",
+            "winter_end_date": "2027-03-20",
+        },
+        today=__import__("datetime").date(2026, 7, 20),
+    )
+    assert any("زمستان" in e and "پاییز" in e for e in errors)
+
+
+def test_validate_semester_prep_calendar_form_raises():
+    from app.api.process.routes import _validate_semester_prep_calendar_form
+
+    with pytest.raises(HTTPException) as exc:
+        _validate_semester_prep_calendar_form({"fall_start_date": "2010-01-01"})
+    assert exc.value.status_code == 400
+
+
 def test_interviewer_assignment_multi_select_required():
     """multi_select الزامی (مصاحبه‌کنندگان) باید لیست غیرخالی بخواهد."""
     forms = get_process_forms("fall_semester_preparation", state_code="interviewer_assignment")
@@ -44,6 +98,52 @@ def test_interviewer_assignment_multi_select_required():
     ok, missing = validate_operator_step_forms(forms, {"comprehensive_interviewers": []}, {})
     assert ok is False
     assert missing
+
+
+def test_interviewer_assignment_rejects_end_before_start():
+    values = {
+        "comprehensive_interviewers": ["u1"],
+        "comprehensive_date_range_start": "2026-10-01",
+        "comprehensive_date_range_end": "2026-09-01",
+        "introductory_interviewers": ["u2"],
+        "introductory_date_range_start": "2026-10-01",
+        "introductory_date_range_end": "2026-10-15",
+    }
+    errors = semester_prep_interview_date_range_errors(values)
+    assert len(errors) == 1
+    assert "دوره جامع" in errors[0]
+
+    with pytest.raises(HTTPException) as exc:
+        _validate_semester_prep_interviewer_assignment_form(values)
+    assert exc.value.status_code == 400
+
+
+def test_interviewer_assignment_accepts_valid_date_ranges():
+    values = {
+        "comprehensive_interviewers": ["u1"],
+        "comprehensive_date_range_start": "2026-10-01",
+        "comprehensive_date_range_end": "2026-10-15",
+        "introductory_interviewers": ["u2"],
+        "introductory_date_range_start": "2026-10-01",
+        "introductory_date_range_end": "2026-10-20",
+    }
+    assert semester_prep_interview_date_range_errors(values) == []
+    _validate_semester_prep_interviewer_assignment_form(values)
+
+
+def test_winter_interviewer_assignment_rejects_end_before_start():
+    values = {
+        "comprehensive_interviewers": ["u1"],
+        "comprehensive_date_range_start": "2027-01-20",
+        "comprehensive_date_range_end": "2027-01-10",
+        "introductory_interviewers": ["u2"],
+        "introductory_date_range_start": "2027-01-10",
+        "introductory_date_range_end": "2027-01-25",
+    }
+    with pytest.raises(HTTPException) as exc:
+        _validate_semester_prep_interviewer_assignment_form(values)
+    assert exc.value.status_code == 400
+    assert "دوره جامع" in str(exc.value.detail)
 
 
 def test_sanitize_drops_unknown_keys():
@@ -161,9 +261,10 @@ def test_interviewer_assignment_options_source_metadata():
         field = next(fld for fld in assignment_form.get("fields") or [] if fld.get("name") == name)
         src = field.get("options_source") or {}
         assert src.get("type") == "users"
-        assert src.get("role") == "interviewer"
+        # مصاحبه‌گرها از میان کارمندان اتوماسیون انتخاب می‌شوند، نه نام آزاد
+        assert src.get("roles") == ["interviewer", "staff"]
         assert src.get("is_active") is True
-        assert field.get("creatable") is True
+        assert field.get("creatable") is False
 
 
 def test_course_list_form_roster_select_columns():
@@ -186,7 +287,7 @@ def test_course_list_form_roster_select_columns():
     inst_src = columns["instructor"].get("options_source") or {}
     assert inst_src.get("type") == "course_committee_roster"
     assert inst_src.get("kind") == "instructor"
-    assert inst_src.get("filter_by_column") == "course_name"
+    assert inst_src.get("filter_by_column") == "track"
     assert columns["instructor"].get("type") == "creatable_select"
 
     course_src = (columns["course_name"].get("options_source") or {})
@@ -254,3 +355,50 @@ def test_educational_leave_return_confirmation_form():
         {},
     )
     assert ok2 is True, missing2
+
+
+def _course_finalization_row(*, coordinated: bool = False, location: str = ""):
+    return {
+        "course_name": "تئوری ۱",
+        "track": "آشنایی",
+        "day": "شنبه",
+        "time": "10:00",
+        "instructor": "دکتر نمونه",
+        "teaching_assistant": "کمک‌مدرس نمونه",
+        "classroom_location": location,
+        "instructor_coordinated": coordinated,
+    }
+
+
+def test_fall_course_finalization_requires_location_and_coordination():
+    forms = get_process_forms("fall_semester_preparation", state_code="course_finalization")
+    assert forms
+    row = _course_finalization_row()
+    values = {
+        "courses_finalized_fall": [row],
+        "courses_finalized_winter": [row],
+    }
+    ok, missing = validate_operator_step_forms(forms, values, {})
+    assert ok is False
+    assert any("مکان کلاس" in m for m in missing)
+    assert any("هماهنگی با مدرس" in m for m in missing)
+
+
+def test_fall_course_finalization_passes_when_complete():
+    forms = get_process_forms("fall_semester_preparation", state_code="course_finalization")
+    row = _course_finalization_row(coordinated=True, location="کلاس ۱ — طبقه دوم")
+    values = {
+        "courses_finalized_fall": [row],
+        "courses_finalized_winter": [row],
+    }
+    ok, missing = validate_operator_step_forms(forms, values, {})
+    assert ok is True, missing
+
+
+def test_winter_course_finalization_requires_location_and_coordination():
+    forms = get_process_forms("winter_semester_preparation", state_code="course_finalization")
+    row = _course_finalization_row()
+    ok, missing = validate_operator_step_forms(forms, {"courses_finalized": [row]}, {})
+    assert ok is False
+    assert any("مکان کلاس" in m for m in missing)
+    assert any("هماهنگی با مدرس" in m for m in missing)

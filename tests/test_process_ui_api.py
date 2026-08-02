@@ -368,3 +368,63 @@ async def test_api_educational_leave_reject_requires_reason(
     assert r.status_code == 400
     detail = r.json().get("detail") or ""
     assert "علت رد" in detail or "rejection_reason" in detail
+
+
+@pytest_asyncio.fixture
+async def student_process_api_client(db_session: AsyncSession, sample_student_user):
+    """Authenticated student client for instance list API tests."""
+
+    async def override_get_db():
+        yield db_session
+
+    async def override_get_current_user():
+        return sample_student_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.mark.asyncio
+async def test_student_instances_hide_institute_semester_prep(
+    db_session: AsyncSession,
+    sample_student,
+    sample_student_user,
+    sample_user,
+    student_process_api_client: AsyncClient,
+):
+    """دانشجو نباید فرایند آماده‌سازی ترم را در لیست نمونه‌های خود ببیند."""
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+    await load_process(db_session, processes_dir / "session_payment.json")
+    await db_session.commit()
+
+    engine = StateMachineEngine(db_session)
+    await engine.start_process(
+        process_code="fall_semester_preparation",
+        student_id=sample_student.id,
+        actor_id=sample_user.id,
+        actor_role="course_committee_executive",
+    )
+    await engine.start_process(
+        process_code="session_payment",
+        student_id=sample_student.id,
+        actor_id=sample_student_user.id,
+        actor_role="student",
+    )
+    await db_session.commit()
+
+    r = await student_process_api_client.get(
+        f"/api/process/instances/student/{sample_student.id}"
+    )
+    assert r.status_code == 200
+    codes = {item["process_code"] for item in r.json().get("instances") or []}
+    assert "fall_semester_preparation" not in codes
+    assert "session_payment" in codes

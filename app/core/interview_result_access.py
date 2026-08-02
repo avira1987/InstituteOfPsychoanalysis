@@ -1,8 +1,7 @@
-"""Who may submit interview-result transitions (own interviewer or site admin only)."""
+"""Who may submit interview-result transitions (assigned interviewer, slot creator, or admin)."""
 
 from __future__ import annotations
 
-import uuid
 from typing import Any, Optional
 
 from sqlalchemy import select
@@ -20,8 +19,10 @@ INTERVIEW_RESULT_TRIGGER_EVENTS = frozenset(
 )
 
 _FORBIDDEN_DETAIL_FA = (
-    "فقط مصاحبه‌گر همان مصاحبه یا مدیر اصلی سامانه می‌تواند نتیجهٔ مصاحبه را ثبت کند."
+    "فقط مصاحبه‌گر همان مصاحبه، ایجادکنندهٔ وقت، یا مدیر اصلی سامانه می‌تواند نتیجهٔ مصاحبه را ثبت کند."
 )
+
+_RESULT_SUBMIT_ROLES = frozenset({"interviewer", "staff", "admin"})
 
 
 def is_interview_result_trigger(trigger_event: str | None) -> bool:
@@ -34,17 +35,25 @@ def _instance_context_dict(raw: Any) -> dict:
     return {}
 
 
-def interviewer_owns_booked_slot(user: User, slot: InterviewSlot) -> bool:
-    """True when this interviewer conducted / owns the booked slot."""
-    if user.role != "interviewer":
-        return False
+def user_may_submit_for_slot(user: User, slot: InterviewSlot) -> bool:
+    """True when user is assigned interviewer or created the booked slot (staff/admin always; interviewer pool slots)."""
     uid = user.id
     assigned = getattr(slot, "interviewer_user_id", None)
     if assigned is not None and assigned == uid:
         return True
-    if assigned is None and slot.created_by == uid:
+    if slot.created_by == uid:
+        role = (user.role or "").strip()
+        if role == "interviewer":
+            return assigned is None
         return True
     return False
+
+
+def interviewer_owns_booked_slot(user: User, slot: InterviewSlot) -> bool:
+    """Backward-compatible alias — interviewer role + slot ownership."""
+    if user.role != "interviewer":
+        return False
+    return user_may_submit_for_slot(user, slot)
 
 
 async def get_booked_slot_for_instance(
@@ -76,12 +85,12 @@ async def can_submit_interview_result(
     role = (user.role or "").strip()
     if role == "admin":
         return True
-    if role != "interviewer":
+    if role not in _RESULT_SUBMIT_ROLES:
         return False
     slot = await get_booked_slot_for_instance(db, instance)
     if slot is None:
         return False
-    return interviewer_owns_booked_slot(user, slot)
+    return user_may_submit_for_slot(user, slot)
 
 
 async def assert_can_submit_interview_result(

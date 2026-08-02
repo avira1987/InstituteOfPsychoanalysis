@@ -171,11 +171,63 @@ export default function StudentRegistrationExtendedFields({ form, onChange, clas
 
       <YesNoRadios
         name="had_psychotherapy"
-        label="آیا تا به حال تجربه درمان روان‌شناختی داشته‌اید؟"
+        label="آیا تا به حال تجربه‌ی درمان روان‌شناختی داشته‌اید؟"
         value={form.had_psychotherapy}
         onChange={onChange}
         required
       />
+      {form.had_psychotherapy === 'yes' && (
+        <div className="pub-form-group pub-form-group-full" style={{ marginRight: '1rem', paddingRight: '1rem', borderRight: '3px solid var(--primary-light, #e8f0fe)' }}>
+          <div className="pub-form-group pub-form-group-full">
+            <label>درمان روان‌شناختی شما با چه رویکردی بوده است؟ *</label>
+            <div className="pub-radio-row">
+              <label className="pub-radio-label">
+                <input
+                  type="radio"
+                  name="psychotherapy_approach"
+                  value="analytical"
+                  checked={form.psychotherapy_approach === 'analytical'}
+                  onChange={onChange}
+                  required
+                />
+                تحلیلی
+              </label>
+              <label className="pub-radio-label">
+                <input
+                  type="radio"
+                  name="psychotherapy_approach"
+                  value="other"
+                  checked={form.psychotherapy_approach === 'other'}
+                  onChange={onChange}
+                  required
+                />
+                رویکرد دیگر
+              </label>
+            </div>
+          </div>
+          <div className="pub-form-row">
+            <div className="pub-form-group">
+              <label>{REGISTRATION_FIELD_LABELS.psychotherapy_therapist_name} *</label>
+              <input
+                name="psychotherapy_therapist_name"
+                value={form.psychotherapy_therapist_name || ''}
+                onChange={onChange}
+                required
+              />
+            </div>
+            <div className="pub-form-group">
+              <label>{REGISTRATION_FIELD_LABELS.psychotherapy_total_hours}</label>
+              <input
+                name="psychotherapy_total_hours"
+                value={form.psychotherapy_total_hours || ''}
+                onChange={onChange}
+                inputMode="numeric"
+                placeholder="مثلاً ۱۲۰"
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <YesNoRadios
         name="used_psychiatric_meds"
         label="آیا تا به حال از داروهای اعصاب و روان استفاده کرده‌اید؟"
@@ -200,6 +252,28 @@ export default function StudentRegistrationExtendedFields({ form, onChange, clas
         onChange={onChange}
         required
       />
+      {form.has_work_permit === 'yes' && (
+        <div className="pub-form-row" style={{ marginRight: '1rem', paddingRight: '1rem', borderRight: '3px solid var(--primary-light, #e8f0fe)' }}>
+          <div className="pub-form-group">
+            <label>{REGISTRATION_FIELD_LABELS.work_permit_issuer} *</label>
+            <input
+              name="work_permit_issuer"
+              value={form.work_permit_issuer || ''}
+              onChange={onChange}
+              required
+            />
+          </div>
+          <div className="pub-form-group">
+            <label>{REGISTRATION_FIELD_LABELS.work_permit_type}</label>
+            <input
+              name="work_permit_type"
+              value={form.work_permit_type || ''}
+              onChange={onChange}
+              placeholder="مثلاً: روان‌شناسی بالینی"
+            />
+          </div>
+        </div>
+      )}
       <YesNoRadios
         name="has_university_degree"
         label="آیا مدرک دانشگاهی دارید؟"
@@ -207,6 +281,63 @@ export default function StudentRegistrationExtendedFields({ form, onChange, clas
         onChange={onChange}
         required
       />
+      {form.has_university_degree === 'yes' && (
+        <div style={{ marginRight: '1rem', paddingRight: '1rem', borderRight: '3px solid var(--primary-light, #e8f0fe)' }}>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
+            اطلاعات مربوط به مدارک دانشگاهی خود را پر کنید *
+          </p>
+          <div className="pub-form-row">
+            <div className="pub-form-group">
+              <label>{REGISTRATION_FIELD_LABELS.education_level} *</label>
+              <select
+                name="education_level"
+                value={form.education_level || ''}
+                onChange={onChange}
+                required
+              >
+                <option value="">انتخاب کنید</option>
+                <option value="bachelor">کارشناسی</option>
+                <option value="master">کارشناسی ارشد</option>
+                <option value="phd">دکتری</option>
+                <option value="specialist">تخصصی</option>
+              </select>
+            </div>
+            <div className="pub-form-group">
+              <label>{REGISTRATION_FIELD_LABELS.field_of_study} *</label>
+              <input
+                name="field_of_study"
+                value={form.field_of_study || ''}
+                onChange={onChange}
+                placeholder="مثلاً: روان‌شناسی بالینی"
+                required
+              />
+            </div>
+          </div>
+          <div className="pub-form-row">
+            <div className="pub-form-group">
+              <label>{REGISTRATION_FIELD_LABELS.university} *</label>
+              <input
+                name="university"
+                value={form.university || ''}
+                onChange={onChange}
+                required
+              />
+            </div>
+            <div className="pub-form-group">
+              <label>{REGISTRATION_FIELD_LABELS.graduation_year} *</label>
+              <input
+                name="graduation_year"
+                value={form.graduation_year || ''}
+                onChange={onChange}
+                inputMode="numeric"
+                placeholder="مثلاً ۱۳۹۵"
+                required
+                maxLength={4}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="pub-form-group pub-form-group-full">
         <label>{REGISTRATION_FIELD_LABELS.course_participation_mode} *</label>

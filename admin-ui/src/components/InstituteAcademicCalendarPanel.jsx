@@ -207,10 +207,19 @@ function CalendarBody({
       <CalendarSection title="مهلت‌های مصاحبه">
         <CalendarDl
           rows={[
-            { label: 'مصاحبه انترن‌ها', value: formatDate(extra.intern_interview_deadline) },
+            {
+              label: 'مصاحبه انترن‌ها',
+              value: formatDateRange(
+                extra.intern_interview_deadline_start,
+                extra.intern_interview_deadline_end,
+              ),
+            },
             {
               label: 'مصاحبه کمک‌مدرس',
-              value: formatDate(extra.teaching_assistant_interview_deadline),
+              value: formatDateRange(
+                extra.teaching_assistant_interview_deadline_start,
+                extra.teaching_assistant_interview_deadline_end,
+              ),
             },
           ]}
         />

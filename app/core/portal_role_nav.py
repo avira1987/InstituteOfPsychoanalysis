@@ -38,7 +38,7 @@ _SINGLE_PORTAL_ROLES: dict[str, frozenset[str]] = {
     "/panel/portal/student": frozenset({"student"}),
     "/panel/portal/therapist": frozenset({"therapist", "admin"}),
     "/panel/portal/supervisor": frozenset({"supervisor", "admin"}),
-    "/panel/portal/interviewer": frozenset({"interviewer", "admin"}),
+    "/panel/portal/interviewer": frozenset({"interviewer", "admin", "staff"}),
     "/panel/portal/site-manager": frozenset({"site_manager", "admin"}),
 }
 

@@ -64,7 +64,7 @@ export function resolveTerm2Context(ctx = {}) {
 /** برچسب فارسی نوع پذیرش (برای ترم دوم). */
 export const ADMISSION_TYPE_LABELS_T2 = {
   conditional_therapy: 'پذیرش مشروط به درمان',
-  single_course: 'پذیرش تک‌درس (فقط تئوری روانکاوی ۲)',
+  single_course: 'پذیرش تک‌درس (فقط درس مجاز ترم دوم)',
   full_admission: 'پذیرش کامل',
 }
 

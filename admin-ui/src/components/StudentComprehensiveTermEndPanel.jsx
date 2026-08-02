@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react'
+import TermTranscriptGradesTable from './TermTranscriptGradesTable'
+import TermEndArtifactsSection from './TermEndArtifactsSection'
 import {
   ComprehensiveTermEndFlowStepper,
   labelComprehensiveTermEndState,
@@ -59,7 +61,11 @@ export default function StudentComprehensiveTermEndPanel({
   extraData = null,
   active = true,
   compact = false,
+  studentId = null,
+  activeProcesses = [],
   onGoToProfile = null,
+  onGoToProcesses = null,
+  onViewInstance = null,
 }) {
   const ctx = detail?.context_data || {}
   const currentState = detail?.current_state || null
@@ -79,6 +85,19 @@ export default function StudentComprehensiveTermEndPanel({
   const showRemainingCourses = termEnd.remainingCourses.length > 0
     && !graduated
     && currentState !== 'grades_submitted'
+  const showGradesTable = hasTranscriptsReady(currentState) || termEnd.remainingCourses.length > 0
+  const nextTermStart = activeProcesses?.find(
+    (p) => p.process_code === 'comprehensive_term_start' && !p.is_completed,
+  )
+  const showNextTermCta = currentState === 'registration_notification_sent' && !graduated
+
+  const openNextTermRegistration = () => {
+    if (typeof onViewInstance === 'function' && nextTermStart?.instance_id) {
+      onViewInstance(nextTermStart.instance_id)
+      return
+    }
+    if (typeof onGoToProcesses === 'function') onGoToProcesses()
+  }
 
   const fmtGpa = (v) => {
     const n = Number(v)
@@ -151,6 +170,23 @@ export default function StudentComprehensiveTermEndPanel({
           </div>
         )}
 
+        {showGradesTable && (
+          <TermTranscriptGradesTable
+            detail={detail}
+            extraData={extraData}
+            termGpa={termEnd.termGpa}
+            compact={compact}
+          />
+        )}
+
+        {showTranscripts && studentId && (
+          <TermEndArtifactsSection
+            studentId={studentId}
+            processCode="comprehensive_term_end"
+            compact={compact}
+          />
+        )}
+
         {showTranscripts && (
           <div
             data-testid="comprehensive-term-end-transcripts-ready"
@@ -217,6 +253,21 @@ export default function StudentComprehensiveTermEndPanel({
                 <li key={idx}>{typeof course === 'string' ? course : course?.name_fa ?? course?.course_name ?? String(course)}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {showNextTermCta && (
+          <div
+            data-testid="comprehensive-term-end-next-term-cta"
+            style={{ marginBottom: '0.85rem' }}
+          >
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              onClick={openNextTermRegistration}
+            >
+              {nextTermStart ? 'ثبت‌نام ترم بعد' : 'رفتن به فرایند شروع ترم جامع'}
+            </button>
           </div>
         )}
 

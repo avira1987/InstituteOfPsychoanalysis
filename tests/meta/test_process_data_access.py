@@ -9,6 +9,12 @@ def test_deputy_education_can_edit_fall_tuition_form():
     names = editable_field_names(forms, "deputy_education")
     assert "per_unit_cost_introductory" in names
     assert "interview_fee_comprehensive" in names
+    assert "registration_interview_fee_rial" in names
+    assert "start_therapy_first_session_fee_rial" in names
+    assert "extra_session_fee_rial" in names
+    assert "default_therapy_session_fee_toman" in names
+    assert "class_session_fee_toman" in names
+    assert "course_session_fee_toman" in names
 
 
 def test_deputy_education_cannot_edit_fall_course_list_form():
@@ -116,16 +122,16 @@ def test_staff_can_edit_interview_scheduling_form():
     assert "interview_location_fa" in names
 
 
-def test_site_manager_can_edit_interview_scheduling_form():
+def test_site_manager_cannot_edit_interview_scheduling_form():
     forms = get_process_forms("fall_semester_preparation", state_code="interview_scheduling")
     names = editable_field_names(forms, "site_manager")
-    assert "interview_mode" in names
-    assert "interview_location_fa" in names
+    assert "interview_mode" not in names
+    assert "interview_location_fa" not in names
 
 
-def test_site_manager_can_act_on_interview_scheduling_state():
+def test_staff_can_act_on_interview_scheduling_state():
     from app.meta.operator_state_catalog import portal_role_can_act_on_assigned_role
 
-    assert portal_role_can_act_on_assigned_role("site_manager", "site_manager")
-    assert portal_role_can_act_on_assigned_role("staff", "site_manager")
-    assert not portal_role_can_act_on_assigned_role("deputy_education", "site_manager")
+    assert portal_role_can_act_on_assigned_role("staff", "staff")
+    assert not portal_role_can_act_on_assigned_role("site_manager", "staff")
+    assert not portal_role_can_act_on_assigned_role("deputy_education", "staff")

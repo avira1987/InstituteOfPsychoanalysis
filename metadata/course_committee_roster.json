@@ -101,6 +101,12 @@
           "name_fa": "دانشجوی تست",
           "tier": 2,
           "member_kind": "instructor"
+        },
+        {
+          "roster_key": "inst_مدرس_تست",
+          "name_fa": "مدرس تست",
+          "tier": 2,
+          "member_kind": "instructor"
         }
       ],
       "teaching_assistants": [
@@ -133,7 +139,14 @@
           "name_fa": "دانشجوی کمک‌مدرس",
           "tier": 3,
           "member_kind": "teaching_assistant",
-          "roster_legacy": true
+          "roster_legacy": true,
+          "ta_authorized_courses": []
+        },
+        {
+          "roster_key": "ta_کمک_مدرس_تست",
+          "name_fa": "کمک‌مدرس تست",
+          "tier": 3,
+          "member_kind": "teaching_assistant"
         }
       ]
     },
@@ -165,6 +178,12 @@
           "name_fa": "تست2",
           "tier": 2,
           "member_kind": "instructor"
+        },
+        {
+          "roster_key": "inst_مرادی",
+          "name_fa": "مرادی",
+          "tier": 2,
+          "member_kind": "instructor"
         }
       ],
       "teaching_assistants": [
@@ -179,8 +198,33 @@
           "name_fa": "تست",
           "tier": 3,
           "member_kind": "teaching_assistant"
+        },
+        {
+          "roster_key": "ta_جندقی",
+          "name_fa": "جندقی",
+          "tier": 3,
+          "member_kind": "teaching_assistant"
+        },
+        {
+          "roster_key": "ta_علینیا",
+          "name_fa": "علینیا",
+          "tier": 3,
+          "member_kind": "teaching_assistant"
         }
       ]
+    },
+    {
+      "code": "track_رسته_آزمایشی",
+      "name_fa": "رسته آزمایشی",
+      "instructors": [
+        {
+          "roster_key": "inst_مدرس_آزمایشی",
+          "name_fa": "مدرس آزمایشی",
+          "tier": 2,
+          "member_kind": "instructor"
+        }
+      ],
+      "teaching_assistants": []
     }
   ]
 }

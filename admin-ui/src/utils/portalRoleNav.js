@@ -15,7 +15,7 @@ const SINGLE_PORTAL_NAV = [
   { path: '/panel/portal/student', label: 'پنل آموزشی', icon: '🎓', roles: ['student'], strictRoles: true, priority: 20 },
   { path: '/panel/portal/therapist', label: 'پنل درمانگر', icon: '💊', roles: ['therapist'], priority: 21 },
   { path: '/panel/portal/supervisor', label: 'پنل سوپروایزر', icon: '👁️', roles: ['supervisor'], priority: 22 },
-  { path: '/panel/portal/interviewer', label: 'پنل مصاحبه‌گر', icon: '🎤', roles: ['interviewer'], priority: 22 },
+  { path: '/panel/portal/interviewer', label: 'پنل مصاحبه‌گر', icon: '🎤', roles: ['interviewer', 'staff'], priority: 22 },
   { path: '/panel/portal/site-manager', label: 'پنل مسئول سایت', icon: '🏗️', roles: ['site_manager'], priority: 24 },
 ]
 
@@ -61,42 +61,7 @@ const SHARED_NAV = [
     ],
     priority: 44,
   },
-  {
-    path: '/panel/semester-prep/workbench',
-    label: 'مرحلهٔ آماده‌سازی ترم',
-    icon: '📋',
-    roles: ['admin', 'deputy_education', 'staff', 'course_committee', 'admissions_officer'],
-    priority: 45.14,
-  },
-  {
-    path: '/panel/semester-prep/workbench',
-    label: 'زمان‌بندی مصاحبه‌های پذیرش',
-    icon: '🕐',
-    roles: ['site_manager'],
-    strictRoles: true,
-    priority: 45.13,
-  },
-  {
-    path: '/panel/semester-prep/calendar',
-    label: 'تدوین تقویم آموزشی دو ترم',
-    icon: '📆',
-    roles: ['admin', 'course_committee', 'staff'],
-    priority: 45.15,
-  },
-  {
-    path: '/panel/semester-prep/course-list-review',
-    label: 'بازبینی و ویرایش لیست دروس ترم زمستان',
-    icon: '📚',
-    roles: ['admin', 'course_committee', 'staff'],
-    priority: 45.17,
-  },
-  {
-    path: '/panel/semester-prep',
-    label: 'آماده‌سازی ترم',
-    icon: '📅',
-    roles: ['admin', 'deputy_education', 'staff', 'course_committee', 'admissions_officer'],
-    priority: 45.2,
-  },
+  /** workbench و هاب آماده‌سازی ترم از منوی «فرایندها» (process-nav) در دسترس‌اند؛ اینجا فقط ابزار مکمل SLA */
   {
     path: '/panel/semester-prep/sla-warnings',
     label: 'هشدارهای مهلت آماده‌سازی ترم',
@@ -117,30 +82,6 @@ const SHARED_NAV = [
 ]
 
 export const SCHEDULER_AUTOMATION_ROLES = ['admin', 'staff', 'deputy_education']
-
-/** مسیرهای آماده‌سازی ترم که پس از آمدن دکمهٔ per-process در سایدبار تکراری می‌شوند */
-const SEMESTER_PREP_DEDUP_PATHS = new Set([
-  '/panel/semester-prep/workbench',
-  '/panel/semester-prep/calendar',
-  '/panel/semester-prep/course-list-review',
-])
-
-const SEMESTER_PREP_PROCESS_CODES = new Set([
-  'fall_semester_preparation',
-  'winter_semester_preparation',
-])
-
-/**
- * حذف آیتم‌های ثابت آماده‌سازی ترم وقتی همان فرایندها در منوی فرایندها هستند.
- * @param {Array<{ path: string }>} navItems
- * @param {string[]} processNavCodes
- */
-export function dedupSemesterPrepNavForProcessNav(navItems, processNavCodes = []) {
-  const codes = new Set((processNavCodes || []).map((c) => String(c).toLowerCase()))
-  const hasSemesterPrep = [...codes].some((c) => SEMESTER_PREP_PROCESS_CODES.has(c))
-  if (!hasSemesterPrep) return navItems
-  return (navItems || []).filter((item) => !SEMESTER_PREP_DEDUP_PATHS.has(item.path))
-}
 
 export function canViewSchedulerAutomation(portalRole) {
   return portalRole === 'admin' || SCHEDULER_AUTOMATION_ROLES.includes(portalRole)

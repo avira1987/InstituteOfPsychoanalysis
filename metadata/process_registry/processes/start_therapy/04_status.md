@@ -3,11 +3,17 @@
 | فیلد | مقدار |
 |------|-------|
 | **وضعیت** | complete_in_metadata |
-| **آخرین به‌روزرسانی** | 2026-02-14 |
+| **آخرین به‌روزرسانی** | 2026-08-02 |
 | **منبع ورودی** | فلوچارت + متن ۷ گامی |
 
+## پیاده‌سازی شیت وقت آزاد
+- [x] مدل `EducationalTherapistSlot` + API + سرویس book/release
+- [x] UI ادمین: `EducationalTherapistSlotsAdmin` (پنل پذیرش / هماهنگی درمان)
+- [x] UI دانشجو: `therapist_slot_picker` + `StudentStartTherapyPanel`
+- [x] اکشن `book_educational_therapist_slots` روی `therapist_selected`
+- [x] آزادسازی واقعی اسلات روی `therapist_declined`
+
 ## نواقص
-- [ ] اکشن‌های transition اجرا نمی‌شوند (resolve_access_restrictions, create_session_link)
 - [ ] قانون پذیرش مشروط (فرایند ثبت‌نام ترم ۲) — در فرایند دیگر
 - [ ] ثبت غیبت خودکار در دوران مسدودی — در سرویس attendance
 

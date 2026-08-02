@@ -25,6 +25,33 @@ export function hasActiveRegistrationProcess(activeProcesses) {
 }
 
 /**
+ * شناسهٔ نمونهٔ مسیر اصلی برای داشبورد — اگر primary خالی است ولی ثبت‌نام فعال دارد، همان را برمی‌گرداند.
+ */
+export function resolvePrimaryInstanceId({ studentProfile, instances, activeProcesses }) {
+  const leaveActive = (instances || []).find(
+    (i) => i.process_code === 'educational_leave' && !i.is_completed && !i.is_cancelled,
+  )
+  if (leaveActive?.instance_id) return leaveActive.instance_id
+
+  const primaryRaw = studentProfile?.extra_data?.primary_instance_id
+  if (primaryRaw) return primaryRaw
+
+  const courseType = studentProfile?.course_type
+  const expectedReg = courseType === 'comprehensive'
+    ? 'comprehensive_course_registration'
+    : courseType === 'introductory'
+      ? 'introductory_course_registration'
+      : null
+  if (!expectedReg) return null
+
+  const activeRegs = (activeProcesses || instances || []).filter(
+    (p) => p.process_code === expectedReg && !p.is_completed && !p.is_cancelled,
+  )
+  if (activeRegs.length === 1) return activeRegs[0].instance_id
+  return null
+}
+
+/**
  * @returns {{ ok: boolean, reasonFa: string }}
  */
 function articleWritingPrerequisiteMet(studentProfile, activeProcesses) {
@@ -108,6 +135,20 @@ export function canStartProcess(processCode, { studentProfile, activeProcesses, 
 
   if (processCode === 'start_therapy' && studentProfile.therapy_started) {
     return { ok: false, reasonFa: 'درمان آموزشی در پروندهٔ شما قبلاً ثبت شده است.' }
+  }
+
+  const ex = studentProfile?.extra_data || {}
+  const requiresTherapistUnlock = ex?.gates?.therapist_selection_requires_unlock === true
+  const therapistUnlocked = ex?.lms?.access_flags?.therapist_selection_unlocked === true
+  if (
+    requiresTherapistUnlock
+    && !therapistUnlocked
+    && (processCode === 'start_therapy' || processCode === 'therapy_changes')
+  ) {
+    return {
+      ok: false,
+      reasonFa: 'انتخاب درمانگر پس از بررسی کمیته برای شما باز می‌شود. لطفاً پیام‌های پورتال را دنبال کنید.',
+    }
   }
 
   if (REQUIRES_THERAPY_STARTED.has(processCode) && !studentProfile.therapy_started) {

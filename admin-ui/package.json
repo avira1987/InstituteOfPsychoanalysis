@@ -10,7 +10,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:flow-through": "playwright test e2e/flow-through/matrix.spec.ts",
+    "test:onboarding": "playwright test e2e/flow-through/onboarding.spec.ts"
   },
   "dependencies": {
     "@fontsource-variable/vazirmatn": "^5.2.8",

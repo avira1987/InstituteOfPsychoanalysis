@@ -25,15 +25,26 @@ export async function resolveCourseClassRoster(courseCode) {
 
 export async function resolveUsersOptionsSource(source) {
   if (!source || source.type !== 'users') return []
-  const params = {}
-  if (source.role) params.role = source.role
-  if (source.is_active != null) params.is_active = source.is_active
+  // options_source می‌تواند یک نقش (role) یا چند نقش (roles) داشته باشد
+  const roles = Array.isArray(source.roles) && source.roles.length
+    ? source.roles
+    : [source.role || null]
+  const baseParams = {}
+  if (source.is_active != null) baseParams.is_active = source.is_active
   try {
-    const res = await userApi.list(params)
-    return (Array.isArray(res.data) ? res.data : []).map((u) => ({
-      value: u.id,
-      label_fa: u.full_name_fa || u.username || u.id,
-    }))
+    const responses = await Promise.all(
+      roles.map((role) => userApi.list(role ? { ...baseParams, role } : baseParams)),
+    )
+    const seen = new Set()
+    const options = []
+    for (const res of responses) {
+      for (const u of Array.isArray(res.data) ? res.data : []) {
+        if (seen.has(u.id)) continue
+        seen.add(u.id)
+        options.push({ value: u.id, label_fa: u.full_name_fa || u.username || u.id })
+      }
+    }
+    return options
   } catch {
     return []
   }
@@ -115,7 +126,134 @@ export async function createCourseCommitteeMember({ track, kind, nameFa }) {
     kind,
     name_fa: nameFa,
   })
+  invalidateFormOptionsCaches()
   return res.data?.member
+}
+
+/** کلید ذخیرهٔ گزینه‌های roster در _optionsByTrack — هم‌تراز با lookupRosterOptionsForRow */
+export function resolveRosterTrackStorageKey(track, trackCol, optionsByTrack) {
+  const raw = String(track || '').trim()
+  if (!raw) return raw
+
+  const opts = trackCol?.options || []
+  const normalizedCodes = new Set()
+  for (const opt of opts) {
+    if (typeof opt !== 'object') continue
+    const val = String(opt.value || '').trim()
+    const lab = String(opt.label_fa || '').trim()
+    if (val) normalizedCodes.add(val)
+    if (raw === val || raw === lab) return val || raw
+  }
+
+  if (optionsByTrack && typeof optionsByTrack === 'object') {
+    if (Array.isArray(optionsByTrack[raw])) return raw
+    for (const k of Object.keys(optionsByTrack)) {
+      if (String(k).trim() === raw) return k
+    }
+    for (const code of normalizedCodes) {
+      if (Array.isArray(optionsByTrack[code])) return code
+    }
+  }
+
+  return raw
+}
+
+function patchRosterColumnOptions(col, { kind, trackKey, members, member, mode }) {
+  const src = col.options_source || {}
+  if (src.type !== 'course_committee_roster') return col
+  if ((src.kind || 'instructor') !== kind) return col
+
+  const memberValue = member
+    ? String(typeof member === 'object' ? member.value : member)
+    : ''
+  const appendOption = (options) => {
+    const list = Array.isArray(options) ? [...options] : []
+    if (!member || !memberValue) return list
+    if (list.some((o) => String(typeof o === 'object' ? o.value : o) === memberValue)) {
+      return list
+    }
+    return [...list, member]
+  }
+
+  const next = { ...col }
+  if (next._optionsByTrack && typeof next._optionsByTrack === 'object') {
+    const existing = next._optionsByTrack[trackKey]
+    next._optionsByTrack = {
+      ...next._optionsByTrack,
+      [trackKey]: mode === 'replace' ? (members || []) : appendOption(existing),
+    }
+  }
+  if (next._optionsByCourse && typeof next._optionsByCourse === 'object' && mode !== 'replace') {
+    const updated = { ...next._optionsByCourse }
+    for (const key of Object.keys(updated)) {
+      updated[key] = appendOption(updated[key])
+    }
+    next._optionsByCourse = updated
+  }
+  if (Array.isArray(next.options) && next.options.length && mode !== 'replace') {
+    next.options = appendOption(next.options)
+  }
+  return next
+}
+
+/** پس از افزودن مدرس/کمک‌مدرس جدید — به همهٔ ستون‌های roster در فرم اضافه شود */
+export function propagateRosterMemberToForms(forms, member, { kind, track }) {
+  if (!member || !track || !kind || !Array.isArray(forms)) return forms
+  const trackInput = String(track).trim()
+  const memberValue = String(typeof member === 'object' ? member.value : member)
+  if (!trackInput || !memberValue) return forms
+
+  return forms.map((form) => ({
+    ...form,
+    fields: (form.fields || []).map((field) => {
+      if ((field.type || '').toLowerCase() !== 'table' || !Array.isArray(field.columns)) {
+        return field
+      }
+      const trackCol = field.columns.find((c) => c.name === 'track')
+      const trackKey = resolveRosterTrackStorageKey(
+        trackInput,
+        trackCol,
+        field.columns.find((c) => {
+          const src = c.options_source || {}
+          return src.type === 'course_committee_roster' && (src.kind || 'instructor') === kind
+        })?._optionsByTrack,
+      )
+      return {
+        ...field,
+        columns: field.columns.map((col) =>
+          patchRosterColumnOptions(col, { kind, trackKey, member, mode: 'append' }),
+        ),
+      }
+    }),
+  }))
+}
+
+/** جایگزینی فهرست کامل مدرسین/کمک‌مدرسین یک رسته پس از همگام‌سازی با سرور */
+export function replaceRosterTrackMembersInForms(forms, members, { kind, track }) {
+  if (!track || !kind || !Array.isArray(forms) || !Array.isArray(members)) return forms
+  const trackInput = String(track).trim()
+  if (!trackInput) return forms
+
+  return forms.map((form) => ({
+    ...form,
+    fields: (form.fields || []).map((field) => {
+      if ((field.type || '').toLowerCase() !== 'table' || !Array.isArray(field.columns)) {
+        return field
+      }
+      const trackCol = field.columns.find((c) => c.name === 'track')
+      const rosterCol = field.columns.find((c) => {
+        const src = c.options_source || {}
+        return src.type === 'course_committee_roster' && (src.kind || 'instructor') === kind
+      })
+      const trackKey = resolveRosterTrackStorageKey(trackInput, trackCol, rosterCol?._optionsByTrack)
+      return {
+        ...field,
+        columns: field.columns.map((col) =>
+          patchRosterColumnOptions(col, { kind, trackKey, members, mode: 'replace' }),
+        ),
+      }
+    }),
+  }))
 }
 
 /** نگاشت نام/کد درس به کد رسته از گزینه‌های کاتالوگ */

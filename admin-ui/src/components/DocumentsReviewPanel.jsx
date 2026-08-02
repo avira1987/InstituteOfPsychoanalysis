@@ -7,6 +7,22 @@ import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { resolveUploadPublicUrl, parseStepFileUploadValue } from '../utils/uploadPublicUrl'
 import UploadedDocumentsReadonlyGrid, { collectDocumentGalleryFields } from './UploadedDocumentsReadonlyGrid'
+import DocumentPreviewLightbox, { buildDocumentPreviewItems } from './DocumentPreviewLightbox'
+
+/** آیا برای فیلد file_upload محتوایی (آپلود واقعی یا placeholder) ثبت شده؟ */
+function fieldHasUploadedContent(val) {
+  const { url, isLocalPlaceholder, fileName } = parseStepFileUploadValue(val)
+  return !!(url || isLocalPlaceholder || (fileName && String(fileName).trim()))
+}
+
+/**
+ * مدارک اجباری همیشه نیاز به تصمیم دارند.
+ * مدارک اختیاری فقط وقتی محتوا آپلود شده باشد تأیید/رد می‌خواهند.
+ */
+function fieldNeedsReviewDecision(field, ctxData) {
+  if (field?.required) return true
+  return fieldHasUploadedContent((ctxData || {})[field?.name])
+}
 
 /**
  * صف بررسی مدارک ثبت‌نام دوره آشنایی — تأیید یا رد تک‌تک توسط اپراتور پذیرش.
@@ -22,6 +38,7 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
   const [acting, setActing] = useState(false)
   const [fieldDecision, setFieldDecision] = useState({})
   const [fieldNotes, setFieldNotes] = useState({})
+  const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const loadDetail = useCallback(
     async (instanceId) => {
@@ -56,6 +73,7 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
       setDetail(null)
       setTransitions([])
       setForms([])
+      setLightboxIndex(null)
     }
   }, [selectedInstance, loadDetail])
 
@@ -71,17 +89,41 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
 
   const documentGalleryFields = useMemo(() => collectDocumentGalleryFields(forms || []), [forms])
 
+  const ctxDataForInit =
+    detail?.context_data && typeof detail.context_data === 'object' ? detail.context_data : null
+
+  const reviewableDocumentFields = useMemo(
+    () => documentFileFields.filter((f) => fieldNeedsReviewDecision(f, ctxDataForInit)),
+    [documentFileFields, ctxDataForInit],
+  )
+
   useEffect(() => {
     if (!documentFileFields.length) {
       setFieldDecision({})
       setFieldNotes({})
       return
     }
+    // پس از ارسال مجدد، وضعیت «تأیید شده» برای مدارک قبلی حفظ می‌شود؛
+    // فقط موارد جدید/رد شده دوباره pending می‌مانند تا دکمهٔ تأیید/رد معنا داشته باشد.
+    // مدارک اختیاری بدون آپلود: skipped — نیاز به تأیید/رد ندارند.
+    const prevStatus =
+      ctxDataForInit && typeof ctxDataForInit === 'object'
+        ? ctxDataForInit.__document_field_status
+        : null
     const init = {}
-    for (const f of documentFileFields) init[f.name] = 'pending'
+    for (const f of documentFileFields) {
+      if (!fieldNeedsReviewDecision(f, ctxDataForInit)) {
+        init[f.name] = 'skipped'
+        continue
+      }
+      init[f.name] =
+        prevStatus && typeof prevStatus === 'object' && prevStatus[f.name] === 'approved'
+          ? 'approved'
+          : 'pending'
+    }
     setFieldDecision(init)
     setFieldNotes({})
-  }, [selectedInstance, documentFileFields])
+  }, [selectedInstance, documentFileFields, detail?.current_state, ctxDataForInit])
 
   const runTransition = async (transition, extraPayload = {}) => {
     if (!selectedInstance) return
@@ -114,20 +156,20 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
   }
 
   const submitAllApproved = async () => {
-    if (!documentFileFields.length) {
-      showToast?.('فیلد مدرکی در فرم یافت نشد.', 'error')
+    if (!reviewableDocumentFields.length) {
+      showToast?.('فیلد مدرکی قابل بررسی در فرم یافت نشد.', 'error')
       return
     }
-    if (documentFileFields.some((f) => fieldDecision[f.name] === 'pending')) {
-      showToast?.('برای هر مدرک تأیید یا رد را مشخص کنید.', 'error')
+    if (reviewableDocumentFields.some((f) => fieldDecision[f.name] === 'pending')) {
+      showToast?.('برای هر مدرک آپلودشده (و همهٔ مدارک اجباری) تأیید یا رد را مشخص کنید.', 'error')
       return
     }
-    if (documentFileFields.some((f) => fieldDecision[f.name] !== 'approved')) {
+    if (reviewableDocumentFields.some((f) => fieldDecision[f.name] !== 'approved')) {
       showToast?.('اگر مدرکی رد شده، از دکمهٔ «رد و ارسال به دانشجو» استفاده کنید.', 'error')
       return
     }
     const status = {}
-    for (const f of documentFileFields) status[f.name] = 'approved'
+    for (const f of reviewableDocumentFields) status[f.name] = 'approved'
     const t = transitions.find((x) => x.trigger_event === 'documents_approved')
     if (!t) {
       showToast?.('ترنزیشن تأیید مدارک در دسترس نیست.', 'error')
@@ -137,22 +179,24 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
   }
 
   const submitRejected = async () => {
-    if (!documentFileFields.length) {
-      showToast?.('فیلد مدرکی در فرم یافت نشد.', 'error')
+    if (!reviewableDocumentFields.length) {
+      showToast?.('فیلد مدرکی قابل بررسی در فرم یافت نشد.', 'error')
       return
     }
-    if (documentFileFields.some((f) => fieldDecision[f.name] === 'pending')) {
-      showToast?.('برای هر مدرک تأیید یا رد را مشخص کنید.', 'error')
+    if (reviewableDocumentFields.some((f) => fieldDecision[f.name] === 'pending')) {
+      showToast?.('برای هر مدرک آپلودشده (و همهٔ مدارک اجباری) تأیید یا رد را مشخص کنید.', 'error')
       return
     }
-    const rejected = documentFileFields.filter((f) => fieldDecision[f.name] === 'rejected').map((f) => f.name)
+    const rejected = reviewableDocumentFields
+      .filter((f) => fieldDecision[f.name] === 'rejected')
+      .map((f) => f.name)
     if (rejected.length === 0) {
       showToast?.('حداقل یک مدرک را رد کنید یا از تأیید کامل استفاده کنید.', 'error')
       return
     }
     const status = {}
     const rejectionNotes = {}
-    for (const f of documentFileFields) {
+    for (const f of reviewableDocumentFields) {
       status[f.name] = fieldDecision[f.name] === 'rejected' ? 'rejected' : 'approved'
       if (fieldDecision[f.name] === 'rejected') {
         const n = (fieldNotes[f.name] || '').trim()
@@ -183,7 +227,23 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
         t.trigger_event === 'documents_approved' || t.trigger_event === 'documents_rejected',
     )
 
-  const ctxData = detail?.context_data || {}
+  const ctxData = detail?.context_data && typeof detail.context_data === 'object' ? detail.context_data : null
+
+  const reviewPreviewItems = useMemo(
+    () => buildDocumentPreviewItems(documentFileFields, ctxData || {}, resolveUploadPublicUrl, parseStepFileUploadValue),
+    [documentFileFields, ctxData],
+  )
+
+  const openReviewPreview = (fieldName) => {
+    const idx = reviewPreviewItems.findIndex((p) => p.fieldName === fieldName || p.id === fieldName)
+    if (idx >= 0) setLightboxIndex(idx)
+  }
+
+  const decidedCount = reviewableDocumentFields.filter(
+    (f) => fieldDecision[f.name] && fieldDecision[f.name] !== 'pending',
+  ).length
+  const approvedCount = reviewableDocumentFields.filter((f) => fieldDecision[f.name] === 'approved').length
+  const rejectedCount = reviewableDocumentFields.filter((f) => fieldDecision[f.name] === 'rejected').length
 
   return (
     <div>
@@ -281,117 +341,165 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
                     </div>
                     <UploadedDocumentsReadonlyGrid
                       fields={documentGalleryFields}
-                      contextData={ctxData}
-                      fieldStatus={ctxData.__document_field_status}
+                      contextData={ctxData || {}}
+                      fieldStatus={ctxData?.__document_field_status}
                     />
                   </div>
                 )}
 
                 {canDecide && documentFileFields.length > 0 && (
                   <div style={{ marginBottom: '1.25rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>
-                      بررسی تک‌تک مدارک
+                    <div className="doc-review-toolbar">
+                      <div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1e293b' }}>
+                          بررسی تک‌تک مدارک
+                        </div>
+                        <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.82rem' }}>
+                          روی تصویر کلیک کنید تا بزرگ شود؛ سپس تأیید یا رد را مشخص کنید.
+                          مدارک اختیاری فقط در صورت آپلود نیاز به تصمیم دارند.
+                        </p>
+                      </div>
+                      <div className="doc-review-progress">
+                        <span>{decidedCount} از {reviewableDocumentFields.length} تصمیم‌گرفته</span>
+                        {approvedCount > 0 && <span className="doc-review-progress__ok">{approvedCount} تأیید</span>}
+                        {rejectedCount > 0 && <span className="doc-review-progress__bad">{rejectedCount} رد</span>}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="doc-review-list">
                       {documentFileFields.map((field) => {
-                        const val = ctxData[field.name]
-                        const { url, mime, isLocalPlaceholder } = parseStepFileUploadValue(val)
+                        const val = (ctxData || {})[field.name]
+                        const { url, mime, isLocalPlaceholder, fileName } = parseStepFileUploadValue(val)
                         const decision = fieldDecision[field.name] || 'pending'
+                        const needsDecision = decision !== 'skipped' && fieldNeedsReviewDecision(field, ctxData)
                         const src = url ? resolveUploadPublicUrl(url) : ''
                         const showImage = url && mime.startsWith('image/')
                         const showPdf = url && mime === 'application/pdf'
+                        const label = field.label_fa || field.name
+                        const isOptional = !field.required
                         return (
                           <div
                             key={field.name}
-                            style={{
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '10px',
-                              padding: '0.85rem',
-                              background: '#fafafa',
-                            }}
+                            className={`doc-review-card ${decision === 'approved' ? 'is-approved' : ''} ${decision === 'rejected' ? 'is-rejected' : ''} ${decision === 'skipped' ? 'is-skipped' : ''}`}
                           >
-                            <div style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                              {field.label_fa || field.name}
-                            </div>
-                            {isLocalPlaceholder && (
-                              <p style={{ fontSize: '0.82rem', color: '#b45309', margin: '0 0 0.5rem' }}>
-                                فایلی روی سرور ثبت نشده (فقط نام فایل محلی). از دانشجو بخواهید دوباره با اتصال پایدار بارگذاری کند.
-                              </p>
-                            )}
-                            {!url && !isLocalPlaceholder && (
-                              <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 0.5rem' }}>
-                                این مدرک هنوز در پرونده ثبت نشده است.
-                              </p>
-                            )}
-                            {showImage && (
-                              <a href={src} target="_blank" rel="noopener noreferrer">
-                                <img
-                                  src={src}
-                                  alt={field.label_fa || field.name}
-                                  style={{
-                                    maxWidth: '100%',
-                                    maxHeight: '220px',
-                                    borderRadius: '8px',
-                                    border: '1px solid #e5e7eb',
-                                    display: 'block',
-                                    marginBottom: '0.5rem',
-                                  }}
-                                />
-                              </a>
-                            )}
-                            {showPdf && (
-                              <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline" style={{ marginBottom: '0.5rem' }}>
-                                باز کردن PDF
-                              </a>
-                            )}
-                            {url && !showImage && !showPdf && (
-                              <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline" style={{ marginBottom: '0.5rem' }}>
-                                باز کردن فایل
-                              </a>
-                            )}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.35rem' }}>
-                              <span style={{ fontSize: '0.78rem', color: '#64748b' }}>تصمیم:</span>
-                              {decision === 'pending' && (
-                                <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>هنوز انتخاب نشده</span>
+                            <div className="doc-review-card__preview">
+                              {showImage && (
+                                <button
+                                  type="button"
+                                  className="doc-gallery__thumb doc-gallery__thumb--lg"
+                                  onClick={() => openReviewPreview(field.name)}
+                                  aria-label={`پیش‌نمایش ${label}`}
+                                >
+                                  <img src={src} alt={label} />
+                                  <span className="doc-gallery__thumb-overlay">
+                                    <span>بزرگ‌نمایی</span>
+                                  </span>
+                                </button>
                               )}
-                              <button
-                                type="button"
-                                className={`btn btn-sm ${decision === 'approved' ? 'btn-primary' : 'btn-outline'}`}
-                                disabled={acting}
-                                onClick={() => setFieldDecision((prev) => ({ ...prev, [field.name]: 'approved' }))}
-                              >
-                                تأیید
-                              </button>
-                              <button
-                                type="button"
-                                className={`btn btn-sm ${decision === 'rejected' ? 'btn-primary' : 'btn-outline'}`}
-                                style={
-                                  decision === 'rejected'
-                                    ? { borderColor: 'var(--danger, #dc2626)', color: '#fff', background: 'var(--danger, #dc2626)' }
-                                    : { borderColor: 'var(--danger, #dc2626)', color: 'var(--danger, #dc2626)' }
-                                }
-                                disabled={acting}
-                                onClick={() => setFieldDecision((prev) => ({ ...prev, [field.name]: 'rejected' }))}
-                              >
-                                رد
-                              </button>
+                              {showPdf && (
+                                <button
+                                  type="button"
+                                  className="doc-gallery__file-tile doc-gallery__file-tile--lg"
+                                  onClick={() => openReviewPreview(field.name)}
+                                >
+                                  <span className="doc-gallery__file-icon">PDF</span>
+                                  <span>پیش‌نمایش PDF</span>
+                                </button>
+                              )}
+                              {url && !showImage && !showPdf && (
+                                <button
+                                  type="button"
+                                  className="doc-gallery__file-tile doc-gallery__file-tile--lg"
+                                  onClick={() => openReviewPreview(field.name)}
+                                >
+                                  <span className="doc-gallery__file-icon">فایل</span>
+                                  <span>مشاهده فایل</span>
+                                </button>
+                              )}
+                              {isLocalPlaceholder && (
+                                <p className="doc-gallery__hint doc-gallery__hint--warn">
+                                  فایلی روی سرور ثبت نشده (فقط نام فایل محلی). از دانشجو بخواهید دوباره با اتصال پایدار بارگذاری کند.
+                                </p>
+                              )}
+                              {!url && !isLocalPlaceholder && (
+                                <p className="doc-gallery__hint">
+                                  {isOptional
+                                    ? 'اختیاری — فایل آپلود نشده؛ نیاز به تأیید/رد ندارد.'
+                                    : 'این مدرک هنوز در پرونده ثبت نشده است.'}
+                                </p>
+                              )}
                             </div>
-                            {decision === 'rejected' && (
-                              <label style={{ display: 'block', marginTop: '0.65rem', fontSize: '0.82rem' }}>
-                                <span style={{ color: '#64748b' }}>توضیح نقص (اختیاری)</span>
-                                <input
-                                  type="text"
-                                  className="psf-input"
-                                  style={{ width: '100%', marginTop: '0.25rem', padding: '0.35rem 0.5rem' }}
-                                  dir="rtl"
-                                  value={fieldNotes[field.name] || ''}
-                                  onChange={(e) =>
-                                    setFieldNotes((prev) => ({ ...prev, [field.name]: e.target.value }))
-                                  }
-                                  disabled={acting}
-                                />
-                              </label>
-                            )}
+
+                            <div className="doc-review-card__body">
+                              <div className="doc-review-card__title">
+                                {label}
+                                {isOptional && (
+                                  <span className="doc-review-card__optional-badge"> اختیاری</span>
+                                )}
+                              </div>
+                              {fileName && <div className="doc-gallery__filename" title={fileName}>{fileName}</div>}
+
+                              {needsDecision ? (
+                                <>
+                                  <div className="doc-review-card__actions">
+                                    <span className="doc-review-card__decision-label">تصمیم:</span>
+                                    {decision === 'pending' && (
+                                      <span className="doc-review-card__pending">هنوز انتخاب نشده</span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      className={`btn btn-sm ${decision === 'approved' ? 'btn-primary' : 'btn-outline'}`}
+                                      disabled={acting}
+                                      onClick={() => setFieldDecision((prev) => ({ ...prev, [field.name]: 'approved' }))}
+                                    >
+                                      تأیید
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`btn btn-sm ${decision === 'rejected' ? 'btn-primary' : 'btn-outline'}`}
+                                      style={
+                                        decision === 'rejected'
+                                          ? { borderColor: 'var(--danger, #dc2626)', color: '#fff', background: 'var(--danger, #dc2626)' }
+                                          : { borderColor: 'var(--danger, #dc2626)', color: 'var(--danger, #dc2626)' }
+                                      }
+                                      disabled={acting}
+                                      onClick={() => setFieldDecision((prev) => ({ ...prev, [field.name]: 'rejected' }))}
+                                    >
+                                      رد
+                                    </button>
+                                    {url && (
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline"
+                                        onClick={() => openReviewPreview(field.name)}
+                                      >
+                                        پیش‌نمایش
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {decision === 'rejected' && (
+                                    <label className="doc-review-card__note">
+                                      <span>توضیح نقص (اختیاری)</span>
+                                      <input
+                                        type="text"
+                                        className="psf-input"
+                                        dir="rtl"
+                                        value={fieldNotes[field.name] || ''}
+                                        onChange={(e) =>
+                                          setFieldNotes((prev) => ({ ...prev, [field.name]: e.target.value }))
+                                        }
+                                        disabled={acting}
+                                        placeholder="مثلاً تصویر تار است یا ناقص است"
+                                      />
+                                    </label>
+                                  )}
+                                </>
+                              ) : (
+                                <p className="muted" style={{ margin: '0.5rem 0 0', fontSize: '0.82rem' }}>
+                                  آپلود نشده — از صف تأیید/رد خارج است.
+                                </p>
+                              )}
+                            </div>
                           </div>
                         )
                       })}
@@ -408,7 +516,7 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
                   historyMaxHeight="180px"
                 />
 
-                {canDecide && documentFileFields.length > 0 && (
+                {canDecide && reviewableDocumentFields.length > 0 && (
                   <>
                     <div style={{ marginTop: '1.25rem' }}>
                       <DecisionNotesBlock
@@ -440,7 +548,7 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
                   </>
                 )}
 
-                {canDecide && documentFileFields.length === 0 && (
+                {canDecide && reviewableDocumentFields.length === 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1rem' }}>
                     {transitions
                       .filter((t) =>
@@ -469,7 +577,9 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
 
                 {detail.current_state === 'documents_incomplete' && (
                   <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-                    این پرونده در مرحلهٔ «مدارک ناقص» است؛ دانشجو فقط موارد رد شده را دوباره بارگذاری می‌کند. پس از ارسال، دوباره در بخش «در انتظار بررسی» ظاهر می‌شود.
+                    این پرونده در مرحلهٔ «مدارک ناقص» است؛ دانشجو فقط موارد رد شده را دوباره بارگذاری می‌کند.
+                    پس از ثبت مدارک جدید توسط دانشجو، پرونده به‌صورت خودکار به «در انتظار بررسی» برمی‌گردد و دکمه‌های تأیید/رد دوباره ظاهر می‌شوند.
+                    اگر دانشجو قبلاً بارگذاری کرده ولی هنوز اینجا مانده، صفحه را تازه کنید یا از او بخواهید پس از باز شدن ویرایش، دوباره «ثبت» را بزند.
                   </p>
                 )}
               </>
@@ -477,6 +587,14 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
           </div>
         </div>
       )}
+
+      <DocumentPreviewLightbox
+        open={lightboxIndex != null}
+        items={reviewPreviewItems}
+        index={lightboxIndex ?? 0}
+        onClose={() => setLightboxIndex(null)}
+        onIndexChange={setLightboxIndex}
+      />
     </div>
   )
 }

@@ -400,6 +400,7 @@ async def panel_my_semester_courses(
 async def panel_instructor_course_roster(
     course_code: str,
     enrich_film_reports: bool = Query(False, alias="enrich_film_reports"),
+    enrich_live_therapy_reports: bool = Query(False, alias="enrich_live_therapy_reports"),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -413,7 +414,11 @@ async def panel_instructor_course_roster(
     if not code:
         raise HTTPException(status_code=400, detail="course_code الزامی است.")
     roster = await get_course_roster_for_user(
-        db, user, code, include_final_reports=enrich_film_reports,
+        db,
+        user,
+        code,
+        include_final_reports=enrich_film_reports,
+        include_live_therapy_reports=enrich_live_therapy_reports,
     )
     if not roster and role in ("instructor", "teaching_assistant"):
         from app.services.instructor_course_roster_service import user_may_access_course

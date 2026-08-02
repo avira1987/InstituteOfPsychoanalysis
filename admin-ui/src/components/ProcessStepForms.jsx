@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { filterFormsForStudent, validateStepForms } from '../utils/processFormsStudent'
 import { processExecApi, studentApi } from '../services/api'
+import EducationalTherapistSlotPicker from './EducationalTherapistSlotPicker'
 import { resolveUploadPublicUrl, parseStepFileUploadValue } from '../utils/uploadPublicUrl'
 import {
   resolveCheckboxListOptions,
@@ -9,12 +10,70 @@ import {
 } from '../utils/resolveCourseFieldOptions'
 import ShamsiDatePicker from './ShamsiDatePicker'
 import StepOtpField from './StepOtpField'
+import DocumentPreviewLightbox from './DocumentPreviewLightbox'
 import {
   isoDateToShamsiParts,
   shamsiDateToIsoDate,
   defaultShamsiDate,
   formatShamsiTehran,
 } from '../utils/shamsiDateTime'
+
+/** پیش‌نمایش کوچک آپلود فایل مرحله با لایت‌باکس بزرگ‌نمایی */
+function StepFilePreviewThumb({ label, src, mime, fileName }) {
+  const [open, setOpen] = useState(false)
+  const showImage = src && (mime || '').startsWith('image/')
+  const showPdf = src && mime === 'application/pdf'
+  if (!src) return null
+  const item = { id: 'step-file', label: label || 'مدرک', src, mime: mime || '' }
+  return (
+    <>
+      {showImage && (
+        <button
+          type="button"
+          className="doc-gallery__thumb"
+          style={{ marginTop: '0.5rem' }}
+          onClick={() => setOpen(true)}
+          aria-label={`پیش‌نمایش ${label || 'مدرک'}`}
+        >
+          <img src={src} alt={label || ''} />
+          <span className="doc-gallery__thumb-overlay">
+            <span>بزرگ‌نمایی</span>
+          </span>
+        </button>
+      )}
+      {showPdf && (
+        <button
+          type="button"
+          className="doc-gallery__file-tile"
+          style={{ marginTop: '0.5rem' }}
+          onClick={() => setOpen(true)}
+        >
+          <span className="doc-gallery__file-icon">PDF</span>
+          <span>پیش‌نمایش PDF</span>
+        </button>
+      )}
+      {src && !showImage && !showPdf && (
+        <button
+          type="button"
+          className="btn btn-sm btn-outline"
+          style={{ marginTop: '0.5rem' }}
+          onClick={() => setOpen(true)}
+        >
+          مشاهده فایل
+        </button>
+      )}
+      {fileName && (
+        <span className="psf-file-name" style={{ display: 'block', marginTop: '0.35rem' }}>{fileName}</span>
+      )}
+      <DocumentPreviewLightbox
+        open={open}
+        items={[item]}
+        index={0}
+        onClose={() => setOpen(false)}
+      />
+    </>
+  )
+}
 
 function TherapistSelectField({ id, field, value, onChange, disabled }) {
   const [options, setOptions] = useState([])
@@ -112,6 +171,31 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
           rows={3}
         />
       </label>
+    )
+  }
+
+  if (t === 'hidden') {
+    return null
+  }
+
+  if (t === 'therapist_slot_picker') {
+    const slotFieldName = 'slot_ids'
+    const courseType = contextData?.course_type || null
+    return (
+      <div className="psf-field">
+        <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
+        {field.description_fa && <p className="psf-hint">{field.description_fa}</p>}
+        <EducationalTherapistSlotPicker
+          therapistId={value ?? ''}
+          slotIds={values[slotFieldName] || []}
+          weeklySessions={values.weekly_sessions}
+          courseType={courseType}
+          therapistFieldName={name}
+          onTherapistChange={(v) => onFieldChange(name, v)}
+          onSlotsChange={(ids) => onFieldChange(slotFieldName, ids)}
+          disabled={disabled || locked}
+        />
+      </div>
     )
   }
 
@@ -236,8 +320,6 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
   if (t === 'file_upload') {
     const parsed = parseStepFileUploadValue(value)
     const src = parsed.url ? resolveUploadPublicUrl(parsed.url) : ''
-    const showImage = parsed.url && parsed.mime.startsWith('image/')
-    const showPdf = parsed.url && parsed.mime === 'application/pdf'
     const readOnlyPreview = disabled && !locked && !!(parsed.url || parsed.fileName || parsed.isLocalPlaceholder)
 
     if (disabled && !locked && !readOnlyPreview) {
@@ -260,30 +342,12 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
             <p className="psf-hint psf-hint--warn">فقط نام فایل محلی ثبت شده بود.</p>
           )}
           {!parsed.url && !parsed.isLocalPlaceholder && <p className="muted" style={{ fontSize: '0.85rem' }}>—</p>}
-          {showImage && (
-            <div style={{ marginTop: '0.5rem' }}>
-              <a href={src} target="_blank" rel="noopener noreferrer">
-                <img
-                  src={src}
-                  alt=""
-                  style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-                />
-              </a>
-            </div>
-          )}
-          {showPdf && (
-            <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline" style={{ marginTop: '0.5rem' }}>
-              باز کردن PDF
-            </a>
-          )}
-          {parsed.url && !showImage && !showPdf && (
-            <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline" style={{ marginTop: '0.5rem' }}>
-              باز کردن فایل
-            </a>
-          )}
-          {parsed.fileName && (
-            <span className="psf-file-name" style={{ display: 'block', marginTop: '0.35rem' }}>{parsed.fileName}</span>
-          )}
+          <StepFilePreviewThumb
+            label={field.label_fa || name}
+            src={src}
+            mime={parsed.mime}
+            fileName={parsed.fileName}
+          />
         </div>
       )
     }
@@ -299,30 +363,12 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
             <p className="psf-hint psf-hint--warn">فقط نام فایل محلی ثبت شده بود.</p>
           )}
           {!parsed.url && !parsed.isLocalPlaceholder && <p className="muted" style={{ fontSize: '0.85rem' }}>—</p>}
-          {showImage && (
-            <div style={{ marginTop: '0.5rem' }}>
-              <a href={src} target="_blank" rel="noopener noreferrer">
-                <img
-                  src={src}
-                  alt=""
-                  style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-                />
-              </a>
-            </div>
-          )}
-          {showPdf && (
-            <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline" style={{ marginTop: '0.5rem' }}>
-              باز کردن PDF
-            </a>
-          )}
-          {parsed.url && !showImage && !showPdf && (
-            <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline" style={{ marginTop: '0.5rem' }}>
-              باز کردن فایل
-            </a>
-          )}
-          {parsed.fileName && (
-            <span className="psf-file-name" style={{ display: 'block', marginTop: '0.35rem' }}>{parsed.fileName}</span>
-          )}
+          <StepFilePreviewThumb
+            label={field.label_fa || name}
+            src={src}
+            mime={parsed.mime}
+            fileName={parsed.fileName}
+          />
         </div>
       )
     }
@@ -359,18 +405,12 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
           }}
           disabled={disabled || blockedByRules}
         />
-        {showImage && (
-          <div style={{ marginTop: '0.5rem' }}>
-            <img
-              src={src}
-              alt=""
-              style={{ maxWidth: '100%', maxHeight: '140px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-            />
-          </div>
-        )}
-        {value?.file_name && (
-          <span className="psf-file-name">{value.file_name}</span>
-        )}
+        <StepFilePreviewThumb
+          label={field.label_fa || name}
+          src={src}
+          mime={parsed.mime}
+          fileName={value?.file_name || parsed.fileName}
+        />
       </div>
     )
   }
@@ -498,6 +538,23 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
         </div>
       )
     }
+    const isCourseSource =
+      t === 'checkbox_list' &&
+      (field?.source === 'available_courses_by_admission_type' ||
+        field?.source === 'filtered_courses_by_admission_type_and_prerequisites' ||
+        field?.source === 'lms_available_courses')
+    if (isCourseSource && !resolved.useFallback) {
+      return (
+        <div className="psf-field psf-advanced">
+          <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
+          {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
+          <p className="psf-hint psf-hint--warn" style={{ margin: 0, lineHeight: 1.65 }}>
+            {resolved.hint ||
+              'لیست دروس این ترم هنوز از فرایند آماده‌سازی ترم منتشر نشده است؛ پس از انتشار توسط انستیتو این بخش فعال می‌شود.'}
+          </p>
+        </div>
+      )
+    }
     return (
       <div className="psf-field psf-advanced">
         <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
@@ -532,13 +589,14 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
   const inputType = t === 'email' ? 'email' : t === 'tel' ? 'tel' : 'text'
   const textDir = field.dir === 'ltr' ? 'ltr' : inputType === 'text' ? 'rtl' : 'ltr'
   return (
-    <label className="psf-field" htmlFor={id}>
+    <label className="psf-field" htmlFor={id} data-testid={`pf-field-${name}`}>
       <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
       {field.description_fa && <p className="psf-hint">{field.description_fa}</p>}
       <input
         id={id}
         type={inputType}
         className="psf-input"
+        data-testid={`pf-input-${name}`}
         value={value ?? ''}
         onChange={e => onChange(e.target.value)}
         disabled={disabled || locked}

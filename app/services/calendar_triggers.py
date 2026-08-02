@@ -632,10 +632,10 @@ def _interview_reminder_sms_context(
     slot: InterviewSlot,
     student_user: User,
 ) -> dict[str, str]:
-    st = _slot_starts_at_utc(slot)
+    from app.utils.shamsi_calendar_utils import tehran_datetime_parts
+
     name = (student_user.full_name_fa or "").strip() or "کاربر گرامی"
-    date_s = st.strftime("%Y-%m-%d")
-    time_s = st.strftime("%H:%M")
+    date_s, time_s = tehran_datetime_parts(slot.starts_at)
     loc = (slot.location_fa or "").strip() or "انستیتو روانکاوی تهران"
     link = (slot.meeting_link or "").strip()
     loc_info = link if slot.mode == "online" else loc
@@ -777,10 +777,13 @@ async def _run_therapy_session_link_reminders(db: AsyncSession, now: datetime) -
         phone = normalize_ir_mobile(user.phone or "")
         if not phone or len(phone) < 10:
             continue
+        from app.utils.shamsi_calendar_utils import tehran_datetime_parts
+
+        date_s, time_s = tehran_datetime_parts(st)
         ctx = {
             "student_name": (user.full_name_fa or "").strip() or "کاربر گرامی",
-            "session_date": st.strftime("%Y-%m-%d"),
-            "session_time": st.strftime("%H:%M"),
+            "session_date": date_s,
+            "session_time": time_s,
             "meeting_url": link,
         }
         try:

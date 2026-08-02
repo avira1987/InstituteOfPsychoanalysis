@@ -136,9 +136,18 @@ def notification_action_path(item: dict[str, Any]) -> str:
     instance_id = item.get("instance_id")
     student_id = item.get("student_id")
     code = (item.get("responsible_role_code") or "").strip().lower()
+    process_code = (item.get("process_code") or "").strip().lower()
     base = {"instance_id": instance_id, "student_id": student_id}
 
+    if code in ("student", "applicant"):
+        return _path_query(
+            "/panel/portal/student",
+            {**base, "tab": "processes", "process_code": process_code or None},
+        )
+
     if not instance_id or not student_id:
+        if process_code in ("fall_semester_preparation", "winter_semester_preparation"):
+            return "/panel/semester-prep"
         return _path_query("/panel/students", {"student_id": student_id, "instance_id": instance_id})
 
     if code == "therapist":
@@ -400,6 +409,63 @@ async def _upcoming_paid_interview_slot_notifications(
     return out
 
 
+async def _pending_payment_interview_slot_notifications(
+    db: AsyncSession,
+    user: User,
+    *,
+    now: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """اسلات‌های در انتظار پرداخت برای مصاحبه‌گر اختصاص‌یافته."""
+    role = (user.role or "").strip().lower()
+    if role != "interviewer":
+        return []
+    now = now or datetime.now(timezone.utc)
+    su = aliased(User)
+    stmt = (
+        select(InterviewSlot, Student, su)
+        .join(Student, InterviewSlot.assigned_student_id == Student.id)
+        .join(su, Student.user_id == su.id)
+        .where(
+            InterviewSlot.interviewer_user_id == user.id,
+            InterviewSlot.assigned_student_id.isnot(None),
+            InterviewSlot.booking_payment_deadline_at.isnot(None),
+            InterviewSlot.ends_at >= now,
+        )
+        .order_by(InterviewSlot.starts_at)
+        .limit(40)
+    )
+    rows = (await db.execute(stmt)).all()
+    out: list[dict[str, Any]] = []
+    for slot, student, st_user in rows:
+        st_iso = slot.starts_at.isoformat() if slot.starts_at else ""
+        mode_fa = "آنلاین" if slot.mode == "online" else "حضوری"
+        name = (st_user.full_name_fa or "").strip() or (student.student_code or "").strip() or "دانشجو"
+        title = f"انتخاب وقت — {name}"
+        summary = (
+            f"{mode_fa} · {st_iso[:19].replace('T', ' ')} · "
+            "دانشجو وقت را انتخاب کرده؛ در انتظار پرداخت (۱۰ دقیقه)."
+        )
+        iid = str(slot.assigned_instance_id) if slot.assigned_instance_id else None
+        sid = str(student.id)
+        action_path = _path_query(
+            "/panel/portal/interviewer",
+            {"student_id": sid, "instance_id": iid} if iid else {"student_id": sid},
+        )
+        out.append(
+            {
+                "notification_id": f"interview_booking_pending:{slot.id}",
+                "kind": "interview_booking_pending",
+                "title_fa": title,
+                "summary_fa": summary,
+                "action_path": action_path,
+                "sort_at": datetime.now(timezone.utc).isoformat(),
+                "instance_id": iid,
+                "student_id": sid,
+            }
+        )
+    return out
+
+
 async def build_action_notifications(
     db: AsyncSession,
     user: User,
@@ -448,6 +514,8 @@ async def build_action_notifications(
             if n:
                 all_items.append(n)
         for ib in await _upcoming_paid_interview_slot_notifications(db, user):
+            all_items.append(ib)
+        for ib in await _pending_payment_interview_slot_notifications(db, user):
             all_items.append(ib)
 
     if persisted:

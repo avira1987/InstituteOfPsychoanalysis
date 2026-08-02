@@ -1,0 +1,5545 @@
+{
+  "processes": [
+    {
+      "code": "educational_leave",
+      "name_fa": "رخص آزش ت از ثبتا در کاسا",
+      "sop_order": null,
+      "phase": "P6_leave",
+      "initial_state": "request_form",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "progress_committee",
+        "deputy_education",
+        "monitoring_committee_officer"
+      ],
+      "sub_process_refs": [
+        "patient_referral",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "request_form",
+          "role": "student",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "committee_review",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "deputy_alerted",
+          "role": "deputy_education",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و تأیید یا ارجاع."
+        },
+        {
+          "state": "session_scheduled",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "committee_decision",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "علت رد درخواست در همین صفحه نمایش داده می‌شود. در صورت پرسش با کمیته پیشرفت یا پذیرش تماس بگیرید."
+        },
+        {
+          "state": "approved_non_intern",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را در سامانه فعال کنید؛ پس از آن ثبت‌نام کلاس برای شما تا زمان بازگشت مسدو…"
+        },
+        {
+          "state": "approved_intern_1term",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ سوپرویژن و درمان طبق مصوبه ادامه می‌یابد."
+        },
+        {
+          "state": "approved_intern_2term",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ پس از آن وضعیت انترنی و سوپروایزر طبق مصوبه به‌روز می‌شود."
+        },
+        {
+          "state": "on_leave",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "ثبت‌نام دروس کلاس تا اعلام بازگشت در سامانه برای شما مسدود است. زمان تقریبی یادآوری بازگشت و مهلت اعلام ثبت‌نام ترم در ج…"
+        },
+        {
+          "state": "return_reminder_sent",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "پس از ثبت‌نام واقعی دروس ترم آینده در سامانه، فرم تأیید بازگشت را پر کنید و دکمهٔ «ثبت بازگشت» را بزنید."
+        },
+        {
+          "state": "returned",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "violation_registered",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 13,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "progress_committee": "CommitteePortal / progress",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "monitoring_committee_officer": "CommitteePortal / supervision"
+      },
+      "started_by": [
+        "process_merged_to_one",
+        "student_non_registration"
+      ]
+    },
+    {
+      "code": "start_therapy",
+      "name_fa": "آغاز درا آزش",
+      "sop_order": null,
+      "phase": "P4_therapy",
+      "initial_state": "eligibility_check",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "eligibility_check",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "already_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "therapist_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "درمانگر آموزشی و برنامهٔ هفتگی (مثلاً ۲ جلسه در هفته برای دوره جامع) را در فرم زیر مشخص کنید؛ سپس دکمهٔ ادامه را بزنید ت…"
+        },
+        {
+          "state": "therapist_confirmation",
+          "role": "therapist",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+        },
+        {
+          "state": "schedule_first_session",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "تاریخ شروع اولین جلسه را ثبت کنید؛ سامانه قانون ۲۴ ساعت را اعمال می‌کند و در صورت نیاز تاریخ را به هفتهٔ بعد موکول می‌کن…"
+        },
+        {
+          "state": "first_session_24h_check",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "این مرحله معمولاً به‌صورت خودکار طی چند ثانیه تکمیل می‌شود. اگر متوقف ماند، صفحه را تازه کنید."
+        },
+        {
+          "state": "payment_pending",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "هزینهٔ جلسهٔ اول را از طریق درگاه بانک همین صفحه بپردازید. پس از تأیید بانک، درمان در پروندهٔ شما فعال می‌شود و به مرحله…"
+        },
+        {
+          "state": "therapy_active",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "ineligible",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "week9_blocked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 10,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "therapist": "TherapistPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "intro_second_semester_registration"
+      ]
+    },
+    {
+      "code": "therapy_changes",
+      "name_fa": "درت تغرات درا آزش",
+      "sop_order": 3,
+      "phase": "P4_therapy",
+      "initial_state": "change_request",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "change_request",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "نوع تغییر را انتخاب و دلیل کوتاه بنویسید؛ سپس یک‌بار دکمهٔ ادامه را بزنید تا درخواست به مسیر درست (کمیته یا درمانگر) برو…"
+        },
+        {
+          "state": "restart_review",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "therapist_change_review",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "schedule_change_review",
+          "role": "therapist",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+        },
+        {
+          "state": "new_therapist_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "شناسهٔ درمانگر جدید را مطابق راهنمای انستیتو وارد کنید و تایید نهایی را بزنید."
+        },
+        {
+          "state": "new_schedule_confirmation",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "ساعت پیشنهادی توسط درمانگر را بررسی کنید؛ در صورت تایید، دکمهٔ ادامه را بزنید تا ساعت روی جلسات آینده ثبت شود."
+        },
+        {
+          "state": "change_approved",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "change_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "restart_activated",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 9,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "therapist": "TherapistPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "extra_session",
+      "name_fa": "برگزار جس اضاف درا آزش",
+      "sop_order": 4,
+      "phase": "P4_therapy",
+      "initial_state": "extra_request",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [
+        "attendance_tracking"
+      ],
+      "workflow": [
+        {
+          "state": "extra_request",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "تاریخ و ساعت پیشنهادی خود را در فرم همین صفحه وارد و ثبت کنید؛ سپس دکمهٔ ادامه را بزنید تا درمانگر بررسی کند."
+        },
+        {
+          "state": "therapist_review",
+          "role": "therapist",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+        },
+        {
+          "state": "student_response",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "اگر زمان پیشنهادی درمانگر را می‌پذیرید، تاریخ و ساعت را در فرم تأیید کنید؛ در غیر این صورت زمان جدید پیشنهاد دهید و ثبت …"
+        },
+        {
+          "state": "payment_required",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "ابتدا از بخش پرداخت درگاه همین صفحه مبلغ جلسه اضافی را بپردازید؛ پس از تأیید بانک، مرحلهٔ بعد به‌صورت خودکار ثبت می‌شود."
+        },
+        {
+          "state": "extra_session_confirmed",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "جلسه در سیستم ثبت شده است؛ لینک جلسه در همین مسیر یا پیامک آمده است. در زمان مقرر حاضر شوید."
+        },
+        {
+          "state": "extra_session_completed",
+          "role": "therapist",
+          "type": "terminal",
+          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+        },
+        {
+          "state": "extra_session_cancelled",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "extra_request_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 8,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "therapist": "TherapistPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "session_payment",
+      "name_fa": "پرداخت برا جسات آت درا آزش",
+      "sop_order": 5,
+      "phase": "P4_therapy",
+      "initial_state": "payment_due",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "payment_due",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "دکمهٔ «ادامه به انتخاب جلسات و تسویه» را بزنید. اگر بدهی جلسهٔ قبلی دارید، در مرحلهٔ بعد آن را همراه پرداخت انتخاب کنید."
+        },
+        {
+          "state": "payment_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "فرم همین صفحه را تکمیل کنید؛ در صورت بدهی، گزینهٔ تسویه را فعال کنید. سپس دکمهٔ «ادامه و ثبت مرحله» را بزنید تا به درگاه…"
+        },
+        {
+          "state": "awaiting_payment",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        },
+        {
+          "state": "payment_confirmed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "payment_failed",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "می‌توانید دوباره تلاش کنید یا در صورت نیاز با پشتیبانی تماس بگیرید."
+        },
+        {
+          "state": "session_suspended",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "extra_supervision_session",
+        "supervision_block_transition"
+      ]
+    },
+    {
+      "code": "attendance_tracking",
+      "name_fa": "تک شد ساعات درا آزش (حضر  غاب)",
+      "sop_order": 6,
+      "phase": "P4_therapy",
+      "initial_state": "session_scheduled",
+      "initial_role": null,
+      "roles_needed": [
+        "therapist",
+        "site_manager",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [
+        "fee_determination"
+      ],
+      "workflow": [
+        {
+          "state": "session_scheduled",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "recording_closed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "auto_absence_unpaid",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "therapist_recording",
+          "role": "therapist",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+        },
+        {
+          "state": "site_manager_pending",
+          "role": "site_manager",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست و ثبت تصمیم."
+        },
+        {
+          "state": "deputy_escalated",
+          "role": "deputy_education",
+          "type": "terminal",
+          "task_fa": "بررسی پرونده و تأیید یا ارجاع."
+        },
+        {
+          "state": "session_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "absence_recorded",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "excused_absence",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "unexcused_absence",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "quota_exceeded",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 11,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "therapist": "TherapistPortal",
+        "site_manager": "SiteManagerPortal",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "extra_session",
+        "therapist_session_cancellation"
+      ]
+    },
+    {
+      "code": "fee_determination",
+      "name_fa": "تع تکف ز جس درا آزش ا سپر فرد",
+      "sop_order": 7,
+      "phase": "P4_therapy",
+      "initial_state": "triggered",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "triggered",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "excluded",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "scenario_1_credit_returned",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "scenario_2_no_action",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "scenario_3_forfeited",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "scenario_4_debt_created",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "therapist": "TherapistPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "attendance_tracking",
+        "student_session_cancellation",
+        "student_supervision_cancellation",
+        "supervision_50h_completion",
+        "unannounced_supervision_absence_reaction"
+      ]
+    },
+    {
+      "code": "therapy_completion",
+      "name_fa": "تک  خات درا آزش",
+      "sop_order": 8,
+      "phase": "P4_therapy",
+      "initial_state": "initiated",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "initiated",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "ساعات درمان، بالینی و سوپرویژن را در باکس پایین با حدنصاب‌ها ببینید؛ اگر همهٔ شرایط احراز است، دکمهٔ «ادامه و ثبت مرحله»…"
+        },
+        {
+          "state": "conditions_not_met",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "therapy_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 3,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "therapist": "TherapistPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "therapy_session_increase",
+      "name_fa": "درخاست داشج برا افزاش جسات فتگ درا آزش",
+      "sop_order": 9,
+      "phase": "P4_therapy",
+      "initial_state": "request_submitted",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "therapist",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "request_submitted",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "تاریخ نزدیک‌ترین جلسه و ساعت شروع را وارد کنید؛ فرم را ثبت کنید؛ سپس «ادامه و ثبت مرحله» را بزنید تا درمانگر بررسی کند. …"
+        },
+        {
+          "state": "therapist_review",
+          "role": "therapist",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+        },
+        {
+          "state": "student_response",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "اگر با زمان پیشنهادی درمانگر موافقید، دکمهٔ تأیید را بزنید. اگر زمان دیگری می‌خواهید، تاریخ و ساعت جدید را در فرم بنویسی…"
+        },
+        {
+          "state": "session_added",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "تعداد جلسات هفتگی در پروندهٔ شما به‌روز شده است؛ جلسهٔ جدید در فهرست جلسات درمان دیده می‌شود."
+        },
+        {
+          "state": "request_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "درمانگر در حال حاضر امکان افزایش جلسات هفتگی را اعلام نکرده است؛ در صورت نیاز بعداً می‌توانید دوباره درخواست دهید."
+        }
+      ],
+      "state_count": 5,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "therapist": "TherapistPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "therapy_session_reduction",
+      "name_fa": "درخاست داشج برا کاش جسات فتگ درا آزش",
+      "sop_order": 10,
+      "phase": "P4_therapy",
+      "initial_state": "initiated",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "system",
+        "monitoring_committee_officer"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "initiated",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "دکمهٔ «ادامه و ثبت مرحله» را بزنید. اگر کمتر از ۲ جلسه در هفته دارید، در همین مسیر اعلام می‌شود."
+        },
+        {
+          "state": "blocked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "session_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "تعداد جلسات هفتگی پس از کاهش و جلسات آتی مورد نظر برای لغو را در فرم مشخص کنید؛ سپس «ادامه و ثبت مرحله» را بزنید. حداقل …"
+        },
+        {
+          "state": "violation_warning",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "چک‌باکس را بزنید و سپس «ادامه و ثبت مرحله» را بزنید تا کاهش با ثبت تخلف اعمال شود."
+        },
+        {
+          "state": "reduction_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "reduction_with_violation",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)",
+        "monitoring_committee_officer": "CommitteePortal / supervision"
+      },
+      "started_by": []
+    },
+    {
+      "code": "therapy_early_termination",
+      "name_fa": "طع زدرس درا آزش تسط دراگر آزش",
+      "sop_order": 11,
+      "phase": "P4_therapy",
+      "initial_state": "reason_selection",
+      "initial_role": null,
+      "roles_needed": [
+        "therapist",
+        "student",
+        "system",
+        "monitoring_committee_officer"
+      ],
+      "sub_process_refs": [
+        "committees_review",
+        "specialized_commission_review",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "reason_selection",
+          "role": "therapist",
+          "type": "initial",
+          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+        },
+        {
+          "state": "awaiting_student_restart",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "restart_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "violation_no_restart",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "scientific_referred",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "disciplinary_referred",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "therapist": "TherapistPortal",
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)",
+        "monitoring_committee_officer": "CommitteePortal / supervision"
+      },
+      "started_by": []
+    },
+    {
+      "code": "specialized_commission_review",
+      "name_fa": "بررس کس تخصص (زرفراد اف)",
+      "sop_order": 12,
+      "phase": "P4_therapy",
+      "initial_state": "commission_review",
+      "initial_role": null,
+      "roles_needed": [
+        "specialized_commission",
+        "student",
+        "system",
+        "monitoring_committee_officer"
+      ],
+      "sub_process_refs": [
+        "committees_review",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "commission_review",
+          "role": "specialized_commission",
+          "type": "initial",
+          "task_fa": "بررسی پرونده و ثبت رأی."
+        },
+        {
+          "state": "awaiting_student_restart",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "restart_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "violation_no_restart",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "referred_to_committees",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 5,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "specialized_commission": "CommitteePortal / supervision",
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)",
+        "monitoring_committee_officer": "CommitteePortal / supervision"
+      },
+      "started_by": [
+        "therapy_early_termination"
+      ]
+    },
+    {
+      "code": "committees_review",
+      "name_fa": "بررس کتا ظارت  آزش (زرفراد ب)",
+      "sop_order": 13,
+      "phase": "P4_therapy",
+      "initial_state": "supervision_review",
+      "initial_role": null,
+      "roles_needed": [
+        "supervision_committee",
+        "education_committee",
+        "student",
+        "system",
+        "deputy_education",
+        "monitoring_committee_officer"
+      ],
+      "sub_process_refs": [
+        "patient_referral",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "supervision_review",
+          "role": "supervision_committee",
+          "type": "initial",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "education_review",
+          "role": "education_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده در جلسه کمیته آموزش."
+        },
+        {
+          "state": "awaiting_student_restart",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "restart_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "violation_no_restart",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "education_terminated",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "supervision_committee": "CommitteePortal / supervision",
+        "education_committee": "CommitteePortal / education",
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "monitoring_committee_officer": "CommitteePortal / supervision"
+      },
+      "started_by": [
+        "specialized_commission_review",
+        "therapy_early_termination"
+      ]
+    },
+    {
+      "code": "therapist_session_cancellation",
+      "name_fa": "کس کرد جس از س دراگر آزش",
+      "sop_order": 14,
+      "phase": "P4_therapy",
+      "initial_state": "session_selection",
+      "initial_role": null,
+      "roles_needed": [
+        "therapist",
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "attendance_tracking"
+      ],
+      "workflow": [
+        {
+          "state": "session_selection",
+          "role": "therapist",
+          "type": "initial",
+          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+        },
+        {
+          "state": "make_up_choice",
+          "role": "therapist",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+        },
+        {
+          "state": "cancelled_no_make_up",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "make_up_proposed",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "therapist_review_alternative",
+          "role": "therapist",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
+        },
+        {
+          "state": "payment_required",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        },
+        {
+          "state": "make_up_confirmed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "cancelled_student_declined",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 8,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "therapist": "TherapistPortal",
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "unannounced_absence_reaction",
+      "name_fa": "اکش استت ب غبت بد اطاع در جس آد",
+      "sop_order": 15,
+      "phase": "P4_therapy",
+      "initial_state": "identified",
+      "initial_role": null,
+      "roles_needed": [
+        "site_manager",
+        "therapy_committee_chair",
+        "therapy_committee_executor",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "identified",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "stopped_on_leave",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "first_absence_handled",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "site_manager_review",
+          "role": "site_manager",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست و ثبت تصمیم."
+        },
+        {
+          "state": "option_1_violation",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "committee_pending",
+          "role": "therapy_committee_chair",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده درمان و ثبت تصمیم."
+        },
+        {
+          "state": "committee_executor_review",
+          "role": "therapy_committee_executor",
+          "type": "intermediate",
+          "task_fa": "اجرا و پیگیری تصمیم کمیته درمان."
+        },
+        {
+          "state": "ambiguous_3week_wait",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "student_returned",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "violation_reported",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 10,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "site_manager": "SiteManagerPortal",
+        "therapy_committee_chair": "CommitteePortal / therapy",
+        "therapy_committee_executor": "CommitteePortal / therapy",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "unannounced_supervision_absence_reaction",
+      "name_fa": "اکش استت ب غبت بد اطاع در جس آد سپر فرد",
+      "sop_order": 27,
+      "phase": "P5_supervision",
+      "initial_state": "identified",
+      "initial_role": null,
+      "roles_needed": [
+        "site_manager",
+        "therapy_committee_chair",
+        "therapy_committee_executor",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [
+        "fee_determination",
+        "patient_referral",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "identified",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "stopped_on_leave",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "first_absence_handled",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "site_manager_review",
+          "role": "site_manager",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست و ثبت تصمیم."
+        },
+        {
+          "state": "option_1_violation",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "committee_pending",
+          "role": "therapy_committee_chair",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده درمان و ثبت تصمیم."
+        },
+        {
+          "state": "committee_executor_review",
+          "role": "therapy_committee_executor",
+          "type": "intermediate",
+          "task_fa": "اجرا و پیگیری تصمیم کمیته درمان."
+        },
+        {
+          "state": "ambiguous_3week_wait",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "student_returned",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "violation_reported",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 10,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "site_manager": "SiteManagerPortal",
+        "therapy_committee_chair": "CommitteePortal / therapy",
+        "therapy_committee_executor": "CommitteePortal / therapy",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "therapy_interruption",
+      "name_fa": "ف در درا آزش تسط داشج",
+      "sop_order": 16,
+      "phase": "P4_therapy",
+      "initial_state": "request_submitted",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "progress_committee",
+        "system"
+      ],
+      "sub_process_refs": [
+        "patient_referral",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "request_submitted",
+          "role": "student",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "committee_scheduling",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "meeting_held",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "awaiting_return",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "returned_successfully",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "no_return_resources_freed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "long_interruption_applied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 8,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "progress_committee": "CommitteePortal / progress",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "student_session_cancellation",
+      "name_fa": "کس کرد جسات درا آزش تسط داشج",
+      "sop_order": 17,
+      "phase": "P4_therapy",
+      "initial_state": "calendar_displayed",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "fee_determination",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "calendar_displayed",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "جلسات مورد نظر را در فرم زیر تیک بزنید، فرم را ثبت کنید، سپس «ادامه و ثبت مرحله» را بزنید."
+        },
+        {
+          "state": "consecutive_blocked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "sessions_selected",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "خلاصهٔ انتخاب و درصد کنسلی را در باکس بالا ببینید. در صورت هشدار، تأیید را بزنید و «ادامه و ثبت مرحله» را انتخاب کنید."
+        },
+        {
+          "state": "cancellation_applied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "warning_and_applied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "violation_and_applied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "supervision_block_transition",
+      "name_fa": "درت تغرات سپر فرد (آغاز جدد تغر سپرازر تغر ساعت)",
+      "sop_order": 18,
+      "phase": "P5_supervision",
+      "initial_state": "payment_intent_50th",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "session_payment"
+      ],
+      "workflow": [
+        {
+          "state": "payment_intent_50th",
+          "role": "student",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "not_at_50th",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "supervisor_slots_displayed",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "slot_selected",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "new_block_first_paid",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "both_paid_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "supervision_50h_completion",
+      "name_fa": "تک درا ۵۰ ساعت سپر فرد",
+      "sop_order": 20,
+      "phase": "P5_supervision",
+      "initial_state": "session_scheduled",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "supervisor",
+        "site_manager",
+        "system"
+      ],
+      "sub_process_refs": [
+        "fee_determination",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "session_scheduled",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "recording_closed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "auto_absence_unpaid",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "supervisor_recording",
+          "role": "supervisor",
+          "type": "intermediate",
+          "task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+        },
+        {
+          "state": "site_manager_pending",
+          "role": "site_manager",
+          "type": "intermediate",
+          "task_fa": "بررسی درخواست و ثبت تصمیم."
+        },
+        {
+          "state": "deputy_escalated",
+          "role": "deputy_education",
+          "type": "terminal",
+          "task_fa": "بررسی پرونده و تأیید یا ارجاع."
+        },
+        {
+          "state": "session_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "absence_recorded",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "evaluation_pending",
+          "role": "supervisor",
+          "type": "intermediate",
+          "task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+        },
+        {
+          "state": "evaluation_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "evaluation_sla_breach",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 11,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervisor": "SupervisorPortal",
+        "site_manager": "SiteManagerPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "extra_supervision_session",
+        "supervision_session_increase",
+        "supervisor_session_cancellation"
+      ]
+    },
+    {
+      "code": "supervision_session_increase",
+      "name_fa": "درخاست داشج برا افزاش جسات فتگ سپر",
+      "sop_order": 21,
+      "phase": "P5_supervision",
+      "initial_state": "request_submitted",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "supervisor",
+        "system"
+      ],
+      "sub_process_refs": [
+        "supervision_50h_completion"
+      ],
+      "workflow": [
+        {
+          "state": "request_submitted",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "تاریخ نزدیک‌ترین جلسه و ساعت شروع جلسهٔ سوپرویژن جدید را وارد کنید؛ فرم را ثبت کنید؛ سپس «ادامه و ثبت مرحله» را بزنید تا…"
+        },
+        {
+          "state": "supervisor_review",
+          "role": "supervisor",
+          "type": "intermediate",
+          "task_fa": "زمان پیشنهادی دانشجو را بررسی کنید؛ در صورت «پیشنهاد جایگزین» تاریخ و ساعت جایگزین را وارد و دکمهٔ تصمیم را بزنید."
+        },
+        {
+          "state": "student_response",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "اگر با زمان پیشنهادی سوپروایزر موافقید، دکمهٔ تأیید را بزنید. اگر زمان دیگری می‌خواهید، تاریخ و ساعت جدید را در فرم بنوی…"
+        },
+        {
+          "state": "session_added",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "جلسهٔ هفتگی سوپرویژن جدید به برنامهٔ شما اضافه شد و مشمول فرایند تکمیل دوره‌های ۵۰ ساعتهٔ سوپرویژن است."
+        },
+        {
+          "state": "request_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "سوپروایزر در حال حاضر امکان افزایش جلسات هفتگی سوپرویژن را اعلام نکرده است؛ در صورت نیاز بعداً می‌توانید دوباره درخواست …"
+        }
+      ],
+      "state_count": 5,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervisor": "SupervisorPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "extra_supervision_session",
+      "name_fa": "درخاست داشج برا برگزار جس اضاف سپر",
+      "sop_order": 22,
+      "phase": "P5_supervision",
+      "initial_state": "extra_request",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "supervisor",
+        "system"
+      ],
+      "sub_process_refs": [
+        "session_payment",
+        "supervision_50h_completion"
+      ],
+      "workflow": [
+        {
+          "state": "extra_request",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "تاریخ و ساعت پیشنهادی جلسهٔ اضافی را در فرم همین صفحه وارد و ثبت کنید؛ سپس «ادامه و ثبت مرحله» را بزنید تا سوپروایزر برر…"
+        },
+        {
+          "state": "supervisor_review",
+          "role": "supervisor",
+          "type": "intermediate",
+          "task_fa": "زمان پیشنهادی دانشجو را بررسی کنید؛ در صورت «پیشنهاد جایگزین» تاریخ و ساعت جایگزین را وارد و دکمهٔ تصمیم را بزنید."
+        },
+        {
+          "state": "student_response",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "اگر زمان پیشنهادی سوپروایزر را می‌پذیرید، دکمهٔ تأیید را بزنید؛ در غیر این صورت تاریخ و ساعت جدید را در فرم بنویسید و «و…"
+        },
+        {
+          "state": "payment_required",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "ابتدا از بخش پرداخت درگاه همین صفحه مبلغ جلسه اضافی سوپرویژن را بپردازید؛ پس از تأیید بانک، مرحلهٔ بعد به‌صورت خودکار ثب…"
+        },
+        {
+          "state": "extra_session_confirmed",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "جلسه در سیستم ثبت شده است؛ لینک جلسه در همین مسیر یا پیامک آمده است. در زمان مقرر حاضر شوید."
+        },
+        {
+          "state": "extra_session_completed",
+          "role": "supervisor",
+          "type": "terminal",
+          "task_fa": "پس از برگزاری جلسه، دکمهٔ «جلسه برگزار شد» را بزنید تا ساعت به پروندهٔ سوپرویژن اضافه شود."
+        },
+        {
+          "state": "extra_request_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "سوپروایزر در حال حاضر امکان برگزاری جلسهٔ اضافی را اعلام نکرده است؛ در صورت نیاز بعداً می‌توانید دوباره درخواست دهید."
+        }
+      ],
+      "state_count": 7,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervisor": "SupervisorPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "supervision_session_reduction",
+      "name_fa": "درخاست داشج برا کاش جسات فتگ سپر",
+      "sop_order": 24,
+      "phase": "P5_supervision",
+      "initial_state": "initiated",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "supervisor",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "initiated",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "دکمهٔ «ادامه و ثبت مرحله» را بزنید. اگر ۲ جلسه یا بیشتر در هفته دارید، جلسات مازاد را انتخاب می‌کنید؛ اگر ۱ جلسه دارید، …"
+        },
+        {
+          "state": "session_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "جلسات سوپرویژنی که می‌خواهید حذف کنید را در فرم تیک بزنید؛ حداقل یک جلسه در هفته باید باقی بماند. سپس «ادامه و ثبت مرحله…"
+        },
+        {
+          "state": "multi_reduction_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "eligibility_blocked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "structure_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "ابتدا با سوپروایزر هماهنگ کنید؛ سپس توالی (۲/۳/۴ هفته یک‌بار)، روز و ساعت را در فرم وارد کنید و «ادامه و ثبت مرحله» را ب…"
+        },
+        {
+          "state": "supervisor_review",
+          "role": "supervisor",
+          "type": "intermediate",
+          "task_fa": "درخواست کاهش تواتر را ببینید؛ در صورت موافقت تأیید کنید، در غیر این صورت رد با توضیح."
+        },
+        {
+          "state": "frequency_reduction_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 7,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervisor": "SupervisorPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "student_supervision_cancellation",
+      "name_fa": "کس کرد جسات سپر تسط داشج  اکش استت",
+      "sop_order": 25,
+      "phase": "P5_supervision",
+      "initial_state": "calendar_displayed",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "supervisor",
+        "system"
+      ],
+      "sub_process_refs": [
+        "fee_determination",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "calendar_displayed",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "جلسات مورد نظر را در فرم زیر تیک بزنید، فرم را ثبت کنید، سپس «ادامه و ثبت مرحله» را بزنید."
+        },
+        {
+          "state": "consecutive_blocked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "sessions_selected",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "خلاصهٔ انتخاب و درصد کنسلی را در باکس بالا ببینید. در صورت هشدار، تأیید را بزنید و «ادامه و ثبت مرحله» را انتخاب کنید."
+        },
+        {
+          "state": "cancellation_applied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "warning_and_applied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "violation_and_applied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervisor": "SupervisorPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "supervisor_session_cancellation",
+      "name_fa": "کس کرد جس از س سپرازر",
+      "sop_order": 26,
+      "phase": "P5_supervision",
+      "initial_state": "session_selection",
+      "initial_role": null,
+      "roles_needed": [
+        "supervisor",
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "supervision_50h_completion"
+      ],
+      "workflow": [
+        {
+          "state": "session_selection",
+          "role": "supervisor",
+          "type": "initial",
+          "task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+        },
+        {
+          "state": "makeup_choice",
+          "role": "supervisor",
+          "type": "intermediate",
+          "task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+        },
+        {
+          "state": "cancelled_no_makeup",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "makeup_proposed",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "supervisor_review_counter",
+          "role": "supervisor",
+          "type": "intermediate",
+          "task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+        },
+        {
+          "state": "payment_pending",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        },
+        {
+          "state": "makeup_confirmed",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "makeup_session_completed",
+          "role": "supervisor",
+          "type": "terminal",
+          "task_fa": "ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید."
+        },
+        {
+          "state": "student_declined_makeup",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 9,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "supervisor": "SupervisorPortal",
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "supervision_interruption",
+      "name_fa": "ف در سپر فرد تسط داشج",
+      "sop_order": 28,
+      "phase": "P5_supervision",
+      "initial_state": "request_submitted",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "progress_committee",
+        "system"
+      ],
+      "sub_process_refs": [
+        "patient_referral",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "request_submitted",
+          "role": "student",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "committee_scheduling",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "meeting_held",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "approved_short_pause",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "approved_long_pause",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "monitoring_return",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "returned_successfully",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "absent_resources_released",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 9,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "progress_committee": "CommitteePortal / progress",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "fall_semester_preparation",
+      "name_fa": "آادساز تر پاز",
+      "sop_order": 29,
+      "phase": "P0_prep",
+      "initial_state": "calendar_entry",
+      "initial_role": null,
+      "roles_needed": [
+        "course_committee_executive",
+        "deputy_education",
+        "course_committee_scientific",
+        "admissions_officer",
+        "site_manager",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "calendar_entry",
+          "role": "course_committee_executive",
+          "type": "initial",
+          "task_fa": "هماهنگی اجرایی و ثبت تصمیم."
+        },
+        {
+          "state": "tuition_entry",
+          "role": "deputy_education_director",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم مدیریتی."
+        },
+        {
+          "state": "license_check",
+          "role": "deputy_education_director",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم مدیریتی."
+        },
+        {
+          "state": "course_list_creation",
+          "role": "scientific_officer_course_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی علمی و ثبت نظر."
+        },
+        {
+          "state": "course_finalization",
+          "role": "scientific_officer_course_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی علمی و ثبت نظر."
+        },
+        {
+          "state": "marketing_campaign",
+          "role": "admissions_officer",
+          "type": "intermediate",
+          "task_fa": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه."
+        },
+        {
+          "state": "interviewer_assignment",
+          "role": "deputy_education_director",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم مدیریتی."
+        },
+        {
+          "state": "interview_scheduling",
+          "role": "site_manager",
+          "type": "intermediate",
+          "task_fa": "نوع برگزاری را مشخص کنید، اسلات‌های قابل رزرو را ثبت کنید و فرم را ذخیره کنید."
+        },
+        {
+          "state": "published",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 9,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": "course-committee",
+      "role_portals": {
+        "course_committee_executive": "StaffPortal / course-committee + SemesterPrep",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "admissions_officer": "StaffPortal / admissions lane",
+        "site_manager": "SiteManagerPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "lesson_start_per_term",
+        "winter_semester_preparation"
+      ]
+    },
+    {
+      "code": "winter_semester_preparation",
+      "name_fa": "آادساز تر زستا",
+      "sop_order": 30,
+      "phase": "P0_prep",
+      "initial_state": "license_check",
+      "initial_role": null,
+      "roles_needed": [
+        "deputy_education",
+        "course_committee_scientific",
+        "admissions_officer",
+        "site_manager",
+        "system"
+      ],
+      "sub_process_refs": [
+        "fall_semester_preparation"
+      ],
+      "workflow": [
+        {
+          "state": "license_check",
+          "role": "deputy_education_director",
+          "type": "initial",
+          "task_fa": "بررسی پرونده و ثبت تصمیم مدیریتی."
+        },
+        {
+          "state": "course_list_review",
+          "role": "scientific_officer_course_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی علمی و ثبت نظر."
+        },
+        {
+          "state": "course_finalization",
+          "role": "scientific_officer_course_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی علمی و ثبت نظر."
+        },
+        {
+          "state": "marketing_campaign",
+          "role": "admissions_officer",
+          "type": "intermediate",
+          "task_fa": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه."
+        },
+        {
+          "state": "interviewer_assignment",
+          "role": "deputy_education_director",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم مدیریتی."
+        },
+        {
+          "state": "interview_scheduling",
+          "role": "site_manager",
+          "type": "intermediate",
+          "task_fa": "نوع برگزاری را مشخص کنید، اسلات‌های قابل رزرو را ثبت کنید و فرم را ذخیره کنید."
+        },
+        {
+          "state": "published",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 7,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": "course-committee",
+      "role_portals": {
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "admissions_officer": "StaffPortal / admissions lane",
+        "site_manager": "SiteManagerPortal",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "lesson_start_per_term"
+      ]
+    },
+    {
+      "code": "introductory_course_registration",
+      "name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "sop_order": 31,
+      "phase": "P1_admission",
+      "initial_state": "application_submitted",
+      "initial_role": null,
+      "roles_needed": [
+        "applicant",
+        "admissions_officer",
+        "interviewer",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "application_submitted",
+          "role": "applicant",
+          "type": "initial",
+          "task_fa": "باید زمان مصاحبه را از مسیر اعلام‌شده در سایت یا پیامک پذیرش انتخاب کنید؛ پس از رزرو موفق، مرحلهٔ پرداخت هزینهٔ مصاحبه ب…"
+        },
+        {
+          "state": "interview_scheduled",
+          "role": "applicant",
+          "type": "intermediate",
+          "task_fa": "باید هزینه مصاحبه را در درگاه پرداخت همین صفحه بپردازید؛ پس از پرداخت، مرحله بعد به‌صورت خودکار فعال می‌شود."
+        },
+        {
+          "state": "interview_payment",
+          "role": "applicant",
+          "type": "intermediate",
+          "task_fa": "باید هزینه مصاحبه را در درگاه پرداخت تکمیل کنید؛ در صورت خطا دوباره تلاش کنید تا تأیید پرداخت ثبت شود."
+        },
+        {
+          "state": "interview_payment_confirmed",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "پرداخت شما ثبت شد و جزئیات زمان مصاحبه از طریق پیامک ارسال شده است. در زمان مقرر در مصاحبه حاضر شوید؛ پس از برگزاری مصاح…"
+        },
+        {
+          "state": "interview_completed",
+          "role": "interviewer",
+          "type": "intermediate",
+          "task_fa": "منتظر ثبت نتیجه مصاحبه توسط مصاحبه‌گر باشید؛ اگر فرم یا اقدامی برای شما باز شد، آن را تکمیل کنید."
+        },
+        {
+          "state": "result_conditional_therapy",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "پذیرش شما مشروط به شروع درمان شخصی است؛ مراحل بعد (آپلود مدارک و پرداخت) را طبق راهنمای پنل پیش ببرید."
+        },
+        {
+          "state": "result_single_course",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "پذیرش شما محدود به درس(های) اعلام‌شده است؛ آپلود و پرداخت را طبق محدودیت‌های پنل انجام دهید (در صورت نیاز فقط پرداخت نقد…"
+        },
+        {
+          "state": "result_full_admission",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "پذیرش کامل دریافت شد؛ مراحل بعد را طبق پنل (آپلود مدارک، انتخاب درس و پرداخت) پیش ببرید."
+        },
+        {
+          "state": "rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "پرونده شما در این دوره رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید."
+        },
+        {
+          "state": "documents_upload",
+          "role": "applicant",
+          "type": "intermediate",
+          "task_fa": "باید مدارک و تأییدیه‌های خواسته‌شده را در همین پورتال بارگذاری و ثبت کنید."
+        },
+        {
+          "state": "documents_review",
+          "role": "admissions_officer",
+          "type": "intermediate",
+          "task_fa": "در این مرحله بررسی توسط مسئول پذیرش انجام می‌شود؛ اگر فرمی برای شما باز است تکمیل کنید، در غیر این صورت بعداً صفحه را تا…"
+        },
+        {
+          "state": "documents_incomplete",
+          "role": "applicant",
+          "type": "intermediate",
+          "task_fa": "باید کاستی‌های اعلام‌شده را برطرف و مدارک را دوباره بارگذاری کنید."
+        },
+        {
+          "state": "credentials_created",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "اطلاعات ورود از سامانه آموزش ارسال شده است؛ سپس مرحله انتخاب درس در LMS برای شما فعال می‌شود — صفحه را بعداً تازه کنید."
+        },
+        {
+          "state": "course_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "باید دروس مجاز را در LMS طبق سطح پذیرش انتخاب و ثبت کنید؛ اگر دکمه مرحله بعد در پنل فعال شد پس از ثبت درس آن را بزنید."
+        },
+        {
+          "state": "payment",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "باید شهریه را حداکثر در ۴ قسط طبق راهنمای پنل پرداخت کنید تا ثبت‌نام نهایی شود."
+        },
+        {
+          "state": "registration_complete",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "ثبت‌نام شما در این فرایند تکمیل شد؛ برای مراحل بعد آموزش سراغ دگر بخش‌های پنل بروید."
+        },
+        {
+          "state": "installment_overdue",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "قسط معوق را پرداخت کنید تا پس از رفع بلاک، حضور شما در کلاس‌ها ثبت شود."
+        }
+      ],
+      "state_count": 17,
+      "has_01": true,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": "admissions",
+      "role_portals": {
+        "applicant": "— (no dedicated portal; public registration)",
+        "admissions_officer": "StaffPortal / admissions lane",
+        "interviewer": "InterviewerPortal + StaffPortal/admissions",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "introductory_term_end",
+      "name_fa": "پاا ترا در آشا",
+      "sop_order": 32,
+      "phase": "P2_intro_terms",
+      "initial_state": "grades_submitted",
+      "initial_role": null,
+      "roles_needed": [
+        "admissions_officer",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "grades_submitted",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "transcript_generated",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "therapy_check",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "therapy_blocked",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "registration_notification_sent",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "decline_list_generated",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "followup_in_progress",
+          "role": "admissions_officer",
+          "type": "intermediate",
+          "task_fa": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه."
+        },
+        {
+          "state": "followup_complete",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 8,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "admissions_officer": "StaffPortal / admissions lane",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "intro_second_semester_registration",
+      "name_fa": "ثبتا داشج برا تر د در آشا",
+      "sop_order": 33,
+      "phase": "P2_intro_terms",
+      "initial_state": "eligibility_check",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "start_therapy"
+      ],
+      "workflow": [
+        {
+          "state": "eligibility_check",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "therapy_check_failed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "suspension_check_failed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "course_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "payment_method",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "payment_processing",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        },
+        {
+          "state": "registration_complete",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "installment_overdue",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "term2_registration_closed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 9,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "introductory_course_completion",
+      "name_fa": "خات در آشا",
+      "sop_order": 34,
+      "phase": "P2_intro_terms",
+      "initial_state": "all_courses_passed",
+      "initial_role": null,
+      "roles_needed": [
+        "supervision_committee",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "all_courses_passed",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "invitation_sent",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "پیامک مهلت درخواست ورود به دوره جامع ارسال شده؛ در مهلت اعلام‌شده با بخش پذیرش تماس بگیرید."
+        },
+        {
+          "state": "certificate_draft_generated",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "certificate_review",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "پیش‌نویس گواهی پایان دوره آشنایی را بررسی کنید؛ در صورت صحت «committee_approved_certificate» و در صورت نیاز به اصلاح «co…"
+        },
+        {
+          "state": "certificate_approved",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "process_complete",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "گواهی پایان دوره آماده است؛ از تب پروفایل → کارنامه‌ها دانلود کنید."
+        }
+      ],
+      "state_count": 6,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "supervision_committee": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "comprehensive_course_registration",
+      "name_fa": "ثبتا در در جاع",
+      "sop_order": 35,
+      "phase": "P1_admission",
+      "initial_state": "application_submitted",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "supervision_committee",
+        "progress_committee_executive",
+        "progress_committee_scientific",
+        "admissions_officer",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "application_submitted",
+          "role": "student",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "supervision_committee_review",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "supervision_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "executive_review",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "scientific_review",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "scientific_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "document_upload",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "interview_scheduled",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "interview_payment",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        },
+        {
+          "state": "interview_completed",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "result_accepted",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "result_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "result_rejected_with_suggestion",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "course_display",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "payment",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        },
+        {
+          "state": "registration_complete",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 16,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": "admissions",
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervision_committee": "CommitteePortal / supervision",
+        "progress_committee_executive": "? portal for progress_committee_executive",
+        "progress_committee_scientific": "? portal for progress_committee_scientific",
+        "admissions_officer": "StaffPortal / admissions lane",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "comprehensive_term_end",
+      "name_fa": "پاا ترا در جاع",
+      "sop_order": 36,
+      "phase": "P3_comprehensive",
+      "initial_state": "grades_submitted",
+      "initial_role": null,
+      "roles_needed": [
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "grades_submitted",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "transcript_generated",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "graduation_check",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "completed_all_courses",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "registration_notification_sent",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "process_complete",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "internship_readiness_consultation",
+      "name_fa": "شرت  تع آادگ برا آغاز اتر",
+      "sop_order": 37,
+      "phase": "P8_internship",
+      "initial_state": "auto_trigger",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "supervision_committee",
+        "progress_committee",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "auto_trigger",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "student_request",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "supervision_committee_review",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "supervision_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "interview_scheduling",
+          "role": "progress_committee_project",
+          "type": "intermediate",
+          "task_fa": "بررسی پروژه و ثبت تصمیم کمیته پیشرفت."
+        },
+        {
+          "state": "interview_held",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "interview_result_unconditional",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "interview_result_conditional",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "interview_result_retry",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "contract_practice",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "contract_rules",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "promissory_note",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "سفته را حضوری تحویل دهید؛ پس از ثبت توسط کمیته پیشرفت مرحله بعد فعال می‌شود."
+        },
+        {
+          "state": "capacity_check",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "pending_patient",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "supervisor_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "first_session_payment",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        },
+        {
+          "state": "internship_started",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 17,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervision_committee": "CommitteePortal / supervision",
+        "progress_committee": "CommitteePortal / progress",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "internship_12month_conditional_review",
+      "name_fa": "۱۲ ا پس از ب شرط در اتر",
+      "sop_order": 38,
+      "phase": "P8_internship",
+      "initial_state": "month_12_trigger",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "supervision_committee",
+        "progress_committee",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "month_12_trigger",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "supervision_review",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "supervision_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "interview_scheduling",
+          "role": "progress_committee_project",
+          "type": "intermediate",
+          "task_fa": "بررسی پروژه و ثبت تصمیم کمیته پیشرفت."
+        },
+        {
+          "state": "interview_held",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "result_unrestricted",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "result_conditional",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 7,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervision_committee": "CommitteePortal / supervision",
+        "progress_committee": "CommitteePortal / progress",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "intern_hours_increase",
+      "name_fa": "اضاف شد حداکثر ساعتا ارائ درا اتر",
+      "sop_order": 39,
+      "phase": "P8_internship",
+      "initial_state": "deadline_reached",
+      "initial_role": null,
+      "roles_needed": [
+        "supervision_committee",
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "deadline_reached",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "supervision_review",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "rejected_referral",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "approved_time_coordination",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "hours_increased",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 5,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "supervision_committee": "CommitteePortal / supervision",
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "comprehensive_term_start",
+      "name_fa": "آغاز ترم‌های دوره جامع",
+      "sop_order": 40,
+      "phase": "P3_comprehensive",
+      "initial_state": "eligibility_check",
+      "initial_role": "student",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "course_committee_executive",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "eligibility_check",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "blocked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "course_display",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "دروس ثابت ترم را مشاهده کنید و پس از تأیید، به مرحلهٔ انتخاب روش پرداخت بروید."
+        },
+        {
+          "state": "payment_choice",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "روش پرداخت (نقدی یا ۲ تا ۴ قسط) را انتخاب کنید."
+        },
+        {
+          "state": "payment_processing",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        },
+        {
+          "state": "registration_complete",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "course_committee_executive": "StaffPortal / course-committee + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "lesson_start_per_term",
+      "name_fa": "آغاز ر درس در ر تر",
+      "sop_order": 41,
+      "phase": "P2_intro_terms",
+      "initial_state": "student_enrollment",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "instructor",
+        "teaching_assistant",
+        "course_committee_executive",
+        "system"
+      ],
+      "sub_process_refs": [
+        "fall_semester_preparation",
+        "winter_semester_preparation"
+      ],
+      "workflow": [
+        {
+          "state": "student_enrollment",
+          "role": "student",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "links_created",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "attendance_list_ready",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "lesson_active",
+          "role": "instructor",
+          "type": "terminal",
+          "task_fa": "ثبت نمره/حضور/تأیید TA."
+        }
+      ],
+      "state_count": 4,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": "instruction",
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "course_committee_executive": "StaffPortal / course-committee + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "student_non_registration",
+      "name_fa": "عد ثبتا داشج برا تر بعد",
+      "sop_order": 42,
+      "phase": "P3_comprehensive",
+      "initial_state": "list_generated",
+      "initial_role": null,
+      "roles_needed": [
+        "student",
+        "supervision_committee",
+        "system"
+      ],
+      "sub_process_refs": [
+        "educational_leave",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "list_generated",
+          "role": "system",
+          "type": "initial",
+          "task_fa": "فرم تعیین جلسه را تکمیل کنید و دکمهٔ ثبت جلسه را بزنید."
+        },
+        {
+          "state": "meeting_scheduled",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "پس از ارسال دعوت‌نامه، در روز جلسه حاضر شوید؛ سپس «ارسال دعوت‌نامه» را بزنید تا مرحلهٔ ثبت نتیجه باز شود."
+        },
+        {
+          "state": "meeting_held",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "فرم نتیجه جلسه را ثبت کنید؛ سپس یکی از سه دکمهٔ تصمیم (ثبت‌نام / مرخصی / انصراف) را بزنید."
+        },
+        {
+          "state": "branch_register",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "حداکثر ۲ روز فرصت دارید دروس ترم را اخذ و شهریه را پرداخت کنید. از بخش ثبت‌نام ترم در همین پنل اقدام کنید."
+        },
+        {
+          "state": "branch_leave",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "حداکثر ۳ روز فرصت دارید یکی از فرایندهای مرخصی را از داشبورد شروع کنید."
+        },
+        {
+          "state": "branch_withdrawal",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "registration_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "leave_started",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "withdrawal_triggered",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 9,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervision_committee": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "ta_conceptual_questions",
+      "name_fa": "ثبت ۳ سا تستف (ککدرس)",
+      "sop_order": 43,
+      "phase": "P7_ta",
+      "initial_state": "session_ended",
+      "initial_role": null,
+      "roles_needed": [
+        "teaching_assistant",
+        "instructor",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "session_ended",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "ta_upload",
+          "role": "teaching_assistant",
+          "type": "intermediate",
+          "task_fa": "قالب را دانلود کنید؛ سه فایل PDF سوال را آپلود و ارسال کنید (مهلت ۲۴ ساعت)."
+        },
+        {
+          "state": "upload_late",
+          "role": "teaching_assistant",
+          "type": "intermediate",
+          "task_fa": "مهلت ۲۴ ساعت گذشته؛ تخلف ثبت شده. همچنان می‌توانید آپلود کنید."
+        },
+        {
+          "state": "instructor_review",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "هر سه سوال را بررسی کنید؛ برای هر سوال «قابل قبول» یا «غیر قابل قبول» ثبت کنید."
+        },
+        {
+          "state": "question_rejected",
+          "role": "teaching_assistant",
+          "type": "intermediate",
+          "task_fa": "بازخورد مدرس را ببینید؛ سوال(های) ردشده را اصلاح و PDF جدید آپلود کنید."
+        },
+        {
+          "state": "questions_approved",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": "instruction",
+      "role_portals": {
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "instructor": "StaffPortal / instruction lane",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "ta_student_consultation",
+      "name_fa": "شاسا تش  شرت آزش (ککدرس)",
+      "sop_order": 44,
+      "phase": "P7_ta",
+      "initial_state": "session_5_10_15",
+      "initial_role": null,
+      "roles_needed": [
+        "teaching_assistant",
+        "progress_committee",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "session_5_10_15",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "ta_form_fill",
+          "role": "teaching_assistant",
+          "type": "intermediate",
+          "task_fa": "دانشجویان نیازمند تشویق یا مشورت را با دکمه «افزودن دانشجو» ثبت کنید؛ مهلت ۴ روز پس از جلسه milestone."
+        },
+        {
+          "state": "form_locked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "form_submitted",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 4,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "progress_committee": "CommitteePortal / progress",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "ta_essay_upload",
+      "name_fa": "آپد جستار  دا تخب ف (ککدرس)",
+      "sop_order": 45,
+      "phase": "P7_ta",
+      "initial_state": "session_ended",
+      "initial_role": null,
+      "roles_needed": [
+        "teaching_assistant",
+        "instructor",
+        "reference_center",
+        "marketing",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "session_ended",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "ta_upload",
+          "role": "teaching_assistant",
+          "type": "intermediate",
+          "task_fa": "قالب خام را دانلود کنید؛ جستار و دقایق منتخب را در Word بنویسید و هر دو فرمت Word و PDF را آپلود کنید."
+        },
+        {
+          "state": "instructor_review",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "فایل‌های آپلودشده را بررسی کنید؛ «قابل قبول» یا «غیر قابل قبول» (با توضیح اجباری در صورت رد)."
+        },
+        {
+          "state": "rejected_revision",
+          "role": "teaching_assistant",
+          "type": "intermediate",
+          "task_fa": "بازخورد مدرس را ببینید؛ فایل‌ها را اصلاح و مجدداً آپلود کنید."
+        },
+        {
+          "state": "reference_center_editing",
+          "role": "reference_center",
+          "type": "intermediate",
+          "task_fa": "ویرایش ادبی متن جستار؛ استخراج دقیق‌تر دقایق از فیلم کلاس؛ آپلود Word نهایی و ارسال به مارکتینگ."
+        },
+        {
+          "state": "marketing_publication",
+          "role": "marketing",
+          "type": "intermediate",
+          "task_fa": "پلتفرم‌های انتشار را انتخاب کنید و تاریخ انتشار هر مورد را ثبت کنید."
+        },
+        {
+          "state": "content_published",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 7,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": "content-ops / instruction",
+      "role_portals": {
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "instructor": "StaffPortal / instruction lane",
+        "reference_center": "StaffPortal / content-ops lane",
+        "marketing": "StaffPortal / content-ops lane",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "ta_blog_content",
+      "name_fa": "ثبت حتا باگ از حتا درس (ککدرس)",
+      "sop_order": 46,
+      "phase": "P7_ta",
+      "initial_state": "session_ended",
+      "initial_role": null,
+      "roles_needed": [
+        "teaching_assistant",
+        "instructor",
+        "marketing",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "session_ended",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "ta_write",
+          "role": "teaching_assistant",
+          "type": "intermediate",
+          "task_fa": "خلاصهٔ کاربردی مباحث جلسه را مستقیماً در فیلد متنی بنویسید (حدود نیم صفحه A4). آپلود فایل مجاز نیست. مهلت ۲۴ ساعت."
+        },
+        {
+          "state": "instructor_review",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "متن وبلاگ را فقط‌خواندنی ببینید؛ «قابل قبول» یا «غیر قابل قبول» (با توضیح اجباری در صورت رد)."
+        },
+        {
+          "state": "rejected_revision",
+          "role": "teaching_assistant",
+          "type": "intermediate",
+          "task_fa": "بازخورد مدرس را ببینید؛ متن را اصلاح و مجدداً ارسال کنید."
+        },
+        {
+          "state": "approved_marketing_draft",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 5,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": "content-ops",
+      "role_portals": {
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "instructor": "StaffPortal / instruction lane",
+        "marketing": "StaffPortal / content-ops lane",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "upgrade_to_ta",
+      "name_fa": "ارتا ب ککدرس",
+      "sop_order": 47,
+      "phase": "P7_ta",
+      "initial_state": "student_click",
+      "initial_role": "student",
+      "roles_needed": [
+        "student",
+        "supervision_committee",
+        "course_committee_scientific",
+        "course_committee_project",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "student_click",
+          "role": "student",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "conditions_not_met",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "supervision_review",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "supervision_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "interview_scheduling",
+          "role": "course_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی موضوع در کمیته دروس."
+        },
+        {
+          "state": "interview_held",
+          "role": "course_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی موضوع در کمیته دروس."
+        },
+        {
+          "state": "course_committee_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "track_selection",
+          "role": "course_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی موضوع در کمیته دروس."
+        },
+        {
+          "state": "commitment_signature",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "ta_registered",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 10,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": "course-committee / supervision committee",
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervision_committee": "CommitteePortal / supervision",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "course_committee_project": "? portal for course_committee_project",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "mentor_private_sessions",
+      "name_fa": "ثبت تارخ ۲ جس تدرس خصص درس ب ککدرس",
+      "sop_order": 48,
+      "phase": "P7_ta",
+      "initial_state": "instructor_click",
+      "initial_role": "instructor",
+      "roles_needed": [
+        "instructor",
+        "teaching_assistant",
+        "course_committee_scientific",
+        "supervision_committee",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "instructor_click",
+          "role": "instructor",
+          "type": "initial",
+          "task_fa": "تاریخ و ساعت دو جلسهٔ تدریس خصوصی با کمک‌مدرس را در فرم ثبت کنید."
+        },
+        {
+          "state": "deadline_missed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "sessions_registered",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "جلسات ثبت شد؛ منتظر اطلاع‌رسانی و یادآوری سیستمی بمانید."
+        },
+        {
+          "state": "process_complete",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 4,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "instructor": "StaffPortal / instruction lane",
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "supervision_committee": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "ta_to_assistant_faculty",
+      "name_fa": "ارتا رتب از ککدرس ب دستار ئت ع",
+      "sop_order": 49,
+      "phase": "P7_ta",
+      "initial_state": "auto_or_manual_trigger",
+      "initial_role": null,
+      "roles_needed": [
+        "teaching_assistant",
+        "supervision_committee",
+        "course_committee_scientific",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "auto_or_manual_trigger",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "already_assistant",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "supervision_review",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "supervision_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "upgrade_applied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 5,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "supervision_committee": "CommitteePortal / supervision",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "ta_to_instructor_auto",
+      "name_fa": "تبد خدکار ککدرس ب درس در ر درس",
+      "sop_order": 50,
+      "phase": "P7_ta",
+      "initial_state": "end_of_term_check",
+      "initial_role": null,
+      "roles_needed": [
+        "system",
+        "course_committee_scientific",
+        "deputy_education"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "end_of_term_check",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "conditions_not_met",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "upgrade_applied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 3,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "system": "— (automated; no human panel)",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "deputy_education": "CommitteePortal / education + SemesterPrep"
+      },
+      "started_by": []
+    },
+    {
+      "code": "ta_track_change",
+      "name_fa": "تغر ا اضاف کرد رست ککدرس",
+      "sop_order": 51,
+      "phase": "P7_ta",
+      "initial_state": "ta_click",
+      "initial_role": "teaching_assistant",
+      "roles_needed": [
+        "teaching_assistant",
+        "course_committee_scientific",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "ta_click",
+          "role": "teaching_assistant",
+          "type": "initial",
+          "task_fa": "هماهنگی با مدرس؛ ثبت اطلاعات یا تأیید درخواست."
+        },
+        {
+          "state": "path_selected",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "course_committee_review",
+          "role": "course_committee_scientific",
+          "type": "intermediate",
+          "task_fa": "بررسی علمی و ثبت نظر."
+        },
+        {
+          "state": "meeting_scheduled",
+          "role": "course_committee_scientific",
+          "type": "intermediate",
+          "task_fa": "بررسی علمی و ثبت نظر."
+        },
+        {
+          "state": "rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "track_applied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": "course-committee",
+      "role_portals": {
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "ta_track_completion",
+      "name_fa": "خات ککدرس برا ر رست",
+      "sop_order": 52,
+      "phase": "P7_ta",
+      "initial_state": "end_of_track_check",
+      "initial_role": "system",
+      "roles_needed": [
+        "system",
+        "course_committee_scientific",
+        "teaching_assistant"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "end_of_track_check",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "track_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 2,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "system": "— (automated; no human panel)",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "teaching_assistant": "StaffPortal / instruction lane"
+      },
+      "started_by": []
+    },
+    {
+      "code": "ta_instructor_leave",
+      "name_fa": "رخص ککدرس  درس",
+      "sop_order": 53,
+      "phase": "P7_ta",
+      "initial_state": "leave_request",
+      "initial_role": "teaching_assistant_or_instructor",
+      "roles_needed": [
+        "teaching_assistant",
+        "instructor",
+        "course_committee_scientific",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "leave_request",
+          "role": "teaching_assistant_or_instructor",
+          "type": "initial",
+          "task_fa": "بررسی و ثبت تصمیم طبق نقش شما (مدرس یا TA)."
+        },
+        {
+          "state": "course_committee_review",
+          "role": "course_committee_scientific",
+          "type": "intermediate",
+          "task_fa": "بررسی علمی و ثبت نظر."
+        },
+        {
+          "state": "leave_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "substitute_assigned",
+          "role": "course_committee_scientific",
+          "type": "intermediate",
+          "task_fa": "بررسی علمی و ثبت نظر."
+        },
+        {
+          "state": "classes_cancelled",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "leave_approved",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "instructor": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "class_attendance",
+      "name_fa": "حضر  غاب در تا کاسا",
+      "sop_order": 54,
+      "phase": "P7_ta",
+      "initial_state": "attendance_list_ready",
+      "initial_role": "instructor",
+      "roles_needed": [
+        "instructor",
+        "student",
+        "teaching_assistant",
+        "supervision_committee",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "attendance_list_ready",
+          "role": "instructor",
+          "type": "initial",
+          "task_fa": "ثبت نمره/حضور/تأیید TA."
+        },
+        {
+          "state": "session_recorded",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "incomplete_triggered",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "article_violation_reported",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 4,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": "instruction",
+      "role_portals": {
+        "instructor": "StaffPortal / instruction lane",
+        "student": "StudentPortal (/panel/portal/student)",
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "supervision_committee": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "violation_registration",
+      "name_fa": "ثبت تخفات",
+      "sop_order": 55,
+      "phase": "P7_ta",
+      "initial_state": "violation_reported",
+      "initial_role": "reporter",
+      "roles_needed": [
+        "student",
+        "supervision_committee",
+        "education_committee",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "violation_reported",
+          "role": "monitoring_committee_officer",
+          "type": "initial",
+          "task_fa": "بررسی گزارش و ثبت اقدام اولیه (قابل بررسی بودن یا نبودن) ظرف ۳ روز."
+        },
+        {
+          "state": "review_status_set",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "نوع تخلف و نیاز به جلسه با دانشجو را ثبت کنید؛ سپس دکمهٔ متناسب را بزنید."
+        },
+        {
+          "state": "meeting_scheduled",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "پس از برگزاری جلسه، فرم حکم را تکمیل و «صدور حکم» را بزنید."
+        },
+        {
+          "state": "verdict_issued",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "در صورت شروط جبرانی، پیگیری پس از ۷ روز را انجام دهید."
+        },
+        {
+          "state": "suspension_next_term",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "پیگیری شروط جبرانی یا ارجاع به کمیته آموزش."
+        },
+        {
+          "state": "suspension_immediate",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "پیگیری شروط جبرانی یا ارجاع به کمیته آموزش."
+        },
+        {
+          "state": "referred_to_education_committee",
+          "role": "education_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده در جلسه آنلاین کمیته آموزش و ثبت حکم نهایی."
+        },
+        {
+          "state": "closed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "expelled",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "پورتال شما به حالت فقط‌خواندنی درآمده است. در صورت پرسش با دفتر انستیتو تماس بگیرید."
+        }
+      ],
+      "state_count": 9,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervision_committee": "CommitteePortal / supervision",
+        "education_committee": "CommitteePortal / education",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "article_writing_completion",
+        "class_attendance",
+        "class_session_cancellation",
+        "committees_review",
+        "educational_leave",
+        "film_observation_ta_attendance_completion",
+        "full_education_leave",
+        "group_supervision_course_completion",
+        "intern_hours_increase",
+        "internship_12month_conditional_review",
+        "internship_readiness_consultation",
+        "live_supervision_course_completion",
+        "live_supervision_ta_evaluation",
+        "live_therapy_observation_ta_attendance_completion",
+        "mentor_private_sessions",
+        "skills_course_completion",
+        "specialized_commission_review",
+        "student_non_registration",
+        "student_session_cancellation",
+        "student_supervision_cancellation",
+        "supervision_50h_completion",
+        "supervision_interruption",
+        "ta_blog_content",
+        "ta_conceptual_questions",
+        "ta_essay_upload",
+        "theory_course_completion",
+        "therapy_early_termination",
+        "therapy_interruption",
+        "therapy_session_reduction",
+        "thesis_defense_request",
+        "unannounced_absence_reaction",
+        "unannounced_supervision_absence_reaction",
+        "upgrade_to_educational_therapist"
+      ]
+    },
+    {
+      "code": "class_session_cancellation",
+      "name_fa": "کس کرد جسات کاسا درس",
+      "sop_order": 56,
+      "phase": "P7_ta",
+      "initial_state": "cancellation_request",
+      "initial_role": "instructor",
+      "roles_needed": [
+        "instructor",
+        "course_committee_scientific",
+        "student",
+        "teaching_assistant",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "cancellation_request",
+          "role": "instructor",
+          "type": "initial",
+          "task_fa": "ثبت نمره/حضور/تأیید TA."
+        },
+        {
+          "state": "makeup_scheduled",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 2,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": "instruction",
+      "role_portals": {
+        "instructor": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "student": "StudentPortal (/panel/portal/student)",
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "student_instructor_evaluation",
+      "name_fa": "ارزاب داشج از درس",
+      "sop_order": 57,
+      "phase": "P7_ta",
+      "initial_state": "evaluation_open",
+      "initial_role": "student",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "course_committee_scientific",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "evaluation_open",
+          "role": "student",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "evaluation_closed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 2,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "process_merged_to_one",
+      "name_fa": "تشد ب فراد شار ۱",
+      "sop_order": 58,
+      "phase": "P6_leave",
+      "initial_state": "merged",
+      "initial_role": "system",
+      "roles_needed": [
+        "system"
+      ],
+      "sub_process_refs": [
+        "educational_leave"
+      ],
+      "workflow": [
+        {
+          "state": "merged",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 1,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "full_education_leave",
+      "name_fa": "رخص ت از ک آزش",
+      "sop_order": 59,
+      "phase": "P6_leave",
+      "initial_state": "leave_request",
+      "initial_role": "student",
+      "roles_needed": [
+        "student",
+        "progress_committee",
+        "deputy_education",
+        "therapy_education_coordinator",
+        "monitoring_committee_officer",
+        "system"
+      ],
+      "sub_process_refs": [
+        "patient_referral",
+        "return_to_full_education",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "leave_request",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "مدت مرخصی (۱ یا ۲ ترم) را انتخاب و درخواست را ارسال کنید. با اجرای این فرایند تمامی فعالیت‌های آموزشی به‌جز درمان آموزشی…"
+        },
+        {
+          "state": "committee_review",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت زمان جلسه (حداکثر ۷ روز)."
+        },
+        {
+          "state": "deputy_alerted",
+          "role": "deputy_education",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت جلسه."
+        },
+        {
+          "state": "session_scheduled",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "زمان و نحوهٔ برگزاری جلسه در همین صفحه نمایش داده می‌شود؛ در روز مقرر طبق اعلام کمیته حاضر شوید."
+        },
+        {
+          "state": "committee_decision",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "پس از جلسه، تأیید یا رد درخواست را ثبت کنید."
+        },
+        {
+          "state": "leave_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": "شرح توافقات و علت رد در همین صفحه نمایش داده می‌شود."
+        },
+        {
+          "state": "therapist_assignment",
+          "role": "therapy_education_coordinator",
+          "type": "intermediate",
+          "task_fa": "تعیین تکلیف وقت درمانگر (مهلت ۴ روز)."
+        },
+        {
+          "state": "on_leave",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "ثبت‌نام دروس و فعالیت‌های آموزشی مسدود است. برای بازگشت، فرایند «بازگشت به کل آموزش» (فرایند ۶۰) را آغاز کنید."
+        },
+        {
+          "state": "return_reminder_sent",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "مهلت بازگشت فرا رسیده است. فرایند «بازگشت به کل آموزش پس از مرخصی» (فرایند ۶۰) را آغاز و تکمیل کنید."
+        },
+        {
+          "state": "leave_complete",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "violation_registered",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 11,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "progress_committee": "CommitteePortal / progress",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "therapy_education_coordinator": "StaffPortal / therapy-coord lane",
+        "monitoring_committee_officer": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "return_to_full_education"
+      ]
+    },
+    {
+      "code": "return_to_full_education",
+      "name_fa": "بازگشت دبار ب ک آزش پس از رخص از ک آزش",
+      "sop_order": 60,
+      "phase": "P6_leave",
+      "initial_state": "return_request",
+      "initial_role": "student",
+      "roles_needed": [
+        "student",
+        "system"
+      ],
+      "sub_process_refs": [
+        "full_education_leave"
+      ],
+      "workflow": [
+        {
+          "state": "return_request",
+          "role": "student",
+          "type": "initial",
+          "task_fa": "پس از مرخصی از کل آموزش، برای بازگشت به کلاس‌ها و سوپرویژن ابتدا درمانگر آموزشی خود را انتخاب و جلسهٔ اول را پرداخت کنید…"
+        },
+        {
+          "state": "therapist_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "درمانگر آموزشی و تعداد جلسات هفتگی را انتخاب کنید (دوره جامع: دقیقاً ۲ ساعت؛ دوره آشنایی: ۱ تا ۲ ساعت). سپس دکمهٔ ادامه …"
+        },
+        {
+          "state": "therapy_24h_scheduled",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "این مرحله معمولاً خودکار طی چند ثانیه تکمیل می‌شود. اگر متوقف ماند، صفحه را تازه کنید."
+        },
+        {
+          "state": "therapy_payment_pending",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "هزینهٔ جلسهٔ اول درمان آموزشی را از درگاه بانک همین صفحه بپردازید. پس از تأیید بانک به مرحلهٔ بعد هدایت می‌شوید."
+        },
+        {
+          "state": "therapy_completed",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "درمان آموزشی شما ثبت شد. در صورت انترن بودن، مرحلهٔ انتخاب سوپروایزر باز می‌شود."
+        },
+        {
+          "state": "supervisor_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از فهرست سوپروایزرهای دارای وقت آزاد، یک سوپروایزر و زمان جلسه (۱ ساعت در هفته) انتخاب کنید."
+        },
+        {
+          "state": "supervision_24h_scheduled",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "این مرحله معمولاً خودکار تکمیل می‌شود."
+        },
+        {
+          "state": "supervision_payment_pending",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "هزینهٔ جلسهٔ اول سوپرویژن را از درگاه بانک همین صفحه بپردازید."
+        },
+        {
+          "state": "registration_unlocked",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "محدودیت ثبت‌نام دروس برداشته شد. می‌توانید در ترم جدید ثبت‌نام کنید."
+        },
+        {
+          "state": "return_complete",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "return_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 11,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "full_education_leave"
+      ]
+    },
+    {
+      "code": "theory_course_completion",
+      "name_fa": "خات درس تئر",
+      "sop_order": 61,
+      "phase": "P9_completion",
+      "initial_state": "awaiting_session_18",
+      "initial_role": "system",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "teaching_assistant",
+        "course_committee_scientific",
+        "monitoring_committee_officer",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "awaiting_session_18",
+          "role": "system",
+          "type": "initial",
+          "task_fa": "با رسیدن تقویم به جلسه ۱۸، ثبت مشارکت و انتخاب پک آزمون باز می‌شود."
+        },
+        {
+          "state": "session_18_entry",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "مشارکت (۰–۱۰) را برای هر دانشجو ثبت کنید و پک آزمون تستی را تأیید کنید. مهلت: ۲۴:۰۰ همان روز جلسه ۱۸."
+        },
+        {
+          "state": "final_exam_open",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "آزمون تستی آنلاین (۸۲ نمره) در پورتال برگزار می‌شود."
+        },
+        {
+          "state": "grades_computed",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "سیستم در حال محاسبه جمع نمره و وضعیت PASS/FAIL/Incomplete."
+        },
+        {
+          "state": "borderline_student_choice",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "نمره شما در بازه مرزی (۶۴–۷۳) است. امتحان مجدد یا دوباره گذراندن درس را انتخاب کنید."
+        },
+        {
+          "state": "retake_exam_open",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "پس از پرداخت، آزمون مجدد با پک جدید برگزار می‌شود."
+        },
+        {
+          "state": "qualitative_eval_pending",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "فرم ارزیابی کیفی (سوال ۷ و ۸) را برای تک‌تک دانشجویان تکمیل کنید."
+        },
+        {
+          "state": "grades_locked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "session_18_delay",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "qualitative_eval_delay",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 10,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": true,
+      "staff_lane": "instruction",
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "monitoring_committee_officer": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "group_supervision_course_completion",
+      "name_fa": "خات ر درس سپر گر",
+      "sop_order": 62,
+      "phase": "P9_completion",
+      "initial_state": "awaiting_session_18",
+      "initial_role": "system",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "teaching_assistant",
+        "course_committee_scientific",
+        "monitoring_committee_officer",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "awaiting_session_18",
+          "role": "system",
+          "type": "initial",
+          "task_fa": "با رسیدن تقویم به جلسه ۱۸، ثبت Pass/Fail برای دانشجویان باز می‌شود."
+        },
+        {
+          "state": "session_18_pass_fail_entry",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "وضعیت مشارکت هر دانشجو را Pass یا Fail ثبت کنید. مهلت: ۲۴:۰۰ همان روز جلسه ۱۸. Pass → +۳۳.۳ ساعت سوپرویژن گروهی."
+        },
+        {
+          "state": "pass_fail_applied",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "سیستم در حال اعمال Pass/Fail و افزودن ساعات سوپرویژن گروهی است."
+        },
+        {
+          "state": "ta_evaluation_entry",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "نمره حضور (۰–۸) و وظایف کمک‌مدرس را بررسی و ثبت کنید. ≥ ۷۴ PASS."
+        },
+        {
+          "state": "qualitative_eval_pending",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "فرم ارزیابی کیفی (سوال ۷ و ۸) را برای تک‌تک دانشجویان تکمیل کنید."
+        },
+        {
+          "state": "grades_locked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "session_18_delay",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "qualitative_eval_delay",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 8,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": true,
+      "staff_lane": "instruction",
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "monitoring_committee_officer": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "skills_course_completion",
+      "name_fa": "خات درس تکک تر ارتا",
+      "sop_order": 63,
+      "phase": "P9_completion",
+      "initial_state": "awaiting_session_17",
+      "initial_role": "system",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "teaching_assistant",
+        "course_committee_scientific",
+        "monitoring_committee_officer",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "awaiting_session_17",
+          "role": "system",
+          "type": "initial",
+          "task_fa": "با رسیدن تقویم به جلسه ۱۷، فیلدهای نمره‌دهی باز می‌شود."
+        },
+        {
+          "state": "session_17_grades_entry",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "مشارکت (۰–۱۰) و امتحان عملی را برای هر دانشجو ثبت کنید. مهلت: ۲۴:۰۰ همان روز جلسه ۱۷."
+        },
+        {
+          "state": "awaiting_session_18",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "پس از جلسه ۱۷، منتظر برگزاری آزمون تستی در جلسه ۱۸."
+        },
+        {
+          "state": "session_18_grades_entry",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "نمره آزمون تستی را برای هر دانشجو ثبت کنید. حضور و غیاب به‌صورت خودکار محاسبه می‌شود."
+        },
+        {
+          "state": "grades_computed",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": "سیستم در حال محاسبه جمع نمره و وضعیت PASS/FAIL/Incomplete."
+        },
+        {
+          "state": "ta_evaluation_entry",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "نمره حضور و وظایف کمک‌مدرس را بررسی و ثبت کنید."
+        },
+        {
+          "state": "qualitative_eval_pending",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "فرم ارزیابی کیفی (سوال ۷ و ۸) را برای تک‌تک دانشجویان تکمیل کنید."
+        },
+        {
+          "state": "grades_locked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "session_17_delay",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "qualitative_eval_delay",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 10,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": true,
+      "staff_lane": "instruction",
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "monitoring_committee_officer": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "film_observation_course_completion",
+      "name_fa": "خات ر درس ع کاربرد شاد فا  بخش آپد گزارش پاا",
+      "sop_order": 64,
+      "phase": "P9_completion",
+      "initial_state": "grades_entry",
+      "initial_role": "instructor",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "grades_entry",
+          "role": "instructor",
+          "type": "initial",
+          "task_fa": "ثبت نمره/حضور/تأیید TA."
+        },
+        {
+          "state": "grades_locked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "delay_reported",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 3,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": true,
+      "staff_lane": "instruction",
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "film_observation_ta_attendance_completion"
+      ]
+    },
+    {
+      "code": "live_therapy_observation_course_completion",
+      "name_fa": "خات درس شاد زد درا  بخش آپد گزارش پاا",
+      "sop_order": 65,
+      "phase": "P9_completion",
+      "initial_state": "grades_entry",
+      "initial_role": "instructor",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "grades_entry",
+          "role": "instructor",
+          "type": "initial",
+          "task_fa": "ثبت نمره/حضور/تأیید TA."
+        },
+        {
+          "state": "grades_locked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "delay_reported",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 3,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": true,
+      "staff_lane": "instruction",
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "live_therapy_observation_ta_attendance_completion"
+      ]
+    },
+    {
+      "code": "live_therapy_observation_session_prep",
+      "name_fa": "دات برگزار جسات شاد زد درا",
+      "sop_order": 66,
+      "phase": "P8_internship",
+      "initial_state": "patient_referral",
+      "initial_role": "admission_officer",
+      "roles_needed": [
+        "admission_officer",
+        "therapy_education_coordinator",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "patient_referral",
+          "role": "admission_officer",
+          "type": "initial",
+          "task_fa": "ثبت اطلاعات بیمار متقاضی مشاهده زنده درمان و ارجاع به مسئول هماهنگی."
+        },
+        {
+          "state": "coordination_pending",
+          "role": "therapy_education_coordinator",
+          "type": "intermediate",
+          "task_fa": "هماهنگی چهارجانبه (بیمار، درمانگر، مدرس، برنامه کلاسی) و ثبت نتیجه در LMS."
+        },
+        {
+          "state": "session_scheduled",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "coordination_closed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 4,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": "therapy-coord",
+      "role_portals": {
+        "admission_officer": "StaffPortal / admissions lane",
+        "therapy_education_coordinator": "StaffPortal / therapy-coord lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "live_supervision_course_completion",
+      "name_fa": "خات درس سپر زد",
+      "sop_order": 67,
+      "phase": "P9_completion",
+      "initial_state": "sessions_in_progress",
+      "initial_role": "instructor",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "course_committee_scientific",
+        "monitoring_committee_officer",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "sessions_in_progress",
+          "role": "instructor",
+          "type": "initial",
+          "task_fa": "ثبت حضور دوگانه (عادی/پشت‌آینه) در هر جلسه؛ پیگیری پیشرفت ۱۵+۳ هر دانشجو."
+        },
+        {
+          "state": "mirror_implementation_pending",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "فرم پیاده‌سازی جلسه پشت‌آینه را تکمیل کنید."
+        },
+        {
+          "state": "mirror_eval_pending",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "فرم ارزیابی بالینی جلسات پشت‌آینه را تکمیل کنید."
+        },
+        {
+          "state": "final_eval_pending",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "فرم ارزیابی نهایی (سوال ۷ و ۸) را تکمیل کنید."
+        },
+        {
+          "state": "completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "mirror_write_violation",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "mirror_eval_violation",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "final_eval_delay",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 8,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": true,
+      "staff_lane": "instruction",
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "monitoring_committee_officer": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "live_supervision_ta_evaluation"
+      ]
+    },
+    {
+      "code": "live_supervision_session_prep",
+      "name_fa": "دات برگزار جسات سپر زد",
+      "sop_order": 68,
+      "phase": "P8_internship",
+      "initial_state": "patient_referral",
+      "initial_role": "admission_officer",
+      "roles_needed": [
+        "admission_officer",
+        "therapy_education_coordinator",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "patient_referral",
+          "role": "admission_officer",
+          "type": "initial",
+          "task_fa": "بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه."
+        },
+        {
+          "state": "coordination_pending",
+          "role": "therapy_education_coordinator",
+          "type": "intermediate",
+          "task_fa": "هماهنگی آموزش درمان و ثبت اطلاعات."
+        },
+        {
+          "state": "session_scheduled",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "coordination_closed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 4,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": "therapy-coord",
+      "role_portals": {
+        "admission_officer": "StaffPortal / admissions lane",
+        "therapy_education_coordinator": "StaffPortal / therapy-coord lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "article_writing_completion",
+      "name_fa": "خات درس اس جت گزارش رد",
+      "sop_order": 69,
+      "phase": "P9_completion",
+      "initial_state": "course_active",
+      "initial_role": "instructor",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "monitoring_committee_officer",
+        "course_committee_scientific",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "course_active",
+          "role": "instructor",
+          "type": "initial",
+          "task_fa": "برای دانشجویی که کارش تمام شده، تیک تکمیل را ثبت کنید."
+        },
+        {
+          "state": "class_closed_student",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "instructor_eval_pending",
+          "role": "instructor",
+          "type": "intermediate",
+          "task_fa": "فرم ارزیابی کیفی (سوال ۷ و ۸) را ظرف ۴ روز تکمیل کنید."
+        },
+        {
+          "state": "completed_to_defense",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "student_delay_violation",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "instructor_delay_violation",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "term3_violation",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 7,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "monitoring_committee_officer": "CommitteePortal / supervision",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": [
+        "thesis_defense_request"
+      ]
+    },
+    {
+      "code": "thesis_defense_request",
+      "name_fa": "درخاست ثبت دفاع پااا",
+      "sop_order": 70,
+      "phase": "P9_completion",
+      "initial_state": "eligibility_check",
+      "initial_role": "student",
+      "roles_needed": [
+        "student",
+        "progress_committee",
+        "supervision_committee",
+        "education_committee",
+        "instructor",
+        "system"
+      ],
+      "sub_process_refs": [
+        "article_writing_completion",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "eligibility_check",
+          "role": "student",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "conditions_not_met",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "progress_committee_review",
+          "role": "progress_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده و ثبت تصمیم جلسه."
+        },
+        {
+          "state": "report_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "report_revision",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "supervision_committee_review",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "defense_permit_denied",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "thesis_upload",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "education_committee_scheduling",
+          "role": "education_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده در جلسه کمیته آموزش."
+        },
+        {
+          "state": "first_defense_held",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "defense_passed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "revision_required",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "revision_upload",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "فایل پایان‌نامه اصلاح‌شده را بارگذاری کنید؛ پس از ثبت، منتظر زمان‌بندی دفاع مجدد باشید."
+        },
+        {
+          "state": "revision_delay_violation",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "second_defense_held",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "defense_failed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 16,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "progress_committee": "CommitteePortal / progress",
+        "supervision_committee": "CommitteePortal / supervision",
+        "education_committee": "CommitteePortal / education",
+        "instructor": "StaffPortal / instruction lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "upgrade_to_educational_therapist",
+      "name_fa": "ارتا ب دراگر آزش",
+      "sop_order": 71,
+      "phase": "P9_completion",
+      "initial_state": "student_start",
+      "initial_role": "student",
+      "roles_needed": [
+        "student",
+        "supervision_committee",
+        "education_committee",
+        "system"
+      ],
+      "sub_process_refs": [
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "student_start",
+          "role": "student",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "eligibility_failed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "monitoring_review",
+          "role": "supervision_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی/صدور مجوز طبق دستور کار."
+        },
+        {
+          "state": "monitoring_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "interview_scheduling",
+          "role": "education_committee",
+          "type": "intermediate",
+          "task_fa": "هماهنگی وقت مصاحبه با دانشجو و ثبت در LMS."
+        },
+        {
+          "state": "interview_held",
+          "role": "education_committee",
+          "type": "intermediate",
+          "task_fa": "بررسی پرونده در جلسه کمیته آموزش."
+        },
+        {
+          "state": "interview_rejected",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "therapy_readiness_check",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "therapy_frequency_adjustment",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "درمان شخصی را به حداقل یک جلسه در هفته افزایش دهید. مهلت: ۱۰ روز."
+        },
+        {
+          "state": "therapy_frequency_escalation",
+          "role": "education_committee",
+          "type": "intermediate",
+          "task_fa": "پیگیری عدم فعال‌سازی درمان هفتگی در مهلت ۱۰ روز."
+        },
+        {
+          "state": "personal_therapy_hours",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "۵۰ ساعت دیگر درمان شخصی را دریافت کنید؛ قوانین سختگیرانه غیبت/کنسلی اعمال نمی‌شود."
+        },
+        {
+          "state": "therapist_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از شیت وقت‌های آزاد درمانگران، درمانگر پیشنهادی خود را انتخاب کنید."
+        },
+        {
+          "state": "therapist_committee_review",
+          "role": "education_committee",
+          "type": "intermediate",
+          "task_fa": "تایید یا رد درمانگر پیشنهادی متقاضی."
+        },
+        {
+          "state": "supervision_readiness_check",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "supervision_frequency_adjustment",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "سوپرویژن فردی را به دو جلسه در ماه افزایش دهید تا ۵۰ ساعت تکمیل شود."
+        },
+        {
+          "state": "supervision_restart",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "سوپرویژن فعلی قطع شده؛ با عضو هیئت علمی کامل سوپرویژن را از نو آغاز کنید."
+        },
+        {
+          "state": "supervision_hours",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "تا تکمیل ۵۰ ساعت سوپرویژن فردی ادامه دهید."
+        },
+        {
+          "state": "supervisor_selection",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "از شیت وقت‌های آزاد سوپروایزرها (هیئت علمی کامل) زمان سوپرویژن را انتخاب کنید."
+        },
+        {
+          "state": "et_availability_slots",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "دو زمان خالی برای ارائه خدمات به‌عنوان درمانگر آموزشی در شیت ثبت کنید."
+        },
+        {
+          "state": "promotion_completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 20,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervision_committee": "CommitteePortal / supervision",
+        "education_committee": "CommitteePortal / education",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "intern_bulk_patient_referral",
+      "name_fa": "ارجاع ک بارا اتر ب دراگرا دگر",
+      "sop_order": 72,
+      "phase": "P8_internship",
+      "initial_state": "supervision_start",
+      "initial_role": "supervision_committee",
+      "roles_needed": [
+        "student",
+        "supervision_committee",
+        "therapy_committee_executor",
+        "therapy_education_coordinator",
+        "deputy_education",
+        "system"
+      ],
+      "sub_process_refs": [
+        "patient_referral"
+      ],
+      "workflow": [
+        {
+          "state": "supervision_start",
+          "role": "supervision_committee",
+          "type": "initial",
+          "task_fa": "جلسه کمیته نظارت، شرایط ارجاع و لیست بیماران را ثبت کنید."
+        },
+        {
+          "state": "referral_conditions_set",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "student_patient_log",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "برای هر بیمار تیک «صحبت انجام شد» را بزنید و نتیجهٔ تماس را بنویسید؛ سپس دکمهٔ ثبت را بزنید."
+        },
+        {
+          "state": "general_therapy_committee_review",
+          "role": "therapy_committee_executor",
+          "type": "intermediate",
+          "task_fa": "یادداشت‌های دانشجو را ببینید و برای هر بیمار اطلاعات ارجاع را تکمیل کنید."
+        },
+        {
+          "state": "coordination_followup",
+          "role": "therapy_education_coordinator",
+          "type": "intermediate",
+          "task_fa": "برای هر بیمار تیک پیگیری را بزنید؛ حداکثر ۳ روز مهلت دارید."
+        },
+        {
+          "state": "completed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 6,
+      "has_01": false,
+      "has_04": true,
+      "in_sop_mapping": false,
+      "staff_lane": "therapy committee + supervision",
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "supervision_committee": "CommitteePortal / supervision",
+        "therapy_committee_executor": "CommitteePortal / therapy",
+        "therapy_education_coordinator": "StaffPortal / therapy-coord lane",
+        "deputy_education": "CommitteePortal / education + SemesterPrep",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "live_supervision_ta_evaluation",
+      "name_fa": "ارزاب ککدرس درس سپر زد",
+      "sop_order": 73,
+      "phase": "P9_completion",
+      "initial_state": "session_18_completed",
+      "initial_role": "system",
+      "roles_needed": [
+        "teaching_assistant",
+        "instructor",
+        "course_committee_scientific",
+        "system"
+      ],
+      "sub_process_refs": [
+        "live_supervision_course_completion",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "session_18_completed",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "evaluation_computed",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "passed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "failed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 4,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "instructor": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "live_therapy_observation_ta_attendance_completion",
+      "name_fa": "خات درس شاد زد درا  بخش کک درس  ر حضر  غاب  شارکت",
+      "sop_order": 74,
+      "phase": "P9_completion",
+      "initial_state": "grades_entry",
+      "initial_role": "instructor",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "teaching_assistant",
+        "course_committee_scientific",
+        "monitoring_committee_officer",
+        "system"
+      ],
+      "sub_process_refs": [
+        "live_therapy_observation_course_completion",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "grades_entry",
+          "role": "instructor",
+          "type": "initial",
+          "task_fa": "ثبت نمره/حضور/تأیید TA."
+        },
+        {
+          "state": "grades_locked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "delay_reported",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 3,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "monitoring_committee_officer": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "film_observation_ta_attendance_completion",
+      "name_fa": "خات ر درس ع کاربرد شاد فا  بخش کک درس  ر حضر  غاب  شارکت",
+      "sop_order": 75,
+      "phase": "P9_completion",
+      "initial_state": "grades_entry",
+      "initial_role": "instructor",
+      "roles_needed": [
+        "student",
+        "instructor",
+        "teaching_assistant",
+        "course_committee_scientific",
+        "monitoring_committee_officer",
+        "system"
+      ],
+      "sub_process_refs": [
+        "film_observation_course_completion",
+        "violation_registration"
+      ],
+      "workflow": [
+        {
+          "state": "grades_entry",
+          "role": "instructor",
+          "type": "initial",
+          "task_fa": "ثبت نمره/حضور/تأیید TA."
+        },
+        {
+          "state": "grades_locked",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        },
+        {
+          "state": "delay_reported",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 3,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {
+        "student": "StudentPortal (/panel/portal/student)",
+        "instructor": "StaffPortal / instruction lane",
+        "teaching_assistant": "StaffPortal / instruction lane",
+        "course_committee_scientific": "StaffPortal / course-committee lane",
+        "monitoring_committee_officer": "CommitteePortal / supervision",
+        "system": "— (automated; no human panel)"
+      },
+      "started_by": []
+    },
+    {
+      "code": "patient_referral",
+      "name_fa": "ارجاع بیماران انترن به درمانگران دیگر",
+      "sop_order": null,
+      "phase": "P8_internship",
+      "initial_state": "referral_triggered",
+      "initial_role": null,
+      "roles_needed": [
+        "monitoring_committee_officer",
+        "system"
+      ],
+      "sub_process_refs": [],
+      "workflow": [
+        {
+          "state": "referral_triggered",
+          "role": "system",
+          "type": "initial",
+          "task_fa": ""
+        },
+        {
+          "state": "patients_listed",
+          "role": "monitoring_committee_officer",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "therapists_assigned",
+          "role": "monitoring_committee_officer",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "notifications_sent",
+          "role": "system",
+          "type": "intermediate",
+          "task_fa": ""
+        },
+        {
+          "state": "closed",
+          "role": "system",
+          "type": "terminal",
+          "task_fa": ""
+        }
+      ],
+      "state_count": 5,
+      "has_01": false,
+      "has_04": false,
+      "in_sop_mapping": false,
+      "staff_lane": null,
+      "role_portals": {},
+      "no_registry_folder": true,
+      "started_by": [
+        "committees_review",
+        "educational_leave",
+        "full_education_leave",
+        "intern_bulk_patient_referral",
+        "supervision_interruption",
+        "therapy_interruption",
+        "unannounced_supervision_absence_reaction"
+      ]
+    }
+  ],
+  "phase_labels": {
+    "P0_prep": "فاز ۰ — آماده‌سازی ترم",
+    "P1_admission": "فاز ۱ — پذیرش و ثبت‌نام",
+    "P2_intro_terms": "فاز ۲ — ترم‌های آشنایی",
+    "P3_comprehensive": "فاز ۳ — چرخه جامع",
+    "P4_therapy": "فاز ۴ — درمان آموزشی",
+    "P5_supervision": "فاز ۵ — سوپرویژن",
+    "P6_leave": "فاز ۶ — مرخصی و بازگشت",
+    "P7_ta": "فاز ۷ — کمک‌مدرس / مدرس / تخلف",
+    "P8_internship": "فاز ۸ — کارورزی و ارجاع بیمار",
+    "P9_completion": "فاز ۹ — تکمیل دروس و فارغ‌التحصیلی",
+    "P_other": "سایر"
+  }
+}

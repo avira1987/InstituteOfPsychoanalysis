@@ -114,18 +114,26 @@ export function validateTableField(field, val) {
   if (field.required && filledRows.length === 0) {
     return `${label}: حداقل یک ردیف کامل لازم است`
   }
+  const rowErrors = []
   for (let i = 0; i < filledRows.length; i += 1) {
     const row = filledRows[i]
     for (const col of columns) {
       if (col.auto_fill) continue
       const ct = (col.type || 'text').toLowerCase()
-      if (ct === 'checkbox') continue
+      const colLabel = col.label_fa || col.name
       const v = row[col.name]
+      if (ct === 'checkbox') {
+        if (!v) {
+          rowErrors.push(`${label} — ردیف ${i + 1}: «${colLabel}» باید تیک بخورد`)
+        }
+        continue
+      }
       if (isEmpty(v)) {
-        return `${label} — ردیف ${i + 1}: «${col.label_fa || col.name}» خالی است`
+        rowErrors.push(`${label} — ردیف ${i + 1}: «${colLabel}» خالی است`)
       }
     }
   }
+  if (rowErrors.length) return rowErrors.join('؛ ')
   return null
 }
 
@@ -142,11 +150,34 @@ export function validateDateRangeList(val, label = 'بازه تاریخ') {
   return null
 }
 
+const SEMESTER_PREP_INTERVIEW_DATE_RANGE_PAIRS = [
+  ['comprehensive_date_range_start', 'comprehensive_date_range_end', 'دوره جامع'],
+  ['introductory_date_range_start', 'introductory_date_range_end', 'دوره آشنایی'],
+]
+
+/** اعتبارسنجی بازه‌های تاریخ مصاحبه در آماده‌سازی ترم (پاییز/زمستان). */
+export function validateSemesterPrepInterviewDateRanges(values) {
+  const vals = values || {}
+  const errors = []
+  for (const [startKey, endKey, label] of SEMESTER_PREP_INTERVIEW_DATE_RANGE_PAIRS) {
+    const start = vals[startKey]
+    const end = vals[endKey]
+    if (!start || !end) continue
+    if (String(end) < String(start)) {
+      errors.push({
+        field: endKey,
+        message: `پایان بازه مصاحبه ${label} نمی‌تواند قبل از شروع باشد.`,
+      })
+    }
+  }
+  return errors
+}
+
 /**
  * @param {object} schema { fields: [...] }
  * @param {object} answers
  * @param {{ role?: string, allowedFieldNames?: string[] }} [opts]
- * @returns {{ ok: boolean, missing: string[] }}
+ * @returns {{ ok: boolean, missing: string[], fieldErrors: Record<string, string> }}
  */
 export function validateUnifiedAnswers(schema, answers, opts = {}) {
   const vals = answers || {}
@@ -156,35 +187,41 @@ export function validateUnifiedAnswers(schema, answers, opts = {}) {
     ? new Set(opts.allowedFieldNames)
     : null
   const missing = []
+  const fieldErrors = {}
+  const addError = (fieldName, message) => {
+    missing.push(message)
+    if (fieldName && !fieldErrors[fieldName]) fieldErrors[fieldName] = message
+  }
   for (const field of fields) {
     if (!field?.name) continue
     if (allow && !allow.has(field.name)) continue
     if (!fieldVisible(field, vals)) continue
     const t = (field.type || 'text').toLowerCase()
     const val = vals[field.name]
+    const label = field.label_fa || field.name
     if (fieldRequired(field, vals)) {
       if (t === 'checkbox') {
-        if (!val) { missing.push(field.label_fa || field.name); continue }
+        if (!val) { addError(field.name, label); continue }
       } else if (t === 'radio_list' || t === 'checkbox_list') {
         const ack = vals[`${field.name}_ack`]
         if (Array.isArray(val)) {
-          if (val.length === 0 && !ack) { missing.push(field.label_fa || field.name); continue }
-        } else if (isEmpty(val) && !ack) { missing.push(field.label_fa || field.name); continue }
+          if (val.length === 0 && !ack) { addError(field.name, label); continue }
+        } else if (isEmpty(val) && !ack) { addError(field.name, label); continue }
       } else if (t === 'table') {
         const err = validateTableField(field, val)
-        if (err) { missing.push(err); continue }
+        if (err) { addError(field.name, err); continue }
       } else if (isEmpty(val)) {
-        missing.push(field.label_fa || field.name); continue
+        addError(field.name, label); continue
       }
     }
     if (!isEmpty(val)) {
       if (t === 'date_range_list') {
-        const err = validateDateRangeList(val, field.label_fa || field.name)
-        if (err) { missing.push(err); continue }
+        const err = validateDateRangeList(val, label)
+        if (err) { addError(field.name, err); continue }
       }
       const err = checkRules(field, val)
-      if (err) missing.push(err)
+      if (err) addError(field.name, err)
     }
   }
-  return { ok: missing.length === 0, missing }
+  return { ok: missing.length === 0, missing, fieldErrors }
 }

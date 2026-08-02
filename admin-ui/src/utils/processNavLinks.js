@@ -6,6 +6,8 @@ import {
   getOperatorFollowupDestination,
   getOperatorFollowupDestinationForProcess,
 } from './operatorFollowupDeepLinks'
+import { sortProcessNavItems } from './processNavOrder'
+import { resolveProcessNavTier } from './processNavCategories'
 
 export const PROCESS_NAV_PATH_PREFIX = '/panel/process-nav/'
 
@@ -20,23 +22,29 @@ export function processNavSidebarPath(processCode) {
  */
 export function mapProcessNavItemsFromApi(items, portalRole = '') {
   const list = Array.isArray(items) ? items : []
-  return list
+  const mapped = list
     .map((row) => {
       const processCode = (row.process_code || '').trim()
       if (!processCode) return null
-      return {
+      const label = (row.label_fa || labelProcess(processCode)).trim()
+      const item = {
         processCode,
-        label: (row.label_fa || labelProcess(processCode)).trim(),
+        label,
         path: row.path || processNavSidebarPath(processCode),
         pendingCount: Number(row.pending_count) || 0,
         primaryAssignedRole: row.primary_assigned_role || '',
+        navTier: typeof row.nav_tier === 'number' ? row.nav_tier : undefined,
         icon: '📋',
         priority: 46,
         isProcessNav: true,
       }
+      if (item.navTier == null) {
+        item.navTier = resolveProcessNavTier(item)
+      }
+      return item
     })
     .filter(Boolean)
-    .sort((a, b) => a.label.localeCompare(b.label, 'fa'))
+  return sortProcessNavItems(mapped)
 }
 
 /**

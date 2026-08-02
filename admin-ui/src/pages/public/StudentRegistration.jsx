@@ -65,8 +65,6 @@ export default function StudentRegistration({ mode = 'public', embedded = false,
     phone: '',
     national_code: '',
     email: '',
-    education_level: '',
-    field_of_study: '',
     course_type: 'introductory',
     motivation: '',
     ...emptyExtendedRegistrationFields(),
@@ -147,8 +145,8 @@ export default function StudentRegistration({ mode = 'public', embedded = false,
           full_name_fa: fullNameFa,
           national_code: ncDigits,
           email: form.email.trim(),
-          education_level: form.education_level || undefined,
-          field_of_study: form.field_of_study || undefined,
+          education_level: profilePayload.education_level,
+          field_of_study: profilePayload.field_of_study,
           course_type: form.course_type,
           motivation: form.motivation || undefined,
           ...profilePayload,
@@ -170,8 +168,8 @@ export default function StudentRegistration({ mode = 'public', embedded = false,
         national_code: ncDigits,
         phone: form.phone,
         email: form.email.trim(),
-        education_level: form.education_level || undefined,
-        field_of_study: form.field_of_study || undefined,
+        education_level: profilePayload.education_level,
+        field_of_study: profilePayload.field_of_study,
         course_type: form.course_type,
         motivation: form.motivation || undefined,
         ...profilePayload,
@@ -347,28 +345,6 @@ export default function StudentRegistration({ mode = 'public', embedded = false,
                 <option value="introductory">دوره مقدماتی</option>
                 <option value="comprehensive">دوره جامع</option>
               </select>
-            </div>
-          </div>
-
-          <div className="pub-form-row">
-            <div className="pub-form-group">
-              <label>مقطع تحصیلی</label>
-              <select name="education_level" value={form.education_level} onChange={handleChange}>
-                <option value="">انتخاب کنید</option>
-                <option value="bachelor">کارشناسی</option>
-                <option value="master">کارشناسی ارشد</option>
-                <option value="phd">دکتری</option>
-                <option value="specialist">تخصصی</option>
-              </select>
-            </div>
-            <div className="pub-form-group">
-              <label>رشته تحصیلی</label>
-              <input
-                name="field_of_study"
-                value={form.field_of_study}
-                onChange={handleChange}
-                placeholder="مثلاً: روان‌شناسی بالینی"
-              />
             </div>
           </div>
 

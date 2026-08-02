@@ -209,6 +209,7 @@ class TherapistDirectoryEntry(BaseModel):
 
 @router.get("/therapists", response_model=list[TherapistDirectoryEntry])
 async def list_therapists(
+    with_free_slots: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(
         require_role("student", "admin", "staff", "interviewer", "supervisor", "site_manager")
@@ -216,8 +217,17 @@ async def list_therapists(
 ):
     """فهرست درمانگران آموزشی برای انتخاب توسط دانشجو (نام نمایشی + شناسه).
 
-    جایگزین ورود دستی UUID؛ دانشجو از یک فهرست کشویی درمانگر را برمی‌گزیند.
+    با with_free_slots=true فقط درمانگرانی که اسلات آزاد در شیت دارند برگردانده می‌شوند.
     """
+    from app.services.educational_therapist_slot_service import list_available_grouped_by_therapist
+
+    if with_free_slots:
+        grouped = await list_available_grouped_by_therapist(db)
+        return [
+            TherapistDirectoryEntry(id=t["id"], label_fa=t["label_fa"])
+            for t in grouped.get("therapists", [])
+        ]
+
     stmt = (
         select(User)
         .where(User.role == "therapist")
@@ -254,16 +264,15 @@ async def complete_student_registration(
     if (await db.execute(stmt_existing)).scalars().first():
         raise HTTPException(status_code=409, detail="پروفایل دانشجویی شما قبلاً ثبت شده است.")
 
+    profile_fields = validate_registration_profile_fields(body)
     synth = StudentRegistrationRequest(
         full_name_fa=body.full_name_fa,
         phone=phone,
         national_code=body.national_code,
         email=body.email,
-        education_level=body.education_level,
-        field_of_study=body.field_of_study,
         course_type=body.course_type,
         motivation=body.motivation,
-        **validate_registration_profile_fields(body),
+        **profile_fields,
     )
     _validate_registration_data(synth)
     nc = validate_national_code_ir(body.national_code or "")
@@ -298,12 +307,12 @@ async def complete_student_registration(
         db,
         current_user,
         course_type=body.course_type,
-        education_level=body.education_level,
-        field_of_study=body.field_of_study,
+        education_level=profile_fields.get("education_level"),
+        field_of_study=profile_fields.get("field_of_study"),
         motivation=body.motivation,
         national_code=nc,
         registration_source="otp_then_complete",
-        profile_extra=validate_registration_profile_fields(body),
+        profile_extra=profile_fields,
     )
     try:
         await commit_registration_or_rollback(db)

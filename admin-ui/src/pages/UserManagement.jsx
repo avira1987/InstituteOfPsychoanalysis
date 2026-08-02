@@ -286,7 +286,7 @@ export default function UserManagement() {
                 <div className="form-group">
                   <label className="form-label">نقش *</label>
                   <select className="form-input" value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}>
-                    {portalRoleOptions.map((r) => <option key={r} value={r}>{labelRoleFa(r)}</option>)}
+                    {portalRoleOptions.map((r) => <option key={r} value={r}>{labelRoleFa(r, { includeCode: false })}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -324,7 +324,7 @@ export default function UserManagement() {
                 <div className="form-group">
                   <label className="form-label">نقش</label>
                   <select className="form-input" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
-                    {portalRoleOptions.map((r) => <option key={r} value={r}>{labelRoleFa(r)}</option>)}
+                    {portalRoleOptions.map((r) => <option key={r} value={r}>{labelRoleFa(r, { includeCode: false })}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -479,7 +479,7 @@ export default function UserManagement() {
             <button type="button" className={`btn ${roleFilter === '' ? 'btn-primary' : 'btn-outline'} btn-sm`} onClick={() => setRoleFilter('')}>همه</button>
             {rolesInUse.map((r) => (
               <button key={r} type="button" className={`btn ${roleFilter === r ? 'btn-primary' : 'btn-outline'} btn-sm`} onClick={() => setRoleFilter(r)}>
-                {labelRoleFa(r)}
+                {labelRoleFa(r, { includeCode: false })}
               </button>
             ))}
           </div>
@@ -513,7 +513,7 @@ export default function UserManagement() {
                   <tr key={u.id} className="table-users-row" style={{ opacity: u.is_active ? 1 : 0.55 }}>
                     <td className="table-users-cell table-users-cell-ellipsis" title={u.username}><strong>{u.username}</strong></td>
                     <td className="table-users-cell table-users-cell-ellipsis" title={u.full_name_fa || ''}>{u.full_name_fa || '-'}</td>
-                    <td className="table-users-cell table-users-cell-role"><span className="badge badge-primary badge-tight">{labelRoleFa(u.role)}</span></td>
+                    <td className="table-users-cell table-users-cell-role"><span className="badge badge-primary badge-tight">{labelRoleFa(u.role, { includeCode: false })}</span></td>
                     <td className="table-users-cell table-users-cell-ltr table-users-cell-ellipsis" title={u.national_code || ''}>{u.national_code || '-'}</td>
                     <td className="table-users-cell">
                       <span className={`badge ${u.is_active ? 'badge-success' : 'badge-danger'} badge-tight`}>
@@ -532,7 +532,7 @@ export default function UserManagement() {
                           onClick={() => openSetPasswordModal(u)}
                           title="تنظیم رمز عبور برای ورود با نام کاربری"
                         >
-                          تنظیم رمز
+                          رمز
                         </button>
                         {currentUser?.role === 'admin' && (
                           <>
@@ -552,7 +552,7 @@ export default function UserManagement() {
                               disabled={u.id === currentUser?.id}
                               title="حذف ردیف از پایگاه داده — برگشت‌ناپذیر"
                             >
-                              حذف دائم
+                              حذف
                             </button>
                           </>
                         )}

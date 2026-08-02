@@ -11,6 +11,7 @@ export default function StudentDynamicFormsSection({ instanceId, onSubmitted }) 
   const [loading, setLoading] = useState(true)
   const [assignments, setAssignments] = useState([])
   const [valuesByAssignment, setValuesByAssignment] = useState({})
+  const [fieldErrorsByAssignment, setFieldErrorsByAssignment] = useState({})
   const [busy, setBusy] = useState({})
   const { showToast } = useToast()
 
@@ -54,11 +55,13 @@ export default function StudentDynamicFormsSection({ instanceId, onSubmitted }) 
   const submitOne = async (a) => {
     const aid = a.assignment_id
     const answers = valuesByAssignment[aid] || {}
-    const { ok, missing } = validateUnifiedAnswers(a.schema_json, answers, { role: 'student' })
+    const { ok, missing, fieldErrors } = validateUnifiedAnswers(a.schema_json, answers, { role: 'student' })
     if (!ok) {
+      setFieldErrorsByAssignment((prev) => ({ ...prev, [aid]: fieldErrors }))
       showToast(`موارد ناقص: ${missing.join('، ')}`, 'error')
       return
     }
+    setFieldErrorsByAssignment((prev) => ({ ...prev, [aid]: {} }))
     setBusy((prev) => ({ ...prev, [aid]: true }))
     try {
       await dynamicFormsApi.createResponse({
@@ -110,14 +113,16 @@ export default function StudentDynamicFormsSection({ instanceId, onSubmitted }) 
               schemaJson={a.schema_json}
               role="student"
               values={valuesByAssignment[a.assignment_id] || {}}
-              onChange={(next) =>
+              onChange={(next) => {
                 setValuesByAssignment((prev) => ({ ...prev, [a.assignment_id]: next }))
-              }
+                setFieldErrorsByAssignment((prev) => ({ ...prev, [a.assignment_id]: {} }))
+              }}
               onUploadFile={(fieldName, file) =>
                 uploadFileFor(a.assignment_id, a.version_id, fieldName, file)
               }
               disabled={!!busy[a.assignment_id]}
               showToast={showToast}
+              fieldErrors={fieldErrorsByAssignment[a.assignment_id]}
             />
             <button
               type="button"

@@ -124,6 +124,62 @@ async def test_ensure_primary_replaces_invalid_uuid(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
+async def test_ensure_primary_prefers_most_advanced_active_registration(
+    db_session: AsyncSession,
+):
+    """اگر دو نمونهٔ فعال ثبت‌نام وجود دارد، پیشرفته‌ترین به primary وصل شود."""
+    processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "introductory_course_registration.json")
+    await db_session.commit()
+
+    user = User(
+        id=uuid.uuid4(),
+        username="stu_ensure_adv",
+        hashed_password="x",
+        role="student",
+    )
+    student = Student(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        student_code="STU-ENSURE-ADV",
+        course_type="introductory",
+        is_intern=False,
+        term_count=1,
+        current_term=1,
+        weekly_sessions=1,
+        extra_data={},
+    )
+    progressed_id = uuid.uuid4()
+    stale_id = uuid.uuid4()
+    progressed = ProcessInstance(
+        id=progressed_id,
+        process_code="introductory_course_registration",
+        student_id=student.id,
+        current_state_code="interview_payment",
+        is_completed=False,
+        is_cancelled=False,
+    )
+    stale = ProcessInstance(
+        id=stale_id,
+        process_code="introductory_course_registration",
+        student_id=student.id,
+        current_state_code="application_submitted",
+        is_completed=False,
+        is_cancelled=False,
+    )
+    student.extra_data = {"primary_instance_id": str(stale_id)}
+    db_session.add_all([user, student, progressed, stale])
+    await db_session.commit()
+
+    service = StudentService(db_session)
+    changed = await service.ensure_primary_registration_path(student, user)
+    assert changed is True
+    await db_session.commit()
+    await db_session.refresh(student)
+    assert student.extra_data.get("primary_instance_id") == str(progressed_id)
+
+
+@pytest.mark.asyncio
 async def test_maybe_start_session_payment_reuses_active_instance(db_session: AsyncSession):
     """اگر session_payment فعال وجود دارد، نمونهٔ جدید نسازد؛ primary همان است."""
     user = User(

@@ -24,9 +24,76 @@ from app.services.alocom_interview_provision import (
 )
 from app.services.alocom_provision import _link_has_join_token, is_alocom_configured
 from app.services.notification_service import notification_service
+from app.services.interview_slot_notification_service import notify_interviewer_slot_booked
 from app.services.sms_gateway import normalize_ir_mobile
+from app.utils.shamsi_calendar_utils import tehran_datetime_parts
 
 logger = logging.getLogger(__name__)
+
+# فرایندهای ثبت‌نامی که مصاحبهٔ پذیرش دارند
+INTERVIEW_REGISTRATION_PROCESS_CODES = frozenset(
+    {"introductory_course_registration", "comprehensive_course_registration"}
+)
+
+# تا وقتی نمونهٔ فرایند در یکی از این وضعیت‌هاست، مصاحبه هنوز تمام نشده و لینک ورود معتبر است.
+# با ثبت نتیجه، وضعیت به result_* / rejected / ... می‌رود و لینک باید غیرفعال شود.
+INTERVIEW_LINK_ACTIVE_STATES = frozenset(
+    {
+        "application_submitted",
+        "interview_scheduled",
+        "interview_payment",
+        "interview_payment_confirmed",
+        "interview_completed",
+    }
+)
+
+# awaiting_payment | alocom_not_configured | provisioning_failed | provisioning_pending | None (ok)
+MeetingLinkProvisionStatus = Optional[str]
+
+
+def interview_result_recorded_for_instance(instance: Optional[ProcessInstance]) -> bool:
+    """نتیجهٔ مصاحبه ثبت شده است؟ (وضعیت فرایند از مرحلهٔ مصاحبه گذشته)"""
+    if instance is None:
+        return False
+    if (instance.process_code or "") not in INTERVIEW_REGISTRATION_PROCESS_CODES:
+        return False
+    state = (instance.current_state_code or "").strip()
+    if not state:
+        return False
+    return state not in INTERVIEW_LINK_ACTIVE_STATES
+
+
+async def interview_slot_result_recorded(
+    db: AsyncSession,
+    slot: InterviewSlot,
+    *,
+    instance: Optional[ProcessInstance] = None,
+) -> bool:
+    """برای اسلات رزروشده: آیا نتیجهٔ مصاحبه ثبت شده و لینک ورود باید بسته شود؟"""
+    if instance is None:
+        instance_id = getattr(slot, "assigned_instance_id", None)
+        if not instance_id:
+            return False
+        instance = await db.get(ProcessInstance, instance_id)
+    return interview_result_recorded_for_instance(instance)
+
+
+def interview_meeting_link_provision_status(slot: InterviewSlot) -> MeetingLinkProvisionStatus:
+    """دلیل نبود لینک آنلاین برای رزرو پرداخت‌شده — برای نمایش خطا در پنل اپراتور."""
+    if slot.mode != "online" or not slot.assigned_student_id:
+        return None
+    if getattr(slot, "booking_payment_deadline_at", None) is not None:
+        return "awaiting_payment"
+    student_link = (slot.meeting_link or "").strip()
+    if student_link and _link_has_join_token(student_link):
+        return None
+    if student_link or (getattr(slot, "alocom_event_id", None) or "").strip():
+        return "provisioning_failed"
+    alocom_ready, _agent_id = is_alocom_configured()
+    if not alocom_ready:
+        return "alocom_not_configured"
+    return "provisioning_pending"
+
 
 _COURSE_LABEL_FA = {
     "introductory": "دوره آشنایی",
@@ -110,9 +177,7 @@ async def enrich_interview_notification_context(
             if str(s.id) == sel:
                 slot = s
                 break
-    st = slot.starts_at
-    if st.tzinfo is None:
-        st = st.replace(tzinfo=timezone.utc)
+    interview_date, interview_time = tehran_datetime_parts(slot.starts_at)
     interview_type = "online" if slot.mode == "online" else "in_person"
     loc = (slot.location_fa or "").strip() or ("انستیتو روانکاوی تهران" if interview_type == "in_person" else "")
     link = (slot.meeting_link or "").strip() if interview_type == "online" else ""
@@ -120,8 +185,10 @@ async def enrich_interview_notification_context(
         f"لینک: {link}" if (interview_type == "online" and link) else (f"محل: {loc}" if loc else "")
     )
     out: dict[str, Any] = {
-        "interview_date": st.date().isoformat(),
-        "interview_time": st.strftime("%H:%M"),
+        "interview_date": interview_date,
+        "interview_time": interview_time,
+        "date": interview_date,
+        "time": interview_time,
         "interview_type": interview_type,
         "interview_link": link,
         "interview_location": loc,
@@ -131,6 +198,8 @@ async def enrich_interview_notification_context(
     }
     if getattr(slot, "interviewer_user_id", None):
         out["interviewer_user_id"] = str(slot.interviewer_user_id)
+    if getattr(slot, "created_by", None):
+        out["slot_created_by"] = str(slot.created_by)
     stu = await db.get(Student, instance.student_id)
     if stu:
         su = await db.get(User, stu.user_id)
@@ -161,27 +230,48 @@ async def maybe_provision_interview_slot_alocom_link(
     payment_confirmed: bool = False,
 ) -> bool:
     """برای اسلات آنلاین پرداخت‌شده بدون لینک، رویداد الوکام بسازد. True اگر لینک موجود باشد."""
+
+    def _links_ready() -> bool:
+        if not _link_has_join_token(slot.meeting_link):
+            return False
+        if slot.interviewer_user_id and not _link_has_join_token(
+            getattr(slot, "interviewer_meeting_link", None)
+        ):
+            return False
+        return True
+
     if slot.mode != "online":
         return bool((slot.meeting_link or "").strip())
-    if (slot.meeting_link or "").strip() and _link_has_join_token(slot.meeting_link):
-        iv_link = (getattr(slot, "interviewer_meeting_link", None) or "").strip()
-        if not slot.interviewer_user_id or _link_has_join_token(iv_link):
-            return True
+    if _links_ready():
+        return True
     if (getattr(slot, "alocom_event_id", None) or "").strip():
         refreshed = await refresh_interview_slot_alocom_links(db, slot)
-        if refreshed:
+        if refreshed and _links_ready():
             sync_instance = instance
             if sync_instance is None and slot.assigned_instance_id:
                 sync_instance = await db.get(ProcessInstance, slot.assigned_instance_id)
             if sync_instance:
                 await sync_registration_interview_context_from_slot(db, instance=sync_instance, slot=slot)
             return True
-    if (slot.meeting_link or "").strip():
-        return True
+        logger.warning(
+            "Stale Alocom event_id on slot=%s — clearing for reprovision (refreshed=%s)",
+            slot.id,
+            refreshed,
+        )
+        slot.alocom_event_id = None
+        if not _link_has_join_token(slot.meeting_link):
+            slot.meeting_link = None
+        await db.flush()
     if not payment_confirmed and getattr(slot, "booking_payment_deadline_at", None) is not None:
         return False
     alocom_ready, agent_service_id = is_alocom_configured()
     if not alocom_ready or not slot.assigned_student_id:
+        if payment_confirmed or getattr(slot, "booking_payment_deadline_at", None) is None:
+            if slot.assigned_student_id and not alocom_ready:
+                logger.error(
+                    "Interview Alocom link not provisioned: ALOCOM_ENABLED/credentials not configured slot=%s",
+                    slot.id,
+                )
         return False
     st = await db.get(Student, slot.assigned_student_id)
     title = (
@@ -223,7 +313,7 @@ async def maybe_provision_interview_slot_alocom_link(
             "ensure_interview_slot_host_meeting_link failed slot=%s (student link kept if set)",
             slot.id,
         )
-    return bool((slot.meeting_link or "").strip())
+    return _links_ready()
 
 
 async def ensure_registration_interview_slot_has_alocom_link(
@@ -273,22 +363,27 @@ async def delete_prior_unbooked_slots_for_interviewer(
 
 
 def _slot_payload(slot: InterviewSlot) -> dict[str, Any]:
-    st = slot.starts_at
-    if st.tzinfo is None:
-        st = st.replace(tzinfo=timezone.utc)
+    interview_date, interview_time = tehran_datetime_parts(slot.starts_at)
     interview_type = "online" if slot.mode == "online" else "in_person"
     loc = (slot.location_fa or "").strip() or ("انستیتو روانکاوی تهران" if interview_type == "in_person" else "")
     link = (slot.meeting_link or "").strip() if interview_type == "online" else ""
-    return {
+    out: dict[str, Any] = {
         "selected_timeslot": str(slot.id),
-        "interview_date": st.date().isoformat(),
-        "interview_time": st.strftime("%H:%M"),
+        "interview_date": interview_date,
+        "interview_time": interview_time,
+        "date": interview_date,
+        "time": interview_time,
         "interview_type": interview_type,
         "interview_link": link,
         "interview_location": loc,
         "interview_location_or_link": link or loc or "—",
         "notes": "رزرو از طریق اسلات سامانه",
     }
+    if getattr(slot, "interviewer_user_id", None):
+        out["interviewer_user_id"] = str(slot.interviewer_user_id)
+    if getattr(slot, "created_by", None):
+        out["slot_created_by"] = str(slot.created_by)
+    return out
 
 
 def _resolve_trigger(process_code: str, current_state: str) -> Optional[str]:
@@ -688,6 +783,18 @@ async def book_slot_for_registration(
 
     await db.refresh(instance)
     await db.refresh(slot)
+
+    if slot.interviewer_user_id:
+        st_user = user
+        if student.user_id != user.id:
+            st_user = await db.get(User, student.user_id) or user
+        await notify_interviewer_slot_booked(
+            db,
+            slot=slot,
+            student=student,
+            student_user=st_user,
+        )
+
     deadline_iso: str | None = None
     if slot.booking_payment_deadline_at:
         deadline_iso = slot.booking_payment_deadline_at.isoformat()

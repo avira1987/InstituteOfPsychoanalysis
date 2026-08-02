@@ -1,9 +1,51 @@
-/** آدرس قابل نمایش در مرورگر برای مسیر نسبی آپلود (مثلاً `/uploads/...`). */
+/** آیا مسیر آپلود نیاز به توکن دارد؟ (آواتار عمومی است) */
+function isProtectedUploadPath(path) {
+  if (!path || typeof path !== 'string') return false
+  if (!path.startsWith('/uploads/')) return false
+  if (path.startsWith('/uploads/avatars/')) return false
+  return true
+}
+
+/**
+ * آدرس قابل نمایش در مرورگر برای مسیر نسبی آپلود (مثلاً `/uploads/...`).
+ * در dev از مسیر نسبی استفاده می‌شود تا پروکسی Vite به FastAPI برود.
+ * برای مدارک محافظت‌شده، access_token اضافه می‌شود چون <img>/<iframe> هدر Authorization نمی‌فرستند.
+ */
 export function resolveUploadPublicUrl(url) {
   if (!url || typeof url !== 'string') return ''
-  if (url.startsWith('http')) return url
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  return `${origin}${url.startsWith('/') ? '' : '/'}${url}`
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    try {
+      const u = new URL(url)
+      if (isProtectedUploadPath(u.pathname) && typeof localStorage !== 'undefined') {
+        const token = localStorage.getItem('token')
+        if (token && !u.searchParams.get('access_token') && !u.searchParams.get('token')) {
+          u.searchParams.set('access_token', token)
+        }
+      }
+      return u.toString()
+    } catch {
+      return url
+    }
+  }
+
+  let path = url.startsWith('/') ? url : `/${url}`
+  const qIndex = path.indexOf('?')
+  const pathname = qIndex >= 0 ? path.slice(0, qIndex) : path
+  const search = qIndex >= 0 ? path.slice(qIndex + 1) : ''
+
+  if (isProtectedUploadPath(pathname) && typeof localStorage !== 'undefined') {
+    const token = localStorage.getItem('token')
+    if (token) {
+      const params = new URLSearchParams(search)
+      if (!params.get('access_token') && !params.get('token')) {
+        params.set('access_token', token)
+      }
+      const qs = params.toString()
+      path = qs ? `${pathname}?${qs}` : pathname
+    }
+  }
+
+  return path
 }
 
 /**

@@ -179,6 +179,7 @@ async def get_course_roster_for_user(
     course_code: str,
     *,
     include_final_reports: bool = False,
+    include_live_therapy_reports: bool = False,
 ) -> list[dict[str, Any]]:
     if not user_may_access_course(user, course_code):
         return []
@@ -190,6 +191,14 @@ async def get_course_roster_for_user(
         )
 
         reports = await collect_student_final_reports(db, course_code)
+        enrich_roster_with_final_reports(roster, reports)
+    if include_live_therapy_reports and roster:
+        from app.services.live_therapy_observation_course_service import (
+            collect_student_final_reports as collect_live_therapy_reports,
+            enrich_roster_with_final_reports,
+        )
+
+        reports = await collect_live_therapy_reports(db, course_code)
         enrich_roster_with_final_reports(roster, reports)
     return roster
 

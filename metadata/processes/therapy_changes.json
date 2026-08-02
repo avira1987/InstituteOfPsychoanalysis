@@ -178,6 +178,13 @@
       "required_role": "student",
       "actions": [
         {
+          "type": "release_therapist_slots_to_available_sheet"
+        },
+        {
+          "type": "book_educational_therapist_slots",
+          "therapist_id_key": "new_therapist_id"
+        },
+        {
           "type": "update_therapist"
         },
         {
@@ -265,8 +272,22 @@
       "fields": [
         {
           "name": "new_therapist_id",
-          "label_fa": "شناسهٔ کاربری (UUID) درمانگر جدید",
-          "type": "text",
+          "label_fa": "درمانگر آموزشی جدید",
+          "type": "therapist_slot_picker",
+          "required": true,
+          "description_fa": "درمانگر و روز/ساعت جلسات هفتگی را از شیت وقت‌های آزاد انتخاب کنید."
+        },
+        {
+          "name": "slot_ids",
+          "label_fa": "اسلات‌های هفتگی",
+          "type": "hidden",
+          "required": true
+        },
+        {
+          "name": "weekly_sessions",
+          "label_fa": "تعداد جلسات در هفته",
+          "type": "select",
+          "options": [1, 2],
           "required": true
         }
       ]

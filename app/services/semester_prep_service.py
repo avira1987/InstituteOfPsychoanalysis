@@ -17,7 +17,7 @@ from app.meta.role_labels import label_role_fa
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance
 from app.services.institute_operational_anchor import ensure_institute_operational_student
-from app.utils.shamsi_calendar_utils import farvardin_20_end_tehran, parse_iso_date, shamsi_parts
+from app.utils.shamsi_calendar_utils import farvardin_20_end_tehran, parse_iso_date, shamsi_parts, tehran_today
 
 logger = logging.getLogger(__name__)
 
@@ -389,6 +389,12 @@ async def apply_pre_filled_fields(
 ) -> dict[str, Any]:
     """Merge pre_filled_from field values into context for operator forms."""
     from app.meta.process_forms import get_process_forms
+    from app.services.financial_program_defaults_service import (
+        OTHER_PAYMENT_DEFAULT_KEYS,
+        PREP_FINANCIAL_FORM_KEYS,
+        TERM_TUITION_KEYS,
+        get_effective_financial_program_defaults,
+    )
 
     out = _apply_course_finalization_prefill(process_code, state_code, context_data)
     forms = get_process_forms(process_code, state_code=state_code)
@@ -403,6 +409,35 @@ async def apply_pre_filled_fields(
             value = await _resolve_pre_filled(db, str(pref))
             if value is not None:
                 out[name] = value
+
+    # پیش‌پر شهریه و سایر پیش‌فرض‌های پرداخت از داشبورد مالی (منبع مشترک)
+    if process_code == FALL_PREP and state_code == "tuition_entry":
+        needs = [k for k in PREP_FINANCIAL_FORM_KEYS if out.get(k) in (None, "", [])]
+        if needs:
+            fd = await get_effective_financial_program_defaults(db)
+            optional_zero = {"class_session_fee_toman", "course_session_fee_toman"}
+            for key in needs:
+                raw = fd.get(key)
+                if raw is None:
+                    continue
+                try:
+                    num = float(raw)
+                except (TypeError, ValueError):
+                    continue
+                if key in optional_zero:
+                    if num > 0:
+                        out[key] = num
+                    continue
+                if key in TERM_TUITION_KEYS or key in (
+                    "registration_interview_fee_rial",
+                    "start_therapy_first_session_fee_rial",
+                    "extra_session_fee_rial",
+                ):
+                    if int(num) >= 1000:
+                        out[key] = int(round(num))
+                    continue
+                if key in OTHER_PAYMENT_DEFAULT_KEYS and num > 0:
+                    out[key] = num
     return out
 
 
@@ -579,6 +614,9 @@ async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
                     last.completed_at.isoformat() if last and last.completed_at else None
                 )
         out["processes"][code] = entry
+    from app.services.semester_prep_readiness_service import compute_semester_prep_readiness
+
+    out["readiness"] = await compute_semester_prep_readiness(db)
     return out
 
 
@@ -624,6 +662,226 @@ WINTER_PREP_STEP_STATES: tuple[str, ...] = (
     "interviewer_assignment",
     "interview_scheduling",
 )
+
+SEMESTER_PREP_INTERVIEW_DATE_RANGE_PAIRS: tuple[tuple[str, str, str], ...] = (
+    ("comprehensive_date_range_start", "comprehensive_date_range_end", "دوره جامع"),
+    ("introductory_date_range_start", "introductory_date_range_end", "دوره آشنایی"),
+)
+
+# فیلدهای تاریخ فرم تقویم آموزشی (پاییز) — برای اعتبارسنجی و ویرایش پس از calendar_entry
+SEMESTER_PREP_CALENDAR_DATE_FIELDS: tuple[str, ...] = (
+    "fall_start_date",
+    "fall_end_date",
+    "winter_start_date",
+    "winter_end_date",
+    "registration_payment_window_start",
+    "registration_payment_window_end",
+    "intern_interview_deadline_start",
+    "intern_interview_deadline_end",
+    "teaching_assistant_interview_deadline_start",
+    "teaching_assistant_interview_deadline_end",
+    "nowruz_holiday_start",
+    "nowruz_holiday_end",
+)
+
+SEMESTER_PREP_CALENDAR_DATE_RANGE_LIST_FIELDS: tuple[str, ...] = (
+    "fall_break_periods",
+    "winter_break_periods",
+)
+
+_CALENDAR_FIELD_LABELS_FA: dict[str, str] = {
+    "fall_start_date": "تاریخ شروع ترم پاییز",
+    "fall_end_date": "تاریخ پایان ترم پاییز",
+    "winter_start_date": "تاریخ شروع ترم زمستان",
+    "winter_end_date": "تاریخ پایان ترم زمستان",
+    "registration_payment_window_start": "شروع پنجره ثبت‌نام",
+    "registration_payment_window_end": "پایان پنجره ثبت‌نام",
+    "intern_interview_deadline_start": "شروع بازه مصاحبه انترن‌ها",
+    "intern_interview_deadline_end": "پایان بازه مصاحبه انترن‌ها",
+    "teaching_assistant_interview_deadline_start": "شروع بازه مصاحبه کمک مدرسی",
+    "teaching_assistant_interview_deadline_end": "پایان بازه مصاحبه کمک مدرسی",
+    "nowruz_holiday_start": "شروع تعطیلات نوروز",
+    "nowruz_holiday_end": "پایان تعطیلات نوروز",
+    "fall_break_periods": "دوره‌های تعطیلی ترم پاییز",
+    "winter_break_periods": "دوره‌های تعطیلی ترم زمستان",
+}
+
+# نسبت به سال شمسی جاری (تهران): یک سال قبل تا یک سال بعد
+_CALENDAR_SHAMSI_YEAR_OFFSET_MIN = -1
+_CALENDAR_SHAMSI_YEAR_OFFSET_MAX = 1
+
+
+def semester_prep_calendar_shamsi_year_bounds(
+    today: date | None = None,
+) -> tuple[int, int]:
+    """(حداقل سال شمسی، حداکثر سال شمسی) مجاز برای تاریخ‌های تقویم آماده‌سازی ترم."""
+    ref = today or tehran_today()
+    jy = shamsi_parts(ref)[0]
+    return jy + _CALENDAR_SHAMSI_YEAR_OFFSET_MIN, jy + _CALENDAR_SHAMSI_YEAR_OFFSET_MAX
+
+
+def _shamsi_year_of_iso(value: Any) -> int | None:
+    d = parse_iso_date(value)
+    if d is None:
+        return None
+    return shamsi_parts(d)[0]
+
+
+def _calendar_year_outlier_message(field_key: str, jy: int, min_jy: int, max_jy: int) -> str:
+    label = _CALENDAR_FIELD_LABELS_FA.get(field_key, field_key)
+    return (
+        f"«{label}» (سال {jy}) خارج از بازهٔ مجاز سال شمسی {min_jy} تا {max_jy} نسبت به سال جاری است."
+    )
+
+
+def semester_prep_calendar_date_errors(
+    form_values: dict[str, Any] | None,
+    *,
+    today: date | None = None,
+) -> list[str]:
+    """خطاهای تاریخ تقویم: سال پرت نسبت به سال جاری و ترتیب نادرست تاریخ‌ها."""
+    errors: list[str] = []
+    vals = form_values or {}
+    min_jy, max_jy = semester_prep_calendar_shamsi_year_bounds(today=today)
+
+    def check_iso_field(key: str) -> None:
+        raw = vals.get(key)
+        if raw in (None, ""):
+            return
+        jy = _shamsi_year_of_iso(raw)
+        if jy is None:
+            return
+        if jy < min_jy or jy > max_jy:
+            errors.append(_calendar_year_outlier_message(key, jy, min_jy, max_jy))
+
+    for key in SEMESTER_PREP_CALENDAR_DATE_FIELDS:
+        check_iso_field(key)
+
+    for list_key in SEMESTER_PREP_CALENDAR_DATE_RANGE_LIST_FIELDS:
+        ranges = vals.get(list_key)
+        if not isinstance(ranges, list):
+            continue
+        for i, row in enumerate(ranges):
+            if not isinstance(row, dict):
+                continue
+            for part_key in ("start", "end"):
+                raw = row.get(part_key)
+                if raw in (None, ""):
+                    continue
+                jy = _shamsi_year_of_iso(raw)
+                if jy is None:
+                    continue
+                if jy < min_jy or jy > max_jy:
+                    label = _CALENDAR_FIELD_LABELS_FA.get(list_key, list_key)
+                    errors.append(
+                        f"«{label}» — بازه {i + 1}: سال {jy} خارج از بازهٔ مجاز "
+                        f"{min_jy} تا {max_jy} است."
+                    )
+            start_d = parse_iso_date(row.get("start"))
+            end_d = parse_iso_date(row.get("end"))
+            if start_d and end_d and end_d <= start_d:
+                label = _CALENDAR_FIELD_LABELS_FA.get(list_key, list_key)
+                errors.append(f"«{label}» — بازه {i + 1}: تاریخ پایان باید بعد از شروع باشد.")
+
+    def check_order(start_key: str, end_key: str, message: str) -> None:
+        start_d = parse_iso_date(vals.get(start_key))
+        end_d = parse_iso_date(vals.get(end_key))
+        if start_d and end_d and end_d < start_d:
+            errors.append(message)
+
+    check_order(
+        "fall_start_date",
+        "fall_end_date",
+        "تاریخ پایان ترم پاییز نمی‌تواند قبل از شروع باشد.",
+    )
+    check_order(
+        "winter_start_date",
+        "winter_end_date",
+        "تاریخ پایان ترم زمستان نمی‌تواند قبل از شروع باشد.",
+    )
+    check_order(
+        "registration_payment_window_start",
+        "registration_payment_window_end",
+        "پایان پنجره ثبت‌نام نمی‌تواند قبل از شروع باشد.",
+    )
+    check_order(
+        "intern_interview_deadline_start",
+        "intern_interview_deadline_end",
+        "پایان بازه مصاحبه انترن‌ها نمی‌تواند قبل از شروع باشد.",
+    )
+    check_order(
+        "teaching_assistant_interview_deadline_start",
+        "teaching_assistant_interview_deadline_end",
+        "پایان بازه مصاحبه کمک مدرسی نمی‌تواند قبل از شروع باشد.",
+    )
+    check_order(
+        "nowruz_holiday_start",
+        "nowruz_holiday_end",
+        "پایان تعطیلات نوروز نمی‌تواند قبل از شروع باشد.",
+    )
+
+    fall_end = parse_iso_date(vals.get("fall_end_date"))
+    winter_start = parse_iso_date(vals.get("winter_start_date"))
+    if fall_end and winter_start and winter_start < fall_end:
+        errors.append("شروع ترم زمستان نمی‌تواند قبل از پایان ترم پاییز باشد.")
+
+    return errors
+
+
+def context_has_outlier_calendar_dates(
+    context: dict[str, Any] | None,
+    *,
+    today: date | None = None,
+) -> bool:
+    """آیا در context تاریخ تقویم با سال پرت ثبت شده است؟"""
+    return bool(semester_prep_calendar_date_errors(context or {}, today=today))
+
+
+SEMESTER_PREP_CALENDAR_SYNC_FIELD_NAMES: frozenset[str] = frozenset(
+    SEMESTER_PREP_CALENDAR_DATE_FIELDS
+) | frozenset(SEMESTER_PREP_CALENDAR_DATE_RANGE_LIST_FIELDS)
+
+
+async def sync_active_institute_calendar_after_prep_correction(
+    db: AsyncSession,
+    instance: ProcessInstance,
+    *,
+    updated_field_names: set[str] | frozenset[str] | None = None,
+    published_by: uuid.UUID | None = None,
+):
+    """پس از ویرایش تقویم در آماده‌سازی پاییزِ منتشرشده، رکورد تقویم فعال انستیتو را به‌روز کند."""
+    if instance.process_code != FALL_PREP:
+        return None
+    if instance.current_state_code != "published":
+        return None
+    if updated_field_names is not None:
+        if not SEMESTER_PREP_CALENDAR_SYNC_FIELD_NAMES.intersection(updated_field_names):
+            return None
+
+    from app.services.institute_calendar_service import publish_calendar_from_instance_context
+
+    ctx = dict(instance.context_data or {})
+    return await publish_calendar_from_instance_context(
+        db,
+        instance,
+        ctx,
+        published_by=published_by,
+        notify=False,
+    )
+
+
+def semester_prep_interview_date_range_errors(form_values: dict[str, Any] | None) -> list[str]:
+    """خطاهای بازهٔ تاریخ مصاحبه (پایان قبل از شروع)."""
+    errors: list[str] = []
+    vals = form_values or {}
+    for start_key, end_key, label in SEMESTER_PREP_INTERVIEW_DATE_RANGE_PAIRS:
+        start_d = parse_iso_date(vals.get(start_key))
+        end_d = parse_iso_date(vals.get(end_key))
+        if start_d is None or end_d is None:
+            continue
+        if end_d < start_d:
+            errors.append(f"پایان بازه مصاحبه {label} نمی‌تواند قبل از شروع باشد.")
+    return errors
 
 
 def _context_key_present(ctx: dict[str, Any], key: str) -> bool:

@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "generated_at": "2026-07-25T14:39:06.177196+00:00",
+    "gap_count": 4,
+    "matrix_rows": 66
+  },
+  "gaps": [
+    {
+      "step_id": "comprehensive_course_registration/executive_review@progress_committee",
+      "process_code": "comprehensive_course_registration",
+      "state_code": "executive_review",
+      "required_role": "progress_committee",
+      "portal_role": "progress_committee",
+      "trigger": "executive_opinion_submitted",
+      "to_state": "scientific_review",
+      "failed_at": "ui_surface",
+      "layer": "ui",
+      "detail": "No UI surface mapped for this step",
+      "ui_layer": "MISSING",
+      "ui_component": "",
+      "form_codes": [],
+      "field_specs": [],
+      "severity": "high"
+    },
+    {
+      "step_id": "comprehensive_course_registration/scientific_review@progress_committee",
+      "process_code": "comprehensive_course_registration",
+      "state_code": "scientific_review",
+      "required_role": "progress_committee",
+      "portal_role": "progress_committee",
+      "trigger": "scientific_approved",
+      "to_state": "document_upload",
+      "failed_at": "ui_surface",
+      "layer": "ui",
+      "detail": "No UI surface mapped for this step",
+      "ui_layer": "MISSING",
+      "ui_component": "",
+      "form_codes": [],
+      "field_specs": [],
+      "severity": "high"
+    },
+    {
+      "step_id": "comprehensive_course_registration/supervision_committee_review@supervision_committee",
+      "process_code": "comprehensive_course_registration",
+      "state_code": "supervision_committee_review",
+      "required_role": "supervision_committee",
+      "portal_role": "supervision_committee",
+      "trigger": "supervision_approved",
+      "to_state": "executive_review",
+      "failed_at": "ui_surface",
+      "layer": "ui",
+      "detail": "No UI surface mapped for this step",
+      "ui_layer": "MISSING",
+      "ui_component": "",
+      "form_codes": [],
+      "field_specs": [],
+      "severity": "high"
+    },
+    {
+      "step_id": "thesis_defense_request/revision_upload@education_committee",
+      "process_code": "thesis_defense_request",
+      "state_code": "revision_upload",
+      "required_role": "education_committee",
+      "portal_role": "education_committee",
+      "trigger": "second_defense_scheduled",
+      "to_state": "second_defense_held",
+      "failed_at": "ui_surface",
+      "layer": "ui",
+      "detail": "No UI surface mapped for this step",
+      "ui_layer": "MISSING",
+      "ui_component": "",
+      "form_codes": [],
+      "field_specs": [],
+      "severity": "high"
+    }
+  ]
+}

@@ -16,6 +16,7 @@ from app.meta.operator_state_catalog import (
     invalidate_caches as invalidate_operator_caches,
     normalize_assigned_role,
 )
+from app.meta.process_nav_order import process_nav_sort_key, sort_process_nav_rows
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PROCESSES_DIR = _REPO_ROOT / "metadata" / "processes"
@@ -26,6 +27,14 @@ _STUDENT_ROLES = frozenset({"student", "applicant"})
 def process_nav_path(process_code: str) -> str:
     code = (process_code or "").strip()
     return f"/panel/process-nav/{code}"
+
+
+def _enrich_nav_row(row: dict[str, Any]) -> dict[str, Any]:
+    """برچسب سطح کاربرد (۰=اصلی … ۳=سایر) برای دسته‌بندی سایدبار."""
+    code = (row.get("process_code") or "").strip()
+    label = (row.get("label_fa") or row.get("process_name_fa") or "").strip()
+    nav_tier = process_nav_sort_key(code, label)[0]
+    return {**row, "nav_tier": nav_tier}
 
 
 @lru_cache(maxsize=1)
@@ -65,14 +74,15 @@ def _student_process_catalog() -> list[dict[str, Any]]:
     for code, row in by_code.items():
         primary = (role_counts[code].most_common(1) or [("student", 0)])[0][0]
         out.append(
-            {
-                **row,
-                "primary_assigned_role": primary,
-                "path": process_nav_path(code),
-            }
+            _enrich_nav_row(
+                {
+                    **row,
+                    "primary_assigned_role": primary,
+                    "path": process_nav_path(code),
+                }
+            )
         )
-    out.sort(key=lambda r: (r.get("label_fa") or "", r.get("process_code") or ""))
-    return out
+    return sort_process_nav_rows(out)
 
 
 def _operator_process_catalog(portal_role: str) -> list[dict[str, Any]]:
@@ -104,14 +114,15 @@ def _operator_process_catalog(portal_role: str) -> list[dict[str, Any]]:
     for code, row in by_code.items():
         primary = (role_counts[code].most_common(1) or [("", 0)])[0][0]
         out.append(
-            {
-                **row,
-                "primary_assigned_role": primary,
-                "path": process_nav_path(code),
-            }
+            _enrich_nav_row(
+                {
+                    **row,
+                    "primary_assigned_role": primary,
+                    "path": process_nav_path(code),
+                }
+            )
         )
-    out.sort(key=lambda r: (r.get("label_fa") or "", r.get("process_code") or ""))
-    return out
+    return sort_process_nav_rows(out)
 
 
 def get_process_nav_catalog_for_portal_role(portal_role: str) -> list[dict[str, Any]]:

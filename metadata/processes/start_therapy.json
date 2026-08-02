@@ -183,7 +183,12 @@
       "to": "therapist_confirmation",
       "trigger": "therapist_selected",
       "required_role": "student",
-      "description_fa": "دانشجو درمانگر و برنامه هفتگی را انتخاب کرد"
+      "description_fa": "دانشجو درمانگر و برنامه هفتگی را انتخاب کرد",
+      "actions": [
+        {
+          "type": "book_educational_therapist_slots"
+        }
+      ]
     },
     {
       "from": "therapist_confirmation",
@@ -199,6 +204,9 @@
       "required_role": "therapist",
       "description_fa": "درمانگر نپذیرفت",
       "actions": [
+        {
+          "type": "release_therapist_slots_to_available_sheet"
+        },
         {
           "type": "notification",
           "notification_type": "sms",
@@ -295,9 +303,15 @@
         {
           "name": "therapist_id",
           "label_fa": "درمانگر آموزشی",
-          "type": "therapist_select",
+          "type": "therapist_slot_picker",
           "required": true,
-          "description_fa": "درمانگر آموزشی خود را از فهرست انتخاب کنید."
+          "description_fa": "درمانگر و روز/ساعت جلسات هفتگی را از شیت وقت‌های آزاد انتخاب کنید."
+        },
+        {
+          "name": "slot_ids",
+          "label_fa": "اسلات‌های هفتگی",
+          "type": "hidden",
+          "required": true
         },
         {
           "name": "weekly_sessions",
@@ -305,12 +319,10 @@
           "type": "select",
           "options": [
             1,
-            2,
-            3,
-            4,
-            5
+            2
           ],
-          "required": true
+          "required": true,
+          "description_fa": "دوره جامع: دقیقاً ۲ جلسه؛ دوره آشنایی: ۱ یا ۲ جلسه."
         }
       ]
     },

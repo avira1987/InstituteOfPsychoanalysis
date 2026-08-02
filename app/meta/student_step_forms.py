@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 from app.core.engine import StateMachineEngine
 from app.services.forms.condition import field_visible as _unified_visible
+from app.services.forms.validate import validate_table_field
 
 # کلیدهای رزرو در ProcessInstance.context_data (با __ تا با payload معمول تداخل نکند)
 CTX_SUBMITTED = "__student_forms_submitted_states"
@@ -145,7 +146,12 @@ def validate_operator_step_forms(
                 if field.get("required") and not vals.get(name):
                     missing.append(field.get("label_fa") or name)
                 continue
-            if t in ("radio_list", "checkbox_list", "multi_select", "table", "date_range_list"):
+            if t == "table":
+                err = validate_table_field(field, vals.get(name))
+                if err:
+                    missing.append(err)
+                continue
+            if t in ("radio_list", "checkbox_list", "multi_select", "date_range_list"):
                 raw = vals.get(name)
                 if isinstance(raw, list):
                     if field.get("required") and len(raw) == 0:

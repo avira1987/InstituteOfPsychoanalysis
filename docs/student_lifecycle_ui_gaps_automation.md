@@ -134,18 +134,19 @@
 
 ### گام ۱.۳ — `introductory_term_end` (پایان ترم آشنایی)
 
-- [x] **وضعیت:** ⚪ + ✅ برای **نمایش خروجی**
+- [x] **وضعیت:** ✅ — جدول نمرات + کارنامه درون‌صفحه + QuestCard + فرم پیگیری پذیرش
 
 | کار | UI |
 |-----|-----|
-| تولید کارنامه (سیستم) | ✅ backend — `generate_term_transcript` |
-| **دانلود PDF کارنامه ترمی/تجمیعی** | ✅ **`StudentTranscriptsPanel` در پروفایل** |
+| تولید کارنامه (سیستم) | ✅ backend — `generate_term_transcript` + `term_end_snapshot_service` |
+| **جدول نمرات ترم (SOP)** | ✅ **`TermTranscriptGradesTable` در `StudentIntroductoryTermEndPanel`** |
+| **دانلود/مشاهده کارنامه درون‌صفحه** | ✅ **`TermEndArtifactsSection`** (+ پروفایل: `StudentTranscriptsPanel`) |
 | پیامک مهلت ثبت‌نام | ✅ SMS |
+| CTA ثبت‌نام ترم ۲ | ✅ دکمه در پنل پایان ترم |
+| پیگیری افت تحصیلی (پذیرش) | ✅ **`AcademicDeclineFollowupForm`** در StaffPortal |
 | مسدودیت درمان (مشروط) | ⚪ popup از فرایند بعد |
 
-**کار تکمیل (گام ۱.۳-الف):** بخش «کارنامه‌ها» در پنل دانشجو — لینک دانلود از `context_data` یا `document_service`.
-
-**فایل‌ها:** `admin-ui/src/pages/StudentPortal.jsx` (تب پروفایل یا journey), `app/services/workflow/document_service.py`
+**فایل‌ها:** `StudentIntroductoryTermEndPanel.jsx`, `TermTranscriptGradesTable.jsx`, `TermEndArtifactsSection.jsx`, `AcademicDeclineFollowupForm.jsx`, `term_end_snapshot_service.py`, `StudentQuestCard.jsx`
 
 ---
 
@@ -195,9 +196,16 @@
 
 ### گام ۲.۲ — `comprehensive_term_end` (پایان ترم جامع)
 
-- [x] **وضعیت:** ⚪ + ✅ (کارنامه — ادغام با ۱.۳-الف)
+- [x] **وضعیت:** ✅ — parity با آشنایی (جدول نمرات + کارنامه درون‌صفحه + QuestCard)
 
-**کار تکمیل:** ادغام با گام ۱.۳-الف — یک کامپوننت `StudentTranscriptsPanel` برای هر دو فرایند.
+| کار | UI |
+|-----|-----|
+| تولید کارنامه (سیستم) | ✅ `term_end_snapshot_service` + `document_service` |
+| **جدول نمرات ترم** | ✅ **`TermTranscriptGradesTable` در `StudentComprehensiveTermEndPanel`** |
+| **کارنامه درون‌صفحه** | ✅ **`TermEndArtifactsSection`** |
+| CTA ثبت‌نام ترم بعد | ✅ دکمه → `comprehensive_term_start` |
+
+**فایل‌ها:** `StudentComprehensiveTermEndPanel.jsx`, `StudentQuestCard.jsx`, `term_end_snapshot_service.py`
 
 ---
 
@@ -319,22 +327,22 @@
 
 ### گام ۸.۱ — خاتمه دروس (`theory_`, `skills_`, `film_`, `live_*`, `group_supervision_`)
 
-- [x] **وضعیت:** 👤 + 🟡 — `StudentCourseStatusPanel` برای نتیجهٔ LMS
+- [x] **وضعیت:** ✅ — پنل اختصاصی دانشجو + `StudentCourseStatusPanel` برای نمره LMS
 
 | فرایند | نقش اصلی | UI دانشجو |
 |--------|---------|-----------|
-| `theory_course_completion` | مدرس | 🔴 نمره/وضعیت درس در پنل نیست |
-| `skills_course_completion` | مدرس | 🔴 |
-| `film_observation_course_completion` | مدرس | 🔴 |
-| `live_therapy_observation_course_completion` | مدرس | 🔴 |
-| `live_supervision_course_completion` | مدرس | 🔴 |
-| `group_supervision_course_completion` | مدرس | 🔴 |
+| `theory_course_completion` | مدرس | ✅ `StudentTheoryCourseCompletionPanel` + جدول LMS |
+| `skills_course_completion` | مدرس | ✅ `StudentSkillsCourseCompletionPanel` + جدول LMS |
+| `film_observation_course_completion` | مدرس | ✅ `StudentFilmObservationCourseCompletionPanel` + آپلود PDF |
+| `live_therapy_observation_course_completion` | مدرس | ✅ `StudentLiveTherapyObservationCourseCompletionPanel` + آپلود PDF |
+| `live_supervision_course_completion` | مدرس | ✅ `StudentLiveSupervisionCoursePanel` + MirrorWrite |
+| `group_supervision_course_completion` | مدرس | ✅ `StudentGroupSupervisionCourseCompletionPanel` + ساعات |
 
-**توضیح:** این فرایندها **طراحی‌شده برای مدرس** هستند؛ دانشجو فقط **نتیجه** (قبول/مردود) را باید ببیند.
+**توضیح:** دانشجو نتیجه (قبول/مردود/نمره) را در پنل اختصاصی فرایند و جدول «وضعیت دروس» می‌بیند. مدرس از پنل instruction در StaffPortal استفاده می‌کند.
 
-**کار تکمیل (گام ۸.۱-الف):** تب «وضعیت دروس» در `StudentPortal` — جدول enrolled courses + grade lock status از `extra_data.lms`.
+**کار تکمیل (گام ۸.۱-الف):** ✅ `StudentCourseStatusPanel` — badge خاتمه فعال + ادغام نمره از `extra_data.lms`.
 
-**کار تکمیل (گام ۸.۱-ب):** پنل مدرس — اطمینان از `triggerTransition` روی state `grades_entry` (Therapist/Instructor portal یا Staff).
+**کار تکمیل (گام ۸.۱-ب):** ✅ پنل‌های مدرس اختصاصی برای هر ۶ فرایند (شامل live_therapy).
 
 ---
 

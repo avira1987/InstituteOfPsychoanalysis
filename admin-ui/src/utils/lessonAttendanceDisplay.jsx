@@ -94,7 +94,7 @@ export function isArticleWritingCourse(ctx = {}) {
   const ct = (ctx.course_type || '').toLowerCase()
   if (ct === 'article_writing') return true
   const code = courseCodeFromInstanceContext(ctx).toLowerCase()
-  return 'article' in code || 'مقاله' in courseCodeFromInstanceContext(ctx)
+  return code.includes('article') || code.includes('مقاله')
 }
 
 export function todayIsoDate() {

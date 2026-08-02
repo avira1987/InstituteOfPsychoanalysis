@@ -28,7 +28,6 @@ const SITE_MANAGER_DEEP_LINK_TABS = [
 const siteManagerReviewStates = [
   'site_manager_review', 'site_manager_followup', 'pending_site_manager',
   'attendance_check', 'followup_required', 'site_review',
-  'interview_scheduling',
 ]
 
 export default function SiteManagerPortal() {

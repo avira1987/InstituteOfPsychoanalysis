@@ -28,6 +28,7 @@ ACTION_HANDLER = ROOT / "app" / "services" / "action_handler.py"
 ALL_RULES = ROOT / "metadata" / "rules" / "all_rules.json"
 PORTAL_MAP = ROOT / "metadata" / "portal_role_assigned_role_map.json"
 ALT_PATHS = ROOT / "metadata" / "customer_acceptance_alternate_paths.json"
+SOP_MAPPINGS = ROOT / "metadata" / "process_registry" / "sop_step_mappings.json"
 GAP_RULES = ROOT / "metadata" / "operator_gap_rules.json"
 CALENDAR_TRIGGERS = ROOT / "app" / "services" / "calendar_triggers.py"
 SLA_MONITOR = ROOT / "app" / "services" / "sla_monitor.py"
@@ -143,8 +144,49 @@ _SOP_KEYWORD_HINTS: dict[str, list[str]] = {
 }
 
 
+def _load_sop_step_mappings() -> dict[str, dict]:
+    if not SOP_MAPPINGS.is_file():
+        return {}
+    try:
+        data = json.loads(SOP_MAPPINGS.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data.get("processes") or {}
+
+
+def _explicit_mapping_by_num(code: str) -> dict[str, dict]:
+    proc = _load_sop_step_mappings().get(code) or {}
+    out: dict[str, dict] = {}
+    for row in proc.get("steps") or []:
+        if not isinstance(row, dict):
+            continue
+        idx = row.get("sop_step_index")
+        if idx is None:
+            continue
+        out[str(idx)] = row
+    return out
+
+
 def map_sop_steps(code: str, steps: list[dict], pj: dict) -> tuple[list[dict], list[dict]]:
     """Map SOP steps to metadata; return (mapped, unmapped)."""
+    explicit_by_num = _explicit_mapping_by_num(code)
+    if explicit_by_num:
+        parsed_nums = {str(s.get("num") or "") for s in steps}
+        for num, row in sorted(explicit_by_num.items(), key=lambda x: int(x[0])):
+            if num not in parsed_nums:
+                steps.append({
+                    "num": num,
+                    "title": (row.get("title_fa") or row.get("ui") or f"step {num}").strip(),
+                })
+        steps.sort(key=lambda s: int(str(s.get("num") or "0")))
+    if not steps and explicit_by_num:
+        steps = [
+            {
+                "num": num,
+                "title": (row.get("title_fa") or row.get("ui") or f"step {num}").strip(),
+            }
+            for num, row in sorted(explicit_by_num.items(), key=lambda x: int(x[0]))
+        ]
     if not steps:
         return [], []
     tokens = _metadata_tokens(pj)
@@ -154,6 +196,13 @@ def map_sop_steps(code: str, steps: list[dict], pj: dict) -> tuple[list[dict], l
     ]
     mapped, unmapped = [], []
     for step in steps:
+        num = str(step.get("num") or "")
+        if num and num in explicit_by_num:
+            row = explicit_by_num[num]
+            state_code = (row.get("state_code") or "").strip()
+            matched_via = f"explicit:{state_code or row.get('ui', '')}"
+            mapped.append({**step, "matched_via": matched_via})
+            continue
         title_lower = step["title"].lower()
         keywords = re.findall(r"[\w\u0600-\u06FF]{3,}", title_lower)
         hit = False

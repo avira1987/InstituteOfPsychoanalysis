@@ -655,7 +655,7 @@
         "deputy_education",
         "course_committee_scientific",
         "admissions_officer",
-        "site_manager",
+        "staff",
         "system"
       ],
       "sub_process_refs": [],
@@ -675,7 +675,7 @@
         "deputy_education",
         "course_committee_scientific",
         "admissions_officer",
-        "site_manager",
+        "staff",
         "system"
       ],
       "sub_process_refs": [

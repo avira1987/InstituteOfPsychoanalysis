@@ -84,6 +84,7 @@ export default function StepOtpField({
         <input
           type="text"
           inputMode="numeric"
+          data-testid="step-otp-input"
           className="psf-input form-input"
           dir="ltr"
           style={{ maxWidth: '140px' }}
@@ -95,10 +96,10 @@ export default function StepOtpField({
           }}
           placeholder="کد ۶ رقمی"
         />
-        <button type="button" className="btn btn-sm btn-outline" disabled={disabled || busy} onClick={handleRequest}>
+        <button type="button" className="btn btn-sm btn-outline" data-testid="step-otp-send" disabled={disabled || busy} onClick={handleRequest}>
           ارسال کد
         </button>
-        <button type="button" className="btn btn-sm btn-primary" disabled={disabled || busy} onClick={handleVerify}>
+        <button type="button" className="btn btn-sm btn-primary" data-testid="step-otp-verify" disabled={disabled || busy} onClick={handleVerify}>
           تأیید کد
         </button>
       </div>

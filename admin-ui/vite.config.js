@@ -42,6 +42,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/anistito/, ''),
         },
+        // مدارک آپلودشده روی FastAPI است؛ بدون این پروکسی در Vite (5173) تصویر 404 می‌شود
+        '/uploads': {
+          target: proxyTarget,
+          changeOrigin: true,
+        },
       },
     },
   }

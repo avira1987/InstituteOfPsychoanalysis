@@ -338,7 +338,7 @@ export default function CreatableSearchSelect({
         }}
         onFocus={() => {
           setOpen(true)
-          setQuery(selectedLabel)
+          setQuery('')
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && canOfferCreate) {

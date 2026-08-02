@@ -17,7 +17,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.core.engine import StateMachineEngine, InvalidTransitionError
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition
 from app.models.operational_models import ProcessInstance, Student, User
-from app.services.institute_calendar_service import get_active_calendar
+from app.services.institute_calendar_service import get_active_calendar, resolve_registration_window
 from app.services.notification_service import notification_service
 from app.services.process_service import ProcessService
 from app.services.sms_gateway import normalize_ir_mobile
@@ -396,8 +396,7 @@ async def dispatch_academic_term_batch(db: AsyncSession, now: datetime) -> list[
                 logger.debug("evaluation deadline_reached: %s", e)
 
     # comprehensive_term_start — پنجره ثبت‌نام
-    reg_open = cal.registration_open_at
-    reg_deadline = cal.registration_deadline_at
+    reg_open, reg_deadline = resolve_registration_window(cal)
     in_reg_window = (
         (reg_open is None or now >= reg_open)
         and (reg_deadline is None or now <= reg_deadline)

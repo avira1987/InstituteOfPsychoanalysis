@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import { interviewSlotsApi } from '../services/api'
+import { canManageInterviewSlots } from '../utils/interviewSlotAccess'
 import ShamsiDateTimePicker, { addMinutesToShamsiParts } from './ShamsiDateTimePicker'
 import InterviewSlotRescheduleModal from './InterviewSlotRescheduleModal'
 import OnlineMeetingJoinCta from './OnlineMeetingJoinCta'
+import { interviewMeetingLinkPreparingState } from '../utils/interviewMeetingLinkStatus'
+import CreatableSearchSelect from './CreatableSearchSelect'
+import { resolveUsersOptionsSource } from '../utils/resolveFormOptionsSource'
 import {
   defaultShamsiTehranNow,
   formatShamsiTehran,
@@ -15,7 +20,27 @@ function formatSlotAdmin(iso) {
   return formatShamsiTehran(iso)
 }
 
-export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slotDefaults = null }) {
+function formatCourseTypeLabel(courseType) {
+  if (courseType === 'introductory') return 'آشنایی'
+  if (courseType === 'comprehensive') return 'جامع'
+  return courseType || '—'
+}
+
+function formatInterviewerLabel(slot) {
+  if (slot.interviewer_name_fa) return slot.interviewer_name_fa
+  if (slot.interviewer_user_id) return 'مصاحبه‌گر'
+  return '—'
+}
+
+export default function InterviewSlotsAdmin({
+  showToast,
+  onCapacityChanged,
+  slotDefaults = null,
+  interviewerRoster = null,
+  semesterPrepMode = false,
+}) {
+  const { user } = useAuth()
+  const canEditInterviewer = canManageInterviewSlots(user?.role)
   const [slots, setSlots] = useState([])
   const [includePast, setIncludePast] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -24,25 +49,103 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slot
   const [courseType, setCourseType] = useState('')
   const [mode, setMode] = useState('online')
   const [locationFa, setLocationFa] = useState('')
-  const [meetingLink, setMeetingLink] = useState('')
   const [labelFa, setLabelFa] = useState('')
+  const [interviewerUserId, setInterviewerUserId] = useState('')
+  const [allInterviewers, setAllInterviewers] = useState([])
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [togglingJoinId, setTogglingJoinId] = useState(null)
   const [rescheduleSlot, setRescheduleSlot] = useState(null)
+  const [interviewerSavingId, setInterviewerSavingId] = useState(null)
 
   const applySlotDefaults = (defaults) => {
     if (!defaults) return
     setMode(defaults.mode === 'online' ? 'online' : 'in_person')
     setLocationFa(defaults.locationFa || '')
-    if (defaults.mode === 'online') {
-      setMeetingLink('')
-    }
   }
 
   useEffect(() => {
     applySlotDefaults(slotDefaults)
   }, [slotDefaults?.mode, slotDefaults?.locationFa, slotDefaults?.lockMode])
+
+  useEffect(() => {
+    let cancelled = false
+    resolveUsersOptionsSource({ type: 'users', roles: ['interviewer', 'staff'], is_active: true })
+      .then((opts) => {
+        if (!cancelled) setAllInterviewers(opts)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
+  const interviewerOptions = useMemo(() => {
+    let list = allInterviewers
+    if (interviewerRoster) {
+      if (courseType === 'comprehensive') {
+        list = interviewerRoster.comprehensive || []
+      } else if (courseType === 'introductory') {
+        list = interviewerRoster.introductory || []
+      } else {
+        const seen = new Set()
+        list = [...(interviewerRoster.comprehensive || []), ...(interviewerRoster.introductory || [])].filter((o) => {
+          const id = String(o.value)
+          if (seen.has(id)) return false
+          seen.add(id)
+          return true
+        })
+      }
+    }
+    return list
+  }, [interviewerRoster, allInterviewers, courseType])
+
+  const listInterviewerOptions = useMemo(() => {
+    if (interviewerRoster) {
+      const seen = new Set()
+      return [...(interviewerRoster.comprehensive || []), ...(interviewerRoster.introductory || [])].filter((o) => {
+        const id = String(o.value)
+        if (seen.has(id)) return false
+        seen.add(id)
+        return true
+      })
+    }
+    return allInterviewers
+  }, [interviewerRoster, allInterviewers])
+
+  const interviewerOptionsForSlot = (slot) => {
+    if (!interviewerRoster || !slot?.course_type) return listInterviewerOptions
+    if (slot.course_type === 'comprehensive') return interviewerRoster.comprehensive || listInterviewerOptions
+    if (slot.course_type === 'introductory') return interviewerRoster.introductory || listInterviewerOptions
+    return listInterviewerOptions
+  }
+
+  const changeSlotInterviewer = async (slot, nextIvId) => {
+    const current = (slot.interviewer_user_id || '').trim()
+    const next = (nextIvId || '').trim()
+    if (!next || next === current) return
+    setInterviewerSavingId(slot.id)
+    try {
+      await interviewSlotsApi.manageUpdate(slot.id, { interviewer_user_id: next })
+      showToast?.('مصاحبه‌گر به‌روز شد.')
+      load()
+      onCapacityChanged?.()
+    } catch (err) {
+      const d = err.response?.data?.detail
+      showToast?.(typeof d === 'string' ? d : 'تغییر مصاحبه‌گر ناموفق بود.', 'error')
+    } finally {
+      setInterviewerSavingId(null)
+    }
+  }
+
+  useEffect(() => {
+    if (!interviewerUserId) {
+      if (interviewerOptions.length === 1) {
+        setInterviewerUserId(String(interviewerOptions[0].value))
+      }
+      return
+    }
+    const allowed = interviewerOptions.some((o) => String(o.value) === String(interviewerUserId))
+    if (!allowed) setInterviewerUserId('')
+  }, [interviewerOptions, interviewerUserId])
 
   const lockMode = !!slotDefaults?.lockMode
   const isOnlineMode = mode === 'online'
@@ -80,12 +183,12 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slot
     setEndsParts(addMinutesToShamsiParts(now, 60) || now)
     setCourseType('')
     setLabelFa('')
+    setInterviewerUserId('')
     setEditingId(null)
     applySlotDefaults(slotDefaults)
     if (!slotDefaults) {
       setMode('online')
       setLocationFa('')
-      setMeetingLink('')
     }
   }
 
@@ -97,8 +200,8 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slot
     setCourseType(s.course_type || '')
     setMode(s.mode === 'online' ? 'online' : 'in_person')
     setLocationFa(s.location_fa || '')
-    setMeetingLink(s.meeting_link || '')
     setLabelFa(s.label_fa || '')
+    setInterviewerUserId(s.interviewer_user_id || '')
     setEditingId(s.id)
   }
 
@@ -123,6 +226,10 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slot
       showToast?.('پایان باید بعد از شروع باشد.', 'error')
       return
     }
+    if (!interviewerUserId) {
+      showToast?.('انتخاب مصاحبه‌گر الزامی است.', 'error')
+      return
+    }
     setSaving(true)
     try {
       const bodyBase = {
@@ -131,8 +238,9 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slot
         course_type: courseType || null,
         mode,
         location_fa: locationFa || null,
-        meeting_link: meetingLink || null,
+        meeting_link: null,
         label_fa: labelFa || null,
+        interviewer_user_id: interviewerUserId,
       }
       if (editingId) {
         await interviewSlotsApi.manageUpdate(editingId, bodyBase)
@@ -183,7 +291,9 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slot
           <strong>۱۰ دقیقه</strong> مهلت پرداخت هزینهٔ مصاحبه وجود دارد؛ در غیر این صورت وقت آزاد و فرایند به مرحلهٔ قبل برمی‌گردد.
           پس از تأیید پرداخت، زمان تا برگزاری مصاحبه برای دیگران بسته می‌ماند. یادآوری پیامکی توسط سامانه ارسال می‌شود.
           {' '}
-          <strong>مصاحبه‌گر:</strong> با هر بار ثبت وقت آزاد <em>دستی</em> جدید، فقط وقت‌های آزاد قبلیٔ <strong>همین مسیر دستی</strong> شما پاک می‌شود؛ وقت‌های ساخته‌شده از <strong>الگوی زمانی تکراری</strong> دست‌نخورده می‌مانند.
+          <strong>مصاحبه‌گر:</strong> انتخاب مصاحبه‌گر برای هر وقت الزامی است.
+          پس از تخصیص، به مصاحبه‌گر اطلاع‌رسانی می‌شود و وقت در پنل او ثبت می‌گردد.
+          {semesterPrepMode ? ' فهرست مصاحبه‌گران از گام تعیین مصاحبه‌کنندگان فیلتر شده است.' : ''}
         </p>
       </div>
       <div style={{ padding: '0 1.25rem 1rem' }}>
@@ -241,11 +351,28 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slot
           >
             <label style={{ margin: 0 }}>
               <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>نوع دوره</span>
-              <select className="psf-input" value={courseType} onChange={(e) => setCourseType(e.target.value)} style={{ width: '100%', minHeight: '2.35rem' }}>
+              <select
+                className="psf-input"
+                value={courseType}
+                onChange={(e) => setCourseType(e.target.value)}
+                style={{ width: '100%', minHeight: '2.35rem' }}
+              >
                 <option value="">هر دو / عمومی</option>
-                <option value="introductory">آشنایی (مقدماتی)</option>
+                <option value="introductory">آشنایی</option>
                 <option value="comprehensive">جامع</option>
               </select>
+            </label>
+            <label style={{ margin: 0 }}>
+              <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>مصاحبه‌گر *</span>
+              <CreatableSearchSelect
+                value={interviewerUserId}
+                onChange={setInterviewerUserId}
+                options={interviewerOptions}
+                allowCreate={false}
+                placeholder="انتخاب مصاحبه‌گر…"
+                style={{ width: '100%', minWidth: '11rem' }}
+                testId="interview-slot-interviewer-select"
+              />
             </label>
             <label style={{ margin: 0 }}>
               <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>برگزاری</span>
@@ -274,11 +401,14 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slot
                 <input className="psf-input" value={locationFa} onChange={(e) => setLocationFa(e.target.value)} style={{ width: '100%', minHeight: '2.35rem' }} dir="rtl" />
               </label>
             )}
-            {mode === 'online' && !lockMode && (
-              <label style={{ margin: 0 }}>
-                <span style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.82rem' }}>لینک جلسه (آنلاین)</span>
-                <input className="psf-input" value={meetingLink} onChange={(e) => setMeetingLink(e.target.value)} style={{ width: '100%', minHeight: '2.35rem' }} dir="ltr" />
-              </label>
+            {mode === 'online' && (
+              <p
+                className="muted"
+                style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.6, alignSelf: 'end' }}
+                data-testid="interview-slot-online-link-hint"
+              >
+                لینک جلسهٔ آنلاین پس از پرداخت دانشجو به‌صورت خودکار در الوکام ساخته می‌شود؛ نیازی به ثبت دستی نیست.
+              </p>
             )}
           </div>
           <label style={{ margin: 0, maxWidth: '28rem' }}>
@@ -316,6 +446,7 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slot
                   <th>شروع</th>
                   <th>پایان</th>
                   <th>دوره</th>
+                  <th>مصاحبه‌گر</th>
                   <th>حضور</th>
                   <th>مکان / لینک</th>
                   <th>ورود دانشجو</th>
@@ -328,30 +459,52 @@ export default function InterviewSlotsAdmin({ showToast, onCapacityChanged, slot
                   <tr key={s.id}>
                     <td>{formatSlotAdmin(s.starts_at)}</td>
                     <td>{formatSlotAdmin(s.ends_at)}</td>
-                    <td>{s.course_type || '—'}</td>
+                    <td>{formatCourseTypeLabel(s.course_type)}</td>
+                    <td style={{ minWidth: '10rem' }}>
+                      {canEditInterviewer ? (
+                        <CreatableSearchSelect
+                          value={s.interviewer_user_id || ''}
+                          onChange={(nextIvId) => changeSlotInterviewer(s, nextIvId)}
+                          options={interviewerOptionsForSlot(s)}
+                          allowCreate={false}
+                          disabled={interviewerSavingId === s.id}
+                          placeholder="انتخاب مصاحبه‌گر…"
+                          style={{ width: '100%', minWidth: '9.5rem' }}
+                          testId={`interview-slot-interviewer-row-${s.id}`}
+                        />
+                      ) : (
+                        formatInterviewerLabel(s)
+                      )}
+                    </td>
                     <td>{s.mode === 'online' ? 'آنلاین' : 'حضوری'}</td>
                     <td style={{ maxWidth: '14rem', fontSize: '0.8rem' }} dir={s.mode === 'online' ? 'ltr' : 'rtl'}>
-                      {s.mode === 'online' ? (
+                      {s.mode === 'online' ? (() => {
+                        const linkState = interviewMeetingLinkPreparingState(s)
+                        return (
                         <OnlineMeetingJoinCta
                           compact
                           mode="online"
                           meetingLink={s.meeting_link}
+                          meetingLinkReady={s.meeting_link_ready}
                           meetingLinkOpenAt={s.meeting_link_open_at}
                           meetingLinkIsVisible={s.meeting_link_is_visible}
                           startsAt={s.starts_at}
                           studentJoinOpen={!!s.student_join_open}
                           label="ورود به مصاحبه"
                           allowStaffCopy
-                          preparing={!s.meeting_link && !!s.assigned_student_id && !s.booking_payment_deadline_at}
-                          preparingText={
-                            s.booking_payment_deadline_at
-                              ? 'پس از پرداخت دانشجو، لینک آنلاین تولید می‌شود.'
-                              : s.assigned_student_id
-                                ? 'لینک آنلاین در حال آماده‌سازی است.'
-                                : (s.meeting_link ? '' : 'لینک دستی ثبت نشده — پس از رزرو و پرداخت از الوکام ساخته می‌شود.')
+                          onToggleStudentJoinOpen={
+                            s.mode === 'online' && s.assigned_student_id && !s.booking_payment_deadline_at
+                              ? (nextOpen) => toggleStudentJoinOpen(s, nextOpen)
+                              : null
                           }
+                          togglingStudentJoin={togglingJoinId === s.id}
+                          preparing={linkState.preparing}
+                          preparingFailed={linkState.preparingFailed}
+                          preparingText={linkState.preparingText}
+                          resultRecorded={!!linkState.resultRecorded}
                         />
-                      ) : (
+                        )
+                      })() : (
                         s.location_fa || '—'
                       )}
                     </td>

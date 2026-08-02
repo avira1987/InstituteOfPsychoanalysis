@@ -42,6 +42,8 @@ def test_collect_only_visible_artifacts(sample_student):
     out = collect_student_artifacts(sample_student)
     ids = {d["id"] for d in out}
     assert "d1" in ids
+    assert "body_fa" not in out[0]
+    assert out[0]["pdf_download_url"].endswith("/documents/d1.pdf")
     assert "d2" not in ids  # not visible/signed/exportable
     assert "d3" not in ids  # type not allowed
 

@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from app.meta.role_labels import (
+    format_role_forbidden_message,
     label_role_fa,
     normalize_role_code,
     role_label_fa_only,
@@ -58,4 +59,15 @@ def test_all_process_assigned_roles_have_labels():
 
 
 def test_label_without_code():
+    assert label_role_fa("staff", include_code=False) == "کارمند دفتر"
+
+
+def test_format_role_forbidden_message():
+    msg = format_role_forbidden_message(
+        "staff", "admin", "deputy_education", "course_committee"
+    )
+    assert msg == (
+        "نقش «کارمند دفتر» مجاز نیست. "
+        "نقش‌های مجاز: مدیر سیستم، معاون مدیر آموزش، کمیته دروس"
+    )
     assert label_role_fa("student", include_code=False) == "دانشجو"

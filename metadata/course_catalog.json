@@ -50,6 +50,10 @@
     {
       "value": "course_تست",
       "label_fa": "تست"
+    },
+    {
+      "value": "course_درس_آزمایشی",
+      "label_fa": "درس آزمایشی"
     }
   ]
 }

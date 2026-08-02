@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { panelApi, processExecApi, studentApi } from '../services/api'
 import { labelProcess } from '../utils/processDisplay'
 import { resolveProcessLandingHref } from '../utils/processNavLinks'
+import { isInstituteLevelProcess } from '../utils/instituteProcesses'
 
 /**
  * صفحهٔ میانی سایدبار فرایند — redirect به پورتال/workbench مناسب.
@@ -24,6 +25,13 @@ export default function ProcessNavLandingPage() {
       try {
         let pendingItem = null
         const role = (user.role || '').toLowerCase()
+
+        if (role === 'student' && isInstituteLevelProcess(processCode)) {
+          if (!cancelled) {
+            setRedirectTo('/panel/academic-calendar')
+          }
+          return
+        }
 
         if (role === 'student') {
           const meRes = await studentApi.me()

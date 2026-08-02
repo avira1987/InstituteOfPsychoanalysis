@@ -1,10 +1,10 @@
 {
   "meta": {
-    "generated_at": "2026-06-22T15:04:48.811859+00:00",
+    "generated_at": "2026-07-18T18:34:26.711320+00:00",
     "process_count": 74,
     "scored_process_count": 73,
-    "pass_count": 73,
-    "readiness_pct": 100.0,
+    "pass_count": 67,
+    "readiness_pct": 91.8,
     "excluded_from_score": [
       "process_merged_to_one"
     ],
@@ -24,7 +24,6 @@
       "specialized_commission_review",
       "thesis_defense_request",
       "unannounced_supervision_absence_reaction",
-      "upgrade_to_educational_therapist",
       "winter_semester_preparation"
     ],
     "B": [
@@ -40,7 +39,6 @@
       "fee_determination",
       "film_observation_ta_attendance_completion",
       "full_education_leave",
-      "group_supervision_course_completion",
       "intern_hours_increase",
       "internship_12month_conditional_review",
       "internship_readiness_consultation",
@@ -49,13 +47,11 @@
       "introductory_course_registration",
       "introductory_term_end",
       "lesson_start_per_term",
-      "live_supervision_course_completion",
       "live_supervision_session_prep",
       "live_therapy_observation_session_prep",
       "mentor_private_sessions",
       "return_to_full_education",
       "session_payment",
-      "skills_course_completion",
       "start_therapy",
       "student_instructor_evaluation",
       "student_non_registration",
@@ -69,14 +65,12 @@
       "supervisor_session_cancellation",
       "ta_blog_content",
       "ta_conceptual_questions",
-      "ta_essay_upload",
       "ta_instructor_leave",
       "ta_student_consultation",
       "ta_to_assistant_faculty",
       "ta_to_instructor_auto",
       "ta_track_change",
       "ta_track_completion",
-      "theory_course_completion",
       "therapist_session_cancellation",
       "therapy_changes",
       "therapy_completion",
@@ -88,13 +82,53 @@
       "upgrade_to_ta",
       "violation_registration"
     ],
-    "C": []
+    "C": [
+      "group_supervision_course_completion",
+      "live_supervision_course_completion",
+      "skills_course_completion",
+      "ta_essay_upload",
+      "theory_course_completion",
+      "upgrade_to_educational_therapist"
+    ]
   },
-  "top_blockers": [],
+  "top_blockers": [
+    {
+      "check": "stuck_state",
+      "count": 5,
+      "processes": [
+        "skills_course_completion",
+        "ta_essay_upload",
+        "ta_essay_upload",
+        "theory_course_completion",
+        "upgrade_to_educational_therapist"
+      ],
+      "sample_fix": "Add transition from 'grades_computed' or mark as terminal"
+    },
+    {
+      "check": "action_missing",
+      "count": 4,
+      "processes": [
+        "group_supervision_course_completion",
+        "live_supervision_course_completion",
+        "skills_course_completion",
+        "theory_course_completion"
+      ],
+      "sample_fix": "Register handler for action 'start_sub_process' in ActionHandler._registry"
+    },
+    {
+      "check": "portal_missing",
+      "count": 2,
+      "processes": [
+        "ta_essay_upload",
+        "ta_essay_upload"
+      ],
+      "sample_fix": "Add 'marketing' to portal_role_assigned_role_map.json and Layout.jsx navItems"
+    }
+  ],
   "operator_visibility_summary": {
-    "total_operator_states": 134,
-    "needs_review_count": 116,
-    "staff_center_needs_review": 40,
+    "total_operator_states": 152,
+    "needs_review_count": 126,
+    "staff_center_needs_review": 58,
     "prioritized_gap_count": 15
   },
   "processes": [
@@ -466,9 +500,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 91.7,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 66.7
       }
     },
     {
@@ -860,9 +894,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 87.5,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 50.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -992,9 +1026,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 90.6,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 62.5
+        "forms_pct": 100.0
       }
     },
     {
@@ -1141,9 +1175,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -1314,10 +1348,57 @@
       "code": "film_observation_course_completion",
       "name_fa": "خاتمه هر درس عملی کاربردی و مشاهده فیلم‌ها",
       "excluded_from_score": false,
-      "sop_steps": [],
-      "sop_mapped": [],
+      "sop_steps": [
+        {
+          "num": "1",
+          "title": "باز شدن آپلود گزارش"
+        },
+        {
+          "num": "2",
+          "title": "آپلود گزارش دانشجو"
+        },
+        {
+          "num": "3",
+          "title": "بررسی و ثبت نمره مدرس"
+        },
+        {
+          "num": "4",
+          "title": "تفسیر نمره و Pass/Fail"
+        },
+        {
+          "num": "5",
+          "title": "مسیر امتحان مجدد"
+        }
+      ],
+      "sop_mapped": [
+        {
+          "num": "1",
+          "title": "باز شدن آپلود گزارش",
+          "matched_via": "explicit:grades_entry"
+        },
+        {
+          "num": "2",
+          "title": "آپلود گزارش دانشجو",
+          "matched_via": "explicit:grades_entry"
+        },
+        {
+          "num": "3",
+          "title": "بررسی و ثبت نمره مدرس",
+          "matched_via": "explicit:grades_entry"
+        },
+        {
+          "num": "4",
+          "title": "تفسیر نمره و Pass/Fail",
+          "matched_via": "explicit:grades_locked"
+        },
+        {
+          "num": "5",
+          "title": "مسیر امتحان مجدد",
+          "matched_via": "explicit:grades_locked"
+        }
+      ],
       "sop_unmapped": [],
-      "sop_fully_mapped": false,
+      "sop_fully_mapped": true,
       "fails": [],
       "partial_ui": [],
       "user_can_complete": true,
@@ -1558,7 +1639,7 @@
         {
           "num": "2",
           "title": "دانشجو و اتوماسیون (تعیین مدت مرخصی و نمایش هشدار):",
-          "matched_via": "state:leave_request"
+          "matched_via": "hint:مرخص"
         },
         {
           "num": "3",
@@ -1568,17 +1649,32 @@
         {
           "num": "4",
           "title": "کمیته پیشرفت (بررسی و تعیین وقت جلسه — مهلت ۷ روزه):",
-          "matched_via": "state:therapist_assignment"
+          "matched_via": "state:committee_review"
+        },
+        {
+          "num": "5",
+          "title": "اتوماسیون (ارسال دعوت‌نامه):",
+          "matched_via": "state:return_reminder_sent"
+        },
+        {
+          "num": "6",
+          "title": "کمیته پیشرفت و دانشجو (برگزاری جلسه):",
+          "matched_via": "state:committee_review"
+        },
+        {
+          "num": "7",
+          "title": "کمیته پیشرفت (ثبت نتیجه نهایی):",
+          "matched_via": "state:violation_registered"
         },
         {
           "num": "8",
           "title": "اتوماسیون (ثبت شرح توافق و پایان):",
-          "matched_via": "hint:پایان"
+          "matched_via": "state:violation_registered"
         },
         {
           "num": "9",
           "title": "اتوماسیون (ثبت مرخصی و محدودیت ثبت‌نام):",
-          "matched_via": "state:leave_request"
+          "matched_via": "hint:مرخص"
         },
         {
           "num": "10",
@@ -1588,12 +1684,17 @@
         {
           "num": "11",
           "title": "مسئول هماهنگی‌ها و اتوماسیون (تعیین تکلیف وقت درمانگر — مهلت ۴ روزه):",
-          "matched_via": "state:therapist_assignment"
+          "matched_via": "state:committee_review"
         },
         {
-          "num": "15",
-          "title": "پایان فرایند.",
-          "matched_via": "hint:پایان"
+          "num": "13",
+          "title": "اتوماسیون (یادآوری بازگشت):",
+          "matched_via": "state:return_reminder_sent"
+        },
+        {
+          "num": "14",
+          "title": "اتوماسیون (تخلف در صورت عدم بازگشت):",
+          "matched_via": "state:return_reminder_sent"
         }
       ],
       "sop_unmapped": [
@@ -1602,28 +1703,12 @@
           "title": "دانشجو (آغاز فرایند):"
         },
         {
-          "num": "5",
-          "title": "اتوماسیون (ارسال دعوت‌نامه):"
-        },
-        {
-          "num": "6",
-          "title": "کمیته پیشرفت و دانشجو (برگزاری جلسه):"
-        },
-        {
-          "num": "7",
-          "title": "کمیته پیشرفت (ثبت نتیجه نهایی):"
-        },
-        {
           "num": "12",
           "title": "اتوماسیون (توقف سوپرویژن و انترنی):"
         },
         {
-          "num": "13",
-          "title": "اتوماسیون (یادآوری بازگشت):"
-        },
-        {
-          "num": "14",
-          "title": "اتوماسیون (تخلف در صورت عدم بازگشت):"
+          "num": "15",
+          "title": "پایان فرایند."
         }
       ],
       "sop_fully_mapped": false,
@@ -1678,49 +1763,62 @@
       ],
       "sop_mapped": [
         {
-          "num": "5",
-          "title": "مدرس (فرم ارزیابی فرد به فرد):",
-          "matched_via": "state:grades_entry"
-        }
-      ],
-      "sop_unmapped": [
-        {
           "num": "1",
-          "title": "اتوماسیون (آغازگر و یادآوری):"
+          "title": "اتوماسیون (آغازگر و یادآوری):",
+          "matched_via": "explicit:awaiting_session_18"
         },
         {
           "num": "2",
-          "title": "مدرس (مشارکت کلاسی — کیفی):"
+          "title": "مدرس (مشارکت کلاسی — کیفی):",
+          "matched_via": "explicit:session_18_pass_fail_entry"
         },
         {
           "num": "3",
-          "title": "اتوماسیون (کارنامه و ساعات):"
+          "title": "اتوماسیون (کارنامه و ساعات):",
+          "matched_via": "explicit:pass_fail_applied"
         },
         {
           "num": "4",
-          "title": "اتوماسیون (نمره نهایی کمک‌مدرس):"
+          "title": "اتوماسیون (نمره نهایی کمک‌مدرس):",
+          "matched_via": "explicit:ta_evaluation_entry"
+        },
+        {
+          "num": "5",
+          "title": "مدرس (فرم ارزیابی فرد به فرد):",
+          "matched_via": "explicit:qualitative_eval_pending"
         },
         {
           "num": "6",
-          "title": "اتوماسیون (پردازش فرم):"
+          "title": "اتوماسیون (پردازش فرم):",
+          "matched_via": "explicit:qualitative_eval_pending"
         },
         {
           "num": "7",
-          "title": "پایان فرایند."
+          "title": "پایان فرایند.",
+          "matched_via": "explicit:grades_locked"
         }
       ],
-      "sop_fully_mapped": false,
-      "fails": [],
+      "sop_unmapped": [],
+      "sop_fully_mapped": true,
+      "fails": [
+        {
+          "check": "action_missing",
+          "detail": "Action type 'start_sub_process' has no handler",
+          "backend": "app/services/action_handler.py",
+          "frontend": "",
+          "fix": "Register handler for action 'start_sub_process' in ActionHandler._registry"
+        }
+      ],
       "partial_ui": [],
-      "user_can_complete": true,
-      "section": "B",
+      "user_can_complete": false,
+      "section": "C",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 100.0,
+        "total_pct": 92.0,
         "uncovered_roles": [],
         "forms_pct": 100.0
       }
@@ -1743,9 +1841,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 81.3,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 25.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -1991,9 +2089,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 83.3,
+        "total_pct": 91.7,
         "uncovered_roles": [],
-        "forms_pct": 33.3
+        "forms_pct": 66.7
       }
     },
     {
@@ -2389,9 +2487,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -2815,52 +2913,88 @@
           "title": "پیغام به پورتال کمیته نظارت و آغاز فرایند «ثبت تخلفات»؛"
         },
         {
-          "num": "2",
-          "title": "SMS به دانشجو."
-        },
-        {
           "num": "1",
           "title": "پیغام به پورتال کمیته نظارت؛"
         },
         {
           "num": "2",
+          "title": "SMS به دانشجو."
+        },
+        {
+          "num": "2",
           "title": "SMS به موبایل مدرس."
+        },
+        {
+          "num": "3",
+          "title": "ارزیابی پشت‌آینه"
+        },
+        {
+          "num": "4",
+          "title": "ارزیابی نهایی Q7/Q8"
+        },
+        {
+          "num": "5",
+          "title": "پایان فرایند"
         }
       ],
       "sop_mapped": [
         {
           "num": "1",
           "title": "پیغام به پورتال کمیته نظارت و آغاز فرایند «ثبت تخلفات»؛",
-          "matched_via": "state:grades_entry"
+          "matched_via": "explicit:sessions_in_progress"
         },
         {
           "num": "1",
           "title": "پیغام به پورتال کمیته نظارت؛",
-          "matched_via": "state:delay_reported"
-        }
-      ],
-      "sop_unmapped": [
-        {
-          "num": "2",
-          "title": "SMS به دانشجو."
+          "matched_via": "explicit:sessions_in_progress"
         },
         {
           "num": "2",
-          "title": "SMS به موبایل مدرس."
+          "title": "SMS به دانشجو.",
+          "matched_via": "explicit:mirror_implementation_pending"
+        },
+        {
+          "num": "2",
+          "title": "SMS به موبایل مدرس.",
+          "matched_via": "explicit:mirror_implementation_pending"
+        },
+        {
+          "num": "3",
+          "title": "ارزیابی پشت‌آینه",
+          "matched_via": "explicit:mirror_eval_pending"
+        },
+        {
+          "num": "4",
+          "title": "ارزیابی نهایی Q7/Q8",
+          "matched_via": "explicit:final_eval_pending"
+        },
+        {
+          "num": "5",
+          "title": "پایان فرایند",
+          "matched_via": "explicit:completed"
         }
       ],
-      "sop_fully_mapped": false,
-      "fails": [],
+      "sop_unmapped": [],
+      "sop_fully_mapped": true,
+      "fails": [
+        {
+          "check": "action_missing",
+          "detail": "Action type 'start_sub_process' has no handler",
+          "backend": "app/services/action_handler.py",
+          "frontend": "",
+          "fix": "Register handler for action 'start_sub_process' in ActionHandler._registry"
+        }
+      ],
       "partial_ui": [],
-      "user_can_complete": true,
-      "section": "B",
+      "user_can_complete": false,
+      "section": "C",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 100.0,
+        "total_pct": 86.7,
         "uncovered_roles": [],
         "forms_pct": 100.0
       }
@@ -2971,10 +3105,57 @@
       "code": "live_therapy_observation_course_completion",
       "name_fa": "خاتمه درس مشاهده زنده درمان – بخش آپلود گزارش پایانی",
       "excluded_from_score": false,
-      "sop_steps": [],
-      "sop_mapped": [],
+      "sop_steps": [
+        {
+          "num": "1",
+          "title": "باز شدن آپلود گزارش"
+        },
+        {
+          "num": "2",
+          "title": "بارگذاری گزارش دانشجو"
+        },
+        {
+          "num": "3",
+          "title": "بررسی و ثبت نمره مدرس"
+        },
+        {
+          "num": "4",
+          "title": "تفسیر نمره PASS/FAIL"
+        },
+        {
+          "num": "5",
+          "title": "امتحان مجدد مرزی"
+        }
+      ],
+      "sop_mapped": [
+        {
+          "num": "1",
+          "title": "باز شدن آپلود گزارش",
+          "matched_via": "explicit:grades_entry"
+        },
+        {
+          "num": "2",
+          "title": "بارگذاری گزارش دانشجو",
+          "matched_via": "explicit:grades_entry"
+        },
+        {
+          "num": "3",
+          "title": "بررسی و ثبت نمره مدرس",
+          "matched_via": "explicit:grades_entry"
+        },
+        {
+          "num": "4",
+          "title": "تفسیر نمره PASS/FAIL",
+          "matched_via": "explicit:grades_locked"
+        },
+        {
+          "num": "5",
+          "title": "امتحان مجدد مرزی",
+          "matched_via": "explicit:grades_locked"
+        }
+      ],
       "sop_unmapped": [],
-      "sop_fully_mapped": false,
+      "sop_fully_mapped": true,
       "fails": [],
       "partial_ui": [],
       "user_can_complete": true,
@@ -3277,37 +3458,62 @@
       ],
       "sop_mapped": [
         {
+          "num": "1",
+          "title": "دانشجو (شروع فرایند):",
+          "matched_via": "state:therapy_24h_scheduled"
+        },
+        {
+          "num": "2",
+          "title": "اتوماسیون (تشخیص دوره و نمایش درمانگران):",
+          "matched_via": "state:therapist_selection"
+        },
+        {
           "num": "3",
           "title": "دانشجو و اتوماسیون (محدودیت انتخاب):",
-          "matched_via": "state:clinical_roles_selection"
+          "matched_via": "state:therapist_selection"
+        },
+        {
+          "num": "4",
+          "title": "دانشجو (پرداخت جلسهٔ اول):",
+          "matched_via": "state:therapy_payment_pending"
+        },
+        {
+          "num": "5",
+          "title": "اتوماسیون و درگاه پرداخت:",
+          "matched_via": "state:therapy_payment_pending"
+        },
+        {
+          "num": "6",
+          "title": "اتوماسیون (قانون ۲۴ ساعت — درمان آموزشی):",
+          "matched_via": "state:therapist_selection"
         },
         {
           "num": "9",
           "title": "اتوماسیون و دانشجو (انتخاب سوپروایزر):",
           "matched_via": "token:سوپروایزر"
+        },
+        {
+          "num": "10",
+          "title": "دانشجو و درگاه پرداخت:",
+          "matched_via": "state:therapy_payment_pending"
+        },
+        {
+          "num": "11",
+          "title": "اتوماسیون (قانون ۲۴ ساعت — سوپرویژن):",
+          "matched_via": "state:supervision_24h_scheduled"
+        },
+        {
+          "num": "12",
+          "title": "اتوماسیون (اطلاع‌رسانی و لینک سوپرویژن):",
+          "matched_via": "state:supervision_24h_scheduled"
+        },
+        {
+          "num": "13",
+          "title": "اتوماسیون (باز کردن قفل ثبت‌نام دروس):",
+          "matched_via": "state:registration_unlocked"
         }
       ],
       "sop_unmapped": [
-        {
-          "num": "1",
-          "title": "دانشجو (شروع فرایند):"
-        },
-        {
-          "num": "2",
-          "title": "اتوماسیون (تشخیص دوره و نمایش درمانگران):"
-        },
-        {
-          "num": "4",
-          "title": "دانشجو (پرداخت جلسهٔ اول):"
-        },
-        {
-          "num": "5",
-          "title": "اتوماسیون و درگاه پرداخت:"
-        },
-        {
-          "num": "6",
-          "title": "اتوماسیون (قانون ۲۴ ساعت — درمان آموزشی):"
-        },
         {
           "num": "7",
           "title": "اتوماسیون (اطلاع‌رسانی و لینک):"
@@ -3315,22 +3521,6 @@
         {
           "num": "8",
           "title": "اتوماسیون (غربالگری انترن):"
-        },
-        {
-          "num": "10",
-          "title": "دانشجو و درگاه پرداخت:"
-        },
-        {
-          "num": "11",
-          "title": "اتوماسیون (قانون ۲۴ ساعت — سوپرویژن):"
-        },
-        {
-          "num": "12",
-          "title": "اتوماسیون (اطلاع‌رسانی و لینک سوپرویژن):"
-        },
-        {
-          "num": "13",
-          "title": "اتوماسیون (باز کردن قفل ثبت‌نام دروس):"
         },
         {
           "num": "14",
@@ -3486,73 +3676,101 @@
           "title": "پایان فرایند."
         }
       ],
-      "sop_mapped": [],
-      "sop_unmapped": [
+      "sop_mapped": [
         {
           "num": "1",
-          "title": "اتوماسیون (بازگشایی فیلدها):"
+          "title": "اتوماسیون (بازگشایی فیلدها):",
+          "matched_via": "explicit:awaiting_session_17"
         },
         {
           "num": "2",
-          "title": "مدرس (مشارکت و امتحان عملی):"
+          "title": "مدرس (مشارکت و امتحان عملی):",
+          "matched_via": "explicit:session_17_grades_entry"
         },
         {
           "num": "3",
-          "title": "اتوماسیون (مهلت و هشدار):"
+          "title": "اتوماسیون (مهلت و هشدار):",
+          "matched_via": "explicit:session_17_grades_entry"
         },
         {
           "num": "4",
-          "title": "مدرس و اتوماسیون (آزمون تستی):"
+          "title": "مدرس و اتوماسیون (آزمون تستی):",
+          "matched_via": "explicit:session_18_grades_entry"
         },
         {
           "num": "5",
-          "title": "اتوماسیون (حضور و غیاب):"
+          "title": "اتوماسیون (حضور و غیاب):",
+          "matched_via": "explicit:session_18_grades_entry"
         },
         {
           "num": "6",
-          "title": "اتوماسیون (Incomplete):"
+          "title": "اتوماسیون (Incomplete):",
+          "matched_via": "explicit:grades_computed"
         },
         {
           "num": "7",
-          "title": "اتوماسیون (نمره کل و Pass/Fail):"
+          "title": "اتوماسیون (نمره کل و Pass/Fail):",
+          "matched_via": "explicit:grades_computed"
         },
         {
           "num": "8",
-          "title": "بررسی وجود کمک‌مدرس؛ در صورت نبود، رفتن به فاز چهارم."
+          "title": "بررسی وجود کمک‌مدرس؛ در صورت نبود، رفتن به فاز چهارم.",
+          "matched_via": "explicit:ta_evaluation_entry"
         },
         {
           "num": "9",
-          "title": "اتوماسیون (نمره کمک‌مدرس):"
+          "title": "اتوماسیون (نمره کمک‌مدرس):",
+          "matched_via": "explicit:ta_evaluation_entry"
         },
         {
           "num": "10",
-          "title": "وضعیت TA: **≥ ۷۴** → **PASS**؛ **< ۷۴** → **FAIL**."
+          "title": "وضعیت TA: **≥ ۷۴** → **PASS**؛ **< ۷۴** → **FAIL**.",
+          "matched_via": "explicit:ta_evaluation_entry"
         },
         {
           "num": "11",
-          "title": "مدرس (فرم فرد به فرد):"
+          "title": "مدرس (فرم فرد به فرد):",
+          "matched_via": "explicit:qualitative_eval_pending"
         },
         {
           "num": "12",
-          "title": "اتوماسیون (سوال ۷ و ۸):"
+          "title": "اتوماسیون (سوال ۷ و ۸):",
+          "matched_via": "explicit:qualitative_eval_pending"
         },
         {
           "num": "13",
-          "title": "پایان فرایند."
+          "title": "پایان فرایند.",
+          "matched_via": "explicit:grades_locked"
         }
       ],
-      "sop_fully_mapped": false,
-      "fails": [],
+      "sop_unmapped": [],
+      "sop_fully_mapped": true,
+      "fails": [
+        {
+          "check": "action_missing",
+          "detail": "Action type 'start_sub_process' has no handler",
+          "backend": "app/services/action_handler.py",
+          "frontend": "",
+          "fix": "Register handler for action 'start_sub_process' in ActionHandler._registry"
+        },
+        {
+          "check": "stuck_state",
+          "detail": "Non-terminal state 'grades_computed' has no outgoing transitions",
+          "backend": "metadata/processes/skills_course_completion.json",
+          "frontend": "",
+          "fix": "Add transition from 'grades_computed' or mark as terminal"
+        }
+      ],
       "partial_ui": [],
-      "user_can_complete": true,
-      "section": "B",
+      "user_can_complete": false,
+      "section": "C",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 100.0,
+        "total_pct": 94.3,
         "uncovered_roles": [],
         "forms_pct": 100.0
       }
@@ -3604,9 +3822,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 87.5,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 50.0
       }
     },
     {
@@ -3946,9 +4164,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 83.3,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 33.3
+        "forms_pct": 100.0
       }
     },
     {
@@ -4032,9 +4250,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -4160,9 +4378,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -4604,9 +4822,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -4763,9 +4981,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -5067,9 +5285,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -5217,9 +5435,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 93.8,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 75.0
       }
     },
     {
@@ -5360,7 +5578,7 @@
         {
           "num": "12",
           "title": "اتوماسیون (انتقال به مرکز مرجع):",
-          "matched_via": "state:approved_reference_center"
+          "matched_via": "state:reference_center_editing"
         },
         {
           "num": "1",
@@ -5370,17 +5588,17 @@
         {
           "num": "14",
           "title": "مرکز مرجع:",
-          "matched_via": "state:approved_reference_center"
+          "matched_via": "state:reference_center_editing"
         },
         {
           "num": "16",
           "title": "مارکتینگ:",
-          "matched_via": "state:approved_reference_center"
+          "matched_via": "state:marketing_publication"
         },
         {
           "num": "18",
           "title": "اتوماسیون (مهلت ۷ روزه — مارکتینگ):",
-          "matched_via": "state:approved_reference_center"
+          "matched_via": "state:marketing_publication"
         },
         {
           "num": "20",
@@ -5423,19 +5641,51 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [],
+      "fails": [
+        {
+          "check": "portal_missing",
+          "detail": "Role 'marketing' has no portal mapping",
+          "backend": "C:\\Users\\393\\Desktop\\anistito (3)\\anistito\\metadata\\portal_role_assigned_role_map.json",
+          "frontend": "admin-ui/src/components/Layout.jsx",
+          "fix": "Add 'marketing' to portal_role_assigned_role_map.json and Layout.jsx navItems"
+        },
+        {
+          "check": "portal_missing",
+          "detail": "Role 'reference_center' has no portal mapping",
+          "backend": "C:\\Users\\393\\Desktop\\anistito (3)\\anistito\\metadata\\portal_role_assigned_role_map.json",
+          "frontend": "admin-ui/src/components/Layout.jsx",
+          "fix": "Add 'reference_center' to portal_role_assigned_role_map.json and Layout.jsx navItems"
+        },
+        {
+          "check": "stuck_state",
+          "detail": "State 'reference_center_editing' requires role 'reference_center' with no portal — process can stall",
+          "backend": "C:\\Users\\393\\Desktop\\anistito (3)\\anistito\\metadata\\portal_role_assigned_role_map.json",
+          "frontend": "admin-ui/src/components/Layout.jsx",
+          "fix": "Add portal for role 'reference_center'"
+        },
+        {
+          "check": "stuck_state",
+          "detail": "State 'marketing_publication' requires role 'marketing' with no portal — process can stall",
+          "backend": "C:\\Users\\393\\Desktop\\anistito (3)\\anistito\\metadata\\portal_role_assigned_role_map.json",
+          "frontend": "admin-ui/src/components/Layout.jsx",
+          "fix": "Add portal for role 'marketing'"
+        }
+      ],
       "partial_ui": [],
-      "user_can_complete": true,
-      "section": "B",
+      "user_can_complete": false,
+      "section": "C",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
-        "uncovered_roles": [],
-        "forms_pct": 0.0
+        "total_pct": 92.5,
+        "uncovered_roles": [
+          "marketing",
+          "reference_center"
+        ],
+        "forms_pct": 100.0
       }
     },
     {
@@ -6121,83 +6371,111 @@
       ],
       "sop_mapped": [
         {
-          "num": "13",
-          "title": "مدرس (ارزیابی فرد به فرد):",
-          "matched_via": "state:grades_entry"
-        }
-      ],
-      "sop_unmapped": [
-        {
           "num": "1",
-          "title": "اتوماسیون (آغازگر):"
+          "title": "اتوماسیون (آغازگر):",
+          "matched_via": "explicit:awaiting_session_18"
         },
         {
           "num": "2",
-          "title": "مدرس (نمره مشارکت):"
+          "title": "مدرس (نمره مشارکت):",
+          "matched_via": "explicit:session_18_entry"
         },
         {
           "num": "3",
-          "title": "اتوماسیون (حضور و غیاب):"
+          "title": "اتوماسیون (حضور و غیاب):",
+          "matched_via": "explicit:session_18_entry"
         },
         {
           "num": "4",
-          "title": "اتوماسیون (نمره نهایی کمک‌مدرس):"
+          "title": "اتوماسیون (نمره نهایی کمک‌مدرس):",
+          "matched_via": "explicit:session_18_entry"
         },
         {
           "num": "5",
-          "title": "مدرس (انتخاب بستهٔ سوالات):"
+          "title": "مدرس (انتخاب بستهٔ سوالات):",
+          "matched_via": "explicit:session_18_entry"
         },
         {
           "num": "6",
-          "title": "دانشجو و اتوماسیون (امتحان اول):"
+          "title": "دانشجو و اتوماسیون (امتحان اول):",
+          "matched_via": "explicit:final_exam_open"
         },
         {
           "num": "7",
-          "title": "اتوماسیون (نمره کل و قبولی):"
+          "title": "اتوماسیون (نمره کل و قبولی):",
+          "matched_via": "explicit:grades_computed"
         },
         {
           "num": "8",
-          "title": "اتوماسیون (گزینه‌های مرزی):"
+          "title": "اتوماسیون (گزینه‌های مرزی):",
+          "matched_via": "explicit:borderline_student_choice"
         },
         {
           "num": "9",
-          "title": "دانشجو (عدم امتحان مجدد):"
+          "title": "دانشجو (عدم امتحان مجدد):",
+          "matched_via": "explicit:borderline_student_choice"
         },
         {
           "num": "10",
-          "title": "دانشجو (امتحان مجدد و پرداخت):"
+          "title": "دانشجو (امتحان مجدد و پرداخت):",
+          "matched_via": "explicit:retake_exam_open"
         },
         {
           "num": "11",
-          "title": "اتوماسیون (امتحان مجدد):"
+          "title": "اتوماسیون (امتحان مجدد):",
+          "matched_via": "explicit:retake_exam_open"
         },
         {
           "num": "12",
-          "title": "دانشجو و اتوماسیون (نتیجهٔ امتحان مجدد):"
+          "title": "دانشجو و اتوماسیون (نتیجهٔ امتحان مجدد):",
+          "matched_via": "explicit:retake_exam_open"
+        },
+        {
+          "num": "13",
+          "title": "مدرس (ارزیابی فرد به فرد):",
+          "matched_via": "explicit:qualitative_eval_pending"
         },
         {
           "num": "14",
-          "title": "اتوماسیون (پردازش فرم مدرس):"
+          "title": "اتوماسیون (پردازش فرم مدرس):",
+          "matched_via": "explicit:qualitative_eval_pending"
         },
         {
           "num": "15",
-          "title": "پایان فرایند."
+          "title": "پایان فرایند.",
+          "matched_via": "explicit:grades_locked"
         }
       ],
-      "sop_fully_mapped": false,
-      "fails": [],
+      "sop_unmapped": [],
+      "sop_fully_mapped": true,
+      "fails": [
+        {
+          "check": "action_missing",
+          "detail": "Action type 'start_sub_process' has no handler",
+          "backend": "app/services/action_handler.py",
+          "frontend": "",
+          "fix": "Register handler for action 'start_sub_process' in ActionHandler._registry"
+        },
+        {
+          "check": "stuck_state",
+          "detail": "Non-terminal state 'grades_computed' has no outgoing transitions",
+          "backend": "metadata/processes/theory_course_completion.json",
+          "frontend": "",
+          "fix": "Add transition from 'grades_computed' or mark as terminal"
+        }
+      ],
       "partial_ui": [],
-      "user_can_complete": true,
-      "section": "B",
+      "user_can_complete": false,
+      "section": "C",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 100.0,
+        "total_pct": 80.0,
         "uncovered_roles": [],
-        "forms_pct": 100.0
+        "forms_pct": 40.0
       }
     },
     {
@@ -6605,9 +6883,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 87.5,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 50.0
       }
     },
     {
@@ -6853,9 +7131,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 87.5,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 50.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -7166,19 +7444,27 @@
       "sop_mapped": [],
       "sop_unmapped": [],
       "sop_fully_mapped": false,
-      "fails": [],
+      "fails": [
+        {
+          "check": "stuck_state",
+          "detail": "Non-terminal state 'therapy_frequency_escalation' has no outgoing transitions",
+          "backend": "metadata/processes/upgrade_to_educational_therapist.json",
+          "frontend": "",
+          "fix": "Add transition from 'therapy_frequency_escalation' or mark as terminal"
+        }
+      ],
       "partial_ui": [],
-      "user_can_complete": true,
-      "section": "A",
+      "user_can_complete": false,
+      "section": "C",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 81.3,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 25.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -7308,9 +7594,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 83.3,
+        "total_pct": 95.8,
         "uncovered_roles": [],
-        "forms_pct": 33.3
+        "forms_pct": 83.3
       }
     },
     {
@@ -7540,9 +7826,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 81.3,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 25.0
+        "forms_pct": 100.0
       }
     },
     {

@@ -395,6 +395,35 @@ class InterviewSlot(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
+class EducationalTherapistSlot(Base):
+    """شیت وقت‌های آزاد درمانگران آموزشی — اسلات هفتگی تکرارشونده (روز + ساعت)."""
+
+    __tablename__ = "educational_therapist_slots"
+    __table_args__ = (
+        Index("ix_et_slots_therapist", "therapist_user_id"),
+        Index("ix_et_slots_status", "status"),
+        Index("ix_et_slots_assigned_student", "assigned_student_id"),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    therapist_user_id = Column(UUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # weekday پایتون: دوشنبه=0 … یکشنبه=6 (تقویم محلی تهران)
+    day_of_week = Column(Integer, nullable=False)
+    start_local_time = Column(Time(timezone=False), nullable=False)
+    end_local_time = Column(Time(timezone=False), nullable=False)
+    course_type = Column(String(50), nullable=True)  # introductory | comprehensive | None = هر دو
+    label_fa = Column(String(255), nullable=True)
+    status = Column(String(20), nullable=False, default="free", server_default="free")  # free | booked
+    assigned_student_id = Column(UUID, ForeignKey("students.id", ondelete="SET NULL"), nullable=True)
+    assigned_instance_id = Column(UUID, ForeignKey("process_instances.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(UUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+    therapist = relationship("User", foreign_keys=[therapist_user_id])
+    assigned_student = relationship("Student", foreign_keys=[assigned_student_id])
+
+
 class BlogPost(Base):
     """Blog/article content for the public website."""
     __tablename__ = "blog_posts"
@@ -500,6 +529,45 @@ class SmsSimulationOutbox(Base):
     kind = Column(String(32), nullable=False)  # otp | notification | pattern | free_text
     template_key = Column(String(120), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class TermCourseOffering(Base):
+    """دروس منتشرشده از آماده‌سازی ترم — منبع واقعی انتخاب درس و برنامهٔ کلاسی."""
+
+    __tablename__ = "term_course_offerings"
+    __table_args__ = (
+        Index("ix_term_course_offerings_term_prog", "term_code", "program_kind", "term_number"),
+        UniqueConstraint(
+            "term_code",
+            "course_code",
+            "program_kind",
+            "term_number",
+            name="uq_term_course_offerings_term_prog_code",
+        ),
+    )
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    term_code = Column(String(50), nullable=False)
+    course_code = Column(String(100), nullable=False)
+    course_name_fa = Column(String(255), nullable=False)
+    track = Column(String(100), nullable=True)
+    program_kind = Column(String(50), nullable=False)  # introductory | comprehensive
+    term_number = Column(Integer, nullable=False, default=1)
+    day = Column(String(50), nullable=True)
+    time_text = Column(String(50), nullable=True)
+    classroom_location = Column(String(255), nullable=True)
+    instructor_name = Column(String(255), nullable=True)
+    teaching_assistant_name = Column(String(255), nullable=True)
+    units = Column(Integer, nullable=False, default=1)
+    per_unit_cost_rial = Column(BigInteger, nullable=True)
+    prerequisite_codes = Column(JSONB, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False, server_default=text("true"))
+    published_at = Column(DateTime(timezone=True), nullable=True)
+    source_process_instance_id = Column(
+        UUID, ForeignKey("process_instances.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
 
 class InstituteCalendar(Base):

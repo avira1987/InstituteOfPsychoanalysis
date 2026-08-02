@@ -130,12 +130,18 @@ export default function InterviewSlotPicker({ courseType, instanceId, onBooked }
                   compact
                   mode="online"
                   meetingLink={b.meeting_link}
+                  meetingLinkReady={b.meeting_link_ready}
                   meetingLinkOpenAt={b.meeting_link_open_at}
                   meetingLinkIsVisible={b.meeting_link_is_visible}
                   startsAt={b.starts_at}
                   studentJoinOpen={!!b.student_join_open}
                   label="ورود به مصاحبه آنلاین"
-                  preparing={!b.meeting_link && !b.booking_payment_deadline_at}
+                  resultRecorded={!!b.interview_result_recorded}
+                  preparing={
+                    !b.interview_result_recorded
+                    && !b.meeting_link_ready
+                    && !b.booking_payment_deadline_at
+                  }
                   preparingText="لینک پس از پرداخت موفق در همین صفحه نمایش داده می‌شود."
                 />
               ) : (
@@ -241,15 +247,48 @@ const PAID_BOOKING_CARD_STYLE = {
   isolation: 'isolate',
 }
 
-export function InterviewPaidBookingSummary() {
+const COURSE_TYPE_LABELS = {
+  introductory: 'دوره آشنایی',
+  comprehensive: 'دوره جامع',
+}
+
+function shouldPollInterviewBooking(booking) {
+  if (!booking?.starts_at) return false
+  const startMs = new Date(booking.starts_at).getTime()
+  if (!Number.isFinite(startMs)) return false
+  const now = Date.now()
+  if (startMs < now - 60 * 60 * 1000) return false
+  if (booking.meeting_link_is_visible) return false
+  return true
+}
+
+export function InterviewPaidBookingSummary({
+  testId = 'student-interview-paid-booking',
+  onGoToOnlineSessions = null,
+} = {}) {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [alocomPollExhausted, setAlocomPollExhausted] = useState(false)
 
+  const fetchBookings = (withLoading = false) => {
+    if (withLoading) setLoading(true)
+    return interviewSlotsApi
+      .myBookings(false)
+      .then((r) => {
+        setBookings(r.data?.bookings || [])
+      })
+      .catch(() => {
+        setBookings([])
+      })
+      .finally(() => {
+        if (withLoading) setLoading(false)
+      })
+  }
+
   useEffect(() => {
     let cancelled = false
-    const load = () => {
-      setLoading(true)
+    const load = (withLoading = false) => {
+      if (withLoading) setLoading(true)
       interviewSlotsApi
         .myBookings(false)
         .then((r) => {
@@ -259,23 +298,22 @@ export function InterviewPaidBookingSummary() {
           if (!cancelled) setBookings([])
         })
         .finally(() => {
-          if (!cancelled) setLoading(false)
+          if (!cancelled && withLoading) setLoading(false)
         })
     }
-    load()
+    load(true)
     return () => {
       cancelled = true
     }
   }, [])
 
   const b = bookings[0]
-  const pastOpen = !b?.meeting_link_open_at || Date.now() >= new Date(b.meeting_link_open_at).getTime()
   const needsLinkPoll =
     bookings.length > 0
     && b.mode === 'online'
-    && !b.meeting_link
+    && !b.interview_result_recorded
+    && !b.meeting_link_ready
     && !b.booking_payment_deadline_at
-    && pastOpen
 
   useEffect(() => {
     if (!needsLinkPoll) {
@@ -304,6 +342,16 @@ export function InterviewPaidBookingSummary() {
     }
   }, [needsLinkPoll])
 
+  const needsVisibilityPoll = bookings.length > 0 && shouldPollInterviewBooking(b)
+
+  useEffect(() => {
+    if (!needsVisibilityPoll) return undefined
+    const timer = setInterval(() => {
+      fetchBookings(false)
+    }, 30000)
+    return () => clearInterval(timer)
+  }, [needsVisibilityPoll, b?.id, b?.starts_at, b?.meeting_link_is_visible])
+
   if (loading) {
     return (
       <div className="card interview-paid-booking" style={PAID_BOOKING_CARD_STYLE}>
@@ -314,31 +362,57 @@ export function InterviewPaidBookingSummary() {
 
   if (!bookings.length) return null
 
+  const courseLabel = COURSE_TYPE_LABELS[b.course_type] || null
+
   return (
     <div
       className="card interview-paid-booking"
-      data-testid="student-interview-paid-booking"
+      data-testid={testId}
       style={PAID_BOOKING_CARD_STYLE}
     >
       <h3 className="card-title" style={{ marginBottom: '0.5rem', color: '#15803d' }}>جزئیات مصاحبهٔ شما</h3>
+      <p style={{ margin: '0 0 0.65rem', fontSize: '0.86rem', lineHeight: 1.65, color: '#64748b' }}>
+        پس از پرداخت موفق هزینهٔ مصاحبه، جزئیات جلسه در این بخش نمایش داده می‌شود.
+        {b.mode === 'online' ? ' لینک ورود به جلسهٔ آنلاین از ۳۰ دقیقه قبل از شروع فعال می‌شود.' : ''}
+      </p>
       <div style={{ fontSize: '0.9rem', lineHeight: 1.7, color: '#1e293b' }}>
         <div><strong>زمان:</strong> {formatSlotTehran(b.starts_at)}</div>
+        {courseLabel ? <div><strong>دوره:</strong> {courseLabel}</div> : null}
         <div><strong>نوع:</strong> {b.mode === 'online' ? 'آنلاین' : 'حضوری'}</div>
+        {b.label_fa ? <div><strong>توضیح:</strong> {b.label_fa}</div> : null}
         {b.mode === 'online' ? (
           <OnlineMeetingJoinCta
             mode="online"
             meetingLink={b.meeting_link}
+            meetingLinkReady={b.meeting_link_ready}
             meetingLinkOpenAt={b.meeting_link_open_at}
             meetingLinkIsVisible={b.meeting_link_is_visible}
             startsAt={b.starts_at}
             studentJoinOpen={!!b.student_join_open}
             label="ورود به جلسهٔ مصاحبه"
-            preparing={!b.meeting_link && !b.booking_payment_deadline_at}
+            resultRecorded={!!b.interview_result_recorded}
+            preparing={
+              !b.interview_result_recorded
+              && !b.meeting_link_ready
+              && !b.booking_payment_deadline_at
+            }
             preparingFailed={alocomPollExhausted}
           />
         ) : (
           <div style={{ marginTop: '0.35rem' }}><strong>محل:</strong> {b.location_fa || '—'}</div>
         )}
+        {onGoToOnlineSessions ? (
+          <div style={{ marginTop: '0.75rem' }}>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              data-testid="student-interview-goto-online-sessions-inline"
+              onClick={onGoToOnlineSessions}
+            >
+              مشاهده در بخش جلسات آنلاین
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   )

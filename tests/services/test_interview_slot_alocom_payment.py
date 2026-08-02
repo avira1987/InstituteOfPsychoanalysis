@@ -9,7 +9,10 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.interview_slot_service import maybe_provision_interview_slot_alocom_link
+from app.services.interview_slot_service import (
+    interview_meeting_link_provision_status,
+    maybe_provision_interview_slot_alocom_link,
+)
 
 
 def _online_slot(*, deadline_set: bool) -> SimpleNamespace:
@@ -67,3 +70,18 @@ async def test_maybe_provision_after_payment_confirmed_ignores_deadline() -> Non
         )
     assert ok is True
     provision.assert_awaited_once()
+
+
+def test_provision_status_alocom_not_configured() -> None:
+    slot = _online_slot(deadline_set=False)
+    with patch(
+        "app.services.interview_slot_service.is_alocom_configured",
+        return_value=(False, 0),
+    ):
+        assert interview_meeting_link_provision_status(slot) == "alocom_not_configured"
+
+
+def test_provision_status_ok_when_token_link_present() -> None:
+    slot = _online_slot(deadline_set=False)
+    slot.meeting_link = "https://alocom.test/room?token=abc"
+    assert interview_meeting_link_provision_status(slot) is None

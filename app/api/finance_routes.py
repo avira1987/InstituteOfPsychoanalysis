@@ -161,7 +161,7 @@ async def finance_patch_installment_settings(
 
 
 class FinancialProgramDefaultsPatch(BaseModel):
-    """به‌روزرسانی جزئی پیش‌فرض‌های مالی کلاس/دوره/جلسات."""
+    """به‌روزرسانی جزئی پیش‌فرض‌های مالی کلاس/دوره/جلسات و شهریهٔ ترم."""
 
     registration_interview_fee_rial: Optional[int] = None
     registration_tuition_invoice_toman: Optional[float] = None
@@ -170,6 +170,10 @@ class FinancialProgramDefaultsPatch(BaseModel):
     default_therapy_session_fee_toman: Optional[float] = None
     class_session_fee_toman: Optional[float] = None
     course_session_fee_toman: Optional[float] = None
+    per_unit_cost_introductory: Optional[int] = None
+    per_unit_cost_comprehensive: Optional[int] = None
+    interview_fee_introductory: Optional[int] = None
+    interview_fee_comprehensive: Optional[int] = None
 
 
 @router.get("/program-defaults")

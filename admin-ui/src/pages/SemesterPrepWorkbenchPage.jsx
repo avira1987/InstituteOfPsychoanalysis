@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
 import ProcessRollbackSection from '../components/ProcessRollbackSection'
+import ProcessDataManager from '../components/ProcessDataManager'
 import { useToast } from '../contexts/ToastContext'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import { notesPayload } from '../utils/decisionPayload'
@@ -14,25 +15,32 @@ import {
   useSemesterPrepWorkbench,
 } from '../hooks/useSemesterPrepWorkbench'
 import { portalRoleCanActOnState } from '../utils/portalRoleAccess'
+import { contextHasOutlierCalendarDates } from '../utils/semesterPrepCalendarValidation'
+import { semesterPrepStepReadinessHint } from '../utils/semesterPrepReadinessHints'
+import SemesterPrepReadinessPanel from '../components/SemesterPrepReadinessPanel'
 
 const PROCESS_LABELS = {
   fall_semester_preparation: 'آماده‌سازی ترم پاییز',
   winter_semester_preparation: 'آماده‌سازی ترم زمستان',
 }
 
+/** گام‌های ۷ و ۸ در یک مرحلهٔ واحد ادغام شده‌اند */
+const MERGED_INTERVIEW_HINT =
+  'مصاحبه‌گرها را از کارمندان اتوماسیون انتخاب کنید و روز و ساعت مصاحبه را تعیین کنید؛ نوبت‌ها خودکار ساخته و تقویم منتشر می‌شود.'
+
 const STATE_HINTS = {
   fall_semester_preparation: {
     calendar_entry:
       'ثبت تاریخ‌های ترم پاییز و زمستان، پنجرهٔ ثبت‌نام، مهلت مصاحبه‌ها و تعطیلات نوروز.',
-    tuition_entry: 'تعیین شهریه هر واحد و هزینه مصاحبه برای دوره آشنایی و جامع.',
+    tuition_entry:
+      'تعیین شهریه، هزینه مصاحبه و سایر پیش‌فرض‌های پرداخت (درمان، کلاس، فاکتور پشتیبان). پس از ثبت، ویرایش بعدی از داشبورد مالی هم ممکن است.',
     license_check: 'بررسی و به‌روزرسانی شماره پروانه فعالیت انستیتو.',
     course_list_creation: 'تدوین لیست دروس، روز و ساعت، مدرسین و کمک‌مدرسین برای دو ترم.',
     course_finalization: 'نهایی‌سازی مکان کلاس‌ها و هماهنگی با مدرسین.',
     marketing_campaign:
       'خروجی فعالیت‌های ۱، ۲ و ۵ را به‌صورت PDF برای مدیر مارکتینگ ارسال کنید و تأیید ارسال را ثبت کنید.',
-    interviewer_assignment: 'تعیین مصاحبه‌کنندگان و بازهٔ زمانی مصاحبه‌های ورودی.',
-    interview_scheduling:
-      'نوع برگزاری را مشخص کنید و اسلات‌های قابل رزرو را ثبت کنید.',
+    interviewer_assignment: MERGED_INTERVIEW_HINT,
+    interview_scheduling: MERGED_INTERVIEW_HINT,
   },
   winter_semester_preparation: {
     license_check: 'بررسی پروانه فعالیت برای ترم زمستان.',
@@ -40,8 +48,8 @@ const STATE_HINTS = {
     course_finalization: 'نهایی‌سازی مکان کلاس‌ها و تأییدیه مدرسین.',
     marketing_campaign:
       'خروجی فعالیت‌های ۲ و ۳ را به‌صورت PDF برای مدیر مارکتینگ ارسال کنید و تأیید ارسال را ثبت کنید.',
-    interviewer_assignment: 'تعیین مصاحبه‌کنندگان و بازهٔ زمانی مصاحبه‌های زمستان.',
-    interview_scheduling: 'نوع برگزاری را مشخص کنید و اسلات‌های قابل رزرو را ثبت کنید.',
+    interviewer_assignment: MERGED_INTERVIEW_HINT,
+    interview_scheduling: MERGED_INTERVIEW_HINT,
   },
 }
 
@@ -56,6 +64,7 @@ export default function SemesterPrepWorkbenchPage() {
 
   const {
     status,
+    readiness,
     entry,
     resolvedCode,
     instanceId,
@@ -68,6 +77,7 @@ export default function SemesterPrepWorkbenchPage() {
     busy,
     load,
     loadInstance,
+    reloadReadiness,
     startProcess,
     triggerTransition,
   } = useSemesterPrepWorkbench(processParam)
@@ -90,6 +100,13 @@ export default function SemesterPrepWorkbenchPage() {
     STATE_HINTS[resolvedCode]?.[currentState] ||
     'فرم این مرحله را تکمیل و سپس دکمهٔ اقدام را بزنید.'
 
+  const stepReadinessHint = useMemo(
+    () => semesterPrepStepReadinessHint(currentState, readiness),
+    [currentState, readiness],
+  )
+
+  const showReadinessBanner = Boolean(readiness && readiness.incomplete_count > 0)
+
   const deadlineLabel = entry.calendar_sla_deadline_at
     ? formatShamsiTehran(entry.calendar_sla_deadline_at, { dateOnly: true })
     : null
@@ -107,6 +124,17 @@ export default function SemesterPrepWorkbenchPage() {
   }, [entry, currentState])
 
   const isPublished = currentState === 'published'
+
+  // ویرایش تقویم فقط در مرحلهٔ calendar_entry (فرم مرحله) یا پس از انتشار (ProcessDataManager)
+  const showCalendarCorrection =
+    resolvedCode === 'fall_semester_preparation'
+    && instanceId
+    && isCompletedEditable
+
+  const calendarOutlier = useMemo(
+    () => showCalendarCorrection && contextHasOutlierCalendarDates(instanceDetail?.context_data),
+    [showCalendarCorrection, instanceDetail?.context_data],
+  )
 
   const goToAcademicCalendar = useCallback(() => {
     navigate('/panel/academic-calendar')
@@ -223,7 +251,29 @@ export default function SemesterPrepWorkbenchPage() {
             مهلت این مرحله گذشته — لطفاً هرچه زودتر تکمیل کنید (فقط هشدار مدیریتی).
           </span>
         ) : null}
+        {stepReadinessHint ? (
+          <span
+            style={{ display: 'block', marginTop: '0.5rem', color: '#92400e', fontSize: '0.88rem' }}
+            data-testid="semester-prep-step-readiness-hint"
+          >
+            {stepReadinessHint}
+          </span>
+        ) : null}
       </p>
+
+      {!loading && showReadinessBanner ? (
+        <div style={{ marginBottom: '1rem' }} data-testid="semester-prep-readiness-banner">
+          <SemesterPrepReadinessPanel
+            readiness={readiness}
+            compact
+            showTitle
+            onReload={() => reloadReadiness()}
+          />
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem' }}>
+            <Link to="/panel/semester-prep/readiness">رفتن به صفحهٔ تکمیل پیش‌نیازها</Link>
+          </p>
+        </div>
+      ) : null}
 
       {loading ? (
         <p className="muted">در حال بارگذاری…</p>
@@ -241,8 +291,8 @@ export default function SemesterPrepWorkbenchPage() {
           >
             <p style={{ margin: 0, fontWeight: 600 }}>این فرایند برای ترم فعلی منتشر شده است.</p>
             <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: '#475569' }}>
-              فرم‌های مراحل به‌صورت فقط‌خواندنی نمایش داده می‌شوند. برای اصلاح، از بخش «بازگشت به
-              مرحلهٔ قبلی» در انتهای صفحه استفاده کنید تا فرایند دوباره برای ویرایش باز شود.
+              فرم‌های مراحل به‌صورت فقط‌خواندنی نمایش داده می‌شوند. برای اصلاح تقویم از بخش «ویرایش
+              تقویم آموزشی» استفاده کنید؛ برای سایر مراحل از «بازگشت به مرحلهٔ قبلی» در انتهای صفحه.
             </p>
             {isPublished ? (
               <div style={{ marginTop: '0.85rem' }}>
@@ -252,6 +302,36 @@ export default function SemesterPrepWorkbenchPage() {
               </div>
             ) : null}
           </div>
+
+          {showCalendarCorrection ? (
+            <>
+              {calendarOutlier ? (
+                <div
+                  style={{
+                    marginBottom: '1rem',
+                    padding: '0.75rem 1rem',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '10px',
+                    fontSize: '0.88rem',
+                    color: '#991b1b',
+                    lineHeight: 1.65,
+                  }}
+                  data-testid="calendar-outlier-warning"
+                >
+                  برخی تاریخ‌های تقویم آموزشی خارج از بازهٔ مجاز سال جاری هستند — از بخش زیر اصلاح کنید.
+                </div>
+              ) : null}
+              <ProcessDataManager
+                instanceId={instanceId}
+                role={user?.role}
+                stateCode="calendar_entry"
+                title="ویرایش تقویم آموزشی (پاییز و زمستان)"
+                showToast={showToast}
+                onUpdated={() => loadInstance(instanceId)}
+              />
+            </>
+          ) : null}
 
           <OperatorStepFormsSection
             instanceId={instanceId}
@@ -271,6 +351,7 @@ export default function SemesterPrepWorkbenchPage() {
             decisionNotes={decisionNotes}
             onDecisionNotesChange={setDecisionNotes}
             onActionTrigger={handleTrigger}
+            onSemesterPrepPublished={goToAcademicCalendar}
             actionBusy={busy}
           />
 
@@ -333,6 +414,7 @@ export default function SemesterPrepWorkbenchPage() {
             decisionNotes={decisionNotes}
             onDecisionNotesChange={setDecisionNotes}
             onActionTrigger={handleTrigger}
+            onSemesterPrepPublished={goToAcademicCalendar}
             actionBusy={busy}
           />
 

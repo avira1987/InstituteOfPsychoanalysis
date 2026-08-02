@@ -466,6 +466,26 @@ TEMPLATES = {
     "interview_booking_confirmed_interviewer": {
         "in_app": "مصاحبه پذیرش با {student_name} در تاریخ {interview_date} ساعت {interview_time}. {interview_detail_tail}",
     },
+    "interview_slot_assigned_interviewer": {
+        "sms": (
+            "هیئت علمی محترم انستیتو روانکاوی تهران\n"
+            "موضوع: تخصیص وقت مصاحبه {course_label}\n"
+            "وقت مصاحبه ({mode_fa}) در تاریخ {interview_date} ساعت {interview_time} "
+            "به شما اختصاص یافت.\n"
+            "جزئیات در پنل مصاحبه‌گر سامانه قابل مشاهده است.\n"
+            "با تشکر\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
+    "interview_slot_booked_interviewer": {
+        "sms": (
+            "هیئت علمی محترم انستیتو روانکاوی تهران\n"
+            "موضوع: انتخاب وقت مصاحبه توسط دانشجو\n"
+            "دانشجو {student_name} وقت مصاحبه {course_label} در تاریخ {interview_date} "
+            "ساعت {interview_time} را انتخاب کرد.\n"
+            "مهلت پرداخت هزینهٔ مصاحبه ۱۰ دقیقه است؛ پس از تأیید پرداخت جزئیات در پنل شما نمایش داده می‌شود.\n"
+            "با تشکر\nبخش پذیرش\n۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
     "internship_12month_interview": {
         "sms": (
             "موضوع: مصاحبه ارزیابی مجدد انترن\n\n"
@@ -772,12 +792,14 @@ class NotificationService:
     ) -> NotificationResult:
         """ارسال پیامک؛ نگاشت پترن در sms_gateway.send_sms (خط خدماتی / BaseServiceNumber) اعمال می‌شود."""
         from app.services.sms_gateway import send_sms as gateway_send
+        from app.utils.shamsi_calendar_utils import normalize_sms_context_dates
 
+        sms_ctx = normalize_sms_context_dates(dict(context or {}))
         gateway_result = await gateway_send(
             phone,
             message,
             template_key=template_key,
-            context=context,
+            context=sms_ctx,
         )
         log_msg = message or (
             f"melipayamak template={template_key}" if template_key else message
@@ -794,7 +816,7 @@ class NotificationService:
                         recipient=phone,
                         message=message or log_msg,
                         template_key=template_key,
-                        context=context,
+                        context=sms_ctx,
                     )
                     await db.commit()
                 logger.info("SMS failed — queued to outbox for retry: %s", phone)
@@ -834,8 +856,9 @@ class NotificationService:
         """Send a notification using a template."""
         from app.services.sms_template_pattern_map import resolve_sms_pattern_for_template
         from app.services.sms_gateway import send_sms as gateway_send
+        from app.utils.shamsi_calendar_utils import normalize_sms_context_dates
 
-        ctx = dict(context or {})
+        ctx = normalize_sms_context_dates(dict(context or {}))
         sms_pattern = None
         if notification_type == "sms":
             sms_pattern = resolve_sms_pattern_for_template(template_name, ctx)

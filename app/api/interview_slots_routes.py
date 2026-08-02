@@ -22,10 +22,17 @@ from app.models.operational_models import (
     Student,
     User,
 )
-from app.services.alocom_interview_provision import ensure_interview_slot_host_meeting_link
+from app.core.interview_result_access import can_submit_interview_result
+from app.services.alocom_interview_provision import (
+    ensure_interview_slot_host_meeting_link,
+    refresh_interview_slot_alocom_links,
+)
+from app.services.interview_slot_notification_service import notify_interviewer_slot_assigned
 from app.services.interview_slot_service import (
     book_slot_for_registration,
     expire_interview_booking_payment_deadlines,
+    interview_meeting_link_provision_status,
+    interview_slot_result_recorded,
     maybe_provision_interview_slot_alocom_link,
     reschedule_booked_interview_slot,
 )
@@ -38,14 +45,28 @@ from app.services.interview_slot_recurring_generation import (
 router = APIRouter(prefix="/api/interview-slots", tags=["Interview slots"])
 logger = logging.getLogger(__name__)
 
-# مسئول پذیر، مدیر داخلی (staff)، مسئول سایت (گام ۸ آماده‌سازی ترم) + مدیر سیستم (admin)
-SLOT_DEFINE_ROLES = ("staff", "admin", "site_manager")
+# مدیر داخلی (staff) + مدیر سیستم (admin)
+SLOT_DEFINE_ROLES = ("staff", "admin")
+
+# فقط تغییر مصاحبه‌گر روی اسلات رزروشده (بدون ویرایش زمان/نوع برگزاری)
+SLOT_INTERVIEWER_ASSIGNMENT_FIELDS = frozenset({"interviewer_user_id"})
+
+# مصاحبه‌گر یک اسلات می‌تواند مصاحبه‌گر اختصاصی یا کارمند اتوماسیون باشد
+INTERVIEWER_CANDIDATE_ROLES = ("interviewer", "staff")
 
 # مشاهده/عملیات رزرو (بدون تعریف وقت جدید)
 BOOKINGS_ROLES = ("interviewer", "admin", "staff", "site_manager", "deputy_education")
 
+# صف ثبت نتیجهٔ مصاحبه در پنل مصاحبه‌گر
+RESULT_QUEUE_ROLES = ("interviewer", "admin", "staff")
+
+RESULT_QUEUE_STATES = frozenset({"interview_payment_confirmed", "interview_completed"})
+
 # فقط باز/بسته کردن ورود زودهنگام دانشجو روی اسلات رزروشده
 BOOKING_SLOT_OPS_ROLES = BOOKINGS_ROLES
+
+# پس از پرداخت، لینک میزبان/مصاحبه‌گر بدون محدودیت ۳۰ دقیقه‌ای نمایش داده می‌شود
+OPERATOR_MEETING_VIEW_ROLES = ("admin", "staff", "site_manager", "deputy_education", "interviewer")
 
 
 def _interviewer_owns_slot(user: User, slot: InterviewSlot) -> bool:
@@ -61,6 +82,17 @@ def _interviewer_can_view_booking(user: User, slot: InterviewSlot) -> bool:
         return True
     # اسلات تعریف‌شده توسط ادمین/پذیرش بدون ست کردن interviewer_user_id — رزرو باید برای مصاحبه‌گرها دیده شود.
     return getattr(slot, "interviewer_user_id", None) is None
+
+
+def _user_sees_slot_in_result_queue(user: User, slot: InterviewSlot) -> bool:
+    if (user.role or "").strip() == "admin":
+        return True
+    uid = user.id
+    if slot.created_by == uid:
+        return True
+    if getattr(slot, "interviewer_user_id", None) == uid:
+        return True
+    return False
 
 
 def _can_define_interview_slots(user: User) -> bool:
@@ -117,13 +149,14 @@ def _is_meeting_link_visible_for_user(slot: InterviewSlot, user: Optional[User],
         return False
     if not user:
         return False
-    if user.role in ("admin", "staff", "site_manager", "deputy_education"):
+    # رزرو تا تأیید پرداخت قطعی نیست — لینک برای هیچ نقشی باز نمی‌شود
+    if (
+        slot.assigned_student_id is not None
+        and getattr(slot, "booking_payment_deadline_at", None) is not None
+    ):
+        return False
+    if user.role in OPERATOR_MEETING_VIEW_ROLES:
         return True
-    if user.role == "interviewer":
-        open_at = _meeting_link_open_at(slot)
-        if open_at is None:
-            return True
-        return now >= open_at
     if user.role == "student":
         if bool(getattr(slot, "student_join_open", False)):
             return True
@@ -141,13 +174,25 @@ async def _prepare_slot_meeting_links_for_staff(
     viewer: User,
     instance: Optional[ProcessInstance] = None,
     log_context: str = "slot list",
-) -> None:
-    """برای نمایش اپراتور: لینک الوکام را در صورت نیاز بسازد و لینک میزبان/مصاحبه‌گر را تضمین کند."""
+) -> bool:
+    """لینک الوکام را در صورت نیاز بسازد. خروجی: نتیجهٔ مصاحبه ثبت شده (لینک باید بسته باشد)."""
     if not slot.assigned_student_id:
-        return
+        return False
     if instance is None and slot.assigned_instance_id:
         instance = await db.get(ProcessInstance, slot.assigned_instance_id)
-    await maybe_provision_interview_slot_alocom_link(db, slot, instance=instance)
+    # پس از ثبت نتیجه، کلاس مصاحبه تمام است — نه لینک تازه بساز و نه لینک قبلی را نشان بده
+    if await interview_slot_result_recorded(db, slot, instance=instance):
+        return True
+    payment_confirmed = (
+        slot.assigned_student_id is not None
+        and getattr(slot, "booking_payment_deadline_at", None) is None
+    )
+    await maybe_provision_interview_slot_alocom_link(
+        db,
+        slot,
+        instance=instance,
+        payment_confirmed=payment_confirmed,
+    )
     if viewer.role != "student":
         try:
             await ensure_interview_slot_host_meeting_link(db, slot, viewer=viewer)
@@ -157,13 +202,60 @@ async def _prepare_slot_meeting_links_for_staff(
                 slot.id,
                 log_context,
             )
+    return False
 
 
-def _slot_to_dict(s: InterviewSlot, *, viewer: Optional[User] = None, now: Optional[datetime] = None, hide_link: bool = False) -> dict:
-    show_link = False
+def _slot_to_dict(
+    s: InterviewSlot,
+    *,
+    viewer: Optional[User] = None,
+    now: Optional[datetime] = None,
+    hide_link: bool = False,
+    interviewer_name_fa: Optional[str] = None,
+    result_recorded: bool = False,
+) -> dict:
+    now = now or datetime.now(timezone.utc)
+    # با ثبت نتیجهٔ مصاحبه، لینک ورود برای همه بسته می‌شود تا دانشجو وقت جدیدی رزرو کند.
+    if result_recorded:
+        hide_link = True
+    can_join = False
     if not hide_link:
-        show_link = _is_meeting_link_visible_for_user(s, viewer, now or datetime.now(timezone.utc))
+        can_join = _is_meeting_link_visible_for_user(s, viewer, now)
     open_at = _meeting_link_open_at(s)
+    link = _meeting_link_for_viewer(s, viewer)
+    payment_confirmed = (
+        s.assigned_student_id is not None
+        and getattr(s, "booking_payment_deadline_at", None) is None
+    )
+    operator_viewer = bool(viewer and viewer.role in OPERATOR_MEETING_VIEW_ROLES)
+    if result_recorded:
+        show_link = False
+    elif payment_confirmed and operator_viewer and link:
+        show_link = True
+        can_join = True
+    else:
+        show_link = can_join
+    # لینک ساخته شده ولی هنوز پنجرهٔ ورود باز نشده: فقط این پرچم را می‌دهیم تا رابط کاربری
+    # بتواند «در حال آماده‌سازی» را از «آماده ولی قفل تا ۳۰ دقیقه قبل» تفکیک کند.
+    link_ready = (
+        not result_recorded
+        and bool(link)
+        and (
+            can_join
+            or (
+                viewer is not None
+                and payment_confirmed
+                and s.mode == "online"
+                and (viewer.role == "student" or operator_viewer)
+            )
+        )
+    )
+    provision_status = (
+        interview_meeting_link_provision_status(s)
+        if payment_confirmed and not result_recorded
+        else None
+    )
+    staff_viewer = bool(viewer and viewer.role in ("admin", "staff", "site_manager", "deputy_education"))
     return {
         "id": str(s.id),
         "starts_at": _iso(s.starts_at),
@@ -172,13 +264,19 @@ def _slot_to_dict(s: InterviewSlot, *, viewer: Optional[User] = None, now: Optio
         "course_type": s.course_type,
         "mode": s.mode,
         "location_fa": s.location_fa,
-        "meeting_link": (_meeting_link_for_viewer(s, viewer) if show_link else None),
+        "meeting_link": (link if show_link else None),
+        "meeting_link_ready": link_ready,
         "meeting_link_open_at": _iso(open_at),
-        "meeting_link_is_visible": bool(show_link),
+        "meeting_link_is_visible": bool(can_join),
+        "meeting_link_provision_status": provision_status,
+        "interview_result_recorded": bool(result_recorded),
+        "meeting_link_locked_reason": "interview_result_recorded" if result_recorded else None,
         "student_join_open": bool(getattr(s, "student_join_open", False)),
-        "alocom_event_id": getattr(s, "alocom_event_id", None) if show_link or (viewer and viewer.role in ("admin", "staff", "site_manager", "deputy_education")) else None,
+        "alocom_event_id": getattr(s, "alocom_event_id", None) if link_ready or staff_viewer else None,
         "label_fa": s.label_fa,
         "interviewer_user_id": str(s.interviewer_user_id) if getattr(s, "interviewer_user_id", None) else None,
+        "interviewer_name_fa": interviewer_name_fa,
+        "created_by": str(s.created_by) if getattr(s, "created_by", None) else None,
         "assigned_student_id": str(s.assigned_student_id) if s.assigned_student_id else None,
         "assigned_instance_id": str(s.assigned_instance_id) if s.assigned_instance_id else None,
         "reminder_sent_at": _iso(s.reminder_sent_at),
@@ -195,6 +293,10 @@ class UpdateInterviewSlotBody(BaseModel):
     meeting_link: Optional[str] = None
     label_fa: Optional[str] = None
     student_join_open: Optional[bool] = None
+    interviewer_user_id: Optional[str] = Field(
+        None,
+        description="شناسه مصاحبه‌گر؛ خالی مجاز نیست",
+    )
 
 
 class CreateInterviewSlotBody(BaseModel):
@@ -205,6 +307,7 @@ class CreateInterviewSlotBody(BaseModel):
     location_fa: Optional[str] = None
     meeting_link: Optional[str] = None
     label_fa: Optional[str] = None
+    interviewer_user_id: str = Field(..., min_length=1, description="شناسه مصاحبه‌گر (الزامی)")
 
 
 class BookInterviewSlotBody(BaseModel):
@@ -265,6 +368,66 @@ RECURRING_RULE_ROLES = SLOT_DEFINE_ROLES
 RECURRING_RULE_OWNER_ROLES = frozenset({"interviewer", "staff"})
 
 
+async def _resolve_interviewer_user_id(
+    db: AsyncSession,
+    raw_id: Optional[str],
+) -> uuid.UUID:
+    """مصاحبه‌گر فعال؛ انتخاب خالی مجاز نیست."""
+    raw = (raw_id or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="انتخاب مصاحبه‌گر الزامی است.")
+    try:
+        uid = uuid.UUID(raw)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="شناسه مصاحبه‌گر نامعتبر است.")
+    tgt = await db.get(User, uid)
+    if not tgt or not tgt.is_active:
+        raise HTTPException(status_code=400, detail="مصاحبه‌گر انتخاب‌شده یافت نشد یا غیرفعال است.")
+    if (tgt.role or "").strip() not in INTERVIEWER_CANDIDATE_ROLES:
+        raise HTTPException(
+            status_code=400,
+            detail="کاربر انتخاب‌شده جزو کارمندان قابل انتخاب برای مصاحبه نیست.",
+        )
+    return uid
+
+
+async def _interviewer_names_for_slots(
+    db: AsyncSession,
+    slots: list[InterviewSlot],
+) -> dict[uuid.UUID, str]:
+    ids = {s.interviewer_user_id for s in slots if getattr(s, "interviewer_user_id", None)}
+    if not ids:
+        return {}
+    rows = list(
+        (await db.execute(select(User).where(User.id.in_(tuple(ids))))).scalars().all()
+    )
+    out: dict[uuid.UUID, str] = {}
+    for u in rows:
+        out[u.id] = (u.full_name_fa or "").strip() or (u.username or "").strip() or str(u.id)
+    return out
+
+
+def _slot_dict_with_interviewer_name(
+    slot: InterviewSlot,
+    *,
+    viewer: User,
+    now: datetime,
+    name_map: dict[uuid.UUID, str],
+    hide_link: bool = False,
+    result_recorded: bool = False,
+) -> dict:
+    iv_id = getattr(slot, "interviewer_user_id", None)
+    name = name_map.get(iv_id) if iv_id else None
+    return _slot_to_dict(
+        slot,
+        viewer=viewer,
+        now=now,
+        hide_link=hide_link,
+        interviewer_name_fa=name,
+        result_recorded=result_recorded,
+    )
+
+
 async def _resolve_recurring_owner_for_create(
     db: AsyncSession,
     *,
@@ -275,7 +438,7 @@ async def _resolve_recurring_owner_for_create(
         raise HTTPException(status_code=403, detail="دسترسی مجاز نیست.")
     raw = (interviewer_user_id_body or "").strip()
     if not raw:
-        return actor.id
+        raise HTTPException(status_code=400, detail="انتخاب مصاحبه‌گر برای الگو الزامی است.")
     try:
         oid = uuid.UUID(raw)
     except ValueError:
@@ -307,10 +470,7 @@ class CreateInterviewRecurringRuleBody(BaseModel):
     label_fa: Optional[str] = None
     is_active: bool = True
     horizon_days: int = Field(21, ge=1, le=90)
-    interviewer_user_id: Optional[str] = Field(
-        None,
-        description="فقط برای نقش ادمین؛ مصاحبه‌گر این فیلد را نادیده می‌گیرد.",
-    )
+    interviewer_user_id: str = Field(..., min_length=1, description="مصاحبه‌گر مالک الگو (الزامی)")
 
 
 class UpdateInterviewRecurringRuleBody(BaseModel):
@@ -536,11 +696,13 @@ async def list_booked_slots_with_students(
     for slot, student, u, inst in rows:
         if user.role == "interviewer" and not _interviewer_can_view_booking(user, slot):
             continue
-        await _prepare_slot_meeting_links_for_staff(
+        result_recorded = await _prepare_slot_meeting_links_for_staff(
             db, slot, viewer=user, instance=inst, log_context="bookings",
         )
         item = {
-            "slot": _slot_to_dict(slot, viewer=user, now=now),
+            "slot": _slot_to_dict(
+                slot, viewer=user, now=now, result_recorded=result_recorded
+            ),
             "student": {
                 "id": str(student.id),
                 "student_code": student.student_code,
@@ -561,6 +723,68 @@ async def list_booked_slots_with_students(
     return {"bookings": out}
 
 
+@router.get("/result-queue")
+async def list_interview_result_queue(
+    include_past: bool = False,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(*RESULT_QUEUE_ROLES)),
+):
+    """صف پرونده‌های مصاحبه برای ثبت برگزاری / ثبت نتیجه — ایجادکننده، مصاحبه‌گر، یا admin."""
+    now = datetime.now(timezone.utc)
+    await expire_interview_booking_payment_deadlines(db, now=now)
+    stmt = (
+        select(InterviewSlot, Student, User, ProcessInstance)
+        .join(Student, InterviewSlot.assigned_student_id == Student.id)
+        .join(User, Student.user_id == User.id)
+        .join(ProcessInstance, InterviewSlot.assigned_instance_id == ProcessInstance.id)
+        .where(
+            InterviewSlot.assigned_instance_id.isnot(None),
+            ProcessInstance.is_completed.is_(False),
+            ProcessInstance.is_cancelled.is_(False),
+            ProcessInstance.current_state_code.in_(RESULT_QUEUE_STATES),
+        )
+    )
+    if not include_past:
+        stmt = stmt.where(InterviewSlot.ends_at >= now)
+    stmt = stmt.order_by(InterviewSlot.starts_at)
+    rows = (await db.execute(stmt)).all()
+    items: list[dict] = []
+    for slot, student, st_user, inst in rows:
+        if not _user_sees_slot_in_result_queue(user, slot):
+            continue
+        st_code = (inst.current_state_code or "").strip()
+        can_advance = (
+            inst.process_code == "introductory_course_registration"
+            and st_code == "interview_payment_confirmed"
+        )
+        can_submit = False
+        if st_code == "interview_completed":
+            can_submit = await can_submit_interview_result(
+                db,
+                instance=inst,
+                user=user,
+                trigger_event="interview_result_submitted",
+            )
+        items.append(
+            {
+                "instance_id": str(inst.id),
+                "slot_id": str(slot.id),
+                "student_id": str(student.id),
+                "student_code": student.student_code,
+                "student_name_fa": (st_user.full_name_fa or "").strip() or None,
+                "process_code": inst.process_code,
+                "current_state": st_code,
+                "slot_starts_at": _iso(slot.starts_at),
+                "slot_ends_at": _iso(slot.ends_at),
+                "is_slot_creator": slot.created_by == user.id,
+                "is_assigned_interviewer": getattr(slot, "interviewer_user_id", None) == user.id,
+                "can_advance": can_advance,
+                "can_submit_result": can_submit,
+            }
+        )
+    return {"items": items}
+
+
 @router.get("/manage")
 async def list_slots_manage(
     include_past: bool = False,
@@ -575,12 +799,17 @@ async def list_slots_manage(
         stmt = stmt.where(InterviewSlot.ends_at >= now)
     stmt = stmt.order_by(InterviewSlot.starts_at)
     rows = (await db.execute(stmt)).scalars().all()
+    name_map = await _interviewer_names_for_slots(db, list(rows))
     out: list[dict] = []
     for s in rows:
-        await _prepare_slot_meeting_links_for_staff(
+        result_recorded = await _prepare_slot_meeting_links_for_staff(
             db, s, viewer=user, log_context="manage list",
         )
-        out.append(_slot_to_dict(s, viewer=user, now=now))
+        out.append(
+            _slot_dict_with_interviewer_name(
+                s, viewer=user, now=now, name_map=name_map, result_recorded=result_recorded
+            )
+        )
     return {"slots": out}
 
 
@@ -598,6 +827,8 @@ async def create_slot(
 
     await expire_interview_booking_payment_deadlines(db, now=now)
 
+    interviewer_id = await _resolve_interviewer_user_id(db, body.interviewer_user_id)
+
     slot = InterviewSlot(
         id=uuid.uuid4(),
         starts_at=body.starts_at if body.starts_at.tzinfo else body.starts_at.replace(tzinfo=timezone.utc),
@@ -608,11 +839,16 @@ async def create_slot(
         meeting_link=(body.meeting_link or "").strip() or None,
         label_fa=(body.label_fa or "").strip() or None,
         created_by=user.id,
-        interviewer_user_id=None,
+        interviewer_user_id=interviewer_id,
     )
     db.add(slot)
     await db.flush()
-    return _slot_to_dict(slot, viewer=user)
+
+    await notify_interviewer_slot_assigned(db, slot=slot, interviewer_user_id=interviewer_id)
+
+    name_map = await _interviewer_names_for_slots(db, [slot])
+    iv_name = name_map.get(interviewer_id)
+    return _slot_to_dict(slot, viewer=user, interviewer_name_fa=iv_name)
 
 
 def _normalize_utc(dt: datetime) -> datetime:
@@ -637,7 +873,13 @@ async def update_slot(
 
     patch = body.model_dump(exclude_unset=True)
     if not patch:
-        return _slot_to_dict(slot, viewer=user)
+        name_map = await _interviewer_names_for_slots(db, [slot])
+        iv_id = getattr(slot, "interviewer_user_id", None)
+        return _slot_to_dict(
+            slot,
+            viewer=user,
+            interviewer_name_fa=name_map.get(iv_id) if iv_id else None,
+        )
 
     define_fields = set(patch.keys()) - {"student_join_open"}
     if define_fields and not _can_define_interview_slots(user):
@@ -646,7 +888,11 @@ async def update_slot(
             detail="تعریف یا ویرایش زمان اسلات فقط برای مسئول پذیر، مدیر داخلی و مدیر سیستم مجاز است.",
         )
     if slot.assigned_student_id is not None and define_fields:
-        raise HTTPException(status_code=400, detail="اسلات رزروشده قابل ویرایش نیست.")
+        other_fields = define_fields - SLOT_INTERVIEWER_ASSIGNMENT_FIELDS
+        if other_fields:
+            raise HTTPException(status_code=400, detail="اسلات رزروشده قابل ویرایش نیست.")
+
+    prev_interviewer_id = getattr(slot, "interviewer_user_id", None)
 
     new_starts = _normalize_utc(patch["starts_at"]) if "starts_at" in patch else slot.starts_at
     new_ends = _normalize_utc(patch["ends_at"]) if "ends_at" in patch else slot.ends_at
@@ -672,6 +918,10 @@ async def update_slot(
         slot.meeting_link = (patch["meeting_link"] or "").strip() or None
     if "label_fa" in patch:
         slot.label_fa = (patch["label_fa"] or "").strip() or None
+    if "interviewer_user_id" in patch:
+        if not (patch["interviewer_user_id"] or "").strip():
+            raise HTTPException(status_code=400, detail="انتخاب مصاحبه‌گر الزامی است؛ نمی‌توان مصاحبه‌گر را خالی گذاشت.")
+        slot.interviewer_user_id = await _resolve_interviewer_user_id(db, patch["interviewer_user_id"])
     if "student_join_open" in patch:
         slot.student_join_open = bool(patch["student_join_open"])
         if slot.student_join_open and slot.mode == "online" and slot.assigned_student_id:
@@ -682,7 +932,34 @@ async def update_slot(
             )
 
     await db.flush()
-    return _slot_to_dict(slot, viewer=user)
+
+    new_iv_id = getattr(slot, "interviewer_user_id", None)
+    if new_iv_id and new_iv_id != prev_interviewer_id:
+        slot.interviewer_meeting_link = None
+        await notify_interviewer_slot_assigned(db, slot=slot, interviewer_user_id=new_iv_id)
+        payment_confirmed = (
+            slot.assigned_student_id is not None
+            and getattr(slot, "booking_payment_deadline_at", None) is None
+        )
+        if slot.mode == "online" and payment_confirmed and (slot.alocom_event_id or "").strip():
+            try:
+                await refresh_interview_slot_alocom_links(db, slot)
+            except Exception:
+                logger.exception(
+                    "refresh_interview_slot_alocom_links after interviewer change failed slot=%s",
+                    slot.id,
+                )
+            try:
+                await ensure_interview_slot_host_meeting_link(db, slot, viewer=user)
+            except Exception:
+                logger.exception(
+                    "ensure_interview_slot_host_meeting_link after interviewer change failed slot=%s",
+                    slot.id,
+                )
+
+    name_map = await _interviewer_names_for_slots(db, [slot])
+    iv_name = name_map.get(new_iv_id) if new_iv_id else None
+    return _slot_to_dict(slot, viewer=user, interviewer_name_fa=iv_name)
 
 
 @router.patch("/manage/{slot_id}/reschedule")
@@ -751,6 +1028,31 @@ async def book_slot(
     return out
 
 
+@router.get("/my-assigned")
+async def list_my_assigned_slots(
+    include_past: bool = False,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(*INTERVIEWER_CANDIDATE_ROLES)),
+):
+    """وقت‌های آزاد اختصاص‌یافته به مصاحبه‌گر جاری."""
+    now = datetime.now(timezone.utc)
+    await expire_interview_booking_payment_deadlines(db, now=now)
+    stmt = select(InterviewSlot).where(
+        InterviewSlot.interviewer_user_id == user.id,
+        InterviewSlot.assigned_student_id.is_(None),
+    )
+    if not include_past:
+        stmt = stmt.where(InterviewSlot.ends_at >= now)
+    stmt = stmt.order_by(InterviewSlot.starts_at)
+    rows = list((await db.execute(stmt)).scalars().all())
+    return {
+        "slots": [
+            _slot_to_dict(s, viewer=user, now=now, hide_link=True, interviewer_name_fa=user.full_name_fa)
+            for s in rows
+        ],
+    }
+
+
 @router.get("/my-bookings")
 async def list_my_booked_slots(
     include_past: bool = False,
@@ -772,8 +1074,14 @@ async def list_my_booked_slots(
         stmt = stmt.where(InterviewSlot.ends_at >= now)
     stmt = stmt.order_by(InterviewSlot.starts_at)
     rows = (await db.execute(stmt)).scalars().all()
+    out: list[dict] = []
     for slot in rows:
-        await maybe_provision_interview_slot_alocom_link(
-            db, slot, payment_confirmed=True
+        result_recorded = await interview_slot_result_recorded(db, slot)
+        if not result_recorded:
+            await maybe_provision_interview_slot_alocom_link(
+                db, slot, payment_confirmed=True
+            )
+        out.append(
+            _slot_to_dict(slot, viewer=user, now=now, result_recorded=result_recorded)
         )
-    return {"bookings": [_slot_to_dict(slot, viewer=user, now=now) for slot in rows]}
+    return {"bookings": out}

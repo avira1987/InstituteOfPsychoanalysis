@@ -1135,21 +1135,55 @@ class ActionHandler:
         return f"therapy_sessions_cancelled={len(cancelled_ids)} new_weekly={new_weekly}"
 
     async def _handle_release_therapist_slots(self, action: dict, instance: ProcessInstance, context: dict):
-        """ثبت رویداد آزادسازی زمان درمانگر در پرونده (بدون جدول جداگانهٔ اسلات)."""
+        """آزادسازی اسلات‌های درمانگر آموزشی در شیت وقت‌های آزاد."""
+        from app.services.educational_therapist_slot_service import release_slots
+
         merged = {**_as_mapping(instance.context_data), **(context or {})}
         student = await self._get_student(instance.student_id)
         if not student:
             return "student_not_found"
+
+        slot_ids_raw = merged.get("slot_ids") or merged.get("booked_slot_ids")
+        slot_ids = None
+        if slot_ids_raw:
+            import uuid as _uuid
+
+            slot_ids = []
+            raw_list = slot_ids_raw if isinstance(slot_ids_raw, list) else str(slot_ids_raw).split(",")
+            for item in raw_list:
+                try:
+                    slot_ids.append(_uuid.UUID(str(item).strip()))
+                except (TypeError, ValueError):
+                    pass
+
+        therapist_id = merged.get("therapist_id") or merged.get("new_therapist_id")
+        therapist_uuid = None
+        if therapist_id:
+            try:
+                therapist_uuid = uuid.UUID(str(therapist_id))
+            except (TypeError, ValueError):
+                therapist_uuid = student.therapist_id
+        elif student.therapist_id:
+            therapist_uuid = student.therapist_id
+
+        released = await release_slots(
+            self.db,
+            student_id=instance.student_id,
+            instance_id=instance.id,
+            slot_ids=slot_ids or None,
+            therapist_user_id=therapist_uuid,
+        )
+
         extra = _as_mapping(student.extra_data)
         log = list(extra.get("therapist_slot_release_log") or [])
         entry: dict = {
             "at": datetime.now(timezone.utc).isoformat(),
             "process_code": instance.process_code,
             "instance_id": str(instance.id),
-            "source": "therapy_session_reduction",
+            "released_count": released,
+            "source": action.get("source") or instance.process_code,
         }
         if instance.process_code == "therapy_completion":
-            entry["source"] = "therapy_completion"
             entry["therapist_id"] = str(student.therapist_id) if student.therapist_id else None
             append_integration_event(
                 instance,
@@ -1175,7 +1209,52 @@ class ActionHandler:
         extra["therapist_slot_release_log"] = log[-200:]
         student.extra_data = extra
         flag_modified(student, "extra_data")
-        return f"therapist_slots_released_to_available_sheet n={len(log)}"
+        return f"therapist_slots_released n={released}"
+
+    async def _handle_book_educational_therapist_slots(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        from app.services.educational_therapist_slot_service import (
+            book_slots_from_context,
+            build_slot_summary_for_context,
+        )
+
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+        therapist_key = (action.get("therapist_id_key") or "therapist_id").strip()
+        slot_key = (action.get("slot_ids_key") or "slot_ids").strip()
+        weekly_key = (action.get("weekly_sessions_key") or "weekly_sessions").strip()
+
+        result = await book_slots_from_context(
+            self.db,
+            instance_id=instance.id,
+            student_id=instance.student_id,
+            context=merged,
+            therapist_id_key=therapist_key,
+            slot_ids_key=slot_key,
+            weekly_sessions_key=weekly_key,
+        )
+        if result == "skip_no_slot_ids":
+            return result
+
+        slot_ids = merged.get(slot_key) or merged.get("slot_ids")
+        if slot_ids:
+            from app.services.educational_therapist_slot_service import _parse_slot_ids
+            from app.models.operational_models import EducationalTherapistSlot
+            from sqlalchemy import select
+
+            ids = _parse_slot_ids(slot_ids)
+            if ids:
+                rows = (await self.db.execute(
+                    select(EducationalTherapistSlot).where(EducationalTherapistSlot.id.in_(ids))
+                )).scalars().all()
+                summary = build_slot_summary_for_context(rows)
+                ctx = _as_mapping(instance.context_data)
+                ctx.update(summary)
+                ctx["booked_slot_ids"] = summary.get("slot_ids")
+                instance.context_data = ctx
+                flag_modified(instance, "context_data")
+
+        return result
 
     async def _handle_record_change_history(self, action: dict, instance: ProcessInstance, context: dict):
         merged = {**_as_mapping(instance.context_data), **(context or {})}
@@ -2672,6 +2751,45 @@ class ActionHandler:
     async def _handle_svc_calendar(self, action: dict, instance: ProcessInstance, context: dict):
         return await _svc_calendar.handle(self.db, instance, action, context)
 
+    async def _handle_publish_term_course_offerings(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        from app.core.engine import StateMachineEngine
+        from app.services.term_course_offering_service import publish_offerings_from_prep
+
+        merged = StateMachineEngine._as_mapping(context)
+        if instance.context_data:
+            inst_ctx = StateMachineEngine._as_mapping(instance.context_data)
+            inst_ctx.update(merged)
+            merged = inst_ctx
+        result = await publish_offerings_from_prep(self.db, instance, merged)
+        return f"publish_term_course_offerings count={result.get('count', 0)}"
+
+    async def _handle_sync_financial_defaults_from_prep(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        """همگام‌سازی شهریهٔ آماده‌سازی ترم با پیش‌فرض‌های داشبورد مالی."""
+        from app.core.engine import StateMachineEngine
+        from app.services.financial_program_defaults_service import sync_term_tuition_from_prep_context
+
+        merged = StateMachineEngine._as_mapping(context)
+        if instance.context_data:
+            inst_ctx = StateMachineEngine._as_mapping(instance.context_data)
+            inst_ctx.update(merged)
+            merged = inst_ctx
+        result = await sync_term_tuition_from_prep_context(self.db, merged)
+        from app.services.financial_program_defaults_service import PREP_FINANCIAL_FORM_KEYS
+
+        keys = []
+        for k in PREP_FINANCIAL_FORM_KEYS:
+            try:
+                n = float(result.get(k) or 0)
+            except (TypeError, ValueError):
+                continue
+            if n > 0:
+                keys.append(k)
+        return f"sync_financial_defaults_from_prep keys={','.join(keys) or 'none'}"
+
     async def _handle_svc_gate(self, action: dict, instance: ProcessInstance, context: dict):
         return await _svc_gate.handle(self.db, instance, action, context)
 
@@ -3575,15 +3693,29 @@ class ActionHandler:
             notif_ctx.setdefault("session_date", date_fa)
             notif_ctx.setdefault("session_time", st or "—")
 
+        from app.utils.shamsi_calendar_utils import normalize_sms_context_dates
+
+        notif_ctx = normalize_sms_context_dates(notif_ctx)
+        if instance.process_code == "ta_track_change" and (
+            notif_ctx.get("meeting_date") or notif_ctx.get("meeting_time")
+        ):
+            from app.services.ta_track_change_service import format_meeting_summary_fa
+
+            notif_ctx["meeting_summary_fa"] = format_meeting_summary_fa(notif_ctx)
+        if instance.process_code == "educational_leave" and notif_ctx.get("committee_meeting_at"):
+            notif_ctx["meeting_summary_fa"] = self._format_committee_meeting_summary_fa(notif_ctx)
+
         return notif_ctx
 
     @staticmethod
     def _format_committee_meeting_summary_fa(ctx: dict) -> str:
         """خلاصهٔ خوانا برای پیامک/ایمیل جلسه کمیته مرخصی."""
-        raw = (ctx.get("committee_meeting_at") or "").strip()
+        from app.utils.shamsi_calendar_utils import format_shamsi_datetime_for_sms
+
+        raw = format_shamsi_datetime_for_sms(ctx.get("committee_meeting_at") or "")
         mode = (ctx.get("committee_meeting_mode") or "").strip()
         mode_fa = "آنلاین" if mode == "online" else ("حضوری" if mode == "in_person" else mode or "—")
-        parts = [f"زمان (ثبت‌شده در سامانه): {raw[:19] if len(raw) >= 10 else raw}", f"نوع: {mode_fa}"]
+        parts = [f"زمان (ثبت‌شده در سامانه): {raw or '—'}", f"نوع: {mode_fa}"]
         if mode == "online" and (ctx.get("committee_meeting_link") or "").strip():
             parts.append(f"لینک: {(ctx.get('committee_meeting_link') or '').strip()}")
         elif mode == "in_person" and (ctx.get("committee_meeting_location_fa") or "").strip():
@@ -3646,6 +3778,7 @@ class ActionHandler:
         "remove_selected_therapy_sessions": _handle_remove_therapy_sessions,
         "remove_selected_supervision_sessions": _handle_remove_selected_sessions,
         "release_therapist_slots_to_available_sheet": _handle_release_therapist_slots,
+        "book_educational_therapist_slots": _handle_book_educational_therapist_slots,
         "release_supervisor_slots_to_available_sheet": _handle_release_slots,
         "record_therapy_change_history": _handle_record_change_history,
 
@@ -3781,7 +3914,9 @@ class ActionHandler:
         "move_ta_to_instructor": _handle_svc_role,
         "upgrade_rank_to_assistant_faculty": _handle_svc_role,
         "unlock_next_course_in_track": _handle_svc_lms,
-        "publish_courses_to_website": _handle_svc_lms,
+        "publish_courses_to_website": _handle_publish_term_course_offerings,
+        "publish_term_course_offerings": _handle_publish_term_course_offerings,
+        "sync_financial_defaults_from_prep": _handle_sync_financial_defaults_from_prep,
         "publish_academic_calendar_to_profiles": _handle_svc_calendar,
         "show_popup": _handle_svc_portal,
         "load_available_courses": _handle_svc_lms,

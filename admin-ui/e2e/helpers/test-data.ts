@@ -41,6 +41,10 @@ export const E2E_REGISTRATION_PROFILE = {
   psychiatric_hospitalization_history: 'no' as const,
   has_work_permit: 'no' as const,
   has_university_degree: 'yes' as const,
+  education_level: 'bachelor' as const,
+  field_of_study: 'روان‌شناسی',
+  university: 'دانشگاه تهران',
+  graduation_year: '1395',
   course_participation_mode: 'online' as const,
   referral_source: 'website' as const,
 }

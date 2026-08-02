@@ -1643,6 +1643,102 @@ class SemesterPrepStartBody(BaseModel):
     process_code: str
 
 
+@router.get("/semester-prep/readiness")
+async def get_semester_prep_readiness(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "deputy_education", "staff", "course_committee", "admissions_officer")),
+):
+    """چک‌لیست آمادگی پیش‌نیازهای نرم برای فرایندهای ۲۹/۳۰."""
+    from app.services.semester_prep_readiness_service import compute_semester_prep_readiness
+
+    return await compute_semester_prep_readiness(db)
+
+
+class InterviewerCreate(BaseModel):
+    full_name_fa: str = Field(..., min_length=1)
+    username: Optional[str] = None
+    password: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+
+@router.get("/interviewers")
+async def list_interviewers(
+    search: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "deputy_education", "staff", "admissions_officer")),
+):
+    """فهرست مصاحبه‌کنندگان فعال."""
+    from sqlalchemy import or_
+
+    stmt = select(User).where(User.role == "interviewer", User.is_active.is_(True))
+    q = (search or "").strip()
+    if q:
+        term = f"%{q}%"
+        stmt = stmt.where(or_(User.full_name_fa.ilike(term), User.username.ilike(term)))
+    stmt = stmt.order_by(User.full_name_fa.asc(), User.username.asc()).limit(limit)
+    users = (await db.execute(stmt)).scalars().all()
+    return {
+        "interviewers": [
+            {
+                "id": str(u.id),
+                "username": u.username,
+                "full_name_fa": u.full_name_fa,
+                "email": u.email,
+                "phone": u.phone,
+                "is_active": u.is_active,
+            }
+            for u in users
+        ],
+        "count": len(users),
+    }
+
+
+@router.post("/interviewers")
+async def create_interviewer(
+    body: InterviewerCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "deputy_education", "staff", "admissions_officer")),
+):
+    """افزودن مصاحبه‌کنندهٔ فعال برای فرایند آماده‌سازی ترم."""
+    from app.api.auth import create_user, UserCreate
+    from app.services.course_committee_roster_service import _slug_code
+
+    label = (body.full_name_fa or "").strip()
+    if not label:
+        raise HTTPException(status_code=400, detail="نام فارسی خالی است")
+    username = (body.username or "").strip() or _slug_code("iv", label)[:48]
+    password = (body.password or "").strip() or "demo123"
+    try:
+        user = await create_user(
+            db,
+            UserCreate(
+                username=username,
+                password=password,
+                full_name_fa=label,
+                role="interviewer",
+                email=body.email,
+                phone=body.phone,
+            ),
+        )
+        user.is_active = True
+        await db.commit()
+        await db.refresh(user)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "interviewer": {
+            "id": str(user.id),
+            "username": user.username,
+            "full_name_fa": user.full_name_fa,
+            "email": user.email,
+            "phone": user.phone,
+            "is_active": user.is_active,
+        }
+    }
+
+
 @router.get("/semester-prep/status")
 async def get_semester_prep_status(
     db: AsyncSession = Depends(get_db),
@@ -1730,6 +1826,89 @@ async def start_semester_prep(
         return {"start": result, "status": await build_prep_status(db)}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class SemesterPrepInterviewGroupBody(BaseModel):
+    interviewer_ids: list[str] = Field(default_factory=list)
+    dates: list[str] = Field(default_factory=list)
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    session_minutes: Optional[int] = None
+
+
+class SemesterPrepInterviewSetupBody(BaseModel):
+    instance_id: str = Field(..., min_length=1)
+    interview_mode: Optional[str] = None
+    interview_location_fa: Optional[str] = None
+    comprehensive: SemesterPrepInterviewGroupBody = Field(
+        default_factory=SemesterPrepInterviewGroupBody
+    )
+    introductory: SemesterPrepInterviewGroupBody = Field(
+        default_factory=SemesterPrepInterviewGroupBody
+    )
+    replace_existing_slots: bool = True
+
+
+@router.get("/semester-prep/interview-candidates")
+async def list_semester_prep_interview_candidates(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(
+        require_role("admin", "deputy_education", "staff", "site_manager")
+    ),
+):
+    """کارمندان اتوماسیون که می‌توانند مصاحبه‌گر مرحلهٔ مصاحبه‌ها باشند."""
+    from app.services.semester_prep_interview_setup_service import (
+        INTERVIEWER_CANDIDATE_ROLES,
+    )
+
+    stmt = (
+        select(User)
+        .where(User.is_active.is_(True), User.role.in_(INTERVIEWER_CANDIDATE_ROLES))
+        .order_by(User.full_name_fa.asc(), User.username.asc())
+    )
+    users = (await db.execute(stmt)).scalars().all()
+    return {
+        "candidates": [
+            {
+                "id": str(u.id),
+                "full_name_fa": (u.full_name_fa or "").strip() or u.username,
+                "username": u.username,
+                "role": u.role,
+            }
+            for u in users
+        ]
+    }
+
+
+@router.post("/semester-prep/interview-setup")
+async def save_semester_prep_interview_setup(
+    body: SemesterPrepInterviewSetupBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(
+        require_role("admin", "deputy_education", "staff", "site_manager")
+    ),
+):
+    """مرحلهٔ یکپارچهٔ «مصاحبه‌ها»: مصاحبه‌گرها + روز و ساعت، در یک ثبت.
+
+    فرم هر دو گام متادیتا را پر می‌کند، نوبت‌های قابل رزرو را می‌سازد و
+    فرایند را تا انتشار تقویم جلو می‌برد.
+    """
+    from app.services.semester_prep_interview_setup_service import (
+        apply_semester_prep_interview_setup,
+        SemesterPrepInterviewSetupError,
+    )
+
+    try:
+        result = await apply_semester_prep_interview_setup(
+            db,
+            instance_id=body.instance_id,
+            payload=body.model_dump(),
+            actor=current_user,
+        )
+    except SemesterPrepInterviewSetupError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    await db.commit()
+    return result
 
 
 # ─── Process scheduler (automation) ─────────────────────────

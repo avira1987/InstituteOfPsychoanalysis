@@ -3,6 +3,7 @@ import { interviewSlotsApi, processExecApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import OnlineMeetingJoinCta from './OnlineMeetingJoinCta'
+import { interviewMeetingLinkPreparingState } from '../utils/interviewMeetingLinkStatus'
 import InterviewSlotRescheduleModal from './InterviewSlotRescheduleModal'
 
 function formatSlotShamsi(iso) {
@@ -12,7 +13,7 @@ function formatSlotShamsi(iso) {
 /**
  * فهرست وقت‌های رزروشده با مشخصات دانشجو — برای مصاحبه‌گر و دفتر.
  */
-export default function InterviewBookingsPanel({ showToast }) {
+export default function InterviewBookingsPanel({ showToast, onOpenResult }) {
   const [bookings, setBookings] = useState([])
   const [includePast, setIncludePast] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -121,27 +122,39 @@ export default function InterviewBookingsPanel({ showToast }) {
                   const canAdvanceInterview =
                     ins?.process_code === 'introductory_course_registration'
                     && ins?.current_state === 'interview_payment_confirmed'
+                  const canOpenResult =
+                    !!onOpenResult
+                    && ins?.id
+                    && ins?.current_state === 'interview_completed'
                   const canReschedule = !s.booking_payment_deadline_at
                   const loc = s.mode === 'online'
-                    ? (
+                    ? (() => {
+                      const linkState = interviewMeetingLinkPreparingState(s)
+                      return (
                       <OnlineMeetingJoinCta
                         compact
                         mode="online"
                         meetingLink={s.meeting_link}
+                        meetingLinkReady={s.meeting_link_ready}
                         meetingLinkOpenAt={s.meeting_link_open_at}
                         meetingLinkIsVisible={s.meeting_link_is_visible}
                         startsAt={s.starts_at}
                         studentJoinOpen={!!s.student_join_open}
                         label="ورود به مصاحبه"
                         allowStaffCopy
-                        preparing={!s.meeting_link && !s.booking_payment_deadline_at}
-                        preparingText={
-                          s.booking_payment_deadline_at
-                            ? 'پس از پرداخت دانشجو، لینک آنلاین تولید می‌شود.'
-                            : 'لینک آنلاین در حال آماده‌سازی است.'
+                        onToggleStudentJoinOpen={
+                          s.mode === 'online' && !s.booking_payment_deadline_at
+                            ? (nextOpen) => toggleStudentJoinOpen(s, nextOpen)
+                            : null
                         }
+                        togglingStudentJoin={togglingJoinId === s.id}
+                        preparing={linkState.preparing}
+                        preparingFailed={linkState.preparingFailed}
+                        preparingText={linkState.preparingText}
+                        resultRecorded={!!linkState.resultRecorded}
                       />
                       )
+                    })()
                     : (s.location_fa || '—')
                   return (
                     <tr key={s.id}>
@@ -196,9 +209,19 @@ export default function InterviewBookingsPanel({ showToast }) {
                               ? 'در حال ثبت…'
                               : 'ثبت برگزاری مصاحبه'}
                           </button>
-                        ) : (
-                          !canReschedule ? '—' : null
-                        )}
+                        ) : null}
+                        {canOpenResult ? (
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            data-testid={`booking-open-result-${ins.id}`}
+                            onClick={() => onOpenResult(ins.id)}
+                            style={(canReschedule || canAdvanceInterview) ? { marginTop: '0.35rem' } : undefined}
+                          >
+                            ثبت نتیجه
+                          </button>
+                        ) : null}
+                        {!canReschedule && !canAdvanceInterview && !canOpenResult ? '—' : null}
                       </td>
                     </tr>
                   )

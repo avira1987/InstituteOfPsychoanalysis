@@ -49,7 +49,7 @@ from app.meta.student_step_forms import (
     validate_operator_step_forms,
     validate_student_step_forms,
 )
-from app.services.student_service import StudentService
+from app.services.student_service import REGISTRATION_PROCESS_CODES, StudentService
 from app.services.edit_request_router import (
     find_edit_request_rule,
     normalize_requested_fields,
@@ -77,7 +77,11 @@ def _portal_role_can_act_on_state(actor_role: str, process_code: str, state_code
     assigned = get_state_assigned_role(process_code, state_code)
     if not assigned:
         return True
-    return portal_role_can_act_on_assigned_role(actor_role, normalize_assigned_role(assigned))
+    norm_assigned = normalize_assigned_role(assigned)
+    # پورتال دانشجو/متقاضی روی مراحل assigned به student یا applicant اقدام می‌کند
+    if actor_role in ("student", "applicant") and norm_assigned in ("student", "applicant"):
+        return True
+    return portal_role_can_act_on_assigned_role(actor_role, norm_assigned)
 
 
 def _lock_forms_when_cannot_act(forms: list, *, can_act: bool) -> list:
@@ -780,6 +784,57 @@ def _validate_semester_prep_interview_scheduling_form(form_values: dict) -> None
             )
 
 
+def _validate_semester_prep_interviewer_assignment_form(form_values: dict) -> None:
+    """اعتبارسنجی بازه‌های تاریخ مصاحبه در مرحلهٔ تعیین مصاحبه‌کنندگان."""
+    from app.services.semester_prep_service import semester_prep_interview_date_range_errors
+
+    errors = semester_prep_interview_date_range_errors(form_values)
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail=errors[0] if len(errors) == 1 else "؛ ".join(errors),
+        )
+
+
+def _validate_semester_prep_calendar_form(form_values: dict) -> None:
+    """اعتبارسنجی تاریخ‌های تقویم آموزشی (سال پرت و ترتیب تاریخ‌ها)."""
+    from app.services.semester_prep_service import semester_prep_calendar_date_errors
+
+    errors = semester_prep_calendar_date_errors(form_values)
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail=errors[0] if len(errors) == 1 else "؛ ".join(errors),
+        )
+
+
+def _validate_semester_prep_calendar_payload_if_present(
+    process_code: str,
+    field_values: dict,
+) -> None:
+    """اگر فیلدهای تقویم در payload هستند، اعتبارسنجی شوند."""
+    from app.services.semester_prep_service import (
+        FALL_PREP,
+        SEMESTER_PREP_CALENDAR_DATE_FIELDS,
+        SEMESTER_PREP_CALENDAR_DATE_RANGE_LIST_FIELDS,
+        semester_prep_calendar_date_errors,
+    )
+
+    if process_code != FALL_PREP:
+        return
+    calendar_keys = set(SEMESTER_PREP_CALENDAR_DATE_FIELDS) | set(
+        SEMESTER_PREP_CALENDAR_DATE_RANGE_LIST_FIELDS
+    )
+    if not calendar_keys.intersection(field_values.keys()):
+        return
+    errors = semester_prep_calendar_date_errors(field_values)
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail=errors[0] if len(errors) == 1 else "؛ ".join(errors),
+        )
+
+
 def _validate_semester_prep_step_form_submitted(instance: ProcessInstance, trigger_event: str) -> None:
     """قبل از پیشروی در آماده‌سازی ترم، فرم مرحلهٔ فعلی باید ثبت شده باشد."""
     from app.services.semester_prep_service import PREP_PROCESS_CODES
@@ -1043,6 +1098,25 @@ class TransitionResultResponse(BaseModel):
 
 # ─── Endpoints ──────────────────────────────────────────────────
 
+@router.get("/term-offerings")
+async def get_term_offerings(
+    program_kind: str = Query(..., description="introductory | comprehensive"),
+    term_number: int = Query(..., ge=1, le=12),
+    term_code: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Published course offerings for the active (or specified) term."""
+    from app.services.term_course_offering_service import build_term_offerings_response
+
+    return await build_term_offerings_response(
+        db,
+        program_kind=program_kind.strip(),
+        term_number=term_number,
+        term_code=term_code.strip() if term_code else None,
+    )
+
+
 @router.get("/definitions")
 async def list_processes(
     db: AsyncSession = Depends(get_db),
@@ -1161,6 +1235,25 @@ async def start_process(
             db, initial_ctx, student_row, current_user
         )
 
+    student_svc = StudentService(db)
+    if request.process_code in REGISTRATION_PROCESS_CODES:
+        existing_reg = await student_svc.pick_best_active_registration_instance(
+            student_uuid,
+            request.process_code,
+        )
+        if existing_reg:
+            await student_svc.set_primary_instance_for_student(student_row, existing_reg.id)
+            await db.flush()
+            return ProcessInstanceResponse(
+                instance_id=str(existing_reg.id),
+                process_code=existing_reg.process_code,
+                current_state=existing_reg.current_state_code,
+                is_completed=existing_reg.is_completed,
+                is_cancelled=existing_reg.is_cancelled,
+                context_data=existing_reg.context_data,
+                started_at=existing_reg.started_at.isoformat() if existing_reg.started_at else None,
+            )
+
     engine = StateMachineEngine(db)
     try:
         instance = await engine.start_process(
@@ -1171,9 +1264,10 @@ async def start_process(
             initial_context=initial_ctx,
         )
         await db.flush()
-        if request.process_code in ("educational_leave", "session_payment"):
-            svc = StudentService(db)
-            await svc.set_primary_instance_for_student(student_row, instance.id)
+        if request.process_code in REGISTRATION_PROCESS_CODES.union(
+            {"educational_leave", "session_payment"}
+        ):
+            await student_svc.set_primary_instance_for_student(student_row, instance.id)
         return ProcessInstanceResponse(
             instance_id=str(instance.id),
             process_code=instance.process_code,
@@ -1319,7 +1413,15 @@ async def trigger_transition(
         await db.execute(select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id)))
     ).scalars().first()
     if inst_prep:
+        from app.services.semester_prep_service import PREP_PROCESS_CODES
+
         _validate_semester_prep_step_form_submitted(inst_prep, request.trigger_event)
+        if (
+            inst_prep.process_code in PREP_PROCESS_CODES
+            and request.trigger_event == "interviewers_assigned"
+        ):
+            ctx_prep = StateMachineEngine._as_mapping(inst_prep.context_data)
+            _validate_semester_prep_interviewer_assignment_form(ctx_prep)
 
     role_norm = _normalize_actor_role(current_user.role)
     if role_norm == "student" and request.trigger_event in ("timeslot_selected", "interview_time_selected"):
@@ -1551,29 +1653,42 @@ async def register_student_step_forms(
     await db.flush()
 
     auto_advanced = False
-    if (
-        instance.current_state_code == "documents_upload"
-        and instance.process_code == "introductory_course_registration"
-    ):
-        engine = StateMachineEngine(db)
-        try:
-            adv = await engine.execute_transition(
-                uuid.UUID(instance_id),
-                "documents_submitted",
-                current_user.id,
-                _normalize_actor_role(current_user.role),
-                None,
-            )
-            auto_advanced = bool(adv.success)
-            if not adv.success and adv.error:
-                logger.info(
-                    "register_student_step_forms: auto documents_submitted skipped (%s)",
-                    adv.error,
+    if instance.process_code == "introductory_course_registration":
+        auto_trigger = None
+        if instance.current_state_code == "documents_upload":
+            auto_trigger = "documents_submitted"
+        elif instance.current_state_code == "documents_incomplete":
+            # پس از رد جزئی، ثبت مجدد مدارک باید خودکار به صف بررسی برگردد
+            # تا دکمه‌های تأیید/رد برای مدارک جدید دوباره در پنل پذیرش ظاهر شوند.
+            auto_trigger = "documents_resubmitted"
+        if auto_trigger:
+            engine = StateMachineEngine(db)
+            try:
+                adv = await engine.execute_transition(
+                    uuid.UUID(instance_id),
+                    auto_trigger,
+                    current_user.id,
+                    _normalize_actor_role(current_user.role),
+                    {"__auto_from_student_step_forms": True},
                 )
-        except (InvalidTransitionError, UnauthorizedError, InstanceNotFoundError) as e:
-            logger.info("register_student_step_forms: auto documents_submitted not run: %s", e)
-        except Exception:
-            logger.exception("register_student_step_forms: auto documents_submitted failed")
+                auto_advanced = bool(adv.success)
+                if not adv.success and adv.error:
+                    logger.info(
+                        "register_student_step_forms: auto %s skipped (%s)",
+                        auto_trigger,
+                        adv.error,
+                    )
+            except (InvalidTransitionError, UnauthorizedError, InstanceNotFoundError) as e:
+                logger.info(
+                    "register_student_step_forms: auto %s not run: %s",
+                    auto_trigger,
+                    e,
+                )
+            except Exception:
+                logger.exception(
+                    "register_student_step_forms: auto %s failed",
+                    auto_trigger,
+                )
 
     await db.refresh(instance)
     return {
@@ -1752,7 +1867,7 @@ async def operator_update_selected_courses(
     field_name = cfg["field_name"]
     form_state = cfg["form_state"]
     new_codes = normalize_course_codes(request.selected_courses)
-    ok, err = validate_selected_courses_for_process(instance.process_code, ctx, new_codes)
+    ok, err = await validate_selected_courses_for_process(db, instance.process_code, ctx, new_codes)
     if not ok:
         raise HTTPException(status_code=400, detail=err or "انتخاب دروس نامعتبر است.")
 
@@ -1918,6 +2033,18 @@ async def register_operator_step_forms(
     from app.services.semester_prep_service import PREP_PROCESS_CODES
 
     if (
+        state == "calendar_entry"
+        and instance.process_code in PREP_PROCESS_CODES
+    ):
+        _validate_semester_prep_calendar_form(form_values)
+
+    if (
+        state == "interviewer_assignment"
+        and instance.process_code in PREP_PROCESS_CODES
+    ):
+        _validate_semester_prep_interviewer_assignment_form(form_values)
+
+    if (
         state == "interview_scheduling"
         and instance.process_code in PREP_PROCESS_CODES
     ):
@@ -2062,6 +2189,8 @@ async def update_process_instance_data(
             detail="هیچ فیلدی برای ویرایش با مجوز نقش شما در این درخواست وجود ندارد.",
         )
 
+    _validate_semester_prep_calendar_payload_if_present(instance.process_code, sanitized)
+
     ctx = apply_data_update_to_context(
         instance.context_data,
         sanitized,
@@ -2073,6 +2202,16 @@ async def update_process_instance_data(
     flag_modified(instance, "context_data")
     await db.flush()
     await db.refresh(instance)
+
+    from app.services.semester_prep_service import sync_active_institute_calendar_after_prep_correction
+
+    await sync_active_institute_calendar_after_prep_correction(
+        db,
+        instance,
+        updated_field_names=set(sanitized.keys()),
+        published_by=current_user.id,
+    )
+
     return {
         "success": True,
         "updated_fields": sorted(sanitized.keys()),
@@ -2273,6 +2412,16 @@ async def get_student_instances(
     result = await db.execute(stmt)
     instances = result.scalars().all()
 
+    from app.core.resource_access import normalize_role, student_for_user
+    from app.services.semester_prep_service import PREP_PROCESS_CODES
+
+    # فرایندهای سطح مؤسسه (آماده‌سازی ترم) روی پروندهٔ anchor فنی ذخیره می‌شوند؛
+    # در پنل آموزشی دانشجو واقعی نمایش داده نشوند.
+    if normalize_role(current_user.role) == "student":
+        own = await student_for_user(db, current_user)
+        if own is not None and own.id == uuid.UUID(student_id):
+            instances = [i for i in instances if i.process_code not in PREP_PROCESS_CODES]
+
     return {
         "instances": [
             {
@@ -2305,6 +2454,68 @@ async def get_student_process_artifacts(
     if payload is None:
         raise HTTPException(status_code=404, detail="Student not found")
     return payload
+
+
+@router.get("/student/{student_id}/documents/{doc_id}.pdf")
+async def download_student_document_pdf(
+    student_id: str,
+    doc_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """دانلود PDF کارنامه/گواهی/سند رسمی دانشجو."""
+    from urllib.parse import quote
+
+    from app.core.resource_access import ensure_can_read_student, normalize_role
+    from app.services.student_artifact_pdf_service import (
+        artifact_pdf_filename,
+        render_student_document_pdf,
+    )
+    from app.services.student_artifacts_service import (
+        _COMMITTEE_READ_ROLES,
+        get_student_document_for_pdf,
+    )
+    from app.services.workflow import _common as C
+
+    sid = uuid.UUID(student_id)
+    role = normalize_role(current_user.role)
+    if role in _COMMITTEE_READ_ROLES:
+        row = (
+            await db.execute(select(Student).where(Student.id == sid))
+        ).scalars().first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Student not found")
+    else:
+        await ensure_can_read_student(db, current_user, sid)
+
+    student, doc = await get_student_document_for_pdf(db, sid, doc_id, current_user)
+    if not student or not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    user = None
+    if getattr(student, "user_id", None):
+        user = await C.get_user(db, student.user_id)
+
+    try:
+        pdf_bytes = render_student_document_pdf(student, doc, user=user)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        logging.getLogger(__name__).exception("student_document_pdf_generation_failed")
+        raise HTTPException(
+            status_code=500,
+            detail="تولید فایل PDF ممکن نشد. لطفاً دوباره تلاش کنید.",
+        ) from e
+
+    filename = artifact_pdf_filename(doc, student)
+    encoded = quote(filename)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded}",
+        },
+    )
 
 
 @router.get("/student/{student_id}/documents/{doc_id}")

@@ -33,6 +33,25 @@ function KindBadge({ kind }) {
   )
 }
 
+function interviewPreparingText(item) {
+  if (item.kind === 'interview') {
+    return 'لینک ورود به مصاحبه از ۳۰ دقیقه قبل از شروع در همین بخش فعال می‌شود.'
+  }
+  if (item.kind === 'therapy') {
+    return 'لینک جلسه پس از پرداخت و فعال‌سازی توسط درمانگر در همین بخش نمایش داده می‌شود.'
+  }
+  return 'لینک آنلاین در حال آماده‌سازی است؛ همین صفحه را کمی بعد تازه کنید.'
+}
+
+function shouldPollSessionItem(item) {
+  if (!item?.starts_at) return false
+  const startMs = new Date(item.starts_at).getTime()
+  if (!Number.isFinite(startMs)) return false
+  if (startMs < Date.now() - 60 * 60 * 1000) return false
+  if (item.meeting_link_is_visible) return false
+  return item.kind === 'interview' || item.kind === 'therapy'
+}
+
 /**
  * لیست یکپارچهٔ جلسات و لینک‌های آنلاین دانشجو.
  */
@@ -82,6 +101,16 @@ export default function StudentOnlineSessionsPanel({
     return () => window.removeEventListener('focus', onFocus)
   }, [active, studentProfile, load])
 
+  const needsRefreshPoll = items.some((item) => shouldPollSessionItem(item))
+
+  useEffect(() => {
+    if (!active || !needsRefreshPoll) return undefined
+    const timer = setInterval(() => {
+      load()
+    }, 30000)
+    return () => clearInterval(timer)
+  }, [active, needsRefreshPoll, load])
+
   if (!studentProfile) {
     return (
       <div className="card" data-testid="student-online-sessions-panel">
@@ -113,11 +142,16 @@ export default function StudentOnlineSessionsPanel({
         <p style={{ padding: '1rem', color: 'var(--danger, #b91c1c)' }}>{error}</p>
       ) : items.length === 0 ? (
         <p style={{ padding: '1rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-          هنوز جلسه‌ای در تقویم شما ثبت نشده است. پس از تکمیل فرایند آغاز درمان، رزرو مصاحبه، یا ثبت‌نام کلاس،
-          جلسات و لینک‌های ورود (اسکای‌روم / الوکام و …) در این بخش نمایش داده می‌شود.
+          هنوز جلسه‌ای در تقویم شما ثبت نشده است. پس از تکمیل فرایند آغاز درمان، پرداخت هزینهٔ مصاحبه، یا ثبت‌نام کلاس،
+          جلسات و لینک‌های ورود (الوکام و …) در این بخش نمایش داده می‌شود.
         </p>
       ) : (
         <>
+          {items.some((x) => x.kind === 'interview') ? (
+            <p style={{ padding: '0 1rem', margin: '0 0 0.5rem', fontSize: '0.88rem', color: '#166534', lineHeight: 1.7 }}>
+              مصاحبهٔ پذیرش شما در فهرست زیر است. لینک ورود آنلاین از ۳۰ دقیقه قبل از شروع فعال می‌شود.
+            </p>
+          ) : null}
           {awaitingLink ? (
             <p style={{ padding: '0 1rem', margin: '0 0 0.5rem', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
               {items.length.toLocaleString('fa-IR')} جلسه/لینک ثبت شده است.
@@ -150,19 +184,18 @@ export default function StudentOnlineSessionsPanel({
                   <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{item.status_fa}</div>
                 ) : null}
                 <OnlineMeetingJoinCta
-                  mode="online"
+                  mode={item.kind === 'interview' && item.mode === 'in_person' ? 'in_person' : 'online'}
+                  locationFa={item.location_fa || ''}
                   meetingLink={item.meeting_link}
+                  meetingLinkReady={item.meeting_link_ready}
                   meetingLinkOpenAt={item.meeting_link_open_at}
                   meetingLinkIsVisible={Boolean(item.meeting_link_is_visible)}
                   startsAt={item.starts_at}
                   studentJoinOpen={Boolean(item.student_join_open)}
                   label="ورود به جلسه"
                   compact
-                  preparingText={
-                    item.kind === 'therapy'
-                      ? 'لینک جلسه پس از پرداخت و فعال‌سازی توسط درمانگر در همین بخش نمایش داده می‌شود.'
-                      : 'لینک آنلاین در حال آماده‌سازی است؛ همین صفحه را کمی بعد تازه کنید.'
-                  }
+                  resultRecorded={Boolean(item.interview_result_recorded)}
+                  preparingText={interviewPreparingText(item)}
                 />
               </div>
             ))}

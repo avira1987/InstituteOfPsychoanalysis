@@ -5,9 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import FileResponse, JSONResponse, Response
-
-from app.config import get_settings
+from starlette.responses import FileResponse, JSONResponse
 
 # Public under /uploads (no auth required)
 _PUBLIC_PREFIXES = ("/uploads/avatars/",)
@@ -26,6 +24,21 @@ def _auth_error(detail: str, status_code: int = 401) -> JSONResponse:
     return JSONResponse(status_code=status_code, content={"detail": detail})
 
 
+def _extract_bearer_or_query_token(request) -> str | None:
+    """Authorization header, یا access_token در query (برای <img>/<iframe> که هدر نمی‌فرستند)."""
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        token = auth[7:].strip()
+        if token:
+            return token
+    q = request.query_params.get("access_token") or request.query_params.get("token")
+    if q is not None:
+        token = str(q).strip()
+        if token:
+            return token
+    return None
+
+
 class UploadsAuthMiddleware(BaseHTTPMiddleware):
     """Require Bearer token for process/dynamic-form uploads; serve file if authorized."""
 
@@ -34,25 +47,20 @@ class UploadsAuthMiddleware(BaseHTTPMiddleware):
         if request.method != "GET" or not _is_protected_upload(path):
             return await call_next(request)
 
-        auth = request.headers.get("authorization") or ""
-        if not auth.lower().startswith("bearer "):
-            return _auth_error("Authentication required for this file")
-
-        token = auth[7:].strip()
+        token = _extract_bearer_or_query_token(request)
         if not token:
             return _auth_error("Authentication required for this file")
 
         from jose import JWTError, jwt
         from sqlalchemy import select
 
-        from app.api.auth import ALGORITHM
         from app.config import get_settings
         from app.database import async_session_factory
         from app.models.operational_models import User
 
         settings = get_settings()
         try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             user_id = payload.get("sub")
         except JWTError:
             return _auth_error("Invalid token")

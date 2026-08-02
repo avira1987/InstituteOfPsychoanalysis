@@ -473,8 +473,10 @@ class TestFallSemesterPreparationFlow:
             "winter_end_date": "2027-04-15",
             "registration_payment_window_start": "2026-08-01",
             "registration_payment_window_end": "2026-09-01",
-            "intern_interview_deadline": "2026-11-01",
-            "teaching_assistant_interview_deadline": "2026-11-15",
+            "intern_interview_deadline_start": "2026-10-25",
+            "intern_interview_deadline_end": "2026-11-01",
+            "teaching_assistant_interview_deadline_start": "2026-11-08",
+            "teaching_assistant_interview_deadline_end": "2026-11-15",
             "nowruz_holiday_start": "2027-03-20",
             "nowruz_holiday_end": "2027-04-05",
             "fall_break_periods": [{"start": "2026-10-10", "end": "2026-10-15"}],
@@ -523,7 +525,8 @@ class TestFallSemesterPreparationFlow:
         assert cal.term_start_date.isoformat() == "2026-09-15"
         extra = cal.extra_data or {}
         assert extra.get("winter_start_date") == "2027-01-10"
-        assert extra.get("intern_interview_deadline") == "2026-11-01"
+        assert extra.get("intern_interview_deadline_start") == "2026-10-25"
+        assert extra.get("intern_interview_deadline_end") == "2026-11-01"
 
         await db_session.refresh(sample_student)
         assert (sample_student.extra_data or {}).get("academic_calendar_published") is True

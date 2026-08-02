@@ -3,7 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
-import { processExecApi, studentApi, panelApi, assignmentApi } from '../services/api'
+import { processExecApi, studentApi, panelApi, assignmentApi, interviewSlotsApi } from '../services/api'
 import GamificationPanel from '../components/GamificationPanel'
 import StudentQuestCard from '../components/StudentQuestCard'
 import StudentSmsHistorySection from '../components/StudentSmsHistorySection'
@@ -14,7 +14,7 @@ import ProcessRestartSection from '../components/ProcessRestartSection'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import { buildRoadmapStates } from '../utils/studentRoadmap'
 import { buildStudentProcessVisitSequence } from '../utils/studentProcessStepReview'
-import { canStartProcess, hasActiveRegistrationProcess } from '../utils/studentProcessAccess'
+import { canStartProcess, hasActiveRegistrationProcess, resolvePrimaryInstanceId } from '../utils/studentProcessAccess'
 import {
   mergeFormPayload,
   stepFormsBlockTransition,
@@ -31,6 +31,7 @@ import { buildStudentGuidance } from '../utils/studentProcessGuidance'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { mergeUpgradeToTaTriggerPayload } from '../utils/upgradeToTaTriggerPayload'
 import { mergeReturnToFullEducationTriggerPayload } from '../utils/returnToFullEducationTriggerPayload'
+import { isInstituteLevelProcess } from '../utils/instituteProcesses'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import {
   STUDENT_TRANSITION_CTA_INTRO,
@@ -75,6 +76,7 @@ import StudentClassAttendancePanel from '../components/StudentClassAttendancePan
 import StudentIntroductoryCourseCompletionPanel from '../components/StudentIntroductoryCourseCompletionPanel'
 import StudentArticleWritingCompletionPanel from '../components/StudentArticleWritingCompletionPanel'
 import StudentFilmObservationCourseCompletionPanel from '../components/StudentFilmObservationCourseCompletionPanel'
+import StudentLiveTherapyObservationCourseCompletionPanel from '../components/StudentLiveTherapyObservationCourseCompletionPanel'
 import StudentSkillsCourseCompletionPanel from '../components/StudentSkillsCourseCompletionPanel'
 import StudentTheoryCourseCompletionPanel from '../components/StudentTheoryCourseCompletionPanel'
 import StudentGroupSupervisionCourseCompletionPanel from '../components/StudentGroupSupervisionCourseCompletionPanel'
@@ -85,12 +87,14 @@ import StudentCommitteesRestartPanel from '../components/StudentCommitteesRestar
 import StudentFeeDeterminationPanel from '../components/StudentFeeDeterminationPanel'
 import StudentEducationalTherapistUpgradePanel from '../components/StudentEducationalTherapistUpgradePanel'
 import StudentReturnToFullEducationPanel from '../components/StudentReturnToFullEducationPanel'
+import StudentStartTherapyPanel from '../components/StudentStartTherapyPanel'
 import StudentFullEducationLeavePanel from '../components/StudentFullEducationLeavePanel'
 import StudentUpgradeToTaPanel from '../components/StudentUpgradeToTaPanel'
 import StudentTaTrackChangePanel from '../components/StudentTaTrackChangePanel'
 import StudentTaToInstructorAutoPanel from '../components/StudentTaToInstructorAutoPanel'
 import SepPaymentPanel from '../components/SepPaymentPanel'
 import StudentOnlineSessionsPanel from '../components/StudentOnlineSessionsPanel'
+import { InterviewPaidBookingSummary } from '../components/InterviewSlotPicker'
 
 const studentProcessCodes = [
   'educational_leave', 'full_education_leave', 'return_to_full_education',
@@ -162,6 +166,7 @@ export default function StudentPortal() {
   const [processFilter, setProcessFilter] = useState('')
   const [processDefinition, setProcessDefinition] = useState(null)
   const [onlineSessions, setOnlineSessions] = useState([])
+  const [interviewBookings, setInterviewBookings] = useState([])
   const [assignments, setAssignments] = useState([])
   const [primaryJourney, setPrimaryJourney] = useState(null)
   const [primaryJourneyLoading, setPrimaryJourneyLoading] = useState(false)
@@ -250,11 +255,13 @@ export default function StudentPortal() {
   const loadLearningData = async () => {
     if (!studentProfile) return
     try {
-      const [oRes, aRes] = await Promise.all([
+      const [oRes, aRes, ivRes] = await Promise.all([
         panelApi.myOnlineSessions(false).catch(() => ({ data: { items: [] } })),
         assignmentApi.mine().catch(() => ({ data: [] })),
+        interviewSlotsApi.myBookings(false).catch(() => ({ data: { bookings: [] } })),
       ])
       setOnlineSessions(Array.isArray(oRes.data?.items) ? oRes.data.items : [])
+      setInterviewBookings(Array.isArray(ivRes.data?.bookings) ? ivRes.data.bookings : [])
       setAssignments(Array.isArray(aRes.data) ? aRes.data : [])
     } catch (e) {
       console.error(e)
@@ -266,7 +273,7 @@ export default function StudentPortal() {
   }, [])
 
   useEffect(() => {
-    if (studentProfile && (activeTab === 'sessions' || activeTab === 'assignments' || activeTab === 'profile')) {
+    if (studentProfile && (activeTab === 'dashboard' || activeTab === 'sessions' || activeTab === 'assignments' || activeTab === 'profile')) {
       loadLearningData()
     }
   }, [studentProfile, activeTab])
@@ -397,7 +404,9 @@ export default function StudentPortal() {
         let instances = []
         try {
           const instancesRes = await processExecApi.studentInstances(myProfile.id)
-          instances = instancesRes.data?.instances || []
+          instances = (instancesRes.data?.instances || []).filter(
+            (i) => !isInstituteLevelProcess(i.process_code),
+          )
           setActiveProcesses(instances.filter(i => !i.is_completed && !i.is_cancelled))
           setCompletedProcesses(instances.filter(i => i.is_completed))
           setCancelledProcesses(instances.filter(i => i.is_cancelled))
@@ -408,10 +417,11 @@ export default function StudentPortal() {
           setCancelledProcesses([])
         }
 
-        const leaveActive = instances.find(
-          i => i.process_code === 'educational_leave' && !i.is_completed && !i.is_cancelled,
-        )
-        const primaryId = leaveActive?.instance_id || myProfile.extra_data?.primary_instance_id
+        const primaryId = resolvePrimaryInstanceId({
+          studentProfile: myProfile,
+          instances,
+          activeProcesses: instances.filter(i => !i.is_completed && !i.is_cancelled),
+        })
         if (primaryId) {
           await loadPrimaryJourney(primaryId)
         } else {
@@ -682,6 +692,7 @@ export default function StudentPortal() {
     const assigns = Array.isArray(assignments) ? assignments : []
     const sessionCount = sessions.length
     const assignmentCount = assigns.length
+    const interviewSessions = sessions.filter((s) => s.kind === 'interview')
     let nearestSession = null
     if (sessionCount > 0) {
       const sorted = [...sessions].sort((a, b) => {
@@ -707,8 +718,13 @@ export default function StudentPortal() {
       assignmentCount,
       nearestSession,
       nearestDue,
+      interviewSessions,
     }
   }, [onlineSessions, assignments])
+
+  const goToOnlineSessions = useCallback(() => {
+    setActiveTab('sessions')
+  }, [])
 
   const activeEvaluationInstance = useMemo(
     () => activeProcesses.find(
@@ -747,6 +763,41 @@ export default function StudentPortal() {
     ) || null,
     [activeProcesses],
   )
+
+  const activeTermEndInstance = useMemo(
+    () => activeProcesses.find(
+      (p) => (p.process_code === 'introductory_term_end' || p.process_code === 'comprehensive_term_end')
+        && !p.is_completed && !p.is_cancelled,
+    ) || null,
+    [activeProcesses],
+  )
+
+  const [termEndDetail, setTermEndDetail] = useState(null)
+
+  useEffect(() => {
+    const instanceId = activeTermEndInstance?.instance_id
+    if (!instanceId) {
+      setTermEndDetail(null)
+      return undefined
+    }
+    let cancelled = false
+    processExecApi.instance(instanceId)
+      .then((r) => {
+        if (!cancelled) setTermEndDetail(r.data || null)
+      })
+      .catch(() => {
+        if (!cancelled) setTermEndDetail(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeTermEndInstance?.instance_id])
+
+  const openTermEndInstance = useCallback((instanceId) => {
+    setActiveTab('processes')
+    const id = instanceId || activeTermEndInstance?.instance_id
+    if (id) viewInstance(id)
+  }, [activeTermEndInstance?.instance_id, viewInstance])
 
   if (loading) {
     return (
@@ -908,6 +959,58 @@ export default function StudentPortal() {
             onClick={() => setActiveTab('processes')}
           >
             رفتن به فرایند ارزیابی
+          </button>
+        </div>
+      ),
+    })
+  }
+  if (interviewBookings.length > 0) {
+    const nextInterview = [...interviewBookings].sort((a, b) => {
+      const ta = Date.parse(a.starts_at || '') || Number.MAX_SAFE_INTEGER
+      const tb = Date.parse(b.starts_at || '') || Number.MAX_SAFE_INTEGER
+      return ta - tb
+    })[0]
+    const isOnline = nextInterview.mode === 'online'
+    const joinReady = isOnline && Boolean(nextInterview.meeting_link_is_visible && (nextInterview.meeting_link || '').trim())
+    const courseLabel = nextInterview.course_type === 'comprehensive'
+      ? 'مصاحبهٔ پذیرش — دوره جامع'
+      : nextInterview.course_type === 'introductory'
+        ? 'مصاحبهٔ پذیرش — دوره آشنایی'
+        : 'مصاحبهٔ پذیرش'
+    dashboardUrgentAlertItems.push({
+      key: 'upcoming-interview',
+      node: (
+        <div
+          className="card student-portal-alert-card student-portal-alert-card--success"
+          role="status"
+          data-testid="student-interview-online-sessions-alert"
+        >
+          <strong className="student-portal-alert-card-title student-portal-alert-card-title--success">
+            مصاحبهٔ شما ثبت شد
+          </strong>
+          <p className="student-portal-alert-card-p">
+            {nextInterview.label_fa || courseLabel}
+            {nextInterview.starts_at ? (
+              <>
+                {' '}
+                · زمان:{' '}
+                {new Date(nextInterview.starts_at).toLocaleString('fa-IR', { dateStyle: 'medium', timeStyle: 'short' })}
+              </>
+            ) : null}
+            {isOnline
+              ? (joinReady
+                ? ' — لینک ورود اکنون فعال است.'
+                : ' — جزئیات و لینک ورود (۳۰ دقیقه قبل از شروع) در بخش «جلسات آنلاین» نمایش داده می‌شود.')
+              : ` — نوع حضوری${nextInterview.location_fa ? ` · محل: ${nextInterview.location_fa}` : ''}. جزئیات در «جلسات آنلاین» و «پروفایل».`}
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            style={{ marginTop: '0.5rem' }}
+            data-testid="student-interview-goto-online-sessions"
+            onClick={goToOnlineSessions}
+          >
+            رفتن به جلسات آنلاین
           </button>
         </div>
       ),
@@ -1232,6 +1335,9 @@ export default function StudentPortal() {
                 onInterviewBooked={handleInterviewBooked}
                 smsRefreshKey={primarySmsRefreshKey}
                 registrationGate={primaryJourney?.registrationGate || introGate}
+                termEndDetail={termEndDetail}
+                onOpenTermEnd={openTermEndInstance}
+                onGoToOnlineSessions={goToOnlineSessions}
               />
             ) : introGateClosed && !primaryJourney?.detail ? (
               <div
@@ -1297,6 +1403,9 @@ export default function StudentPortal() {
                 onInterviewBooked={handleInterviewBooked}
                 smsRefreshKey={primarySmsRefreshKey}
                 registrationGate={primaryJourney?.registrationGate || introGate}
+                termEndDetail={termEndDetail}
+                onOpenTermEnd={openTermEndInstance}
+                onGoToOnlineSessions={goToOnlineSessions}
               />
             )
           )}
@@ -1682,8 +1791,11 @@ export default function StudentPortal() {
                     detail={instanceDetail}
                     extraData={studentProfile?.extra_data}
                     active={activeTab === 'processes'}
+                    studentId={studentProfile?.id}
+                    activeProcesses={activeProcesses}
                     onGoToProfile={() => setActiveTab('profile')}
                     onGoToProcesses={() => setActiveTab('processes')}
+                    onViewInstance={openTermEndInstance}
                   />
                 </div>
               )}
@@ -1694,7 +1806,11 @@ export default function StudentPortal() {
                     detail={instanceDetail}
                     extraData={studentProfile?.extra_data}
                     active={activeTab === 'processes'}
+                    studentId={studentProfile?.id}
+                    activeProcesses={activeProcesses}
                     onGoToProfile={() => setActiveTab('profile')}
+                    onGoToProcesses={() => setActiveTab('processes')}
+                    onViewInstance={openTermEndInstance}
                   />
                 </div>
               )}
@@ -1820,6 +1936,21 @@ export default function StudentPortal() {
               {instanceDetail.process_code === 'film_observation_course_completion' && (
                 <div style={{ marginBottom: '1.25rem' }}>
                   <StudentFilmObservationCourseCompletionPanel
+                    detail={instanceDetail}
+                    instanceId={selectedInstance}
+                    showToast={showToast}
+                    onRefreshInstance={() => viewInstance(selectedInstance)}
+                    stepFormValues={stepFormValues}
+                    onFieldChange={(name, v) => setStepFormValues((prev) => ({ ...prev, [name]: v }))}
+                    stepFormLocked={stepFormLockedProcess}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'live_therapy_observation_course_completion' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentLiveTherapyObservationCourseCompletionPanel
                     detail={instanceDetail}
                     instanceId={selectedInstance}
                     showToast={showToast}
@@ -1991,6 +2122,16 @@ export default function StudentPortal() {
                 <div style={{ marginBottom: '1.25rem' }}>
                   <StudentEducationalTherapistUpgradePanel
                     detail={instanceDetail}
+                    active={activeTab === 'processes'}
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'start_therapy' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentStartTherapyPanel
+                    detail={instanceDetail}
+                    studentProfile={studentProfile}
                     active={activeTab === 'processes'}
                   />
                 </div>
@@ -2371,6 +2512,10 @@ export default function StudentPortal() {
                 onInterviewBooked={handleInterviewBooked}
                 smsRefreshKey={primarySmsRefreshKey}
                 registrationGate={primaryJourney?.registrationGate || introGate}
+                termEndDetail={termEndDetail}
+                onOpenTermEnd={openTermEndInstance}
+                hidePaidInterviewSummary
+                onGoToOnlineSessions={goToOnlineSessions}
               />
             ) : introGateClosed && !primaryJourney?.detail ? (
               <div
@@ -2435,8 +2580,16 @@ export default function StudentPortal() {
                 onInterviewBooked={handleInterviewBooked}
                 smsRefreshKey={primarySmsRefreshKey}
                 registrationGate={primaryJourney?.registrationGate || introGate}
+                hidePaidInterviewSummary
+                onGoToOnlineSessions={goToOnlineSessions}
               />
             )
+          )}
+          {studentProfile && (
+            <InterviewPaidBookingSummary
+              testId="student-profile-interview-booking"
+              onGoToOnlineSessions={goToOnlineSessions}
+            />
           )}
           {studentProfile && !admissionRequired && primaryJourney?.detail?.instance_id && !showManualRegStart && (
             <StudentDynamicFormsSection

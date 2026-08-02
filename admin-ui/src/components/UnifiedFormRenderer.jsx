@@ -4,6 +4,7 @@ import { fieldVisible, fieldRequired } from '../utils/formConditions'
 import { filterSchemaForRole } from '../utils/unifiedFormValidation'
 import { resolveUploadPublicUrl, parseStepFileUploadValue } from '../utils/uploadPublicUrl'
 import { studentApi } from '../services/api'
+import EducationalTherapistSlotPicker from './EducationalTherapistSlotPicker'
 import ShamsiDatePicker from './ShamsiDatePicker'
 import ShamsiDateTimePicker from './ShamsiDateTimePicker'
 import StepOtpField from './StepOtpField'
@@ -25,6 +26,10 @@ import {
   shamsiDateToIsoDate,
   utcIsoToShamsiTehran,
 } from '../utils/shamsiDateTime'
+import {
+  isSemesterPrepCalendarDateField,
+  semesterPrepCalendarShamsiYearBounds,
+} from '../utils/semesterPrepCalendarValidation'
 
 // انتخاب درمانگر — منبع پویا
 function TherapistSelect({ id, field, value, onChange, disabled }) {
@@ -117,7 +122,7 @@ function formatRialDisplay(num) {
   return n.toLocaleString('fa-IR')
 }
 
-function RialNumberField({ id, labelEl, field, value, onChange, disabled, rules }) {
+function RialNumberField({ id, labelEl, field, value, onChange, disabled, rules, fieldError = null }) {
   const [display, setDisplay] = useState(() => formatRialDisplay(value))
   useEffect(() => {
     setDisplay(formatRialDisplay(value))
@@ -134,7 +139,7 @@ function RialNumberField({ id, labelEl, field, value, onChange, disabled, rules 
     setDisplay(formatRialDisplay(n))
   }
   return (
-    <label className="psf-field" htmlFor={id}>
+    <label className={fieldShellClass(fieldError)} htmlFor={id}>
       {labelEl}
       {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
       <input
@@ -149,6 +154,7 @@ function RialNumberField({ id, labelEl, field, value, onChange, disabled, rules 
         onChange={(e) => setDisplay(e.target.value)}
         onBlur={handleBlur}
       />
+      <FieldErrorMsg message={fieldError} />
     </label>
   )
 }
@@ -506,14 +512,29 @@ function applyCourseTrackAutoFill(updated, columns, courseValue, dependentsByTra
 const TABLE_COLUMN_MIN_WIDTH = {
   course_name: '12.5rem',
   track: '9.5rem',
+  day: '7.5rem',
+  time: '7.5rem',
   instructor: '10.5rem',
   teaching_assistant: '10.5rem',
   proposed_day: '7.5rem',
   proposed_time: '7.5rem',
+  classroom_location: '14rem',
+  instructor_coordinated: '6.5rem',
 }
 
 function columnMinWidth(col) {
   return TABLE_COLUMN_MIN_WIDTH[col?.name] || undefined
+}
+
+function tableCellInputStyle(col, readOnlyStyle) {
+  const minW = columnMinWidth(col) || '6.5rem'
+  return {
+    ...readOnlyStyle,
+    width: '100%',
+    minWidth: minW,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+  }
 }
 
 function isCreatableSelectColumn(col) {
@@ -581,13 +602,13 @@ function creatableSelectProps(col, row, { showToast, onOptionCreated }) {
 }
 
 // جدول قابل‌ویرایش — ستون‌ها از field.columns؛ هر ردیف یک شیء.
-function EditableTableField({ field, value, onChange, disabled, showToast }) {
+function EditableTableField({ field, value, onChange, disabled, showToast, onRosterMemberCreated }) {
   const columns = Array.isArray(field.columns) ? field.columns : []
   const rows = Array.isArray(value) ? value : []
   const dependentsByTrack = useMemo(() => rosterDependentColumns(columns), [columns])
   const [createdOptionsByCol, setCreatedOptionsByCol] = useState({})
 
-  const rememberCreatedOption = useCallback((colName, opt) => {
+  const rememberCreatedOption = useCallback((colName, opt, col, row) => {
     if (!colName || !opt) return
     setCreatedOptionsByCol((prev) => {
       const existing = prev[colName] || []
@@ -597,7 +618,14 @@ function EditableTableField({ field, value, onChange, disabled, showToast }) {
       }
       return { ...prev, [colName]: [...existing, opt] }
     })
-  }, [])
+    if (onRosterMemberCreated && col?.options_source?.type === 'course_committee_roster') {
+      const track = resolveRosterTrackForRow(col, row, columns)
+      const kind = col.options_source.kind || 'instructor'
+      if (track) {
+        onRosterMemberCreated(opt, { kind, track, colName })
+      }
+    }
+  }, [columns, onRosterMemberCreated])
 
   const mergeCreatedOptions = useCallback(
     (col, rowOptions) => {
@@ -700,7 +728,7 @@ function EditableTableField({ field, value, onChange, disabled, showToast }) {
       const needsCourse = filterCol === 'course_name' && needsPrerequisite
       const creatableProps = creatableSelectProps(col, row, {
         showToast,
-        onOptionCreated: rememberCreatedOption,
+        onOptionCreated: (colName, opt) => rememberCreatedOption(colName, opt, col, row),
       })
       return (
         <CreatableSearchSelect
@@ -747,20 +775,24 @@ function EditableTableField({ field, value, onChange, disabled, showToast }) {
       )
     }
     if (ct === 'time') {
-      return <input type="time" dir="ltr" className="psf-input form-input" style={{ ...readOnlyStyle, minWidth: minW }} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
+      return <input type="time" dir="ltr" className="psf-input form-input" style={tableCellInputStyle(col, readOnlyStyle)} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
     }
     if (ct === 'number') {
-      return <input type="number" className="psf-input form-input" style={{ ...readOnlyStyle, minWidth: minW }} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value === '' ? '' : Number(e.target.value))} />
+      return <input type="number" className="psf-input form-input" style={tableCellInputStyle(col, readOnlyStyle)} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value === '' ? '' : Number(e.target.value))} />
     }
     if (ct === 'checkbox') {
-      return <input type="checkbox" checked={!!v} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.checked)} />
+      return (
+        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '2.25rem' }}>
+          <input type="checkbox" checked={!!v} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.checked)} />
+        </label>
+      )
     }
-    return <input type="text" className="psf-input form-input" style={{ ...readOnlyStyle, minWidth: minW }} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
+    return <input type="text" className="psf-input form-input" style={tableCellInputStyle(col, readOnlyStyle)} value={v ?? ''} disabled={cellDisabled} onChange={(e) => setCell(rowIdx, col.name, e.target.value)} />
   }
 
   return (
     <div className="unified-form-table-scroll" style={{ overflowX: 'auto', width: '100%', maxWidth: '100%', minWidth: 0 }}>
-      <table className="table" style={{ width: '100%', minWidth: '52rem', borderCollapse: 'collapse' }}>
+      <table className="table" style={{ width: '100%', minWidth: '64rem', borderCollapse: 'collapse', tableLayout: 'auto' }}>
         <thead>
           <tr>
             {columns.map((col) => (
@@ -795,8 +827,13 @@ function EditableTableField({ field, value, onChange, disabled, showToast }) {
 }
 
 // فهرست بازه‌های تاریخ — هر مورد { start, end }.
-function ShamsiDateFieldBridge({ value, onChange, disabled, idPrefix }) {
+function ShamsiDateFieldBridge({ value, onChange, disabled, idPrefix, fieldName = null }) {
   const parts = useMemo(() => isoDateToShamsiParts(value) || defaultShamsiDate(), [value])
+  const yearBounds = useMemo(() => {
+    if (!fieldName || !isSemesterPrepCalendarDateField(fieldName)) return {}
+    const { minJy, maxJy } = semesterPrepCalendarShamsiYearBounds()
+    return { minJy, maxJy }
+  }, [fieldName])
   const handleChange = (next) => {
     try {
       onChange(shamsiDateToIsoDate(next.jy, next.jm, next.jd))
@@ -811,6 +848,7 @@ function ShamsiDateFieldBridge({ value, onChange, disabled, idPrefix }) {
       disabled={disabled}
       idPrefix={idPrefix}
       compact
+      {...yearBounds}
     />
   )
 }
@@ -835,36 +873,46 @@ function ShamsiDateTimeFieldBridge({ value, onChange, disabled, idPrefix }) {
   )
 }
 
-function DateRangeListField({ value, onChange, disabled }) {
+function DateRangeListField({ value, onChange, disabled, listFieldName = null }) {
   const ranges = Array.isArray(value) ? value : []
   const setPart = (idx, key, v) => onChange(ranges.map((r, i) => (i === idx ? { ...r, [key]: v } : r)))
   const addRange = () => onChange([...ranges, { start: '', end: '' }])
   const removeRange = (idx) => onChange(ranges.filter((_, i) => i !== idx))
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+    <div className="date-range-list-field">
       {ranges.map((r, idx) => {
         const rangeInvalid = r?.start && r?.end && String(r.end) <= String(r.start)
         return (
-          <div key={idx}>
-            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span className="muted" style={{ fontSize: '0.8rem' }}>از</span>
-              <ShamsiDateFieldBridge
-                value={r?.start ?? ''}
-                disabled={disabled}
-                idPrefix={`range-${idx}-start`}
-                onChange={(v) => setPart(idx, 'start', v)}
-              />
-              <span className="muted" style={{ fontSize: '0.8rem' }}>تا</span>
-              <ShamsiDateFieldBridge
-                value={r?.end ?? ''}
-                disabled={disabled}
-                idPrefix={`range-${idx}-end`}
-                onChange={(v) => setPart(idx, 'end', v)}
-              />
-              {!disabled && <button type="button" className="btn btn-sm btn-outline" onClick={() => removeRange(idx)}>حذف</button>}
+          <div key={idx} className="date-range-list-field__item">
+            <div className="date-range-list-field__dates">
+              <div className="date-range-list-field__part">
+                <span className="date-range-list-field__label muted">از</span>
+                <ShamsiDateFieldBridge
+                  value={r?.start ?? ''}
+                  disabled={disabled}
+                  idPrefix={`range-${idx}-start`}
+                  fieldName={listFieldName}
+                  onChange={(v) => setPart(idx, 'start', v)}
+                />
+              </div>
+              <div className="date-range-list-field__part">
+                <span className="date-range-list-field__label muted">تا</span>
+                <ShamsiDateFieldBridge
+                  value={r?.end ?? ''}
+                  disabled={disabled}
+                  idPrefix={`range-${idx}-end`}
+                  fieldName={listFieldName}
+                  onChange={(v) => setPart(idx, 'end', v)}
+                />
+              </div>
             </div>
+            {!disabled && (
+              <button type="button" className="btn btn-sm btn-outline date-range-list-field__remove" onClick={() => removeRange(idx)}>
+                حذف
+              </button>
+            )}
             {rangeInvalid && (
-              <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: '#b91c1c' }}>
+              <p className="date-range-list-field__error">
                 تاریخ پایان باید بعد از شروع باشد
               </p>
             )}
@@ -872,21 +920,50 @@ function DateRangeListField({ value, onChange, disabled }) {
         )
       })}
       {ranges.length === 0 && <span className="muted">بازه‌ای افزوده نشده</span>}
-      {!disabled && <button type="button" className="btn btn-sm btn-outline" style={{ alignSelf: 'flex-start' }} onClick={addRange}>+ افزودن بازه</button>}
+      {!disabled && (
+        <button type="button" className="btn btn-sm btn-outline date-range-list-field__add" onClick={addRange}>
+          + افزودن بازه
+        </button>
+      )}
     </div>
   )
 }
 
-function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, showToast, instanceId = null }) {
+function RequiredMark() {
+  return <span className="psf-required-mark" aria-hidden="true"> *</span>
+}
+
+function FieldErrorMsg({ message }) {
+  if (!message) return null
+  return <p className="psf-field-error-msg" role="alert">{message}</p>
+}
+
+function fieldShellClass(error, base = 'psf-field') {
+  return error ? `${base} psf-field--error` : base
+}
+
+function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, showToast, instanceId = null, fieldError = null, onRosterMemberCreated = null }) {
   const t = (field.type || 'text').toLowerCase()
   const name = field.name
   const id = `uf-${name}`
   const value = values[name]
   const onChange = (v) => onFieldChange(name, v)
   const req = fieldRequired(field, values)
-  const labelText = `${field.label_fa || name}${req ? ' *' : ''}`
-
-  const labelEl = <span className="psf-label form-label">{labelText}</span>
+  const fieldTestId = `uf-field-${name}`
+  const inputTestId = `uf-input-${name}`
+  const shellCls = fieldShellClass(fieldError)
+  const labelEl = (
+    <span className="psf-label form-label">
+      {field.label_fa || name}
+      {req ? <RequiredMark /> : null}
+    </span>
+  )
+  const legendLabel = (
+    <legend className="psf-label">
+      {field.label_fa || name}
+      {req ? <RequiredMark /> : null}
+    </legend>
+  )
 
   if (t === 'readonly') {
     return (
@@ -899,18 +976,44 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
 
   if (t === 'textarea') {
     return (
-      <label className="psf-field" htmlFor={id}>
+      <label className={shellCls} htmlFor={id} data-testid={fieldTestId}>
         {labelEl}
-        <textarea id={id} className="psf-input form-input" rows={field.rows || 3} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
+        <textarea id={id} className="psf-input form-input" data-testid={inputTestId} rows={field.rows || 3} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
+        <FieldErrorMsg message={fieldError} />
       </label>
+    )
+  }
+
+  if (t === 'hidden') {
+    return null
+  }
+
+  if (t === 'therapist_slot_picker') {
+    const courseType = values.course_type || null
+    return (
+      <div className={shellCls} data-testid={fieldTestId}>
+        {labelEl}
+        <EducationalTherapistSlotPicker
+          therapistId={value ?? ''}
+          slotIds={values.slot_ids || []}
+          weeklySessions={values.weekly_sessions}
+          courseType={courseType}
+          therapistFieldName={name}
+          onTherapistChange={(v) => onFieldChange(name, v)}
+          onSlotsChange={(ids) => onFieldChange('slot_ids', ids)}
+          disabled={disabled}
+        />
+        <FieldErrorMsg message={fieldError} />
+      </div>
     )
   }
 
   if (t === 'therapist_select') {
     return (
-      <label className="psf-field" htmlFor={id}>
+      <label className={shellCls} htmlFor={id}>
         {labelEl}
         <TherapistSelect id={id} field={field} value={value} onChange={onChange} disabled={disabled} />
+        <FieldErrorMsg message={fieldError} />
       </label>
     )
   }
@@ -923,7 +1026,7 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
     }
     if (Array.isArray(userField.options) && userField.options.length) {
       return (
-        <label className="psf-field" htmlFor={id}>
+        <label className={shellCls} htmlFor={id}>
           {labelEl}
           <select id={id} className="psf-input form-input" value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
             <option value="">— انتخاب کنید —</option>
@@ -933,24 +1036,26 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
               return <option key={String(v)} value={v}>{lab}</option>
             })}
           </select>
+          <FieldErrorMsg message={fieldError} />
         </label>
       )
     }
     return (
-      <label className="psf-field" htmlFor={id}>
+      <label className={shellCls} htmlFor={id} data-testid={fieldTestId}>
         {labelEl}
-        <select id={id} className="psf-input form-input" value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+        <select id={id} className="psf-input form-input" data-testid={inputTestId} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
           <option value="">— بارگذاری گزینه‌ها —</option>
         </select>
+        <FieldErrorMsg message={fieldError} />
       </label>
     )
   }
 
   if ((t === 'select') && Array.isArray(field.options)) {
     return (
-      <label className="psf-field" htmlFor={id}>
+      <label className={shellCls} htmlFor={id} data-testid={fieldTestId}>
         {labelEl}
-        <select id={id} className="psf-input form-input" value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+        <select id={id} className="psf-input form-input" data-testid={inputTestId} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
           <option value="">— انتخاب کنید —</option>
           {field.options.map((opt) => {
             const v = typeof opt === 'object' ? opt.value : opt
@@ -958,14 +1063,15 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
             return <option key={String(v)} value={v}>{lab}</option>
           })}
         </select>
+        <FieldErrorMsg message={fieldError} />
       </label>
     )
   }
 
   if ((t === 'radio' || t === 'radio_list') && Array.isArray(field.options)) {
     return (
-      <fieldset className="psf-field psf-fieldset">
-        <legend className="psf-label">{labelText}</legend>
+      <fieldset className={fieldShellClass(fieldError, 'psf-field psf-fieldset')}>
+        {legendLabel}
         <div className="psf-radio-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           {field.options.map((opt) => {
             const v = typeof opt === 'object' ? opt.value : opt
@@ -978,6 +1084,7 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
             )
           })}
         </div>
+        <FieldErrorMsg message={fieldError} />
       </fieldset>
     )
   }
@@ -992,7 +1099,7 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
       onChange(next)
     }
     return (
-      <div className="psf-field">
+      <div className={shellCls}>
         {labelEl}
         {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
         <div className="psf-checkbox-grid" role="group">
@@ -1007,6 +1114,7 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
             )
           })}
         </div>
+        <FieldErrorMsg message={fieldError} />
       </div>
     )
   }
@@ -1024,14 +1132,16 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
           onChange={onChange}
           disabled={disabled}
           rules={rules}
+          fieldError={fieldError}
         />
       )
     }
     return (
-      <label className="psf-field" htmlFor={id}>
+      <label className={shellCls} htmlFor={id}>
         {labelEl}
         {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
         <input id={id} type="number" className="psf-input form-input" min={rules.min ?? field.min} max={rules.max ?? field.max} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))} />
+        <FieldErrorMsg message={fieldError} />
       </label>
     )
   }
@@ -1041,55 +1151,68 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
     const isExternal = typeof href === 'string' && /^https?:\/\//i.test(href)
     const linkText = field.rules_link_label_fa || 'قوانین'
     return (
-      <label className="psf-field psf-check" style={{ display: 'flex', gap: '0.4rem' }}>
-        <input type="checkbox" checked={!!value} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
-        {href ? (
-          <span>
-            {isExternal
-              ? <a href={href} target="_blank" rel="noopener noreferrer" className="psf-inline-link">{linkText}</a>
-              : <Link to={href} className="psf-inline-link">{linkText}</Link>}
-            {' '}را مطالعه کرده و می‌پذیرم.{req ? ' *' : ''}
-          </span>
-        ) : (
-          <span>{field.label_fa || name}{req ? ' *' : ''}</span>
-        )}
-      </label>
+      <div className={shellCls}>
+        <label className="psf-check" style={{ display: 'flex', gap: '0.4rem' }}>
+          <input type="checkbox" checked={!!value} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+          {href ? (
+            <span>
+              {isExternal
+                ? <a href={href} target="_blank" rel="noopener noreferrer" className="psf-inline-link">{linkText}</a>
+                : <Link to={href} className="psf-inline-link">{linkText}</Link>}
+              {' '}را مطالعه کرده و می‌پذیرم.{req ? ' *' : ''}
+            </span>
+          ) : (
+            <span>{field.label_fa || name}{req ? ' *' : ''}</span>
+          )}
+        </label>
+        <FieldErrorMsg message={fieldError} />
+      </div>
     )
   }
 
   if (t === 'file' || t === 'file_upload') {
     return (
-      <div className="psf-field">
+      <div className={shellCls}>
         {labelEl}
         <FileField field={field} value={value} onChange={onChange} disabled={disabled} onUploadFile={onUploadFile} showToast={showToast} />
+        <FieldErrorMsg message={fieldError} />
       </div>
     )
   }
 
   if (t === 'date' || t === 'date_picker') {
     return (
-      <div className="psf-field">
+      <div className={shellCls}>
         {labelEl}
-        <ShamsiDateFieldBridge value={value ?? ''} onChange={onChange} disabled={disabled} idPrefix={id} />
+        <ShamsiDateFieldBridge
+          value={value ?? ''}
+          onChange={onChange}
+          disabled={disabled}
+          idPrefix={id}
+          fieldName={name}
+        />
+        <FieldErrorMsg message={fieldError} />
       </div>
     )
   }
 
   if (t === 'time' || t === 'time_picker') {
     return (
-      <label className="psf-field" htmlFor={id}>
+      <label className={shellCls} htmlFor={id}>
         {labelEl}
         <input id={id} type="time" dir="ltr" className="psf-input form-input" value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
+        <FieldErrorMsg message={fieldError} />
       </label>
     )
   }
 
   if (t === 'multi_select') {
     return (
-      <div className="psf-field">
+      <div className={shellCls}>
         {labelEl}
         {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
         <MultiSelectField field={field} value={value} onChange={onChange} disabled={disabled} showToast={showToast} />
+        <FieldErrorMsg message={fieldError} />
       </div>
     )
   }
@@ -1111,39 +1234,43 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
 
   if (t === 'dynamic_list') {
     return (
-      <div className="psf-field">
+      <div className={shellCls}>
         {labelEl}
         {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
         <DynamicListField field={field} value={value} onChange={onChange} disabled={disabled} />
+        <FieldErrorMsg message={fieldError} />
       </div>
     )
   }
 
   if (t === 'table') {
     return (
-      <div className="psf-field">
+      <div className={shellCls} data-testid={`uf-table-${name}`}>
         {labelEl}
         {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
-        <EditableTableField field={field} value={value} onChange={onChange} disabled={disabled} showToast={showToast} />
+        <EditableTableField field={field} value={value} onChange={onChange} disabled={disabled} showToast={showToast} onRosterMemberCreated={onRosterMemberCreated} />
+        <FieldErrorMsg message={fieldError} />
       </div>
     )
   }
 
   if (t === 'date_range_list') {
     return (
-      <div className="psf-field">
+      <div className={shellCls} data-testid={`uf-range-${name}`}>
         {labelEl}
-        <DateRangeListField value={value} onChange={onChange} disabled={disabled} />
+        <DateRangeListField value={value} onChange={onChange} disabled={disabled} listFieldName={name} />
+        <FieldErrorMsg message={fieldError} />
       </div>
     )
   }
 
   if (t === 'datetime') {
     return (
-      <div className="psf-field">
+      <div className={shellCls}>
         {labelEl}
         {field.description_fa && <p className="psf-hint">{field.description_fa}</p>}
         <ShamsiDateTimeFieldBridge value={value ?? ''} onChange={onChange} disabled={disabled} idPrefix={id} />
+        <FieldErrorMsg message={fieldError} />
       </div>
     )
   }
@@ -1152,10 +1279,11 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
   const inputType = t === 'email' ? 'email' : t === 'tel' ? 'tel' : 'text'
   const dir = field.dir === 'ltr' || inputType !== 'text' ? 'ltr' : 'rtl'
   return (
-    <label className="psf-field" htmlFor={id}>
+    <label className={shellCls} htmlFor={id} data-testid={fieldTestId}>
       {labelEl}
       {field.description_fa && <p className="psf-hint">{field.description_fa}</p>}
-      <input id={id} type={inputType} className="psf-input form-input" dir={dir} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
+      <input id={id} type={inputType} className="psf-input form-input" dir={dir} data-testid={inputTestId} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
+      <FieldErrorMsg message={fieldError} />
     </label>
   )
 }
@@ -1178,6 +1306,10 @@ export default function UnifiedFormRenderer({
    */
   editableFieldNames = null,
   instanceId = null,
+  /** نگاشت نام فیلد → پیام خطا (پس از اعتبارسنجی ناموفق) */
+  fieldErrors = null,
+  /** پس از افزودن مدرس/کمک‌مدرس جدید — برای همگام‌سازی همهٔ کشویی‌ها */
+  onRosterMemberCreated = null,
 }) {
   const filtered = useMemo(() => filterSchemaForRole(schemaJson || { fields: [] }, role), [schemaJson, role])
   const fields = filtered.fields || []
@@ -1201,6 +1333,7 @@ export default function UnifiedFormRenderer({
         if (!field?.name) return null
         if (!fieldVisible(field, values)) return null
         const fieldDisabled = disabled || (editableSet ? !editableSet.has(field.name) : false)
+        const fieldError = fieldErrors?.[field.name] || null
         return (
           <UnifiedField
             key={field.name}
@@ -1211,6 +1344,8 @@ export default function UnifiedFormRenderer({
             onUploadFile={onUploadFile}
             showToast={showToast}
             instanceId={instanceId}
+            fieldError={fieldError}
+            onRosterMemberCreated={onRosterMemberCreated}
           />
         )
       })}

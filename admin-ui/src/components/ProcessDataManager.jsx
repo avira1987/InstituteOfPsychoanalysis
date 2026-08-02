@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { processExecApi } from '../services/api'
 import UnifiedFormRenderer from './UnifiedFormRenderer'
+import { validateSemesterPrepCalendarDates } from '../utils/semesterPrepCalendarValidation'
 
 /**
  * لایهٔ عمومی متادیتا-محور برای «مشاهده + ویرایش/به‌روزرسانی دادهٔ ثبت‌شدهٔ فرایند».
@@ -24,6 +25,7 @@ export default function ProcessDataManager({
   const [busy, setBusy] = useState(false)
   const [reason, setReason] = useState('')
   const [editing, setEditing] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
 
   const load = useCallback(() => {
     if (!instanceId) return
@@ -64,6 +66,19 @@ export default function ProcessDataManager({
   )
 
   const save = async () => {
+    if (stateCode === 'calendar_entry' && data?.process_code === 'fall_semester_preparation') {
+      const calendarErrors = validateSemesterPrepCalendarDates(values)
+      if (calendarErrors.length) {
+        const nextErrors = {}
+        for (const item of calendarErrors) {
+          if (item.field && !nextErrors[item.field]) nextErrors[item.field] = item.message
+        }
+        setFieldErrors(nextErrors)
+        showToast?.(calendarErrors[0].message, 'error')
+        return
+      }
+    }
+    setFieldErrors({})
     setBusy(true)
     try {
       const fieldValues = {}
@@ -144,10 +159,14 @@ export default function ProcessDataManager({
           <UnifiedFormRenderer
             schemaJson={{ fields: form.fields || [] }}
             values={values}
-            onChange={setValues}
+            onChange={(next) => {
+              setValues(next)
+              setFieldErrors({})
+            }}
             role={role}
             disabled={!editing}
             editableFieldNames={editing ? editableSet : new Set()}
+            fieldErrors={fieldErrors}
             showToast={showToast}
           />
         </div>

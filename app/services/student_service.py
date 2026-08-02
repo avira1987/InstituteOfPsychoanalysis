@@ -10,8 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.engine import StateMachineEngine
+from app.meta.loader import MetadataLoader
 from app.models.operational_models import ProcessInstance, Student, TherapySession, User
 from app.services.process_service import ProcessService
+from app.services.student_tracker_summary import build_roadmap_states
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +78,17 @@ def _admission_form_seed_context(user: User, student: Student) -> dict:
         "home_address",
         "work_address",
         "had_psychotherapy",
+        "psychotherapy_approach",
+        "psychotherapy_therapist_name",
+        "psychotherapy_total_hours",
         "used_psychiatric_meds",
         "psychiatric_hospitalization_history",
         "has_work_permit",
+        "work_permit_issuer",
+        "work_permit_type",
         "has_university_degree",
+        "university",
+        "graduation_year",
         "course_participation_mode",
         "referral_source",
         "referral_inviter_name",
@@ -108,21 +117,88 @@ class StudentService:
         result = await self.db.execute(stmt)
         return result.scalars().first()
 
+    async def _registration_completed_for_student(self, student: Student) -> bool:
+        expected = EXPECTED_REGISTRATION_CODE.get((student.course_type or "").strip().lower())
+        if not expected:
+            return False
+        stmt = (
+            select(ProcessInstance.id)
+            .where(
+                ProcessInstance.student_id == student.id,
+                ProcessInstance.process_code == expected,
+                ProcessInstance.is_completed.is_(True),
+                ProcessInstance.is_cancelled.is_(False),
+            )
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def _registration_state_rank(self, process_code: str, state_code: Optional[str]) -> int:
+        if not state_code:
+            return -1
+        loader = MetadataLoader(self.db)
+        definition = await loader.load_process(process_code)
+        if not definition:
+            return -1
+        roadmap = build_roadmap_states(definition)
+        codes = [s.get("code") for s in roadmap if s.get("code")]
+        try:
+            return codes.index(state_code)
+        except ValueError:
+            return -1
+
+    async def pick_best_active_registration_instance(
+        self,
+        student_id: uuid.UUID,
+        process_code: str,
+    ) -> Optional[ProcessInstance]:
+        """بین چند نمونهٔ فعال ثبت‌نام، پیشرفته‌ترین را برمی‌گرداند."""
+        stmt = select(ProcessInstance).where(
+            ProcessInstance.student_id == student_id,
+            ProcessInstance.process_code == process_code,
+            ProcessInstance.is_completed.is_(False),
+            ProcessInstance.is_cancelled.is_(False),
+        )
+        rows = list((await self.db.execute(stmt)).scalars().all())
+        if not rows:
+            return None
+        if len(rows) == 1:
+            return rows[0]
+
+        ranked: list[tuple[int, datetime, ProcessInstance]] = []
+        for inst in rows:
+            rank = await self._registration_state_rank(process_code, inst.current_state_code)
+            activity = inst.last_transition_at or inst.started_at or datetime.min.replace(tzinfo=timezone.utc)
+            ranked.append((rank, activity, inst))
+        ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        return ranked[0][2]
+
     async def ensure_primary_registration_path(self, student: Student, actor: User) -> bool:
         """
         If primary_instance_id is missing or invalid, attach an existing registration
         instance or start the initial registration process (same as post-registration).
 
+        While registration is still in progress, always prefer the most advanced active
+        registration instance so re-login does not jump back to a newer empty duplicate.
+
         Returns True if student.extra_data was updated (caller should commit).
         """
         if not student or not actor:
             return False
-        expected = EXPECTED_REGISTRATION_CODE.get(student.course_type)
+        expected = EXPECTED_REGISTRATION_CODE.get((student.course_type or "").strip().lower())
         if not expected:
             return False
 
+        registration_done = await self._registration_completed_for_student(student)
+        best_active = (
+            await self.pick_best_active_registration_instance(student.id, expected)
+            if not registration_done
+            else None
+        )
+
         extra = dict(StateMachineEngine._as_mapping(student.extra_data))
         pid_str = extra.get("primary_instance_id")
+        current_primary: Optional[ProcessInstance] = None
 
         if pid_str:
             try:
@@ -130,14 +206,26 @@ class StudentService:
             except ValueError:
                 pid = None
             if pid:
-                stmt = select(ProcessInstance).where(ProcessInstance.id == pid)
-                result = await self.db.execute(stmt)
-                inst = result.scalars().first()
-                if inst and inst.student_id == student.id:
-                    return False
+                current_primary = (
+                    await self.db.execute(select(ProcessInstance).where(ProcessInstance.id == pid))
+                ).scalars().first()
+                if current_primary and current_primary.student_id != student.id:
+                    current_primary = None
+
+        if not registration_done and best_active:
+            if current_primary and current_primary.id == best_active.id:
+                return False
+            await self.set_primary_instance_for_student(student, best_active.id)
+            return True
+
+        if current_primary:
+            return False
+
+        if pid_str:
             extra = dict(StateMachineEngine._as_mapping(student.extra_data))
             extra.pop("primary_instance_id", None)
             student.extra_data = extra
+            flag_modified(student, "extra_data")
 
         stmt = (
             select(ProcessInstance)
@@ -147,16 +235,13 @@ class StudentService:
             )
             .order_by(ProcessInstance.started_at.desc())
         )
-        result = await self.db.execute(stmt)
-        rows = list(result.scalars().all())
+        rows = list((await self.db.execute(stmt)).scalars().all())
 
         chosen: Optional[ProcessInstance] = None
-        for inst in rows:
-            if not inst.is_completed and not inst.is_cancelled:
-                chosen = inst
-                break
-        if chosen is None and rows:
-            chosen = rows[0]
+        if rows:
+            chosen = await self.pick_best_active_registration_instance(student.id, expected)
+            if chosen is None:
+                chosen = rows[0]
 
         if chosen:
             await self.set_primary_instance_for_student(student, chosen.id)
@@ -289,6 +374,11 @@ class StudentService:
                 return None
         else:
             process_code = "comprehensive_course_registration"
+
+        existing = await self.pick_best_active_registration_instance(student.id, process_code)
+        if existing:
+            await self.set_primary_instance_for_student(student, existing.id)
+            return existing
 
         service = ProcessService(self.db)
         instance = await service.start_process_for_student(

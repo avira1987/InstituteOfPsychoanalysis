@@ -50,6 +50,10 @@ const FALLBACK_PROGRAM_FINANCIAL = {
   start_therapy_first_session_fee_rial: '10000000',
   extra_session_fee_rial: '7500000',
   default_therapy_session_fee_toman: '500000',
+  per_unit_cost_introductory: '',
+  per_unit_cost_comprehensive: '',
+  interview_fee_introductory: '',
+  interview_fee_comprehensive: '',
 }
 
 export default function FinancialDashboard() {
@@ -83,6 +87,10 @@ export default function FinancialDashboard() {
   const [progUpdatedAt, setProgUpdatedAt] = useState(null)
   const [interviewRial, setInterviewRial] = useState('')
   const [tuitionToman, setTuitionToman] = useState('')
+  const [perUnitIntro, setPerUnitIntro] = useState('')
+  const [perUnitComp, setPerUnitComp] = useState('')
+  const [interviewIntro, setInterviewIntro] = useState('')
+  const [interviewComp, setInterviewComp] = useState('')
   const [therapyFirstRial, setTherapyFirstRial] = useState('')
   const [extraRial, setExtraRial] = useState('')
   const [therapySessionToman, setTherapySessionToman] = useState('')
@@ -91,6 +99,46 @@ export default function FinancialDashboard() {
   const [extraSessionTomanHint, setExtraSessionTomanHint] = useState(null)
   const [progSourcesNote, setProgSourcesNote] = useState('')
 
+  const applyProgramDefaultsToState = (d) => {
+    setInterviewRial(String(d.registration_interview_fee_rial ?? ''))
+    setTuitionToman(String(d.registration_tuition_invoice_toman ?? ''))
+    setPerUnitIntro(
+      d.per_unit_cost_introductory != null && Number(d.per_unit_cost_introductory) >= 1000
+        ? String(d.per_unit_cost_introductory)
+        : '',
+    )
+    setPerUnitComp(
+      d.per_unit_cost_comprehensive != null && Number(d.per_unit_cost_comprehensive) >= 1000
+        ? String(d.per_unit_cost_comprehensive)
+        : '',
+    )
+    setInterviewIntro(
+      d.interview_fee_introductory != null && Number(d.interview_fee_introductory) >= 1000
+        ? String(d.interview_fee_introductory)
+        : '',
+    )
+    setInterviewComp(
+      d.interview_fee_comprehensive != null && Number(d.interview_fee_comprehensive) >= 1000
+        ? String(d.interview_fee_comprehensive)
+        : '',
+    )
+    setTherapyFirstRial(String(d.start_therapy_first_session_fee_rial ?? ''))
+    setExtraRial(String(d.extra_session_fee_rial ?? ''))
+    setTherapySessionToman(String(d.default_therapy_session_fee_toman ?? ''))
+    setClassSessionToman(
+      d.class_session_fee_toman != null && Number(d.class_session_fee_toman) > 0
+        ? String(d.class_session_fee_toman)
+        : '',
+    )
+    setCourseSessionToman(
+      d.course_session_fee_toman != null && Number(d.course_session_fee_toman) > 0
+        ? String(d.course_session_fee_toman)
+        : '',
+    )
+    setExtraSessionTomanHint(d.extra_session_fee_toman != null ? d.extra_session_fee_toman : null)
+    setProgUpdatedAt(d.updated_at || null)
+    setProgSourcesNote(typeof d.sources_note === 'string' ? d.sources_note : '')
+  }
   const loadCore = useCallback(() => {
     setErr(null)
     return Promise.all([
@@ -125,35 +173,11 @@ export default function FinancialDashboard() {
     financeApi
       .programFinancialDefaults()
       .then((r) => {
-        const d = r.data || {}
-        setInterviewRial(String(d.registration_interview_fee_rial ?? ''))
-        setTuitionToman(String(d.registration_tuition_invoice_toman ?? ''))
-        setTherapyFirstRial(String(d.start_therapy_first_session_fee_rial ?? ''))
-        setExtraRial(String(d.extra_session_fee_rial ?? ''))
-        setTherapySessionToman(String(d.default_therapy_session_fee_toman ?? ''))
-        setClassSessionToman(
-          d.class_session_fee_toman != null && Number(d.class_session_fee_toman) > 0
-            ? String(d.class_session_fee_toman)
-            : '',
-        )
-        setCourseSessionToman(
-          d.course_session_fee_toman != null && Number(d.course_session_fee_toman) > 0
-            ? String(d.course_session_fee_toman)
-            : '',
-        )
-        setExtraSessionTomanHint(d.extra_session_fee_toman != null ? d.extra_session_fee_toman : null)
-        setProgUpdatedAt(d.updated_at || null)
-        setProgSourcesNote(typeof d.sources_note === 'string' ? d.sources_note : '')
+        applyProgramDefaultsToState(r.data || {})
         setProgLoaded(true)
       })
       .catch(() => {
-        setInterviewRial(FALLBACK_PROGRAM_FINANCIAL.registration_interview_fee_rial)
-        setTuitionToman(FALLBACK_PROGRAM_FINANCIAL.registration_tuition_invoice_toman)
-        setTherapyFirstRial(FALLBACK_PROGRAM_FINANCIAL.start_therapy_first_session_fee_rial)
-        setExtraRial(FALLBACK_PROGRAM_FINANCIAL.extra_session_fee_rial)
-        setTherapySessionToman(FALLBACK_PROGRAM_FINANCIAL.default_therapy_session_fee_toman)
-        setClassSessionToman('')
-        setCourseSessionToman('')
+        applyProgramDefaultsToState(FALLBACK_PROGRAM_FINANCIAL)
         setExtraSessionTomanHint(
           Number(FALLBACK_PROGRAM_FINANCIAL.extra_session_fee_rial) / 10,
         )
@@ -175,13 +199,34 @@ export default function FinancialDashboard() {
         const n = parseFloat(s)
         return Number.isNaN(n) ? null : n
       }
-      const ri1 = parseIntSafe(interviewRial)
+      const parseOptionalRial = (v) => {
+        if (String(v).trim() === '') return null
+        return parseIntSafe(v)
+      }
+      const puIntro = parseOptionalRial(perUnitIntro)
+      const puComp = parseOptionalRial(perUnitComp)
+      const ivIntro = parseOptionalRial(interviewIntro)
+      const ivComp = parseOptionalRial(interviewComp)
+      const ri1 =
+        parseIntSafe(interviewRial) ??
+        (ivIntro != null && ivIntro >= 1000 ? ivIntro : null)
       const tuition = parseFloatSafe(tuitionToman)
       const st = parseIntSafe(therapyFirstRial)
       const ex = parseIntSafe(extraRial)
       const th = parseFloatSafe(therapySessionToman)
+      for (const [label, val] of [
+        ['هزینه هر واحد آشنایی', puIntro],
+        ['هزینه هر واحد جامع', puComp],
+        ['هزینه مصاحبه آشنایی', ivIntro],
+        ['هزینه مصاحبه جامع', ivComp],
+      ]) {
+        if (val != null && val < 1000) {
+          setErr(`${label} (ریال) باید خالی یا حداقل ۱۰۰۰ باشد.`)
+          return
+        }
+      }
       if (ri1 == null || ri1 < 1000) {
-        setErr('هزینهٔ مصاحبه (ریال) باید حداقل ۱۰۰۰ باشد.')
+        setErr('هزینهٔ مصاحبهٔ ثبت‌نام یا مصاحبهٔ آشنایی (ریال) باید حداقل ۱۰۰۰ باشد.')
         return
       }
       if (tuition == null || tuition <= 0) {
@@ -210,41 +255,27 @@ export default function FinancialDashboard() {
         setErr('«پیش‌فرض هر جلسه دوره» باید خالی یا عدد نامنفی باشد.')
         return
       }
-      const r = await financeApi.patchProgramFinancialDefaults({
-        registration_interview_fee_rial: ri1,
+      const body = {
+        registration_interview_fee_rial: ivIntro != null && ivIntro >= 1000 ? ivIntro : ri1,
         registration_tuition_invoice_toman: tuition,
         start_therapy_first_session_fee_rial: st,
         extra_session_fee_rial: ex,
         default_therapy_session_fee_toman: th,
         class_session_fee_toman: cl,
         course_session_fee_toman: cr,
-      })
-      const d = r.data || {}
-      setInterviewRial(String(d.registration_interview_fee_rial ?? ''))
-      setTuitionToman(String(d.registration_tuition_invoice_toman ?? ''))
-      setTherapyFirstRial(String(d.start_therapy_first_session_fee_rial ?? ''))
-      setExtraRial(String(d.extra_session_fee_rial ?? ''))
-      setTherapySessionToman(String(d.default_therapy_session_fee_toman ?? ''))
-      setClassSessionToman(
-        d.class_session_fee_toman != null && Number(d.class_session_fee_toman) > 0
-          ? String(d.class_session_fee_toman)
-          : '',
-      )
-      setCourseSessionToman(
-        d.course_session_fee_toman != null && Number(d.course_session_fee_toman) > 0
-          ? String(d.course_session_fee_toman)
-          : '',
-      )
-      setExtraSessionTomanHint(d.extra_session_fee_toman != null ? d.extra_session_fee_toman : null)
-      setProgUpdatedAt(d.updated_at || null)
-      setProgSourcesNote(typeof d.sources_note === 'string' ? d.sources_note : '')
+      }
+      if (puIntro != null) body.per_unit_cost_introductory = puIntro
+      if (puComp != null) body.per_unit_cost_comprehensive = puComp
+      if (ivIntro != null) body.interview_fee_introductory = ivIntro
+      if (ivComp != null) body.interview_fee_comprehensive = ivComp
+      const r = await financeApi.patchProgramFinancialDefaults(body)
+      applyProgramDefaultsToState(r.data || {})
     } catch (e) {
       setErr(e.response?.data?.detail || e.message)
     } finally {
       setProgSaving(false)
     }
   }
-
   const saveInstallmentSettings = async () => {
     setErr(null)
     setInstSaving(true)
@@ -433,10 +464,10 @@ export default function FinancialDashboard() {
             </p>
           ) : null}
           <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.75 }}>
-            این مقادیر برای <strong>پرداخت پیش‌فرض ثبت‌نام</strong> (مصاحبه و شهریه)، <strong>آغاز درمان آموزشی</strong>{' '}
-            و <strong>جلسه اضافه درمان</strong> استفاده می‌شوند. مبالغ پیش‌فرض هر جلسهٔ{' '}
-            <strong>کلاس</strong> و <strong>دورهٔ جلسه‌ای</strong> در زمینهٔ پرداخت جلسات درمان به‌صورت مرجع (راهنما) به
-            پنل دانشجو اضافه می‌شود؛ مبلغ واقعی هر فرایند ممکن است در همان فرایند ست شود.
+            فیلدهای <strong>شهریه و مصاحبهٔ ترم</strong> و <strong>سایر پیش‌فرض‌های پرداخت</strong> با فرم
+            آماده‌سازی ترم پاییز یکسان‌اند. مبالغ پیش‌فرض هر جلسهٔ <strong>کلاس</strong> و{' '}
+            <strong>دورهٔ جلسه‌ای</strong> در زمینهٔ پرداخت جلسات درمان به‌صورت مرجع (راهنما) به پنل دانشجو
+            اضافه می‌شود؛ مبلغ واقعی هر فرایند ممکن است در همان فرایند ست شود.
             {extraSessionTomanHint != null && (
               <span>
                 {' '}
@@ -446,8 +477,72 @@ export default function FinancialDashboard() {
             )}
           </p>
           <p style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
-            درگاه پرداخت مبلغ را به ریال می‌گیرد؛ فاکتور داخلی شهریه به تومان است.
+            درگاه پرداخت مبلغ را به ریال می‌گیرد؛ فاکتور داخلی شهریه به تومان است. فاکتور یکجای ثبت‌نام فقط وقتی
+            استفاده می‌شود که محاسبهٔ «واحد × هزینهٔ هر واحد» ممکن نباشد.
           </p>
+          <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem' }}>شهریه و مصاحبهٔ ترم (مشترک با آماده‌سازی)</h4>
+          <div
+            style={{
+              display: 'grid',
+              gap: '1rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              alignItems: 'flex-end',
+              marginBottom: '1.25rem',
+            }}
+          >
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">هزینه هر واحد آشنایی (ریال)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="numeric"
+                value={perUnitIntro}
+                onChange={(e) => setPerUnitIntro(e.target.value)}
+                placeholder="از آماده‌سازی ترم"
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">هزینه هر واحد جامع (ریال)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="numeric"
+                value={perUnitComp}
+                onChange={(e) => setPerUnitComp(e.target.value)}
+                placeholder="از آماده‌سازی ترم"
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">هزینه مصاحبه آشنایی (ریال)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="numeric"
+                value={interviewIntro}
+                onChange={(e) => {
+                  setInterviewIntro(e.target.value)
+                  setInterviewRial(e.target.value)
+                }}
+                placeholder="از آماده‌سازی ترم"
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">هزینه مصاحبه جامع (ریال)</label>
+              <input
+                className="form-input"
+                type="text"
+                inputMode="numeric"
+                value={interviewComp}
+                onChange={(e) => setInterviewComp(e.target.value)}
+                placeholder="از آماده‌سازی ترم"
+                style={{ direction: 'ltr', textAlign: 'right' }}
+              />
+            </div>
+          </div>
+          <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem' }}>سایر پیش‌فرض‌های پرداخت</h4>
           <div
             style={{
               display: 'grid',
@@ -457,7 +552,7 @@ export default function FinancialDashboard() {
             }}
           >
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">هزینه مصاحبه ثبت‌نام (ریال)</label>
+              <label className="form-label">هزینه مصاحبه ثبت‌نام — پشتیبان (ریال)</label>
               <input
                 className="form-input"
                 type="text"
@@ -468,7 +563,7 @@ export default function FinancialDashboard() {
               />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">شهریه / فاکتور ثبت‌نام (تومان)</label>
+              <label className="form-label">شهریه / فاکتور ثبت‌نام — پشتیبان (تومان)</label>
               <input
                 className="form-input"
                 type="text"

@@ -18,6 +18,7 @@ export function operatorTransitions(transitions) {
  */
 export function useSemesterPrepWorkbench(processCode) {
   const [status, setStatus] = useState(null)
+  const [readiness, setReadiness] = useState(null)
   const [instanceDetail, setInstanceDetail] = useState(null)
   const [transitions, setTransitions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +61,7 @@ export function useSemesterPrepWorkbench(processCode) {
     try {
       const res = await semesterPrepApi.getStatus()
       setStatus(res.data)
+      setReadiness(res.data?.readiness || null)
       const code =
         processCode && SEMESTER_PREP_CODES.includes(processCode)
           ? processCode
@@ -77,6 +79,7 @@ export function useSemesterPrepWorkbench(processCode) {
       }
     } catch {
       setStatus(null)
+      setReadiness(null)
       setInstanceDetail(null)
       setTransitions([])
     } finally {
@@ -89,6 +92,17 @@ export function useSemesterPrepWorkbench(processCode) {
   }, [load])
 
   const actionTransitions = useMemo(() => operatorTransitions(transitions), [transitions])
+
+  const reloadReadiness = useCallback(async () => {
+    try {
+      const res = await semesterPrepApi.getReadiness()
+      setReadiness(res.data)
+      return res.data
+    } catch {
+      setReadiness(null)
+      return null
+    }
+  }, [])
 
   const startProcess = useCallback(
     async (code) => {
@@ -137,6 +151,7 @@ export function useSemesterPrepWorkbench(processCode) {
 
   return {
     status,
+    readiness,
     entry,
     resolvedCode,
     instanceId,
@@ -150,6 +165,7 @@ export function useSemesterPrepWorkbench(processCode) {
     busy,
     load,
     loadInstance,
+    reloadReadiness,
     startProcess,
     triggerTransition,
   }

@@ -1,21 +1,38 @@
 /**
- * دروس ترم اول دوره آشنایی — هم‌نام با دمو و تست‌ها (theory_1 … theory_5).
+ * نمایش برچسب دروس از context منتشرشده (بدون کاتالوگ ثابت).
  */
-export const INTRODUCTORY_TERM1_COURSES = [
-  { value: 'theory_1', label_fa: 'تئوری روانکاوی ۱' },
-  { value: 'theory_2', label_fa: 'تئوری روانکاوی ۲' },
-  { value: 'theory_3', label_fa: 'تئوری روانکاوی ۳' },
-  { value: 'theory_4', label_fa: 'تئوری روانکاوی ۴' },
-  { value: 'theory_5', label_fa: 'تئوری روانکاوی ۵' },
-]
 
-const LABEL_BY_VALUE = Object.fromEntries(
-  INTRODUCTORY_TERM1_COURSES.map((c) => [c.value, c.label_fa]),
-)
-
-/** نمایش فارسی آرایهٔ کد درس */
-export function formatCourseCodesDisplay(codes) {
+export function formatCourseCodesDisplay(codes, labels = {}) {
   const list = Array.isArray(codes) ? codes : []
   if (!list.length) return ''
-  return list.map((c) => LABEL_BY_VALUE[c] || c).join('، ')
+  const map = labels && typeof labels === 'object' ? labels : {}
+  return list.map((c) => map[c] || c).join('، ')
 }
+
+/** گزینه‌های درس از context نمونه فرایند (خروجی آماده‌سازی ترم). */
+export function optionsFromContext(contextData) {
+  const ctx = contextData && typeof contextData === 'object' ? contextData : {}
+  const raw = ctx.available_course_options
+  if (Array.isArray(raw) && raw.length) {
+    return raw.map((o) => ({
+      value: String(o.value),
+      label_fa: o.label_fa || String(o.value),
+      day: o.day,
+      time_text: o.time_text,
+      classroom_location: o.classroom_location,
+      instructor_name: o.instructor_name,
+    }))
+  }
+  const codes = ctx.available_courses || ctx.lms?.available_courses || []
+  const labelMap = ctx.course_labels || {}
+  if (Array.isArray(codes) && codes.length) {
+    return codes.map((c) => ({
+      value: String(c),
+      label_fa: labelMap[c] || String(c),
+    }))
+  }
+  return []
+}
+
+export const NO_OFFERINGS_HINT_FA =
+  'لیست دروس این ترم هنوز از فرایند آماده‌سازی ترم منتشر نشده است؛ پس از انتشار توسط انستیتو این بخش فعال می‌شود.'

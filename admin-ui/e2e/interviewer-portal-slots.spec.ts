@@ -189,6 +189,12 @@ test.describe('پنل مصاحبه‌گر — وقت، رزرو دانشجو، �
       await expect(page.getByRole('row').filter({ hasText: toFaDigits(studentCode) })).toBeVisible()
     })
 
+    await test.step('ادمین — تب ثبت نتیجه و فهرست صف', async () => {
+      await page.getByTestId('interviewer-tab-result').click()
+      await expect(page.getByTestId('interview-result-queue')).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: 'فهرست ثبت نتیجهٔ مصاحبه' })).toBeVisible()
+    })
+
     if (userIdForCleanup) {
       await test.step('پاکسازی: غیرفعال‌سازی کاربر دانشجو', async () => {
         try {
