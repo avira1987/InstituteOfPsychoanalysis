@@ -228,7 +228,7 @@ async def lifespan(app: FastAPI):
         logger.info(
             "SMS simulation OFF — no dev popups (SMS_PROVIDER=%s, SMS_SIMULATION_UI=%s)",
             settings.SMS_PROVIDER,
-            getattr(settings, "SMS_SIMULATION_UI", True),
+            getattr(settings, "SMS_SIMULATION_UI", False),
         )
     await _seed_if_empty()
     await _maybe_auto_seed_demo_after_empty_db()

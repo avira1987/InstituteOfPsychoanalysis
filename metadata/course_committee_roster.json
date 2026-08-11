@@ -125,6 +125,12 @@
           "name_fa": "ادريس صالحي",
           "tier": 2,
           "member_kind": "instructor"
+        },
+        {
+          "roster_key": "ta_کمک_مدرس_تست",
+          "name_fa": "کمک‌مدرس تست",
+          "tier": 2,
+          "member_kind": "instructor"
         }
       ],
       "teaching_assistants": [
@@ -159,12 +165,6 @@
           "member_kind": "teaching_assistant",
           "roster_legacy": true,
           "ta_authorized_courses": []
-        },
-        {
-          "roster_key": "ta_کمک_مدرس_تست",
-          "name_fa": "کمک‌مدرس تست",
-          "tier": 3,
-          "member_kind": "teaching_assistant"
         }
       ]
     },

@@ -97,7 +97,7 @@ async def public_sms_simulation_status():
     return {
         "enabled": sms_sim.simulation_popup_enabled(),
         "provider": (s.SMS_PROVIDER or "log").lower(),
-        "simulation_ui": bool(getattr(s, "SMS_SIMULATION_UI", True)),
+        "simulation_ui": bool(getattr(s, "SMS_SIMULATION_UI", False)),
         "mirror_real_sends": sms_sim.simulation_mirror_real_sends(),
         "popup_show_all": sms_sim.simulation_popup_show_all_setting(),
     }

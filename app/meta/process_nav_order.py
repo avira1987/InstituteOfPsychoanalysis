@@ -11,7 +11,7 @@ from typing import Any
 
 from app.meta.sop_registry import get_sop_order_for_process_code
 
-# موج ۱ — حیاتی برای راه‌اندازی مرکز و چرخهٔ اصلی دانشجو
+# موج ۱ — فرایندهای اصلی (چرخه آموزشی و عملیات روزمره)
 _WAVE1_ORDER: tuple[str, ...] = (
     "fall_semester_preparation",
     "winter_semester_preparation",
@@ -20,12 +20,23 @@ _WAVE1_ORDER: tuple[str, ...] = (
     "comprehensive_course_registration",
     "comprehensive_term_start",
     "comprehensive_term_end",
+    "lesson_start_per_term",
     "start_therapy",
     "session_payment",
     "attendance_tracking",
     "supervision_block_transition",
     "class_attendance",
     "thesis_defense_request",
+    # خاتمه دروس
+    "theory_course_completion",
+    "skills_course_completion",
+    "group_supervision_course_completion",
+    "film_observation_course_completion",
+    "film_observation_ta_attendance_completion",
+    "live_therapy_observation_course_completion",
+    "live_therapy_observation_ta_attendance_completion",
+    "live_supervision_course_completion",
+    "article_writing_completion",
 )
 
 # مسیر ورود مرکز — آماده‌سازی ترم پاییز تا پایان ترم آشنایی
@@ -35,16 +46,22 @@ _ONBOARDING_ORDER: tuple[str, ...] = (
     "introductory_term_end",
 )
 
-# موج ۲ — مهم برای پشتیبانی مسیر اصلی
+# موج ۲ — فرایندهای پشتیبانی (کنار مسیر اصلی)
 _WAVE2_ORDER: tuple[str, ...] = (
     "violation_registration",
     "educational_leave",
     "full_education_leave",
     "therapy_completion",
-    "supervision_50h_completion",
-    "internship_readiness_consultation",
-    "theory_course_completion",
     "student_non_registration",
+    "extra_session",
+    "extra_supervision_session",
+    "therapy_session_increase",
+    "supervision_session_increase",
+    "therapy_session_reduction",
+    "supervision_session_reduction",
+    "supervision_interruption",
+    "unannounced_absence_reaction",
+    "unannounced_supervision_absence_reaction",
 )
 
 _WAVE1_INDEX = {code: idx for idx, code in enumerate(_WAVE1_ORDER)}

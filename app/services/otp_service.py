@@ -258,7 +258,7 @@ async def request_otp(db: AsyncSession, phone: str) -> dict:
     if (
         sms_result.get("success", False)
         and provider == "log"
-        and getattr(settings, "SMS_SIMULATION_UI", True)
+        and getattr(settings, "SMS_SIMULATION_UI", False)
     ):
         body_text = sms_result.get("simulated_message") or _otp_login_sms_body_fa(code)
         sid = await sms_simulation.record_simulated_sms_in_request_session(db, phone, body_text, kind="otp")
@@ -305,7 +305,7 @@ async def request_otp(db: AsyncSession, phone: str) -> dict:
         "expires_in": OTP_EXPIRY_SECONDS,
     }
     # پاپ‌آپ تست: log (درخواست) یا mirror پس از ملی‌پیامک
-    if getattr(settings, "SMS_SIMULATION_UI", True):
+    if getattr(settings, "SMS_SIMULATION_UI", False):
         sim_payload = sms_result.get("simulated_sms")
         if sim_payload:
             result["simulated_sms"] = sim_payload

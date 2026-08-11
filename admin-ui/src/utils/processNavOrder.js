@@ -12,12 +12,23 @@ const WAVE1_ORDER = [
   'comprehensive_course_registration',
   'comprehensive_term_start',
   'comprehensive_term_end',
+  'lesson_start_per_term',
   'start_therapy',
   'session_payment',
   'attendance_tracking',
   'supervision_block_transition',
   'class_attendance',
   'thesis_defense_request',
+  // خاتمه دروس
+  'theory_course_completion',
+  'skills_course_completion',
+  'group_supervision_course_completion',
+  'film_observation_course_completion',
+  'film_observation_ta_attendance_completion',
+  'live_therapy_observation_course_completion',
+  'live_therapy_observation_ta_attendance_completion',
+  'live_supervision_course_completion',
+  'article_writing_completion',
 ]
 
 /** @type {readonly string[]} */
@@ -26,10 +37,16 @@ const WAVE2_ORDER = [
   'educational_leave',
   'full_education_leave',
   'therapy_completion',
-  'supervision_50h_completion',
-  'internship_readiness_consultation',
-  'theory_course_completion',
   'student_non_registration',
+  'extra_session',
+  'extra_supervision_session',
+  'therapy_session_increase',
+  'supervision_session_increase',
+  'therapy_session_reduction',
+  'supervision_session_reduction',
+  'supervision_interruption',
+  'unannounced_absence_reaction',
+  'unannounced_supervision_absence_reaction',
 ]
 
 const WAVE1_INDEX = Object.fromEntries(WAVE1_ORDER.map((code, idx) => [code, idx]))

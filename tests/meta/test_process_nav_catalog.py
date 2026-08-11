@@ -74,3 +74,15 @@ def test_process_nav_catalog_includes_nav_tier():
         assert codes["fall_semester_preparation"] == 0
     if "educational_leave" in codes:
         assert codes["educational_leave"] == 1
+    if "theory_course_completion" in codes:
+        assert codes["theory_course_completion"] == 0
+    if "lesson_start_per_term" in codes:
+        assert codes["lesson_start_per_term"] == 0
+    if "extra_session" in codes:
+        assert codes["extra_session"] == 1
+    if "supervision_interruption" in codes:
+        assert codes["supervision_interruption"] == 1
+    if "internship_readiness_consultation" in codes:
+        assert codes["internship_readiness_consultation"] == 2
+    if "supervision_50h_completion" in codes:
+        assert codes["supervision_50h_completion"] == 2

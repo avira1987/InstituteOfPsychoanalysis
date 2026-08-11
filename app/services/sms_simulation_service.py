@@ -79,7 +79,7 @@ def inbox_mobile_for_user(user: User) -> str:
 
 def simulation_recording_enabled() -> bool:
     s = get_settings()
-    return (getattr(s, "SMS_SIMULATION_UI", True) and (s.SMS_PROVIDER or "log").lower() == "log")
+    return (getattr(s, "SMS_SIMULATION_UI", False) and (s.SMS_PROVIDER or "log").lower() == "log")
 
 
 def simulation_popup_enabled() -> bool:
@@ -90,11 +90,11 @@ def simulation_popup_enabled() -> bool:
 def simulation_mirror_real_sends() -> bool:
     """ثبت در outbox برای پاپ‌آپ حتی وقتی ارسال واقعی ملی‌پیامک است."""
     s = get_settings()
-    if not getattr(s, "SMS_SIMULATION_UI", True):
+    if not getattr(s, "SMS_SIMULATION_UI", False):
         return False
     if (s.SMS_PROVIDER or "log").lower() == "log":
         return False
-    return bool(getattr(s, "SMS_SIMULATION_MIRROR_REAL_SEND", True))
+    return bool(getattr(s, "SMS_SIMULATION_MIRROR_REAL_SEND", False))
 
 
 def _popup_watcher_role_set(settings) -> set[str] | None:
@@ -109,7 +109,7 @@ def user_sees_global_sms_popup_feed(user: User) -> bool:
     if not simulation_popup_enabled():
         return False
     settings = get_settings()
-    if not getattr(settings, "SMS_SIMULATION_POPUP_SHOW_ALL", True):
+    if not getattr(settings, "SMS_SIMULATION_POPUP_SHOW_ALL", False):
         return False
     role = (user.role or "").strip().lower()
     if role == "student":
@@ -122,7 +122,7 @@ def user_sees_global_sms_popup_feed(user: User) -> bool:
 
 def simulation_popup_show_all_setting() -> bool:
     """مقدار تنظیمات برای پاسخ API (UI)."""
-    return bool(getattr(get_settings(), "SMS_SIMULATION_POPUP_SHOW_ALL", True))
+    return bool(getattr(get_settings(), "SMS_SIMULATION_POPUP_SHOW_ALL", False))
 
 
 def student_sms_history_available() -> bool:

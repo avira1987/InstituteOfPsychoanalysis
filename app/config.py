@@ -54,13 +54,14 @@ class Settings(BaseSettings):
     # SMS — مقادیر از ENV_FILE_PATH (پیش‌فرض `.env` ریشهٔ مخزن) یا متغیرهای محیطی سیستم / Docker
     SMS_PROVIDER: str = "log"  # "log" | "mellipayamak"
     # وقتی SMS_PROVIDER=log؛ ذخیرهٔ متن در DB و polling پنل برای پاپ‌آپ تست (با mellipayamak بی‌اثر)
-    SMS_SIMULATION_UI: bool = True
+    # پیش‌فرض خاموش — برای تست لوکال در .env یا conftest روشن کنید
+    SMS_SIMULATION_UI: bool = False
     # پاپ‌آپ «همه پیامک‌های شبیه‌سازی‌شده به هر گیرنده» برای نقش‌های غیردانشجو (طبق POPUP_WATCHER_ROLES)، قابل خاموش با false
-    SMS_SIMULATION_POPUP_SHOW_ALL: bool = True
+    SMS_SIMULATION_POPUP_SHOW_ALL: bool = False
     # خالی = تمام نقش‌ها به جز student؛ یا admin,staff,finance
     SMS_SIMULATION_POPUP_WATCHER_ROLES: str = ""
     # با SMS_PROVIDER=mellipayamak هم متن را در outbox بگذار تا پاپ‌آپ تست همان لحظه/پولینگ کار کند
-    SMS_SIMULATION_MIRROR_REAL_SEND: bool = True
+    SMS_SIMULATION_MIRROR_REAL_SEND: bool = False
     SMS_API_KEY: str = ""
     # Melipayamak: rest.payamak-panel.com با SMS_USERNAME (نام کاربری پنل، اغلب موبایل ۱۰ رقمی مثل 9032054361)
     # + SMS_PASSWORD یا همان APIKey پنل در SMS_API_KEY به‌جای password؛ فقط SMS_API_KEY بدون username → console.melipayamak.com
