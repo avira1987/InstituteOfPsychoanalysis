@@ -74,6 +74,20 @@ MULTI_ROLES: dict[str, list[str]] = {
         "progress_committee_project",
         "progress_committee_scientific",
     ],
+    "supervision_committee1": [
+        "supervision_committee",
+        "monitoring_committee_officer",
+    ],
+    "therapy_committee_chair1": [
+        "therapy_committee_chair",
+        "therapy_committee_executor",
+    ],
+    "course_committee1": [
+        "course_committee",
+        "course_committee_executive",
+        "scientific_officer_course_committee",
+        "course_committee_scientific",
+    ],
 }
 
 # (username, student_code, course_type, weekly_sessions)

@@ -199,6 +199,20 @@ class TransitionManager:
         )
         if required in _PROGRESS and actor_role in _PROGRESS:
             return True
+        # کمیته نظارت + مسئول علمی اجرایی — حساب واحد
+        _SUPERVISION = (
+            "supervision_committee",
+            "monitoring_committee_officer",
+        )
+        if required in _SUPERVISION and actor_role in _SUPERVISION:
+            return True
+        # کمیته درمان — مسئول پروژه + مجری روی حساب واحد
+        _THERAPY = (
+            "therapy_committee_chair",
+            "therapy_committee_executor",
+        )
+        if required in _THERAPY and actor_role in _THERAPY:
+            return True
         # کمیته پیشرفت — در پنل همان کارمندان/معاون
         if required == "progress_committee" and actor_role in (
             "staff",
@@ -217,6 +231,15 @@ class TransitionManager:
             "site_manager",
             "deputy_education",
         ):
+            return True
+        # کمیته دروس — اجرایی + علمی روی حساب واحد
+        _COURSE = (
+            "course_committee",
+            "course_committee_executive",
+            "course_committee_scientific",
+            "scientific_officer_course_committee",
+        )
+        if required in _COURSE and actor_role in _COURSE:
             return True
         # کمیته دروس (پنل course_committee): تقویم، لیست دروس، نهایی‌سازی.
         if required == "course_committee_executive" and actor_role == "course_committee":

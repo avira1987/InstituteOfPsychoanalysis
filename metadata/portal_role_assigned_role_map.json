@@ -63,10 +63,38 @@
         "course_committee_executive",
         "scientific_officer_course_committee"
       ],
-      "note_fa": "پنل کمیته دروس: مراحل آماده‌سازی ترم (تقویم، لیست دروس، نهایی‌سازی) طبق process_role_user_resolver."
+      "note_fa": "کمیته دروس: اجرایی + علمی روی یک حساب واحد."
+    },
+    "course_committee_executive": {
+      "assigned_roles": [
+        "course_committee",
+        "course_committee_scientific",
+        "course_committee_executive",
+        "scientific_officer_course_committee"
+      ],
+      "note_fa": "با حساب واحد کمیته دروس ادغام شده."
+    },
+    "course_committee_scientific": {
+      "assigned_roles": [
+        "course_committee",
+        "course_committee_scientific",
+        "course_committee_executive",
+        "scientific_officer_course_committee"
+      ],
+      "note_fa": "با حساب واحد کمیته دروس ادغام شده."
+    },
+    "scientific_officer_course_committee": {
+      "assigned_roles": [
+        "course_committee",
+        "course_committee_scientific",
+        "course_committee_executive",
+        "scientific_officer_course_committee"
+      ],
+      "note_fa": "با حساب واحد کمیته دروس ادغام شده."
     },
     "monitoring_committee_officer": {
-      "assigned_roles": ["monitoring_committee_officer"]
+      "assigned_roles": ["monitoring_committee_officer", "supervision_committee"],
+      "note_fa": "با حساب واحد کمیته نظارت ادغام شده؛ نگاشت دوطرفه برای سازگاری."
     },
     "progress_committee": {
       "assigned_roles": ["progress_committee", "progress_committee_project", "progress_committee_scientific"]
@@ -75,16 +103,19 @@
       "assigned_roles": ["education_committee"]
     },
     "supervision_committee": {
-      "assigned_roles": ["supervision_committee"]
+      "assigned_roles": ["supervision_committee", "monitoring_committee_officer"],
+      "note_fa": "کمیته نظارت + مسئول علمی اجرایی کمیته نظارت روی یک حساب."
     },
     "specialized_commission": {
       "assigned_roles": ["specialized_commission"]
     },
     "therapy_committee_chair": {
-      "assigned_roles": ["therapy_committee_chair"]
+      "assigned_roles": ["therapy_committee_chair", "therapy_committee_executor"],
+      "note_fa": "مسئول پروژه + مجری کمیته درمان روی یک حساب."
     },
     "therapy_committee_executor": {
-      "assigned_roles": ["therapy_committee_executor"]
+      "assigned_roles": ["therapy_committee_chair", "therapy_committee_executor"],
+      "note_fa": "با حساب واحد کمیته درمان ادغام شده؛ نگاشت دوطرفه برای سازگاری."
     },
     "student": {
       "assigned_roles": []

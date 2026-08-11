@@ -32,6 +32,35 @@ def test_list_track_options_includes_analytic_track():
 
 
 @pytest.mark.asyncio
+async def test_roster_detail_role_and_course_count(db_session):
+    from app.services.course_committee_roster_service import list_track_roster_detail
+
+    detail = await list_track_roster_detail(db_session, track="analytic_psychotherapy")
+    instructors = detail["instructors"]
+    assert instructors
+    edu = next(
+        (m for m in instructors if m.get("role_code") == "educational_instructor"),
+        None,
+    )
+    assert edu is not None
+    assert edu["role_label_fa"] == "مدرس آموزشی"
+    assert "course_count" in edu
+    assert isinstance(edu["course_count"], int)
+
+    regular = next(
+        (m for m in instructors if m.get("role_code") == "instructor"),
+        None,
+    )
+    assert regular is not None
+    assert regular["role_label_fa"] == "مدرس"
+
+    tas = detail["teaching_assistants"]
+    if tas:
+        assert tas[0]["role_label_fa"] == "کمک‌مدرس"
+        assert tas[0]["role_code"] == "teaching_assistant"
+
+
+@pytest.mark.asyncio
 async def test_list_instructors_for_track_without_users(db_session):
     members = await list_members(
         db_session, track="analytic_psychotherapy", kind="instructor"
@@ -151,18 +180,176 @@ def test_add_course_to_catalog(tmp_path, monkeypatch):
 
     catalog_file = tmp_path / "course_catalog.json"
     catalog_file.write_text('{"courses": []}', encoding="utf-8")
+    roster_file = tmp_path / "course_committee_roster.json"
+    roster_file.write_text(
+        '{"tracks": [{"code": "analytic_psychotherapy", "name_fa": "روان‌درمانی تحلیلی",'
+        ' "instructors": [], "teaching_assistants": []}]}',
+        encoding="utf-8",
+    )
     monkeypatch.setattr(svc, "_CATALOG_PATH", catalog_file)
+    monkeypatch.setattr(svc, "_ROSTER_PATH", roster_file)
     svc.reload_catalog_cache()
+    svc.reload_roster_cache()
 
-    created = svc.add_course_to_catalog("درس آزمایشی جدید")
+    with pytest.raises(ValueError, match="رسته"):
+        svc.add_course_to_catalog("درس بدون رسته")
+
+    with pytest.raises(ValueError, match="رسته"):
+        svc.add_course_to_catalog("درس آزمایشی جدید", track="missing_track")
+
+    created = svc.add_course_to_catalog("درس آزمایشی جدید", track="analytic_psychotherapy")
     assert created["label_fa"] == "درس آزمایشی جدید"
     assert created["value"]
+    assert created["track"] == "analytic_psychotherapy"
 
     opts = svc.list_course_catalog_options()
-    assert any(o["label_fa"] == "درس آزمایشی جدید" for o in opts)
+    assert any(o["label_fa"] == "درس آزمایشی جدید" and o.get("track") == "analytic_psychotherapy" for o in opts)
 
-    again = svc.add_course_to_catalog("درس آزمایشی جدید")
+    again = svc.add_course_to_catalog("درس آزمایشی جدید", track="analytic_psychotherapy")
     assert again["label_fa"] == "درس آزمایشی جدید"
+    assert again["track"] == "analytic_psychotherapy"
+
+
+def test_update_and_remove_course_and_track(tmp_path, monkeypatch):
+    from app.services import course_committee_roster_service as svc
+
+    catalog_file = tmp_path / "course_catalog.json"
+    catalog_file.write_text('{"courses": []}', encoding="utf-8")
+    roster_file = tmp_path / "course_committee_roster.json"
+    roster_file.write_text(
+        '{"tracks": [{"code": "analytic_psychotherapy", "name_fa": "روان‌درمانی تحلیلی",'
+        ' "instructors": [], "teaching_assistants": []}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(svc, "_CATALOG_PATH", catalog_file)
+    monkeypatch.setattr(svc, "_ROSTER_PATH", roster_file)
+    svc.reload_catalog_cache()
+    svc.reload_roster_cache()
+
+    created = svc.add_course_to_catalog("درس موقت", track="analytic_psychotherapy")
+    updated = svc.update_course_in_catalog(
+        created["value"],
+        name_fa="درس موقت ویرایش‌شده",
+        track="analytic_psychotherapy",
+    )
+    assert updated["label_fa"] == "درس موقت ویرایش‌شده"
+
+    assert svc.remove_course_from_catalog(created["value"]) is True
+    assert all(o["value"] != created["value"] for o in svc.list_course_catalog_options())
+
+    extra = svc.add_track_to_roster("رسته موقت تست")
+    assert svc.remove_track_from_roster(extra["value"]) is True
+
+    with pytest.raises(ValueError, match="درس"):
+        svc.add_course_to_catalog("وابسته", track="analytic_psychotherapy")
+        svc.remove_track_from_roster("analytic_psychotherapy")
+
+
+@pytest.mark.asyncio
+async def test_update_member_courses_roster_only(tmp_path, monkeypatch, db_session):
+    from app.services import course_committee_roster_service as svc
+
+    catalog_file = tmp_path / "course_catalog.json"
+    catalog_file.write_text(
+        '{"courses": [{"value": "c1", "label_fa": "درس یک", "track": "t1"}]}',
+        encoding="utf-8",
+    )
+    roster_file = tmp_path / "course_committee_roster.json"
+    roster_file.write_text(
+        '{"tracks": [{"code": "t1", "name_fa": "رسته تست",'
+        ' "instructors": [{"roster_key": "i1", "name_fa": "مدرس تست"}],'
+        ' "teaching_assistants": []}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(svc, "_CATALOG_PATH", catalog_file)
+    monkeypatch.setattr(svc, "_ROSTER_PATH", roster_file)
+    svc.reload_catalog_cache()
+    svc.reload_roster_cache()
+
+    result = await svc.update_member_courses(
+        db_session,
+        track="t1",
+        kind="instructor",
+        name_fa="مدرس تست",
+        authorized_courses=["c1"],
+    )
+    assert result["authorized_courses"] == ["c1"]
+    detail = await svc.list_track_roster_detail(db_session, track="t1")
+    inst = next(m for m in detail["instructors"] if m["label_fa"] == "مدرس تست")
+    assert "c1" in (inst.get("authorized_courses") or [])
+
+
+@pytest.mark.asyncio
+async def test_change_member_kind_instructor_to_ta(tmp_path, monkeypatch, db_session):
+    from app.services import course_committee_roster_service as svc
+
+    catalog_file = tmp_path / "course_catalog.json"
+    catalog_file.write_text(
+        '{"courses": [{"value": "c1", "label_fa": "درس یک", "track": "t1"}]}',
+        encoding="utf-8",
+    )
+    roster_file = tmp_path / "course_committee_roster.json"
+    roster_file.write_text(
+        '{"tracks": [{"code": "t1", "name_fa": "رسته تست",'
+        ' "instructors": [{"roster_key": "i1", "name_fa": "مدرس تست",'
+        ' "instructor_authorized_courses": ["c1"], "authorized_courses": ["c1"]}],'
+        ' "teaching_assistants": []}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(svc, "_CATALOG_PATH", catalog_file)
+    monkeypatch.setattr(svc, "_ROSTER_PATH", roster_file)
+    svc.reload_catalog_cache()
+    svc.reload_roster_cache()
+
+    result = await svc.change_member_kind(
+        db_session,
+        track="t1",
+        kind="instructor",
+        name_fa="مدرس تست",
+        new_role="teaching_assistant",
+    )
+    assert result["role_code"] == "teaching_assistant"
+    assert result["kind"] == "teaching_assistant"
+    detail = await svc.list_track_roster_detail(db_session, track="t1")
+    assert all(m["label_fa"] != "مدرس تست" for m in detail["instructors"])
+    ta = next(m for m in detail["teaching_assistants"] if m["label_fa"] == "مدرس تست")
+    assert ta["role_code"] == "teaching_assistant"
+    assert "c1" in (ta.get("authorized_courses") or [])
+
+
+@pytest.mark.asyncio
+async def test_change_member_kind_to_educational_instructor(tmp_path, monkeypatch, db_session):
+    from app.services import course_committee_roster_service as svc
+
+    catalog_file = tmp_path / "course_catalog.json"
+    catalog_file.write_text('{"courses": []}', encoding="utf-8")
+    roster_file = tmp_path / "course_committee_roster.json"
+    roster_file.write_text(
+        '{"tracks": [{"code": "t1", "name_fa": "رسته تست",'
+        ' "educational_instructor": {"roster_key": "educational_instructor",'
+        ' "name_fa": "مدرس آموزشی قبلی", "tier": 0},'
+        ' "instructors": [{"roster_key": "i1", "name_fa": "مدرس جدید", "tier": 2}],'
+        ' "teaching_assistants": []}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(svc, "_CATALOG_PATH", catalog_file)
+    monkeypatch.setattr(svc, "_ROSTER_PATH", roster_file)
+    svc.reload_catalog_cache()
+    svc.reload_roster_cache()
+
+    result = await svc.change_member_kind(
+        db_session,
+        track="t1",
+        kind="instructor",
+        name_fa="مدرس جدید",
+        new_role="educational_instructor",
+    )
+    assert result["role_code"] == "educational_instructor"
+    detail = await svc.list_track_roster_detail(db_session, track="t1")
+    edu = next(m for m in detail["instructors"] if m.get("role_code") == "educational_instructor")
+    assert edu["label_fa"] == "مدرس جدید"
+    # مدرس آموزشی قبلی باید به لیست مدرسین عادی برود
+    assert any(m["label_fa"] == "مدرس آموزشی قبلی" for m in detail["instructors"])
 
 
 @pytest.mark.asyncio

@@ -35,8 +35,8 @@ async def test_readiness_with_catalog_track_instructor_and_interviewer(
 ):
     reload_catalog_cache()
     reload_roster_cache()
-    add_course_to_catalog("درس آزمایشی")
     track = add_track_to_roster("رسته آزمایشی")
+    add_course_to_catalog("درس آزمایشی", track=track["value"])
     add_member_to_roster(track=track["value"], kind="instructor", name_fa="مدرس آزمایشی")
 
     interviewer = User(

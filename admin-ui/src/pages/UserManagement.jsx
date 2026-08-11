@@ -349,6 +349,9 @@ export default function UserManagement() {
     if (!editingUser) return
     try {
       const userPatch = { ...editForm }
+      // نام فارسی فقط از «اطلاعات شخصی تکمیلی» قابل تغییر است
+      delete userPatch.full_name_fa
+      delete userPatch.full_name_en
       const rolesNow = editForm.roles?.length ? editForm.roles : getUserRoles(editingUser)
       if (isAdmin) {
         userPatch.roles = rolesNow
@@ -534,14 +537,17 @@ export default function UserManagement() {
             </div>
             <div className="modal-body">
               <p className="user-mgmt-modal-lead">
-                <strong>{editingUser.full_name_fa || editingUser.username}</strong>
-                <span className="user-mgmt-modal-meta" dir="ltr">{editingUser.username}</span>
+                <strong>
+                  {(editForm.roles || []).includes('student') && hasStudentProfile
+                    ? (
+                        `${(regProfileForm.first_name_fa || '').trim()} ${(regProfileForm.last_name_fa || '').trim()}`.trim()
+                        || editingUser.full_name_fa
+                        || editingUser.username
+                      )
+                    : (editingUser.full_name_fa || editingUser.username)}
+                </strong>
               </p>
               <form onSubmit={handleUpdate} className="user-mgmt-modal-form">
-                <div className="form-group">
-                  <label className="form-label">نام فارسی</label>
-                  <input className="form-input" value={editForm.full_name_fa} onChange={(e) => setEditForm({ ...editForm, full_name_fa: e.target.value })} />
-                </div>
                 {isAdmin ? (
                   <RoleChipsPicker
                     roles={editForm.roles}

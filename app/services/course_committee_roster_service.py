@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.operational_models import User
 
 MemberKind = Literal["instructor", "teaching_assistant"]
+# نقش نمایشی در ستون «نوع» (شامل مدرس آموزشی)
+RosterRoleCode = Literal["instructor", "teaching_assistant", "educational_instructor"]
 
 _ROSTER_PATH = Path(__file__).resolve().parents[2] / "metadata" / "course_committee_roster.json"
 _roster_cache: dict[str, Any] | None = None
@@ -100,13 +102,20 @@ def _option_from_user(user: User) -> dict[str, Any]:
 
 
 def _option_from_roster_entry(entry: dict[str, Any], user: User | None) -> dict[str, Any]:
+    roster_name = (entry.get("name_fa") or "").strip()
     if user is not None:
         opt = _option_from_user(user)
         opt["source"] = "roster+user"
+        # نام چارت برای همگام‌سازی مجوز دروس اولویت دارد
+        if roster_name:
+            opt["name_fa"] = roster_name
+            if not (opt.get("label_fa") or "").strip():
+                opt["label_fa"] = roster_name
         return opt
     return {
         "value": entry.get("roster_key") or entry.get("name_fa"),
-        "label_fa": entry.get("name_fa") or "",
+        "label_fa": roster_name,
+        "name_fa": roster_name,
         "tier": entry.get("tier"),
         "source": "roster",
     }
@@ -217,6 +226,17 @@ def merge_course_grants(meta: dict[str, Any], kind: MemberKind, courses: list[st
     return meta
 
 
+def _roster_role_for_entry(entry: dict[str, Any], kind: MemberKind) -> tuple[str, str]:
+    """کد و برچسب فارسی نقش در چارت: educational_instructor | instructor | teaching_assistant."""
+    if kind == "teaching_assistant":
+        return "teaching_assistant", "کمک‌مدرس"
+    key = str(entry.get("roster_key") or "").strip()
+    tier = entry.get("tier")
+    if key == "educational_instructor" or tier == 0:
+        return "educational_instructor", "مدرس آموزشی"
+    return "instructor", "مدرس"
+
+
 def _member_detail_from_sources(
     entry: dict[str, Any],
     user: User | None,
@@ -235,14 +255,26 @@ def _member_detail_from_sources(
         or _is_institutional_roster_entry(entry, kind)
     )
     opt = _option_from_roster_entry(entry, user)
+    name_fa = (
+        (opt.get("name_fa") or "").strip()
+        or (entry.get("name_fa") or "").strip()
+        or (opt.get("label_fa") or "").strip()
+    )
+    role_code, role_label_fa = _roster_role_for_entry(entry, kind)
+    courses = list(user_grants or entry_grants or [])
     return {
         **opt,
         "kind": kind,
         "track": track,
+        "name_fa": name_fa,
+        "label_fa": (opt.get("label_fa") or name_fa),
         "user_id": str(user.id) if user else None,
         "roster_key": entry.get("roster_key"),
         "roster_legacy": roster_legacy,
-        "authorized_courses": list(user_grants or entry_grants or []),
+        "authorized_courses": courses,
+        "course_count": len(courses),
+        "role_code": role_code,
+        "role_label_fa": role_label_fa,
         "tier": entry.get("tier") if entry.get("tier") is not None else meta.get("tier"),
     }
 
@@ -562,24 +594,156 @@ def resolve_track_for_course(course_value: str) -> str | None:
     return None
 
 
-def add_course_to_catalog(label_fa: str) -> dict[str, str]:
+def add_course_to_catalog(label_fa: str, track: str | None = None) -> dict[str, str]:
     label = (label_fa or "").strip()
     if not label:
         raise ValueError("نام درس خالی است")
+    track_code = (track or "").strip()
+    if not track_code:
+        raise ValueError("انتخاب رسته الزامی است")
+    if get_track_by_code(track_code) is None:
+        raise ValueError("رسته انتخاب‌شده در فهرست رسته‌های موجود نیست")
     data = _load_catalog_file()
     courses = list(data.get("courses") or [])
     for row in courses:
         if isinstance(row, dict) and (row.get("label_fa") or "").strip() == label:
-            return {"value": row.get("value") or label, "label_fa": label}
+            existing_track = (row.get("track") or "").strip()
+            if existing_track and existing_track != track_code:
+                raise ValueError("این درس قبلاً با رسته دیگری ثبت شده است")
+            if not existing_track:
+                row["track"] = track_code
+                data["courses"] = courses
+                _save_catalog_file(data)
+            out: dict[str, str] = {
+                "value": str(row.get("value") or label),
+                "label_fa": label,
+                "track": track_code,
+            }
+            return out
     value = _slug_code("course", label)
     used = {str(r.get("value")) for r in courses if isinstance(r, dict)}
     if value in used:
         value = f"{value}_{len(used)}"
-    opt = {"value": value, "label_fa": label}
+    opt = {"value": value, "label_fa": label, "track": track_code}
     courses.append(opt)
     data["courses"] = courses
     _save_catalog_file(data)
     return opt
+
+
+def _course_row_to_option(row: dict[str, Any]) -> dict[str, str]:
+    value = str(row.get("value") or row.get("label_fa") or "").strip()
+    label = str(row.get("label_fa") or value).strip()
+    out: dict[str, str] = {"value": value, "label_fa": label}
+    track = str(row.get("track") or "").strip()
+    if track:
+        out["track"] = track
+    return out
+
+
+def update_course_in_catalog(
+    course_value: str,
+    *,
+    name_fa: str | None = None,
+    track: str | None = None,
+) -> dict[str, str]:
+    """ویرایش نام یا رستهٔ یک درس در کاتالوگ."""
+    code = (course_value or "").strip()
+    if not code:
+        raise ValueError("کد درس خالی است")
+    new_label = (name_fa or "").strip() if name_fa is not None else None
+    new_track = (track or "").strip() if track is not None else None
+    if new_label is None and new_track is None:
+        raise ValueError("هیچ فیلدی برای ویرایش ارسال نشده است")
+    if new_label is not None and not new_label:
+        raise ValueError("نام درس خالی است")
+    if new_track is not None:
+        if not new_track:
+            raise ValueError("انتخاب رسته الزامی است")
+        if get_track_by_code(new_track) is None:
+            raise ValueError("رسته انتخاب‌شده در فهرست رسته‌های موجود نیست")
+
+    data = _load_catalog_file()
+    courses = list(data.get("courses") or [])
+    target: dict[str, Any] | None = None
+    for row in courses:
+        if not isinstance(row, dict):
+            continue
+        val = str(row.get("value") or "").strip()
+        if val == code:
+            target = row
+            break
+    if target is None:
+        raise ValueError("درس در کاتالوگ یافت نشد")
+
+    if new_label is not None:
+        for row in courses:
+            if row is target or not isinstance(row, dict):
+                continue
+            if (row.get("label_fa") or "").strip() == new_label:
+                raise ValueError("درس دیگری با این نام وجود دارد")
+        target["label_fa"] = new_label
+    if new_track is not None:
+        target["track"] = new_track
+
+    data["courses"] = courses
+    _save_catalog_file(data)
+    return _course_row_to_option(target)
+
+
+def remove_course_from_catalog(course_value: str) -> bool:
+    """حذف درس از کاتالوگ و پاک‌سازی ارجاع در مجوزهای چارت JSON."""
+    code = (course_value or "").strip()
+    if not code:
+        return False
+    data = _load_catalog_file()
+    courses = list(data.get("courses") or [])
+    filtered: list[Any] = []
+    removed = False
+    for row in courses:
+        if not isinstance(row, dict):
+            filtered.append(row)
+            continue
+        val = str(row.get("value") or "").strip()
+        if val == code:
+            removed = True
+            continue
+        filtered.append(row)
+    if not removed:
+        return False
+    data["courses"] = filtered
+    _save_catalog_file(data)
+    _scrub_course_from_roster_grants(code)
+    return True
+
+
+def _scrub_course_from_roster_grants(course_value: str) -> None:
+    code = (course_value or "").strip()
+    if not code:
+        return
+    data = _load_roster_file()
+    changed = False
+    grant_keys = ("authorized_courses", "instructor_authorized_courses", "ta_authorized_courses")
+    for track in data.get("tracks") or []:
+        if not isinstance(track, dict):
+            continue
+        for kind_key in ("instructors", "teaching_assistants"):
+            members = track.get(kind_key) or []
+            if not isinstance(members, list):
+                continue
+            for member in members:
+                if not isinstance(member, dict):
+                    continue
+                for gk in grant_keys:
+                    grants = member.get(gk)
+                    if not isinstance(grants, list):
+                        continue
+                    cleaned = [g for g in grants if str(g).strip() != code]
+                    if len(cleaned) != len(grants):
+                        member[gk] = cleaned
+                        changed = True
+    if changed:
+        _save_roster_file(data)
 
 
 def add_track_to_roster(name_fa: str, code: str | None = None) -> dict[str, str]:
@@ -608,6 +772,86 @@ def add_track_to_roster(name_fa: str, code: str | None = None) -> dict[str, str]
     return {"value": track_code, "label_fa": label}
 
 
+def remove_track_from_roster(track_code: str) -> bool:
+    """حذف رسته خالی؛ اگر عضو یا درس وابسته داشته باشد خطا می‌دهد."""
+    code = (track_code or "").strip()
+    if not code:
+        raise ValueError("کد رسته خالی است")
+    track_def = get_track_by_code(code)
+    if track_def is None:
+        return False
+
+    instructors = list(track_def.get("instructors") or [])
+    tas = list(track_def.get("teaching_assistants") or [])
+    edu = track_def.get("educational_instructor")
+    has_edu = isinstance(edu, dict) and bool((edu.get("name_fa") or "").strip())
+    if instructors or tas or has_edu:
+        raise ValueError("ابتدا همهٔ مدرسین و کمک‌مدرسین این رسته را حذف کنید")
+
+    linked_courses = [
+        c for c in list_course_catalog_options() if (c.get("track") or "").strip() == code
+    ]
+    if linked_courses:
+        raise ValueError(
+            f"این رسته به {len(linked_courses)} درس در کاتالوگ متصل است — ابتدا درس‌ها را حذف یا جابه‌جا کنید"
+        )
+
+    data = _load_roster_file()
+    tracks = list(data.get("tracks") or [])
+    filtered = [t for t in tracks if not (isinstance(t, dict) and t.get("code") == code)]
+    if len(filtered) == len(tracks):
+        return False
+    data["tracks"] = filtered
+    _save_roster_file(data)
+    return True
+
+
+def _extract_member_entry_from_track(
+    track_def: dict[str, Any],
+    *,
+    name_fa: str,
+    kind: MemberKind | None = None,
+) -> dict[str, Any] | None:
+    """برداشتن ردیف عضو از چارت (مدرس آموزشی / مدرسین / کمک‌مدرسین) و برگرداندن کپی آن."""
+    label = (name_fa or "").strip()
+    if not label:
+        return None
+
+    if kind in (None, "instructor"):
+        edu = track_def.get("educational_instructor")
+        if isinstance(edu, dict) and (edu.get("name_fa") or "").strip() == label:
+            track_def["educational_instructor"] = None
+            return dict(edu)
+
+    if kind in (None, "instructor"):
+        members = list(track_def.get("instructors") or [])
+        kept: list[Any] = []
+        found: dict[str, Any] | None = None
+        for row in members:
+            if found is None and isinstance(row, dict) and (row.get("name_fa") or "").strip() == label:
+                found = dict(row)
+                continue
+            kept.append(row)
+        if found is not None:
+            track_def["instructors"] = kept
+            return found
+
+    if kind in (None, "teaching_assistant"):
+        members = list(track_def.get("teaching_assistants") or [])
+        kept = []
+        found = None
+        for row in members:
+            if found is None and isinstance(row, dict) and (row.get("name_fa") or "").strip() == label:
+                found = dict(row)
+                continue
+            kept.append(row)
+        if found is not None:
+            track_def["teaching_assistants"] = kept
+            return found
+
+    return None
+
+
 def remove_member_from_roster(
     *,
     track: str,
@@ -628,17 +872,203 @@ def remove_member_from_roster(
     if track_def is None:
         return False
 
-    key_field = "instructors" if kind == "instructor" else "teaching_assistants"
-    members = list(track_def.get(key_field) or [])
-    filtered = [
-        m for m in members
-        if not (isinstance(m, dict) and (m.get("name_fa") or "").strip() == label)
-    ]
-    if len(filtered) == len(members):
+    extracted = _extract_member_entry_from_track(track_def, name_fa=label, kind=kind)
+    if extracted is None:
         return False
-    track_def[key_field] = filtered
     _save_roster_file(data)
     return True
+
+
+def _place_member_entry(
+    track_def: dict[str, Any],
+    *,
+    role: RosterRoleCode,
+    entry: dict[str, Any],
+    authorized_courses: list[str] | None = None,
+) -> dict[str, Any]:
+    """قرار دادن ردیف در محل مناسب بر اساس نوع نقش؛ دروس مجاز را همگام می‌کند."""
+    label = (entry.get("name_fa") or "").strip()
+    courses = (
+        [str(c).strip() for c in authorized_courses if str(c or "").strip()]
+        if authorized_courses is not None
+        else list(
+            entry.get("instructor_authorized_courses")
+            or entry.get("ta_authorized_courses")
+            or entry.get("authorized_courses")
+            or []
+        )
+    )
+
+    if role == "educational_instructor":
+        # مدرس آموزشی قبلی → مدرس عادی
+        prev = track_def.get("educational_instructor")
+        if isinstance(prev, dict) and (prev.get("name_fa") or "").strip() and (
+            (prev.get("name_fa") or "").strip() != label
+        ):
+            demoted = dict(prev)
+            demoted["tier"] = 2
+            demoted["member_kind"] = "instructor"
+            demoted["roster_key"] = _slug_code("inst", (demoted.get("name_fa") or "edu"))
+            instructors = list(track_def.get("instructors") or [])
+            instructors.append(demoted)
+            track_def["instructors"] = instructors
+
+        new_entry = {
+            "roster_key": "educational_instructor",
+            "name_fa": label,
+            "tier": 0,
+            "member_kind": "instructor",
+        }
+        if courses:
+            new_entry["instructor_authorized_courses"] = list(courses)
+            new_entry["authorized_courses"] = list(courses)
+        track_def["educational_instructor"] = new_entry
+        return new_entry
+
+    member_kind: MemberKind = "teaching_assistant" if role == "teaching_assistant" else "instructor"
+    key_field = "teaching_assistants" if member_kind == "teaching_assistant" else "instructors"
+    members = list(track_def.get(key_field) or [])
+    # اگر هم‌نام از قبل هست، جایگزین کن
+    members = [
+        m
+        for m in members
+        if not (isinstance(m, dict) and (m.get("name_fa") or "").strip() == label)
+    ]
+    roster_key = entry.get("roster_key") or _slug_code(
+        "ta" if member_kind == "teaching_assistant" else "inst", label
+    )
+    if roster_key == "educational_instructor":
+        roster_key = _slug_code("inst", label)
+    new_entry = {
+        "roster_key": roster_key,
+        "name_fa": label,
+        "tier": 3 if member_kind == "teaching_assistant" else 2,
+        "member_kind": member_kind,
+    }
+    if courses:
+        grants_key = _authorized_courses_key(member_kind)
+        new_entry[grants_key] = list(courses)
+        new_entry["authorized_courses"] = list(courses)
+    members.append(new_entry)
+    track_def[key_field] = members
+    return new_entry
+
+
+async def change_member_kind(
+    db: AsyncSession,
+    *,
+    track: str,
+    name_fa: str,
+    kind: MemberKind,
+    new_role: RosterRoleCode,
+    user_id: Optional[Any] = None,
+    authorized_courses: list[str] | None = None,
+) -> dict[str, Any]:
+    """تغییر نوع عضو در چارت: مدرس / کمک‌مدرس / مدرس آموزشی."""
+    import uuid as _uuid
+
+    from sqlalchemy.orm.attributes import flag_modified
+
+    track_code = (track or "").strip()
+    label = (name_fa or "").strip()
+    if not track_code:
+        raise ValueError("رسته انتخاب نشده است")
+    if not label:
+        raise ValueError("نام عضو خالی است")
+    if new_role not in ("instructor", "teaching_assistant", "educational_instructor"):
+        raise ValueError("نوع عضو نامعتبر است")
+
+    data = _load_roster_file()
+    track_def = None
+    for t in data.get("tracks") or []:
+        if isinstance(t, dict) and t.get("code") == track_code:
+            track_def = t
+            break
+    if track_def is None:
+        raise ValueError("رسته یافت نشد")
+
+    extracted = _extract_member_entry_from_track(track_def, name_fa=label, kind=kind)
+    if extracted is None:
+        extracted = {"name_fa": label, "roster_key": _slug_code("inst", label)}
+
+    courses = authorized_courses
+    if courses is None:
+        courses = list(
+            extracted.get(_authorized_courses_key(kind))
+            or extracted.get("authorized_courses")
+            or []
+        )
+
+    placed = _place_member_entry(
+        track_def,
+        role=new_role,
+        entry=extracted,
+        authorized_courses=courses,
+    )
+    _save_roster_file(data)
+
+    target_kind: MemberKind = (
+        "teaching_assistant" if new_role == "teaching_assistant" else "instructor"
+    )
+
+    user: User | None = None
+    if user_id is not None:
+        uid = user_id if isinstance(user_id, _uuid.UUID) else _uuid.UUID(str(user_id))
+        user = await db.get(User, uid)
+        if user is None:
+            raise ValueError("کاربر یافت نشد")
+    else:
+        role_candidates = {kind, target_kind, "instructor", "teaching_assistant"}
+        stmt = select(User).where(User.is_active.is_(True), User.role.in_(list(role_candidates)))
+        result = await db.execute(stmt)
+        for u in result.scalars().all():
+            if (u.full_name_fa or "").strip() != label:
+                continue
+            if _user_matches_track(u, track_code):
+                user = u
+                break
+
+    if user is not None:
+        user.role = target_kind
+        meta = _apply_member_grants_to_meta(
+            dict(user.profile_meta or {}),
+            kind=target_kind,
+            roster_legacy=False,
+            authorized_courses=courses,
+        )
+        other_key = _authorized_courses_key(
+            "teaching_assistant" if target_kind == "instructor" else "instructor"
+        )
+        meta.pop(other_key, None)
+        tracks = list(meta.get("course_committee_tracks") or [])
+        if track_code not in tracks:
+            tracks.append(track_code)
+        meta["course_committee_tracks"] = tracks
+        meta["member_kind"] = target_kind
+        meta["roster_key"] = placed.get("roster_key") or meta.get("roster_key")
+        if new_role == "educational_instructor":
+            meta["tier"] = 0
+            meta["roster_key"] = "educational_instructor"
+        elif isinstance(meta.get("tier"), int) and meta.get("tier") == 0:
+            meta["tier"] = 2
+        user.profile_meta = meta
+        flag_modified(user, "profile_meta")
+        await _sync_student_ta_flags(db, user, kind=target_kind)
+        await db.flush()
+
+    return {
+        "name_fa": label,
+        "kind": target_kind,
+        "role_code": new_role,
+        "role_label_fa": {
+            "instructor": "مدرس",
+            "teaching_assistant": "کمک‌مدرس",
+            "educational_instructor": "مدرس آموزشی",
+        }[new_role],
+        "user_id": str(user.id) if user else None,
+        "authorized_courses": courses or [],
+        "roster_key": placed.get("roster_key"),
+    }
 
 
 def add_member_to_roster(
@@ -748,62 +1178,152 @@ def _sync_roster_entry_grants(
     name_fa: str,
     roster_legacy: bool | None = None,
     authorized_courses: list[str] | None = None,
-) -> None:
-    """همگام‌سازی پرچم legacy و مجوز دروس در ردیف JSON چارت."""
+) -> bool:
+    """همگام‌سازی پرچم legacy و مجوز دروس در ردیف JSON چارت. True اگر ردیفی به‌روز شد."""
     label = (name_fa or "").strip()
     track_code = (track or "").strip()
     if not label or not track_code:
-        return
+        return False
     data = _load_roster_file()
-    track_def = get_track_by_code(track_code)
+    track_def = None
+    for t in data.get("tracks") or []:
+        if isinstance(t, dict) and t.get("code") == track_code:
+            track_def = t
+            break
     if track_def is None:
-        return
+        return False
+
+    grants_key = _authorized_courses_key(kind)
+    cleaned = (
+        [str(c).strip() for c in authorized_courses if str(c or "").strip()]
+        if authorized_courses is not None
+        else None
+    )
+
+    def _apply(row: dict[str, Any]) -> bool:
+        changed = False
+        if roster_legacy is not None:
+            row["roster_legacy"] = bool(roster_legacy)
+            changed = True
+        if cleaned is not None:
+            row[grants_key] = list(cleaned)
+            row["authorized_courses"] = list(cleaned)
+            # پس از تعیین دروس مشخص، پرچم «همه دروس» برداشته می‌شود
+            row["roster_legacy"] = False
+            changed = True
+        return changed
+
+    updated = False
+    if kind == "instructor":
+        edu = track_def.get("educational_instructor")
+        if isinstance(edu, dict) and (edu.get("name_fa") or "").strip() == label:
+            updated = _apply(edu) or updated
+            track_def["educational_instructor"] = edu
+
     key_field = "instructors" if kind == "instructor" else "teaching_assistants"
     members = list(track_def.get(key_field) or [])
-    grants_key = _authorized_courses_key(kind)
-    updated = False
     for row in members:
         if not isinstance(row, dict) or (row.get("name_fa") or "").strip() != label:
             continue
-        if roster_legacy is not None:
-            row["roster_legacy"] = bool(roster_legacy)
-            updated = True
-        if authorized_courses is not None:
-            row[grants_key] = [str(c).strip() for c in authorized_courses if str(c or "").strip()]
+        if _apply(row):
             updated = True
     if updated:
         track_def[key_field] = members
-        data["tracks"] = [
-            t if not (isinstance(t, dict) and t.get("code") == track_code) else track_def
-            for t in (data.get("tracks") or [])
-        ]
         _save_roster_file(data)
+    return updated
 
 
-async def _sync_student_ta_flags(
+async def update_member_courses(
     db: AsyncSession,
-    user: User,
     *,
+    track: str,
     kind: MemberKind,
-) -> None:
-    """برای کاربران دانشجو — پرچم‌های کمک‌مدرسی/مدرس در extra_data."""
+    name_fa: str,
+    authorized_courses: list[str],
+    user_id: Optional[Any] = None,
+) -> dict[str, Any]:
+    """ویرایش دروس مجاز عضو — هم برای کاربر متصل و هم عضو فقط‌چارت."""
+    import uuid as _uuid
+
     from sqlalchemy.orm.attributes import flag_modified
 
-    from app.models.operational_models import Student
+    track_code = (track or "").strip()
+    label = (name_fa or "").strip()
+    if not track_code:
+        raise ValueError("رسته انتخاب نشده است")
+    if not label:
+        raise ValueError("نام عضو خالی است")
+    if get_track_by_code(track_code) is None:
+        raise ValueError("رسته یافت نشد")
 
-    result = await db.execute(select(Student).where(Student.user_id == user.id))
-    student = result.scalars().first()
-    if student is None:
-        return
-    extra = dict(student.extra_data or {})
-    if kind == "teaching_assistant":
-        extra["is_teaching_assistant"] = True
-        extra["ta_registered"] = True
-    elif kind == "instructor":
-        extra["rank"] = "instructor"
-    student.extra_data = extra
-    flag_modified(student, "extra_data")
-    await db.flush()
+    courses = [str(c).strip() for c in (authorized_courses or []) if str(c or "").strip()]
+    user: User | None = None
+    if user_id is not None:
+        uid = user_id if isinstance(user_id, _uuid.UUID) else _uuid.UUID(str(user_id))
+        user = await db.get(User, uid)
+        if user is None:
+            raise ValueError("کاربر یافت نشد")
+    else:
+        role_for_kind = "instructor" if kind == "instructor" else "teaching_assistant"
+        stmt = select(User).where(User.is_active.is_(True), User.role == role_for_kind)
+        result = await db.execute(stmt)
+        for u in result.scalars().all():
+            if (u.full_name_fa or "").strip() == label and _user_matches_track(u, track_code):
+                user = u
+                break
+
+    synced = _sync_roster_entry_grants(
+        track=track_code,
+        kind=kind,
+        name_fa=label,
+        roster_legacy=False,
+        authorized_courses=courses,
+    )
+
+    if user is not None:
+        meta = _apply_member_grants_to_meta(
+            dict(user.profile_meta or {}),
+            kind=kind,
+            roster_legacy=False,
+            authorized_courses=courses,
+        )
+        tracks = list(meta.get("course_committee_tracks") or [])
+        if track_code not in tracks:
+            tracks.append(track_code)
+        meta["course_committee_tracks"] = tracks
+        meta["member_kind"] = kind
+        user.profile_meta = meta
+        flag_modified(user, "profile_meta")
+        await db.flush()
+        return {
+            "name_fa": label,
+            "user_id": str(user.id),
+            "authorized_courses": courses,
+            "source": "user",
+        }
+
+    if not synced:
+        # عضو فقط در لیست کاربران بدون ردیف JSON — ایجاد ردیف سبک در چارت
+        add_member_to_roster(
+            track=track_code,
+            kind=kind,
+            name_fa=label,
+            roster_legacy=False,
+            authorized_courses=courses,
+        )
+        return {
+            "name_fa": label,
+            "user_id": None,
+            "authorized_courses": courses,
+            "source": "roster",
+        }
+
+    return {
+        "name_fa": label,
+        "user_id": None,
+        "authorized_courses": courses,
+        "source": "roster",
+    }
 
 
 async def update_member_grants(
@@ -848,6 +1368,32 @@ async def update_member_grants(
 
     await db.flush()
     return user
+
+
+async def _sync_student_ta_flags(
+    db: AsyncSession,
+    user: User,
+    *,
+    kind: MemberKind,
+) -> None:
+    """برای کاربران دانشجو — پرچم‌های کمک‌مدرسی/مدرس در extra_data."""
+    from sqlalchemy.orm.attributes import flag_modified
+
+    from app.models.operational_models import Student
+
+    result = await db.execute(select(Student).where(Student.user_id == user.id))
+    student = result.scalars().first()
+    if student is None:
+        return
+    extra = dict(student.extra_data or {})
+    if kind == "teaching_assistant":
+        extra["is_teaching_assistant"] = True
+        extra["ta_registered"] = True
+    elif kind == "instructor":
+        extra["rank"] = "instructor"
+    student.extra_data = extra
+    flag_modified(student, "extra_data")
+    await db.flush()
 
 
 async def link_user_to_roster(

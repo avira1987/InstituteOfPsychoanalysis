@@ -1094,8 +1094,31 @@ class RosterMemberDelete(BaseModel):
     name_fa: str = Field(..., min_length=1)
 
 
+class RosterMemberCoursesUpdate(BaseModel):
+    track: str = Field(..., min_length=1)
+    kind: Literal["instructor", "teaching_assistant"]
+    name_fa: str = Field(..., min_length=1)
+    authorized_courses: list[str] = Field(default_factory=list)
+    user_id: Optional[uuid.UUID] = None
+
+
+class RosterMemberKindUpdate(BaseModel):
+    track: str = Field(..., min_length=1)
+    kind: Literal["instructor", "teaching_assistant"]
+    name_fa: str = Field(..., min_length=1)
+    new_role: Literal["instructor", "teaching_assistant", "educational_instructor"]
+    user_id: Optional[uuid.UUID] = None
+    authorized_courses: Optional[list[str]] = None
+
+
 class CourseCatalogCreate(BaseModel):
     name_fa: str = Field(..., min_length=1)
+    track: str = Field(..., min_length=1, description="کد رسته از فهرست رسته‌های موجود")
+
+
+class CourseCatalogUpdate(BaseModel):
+    name_fa: Optional[str] = Field(None, min_length=1)
+    track: Optional[str] = Field(None, min_length=1, description="کد رسته از فهرست رسته‌های موجود")
 
 
 @router.post("/course-committee-roster/tracks")
@@ -1111,6 +1134,22 @@ async def create_course_committee_track(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"track": track}
+
+
+@router.delete("/course-committee-roster/tracks/{track_code}")
+async def delete_course_committee_track(
+    track_code: str,
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    from app.services.course_committee_roster_service import remove_track_from_roster
+
+    try:
+        removed = remove_track_from_roster(track_code)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not removed:
+        raise HTTPException(status_code=404, detail="رسته یافت نشد")
+    return {"ok": True}
 
 
 @router.post("/course-committee-roster/members")
@@ -1186,6 +1225,55 @@ async def link_course_committee_member(
                 "authorized_courses": (user.profile_meta or {}).get(grants_key) or [],
             }
         }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/course-committee-roster/members/courses")
+async def update_course_committee_member_courses(
+    body: RosterMemberCoursesUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    """ویرایش دروس مجاز مدرس/کمک‌مدرس — حتی اگر فقط در چارت JSON باشد."""
+    from app.services.course_committee_roster_service import update_member_courses
+
+    try:
+        member = await update_member_courses(
+            db,
+            track=body.track,
+            kind=body.kind,
+            name_fa=body.name_fa,
+            authorized_courses=body.authorized_courses,
+            user_id=body.user_id,
+        )
+        await db.commit()
+        return {"member": member}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/course-committee-roster/members/kind")
+async def update_course_committee_member_kind(
+    body: RosterMemberKindUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    """تغییر نوع عضو در چارت: مدرس / کمک‌مدرس / مدرس آموزشی."""
+    from app.services.course_committee_roster_service import change_member_kind
+
+    try:
+        member = await change_member_kind(
+            db,
+            track=body.track,
+            kind=body.kind,
+            name_fa=body.name_fa,
+            new_role=body.new_role,
+            user_id=body.user_id,
+            authorized_courses=body.authorized_courses,
+        )
+        await db.commit()
+        return {"member": member}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1269,10 +1357,44 @@ async def create_course_catalog_entry(
     from app.services.course_committee_roster_service import add_course_to_catalog
 
     try:
-        course = add_course_to_catalog(body.name_fa)
+        course = add_course_to_catalog(body.name_fa, track=body.track)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"course": course}
+
+
+@router.patch("/course-catalog/{course_value}")
+async def update_course_catalog_entry(
+    course_value: str,
+    body: CourseCatalogUpdate,
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    from app.services.course_committee_roster_service import update_course_in_catalog
+
+    try:
+        course = update_course_in_catalog(
+            course_value,
+            name_fa=body.name_fa,
+            track=body.track,
+        )
+    except ValueError as e:
+        detail = str(e)
+        status = 404 if "یافت نشد" in detail else 400
+        raise HTTPException(status_code=status, detail=detail)
+    return {"course": course}
+
+
+@router.delete("/course-catalog/{course_value}")
+async def delete_course_catalog_entry(
+    course_value: str,
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    from app.services.course_committee_roster_service import remove_course_from_catalog
+
+    removed = remove_course_from_catalog(course_value)
+    if not removed:
+        raise HTTPException(status_code=404, detail="درس در کاتالوگ یافت نشد")
+    return {"ok": True}
 
 
 @router.get("/course-committee-roster")
@@ -1775,12 +1897,44 @@ class InterviewerCreate(BaseModel):
     phone: Optional[str] = None
 
 
+class InterviewerUpdate(BaseModel):
+    full_name_fa: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+
+_INTERVIEWER_MANAGE_ROLES = ("admin", "deputy_education", "staff", "admissions_officer")
+
+
+def _interviewer_dict(u: User) -> dict:
+    return {
+        "id": str(u.id),
+        "username": u.username,
+        "full_name_fa": u.full_name_fa,
+        "email": u.email,
+        "phone": u.phone,
+        "is_active": u.is_active,
+    }
+
+
+async def _get_active_interviewer_or_404(db: AsyncSession, user_id: str) -> User:
+    try:
+        uid = uuid.UUID(user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail="مصاحبه‌کننده یافت نشد") from e
+    stmt = select(User).where(User.id == uid)
+    user = (await db.execute(stmt)).scalars().first()
+    if not user or not user.is_active or not user_has_role(user, "interviewer", admin_bypass=False):
+        raise HTTPException(status_code=404, detail="مصاحبه‌کننده یافت نشد")
+    return user
+
+
 @router.get("/interviewers")
 async def list_interviewers(
     search: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "deputy_education", "staff", "admissions_officer")),
+    current_user: User = Depends(require_role(*_INTERVIEWER_MANAGE_ROLES)),
 ):
     """فهرست مصاحبه‌کنندگان فعال."""
     from sqlalchemy import or_
@@ -1793,17 +1947,7 @@ async def list_interviewers(
     stmt = stmt.order_by(User.full_name_fa.asc(), User.username.asc()).limit(limit)
     users = (await db.execute(stmt)).scalars().all()
     return {
-        "interviewers": [
-            {
-                "id": str(u.id),
-                "username": u.username,
-                "full_name_fa": u.full_name_fa,
-                "email": u.email,
-                "phone": u.phone,
-                "is_active": u.is_active,
-            }
-            for u in users
-        ],
+        "interviewers": [_interviewer_dict(u) for u in users],
         "count": len(users),
     }
 
@@ -1812,7 +1956,7 @@ async def list_interviewers(
 async def create_interviewer(
     body: InterviewerCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "deputy_education", "staff", "admissions_officer")),
+    current_user: User = Depends(require_role(*_INTERVIEWER_MANAGE_ROLES)),
 ):
     """افزودن مصاحبه‌کنندهٔ فعال برای فرایند آماده‌سازی ترم."""
     from app.api.auth import create_user, UserCreate
@@ -1840,16 +1984,48 @@ async def create_interviewer(
         await db.refresh(user)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {
-        "interviewer": {
-            "id": str(user.id),
-            "username": user.username,
-            "full_name_fa": user.full_name_fa,
-            "email": user.email,
-            "phone": user.phone,
-            "is_active": user.is_active,
-        }
-    }
+    return {"interviewer": _interviewer_dict(user)}
+
+
+@router.patch("/interviewers/{user_id}")
+async def update_interviewer(
+    user_id: str,
+    body: InterviewerUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(*_INTERVIEWER_MANAGE_ROLES)),
+):
+    """ویرایش نام/ایمیل/تلفن مصاحبه‌کنندهٔ فعال در استخر."""
+    user = await _get_active_interviewer_or_404(db, user_id)
+    payload = body.model_dump(exclude_unset=True)
+    if "full_name_fa" in payload:
+        label = (payload.get("full_name_fa") or "").strip()
+        if not label:
+            raise HTTPException(status_code=400, detail="نام فارسی خالی است")
+        user.full_name_fa = label
+    for key in ("email", "phone"):
+        if key in payload:
+            raw = payload.get(key)
+            if isinstance(raw, str):
+                raw = raw.strip() or None
+            setattr(user, key, raw)
+    await db.commit()
+    await db.refresh(user)
+    return {"interviewer": _interviewer_dict(user)}
+
+
+@router.delete("/interviewers/{user_id}")
+async def deactivate_interviewer(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(*_INTERVIEWER_MANAGE_ROLES)),
+):
+    """حذف از استخر فعال (غیرفعال‌سازی حساب مصاحبه‌گر)."""
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="نمی‌توانید حساب خود را از استخر حذف کنید")
+    user = await _get_active_interviewer_or_404(db, user_id)
+    user.is_active = False
+    await db.commit()
+    return {"message": f"مصاحبه‌کننده «{user.full_name_fa or user.username}» از استخر حذف شد", "id": str(user.id)}
 
 
 @router.get("/semester-prep/status")

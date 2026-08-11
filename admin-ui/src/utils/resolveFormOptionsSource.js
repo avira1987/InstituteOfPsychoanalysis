@@ -109,8 +109,12 @@ export async function resolveCourseCatalog() {
   }
 }
 
-export async function createCourseCatalogEntry(nameFa) {
-  const res = await api.post('admin/course-catalog', { name_fa: nameFa })
+export async function createCourseCatalogEntry(nameFa, track) {
+  const trackCode = String(track || '').trim()
+  if (!trackCode) {
+    throw new Error('ابتدا رسته را انتخاب کنید')
+  }
+  const res = await api.post('admin/course-catalog', { name_fa: nameFa, track: trackCode })
   return res.data?.course
 }
 

@@ -7,11 +7,11 @@ import { getSiteLogoUrl } from '../utils/siteLogo'
 import { navItemsForRoles } from '../utils/portalRoleNav'
 import { mapProcessNavItemsFromApi, PROCESS_NAV_PATH_PREFIX } from '../utils/processNavLinks'
 import ProcessNavSidebarSection from './ProcessNavSidebarSection'
-import SidebarNavGroups, { SidebarFooterNavLinks } from './SidebarNavGroups'
+import SidebarNavGroups from './SidebarNavGroups'
 import { PANEL_NOTIFICATIONS_CHANGED_EVENT } from '../utils/panelNotifications'
 import { labelRoleFa } from '../utils/roleLabels'
 import { normalizeNavPath, resolveActiveSidebarNavPath } from '../utils/sidebarNavActive'
-import { groupSidebarNavItems, inferSidebarGroupId } from '../utils/sidebarNavGroups'
+import { inferSidebarGroupId } from '../utils/sidebarNavGroups'
 import { getUserRoles, primaryRole } from '../utils/userRoles'
 
 const SIDEBAR_WIDTH_KEY = 'anistito.sidebarWidth'
@@ -155,10 +155,21 @@ export default function Layout() {
     })
   }, [user, dynamicNavItems, dynamicNavMergeMode, processNavItems])
 
-  const footerNavItems = useMemo(
-    () => groupSidebarNavItems(visibleNav).footerItems,
-    [visibleNav],
-  )
+  const sidebarRoleSummary = useMemo(() => {
+    if (!user) return null
+    const roles = getUserRoles(user)
+    const primary = primaryRole(user)
+    const primaryLabel = labelRoleFa(primary, { includeCode: false })
+    const allLabels = roles
+      .map((r) => labelRoleFa(r, { includeCode: false }))
+      .filter(Boolean)
+      .join('، ')
+    return {
+      primaryLabel,
+      extraCount: Math.max(0, roles.length - 1),
+      allLabels: allLabels || primaryLabel,
+    }
+  }, [user])
 
   const processNavForSidebar = useMemo(
     () => processNavItems.map((item) => ({
@@ -265,11 +276,10 @@ export default function Layout() {
           <div className="sidebar-brand-row">
             <div className="sidebar-brand-main">
               <div className="sidebar-brand-mark" aria-hidden="true">
-                <img src={getSiteLogoUrl()} alt="" className="site-logo-img" width={44} height={51} />
+                <img src={getSiteLogoUrl()} alt="" className="site-logo-img" width={36} height={42} />
               </div>
               <div className="sidebar-brand-text">
                 <h1 className="sidebar-brand-title">انستیتو روانکاوری تهران</h1>
-                <p className="sidebar-brand-sub">Tehran Institute of Psychoanalysis</p>
               </div>
             </div>
             <NotificationBell variant="sidebar" />
@@ -294,33 +304,49 @@ export default function Layout() {
         </nav>
 
         <div className="sidebar-footer">
-          <SidebarFooterNavLinks
-            items={footerNavItems}
-            activeNavPath={activeNavPath}
-            navPendingByPath={navPendingByPath}
-            onNavigate={closeMobile}
-          />
           {user && (
             <div className="sidebar-user-card">
-              <div className="sidebar-user-avatar">
-                {getAvatarUrl(user.avatar_url) ? (
-                  <img src={getAvatarUrl(user.avatar_url)} alt="" />
-                ) : (
-                  (user.full_name_fa || user.username || '?')[0]
-                )}
-              </div>
-              <div className="sidebar-user-info">
-                <div className="sidebar-user-name">{user.full_name_fa || user.username}</div>
-                <div className="sidebar-user-role">
-                  {getUserRoles(user).map((r) => labelRoleFa(r, { includeCode: false })).join('، ') || labelRoleFa(primaryRole(user))}
+              <button
+                type="button"
+                className="sidebar-user-card-main"
+                onClick={() => {
+                  closeMobile()
+                  navigate('/panel/profile')
+                }}
+                title="پروفایل من"
+              >
+                <div className="sidebar-user-avatar">
+                  {getAvatarUrl(user.avatar_url) ? (
+                    <img src={getAvatarUrl(user.avatar_url)} alt="" />
+                  ) : (
+                    (user.full_name_fa || user.username || '?')[0]
+                  )}
                 </div>
-              </div>
+                <div className="sidebar-user-info">
+                  <div className="sidebar-user-name">{user.full_name_fa || user.username}</div>
+                  {sidebarRoleSummary ? (
+                    <div className="sidebar-user-role" title={sidebarRoleSummary.allLabels}>
+                      <span className="sidebar-user-role-primary">{sidebarRoleSummary.primaryLabel}</span>
+                      {sidebarRoleSummary.extraCount > 0 ? (
+                        <span className="sidebar-user-role-extra">
+                          +{sidebarRoleSummary.extraCount.toLocaleString('fa-IR')}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </button>
+              <button
+                type="button"
+                className="sidebar-user-logout"
+                onClick={handleLogout}
+                title="خروج از حساب"
+                aria-label="خروج از حساب"
+              >
+                🚪
+              </button>
             </div>
           )}
-          <button type="button" className="sidebar-link sidebar-link-logout" onClick={handleLogout}>
-            <span className="sidebar-link-icon" aria-hidden="true">🚪</span>
-            <span className="sidebar-link-label">خروج از حساب</span>
-          </button>
         </div>
       </aside>
 

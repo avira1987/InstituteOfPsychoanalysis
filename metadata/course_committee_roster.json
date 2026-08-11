@@ -22,7 +22,16 @@
           "roster_key": "inst_t1_02",
           "name_fa": "علي علوي",
           "tier": 1,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_psychoanalysis_2",
+            "theory_psychoanalysis_3"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_2",
+            "theory_psychoanalysis_3"
+          ]
         },
         {
           "roster_key": "inst_t1_03",
@@ -34,7 +43,16 @@
           "roster_key": "inst_t1_04",
           "name_fa": "فاطمه مجتهد زاده",
           "tier": 1,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_psychoanalysis_3",
+            "theory_psychoanalysis_4"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_3",
+            "theory_psychoanalysis_4"
+          ]
         },
         {
           "roster_key": "inst_t1_05",
@@ -57,12 +75,6 @@
         {
           "roster_key": "inst_t2_01",
           "name_fa": "زهرا رشوند",
-          "tier": 2,
-          "member_kind": "instructor"
-        },
-        {
-          "roster_key": "inst_t2_02",
-          "name_fa": "اميد سينا",
           "tier": 2,
           "member_kind": "instructor"
         },

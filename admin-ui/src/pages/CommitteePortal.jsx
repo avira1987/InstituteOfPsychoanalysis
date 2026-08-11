@@ -182,7 +182,7 @@ export default function CommitteePortal() {
     ) {
       const kindRoles = kindMeta?.portalRoles || []
       if (user?.role === 'admin' || kindRoles.includes(user?.role)) return true
-      if (user?.role === 'supervision_committee' && state === 'supervision_review') return true
+      if (userHasAnyRole(user, ['supervision_committee', 'monitoring_committee_officer']) && state === 'supervision_review') return true
       if (user?.role === 'education_committee' && state === 'education_review') return true
       if (user?.role === 'deputy_education' && state === 'education_review') return true
       return false
@@ -195,7 +195,7 @@ export default function CommitteePortal() {
       processCode === 'unannounced_absence_reaction'
       && state === 'committee_pending'
     ) {
-      if (user?.role === 'therapy_committee_chair' || user?.role === 'admin') return true
+      if (userHasAnyRole(user, ['therapy_committee_chair', 'therapy_committee_executor', 'admin'])) return true
       return false
     }
     if (
@@ -209,11 +209,11 @@ export default function CommitteePortal() {
       processCode === 'student_non_registration'
       && ['list_generated', 'meeting_scheduled', 'meeting_held'].includes(state)
     ) {
-      return user?.role === 'supervision_committee' || user?.role === 'admin'
+      return userHasAnyRole(user, ['supervision_committee', 'monitoring_committee_officer', 'admin'])
     }
     if (processCode === 'upgrade_to_educational_therapist') {
       if (state === 'monitoring_review') {
-        return user?.role === 'supervision_committee' || user?.role === 'admin'
+        return userHasAnyRole(user, ['supervision_committee', 'monitoring_committee_officer', 'admin'])
       }
       if (
         ['interview_scheduling', 'interview_held', 'therapist_committee_review', 'therapy_frequency_escalation'].includes(state)
@@ -224,20 +224,20 @@ export default function CommitteePortal() {
     }
     if (processCode === 'upgrade_to_ta') {
       if (state === 'supervision_review') {
-        return user?.role === 'supervision_committee' || user?.role === 'admin'
+        return userHasAnyRole(user, ['supervision_committee', 'monitoring_committee_officer', 'admin'])
       }
       return false
     }
     if (processCode === 'ta_to_assistant_faculty' && state === 'supervision_review') {
-      return user?.role === 'supervision_committee' || user?.role === 'admin'
+      return userHasAnyRole(user, ['supervision_committee', 'monitoring_committee_officer', 'admin'])
     }
     if (processCode === 'intern_bulk_patient_referral') {
-      if (state === 'supervision_start' && (user?.role === 'supervision_committee' || user?.role === 'admin')) {
+      if (state === 'supervision_start' && userHasAnyRole(user, ['supervision_committee', 'monitoring_committee_officer', 'admin'])) {
         return true
       }
       if (
         state === 'general_therapy_committee_review'
-        && (user?.role === 'therapy_committee_executor' || user?.role === 'admin')
+        && userHasAnyRole(user, ['therapy_committee_chair', 'therapy_committee_executor', 'admin'])
       ) {
         return true
       }

@@ -33,11 +33,59 @@ SUPPORTED_ROLES: list[str] = [
     "supervision_committee",
     "specialized_commission",
     "therapy_committee_chair",
-    "therapy_committee_executor",
     "deputy_education",
-    "monitoring_committee_officer",
     "course_committee",
 ]
+
+# نام کاربری قدیمی / نام نقش → حساب واحد
+_LOGIN_USERNAME_ALIASES: dict[str, str] = {
+    "monitoring_committee_officer": "supervision_committee1",
+    "monitoring_committee_officer1": "supervision_committee1",
+    "progress_committee_project": "progress_committee1",
+    "progress_committee_project1": "progress_committee1",
+    "progress_committee_scientific": "progress_committee1",
+    "progress_committee_scientific1": "progress_committee1",
+    "therapy_committee_executor": "therapy_committee_chair1",
+    "therapy_committee_executor1": "therapy_committee_chair1",
+    "course_committee_executive": "course_committee1",
+    "course_committee_executive1": "course_committee1",
+    "scientific_officer_course_committee": "course_committee1",
+    "scientific_officer_course_committee1": "course_committee1",
+    "course_committee_scientific": "course_committee1",
+    "course_committee_scientific1": "course_committee1",
+}
+
+_LEGACY_UNIFIED_USERNAMES: tuple[str, ...] = (
+    "monitoring_committee_officer1",
+    "progress_committee_project1",
+    "progress_committee_scientific1",
+    "therapy_committee_executor1",
+    "course_committee_executive1",
+    "scientific_officer_course_committee1",
+    "course_committee_scientific1",
+)
+
+_MULTI_ROLES_BY_PRIMARY: dict[str, list[str]] = {
+    "progress_committee": [
+        "progress_committee",
+        "progress_committee_project",
+        "progress_committee_scientific",
+    ],
+    "supervision_committee": [
+        "supervision_committee",
+        "monitoring_committee_officer",
+    ],
+    "therapy_committee_chair": [
+        "therapy_committee_chair",
+        "therapy_committee_executor",
+    ],
+    "course_committee": [
+        "course_committee",
+        "course_committee_executive",
+        "scientific_officer_course_committee",
+        "course_committee_scientific",
+    ],
+}
 
 # کاربران اضافه فقط برای actor_id در ترنزیشن‌های مصاحبه/پذیرش (نقش User = staff)
 EXTRA_SCENARIO_USERS: list[tuple[str, str]] = [
@@ -56,6 +104,9 @@ def resolve_portal_login_username(username: str) -> str:
     u = (username or "").strip()
     if not u or u == "admin":
         return u
+    alias = _LOGIN_USERNAME_ALIASES.get(u)
+    if alias:
+        return alias
     if u.endswith("1"):
         return u
     if u in SUPPORTED_ROLES:
@@ -90,16 +141,8 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
         result = await db.execute(select(User).where(User.username == username))
         user = result.scalars().first()
 
-        # کمیته پیشرفت: پروژه + علمی روی همان حساب واحد
-        roles_list = (
-            [
-                "progress_committee",
-                "progress_committee_project",
-                "progress_committee_scientific",
-            ]
-            if role == "progress_committee"
-            else [role]
-        )
+        # کمیته پیشرفت / نظارت: نقش‌های ادغام‌شده روی همان حساب واحد
+        roles_list = _MULTI_ROLES_BY_PRIMARY.get(role, [role])
 
         if user:
             user.email = email
@@ -164,6 +207,12 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
                 is_active=True,
             )
             db.add(user)
+
+    for legacy_username in _LEGACY_UNIFIED_USERNAMES:
+        result = await db.execute(select(User).where(User.username == legacy_username))
+        legacy = result.scalars().first()
+        if legacy and legacy.is_active:
+            legacy.is_active = False
 
     await ensure_staff_employees(db, password=DEFAULT_PASSWORD)
 

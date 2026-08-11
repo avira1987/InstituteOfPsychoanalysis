@@ -10,7 +10,7 @@
     {
       "value": "theory_psychoanalysis_1",
       "label_fa": "تئوری روانکاوی ۱",
-      "track": "analytic_psychotherapy"
+      "track": "film_observation_1_3_continuous"
     },
     {
       "value": "theory_psychoanalysis_2",
@@ -30,7 +30,7 @@
     {
       "value": "theory_psychoanalysis_5",
       "label_fa": "تئوری روانکاوی ۵",
-      "track": "analytic_psychotherapy"
+      "track": "technique_theory_1_3"
     },
     {
       "value": "theory_technique_1",
@@ -49,11 +49,16 @@
     },
     {
       "value": "course_تست",
-      "label_fa": "تست"
+      "label_fa": "تست",
+      "track": "film_observation_1_3_continuous"
     },
     {
       "value": "course_درس_آزمایشی",
       "label_fa": "درس آزمایشی"
+    },
+    {
+      "value": "course_درس_تستی_جدید",
+      "label_fa": "درس تستی جدید"
     }
   ]
 }

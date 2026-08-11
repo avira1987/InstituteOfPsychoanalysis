@@ -12,12 +12,34 @@ from app.models.operational_models import User
 
 # Metadata assigned_role → portal User.role search order
 _METADATA_TO_PORTAL_ROLES: dict[str, tuple[str, ...]] = {
-    "course_committee_executive": ("course_committee",),
+    "course_committee_executive": (
+        "course_committee_executive",
+        "course_committee",
+        "scientific_officer_course_committee",
+        "course_committee_scientific",
+    ),
     "education_director": ("deputy_education", "admin"),
     "deputy_education_director": ("deputy_education",),
-    "scientific_officer_course_committee": ("course_committee", "staff"),
-    "course_committee_scientific": ("course_committee", "staff"),
-    "course_committee": ("course_committee",),
+    "scientific_officer_course_committee": (
+        "scientific_officer_course_committee",
+        "course_committee",
+        "course_committee_executive",
+        "course_committee_scientific",
+        "staff",
+    ),
+    "course_committee_scientific": (
+        "course_committee_scientific",
+        "course_committee",
+        "scientific_officer_course_committee",
+        "course_committee_executive",
+        "staff",
+    ),
+    "course_committee": (
+        "course_committee",
+        "course_committee_executive",
+        "scientific_officer_course_committee",
+        "course_committee_scientific",
+    ),
     "admissions_officer": ("staff", "site_manager", "deputy_education"),
     "reference_center": ("staff", "admin"),
     "marketing": ("staff", "admin"),
@@ -27,9 +49,22 @@ _METADATA_TO_PORTAL_ROLES: dict[str, tuple[str, ...]] = {
     "staff": ("staff",),
     "deputy_education": ("deputy_education",),
     "admin": ("admin",),
-    "monitoring_committee_officer": ("monitoring_committee_officer",),
-    "therapy_committee_chair": ("therapy_committee_chair",),
-    "therapy_committee_executor": ("therapy_committee_executor",),
+    "monitoring_committee_officer": (
+        "monitoring_committee_officer",
+        "supervision_committee",
+    ),
+    "supervision_committee": (
+        "supervision_committee",
+        "monitoring_committee_officer",
+    ),
+    "therapy_committee_chair": (
+        "therapy_committee_chair",
+        "therapy_committee_executor",
+    ),
+    "therapy_committee_executor": (
+        "therapy_committee_executor",
+        "therapy_committee_chair",
+    ),
     "progress_committee_scientific": (
         "progress_committee_scientific",
         "progress_committee",

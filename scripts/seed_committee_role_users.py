@@ -3,7 +3,11 @@
 ساخت کاربران برای نقش‌های کمیته‌ای که هنوز کاربر فعال ندارند.
 رمز پیش‌فرض: demo123
 
-کمیته پیشرفت + پروژه + علمی → یک حساب واحد: progress_committee1
+حساب‌های واحد:
+  - progress_committee1 ← پیشرفت + پروژه + علمی
+  - supervision_committee1 ← نظارت + مسئول علمی اجرایی
+  - therapy_committee_chair1 ← مسئول پروژه + مجری کمیته درمان
+  - course_committee1 ← اجرایی + علمی کمیته دروس
 
 اجرا:
   docker exec -w /app -e PYTHONPATH=/app anistito-api python /app/scripts/seed_committee_role_users.py
@@ -33,31 +37,68 @@ from app.models.operational_models import User
 
 DEFAULT_PASSWORD = "demo123"
 
-# نقش‌هایی که عنوانشان به کمیته/کمیسیون مربوط است
-# (پیشرفت پروژه/علمی جدا ساخته نمی‌شوند — در UNIFIED_PROGRESS ادغام‌اند)
+# نقش‌هایی که هنوز جدا ساخته می‌شوند (ادغام‌شده‌ها این‌جا نیستند)
 COMMITTEE_ROLES: list[tuple[str, str]] = [
-    ("supervision_committee", "کاربر کمیته نظارت"),
     ("specialized_commission", "کاربر کمیسیون تخصصی"),
-    ("therapy_committee_chair", "مسئول پروژه کمیته درمان"),
-    ("therapy_committee_executor", "مجری کمیته درمان"),
-    ("monitoring_committee_officer", "مسئول علمی اجرایی کمیته نظارت"),
-    ("course_committee_executive", "مسئول اجرایی کمیته دروس"),
-    ("scientific_officer_course_committee", "مسئول علمی کمیته دروس (کد فرایند)"),
     ("education_committee", "کاربر کمیته آموزش"),
-    ("course_committee", "کاربر کمیته دروس"),
-    ("course_committee_scientific", "مسئول علمی کمیته دروس"),
 ]
 
-UNIFIED_PROGRESS_ROLES = [
-    "progress_committee",
-    "progress_committee_project",
-    "progress_committee_scientific",
+UNIFIED_ACCOUNTS: list[dict] = [
+    {
+        "username": "progress_committee1",
+        "primary": "progress_committee",
+        "roles": [
+            "progress_committee",
+            "progress_committee_project",
+            "progress_committee_scientific",
+        ],
+        "full_name": "کاربر کمیته پیشرفت",
+        "legacy": (
+            "progress_committee_project1",
+            "progress_committee_scientific1",
+        ),
+        "meta_key": "unified_progress",
+    },
+    {
+        "username": "supervision_committee1",
+        "primary": "supervision_committee",
+        "roles": [
+            "supervision_committee",
+            "monitoring_committee_officer",
+        ],
+        "full_name": "کاربر کمیته نظارت",
+        "legacy": ("monitoring_committee_officer1",),
+        "meta_key": "unified_supervision",
+    },
+    {
+        "username": "therapy_committee_chair1",
+        "primary": "therapy_committee_chair",
+        "roles": [
+            "therapy_committee_chair",
+            "therapy_committee_executor",
+        ],
+        "full_name": "کاربر کمیته درمان",
+        "legacy": ("therapy_committee_executor1",),
+        "meta_key": "unified_therapy",
+    },
+    {
+        "username": "course_committee1",
+        "primary": "course_committee",
+        "roles": [
+            "course_committee",
+            "course_committee_executive",
+            "scientific_officer_course_committee",
+            "course_committee_scientific",
+        ],
+        "full_name": "کاربر کمیته دروس",
+        "legacy": (
+            "course_committee_executive1",
+            "scientific_officer_course_committee1",
+            "course_committee_scientific1",
+        ),
+        "meta_key": "unified_course_committee",
+    },
 ]
-UNIFIED_PROGRESS_USERNAME = "progress_committee1"
-LEGACY_PROGRESS_USERNAMES = (
-    "progress_committee_project1",
-    "progress_committee_scientific1",
-)
 
 
 def _active_role_codes(users: list[User]) -> set[str]:
@@ -69,50 +110,54 @@ def _active_role_codes(users: list[User]) -> set[str]:
     return out
 
 
-def _ensure_unified_progress(
+def _ensure_unified_account(
     db,
     users: list[User],
     pwd_hash: str,
+    cfg: dict,
     created: list[tuple[str, str, str]],
     reactivated: list[tuple[str, str, str]],
 ) -> None:
-    full_name = "کاربر کمیته پیشرفت"
-    email = f"{UNIFIED_PROGRESS_USERNAME}@committee.anistito.local"
-    existing = next((u for u in users if u.username == UNIFIED_PROGRESS_USERNAME), None)
+    username = cfg["username"]
+    primary = cfg["primary"]
+    roles = list(cfg["roles"])
+    full_name = cfg["full_name"]
+    email = f"{username}@committee.anistito.local"
+    existing = next((u for u in users if u.username == username), None)
     if existing:
-        apply_roles_to_user(existing, UNIFIED_PROGRESS_ROLES, primary="progress_committee")
+        apply_roles_to_user(existing, roles, primary=primary)
         existing.is_active = True
         existing.full_name_fa = full_name
         existing.hashed_password = pwd_hash
         existing.portal_password_plain = DEFAULT_PASSWORD
         existing.email = existing.email or email
         meta = dict(existing.profile_meta or {})
-        meta["unified_progress"] = True
-        meta["committee_roles"] = list(UNIFIED_PROGRESS_ROLES)
+        meta[cfg["meta_key"]] = True
+        meta["committee_roles"] = roles
         existing.profile_meta = meta
-        reactivated.append((UNIFIED_PROGRESS_USERNAME, full_name, "+".join(UNIFIED_PROGRESS_ROLES)))
+        reactivated.append((username, full_name, "+".join(roles)))
     else:
         db.add(
             User(
                 id=uuid.uuid4(),
-                username=UNIFIED_PROGRESS_USERNAME,
+                username=username,
                 email=email,
                 hashed_password=pwd_hash,
                 portal_password_plain=DEFAULT_PASSWORD,
                 full_name_fa=full_name,
-                role="progress_committee",
-                roles=list(UNIFIED_PROGRESS_ROLES),
+                role=primary,
+                roles=roles,
                 is_active=True,
                 profile_meta={
-                    "committee_role": "progress_committee",
-                    "unified_progress": True,
-                    "committee_roles": list(UNIFIED_PROGRESS_ROLES),
+                    "committee_role": primary,
+                    cfg["meta_key"]: True,
+                    "committee_roles": roles,
                 },
             )
         )
-        created.append((UNIFIED_PROGRESS_USERNAME, full_name, "+".join(UNIFIED_PROGRESS_ROLES)))
+        created.append((username, full_name, "+".join(roles)))
 
-    for uname in LEGACY_PROGRESS_USERNAMES:
+    for uname in cfg["legacy"]:
         legacy = next((u for u in users if u.username == uname), None)
         if legacy and legacy.is_active:
             legacy.is_active = False
@@ -129,10 +174,12 @@ async def main() -> int:
         res = await db.execute(select(User))
         users = list(res.scalars().all())
 
-        _ensure_unified_progress(db, users, pwd_hash, created, reactivated)
+        for cfg in UNIFIED_ACCOUNTS:
+            _ensure_unified_account(db, users, pwd_hash, cfg, created, reactivated)
 
         assigned = _active_role_codes(users)
-        assigned.update(UNIFIED_PROGRESS_ROLES)
+        for cfg in UNIFIED_ACCOUNTS:
+            assigned.update(cfg["roles"])
 
         for role, default_name in COMMITTEE_ROLES:
             label = labels.get(role, default_name)
@@ -173,8 +220,9 @@ async def main() -> int:
 
         await db.commit()
 
-    print("=== UNIFIED PROGRESS ===")
-    print(f"{UNIFIED_PROGRESS_USERNAME}\t{DEFAULT_PASSWORD}\t{','.join(UNIFIED_PROGRESS_ROLES)}")
+    print("=== UNIFIED ACCOUNTS ===")
+    for cfg in UNIFIED_ACCOUNTS:
+        print(f"{cfg['username']}\t{DEFAULT_PASSWORD}\t{','.join(cfg['roles'])}")
     print("=== CREATED ===")
     for u, n, r in created:
         print(f"{u}\t{DEFAULT_PASSWORD}\t{n}\t{r}\t{labels.get(r, r)}")

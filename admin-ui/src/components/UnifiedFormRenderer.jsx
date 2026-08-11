@@ -545,7 +545,11 @@ function isCreatableSelectColumn(col) {
 function buildCreateHandler(col, row, columns = []) {
   const src = col.options_source || {}
   if (src.type === 'course_catalog') {
-    return async (nameFa) => createCourseCatalogEntry(nameFa)
+    return async (nameFa) => {
+      const track = resolveRosterTrackForRow(col, row, columns) || String(row?.track || '').trim()
+      if (!track) throw new Error('ابتدا رسته را انتخاب کنید')
+      return createCourseCatalogEntry(nameFa, track)
+    }
   }
   if (src.type === 'course_committee_tracks') {
     return async (nameFa) => createCourseCommitteeTrack(nameFa)

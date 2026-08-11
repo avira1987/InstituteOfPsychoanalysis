@@ -239,6 +239,8 @@ export const interviewerApi = {
       headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
     }),
   create: (body) => api.post('admin/interviewers', body),
+  update: (id, body) => api.patch(`admin/interviewers/${id}`, body),
+  remove: (id) => api.delete(`admin/interviewers/${id}`),
 }
 
 // ─── Dashboard ─────────────────────────────────────────────────
@@ -726,11 +728,21 @@ export const courseCommitteeRosterApi = {
   listMembers: (params) => api.get('admin/course-committee-roster', { params }),
   listCourses: () => api.get('admin/course-catalog'),
   createTrack: (body) => api.post('admin/course-committee-roster/tracks', body),
+  deleteTrack: (trackCode) =>
+    api.delete(`admin/course-committee-roster/tracks/${encodeURIComponent(trackCode)}`),
   createCourse: (body) => api.post('admin/course-catalog', body),
+  updateCourse: (courseValue, body) =>
+    api.patch(`admin/course-catalog/${encodeURIComponent(courseValue)}`, body),
+  deleteCourse: (courseValue) =>
+    api.delete(`admin/course-catalog/${encodeURIComponent(courseValue)}`),
   createMember: (body) => api.post('admin/course-committee-roster/members', body),
   linkMember: (body) => api.post('admin/course-committee-roster/members/link', body),
   updateMember: (userId, body) =>
     api.patch(`admin/course-committee-roster/members/${userId}`, body),
+  updateMemberCourses: (body) =>
+    api.patch('admin/course-committee-roster/members/courses', body),
+  updateMemberKind: (body) =>
+    api.patch('admin/course-committee-roster/members/kind', body),
   deleteMember: (body) => api.delete('admin/course-committee-roster/members', { data: body }),
 }
 
