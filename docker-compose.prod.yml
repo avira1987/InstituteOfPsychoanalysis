@@ -62,6 +62,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
       # 1 = بدون repair_alembic و بدون alembic upgrade (اسکیمای دیتابیس دست‌نخورده می‌ماند)
       SKIP_ALEMBIC_UPGRADE: ${SKIP_ALEMBIC_UPGRADE:-0}
+      # مسیر داخل کانتینر برای فهرست بکاپ‌های روزانه (bind-mount فقط‌خواندنی زیر)
+      BACKUP_DIR: ${BACKUP_DIR:-/backups}
       # پرداخت سپ: در فایل .env کنار همین compose تنظیم کنید؛
       # PAYMENT_PROVIDER=saman، SEP_TERMINAL_ID، SEP_PASSWORD (در صورت نیاز)،
       # PAYMENT_CALLBACK_URL=<همان دامنهٔ عمومی>/api/payment/callback، APP_BASE_URL برای ریدایرکت پس از کال‌بک
@@ -69,6 +71,8 @@ services:
       - "3000:3000"
     volumes:
       - uploads_data:/app/uploads
+      # اسنپ‌شات‌های روزانه روی هاست (فقط‌خواندنی) — پنل ادمین /admin/system/backups
+      - ${HOST_BACKUP_DIR:-/var/backups/anistito}:/backups:ro
     depends_on:
       db:
         condition: service_healthy

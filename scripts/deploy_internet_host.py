@@ -8,6 +8,7 @@
   - پس از موفقیت: قطع xray/v2ray تا سرویس با شبکهٔ عادی کار کند (قابل غیرفعال‌سازی)
   - docker compose -f docker-compose.prod.yml up -d --build api
   - تکمیل .env برای CORS و امنیت
+  - همگام‌سازی Alocom/SMS از .env لوکال به .env هاست (scripts/integration_env_sync.py)
   - اجرای اسکریپت هدرهای Apache (اختیاری)
 
 متغیرهای محیطی:
@@ -164,6 +165,29 @@ def main() -> int:
     sftp.putfo(io.BytesIO(data), remote_zip)
     sftp.close()
     print(f"=== uploaded -> {host}:{remote_zip} ===")
+
+    # همگام‌سازی Alocom/SMS از .env لوکال به .env هاست (قبل از compose up)
+    try:
+        _scripts_dir = str(Path(__file__).resolve().parent)
+        if _scripts_dir not in sys.path:
+            sys.path.insert(0, _scripts_dir)
+        from integration_env_sync import extract_integration_env, upsert_remote_dotenv
+
+        integ = extract_integration_env()
+        if integ:
+            keys = upsert_remote_dotenv(
+                host=host,
+                port=port,
+                user=user,
+                password=pw,
+                remote_dir=remote_dir,
+                updates=integ,
+            )
+            print(f"=== synced integration env ({len(keys)} keys: Alocom/SMS) ===")
+        else:
+            print("=== no local Alocom/SMS keys to sync ===")
+    except Exception as e:
+        print(f"=== warning: integration env sync failed: {e} ===", file=sys.stderr)
 
     remote_script = r"""
 set -e

@@ -1,6 +1,601 @@
 {
-  "_note": "خروجی JSON در metadata/processes/educational_leave.json ذخیره شده است. این فایل برای ارجاع.",
-  "source_file": "../../processes/educational_leave.json",
-  "states_count": 13,
-  "transitions_count": 16
+  "process": {
+    "code": "educational_leave",
+    "name_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها",
+    "name_en": "Temporary Educational Leave from Class Registration",
+    "description": "مدیریت ساختارمند وقفه‌های تحصیلی دانشجویان با هدف حفظ تعادل میان نیازهای شخصی دانشجو و الزامات آموزش روانکاوی. شامل: ثبت درخواست (۱ یا ۲ ترم)، هشدار انترن+۲ترم، تعیین جلسه ظرف ۷ روز، هشدار به معاون در صورت تاخیر، اطلاع‌رسانی جلسه، تصمیم‌گیری کمیته، رد/تایید با اقدامات متمایز برای انترن (۱ یا ۲ ترم)، بازگشت و پایش ثبت‌نام مجدد. یادآوری بازگشت و مهلت ثبت‌نام پس از فعال‌سازی مرخصی به‌صورت خودکار از روی تنظیمات سامانه (فاصلهٔ روز از زمان فعال‌سازی) محاسبه می‌شود نه تاریخ ثابت تقویمی.",
+    "initial_state": "request_form"
+  },
+  "states": [
+    {
+      "code": "request_form",
+      "name_fa": "ثبت درخواست اولیه",
+      "type": "initial",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "ثبت درخواست مرخصی",
+        "student_task_fa": "مدت وقفه (۱ یا ۲ ترم) را در فرم زیر انتخاب کنید؛ پس از ثبت، درخواست برای کمیته پیشرفت ارسال می‌شود.",
+        "student_why_fa": "مرخصی آموزشی با تصویب کمیته، ثبت‌نام کلاس را موقتاً متوقف می‌کند تا تعادل بین نیاز شخصی و الزامات آموزشی حفظ شود."
+      }
+    },
+    {
+      "code": "committee_review",
+      "name_fa": "بررسی و تعیین جلسه توسط کمیته پیشرفت",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "sla_hours": 168,
+      "on_sla_breach_event": "sla_breach_7days",
+      "metadata": {
+        "student_short_fa": "در انتظار کمیته پیشرفت",
+        "student_task_fa": "کمیته پیشرفت درخواست شما را بررسی و زمان جلسه را تعیین می‌کند. پس از اعلام، جزئیات جلسه در همین صفحه نمایش داده می‌شود؛ صفحه را بعداً تازه کنید.",
+        "student_why_fa": "برای تصویب مرخصی، جلسهٔ بررسی با کمیته پیشرفت الزامی است.",
+        "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
+        "operator_short_fa": "بررسی و تعیین جلسه توسط کمیته پیشرفت"
+      }
+    },
+    {
+      "code": "deputy_alerted",
+      "name_fa": "هشدار به معاون مدیر آموزش",
+      "type": "intermediate",
+      "assigned_role": "deputy_education",
+      "metadata": {
+        "reason": "عدم ثبت جلسه ظرف ۷ روز توسط کمیته پیشرفت",
+        "student_short_fa": "در انتظار تعیین جلسه",
+        "student_task_fa": "به‌دلیل تأخیر در تعیین جلسه، پرونده به معاون آموزش ارجاع شده است. منتظر اعلام زمان جلسه بمانید و همین صفحه را تازه کنید.",
+        "student_why_fa": "ثبت جلسه ظرف مهلت قانونی برای ادامهٔ بررسی درخواست شما ضروری است.",
+        "operator_task_fa": "بررسی پرونده و تأیید یا ارجاع.",
+        "operator_short_fa": "هشدار به معاون مدیر آموزش"
+      }
+    },
+    {
+      "code": "session_scheduled",
+      "name_fa": "جلسه تنظیم شد",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "metadata": {
+        "student_short_fa": "زمان جلسه کمیته",
+        "student_task_fa": "زمان و نحوهٔ برگزاری جلسه در همین صفحه (بخش جزئیات پرونده) نمایش داده می‌شود؛ در روز مقرر طبق اعلام کمیته حاضر شوید.",
+        "student_why_fa": "حضور در جلسه کمیته برای توضیح درخواست و دریافت تصمیم نهایی لازم است.",
+        "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
+        "operator_short_fa": "جلسه تنظیم شد"
+      }
+    },
+    {
+      "code": "committee_decision",
+      "name_fa": "برگزاری جلسه و تصمیم‌گیری",
+      "type": "intermediate",
+      "assigned_role": "progress_committee",
+      "metadata": {
+        "student_short_fa": "منتظر تصمیم کمیته",
+        "student_task_fa": "جلسه برگزار شده و کمیته در حال ثبت تصمیم نهایی است. نتیجه (تأیید یا رد) در همین صفحه و با پیامک اعلام می‌شود؛ صفحه را تازه کنید.",
+        "student_why_fa": "پس از جلسه، تصمیم کمیته تعیین می‌کند آیا مرخصی شما تأیید می‌شود یا خیر.",
+        "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
+        "operator_short_fa": "برگزاری جلسه و تصمیم‌گیری"
+      }
+    },
+    {
+      "code": "rejected",
+      "name_fa": "رد درخواست",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "درخواست مرخصی رد شد",
+        "student_task_fa": "علت رد درخواست در همین صفحه نمایش داده می‌شود. در صورت پرسش با کمیته پیشرفت یا پذیرش تماس بگیرید.",
+        "student_why_fa": "رد درخواست معمولاً به‌دلیل عدم انطباق با شرایط مرخصی یا اطلاعات ناقص است."
+      }
+    },
+    {
+      "code": "approved_non_intern",
+      "name_fa": "تایید - دانشجو غیر انترن",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "تأیید نهایی مرخصی",
+        "student_task_fa": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را در سامانه فعال کنید؛ پس از آن ثبت‌نام کلاس برای شما تا زمان بازگشت مسدود می‌شود.",
+        "student_why_fa": "فعال‌سازی نهایی مرخصی ثبت‌نام کلاس را در سامانه متوقف می‌کند تا وقفه رسمی شود."
+      }
+    },
+    {
+      "code": "approved_intern_1term",
+      "name_fa": "تایید - انترن وقفه ۱ ترم",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "تأیید نهایی مرخصی",
+        "student_task_fa": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ سوپرویژن و درمان طبق مصوبه ادامه می‌یابد.",
+        "student_why_fa": "برای انترن با وقفهٔ یک ترم، سوپرویژن و درمان معمولاً ادامه می‌یابد؛ فقط ثبت‌نام کلاس متوقف می‌شود."
+      }
+    },
+    {
+      "code": "approved_intern_2term",
+      "name_fa": "تایید - انترن وقفه ۲ ترم",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "تأیید نهایی مرخصی",
+        "student_task_fa": "با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ پس از آن وضعیت انترنی و سوپروایزر طبق مصوبه به‌روز می‌شود.",
+        "student_why_fa": "وقفهٔ دو ترمی برای انترن ممکن است به لغو انترنی و ارجاع بیماران منجر شود؛ قبل از تأیید هشدار را بخوانید."
+      }
+    },
+    {
+      "code": "on_leave",
+      "name_fa": "در وقفه تحصیلی",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "در وقفه تحصیلی",
+        "student_task_fa": "ثبت‌نام دروس کلاس تا اعلام بازگشت در سامانه برای شما مسدود است. زمان تقریبی یادآوری بازگشت و مهلت اعلام ثبت‌نام ترم در جزئیات همین کارت نمایش داده می‌شود.",
+        "student_why_fa": "در دورهٔ وقفه، ثبت‌نام کلاس متوقف است تا پس از بازگشت دوباره فعال شود."
+      }
+    },
+    {
+      "code": "return_reminder_sent",
+      "name_fa": "یادآوری بازگشت ارسال شد",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "sla_hours": 336,
+      "metadata": {
+        "student_short_fa": "بازگشت به تحصیل",
+        "student_task_fa": "پس از ثبت‌نام واقعی دروس ترم آینده در سامانه، فرم تأیید بازگشت را پر کنید و دکمهٔ «ثبت بازگشت» را بزنید.",
+        "student_why_fa": "ثبت بازگشت در پرتال پس از ثبت‌نام واقعی، دسترسی کلاس را دوباره برای شما باز می‌کند."
+      }
+    },
+    {
+      "code": "returned",
+      "name_fa": "بازگشت به تحصیل",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "بازگشت ثبت شد",
+        "student_task_fa": "بازگشت شما به تحصیل در سامانه ثبت شد. ثبت‌نام کلاس دوباره برای شما فعال است؛ از بخش آموزش و کلاس‌ها ادامه دهید.",
+        "student_why_fa": "پس از تأیید بازگشت، محدودیت ثبت‌نام کلاس برداشته می‌شود."
+      }
+    },
+    {
+      "code": "violation_registered",
+      "name_fa": "ثبت تخلف عدم بازگشت",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "تخلف عدم بازگشت",
+        "student_task_fa": "مهلت بازگشت و ثبت‌نام ترم گذشته است و تخلف در پرونده ثبت شده است. برای پیگیری با کمیته نظارت یا پذیرش تماس بگیرید.",
+        "student_why_fa": "عدم بازگشت در مهلت مقرر طبق قوانین موسسه به‌عنوان تخلف ثبت می‌شود."
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "from": "request_form",
+      "to": "committee_review",
+      "trigger": "student_submitted",
+      "required_role": "student",
+      "description_fa": "ارسال درخواست وقفه (۱ یا ۲ ترم) به کارتابل کمیته پیشرفت. در صورت انترن+۲ترم هشدار نمایش داده شود.",
+      "actions": [
+        {
+          "type": "warn_if",
+          "condition": "student.is_intern AND leave_terms == 2",
+          "message_fa": "دانشجوی گرامی، با توجه به وضعیت انترنی شما، انتخاب وقفه ۲ ترمی منجر به توقف سوپرویژن فردی و لغو انترنی خواهد شد. بنا به اصول اخلاق حرفه‌ای، بیماران شما به درمانگر دیگری ارجاع داده می‌شوند. لطفاً جهت تسهیل فرایند با بیماران خود صحبت کنید."
+        }
+      ]
+    },
+    {
+      "from": "committee_review",
+      "to": "deputy_alerted",
+      "trigger": "sla_breach_7days",
+      "description_fa": "عدم ثبت جلسه ظرف ۷ روز - هشدار به معاون مدیر آموزش",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "committee_sla_breach",
+          "recipients": [
+            "deputy_education"
+          ]
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "deputy_alerted",
+      "to": "session_scheduled",
+      "trigger": "committee_set_meeting",
+      "required_role": "progress_committee",
+      "description_fa": "ثبت جلسه پس از هشدار SLA به معاون آموزش"
+    },
+    {
+      "from": "committee_review",
+      "to": "session_scheduled",
+      "trigger": "committee_set_meeting",
+      "required_role": "progress_committee",
+      "description_fa": "ثبت تاریخ، ساعت، حضوری/آنلاین و در صورت آنلاین لینک جلسه (حداکثر ۷ روز)",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "email",
+          "template": "meeting_scheduled",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "meeting_scheduled_sms",
+          "recipients": [
+            "student"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "session_scheduled",
+      "to": "committee_decision",
+      "trigger": "meeting_held",
+      "required_role": "progress_committee",
+      "description_fa": "برگزاری جلسه و ثبت تصمیم (تایید یا رد) و در صورت تایید تعیین انترن/غیرانترن"
+    },
+    {
+      "from": "committee_decision",
+      "to": "rejected",
+      "trigger": "committee_rejected",
+      "required_role": "progress_committee",
+      "description_fa": "رد درخواست همراه با توضیحات - نمایش در پورتال دانشجو و شروع فرایند ثبت تخلف",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "leave_rejected",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "start_process",
+          "process_code": "violation_registration",
+          "payload": {
+            "reason": "leave_rejected"
+          }
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "leave_rejected_committee_alert",
+          "recipients": [
+            "monitoring_committee_officer"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "committee_decision",
+      "to": "approved_non_intern",
+      "trigger": "committee_approved",
+      "required_role": "progress_committee",
+      "conditions": [
+        "is_not_intern"
+      ],
+      "description_fa": "تایید درخواست - دانشجو انترن نیست",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "leave_approved",
+          "recipients": [
+            "student"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "committee_decision",
+      "to": "approved_intern_1term",
+      "trigger": "committee_approved",
+      "required_role": "progress_committee",
+      "conditions": [
+        "is_intern",
+        "leave_terms_eq_1"
+      ],
+      "priority": 1,
+      "description_fa": "تایید - انترن با وقفه ۱ ترم (سوپرویژن و درمان ادامه می‌یابد)",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "leave_approved_intern_1",
+          "recipients": [
+            "student"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "committee_decision",
+      "to": "approved_intern_2term",
+      "trigger": "committee_approved",
+      "required_role": "progress_committee",
+      "conditions": [
+        "is_intern",
+        "leave_terms_eq_2"
+      ],
+      "priority": 2,
+      "description_fa": "تایید - انترن با وقفه ۲ ترم: آزادسازی وقت سوپروایزر + ارجاع بیماران به درمانگران دیگر",
+      "actions": [
+        {
+          "type": "release_supervisor_slot"
+        },
+        {
+          "type": "start_process",
+          "process_code": "patient_referral"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "leave_approved_intern_2_warning",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "intern_2term_referral_started",
+          "recipients": [
+            "monitoring_committee_officer"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "approved_non_intern",
+      "to": "on_leave",
+      "trigger": "leave_activated",
+      "required_role": "student",
+      "description_fa": "اعمال وقفه در پورتال دانشجو (LMS)",
+      "actions": [
+        {
+          "type": "suspend_class_registration"
+        },
+        {
+          "type": "set_leave_return_schedule"
+        }
+      ]
+    },
+    {
+      "from": "approved_intern_1term",
+      "to": "on_leave",
+      "trigger": "leave_activated",
+      "required_role": "student",
+      "description_fa": "اعمال وقفه - انترنی حفظ می‌شود",
+      "actions": [
+        {
+          "type": "suspend_class_registration"
+        },
+        {
+          "type": "set_leave_return_schedule"
+        }
+      ]
+    },
+    {
+      "from": "approved_intern_2term",
+      "to": "on_leave",
+      "trigger": "leave_activated",
+      "required_role": "student",
+      "description_fa": "اعمال وقفه - لغو انترنی و آزادسازی وقت سوپروایزر",
+      "actions": [
+        {
+          "type": "suspend_class_registration"
+        },
+        {
+          "type": "set_leave_return_schedule"
+        },
+        {
+          "type": "revoke_intern_status"
+        }
+      ]
+    },
+    {
+      "from": "on_leave",
+      "to": "return_reminder_sent",
+      "trigger": "send_return_reminder",
+      "description_fa": "رسیدن به زمان یادآوری بازگشت (طبق return_reminder_at در context) — ارسال پیامک یادآوری",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "return_reminder",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "return_reminder_sent",
+      "to": "returned",
+      "trigger": "student_registered",
+      "required_role": "student",
+      "description_fa": "دانشجو ثبت‌نام ترم آینده را در سامانه انجام داده و با دکمه در پورتال اعلام کرده است (تأیید دستی در پنل، نه اتصال خودکار به سیستم ثبت‌نام)",
+      "actions": [
+        {
+          "type": "reactivate_class_registration"
+        }
+      ]
+    },
+    {
+      "from": "return_reminder_sent",
+      "to": "violation_registered",
+      "trigger": "return_deadline_passed",
+      "description_fa": "عدم ثبت‌نام برای ترم آینده - فرایند ثبت تخلف در پورتال کمیته نظارت",
+      "actions": [
+        {
+          "type": "start_process",
+          "process_code": "violation_registration",
+          "payload": {
+            "reason": "no_return_from_leave"
+          }
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "violation_no_return",
+          "recipients": [
+            "student",
+            "monitoring_committee_officer"
+          ]
+        }
+      ],
+      "required_role": "system"
+    }
+  ],
+  "forms": [
+    {
+      "code": "leave_request",
+      "used_in_state": "request_form",
+      "title_fa": "درخواست مرخصی آموزشی",
+      "description_fa": "مدت وقفه را انتخاب کنید. وضعیت انترنی شما از پرونده آموزشی خوانده می‌شود (نیازی به تکرار در فرم نیست).",
+      "visible_to": [
+        "student"
+      ],
+      "fields": [
+        {
+          "name": "leave_terms",
+          "label_fa": "تعداد ترم وقفه",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {
+              "value": 1,
+              "label_fa": "یک ترم"
+            },
+            {
+              "value": 2,
+              "label_fa": "دو ترم"
+            }
+          ]
+        },
+        {
+          "name": "request_reason",
+          "label_fa": "توضیح کوتاه درخواست (اختیاری)",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "code": "leave_committee_meeting",
+      "used_in_state": ["committee_review", "deputy_alerted"],
+      "title_fa": "تعیین جلسه بررسی مرخصی",
+      "description_fa": "پیش از زدن دکمهٔ «ثبت جلسه»، فرم را تکمیل و ثبت کنید. اطلاعات جلسه در پورتال دانشجو و پیامک نمایش داده می‌شود.",
+      "visible_to": [
+        "progress_committee",
+        "deputy_education",
+        "admin",
+        "staff"
+      ],
+      "fields": [
+        {
+          "name": "leave_terms_display",
+          "label_fa": "مدت وقفه درخواستی",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "clinical_status_display",
+          "label_fa": "وضعیت بالینی",
+          "type": "readonly",
+          "required": false
+        },
+        {
+          "name": "committee_meeting_at",
+          "label_fa": "تاریخ و ساعت جلسه (وقت ایران)",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "name": "committee_meeting_mode",
+          "label_fa": "نحوهٔ برگزاری",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {
+              "value": "in_person",
+              "label_fa": "حضوری"
+            },
+            {
+              "value": "online",
+              "label_fa": "آنلاین"
+            }
+          ]
+        },
+        {
+          "name": "committee_meeting_link",
+          "label_fa": "لینک جلسه (آنلاین)",
+          "type": "text",
+          "required": true,
+          "visible_if": {
+            "committee_meeting_mode": "online"
+          }
+        },
+        {
+          "name": "committee_meeting_location_fa",
+          "label_fa": "آدرس یا محل حضوری",
+          "type": "textarea",
+          "required": true,
+          "visible_if": {
+            "committee_meeting_mode": "in_person"
+          }
+        }
+      ]
+    },
+    {
+      "code": "leave_committee_decision",
+      "used_in_state": "committee_decision",
+      "title_fa": "ثبت نتیجهٔ نهایی جلسه",
+      "description_fa": "پیش از زدن دکمهٔ تأیید یا رد، فرم را ثبت کنید. در صورت رد، علت رد برای دانشجو نمایش داده می‌شود.",
+      "visible_to": [
+        "progress_committee",
+        "deputy_education",
+        "admin",
+        "staff"
+      ],
+      "fields": [
+        {
+          "name": "rejection_reason_fa",
+          "label_fa": "علت رد (برای نمایش به دانشجو در صورت رد)",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "name": "committee_notes_internal",
+          "label_fa": "یادداشت داخلی کمیته (اختیاری)",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "code": "leave_return_confirmation",
+      "used_in_state": "return_reminder_sent",
+      "title_fa": "تأیید بازگشت به تحصیل",
+      "description_fa": "پس از ثبت‌نام واقعی دروس ترم آینده در سامانه، این فرم را تکمیل کنید.",
+      "visible_to": [
+        "student"
+      ],
+      "fields": [
+        {
+          "name": "return_registration_confirmed",
+          "label_fa": "ثبت‌نام ترم آینده را در سامانه انجام داده‌ام",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "name": "return_notes",
+          "label_fa": "توضیح کوتاه (اختیاری)",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    }
+  ]
 }

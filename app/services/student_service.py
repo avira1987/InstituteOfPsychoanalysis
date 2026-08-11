@@ -439,6 +439,34 @@ class StudentService:
             therapy_instance_id,
         )
 
+    async def advance_intro_second_eligibility(
+        self,
+        instance_id: uuid.UUID,
+        actor_id: uuid.UUID,
+    ) -> Optional[str]:
+        """از eligibility_check با eligibility_check_result به مسیر مجاز برو."""
+        engine = StateMachineEngine(self.db)
+        result = await engine.execute_transition(
+            instance_id=instance_id,
+            trigger_event="eligibility_check_result",
+            actor_id=actor_id,
+            actor_role="system",
+            payload=None,
+        )
+        if result.success:
+            logger.info(
+                "intro_second_semester eligibility: -> %s (instance=%s)",
+                result.to_state,
+                instance_id,
+            )
+            return result.to_state
+        logger.warning(
+            "intro_second eligibility_check_result failed instance=%s: %s",
+            instance_id,
+            result.error,
+        )
+        return None
+
     async def maybe_start_followup_after_intro_registration(
         self,
         registration_instance: ProcessInstance,
@@ -474,6 +502,9 @@ class StudentService:
             if active.current_state_code == "eligibility_check":
                 await self._advance_start_therapy_eligibility(active.id, actor_id)
             await self.set_primary_instance_for_student(student, active.id)
+            await self._notify_conditional_therapy_deadline_after_registration(
+                student, registration_instance
+            )
             return
 
         stmt = (
@@ -488,6 +519,9 @@ class StudentService:
         result = await self.db.execute(stmt)
         latest_done = result.scalars().first()
         if latest_done and latest_done.current_state_code in self._START_THERAPY_TERMINAL:
+            await self._notify_conditional_therapy_deadline_after_registration(
+                student, registration_instance
+            )
             return
 
         ctx = dict(StateMachineEngine._as_mapping(registration_instance.context_data))
@@ -518,6 +552,182 @@ class StudentService:
         await self._advance_start_therapy_eligibility(sub.id, actor_id)
         await self.set_primary_instance_for_student(student, sub.id)
 
+        reg_ctx = dict(StateMachineEngine._as_mapping(registration_instance.context_data))
+        reg_ctx["intro_registration_next_step_fa"] = (
+            "ثبت‌نام دوره آشنایی تکمیل شد. گام بعدی مسیر شما «آغاز درمان آموزشی» است؛ "
+            "مسیر اصلی پرتال به این فرایند منتقل شده است."
+        )
+        registration_instance.context_data = reg_ctx
+        flag_modified(registration_instance, "context_data")
+
+        await self._notify_conditional_therapy_deadline_after_registration(
+            student, registration_instance
+        )
+
+    async def _notify_conditional_therapy_deadline_after_registration(
+        self,
+        student: Student,
+        registration_instance: ProcessInstance,
+    ) -> None:
+        """SMS مهلت آغاز درمان برای پذیرش مشروط — یک‌بار پس از registration_complete."""
+        from app.services.admission_type_service import (
+            ADMISSION_CONDITIONAL_THERAPY,
+            normalize_admission_type,
+            persist_admission_type_on_student,
+            resolve_admission_type_from_context,
+            therapy_deadline_hint_fa,
+        )
+        from app.services.manual_process_start_notification import _student_phone
+        from app.services.notification_service import notification_service
+
+        ctx = StateMachineEngine._as_mapping(registration_instance.context_data)
+        extra = StateMachineEngine._as_mapping(student.extra_data)
+        admission = (
+            normalize_admission_type(extra.get("admission_type"))
+            or resolve_admission_type_from_context(ctx)
+        )
+        if admission:
+            persist_admission_type_on_student(
+                student,
+                admission_type=admission,
+                interview_result=ctx.get("interview_result") or admission,
+            )
+        if admission != ADMISSION_CONDITIONAL_THERAPY:
+            return
+        if student.therapy_started:
+            return
+        if extra.get("conditional_therapy_deadline_sms_sent"):
+            return
+
+        phone = await _student_phone(self.db, student.id)
+        if not phone:
+            logger.info(
+                "conditional therapy deadline SMS skipped (no phone) student=%s",
+                student.id,
+            )
+            return
+        try:
+            await notification_service.send_notification(
+                "sms",
+                "conditional_therapy_deadline_after_registration",
+                phone,
+                {"deadline": ctx.get("term2_start_hint") or ""},
+            )
+        except Exception:
+            logger.exception(
+                "conditional therapy deadline SMS failed student=%s",
+                student.id,
+            )
+            return
+
+        extra = StateMachineEngine._as_mapping(student.extra_data)
+        extra["conditional_therapy_deadline_sms_sent"] = True
+        extra["conditional_therapy_deadline_hint_fa"] = therapy_deadline_hint_fa(
+            deadline=ctx.get("term2_start_hint")
+        )
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+
+    async def ensure_conditional_start_therapy(
+        self,
+        student: Student,
+        actor_id: uuid.UUID,
+    ) -> dict:
+        """
+        برای دانشجوی مشروط: نمونهٔ فعال start_therapy را ensure کند و primary را بچسباند.
+        """
+        from app.services.admission_type_service import (
+            ADMISSION_CONDITIONAL_THERAPY,
+            normalize_admission_type,
+            resolve_admission_type_from_context,
+        )
+
+        extra = StateMachineEngine._as_mapping(student.extra_data)
+        admission = normalize_admission_type(extra.get("admission_type"))
+        if admission != ADMISSION_CONDITIONAL_THERAPY:
+            # try recover from latest intro registration context
+            stmt = (
+                select(ProcessInstance)
+                .where(
+                    ProcessInstance.student_id == student.id,
+                    ProcessInstance.process_code == "introductory_course_registration",
+                )
+                .order_by(ProcessInstance.started_at.desc())
+                .limit(1)
+            )
+            reg = (await self.db.execute(stmt)).scalars().first()
+            if reg:
+                admission = resolve_admission_type_from_context(
+                    StateMachineEngine._as_mapping(reg.context_data)
+                )
+            if admission != ADMISSION_CONDITIONAL_THERAPY:
+                return {
+                    "ok": False,
+                    "error": "only_conditional",
+                    "detail_fa": "این اقدام فقط برای دانشجویان با پذیرش مشروط به درمان است.",
+                }
+
+        if student.therapy_started:
+            return {
+                "ok": False,
+                "error": "therapy_already_started",
+                "detail_fa": "درمان آموزشی شما قبلاً آغاز شده است.",
+            }
+
+        stmt = select(ProcessInstance).where(
+            ProcessInstance.student_id == student.id,
+            ProcessInstance.process_code == "start_therapy",
+            ProcessInstance.is_completed == False,
+            ProcessInstance.is_cancelled == False,
+        )
+        active = (await self.db.execute(stmt)).scalars().first()
+        if active:
+            if active.current_state_code == "eligibility_check":
+                await self._advance_start_therapy_eligibility(active.id, actor_id)
+                active = await StateMachineEngine(self.db).get_process_instance(active.id)
+            await self.set_primary_instance_for_student(student, active.id)
+            return {
+                "ok": True,
+                "already_existed": True,
+                "instance_id": str(active.id),
+                "current_state": active.current_state_code,
+                "process_code": "start_therapy",
+            }
+
+        initial = {
+            "source": "conditional_therapy_card_ensure",
+            "admission_type": ADMISSION_CONDITIONAL_THERAPY,
+            "interview_result": ADMISSION_CONDITIONAL_THERAPY,
+        }
+        service = ProcessService(self.db)
+        try:
+            sub = await service.start_process_for_student(
+                process_code="start_therapy",
+                student_id=student.id,
+                actor_id=actor_id,
+                actor_role="system",
+                initial_context=initial,
+            )
+        except Exception as e:
+            logger.exception("ensure_conditional_start_therapy failed student=%s", student.id)
+            return {
+                "ok": False,
+                "error": "start_failed",
+                "detail_fa": f"شروع فرایند آغاز درمان ممکن نشد: {e}",
+            }
+
+        await self.db.flush()
+        await self._advance_start_therapy_eligibility(sub.id, actor_id)
+        sub = await StateMachineEngine(self.db).get_process_instance(sub.id)
+        await self.set_primary_instance_for_student(student, sub.id)
+        return {
+            "ok": True,
+            "already_existed": False,
+            "instance_id": str(sub.id),
+            "current_state": sub.current_state_code,
+            "process_code": "start_therapy",
+        }
+
     async def maybe_start_session_payment_after_start_therapy(self, therapy_instance: ProcessInstance) -> None:
         """
         پس از تکمیل موفق start_therapy (حالت پایانی therapy_active)، فرایند «پرداخت جلسات آتی»
@@ -547,6 +757,13 @@ class StudentService:
         active = result.scalars().first()
         if active:
             await self.set_primary_instance_for_student(student, active.id)
+            therapy_ctx = dict(StateMachineEngine._as_mapping(therapy_instance.context_data))
+            therapy_ctx["start_therapy_next_step_fa"] = (
+                "درمان آموزشی فعال شد. گام بعدی مسیر شما «پرداخت جلسات آتی» است؛ "
+                "مسیر اصلی پرتال به این فرایند منتقل شده است."
+            )
+            therapy_instance.context_data = therapy_ctx
+            flag_modified(therapy_instance, "context_data")
             return
 
         ctx = dict(StateMachineEngine._as_mapping(therapy_instance.context_data))
@@ -575,6 +792,20 @@ class StudentService:
 
         await self.db.flush()
         await self.set_primary_instance_for_student(student, pay.id)
+
+        therapy_ctx = dict(StateMachineEngine._as_mapping(therapy_instance.context_data))
+        therapy_ctx["start_therapy_next_step_fa"] = (
+            "درمان آموزشی فعال شد. گام بعدی مسیر شما «پرداخت جلسات آتی» است؛ "
+            "مسیر اصلی پرتال به این فرایند منتقل شده است."
+        )
+        therapy_instance.context_data = therapy_ctx
+        flag_modified(therapy_instance, "context_data")
+
+    _SESSION_PAYMENT_NEXT_STEP_FA = (
+        "پرداخت جلسات ثبت شد. برای شرکت در جلسات به تب «جلسات آنلاین» بروید. "
+        "جلسات تا پایان ترم در تقویم شما ثبت شده‌اند؛ برای جلسات unpaid بعدی دوباره "
+        "«پرداخت جلسات» را باز کنید. پس از تکمیل حدنصاب ساعات، از «خاتمه درمان آموزشی» استفاده کنید."
+    )
 
     _PRIMARY_PRIORITY = (
         "educational_leave",
@@ -627,10 +858,11 @@ class StudentService:
             return
 
         extra.pop("primary_instance_id", None)
-        extra["dashboard_therapy_hint_fa"] = (
-            "پرداخت جلسات ثبت شد. برای شرکت در جلسات آنلاین به تب «جلسات آنلاین» بروید. "
-            "برای پرداخت دوره‌های بعدی در صورت نیاز از «درخواست‌های دیگر» فرایند «پرداخت جلسات» را دوباره باز کنید."
-        )
+        extra["dashboard_therapy_hint_fa"] = self._SESSION_PAYMENT_NEXT_STEP_FA
+        completed_ctx = dict(StateMachineEngine._as_mapping(completed.context_data))
+        completed_ctx["session_payment_next_step_fa"] = self._SESSION_PAYMENT_NEXT_STEP_FA
+        completed.context_data = completed_ctx
+        flag_modified(completed, "context_data")
         student.extra_data = extra
         flag_modified(student, "extra_data")
 
@@ -696,73 +928,81 @@ class StudentService:
         r = await self.db.execute(stmt)
         return int(r.scalar() or 0)
 
+    async def ensure_active_session_payment_for_student(
+        self, student_id: uuid.UUID
+    ) -> dict:
+        """اگر جلسه unpaid و بدون نمونهٔ فعال session_payment باشد، یکی باز کن و primary را بچسبان."""
+        stu = await self.db.get(Student, student_id)
+        if not stu or not stu.therapy_started:
+            return {"started": False, "reason": "not_eligible"}
+
+        stmt = select(ProcessInstance).where(
+            ProcessInstance.student_id == student_id,
+            ProcessInstance.process_code == "session_payment",
+            ProcessInstance.is_completed == False,
+            ProcessInstance.is_cancelled == False,
+        )
+        active = (await self.db.execute(stmt)).scalars().first()
+        if active:
+            await self.set_primary_instance_for_student(stu, active.id)
+            return {"started": False, "reason": "already_active", "instance_id": str(active.id)}
+
+        unpaid = await self.count_unpaid_therapy_sessions(student_id)
+        if unpaid <= 0:
+            return {"started": False, "reason": "no_unpaid", "unpaid": 0}
+
+        service = ProcessService(self.db)
+        actor_id = await self._resolve_system_actor_id(None)
+        try:
+            pay = await service.start_process_for_student(
+                process_code="session_payment",
+                student_id=student_id,
+                actor_id=actor_id,
+                actor_role="system",
+                initial_context={
+                    "source": "repair_therapy_continuity",
+                    "unpaid_sessions_count": unpaid,
+                },
+            )
+        except Exception:
+            logger.exception(
+                "ensure_active_session_payment_for_student failed student=%s", student_id
+            )
+            return {"started": False, "reason": "start_failed"}
+
+        await self.db.flush()
+        await self.set_primary_instance_for_student(stu, pay.id)
+        return {"started": True, "instance_id": str(pay.id), "unpaid": unpaid}
+
     async def maybe_ensure_session_payment_for_unpaid_sessions(self) -> list[dict]:
         """
         اگر دانشجویی درمان شروع کرده، جلسهٔ درمان بدون پرداخت دارد و نمونهٔ فعال session_payment ندارد،
         نمونهٔ جدید باز می‌کند و در صورت primary خالی یا اشاره به فرایند تمام‌شده، primary را به آن می‌چسباند.
         """
-        stmt = (
-            select(TherapySession.student_id)
-            .where(
-                TherapySession.payment_status == "pending",
-                TherapySession.status.in_(["scheduled", "completed"]),
-            )
-            .distinct()
-        )
-        result = await self.db.execute(stmt)
-        student_ids = list(result.scalars().all())
-        out: list[dict] = []
-        service = ProcessService(self.db)
-        for sid in student_ids:
-            stu = await self.db.get(Student, sid)
-            if not stu or not stu.therapy_started:
-                continue
-            stmt = select(ProcessInstance).where(
-                ProcessInstance.student_id == sid,
-                ProcessInstance.process_code == "session_payment",
-                ProcessInstance.is_completed == False,
-                ProcessInstance.is_cancelled == False,
-            )
-            if (await self.db.execute(stmt)).scalars().first():
-                continue
-            unpaid = await self.count_unpaid_therapy_sessions(sid)
-            if unpaid <= 0:
-                continue
-            actor_id = await self._resolve_system_actor_id(None)
+        from app.services.therapy_session_schedule import ensure_therapy_sessions_until_term_end
+
+        # ابتدا تقویم جلسات تا پایان ترم را برای دانشجویان با درمان فعال تکمیل کن
+        started_stmt = select(Student.id).where(Student.therapy_started.is_(True))
+        started_ids = list((await self.db.execute(started_stmt)).scalars().all())
+        for sid in started_ids:
             try:
-                pay = await service.start_process_for_student(
-                    process_code="session_payment",
-                    student_id=sid,
-                    actor_id=actor_id,
-                    actor_role="system",
-                    initial_context={
-                        "source": "auto_unpaid_therapy_sessions",
-                        "unpaid_sessions_count": unpaid,
-                    },
-                )
+                await ensure_therapy_sessions_until_term_end(self.db, sid)
             except Exception:
                 logger.exception(
-                    "maybe_ensure_session_payment_for_unpaid_sessions: start failed student=%s",
-                    sid,
+                    "ensure_therapy_sessions_until_term_end failed student=%s", sid
+                )
+
+        out: list[dict] = []
+        for sid in started_ids:
+            try:
+                res = await self.ensure_active_session_payment_for_student(sid)
+            except Exception:
+                logger.exception(
+                    "ensure_active_session_payment_for_student failed student=%s", sid
                 )
                 continue
-            await self.db.flush()
-            extra = dict(StateMachineEngine._as_mapping(stu.extra_data))
-            pid = extra.get("primary_instance_id")
-            repoint = False
-            if not pid:
-                repoint = True
-            else:
-                try:
-                    puuid = uuid.UUID(str(pid))
-                    pinst = await self.db.get(ProcessInstance, puuid)
-                    if pinst and pinst.student_id == sid and pinst.is_completed:
-                        repoint = True
-                except (ValueError, TypeError):
-                    repoint = True
-            if repoint:
-                await self.set_primary_instance_for_student(stu, pay.id)
-            out.append({"student_id": str(sid), "instance_id": str(pay.id)})
+            if res.get("started"):
+                out.append({"student_id": str(sid), "instance_id": res.get("instance_id")})
         return out
 
     async def update_therapy_status(self, student_id: uuid.UUID, started: bool):

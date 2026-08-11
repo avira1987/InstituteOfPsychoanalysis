@@ -1,8 +1,11 @@
 import React, { useMemo } from 'react'
 import { labelState } from '../utils/processDisplay'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   EducationalTherapistFlowStepper,
-  ET_STATE_HINTS,
   ET_STOP_MESSAGES,
   HintBlock,
   InfoTile,
@@ -16,6 +19,15 @@ import {
 } from '../utils/upgradeToEducationalTherapistDisplay'
 
 const PROCESS_TITLE_FA = 'ارتقا به درمانگر آموزشی (فرایند ۷۱)'
+const PROC_CODE = 'upgrade_to_educational_therapist'
+
+function resolveUpgradeHint(state) {
+  if (!state) return 'مراحل ارتقا به درمانگر آموزشی را طبق راهنمای پنل پیش ببرید.'
+  if (ET_STOP_MESSAGES[state]) return ET_STOP_MESSAGES[state]
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return 'مراحل ارتقا به درمانگر آموزشی را طبق راهنمای پنل پیش ببرید.'
+}
 
 /**
  * داشبورد راهنمای فرایند ۷۱ — ارتقا به درمانگر آموزشی.
@@ -37,9 +49,8 @@ export default function StudentEducationalTherapistUpgradePanel({
   const isStop = isUpgradeStopState(currentState)
   const isComplete = currentState === 'promotion_completed'
   const isWait = isSystemWaitState(currentState)
-  const hint = ET_STOP_MESSAGES[currentState]
-    || ET_STATE_HINTS[currentState]
-    || 'مراحل ارتقا به درمانگر آموزشی را طبق راهنمای پنل پیش ببرید.'
+  const hint = resolveUpgradeHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelState(currentState)) ?? ''
 
   const showInterview = ['interview_scheduling', 'interview_held'].includes(currentState)
     && (ctx.interview_date || ctx.interview_time)

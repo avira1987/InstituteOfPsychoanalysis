@@ -668,8 +668,16 @@ async def list_available_slots(
             )
         )
     stmt = stmt.order_by(InterviewSlot.starts_at)
-    rows = (await db.execute(stmt)).scalars().all()
-    return {"slots": [_slot_to_dict(s, viewer=user, now=now, hide_link=True) for s in rows]}
+    rows = list((await db.execute(stmt)).scalars().all())
+    name_map = await _interviewer_names_for_slots(db, rows)
+    return {
+        "slots": [
+            _slot_dict_with_interviewer_name(
+                s, viewer=user, now=now, name_map=name_map, hide_link=True
+            )
+            for s in rows
+        ]
+    }
 
 
 @router.get("/bookings")
@@ -692,6 +700,7 @@ async def list_booked_slots_with_students(
         stmt = stmt.where(InterviewSlot.ends_at >= now)
     stmt = stmt.order_by(InterviewSlot.starts_at)
     rows = (await db.execute(stmt)).all()
+    name_map = await _interviewer_names_for_slots(db, [slot for slot, *_ in rows])
     out: list[dict] = []
     for slot, student, u, inst in rows:
         if user.role == "interviewer" and not _interviewer_can_view_booking(user, slot):
@@ -700,8 +709,12 @@ async def list_booked_slots_with_students(
             db, slot, viewer=user, instance=inst, log_context="bookings",
         )
         item = {
-            "slot": _slot_to_dict(
-                slot, viewer=user, now=now, result_recorded=result_recorded
+            "slot": _slot_dict_with_interviewer_name(
+                slot,
+                viewer=user,
+                now=now,
+                name_map=name_map,
+                result_recorded=result_recorded,
             ),
             "student": {
                 "id": str(student.id),
@@ -1073,7 +1086,8 @@ async def list_my_booked_slots(
     if not include_past:
         stmt = stmt.where(InterviewSlot.ends_at >= now)
     stmt = stmt.order_by(InterviewSlot.starts_at)
-    rows = (await db.execute(stmt)).scalars().all()
+    rows = list((await db.execute(stmt)).scalars().all())
+    name_map = await _interviewer_names_for_slots(db, rows)
     out: list[dict] = []
     for slot in rows:
         result_recorded = await interview_slot_result_recorded(db, slot)
@@ -1082,6 +1096,12 @@ async def list_my_booked_slots(
                 db, slot, payment_confirmed=True
             )
         out.append(
-            _slot_to_dict(slot, viewer=user, now=now, result_recorded=result_recorded)
+            _slot_dict_with_interviewer_name(
+                slot,
+                viewer=user,
+                now=now,
+                name_map=name_map,
+                result_recorded=result_recorded,
+            )
         )
     return {"bookings": out}

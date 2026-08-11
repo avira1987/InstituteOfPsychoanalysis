@@ -1,5 +1,9 @@
 import React, { useMemo } from 'react'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   IntroCompletionFlowStepper,
   labelIntroCompletionState,
   resolveCompletionContext,
@@ -10,15 +14,13 @@ import {
 } from '../utils/introductoryCourseCompletionDisplay'
 
 const PROCESS_TITLE_FA = 'خاتمه دوره آشنایی (فرایند ۳۴)'
+const PROC_CODE = 'introductory_course_completion'
 
-/** راهنمای هر وضعیت برای دانشجو. */
-const STATE_HINTS = {
-  all_courses_passed: 'تمام ۱۰ درس دوره آشنایی با موفقیت پاس شده است. سامانه در حال اجرای مراحل بعد (دعوت به دوره جامع و صدور گواهی) است — این مرحله خودکار است؛ چند دقیقه بعد صفحه را تازه کنید.',
-  invitation_sent: 'پیامک دعوت به درخواست ورود به دوره جامع برای شما ارسال شده است. در مهلت اعلام‌شده با بخش پذیرش تماس بگیرید یا طبق راهنمای پیامک اقدام کنید. صدور گواهی پایان دوره به‌صورت خودکار ادامه می‌یابد.',
-  certificate_draft_generated: 'پیش‌نویس گواهی پایان دوره آشنایی تولید شده و در صف بررسی کمیته نظارت قرار گرفته است. پس از تأیید، گواهی در تب پروفایل قابل دانلود خواهد بود.',
-  certificate_review: 'گواهی پایان دوره در حال بررسی توسط کمیته نظارت است. پس از تأیید و امضای الکترونیکی، در تب پروفایل → کارنامه‌ها قابل دانلود می‌شود.',
-  certificate_approved: 'گواهی پایان دوره شما تأیید و در پورتال بارگذاری شده است. از بخش «کارنامه‌ها» در تب پروفایل می‌توانید آن را مشاهده یا دانلود کنید.',
-  process_complete: 'فرایند خاتمه دوره آشنایی تکمیل شد. گواهی پایان دوره در تب پروفایل → کارنامه‌ها در دسترس است؛ برای ورود به دوره جامع طبق پیامک و راهنمای پذیرش اقدام کنید.',
+function resolveIntroCompletionHint(state) {
+  if (!state) return 'خاتمه دوره آشنایی — مراحل عمدتاً خودکار است؛ این صفحه را بعداً تازه کنید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return 'خاتمه دوره آشنایی — مراحل عمدتاً خودکار است؛ این صفحه را بعداً تازه کنید.'
 }
 
 function InfoTile({ label, value, tone = '#2563eb', bg = '#eff6ff' }) {
@@ -61,8 +63,8 @@ export default function StudentIntroductoryCourseCompletionPanel({
     return null
   }
 
-  const hint = STATE_HINTS[currentState]
-    ?? 'خاتمه دوره آشنایی — مراحل عمدتاً خودکار است؛ این صفحه را بعداً تازه کنید.'
+  const hint = resolveIntroCompletionHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelIntroCompletionState(currentState)) ?? ''
   const isComplete = currentState === 'process_complete'
   const showCertificate = hasCertificateReady(currentState, extraData || {})
   const showDeadline = showComprehensiveInvitationReminder(currentState) && completion.comprehensiveDeadline
@@ -103,6 +105,12 @@ export default function StudentIntroductoryCourseCompletionPanel({
               color: '#1e3a8a',
             }}
           >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
           </div>
         )}

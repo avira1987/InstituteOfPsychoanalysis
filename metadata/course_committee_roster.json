@@ -107,6 +107,12 @@
           "name_fa": "مدرس تست",
           "tier": 2,
           "member_kind": "instructor"
+        },
+        {
+          "roster_key": "inst_ادريس_صالحي",
+          "name_fa": "ادريس صالحي",
+          "tier": 2,
+          "member_kind": "instructor"
         }
       ],
       "teaching_assistants": [

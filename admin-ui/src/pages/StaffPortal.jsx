@@ -268,7 +268,14 @@ export default function StaffPortal() {
     const instanceId = resolvePendingInstanceId(task)
     if (instanceId) {
       viewInstance(instanceId)
-      setActiveTab('pending')
+      const allowedTabs = laneConfig?.tabIds || STAFF_DEEP_LINK_TABS
+      let tab = 'pending'
+      try {
+        const q = dest.href.includes('?') ? dest.href.split('?')[1] : ''
+        const tabParam = new URLSearchParams(q).get('tab')
+        if (tabParam && allowedTabs.includes(tabParam)) tab = tabParam
+      } catch { /* keep pending */ }
+      setActiveTab(tab)
     }
   }
 
@@ -1137,11 +1144,27 @@ function StaffAlocomPanel({ students, showToast }) {
     }
     setLoading(true)
     try {
-      const r = await therapyApi.forStudent(studentId)
-      setSessions(Array.isArray(r.data) ? r.data : [])
-    } catch {
+      const today = new Date()
+      const from = new Date(today)
+      from.setDate(from.getDate() - 7)
+      const to = new Date(today)
+      to.setDate(to.getDate() + 14)
+      const fmt = (d) => d.toISOString().slice(0, 10)
+      const r = await therapyApi.workbenchSessions({
+        student_id: studentId,
+        role_scope: 'staff',
+        from: fmt(from),
+        to: fmt(to),
+        page_size: 50,
+      })
+      const rows = r.data?.sessions || []
+      setSessions(rows.map((s) => ({
+        ...s,
+        id: s.session_id,
+      })))
+    } catch (e) {
       setSessions([])
-      showToast('خطا در بارگذاری جلسات', 'error')
+      showToast(e.response?.data?.detail || 'خطا در بارگذاری جلسات', 'error')
     } finally {
       setLoading(false)
     }

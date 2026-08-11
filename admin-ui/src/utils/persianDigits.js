@@ -10,6 +10,30 @@ export function toLatinDigits(value) {
 }
 
 /**
+ * نرمال‌سازی ورودی عددی فرم: ارقام فارسی/عربی → لاتین و حذف جداکننده‌های رایج.
+ * شامل ویرگول لاتین، فاصله، ویرگول عربی (،) و جداکنندهٔ هزارگان (٬).
+ */
+export function normalizeNumericInput(value) {
+  return toLatinDigits(value).replace(/[,\s،٬]/g, '')
+}
+
+/** parseInt امن برای ورودی‌های فارسی/انگلیسی فرم‌های مالی */
+export function parseIntLoose(value) {
+  const s = normalizeNumericInput(value).replace(/[^\d-]/g, '')
+  if (!s || s === '-') return null
+  const n = parseInt(s, 10)
+  return Number.isNaN(n) ? null : n
+}
+
+/** parseFloat امن برای ورودی‌های فارسی/انگلیسی فرم‌های مالی */
+export function parseFloatLoose(value) {
+  const s = normalizeNumericInput(value).replace(/[^\d.-]/g, '')
+  if (!s || s === '-' || s === '.' || s === '-.') return null
+  const n = parseFloat(s)
+  return Number.isNaN(n) ? null : n
+}
+
+/**
  * تبدیل ارقام لاتین (۰–۹ ASCII) به ارقام فارسی در یک رشته.
  * ارقام فارسی موجود بدون تغییر می‌مانند.
  */

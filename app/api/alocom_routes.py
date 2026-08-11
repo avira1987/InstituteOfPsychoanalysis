@@ -31,10 +31,10 @@ def _can_access_session(user: User, session: TherapySession) -> bool:
 
 
 class AlocomProvisionBody(BaseModel):
-    agent_service_id: int = Field(..., ge=1)
+    agent_service_id: Optional[int] = Field(None, ge=1)
     title: Optional[str] = Field(None, max_length=500)
     duration_minutes: Optional[int] = Field(None, ge=1, le=24 * 60)
-    start_by_admin: int = Field(1, ge=0, le=1)
+    start_by_admin: int = Field(0, ge=0, le=1)
     fetch_student_event_link: bool = True
 
 
@@ -59,12 +59,20 @@ async def provision_therapy_session(
     if not _can_access_session(current_user, session):
         raise HTTPException(status_code=403, detail="دسترسی به این جلسه ندارید.")
 
+    ready, default_agent_id = is_alocom_configured(settings)
+    agent_service_id = int(body.agent_service_id or 0) or int(default_agent_id or 0)
+    if not ready or agent_service_id <= 0:
+        raise HTTPException(
+            status_code=503,
+            detail="پیکربندی الوکام ناقص است (نام کاربری/رمز یا ALOCOM_DEFAULT_AGENT_SERVICE_ID).",
+        )
+
     title = body.title or "کلاس آنلاین"
     try:
         detail = await provision_therapy_session_alocom(
             db,
             session=session,
-            agent_service_id=body.agent_service_id,
+            agent_service_id=agent_service_id,
             title=title,
             duration_minutes=body.duration_minutes,
             start_by_admin=body.start_by_admin,

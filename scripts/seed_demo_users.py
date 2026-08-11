@@ -67,6 +67,15 @@ DEMO_USERS = [
     *[(u, name, "staff", email) for u, name, email in STAFF_EMPLOYEES],
 ]
 
+# نقش‌های چندگانه برای حساب‌های واحد
+MULTI_ROLES: dict[str, list[str]] = {
+    "progress_committee1": [
+        "progress_committee",
+        "progress_committee_project",
+        "progress_committee_scientific",
+    ],
+}
+
 # (username, student_code, course_type, weekly_sessions)
 STUDENT_PROFILES = [
     ("student1", "STU-001", "introductory", 2),
@@ -103,6 +112,7 @@ async def main():
                 user.full_name_fa = full_name_fa
                 user.email = email
                 user.role = role
+                user.roles = MULTI_ROLES.get(username, [role])
                 user.hashed_password = get_password_hash(password)
                 user.is_active = True
                 updated += 1
@@ -115,6 +125,7 @@ async def main():
                     hashed_password=get_password_hash(password),
                     full_name_fa=full_name_fa,
                     role=role,
+                    roles=MULTI_ROLES.get(username, [role]),
                     is_active=True,
                 )
                 db.add(user)

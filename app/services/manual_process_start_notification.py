@@ -15,6 +15,9 @@ from app.services.sms_gateway import normalize_ir_mobile
 
 logger = logging.getLogger(__name__)
 
+# Automated / chain-driven processes: no "process started" SMS noise.
+_SKIP_START_SMS_PROCESS_CODES = frozenset({"lesson_start_per_term"})
+
 
 async def _student_phone(db: AsyncSession, student_id) -> Optional[str]:
     stmt = (
@@ -35,6 +38,14 @@ async def notify_manual_process_started(
     process_def: ProcessDefinition,
 ) -> Optional[str]:
     """Notify the student by SMS that a process was started (portal, staff, or automation)."""
+    if (instance.process_code or "") in _SKIP_START_SMS_PROCESS_CODES:
+        logger.info(
+            "process start SMS skipped (process excluded): instance=%s process=%s",
+            instance.id,
+            instance.process_code,
+        )
+        return "skipped"
+
     phone = await _student_phone(db, instance.student_id)
     if not phone:
         logger.info(

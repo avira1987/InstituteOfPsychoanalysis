@@ -108,9 +108,32 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
     elif action_type == "create_lms_course_links":
         courses = _course_list(ctx, action) or list(lms.get("enrolled_courses") or [])
         links = dict(lms.get("course_links") or {})
+        meta = dict(lms.get("course_link_meta") or {})
+        options_by_code = {}
+        for opt in (lms.get("available_course_options") or ctx.get("prep_course_rows") or []):
+            if not isinstance(opt, dict):
+                continue
+            code = str(opt.get("value") or opt.get("course_code") or "").strip()
+            if code:
+                options_by_code[code] = opt
         for c in courses:
-            links[str(c)] = f"/lms/courses/{c}/{student.student_code}"
+            code = str(c.get("code") or c.get("course_code") or c) if isinstance(c, dict) else str(c)
+            # Stable in-app portal deep-link (no external Alocom for class lessons)
+            url = f"/panel/portal/student?tab=sessions&course={code}"
+            links[code] = url
+            opt = options_by_code.get(code) or {}
+            meta[code] = {
+                "course_name_fa": opt.get("label_fa") or opt.get("course_name") or code,
+                "day": opt.get("day"),
+                "time_text": opt.get("time_text") or opt.get("time"),
+                "instructor_name": opt.get("instructor_name") or opt.get("instructor"),
+                "teaching_assistant_name": (
+                    opt.get("teaching_assistant_name") or opt.get("teaching_assistant")
+                ),
+                "url": url,
+            }
         lms["course_links"] = links
+        lms["course_link_meta"] = meta
         result = f"course_links n={len(links)}"
 
     elif action_type == "unlock_next_course_in_track":
@@ -190,9 +213,11 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
         links = dict(lms.get("course_links") or {})
         portal_links = dict(lms.get("portal_course_links") or {})
         for c in courses:
-            code = str(c)
-            url = links.get(code) or f"/lms/courses/{code}/{student.student_code}"
+            code = str(c.get("code") or c.get("course_code") or c) if isinstance(c, dict) else str(c)
+            url = links.get(code) or f"/panel/portal/student?tab=sessions&course={code}"
             portal_links[code] = url
+            links.setdefault(code, url)
+        lms["course_links"] = links
         lms["portal_course_links"] = portal_links
         lms["links_placed_at"] = C.now_iso()
         lms["links_placed"] = True
@@ -223,18 +248,52 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
     elif action_type == "register_lesson_teaching_assistants":
         courses = _course_list(ctx, action) or list(lms.get("enrolled_courses") or [])
         ta_map = dict(lms.get("teaching_assistants_by_course") or {})
-        prep_rows = ctx.get("prep_course_rows") or ctx.get("courses") or []
+        prep_rows = (
+            ctx.get("prep_course_rows")
+            or lms.get("available_course_options")
+            or ctx.get("courses")
+            or []
+        )
         if isinstance(prep_rows, list):
             for row in prep_rows:
                 if not isinstance(row, dict):
                     continue
-                name = (row.get("course_name") or row.get("course_code") or "").strip()
-                ta = (row.get("teaching_assistant") or row.get("ta_name") or "").strip()
-                if name and ta:
+                code = str(
+                    row.get("course_code")
+                    or row.get("value")
+                    or row.get("course_name")
+                    or ""
+                ).strip()
+                ta = (
+                    row.get("teaching_assistant_name")
+                    or row.get("teaching_assistant")
+                    or row.get("ta_name")
+                    or ""
+                ).strip()
+                name = (row.get("course_name") or row.get("label_fa") or code).strip()
+                if code and ta:
+                    ta_map[code] = ta
+                if name and ta and name not in ta_map:
                     ta_map[name] = ta
+        # Enrich from published offerings when prep rows missing TA
+        missing = [
+            str(c.get("code") or c.get("course_code") or c) if isinstance(c, dict) else str(c)
+            for c in courses
+            if str(c.get("code") or c.get("course_code") or c if isinstance(c, dict) else c) not in ta_map
+            or ta_map.get(str(c.get("code") or c.get("course_code") or c if isinstance(c, dict) else c)) in ("", "—", None)
+        ]
+        if missing:
+            from app.services.term_course_offering_service import get_offering_by_code
+
+            for code in missing:
+                offering = await get_offering_by_code(db, code)
+                if offering and offering.teaching_assistant_name:
+                    ta_map[code] = offering.teaching_assistant_name
+                elif offering and offering.instructor_name and code not in ta_map:
+                    ta_map[code] = "—"
         for c in courses:
-            code = str(c)
-            if code not in ta_map:
+            code = str(c.get("code") or c.get("course_code") or c) if isinstance(c, dict) else str(c)
+            if code not in ta_map or not ta_map.get(code):
                 ta_map[code] = ctx.get("teaching_assistant") or "—"
         lms["teaching_assistants_by_course"] = ta_map
         lms["lesson_active_at"] = C.now_iso()

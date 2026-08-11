@@ -31,6 +31,7 @@ INSTALLMENT_PROCESS_CODES = (
     "intro_second_semester_registration",
     "introductory_course_registration",
     "comprehensive_course_registration",
+    "comprehensive_term_start",
 )
 
 GENERIC_SLA_TRIGGERS = frozenset({"sla_breach", "deadline_passed", "sla_expired"})
@@ -66,18 +67,9 @@ def _parse_iso_datetime(value: Any) -> Optional[datetime]:
 
 
 def _parse_date(value: Any) -> Optional[date]:
-    if value is None:
-        return None
-    if isinstance(value, date) and not isinstance(value, datetime):
-        return value
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, str):
-        try:
-            return date.fromisoformat(value[:10])
-        except Exception:
-            return None
-    return None
+    from app.utils.shamsi_calendar_utils import tehran_calendar_date
+
+    return tehran_calendar_date(value)
 
 
 async def _resolve_system_actor(db: AsyncSession) -> uuid.UUID:
@@ -171,12 +163,63 @@ async def dispatch_scheduled_reminders(db: AsyncSession, now: datetime) -> list[
             trigger = rec.get("trigger_event")
             inst_id_raw = rec.get("instance_id")
             if phone and len(phone) >= 10:
+                sms_ctx = {"student_name": (user.full_name_fa or "").strip() if user else ""}
+                if rec.get("type") == "installment":
+                    amount_rial = rec.get("amount_rial")
+                    if amount_rial is not None:
+                        sms_ctx["amount"] = int(amount_rial)
+                        sms_ctx["amount_rial"] = int(amount_rial)
+                        sms_ctx["amount_toman"] = int(amount_rial) // 10
+                    due_raw = rec.get("installment_due_at")
+                    if due_raw:
+                        # Pass full value — normalize_sms_context_dates converts via Tehran calendar.
+                        # Do NOT slice [:10] (UTC date prefix can be one day early vs Tehran).
+                        sms_ctx["due_date"] = due_raw
+                        # #region agent log
+                        try:
+                            import json as _json
+                            from pathlib import Path as _Path
+                            from time import time as _time
+                            from app.utils.shamsi_calendar_utils import (
+                                format_shamsi_date as _fsd,
+                                tehran_today as _tt,
+                            )
+                            _line = {
+                                "sessionId": "8e31fd",
+                                "hypothesisId": "A,B",
+                                "location": "process_scheduler.py:dispatch_scheduled_reminders",
+                                "message": "installment due_date for sms (no utc slice)",
+                                "data": {
+                                    "due_raw": str(due_raw)[:80],
+                                    "due_date_shamsi": _fsd(due_raw),
+                                    "sliced_would_have_been": str(due_raw)[:10],
+                                    "remind_due_at": str(rec.get("due_at"))[:80],
+                                    "now": now.isoformat() if hasattr(now, "isoformat") else str(now),
+                                    "utc_today": str(now.date()) if hasattr(now, "date") else None,
+                                    "tehran_today": str(_tt()),
+                                    "template": tpl,
+                                },
+                                "timestamp": int(_time() * 1000),
+                                "runId": "post-fix",
+                            }
+                            with open(
+                                _Path(__file__).resolve().parents[2] / "debug-8e31fd.log",
+                                "a",
+                                encoding="utf-8",
+                            ) as _f:
+                                _f.write(_json.dumps(_line, ensure_ascii=False) + "\n")
+                        except Exception:
+                            pass
+                        # #endregion
+                    seq = rec.get("sequence")
+                    if seq is not None:
+                        sms_ctx["installment_index"] = seq
                 try:
                     await notification_service.send_notification(
                         "sms",
                         tpl,
                         phone,
-                        {"student_name": (user.full_name_fa or "").strip() if user else ""},
+                        sms_ctx,
                     )
                 except Exception as e:
                     logger.warning("scheduled_reminder sms failed student=%s: %s", st.id, e)
@@ -440,7 +483,7 @@ async def dispatch_academic_term_batch(db: AsyncSession, now: datetime) -> list[
             if hit:
                 out.append({**hit, "trigger": "registration_deadline_passed"})
 
-    # term end watchers — all grades entered
+        # term end watchers — all grades entered
     for st in students:
         extra = _student_extra(st)
         if not _grades_all_entered(extra):
@@ -457,30 +500,51 @@ async def dispatch_academic_term_batch(db: AsyncSession, now: datetime) -> list[
         )
         if hit:
             try:
-                await engine.execute_transition(
-                    instance_id=uuid.UUID(hit["instance_id"]),
-                    trigger_event=trigger,
-                    actor_id=SYSTEM_ACTOR_ID,
-                    actor_role="system",
-                )
+                if pcode == "introductory_term_end":
+                    from app.services.introductory_term_end_chaining import advance_introductory_term_end
+
+                    inst = await engine.get_process_instance(uuid.UUID(hit["instance_id"]))
+                    if inst:
+                        steps = await advance_introductory_term_end(
+                            db, engine, inst, SYSTEM_ACTOR_ID
+                        )
+                        hit = {**hit, "advanced": steps}
+                else:
+                    await engine.execute_transition(
+                        instance_id=uuid.UUID(hit["instance_id"]),
+                        trigger_event=trigger,
+                        actor_id=SYSTEM_ACTOR_ID,
+                        actor_role="system",
+                    )
             except Exception:
                 pass
             out.append({**hit, "trigger": trigger})
 
-    # lesson_start_per_term — اول ترم برای enrolled courses
+    # lesson_start_per_term — اول ترم برای enrolled courses (str یا dict)
     if cal.term_start_date and today >= cal.term_start_date:
         for st in students:
             extra = _student_extra(st)
             lms = extra.get("lms") or {}
-            courses = lms.get("enrolled_courses") or lms.get("course_links") or []
+            courses = lms.get("enrolled_courses") or []
+            if not isinstance(courses, list) or not courses:
+                # course_links may be a dict {code: url} — use keys
+                links = lms.get("course_links") or {}
+                if isinstance(links, dict):
+                    courses = list(links.keys())
+                elif isinstance(links, list):
+                    courses = links
             if not isinstance(courses, list):
                 continue
             for course in courses:
-                if not isinstance(course, dict):
+                if isinstance(course, dict):
+                    course_code = course.get("code") or course.get("course_code") or course.get("id")
+                elif isinstance(course, str):
+                    course_code = course.strip()
+                else:
                     continue
-                course_code = course.get("code") or course.get("course_code") or course.get("id")
                 if not course_code:
                     continue
+                course_code = str(course_code)
                 fp_key = f"lesson_start:{fp_term}:{course_code}"
                 fps = extra.get("scheduler_fingerprints") or {}
                 if fps.get(fp_key) == fp_term:
@@ -491,7 +555,11 @@ async def dispatch_academic_term_batch(db: AsyncSession, now: datetime) -> list[
                     db,
                     student_id=st.id,
                     process_code="lesson_start_per_term",
-                    initial_context={"course_code": str(course_code), "term_code": fp_term},
+                    initial_context={
+                        "course_code": course_code,
+                        "selected_courses": [course_code],
+                        "term_code": fp_term,
+                    },
                     fingerprint_key=fp_key,
                     fingerprint_val=fp_term,
                 )
@@ -882,8 +950,10 @@ async def dispatch_semester_prep_starts(db: AsyncSession, today=None) -> list[di
 
 async def run_process_scheduler_pass(db: AsyncSession) -> dict[str, Any]:
     """یک دور کامل موتور زمان‌بندی فرایند."""
+    from app.utils.shamsi_calendar_utils import tehran_today
+
     now = datetime.now(timezone.utc)
-    today = now.date()
+    today = tehran_today()
     reminders = await dispatch_scheduled_reminders(db, now)
     installments = await dispatch_installment_overdue(db, today)
     sla = await dispatch_generic_sla_triggers(db, now)

@@ -15,6 +15,7 @@ export const STAFF_LANES = {
     assignedRoles: ['staff', 'admissions_officer', 'admission_officer', 'interviewer'],
     allowedPortalRoles: ['admin', 'staff', 'interviewer'],
     priority: 23,
+    groupId: 'operations',
   },
   instruction: {
     id: 'instruction',
@@ -24,9 +25,10 @@ export const STAFF_LANES = {
     subtitle: 'کلاس، حضور و تکالیف',
     icon: '🎓',
     tabIds: ['pending', 'dashboard', 'students', 'onlineClasses'],
-    assignedRoles: ['instructor', 'teaching_assistant', 'teaching_assistant_or_instructor'],
-    allowedPortalRoles: ['admin', 'staff', 'teaching_assistant'],
+    assignedRoles: ['instructor', 'educational_instructor', 'teaching_assistant', 'teaching_assistant_or_instructor'],
+    allowedPortalRoles: ['admin', 'staff', 'teaching_assistant', 'educational_instructor', 'instructor'],
     priority: 23.1,
+    groupId: 'operations',
   },
   'content-ops': {
     id: 'content-ops',
@@ -39,6 +41,7 @@ export const STAFF_LANES = {
     assignedRoles: ['reference_center', 'marketing', 'admissions_officer'],
     allowedPortalRoles: ['admin', 'staff'],
     priority: 23.15,
+    groupId: 'operations',
   },
   'therapy-coord': {
     id: 'therapy-coord',
@@ -51,6 +54,7 @@ export const STAFF_LANES = {
     assignedRoles: ['therapy_education_coordinator'],
     allowedPortalRoles: ['admin', 'staff'],
     priority: 23.2,
+    groupId: 'operations',
   },
   'course-committee': {
     id: 'course-committee',
@@ -63,6 +67,7 @@ export const STAFF_LANES = {
     assignedRoles: ['course_committee', 'course_committee_scientific', 'course_committee_executive', 'scientific_officer_course_committee'],
     allowedPortalRoles: ['admin', 'staff', 'course_committee'],
     priority: 23.3,
+    groupId: 'operations',
   },
 }
 

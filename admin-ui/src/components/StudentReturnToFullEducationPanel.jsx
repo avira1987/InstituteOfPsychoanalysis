@@ -2,8 +2,11 @@ import React, { useMemo } from 'react'
 import SepPaymentPanel from './SepPaymentPanel'
 import { labelState } from '../utils/processDisplay'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   ReturnFlowStepper,
-  RETURN_STATE_HINTS,
   HintBlock,
   InfoTile,
   ScheduleChip,
@@ -16,6 +19,17 @@ import {
 } from '../utils/returnToFullEducationDisplay'
 
 const PROCESS_TITLE_FA = 'بازگشت به کل آموزش پس از مرخصی (فرایند ۶۰)'
+const PROC_CODE = 'return_to_full_education'
+
+function resolveReturnHint(state) {
+  if (!state) {
+    return 'مراحل بازگشت به کل آموزش را طبق راهنمای پنل پیش ببرید.'
+  }
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  const short = PROCESS_STATE_LABELS_FA[PROC_CODE]?.[state]
+  return short || 'مراحل بازگشت به کل آموزش را طبق راهنمای پنل پیش ببرید.'
+}
 
 /**
  * داشبورد راهنمای فرایند ۶۰ — بازگشت به کل آموزش.
@@ -37,8 +51,9 @@ export default function StudentReturnToFullEducationPanel({
 
   const isComplete = isReturnCompleteState(currentState)
   const isWait = isSystemWaitState(currentState)
-  const hint = RETURN_STATE_HINTS[currentState]
-    || 'مراحل بازگشت به کل آموزش را طبق راهنمای پنل پیش ببرید.'
+  const isRejected = currentState === 'return_rejected'
+  const hint = resolveReturnHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelState(currentState)) ?? ''
 
   const showTherapySummary = [
     'therapy_payment_pending',
@@ -81,8 +96,32 @@ export default function StudentReturnToFullEducationPanel({
       <div style={{ padding: compact ? '0 0.75rem 0.75rem' : '0 1rem 1rem' }}>
         <ReturnFlowStepper currentState={currentState} compact={compact} />
 
-        {!isComplete && (
-          <HintBlock tone={isWait ? '#d97706' : '#2563eb'} bg={isWait ? '#fffbeb' : '#eff6ff'}>
+        {!isComplete && !isRejected && hint && (
+          <div
+            data-testid="return-state-hint"
+            style={{
+              marginBottom: compact ? '0.65rem' : '0.85rem',
+              padding: '0.75rem 1rem',
+              borderRadius: '10px',
+              background: isWait ? '#fffbeb' : '#eff6ff',
+              borderRight: `4px solid ${isWait ? '#d97706' : '#2563eb'}`,
+              fontSize: '0.86rem',
+              lineHeight: 1.75,
+              color: isWait ? '#92400e' : '#1e3a8a',
+            }}
+          >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
+            {hint}
+          </div>
+        )}
+
+        {isRejected && hint && (
+          <HintBlock tone="#dc2626" bg="#fef2f2">
             {hint}
           </HintBlock>
         )}

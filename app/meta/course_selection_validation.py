@@ -65,13 +65,16 @@ def normalize_course_codes(raw: Any) -> list[str]:
 
 
 def resolve_admission_kind(ctx: dict) -> Optional[str]:
+    """نوع پذیرش از نتیجهٔ مصاحبه / نوع پذیرش ذخیره‌شده (و فیلد قدیمی result)."""
     ir = ctx.get("interview_result")
     at = ctx.get("admission_type")
-    if ir == "single_course" or at == "single_course":
+    # برخی مسیرها فقط «result» را در context نگه می‌دارند
+    res = ctx.get("result")
+    if ir == "single_course" or at == "single_course" or res == "single_course":
         return "single_course"
-    if ir == "conditional_therapy" or at == "conditional_therapy":
+    if ir == "conditional_therapy" or at == "conditional_therapy" or res == "conditional_therapy":
         return "conditional_therapy"
-    if ir in ("full_admission",) or at in ("full_admission", "full"):
+    if ir in ("full_admission",) or at in ("full_admission", "full") or res in ("full_admission", "full"):
         return "full_admission"
     return None
 

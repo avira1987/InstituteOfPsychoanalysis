@@ -81,13 +81,45 @@ def days_before_date(target: date, days: int, today: date | None = None) -> bool
     return ref >= (target - __import__("datetime").timedelta(days=days))
 
 
+def tehran_calendar_date(value: Any) -> Optional[date]:
+    """Calendar day in Asia/Tehran — never use UTC ``.date()`` / ``[:10]`` for SMS or due-day checks."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        dt = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return dt.astimezone(TEHRAN).date()
+    if isinstance(value, date):
+        return value
+    raw = str(value).strip()
+    if not raw or raw == "—":
+        return None
+    if _is_shamsi_date_text(raw):
+        try:
+            y, m, d = (int(x) for x in raw.split("/"))
+            return jdatetime.date(y, m, d).togregorian()
+        except (TypeError, ValueError):
+            return None
+    dt = _parse_datetime_value(raw)
+    if dt is not None:
+        return dt.astimezone(TEHRAN).date()
+    try:
+        # Date-only ISO: treat as civil calendar day (not a UTC midnight instant).
+        if _ISO_DATE_PREFIX_RE.match(raw[:10]) and "T" not in raw and " " not in raw:
+            return date.fromisoformat(raw[:10])
+    except (TypeError, ValueError):
+        return None
+    return None
+
+
 def parse_iso_date(value) -> Optional[date]:
     if value is None:
         return None
     if isinstance(value, date) and not isinstance(value, datetime):
         return value
-    if isinstance(value, datetime):
-        return value.date()
+    # Datetime / ISO-with-time → Tehran calendar day (avoids off-by-one near midnight).
+    td = tehran_calendar_date(value)
+    if td is not None:
+        return td
     try:
         return date.fromisoformat(str(value)[:10])
     except (TypeError, ValueError):
@@ -108,11 +140,39 @@ def tehran_day_end_utc(d: date) -> datetime:
 
 def tehran_datetime_parts(dt: datetime) -> tuple[str, str]:
     """Shamsi date (YYYY/MM/DD) and HH:MM in Asia/Tehran for SMS/notifications."""
+    raw_in = dt
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     local = dt.astimezone(TEHRAN)
     jdate = jdatetime.date.fromgregorian(date=local.date())
-    return jdate.strftime("%Y/%m/%d"), local.strftime("%H:%M")
+    date_s, time_s = jdate.strftime("%Y/%m/%d"), local.strftime("%H:%M")
+    # #region agent log
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        from time import time as _time
+        _line = {
+            "sessionId": "8e31fd",
+            "hypothesisId": "C",
+            "location": "shamsi_calendar_utils.py:tehran_datetime_parts",
+            "message": "tehran_datetime_parts convert",
+            "data": {
+                "input": str(raw_in),
+                "input_tz": str(getattr(raw_in, "tzinfo", None)),
+                "assumed_utc_naive": getattr(raw_in, "tzinfo", None) is None,
+                "local_tehran": local.isoformat(),
+                "out_date": date_s,
+                "out_time": time_s,
+            },
+            "timestamp": int(_time() * 1000),
+            "runId": "post-fix",
+        }
+        with open(_Path(__file__).resolve().parents[2] / "debug-8e31fd.log", "a", encoding="utf-8") as _f:
+            _f.write(_json.dumps(_line, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    return date_s, time_s
 
 
 def _is_shamsi_date_text(value: str) -> bool:
@@ -219,21 +279,65 @@ def normalize_sms_context_dates(context: dict[str, Any] | None) -> dict[str, Any
     if not context:
         return {}
     out = dict(context)
+    # #region agent log
+    _dbg_before: dict[str, Any] = {}
+    # #endregion
     for key, value in list(out.items()):
         if value is None or str(value).strip() in ("", "—"):
             continue
         if key == "absence_dates":
+            # #region agent log
+            _dbg_before[key] = str(value)[:120]
+            # #endregion
             out[key] = _format_absence_dates_shamsi(value)
             continue
         if key in _SMS_DATETIME_FIELD_EXACT:
+            # #region agent log
+            _dbg_before[key] = str(value)[:120]
+            # #endregion
             out[key] = format_shamsi_datetime_for_sms(value)
             continue
         if _should_normalize_sms_date_key(key):
+            # #region agent log
+            _dbg_before[key] = str(value)[:120]
+            # #endregion
             out[key] = format_shamsi_date(value)
     if out.get("meeting_date") and not out.get("date"):
         out["date"] = out["meeting_date"]
     if out.get("interview_date") and not out.get("date"):
         out["date"] = out["interview_date"]
+    # #region agent log
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        from time import time as _time
+        _dbg_after = {k: str(out.get(k))[:120] for k in _dbg_before}
+        _suspect_slice = {
+            k: str(context.get(k))[:40]
+            for k in (context or {})
+            if any(x in k for x in ("date", "deadline", "due", "at", "تاریخ"))
+            and k not in _dbg_before
+        }
+        _line = {
+            "sessionId": "8e31fd",
+            "hypothesisId": "A,D",
+            "location": "shamsi_calendar_utils.py:normalize_sms_context_dates",
+            "message": "sms date normalize in/out",
+            "data": {
+                "before": _dbg_before,
+                "after": _dbg_after,
+                "unnormalized_date_like": _suspect_slice,
+                "tehran_today": str(tehran_today()),
+                "utc_today": str(datetime.now(timezone.utc).date()),
+            },
+            "timestamp": int(_time() * 1000),
+            "runId": "post-fix",
+        }
+        with open(_Path(__file__).resolve().parents[2] / "debug-8e31fd.log", "a", encoding="utf-8") as _f:
+            _f.write(_json.dumps(_line, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # #endregion
     return out
 
 

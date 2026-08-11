@@ -180,6 +180,17 @@ export default function StudentOnlineSessionsPanel({
                   </div>
                   <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{formatWhen(item)}</span>
                 </div>
+                {(item.therapist_name_fa || item.instructor_name || item.interviewer_name_fa) ? (
+                  <div style={{ fontSize: '0.85rem', color: '#374151' }}>
+                    {item.kind === 'therapy' && item.therapist_name_fa
+                      ? `درمانگر: ${item.therapist_name_fa}`
+                      : item.kind === 'interview' && item.interviewer_name_fa
+                        ? `مصاحبه‌گر: ${item.interviewer_name_fa}`
+                        : item.instructor_name
+                          ? `مدرس: ${item.instructor_name}`
+                          : null}
+                  </div>
+                ) : null}
                 {item.status_fa ? (
                   <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{item.status_fa}</div>
                 ) : null}

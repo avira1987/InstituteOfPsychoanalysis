@@ -219,6 +219,17 @@ export const CONTEXT_KEY_LABELS = {
   latest_certificate: 'آخرین مدرک تحصیلی',
   digital_commitment: 'پذیرش قوانین انستیتو',
   selected_timeslot: 'زمان مصاحبه انتخاب‌شده',
+  interview_date: 'تاریخ مصاحبه',
+  interview_time: 'ساعت مصاحبه',
+  interview_type: 'نوع مصاحبه',
+  interview_link: 'لینک جلسه آنلاین',
+  interview_location: 'محل برگزاری مصاحبه',
+  student_name: 'نام دانشجو',
+  student_name_fa: 'نام دانشجو',
+  interviewer_notes: 'یادداشت مصاحبه‌گر',
+  rejection_reason: 'علت عدم پذیرش',
+  evaluation_notes: 'یادداشت ارزیابی',
+  suggestion_text: 'پیشنهاد مصاحبه‌گر',
   calendar_sla_deadline_at: 'مهلت تدوین تقویم آموزشی',
   fall_start_date: 'تاریخ شروع ترم پاییز',
   fall_end_date: 'تاریخ پایان ترم پاییز',
@@ -397,6 +408,18 @@ export function resolveContextRowLabel(key, fieldLabelMap) {
   if (CONTEXT_KEY_LABELS[key]) return CONTEXT_KEY_LABELS[key]
   if (fieldLabelMap && fieldLabelMap.has(key)) return fieldLabelMap.get(key)
   return prettyKeyFallback(key)
+}
+
+/**
+ * فقط برچسب‌های فارسی شناخته‌شده (CONTEXT_KEY_LABELS یا فرم) — بدون fallback انگلیسی.
+ * @param {string} key
+ * @param {Map<string, string>|null|undefined} fieldLabelMap
+ * @returns {string|null}
+ */
+export function resolveContextRowLabelStrict(key, fieldLabelMap) {
+  if (CONTEXT_KEY_LABELS[key]) return CONTEXT_KEY_LABELS[key]
+  if (fieldLabelMap && fieldLabelMap.has(key)) return fieldLabelMap.get(key)
+  return null
 }
 
 function formatIsoMaybe(s) {

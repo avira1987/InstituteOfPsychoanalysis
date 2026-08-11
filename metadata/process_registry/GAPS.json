@@ -1,6 +1,6 @@
 {
-  "version": "2.2",
-  "last_updated": "2026-06-20",
+  "version": "2.3",
+  "last_updated": "2026-08-09",
   "description": "وضعیت فنی نسبت به اتوماسیون — هم‌خوان با کد (ActionHandler، SLA، calendar_triggers، process_scheduler، موتور)",
   "architecture_notes": {
     "transition_actions": "اکشن‌های تعریف‌شده روی ترنزیشن‌ها توسط app/services/action_handler.py اجرا می‌شوند (مستقیم از StateMachineEngine پس از apply_transition).",
@@ -54,6 +54,15 @@
     "API: GET /students/registration-gate، intro_registration_gate در /students/me، registration_gate در process dashboard.",
     "UI: StudentPortal/QuestCard/InterviewerResultPanel بنر مسدودیت.",
     "tests/services/test_registration_readiness.py + tests/helpers/registration_gate_fixture.py"
+  ],
+  "resolved_conditional_therapy_2026_08": [
+    "Persist admission_type روی Student.extra_data هنگام نتیجهٔ مصاحبه / create_user_account.",
+    "activate_therapy هم‌تراز has_active_therapist؛ derive در engine._build_context.",
+    "SMS conditional_therapy_deadline_after_registration پس از registration_complete.",
+    "POST /students/me/conditional-therapy/ensure-start + فیلدهای admission در /students/me.",
+    "کارت UI مشروط در داشبورد دانشجو + بنر در StudentStartTherapyPanel.",
+    "introductory_term_end auto-advance تا therapy_condition_check؛ گیت next_term_registration_blocked روی شروع intro_second.",
+    "tests/services/test_conditional_therapy_admission.py"
   ],
   "remaining_gaps": [
     {

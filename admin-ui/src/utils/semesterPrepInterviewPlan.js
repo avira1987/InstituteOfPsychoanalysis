@@ -2,6 +2,8 @@
  * مرحلهٔ یکپارچهٔ «مصاحبه‌ها» در آماده‌سازی ترم (ادغام گام‌های ۷ و ۸).
  * توابع خالص برای اعتبارسنجی و پیش‌نمایش نوبت‌ها — هم‌تراز با
  * app/services/semester_prep_interview_setup_service.py
+ *
+ * هر مصاحبه‌گر می‌تواند روزها و بازهٔ ساعت مستقل داشته باشد.
  */
 
 export const INTERVIEW_COURSE_TYPES = ['comprehensive', 'introductory']
@@ -18,12 +20,18 @@ export const MAX_GENERATED_SLOTS = 400
 
 export const SESSION_MINUTE_OPTIONS = [20, 30, 45, 60, 90]
 
-export function emptyInterviewGroup() {
+export function emptyInterviewerSchedule(interviewerId = '') {
   return {
-    interviewerIds: [],
+    interviewerId: interviewerId || '',
     dates: [],
     startTime: '09:00',
     endTime: '13:00',
+  }
+}
+
+export function emptyInterviewGroup() {
+  return {
+    interviewers: [],
     sessionMinutes: DEFAULT_SESSION_MINUTES,
   }
 }
@@ -48,16 +56,24 @@ export function timeToMinutes(raw) {
   return hour * 60 + minute
 }
 
-/** تعداد نوبت‌های یک دوره: روزها × مصاحبه‌گرها × نوبت در هر روز */
-export function countGroupSessions(group) {
-  const start = timeToMinutes(group?.startTime)
-  const end = timeToMinutes(group?.endTime)
-  const minutes = Number(group?.sessionMinutes)
+/** تعداد نوبت‌های یک برنامهٔ مصاحبه‌گر: روزها × نوبت در هر روز */
+export function countScheduleSessions(schedule, sessionMinutes) {
+  const start = timeToMinutes(schedule?.startTime)
+  const end = timeToMinutes(schedule?.endTime)
+  const minutes = Number(sessionMinutes)
   if (start == null || end == null || !minutes || end <= start) return 0
   const perDay = Math.floor((end - start) / minutes)
-  const days = (group?.dates || []).length
-  const interviewers = (group?.interviewerIds || []).length
-  return perDay * days * interviewers
+  const days = (schedule?.dates || []).length
+  return perDay * days
+}
+
+/** تعداد نوبت‌های یک دوره: جمع برنامه‌های مصاحبه‌گرها */
+export function countGroupSessions(group) {
+  const minutes = group?.sessionMinutes
+  return (group?.interviewers || []).reduce(
+    (total, schedule) => total + countScheduleSessions(schedule, minutes),
+    0,
+  )
 }
 
 export function countSetupSessions(setup) {
@@ -67,29 +83,51 @@ export function countSetupSessions(setup) {
   )
 }
 
+export function interviewerScheduleErrors(schedule, labelFa, who, sessionMinutes) {
+  const errors = []
+  if (!String(schedule?.interviewerId || '').trim()) {
+    errors.push(`برای ${labelFa} شناسهٔ ${who} معتبر نیست.`)
+    return errors
+  }
+  if (!(schedule?.dates || []).length) {
+    errors.push(`برای ${labelFa} (${who}) حداقل یک روز مصاحبه انتخاب کنید.`)
+  }
+  const start = timeToMinutes(schedule?.startTime)
+  const end = timeToMinutes(schedule?.endTime)
+  if (start == null || end == null) {
+    errors.push(`ساعت شروع و پایان مصاحبه ${labelFa} (${who}) را وارد کنید.`)
+  } else if (end <= start) {
+    errors.push(`ساعت پایان مصاحبه ${labelFa} (${who}) باید بعد از ساعت شروع باشد.`)
+  }
+  const minutes = Number(sessionMinutes)
+  if (minutes && start != null && end != null && end > start && end - start < minutes) {
+    errors.push(`بازهٔ ساعت مصاحبه ${labelFa} (${who}) کوتاه‌تر از مدت یک نوبت است.`)
+  }
+  return errors
+}
+
 export function interviewGroupErrors(group, labelFa) {
   const errors = []
-  if (!(group?.interviewerIds || []).length) {
+  const schedules = group?.interviewers || []
+  if (!schedules.length) {
     errors.push(`برای ${labelFa} حداقل یک مصاحبه‌گر انتخاب کنید.`)
-  }
-  if (!(group?.dates || []).length) {
-    errors.push(`برای ${labelFa} حداقل یک روز مصاحبه انتخاب کنید.`)
-  }
-  const start = timeToMinutes(group?.startTime)
-  const end = timeToMinutes(group?.endTime)
-  if (start == null || end == null) {
-    errors.push(`ساعت شروع و پایان مصاحبه ${labelFa} را وارد کنید.`)
-  } else if (end <= start) {
-    errors.push(`ساعت پایان مصاحبه ${labelFa} باید بعد از ساعت شروع باشد.`)
   }
   const minutes = Number(group?.sessionMinutes)
   if (!minutes || minutes < MIN_SESSION_MINUTES || minutes > MAX_SESSION_MINUTES) {
     errors.push(
       `مدت هر نوبت مصاحبه ${labelFa} باید بین ${MIN_SESSION_MINUTES} تا ${MAX_SESSION_MINUTES} دقیقه باشد.`,
     )
-  } else if (start != null && end != null && end > start && end - start < minutes) {
-    errors.push(`بازهٔ ساعت مصاحبه ${labelFa} کوتاه‌تر از مدت یک نوبت است.`)
   }
+  schedules.forEach((schedule, index) => {
+    errors.push(
+      ...interviewerScheduleErrors(
+        schedule,
+        labelFa,
+        `مصاحبه‌گر ${index + 1}`,
+        minutes,
+      ),
+    )
+  })
   return errors
 }
 
@@ -117,12 +155,18 @@ export function interviewSetupErrors(setup) {
   return errors
 }
 
+function scheduleToBody(schedule) {
+  return {
+    interviewer_id: schedule?.interviewerId || '',
+    dates: [...(schedule?.dates || [])],
+    start_time: schedule?.startTime || '',
+    end_time: schedule?.endTime || '',
+  }
+}
+
 function groupToBody(group) {
   return {
-    interviewer_ids: [...(group?.interviewerIds || [])],
-    dates: [...(group?.dates || [])],
-    start_time: group?.startTime || '',
-    end_time: group?.endTime || '',
+    interviewers: (group?.interviewers || []).map(scheduleToBody),
     session_minutes: Number(group?.sessionMinutes) || DEFAULT_SESSION_MINUTES,
   }
 }
@@ -137,17 +181,50 @@ export function buildInterviewSetupBody(setup, instanceId) {
   }
 }
 
+function scheduleFromSaved(saved) {
+  const base = emptyInterviewerSchedule()
+  if (!saved || typeof saved !== 'object') return base
+  const id = saved.interviewer_id || saved.interviewerId || ''
+  return {
+    interviewerId: id ? String(id) : '',
+    dates: Array.isArray(saved.dates) ? saved.dates.map(String) : base.dates,
+    startTime: saved.start_time || saved.startTime || base.startTime,
+    endTime: saved.end_time || saved.endTime || base.endTime,
+  }
+}
+
 function groupFromSavedPlan(saved) {
   const base = emptyInterviewGroup()
   if (!saved || typeof saved !== 'object') return base
+  const sessionMinutes = Number(saved.session_minutes) || base.sessionMinutes
+
+  if (Array.isArray(saved.interviewers) && saved.interviewers.length) {
+    const seen = new Set()
+    const interviewers = []
+    for (const item of saved.interviewers) {
+      const schedule = scheduleFromSaved(item)
+      if (!schedule.interviewerId || seen.has(schedule.interviewerId)) continue
+      seen.add(schedule.interviewerId)
+      interviewers.push(schedule)
+    }
+    return { interviewers, sessionMinutes }
+  }
+
+  // فرمت قدیمی: روز/ساعت مشترک برای همهٔ مصاحبه‌گرها
+  const ids = Array.isArray(saved.interviewer_ids)
+    ? saved.interviewer_ids.map(String)
+    : []
+  const dates = Array.isArray(saved.dates) ? saved.dates.map(String) : []
+  const startTime = saved.start_time || base.interviewers[0]?.startTime || '09:00'
+  const endTime = saved.end_time || '13:00'
   return {
-    interviewerIds: Array.isArray(saved.interviewer_ids)
-      ? saved.interviewer_ids.map(String)
-      : base.interviewerIds,
-    dates: Array.isArray(saved.dates) ? saved.dates.map(String) : base.dates,
-    startTime: saved.start_time || base.startTime,
-    endTime: saved.end_time || base.endTime,
-    sessionMinutes: Number(saved.session_minutes) || base.sessionMinutes,
+    interviewers: ids.map((id) => ({
+      interviewerId: id,
+      dates: [...dates],
+      startTime,
+      endTime,
+    })),
+    sessionMinutes,
   }
 }
 
@@ -164,22 +241,54 @@ export function interviewSetupFromContext(contextData) {
     introductory: groupFromSavedPlan(plan.introductory),
   }
   for (const key of INTERVIEW_COURSE_TYPES) {
-    if (setup[key].interviewerIds.length) continue
+    if (setup[key].interviewers.length) continue
     const legacy = ctx[`${key}_interviewers`]
     if (Array.isArray(legacy)) {
-      setup[key].interviewerIds = legacy
+      setup[key].interviewers = legacy
         .map(String)
         .filter((v) => /^[0-9a-f-]{36}$/i.test(v))
+        .map((id) => emptyInterviewerSchedule(id))
     }
   }
   return setup
+}
+
+/** افزودن/حذف مصاحبه‌گر با برنامهٔ اختصاصی */
+export function toggleInterviewerInGroup(group, interviewerId) {
+  const id = String(interviewerId || '')
+  if (!id) return group
+  const existing = group?.interviewers || []
+  const has = existing.some((s) => s.interviewerId === id)
+  return {
+    ...group,
+    interviewers: has
+      ? existing.filter((s) => s.interviewerId !== id)
+      : [...existing, emptyInterviewerSchedule(id)],
+  }
+}
+
+export function patchInterviewerSchedule(group, interviewerId, patch) {
+  const id = String(interviewerId || '')
+  return {
+    ...group,
+    interviewers: (group?.interviewers || []).map((s) =>
+      s.interviewerId === id ? { ...s, ...patch } : s,
+    ),
+  }
 }
 
 /** خلاصهٔ خوانا برای نمایش زیر هر دوره */
 export function describeGroupPlan(group) {
   const total = countGroupSessions(group)
   if (!total) return ''
-  const days = (group?.dates || []).length
-  const interviewers = (group?.interviewerIds || []).length
-  return `${total} نوبت — ${days} روز × ${interviewers} مصاحبه‌گر × ${group.sessionMinutes} دقیقه`
+  const interviewers = (group?.interviewers || []).length
+  return `${total} نوبت — ${interviewers} مصاحبه‌گر با برنامهٔ جداگانه × ${group.sessionMinutes} دقیقه`
+}
+
+export function describeSchedulePlan(schedule, sessionMinutes, nameFa) {
+  const total = countScheduleSessions(schedule, sessionMinutes)
+  if (!total) return ''
+  const days = (schedule?.dates || []).length
+  const label = nameFa || 'مصاحبه‌گر'
+  return `${label}: ${total} نوبت — ${days} روز`
 }

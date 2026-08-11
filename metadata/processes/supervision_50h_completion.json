@@ -23,19 +23,34 @@
       "code": "session_scheduled",
       "name_fa": "جلسه برنامه‌ریزی شده",
       "type": "initial",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "جلسه سوپرویژن برنامه‌ریزی شد",
+        "student_task_fa": "پیش از جلسه، هزینهٔ سوپرویژن را پرداخت کنید؛ پس از پرداخت، لینک آنلاین فعال می‌شود.",
+        "student_why_fa": "جلسه سوپرویژن فردی برنامه‌ریزی شده است. پرداخت پیش از جلسه الزامی است."
+      }
     },
     {
       "code": "recording_closed",
       "name_fa": "ثبت بسته (وقفه یا کنسلی)",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "ثبت بسته شد",
+        "student_task_fa": "جلسه کنسل شده یا در وقفه سوپرویژن هستید؛ ثبت حضور/غیاب بسته است.",
+        "student_why_fa": "به دلیل کنسلی جلسه یا وقفه سوپرویژن، ثبت حضور/غیاب این جلسه بسته شده است."
+      }
     },
     {
       "code": "auto_absence_unpaid",
       "name_fa": "غیبت خودکار (پرداخت نشده)",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "غیبت — پرداخت نشده",
+        "student_task_fa": "جلسه بدون پرداخت گذشت و غیبت خودکار ثبت شد؛ در صورت نیاز فرایند تعیین تکلیف هزینه آغاز می‌شود.",
+        "student_why_fa": "پرداخت جلسه سوپرویژن انجام نشد و غیبت خودکار ثبت شد."
+      }
     },
     {
       "code": "supervisor_recording",
@@ -73,13 +88,23 @@
       "code": "session_completed",
       "name_fa": "جلسه تکمیل (+۱ ساعت به بلوک فعلی)",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "جلسه تکمیل شد",
+        "student_task_fa": "جلسه سوپرویژن تکمیل شد و یک ساعت به بلوک فعلی افزوده شد.",
+        "student_why_fa": "حضور شما ثبت شد و یک ساعت به بلوک سوپرویژن فعلی افزوده شد."
+      }
     },
     {
       "code": "absence_recorded",
       "name_fa": "غیبت ثبت شد",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "غیبت ثبت شد",
+        "student_task_fa": "غیبت شما ثبت شد؛ در صورت نیاز فرایند تعیین تکلیف هزینه آغاز می‌شود.",
+        "student_why_fa": "غیبت در جلسه سوپرویژن ثبت شد و ممکن است فرایند تعیین تکلیف هزینه آغاز شود."
+      }
     },
     {
       "code": "evaluation_pending",
@@ -97,13 +122,23 @@
       "code": "evaluation_completed",
       "name_fa": "ارزیابی تکمیل شد",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "ارزیابی ۵۰ ساعت تکمیل شد",
+        "student_task_fa": "فرم ارزیابی ۵۰ ساعت سوپرویژن توسط سوپروایزر تکمیل شد.",
+        "student_why_fa": "پس از تکمیل ۵۰ ساعت سوپرویژن، فرم ارزیابی توسط سوپروایزر ثبت شد."
+      }
     },
     {
       "code": "evaluation_sla_breach",
       "name_fa": "عدم تکمیل فرم در ۳ روز — تخلف",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "تأخیر ارزیابی",
+        "student_task_fa": "فرم ارزیابی ۵۰ ساعت در مهلت تکمیل نشد؛ گزارش تخلف ثبت شده است.",
+        "student_why_fa": "سوپروایزر فرم ارزیابی ۵۰ ساعت را در مهلت ۳ روز تکمیل نکرد."
+      }
     }
   ],
   "transitions": [

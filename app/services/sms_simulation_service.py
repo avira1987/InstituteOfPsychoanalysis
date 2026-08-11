@@ -157,7 +157,7 @@ async def record_simulated_sms_in_request_session(
     if kind_norm not in VALID_KINDS:
         kind_norm = "free_text"
     to = normalize_ir_mobile(phone)
-    if not to:
+    if not to or not _MOBILE_IR.fullmatch(to):
         return None
     row = SmsSimulationOutbox(
         id=uuid.uuid4(),
@@ -214,8 +214,8 @@ async def record_simulated_sms(
     if kind_norm not in VALID_KINDS:
         kind_norm = "free_text"
     to = normalize_ir_mobile(phone)
-    if not to:
-        logger.warning("sms_simulation: skipped record (empty phone)")
+    if not to or not _MOBILE_IR.fullmatch(to):
+        logger.warning("sms_simulation: skipped record (invalid phone)")
         return None
     row = SmsSimulationOutbox(
         id=uuid.uuid4(),

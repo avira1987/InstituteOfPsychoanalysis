@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { processExecApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
-import InstanceContextSummary from './InstanceContextSummary'
+import { useAuth } from '../contexts/AuthContext'
+import OperatorInstanceContextSummary from './OperatorInstanceContextSummary'
 import DecisionNotesBlock from './DecisionNotesBlock'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
@@ -29,6 +30,7 @@ function fieldNeedsReviewDecision(field, ctxData) {
  * @param {{ instance_id: string, student_code: string, student_id: string, process_code: string, current_state: string }[]} queue
  */
 export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
+  const { user } = useAuth()
   const [selectedInstance, setSelectedInstance] = useState(null)
   const [detail, setDetail] = useState(null)
   const [transitions, setTransitions] = useState([])
@@ -507,10 +509,12 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
                   </div>
                 )}
 
-                <InstanceContextSummary
-                  contextData={detail.context_data}
-                  history={detail.history}
+                <OperatorInstanceContextSummary
+                  user={user}
+                  instanceDetail={detail}
+                  availableTransitions={transitions}
                   forms={forms}
+                  studentCode={detail?.student_code}
                   title="مدارک و داده‌های ثبت‌شده توسط دانشجو"
                   maxHeight="320px"
                   historyMaxHeight="180px"

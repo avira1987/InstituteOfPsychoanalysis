@@ -2,6 +2,10 @@ import React, { useMemo } from 'react'
 import UploadedDocumentsReadonlyGrid from './UploadedDocumentsReadonlyGrid'
 import FilmObservationFinalReportUploadSection from './FilmObservationFinalReportUploadSection'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   BORDERLINE_SMS_FA,
   FilmCompletionFlowStepper,
   FilmCompletionHintBlock,
@@ -17,13 +21,13 @@ import {
   resolveFilmCompletionContext,
 } from '../utils/filmObservationCourseCompletionDisplay'
 
-const STUDENT_STATE_HINTS = {
-  grades_entry:
-    'گزارش پایانی درس را فقط به‌صورت PDF آپلود کنید. فرم از پایان جلسه ۱۷ باز و در ۲۴:۰۰ روز جلسه ۱۸ بسته می‌شود. پس از آپلود، مدرس ظرف ۵ روز گزارش را تصحیح می‌کند.',
-  grades_locked:
-    'نمره گزارش ثبت شد. اگر نمره نهایی شما در بازه مرزی ۶۴ تا ۷۳ باشد، می‌توانید امتحان مجدد (با پرداخت) یا دوباره گذراندن درس را انتخاب کنید.',
-  delay_reported:
-    'مهلت ثبت یا تصحیح گزارش گذشته است. برای پیگیری با دفتر آموزش تماس بگیرید.',
+const PROC_CODE = 'film_observation_course_completion'
+
+function resolveFilmHint(state) {
+  if (!state) return 'خاتمه درس عملی کاربردی / مشاهده فیلم — وضعیت پرونده را در همین صفحه دنبال کنید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return STATE_HINTS[state] || 'خاتمه درس عملی کاربردی / مشاهده فیلم — وضعیت پرونده را در همین صفحه دنبال کنید.'
 }
 
 /**
@@ -49,8 +53,8 @@ export default function StudentFilmObservationCourseCompletionPanel({
     return null
   }
 
-  const hint = STUDENT_STATE_HINTS[currentState] || STATE_HINTS[currentState]
-    || 'خاتمه درس عملی کاربردی / مشاهده فیلم — وضعیت پرونده را در همین صفحه دنبال کنید.'
+  const hint = resolveFilmHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelFilmCompletionState(currentState)) ?? ''
   const isTerminal = isTerminalState(currentState)
   const isBorderline = filmCtx.passFail === 'مرزی'
     || (filmCtx.totalScore != null && filmCtx.totalScore >= 64 && filmCtx.totalScore <= 73)

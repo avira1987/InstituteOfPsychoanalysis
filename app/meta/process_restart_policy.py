@@ -4,13 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from app.meta.process_start_scope import INSTITUTE_PROCESS_CODES
+
 # نقش‌های پرسنل مجاز (هم‌سطح rollback)
 RESTART_STAFF_ROLES = frozenset({"admin", "deputy_education", "staff"})
-
-INSTITUTE_PROCESS_CODES = frozenset({
-    "fall_semester_preparation",
-    "winter_semester_preparation",
-})
 
 # فرایندهایی که به‌دلیل ماهیت مالی همچنان قابل شروع دوباره نیستند.
 # توجه: فرایندهای آماده‌سازی ترم (INSTITUTE_PROCESS_CODES) دیگر مسدود نیستند

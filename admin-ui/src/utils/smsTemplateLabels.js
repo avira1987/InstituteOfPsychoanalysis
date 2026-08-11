@@ -130,6 +130,7 @@ export const SMS_TEMPLATE_LABELS_FA = {
   "documents_approved_credentials": "متقاضی محترم\\nموضوع: پرتال دانشجویی و ثبت نام\\nمدارک شما تایید شد. تا تا",
   "documents_incomplete": "متقاضی محترم\\nموضوع: اصلاح مدارک\\nتا تاریخ",
   "installment_reminder": "دانشجوی محترم\\nموضوع: مهلت پرداخت قسط\\nمهلت پرداخت قسط بعدی شما به مبلغ",
+  "conditional_therapy_deadline_after_registration": "مهلت آغاز درمان آموزشی (پس از ثبت‌نام مشروط)",
   "therapy_condition_block": "دانشجوی محترم\\nموضوع: شرط ثبت نام در ترم دوم\\nطبق توافق قبلی در مورد پذی",
   "term_registration_general": "دانشجوی محترم\\nموضوع: مهلت ثبت نام در ترم ها\\nمهلت ثبت نام در دروس ترم ب",
   "introductory_completion_invitation": "دانشجوی گرامی\\nموضوع: درخواست ورود به دوره جامع\\nبه اطلاع میرساند که مهل",

@@ -1,6 +1,10 @@
 import React, { useMemo } from 'react'
 import SepPaymentPanel from './SepPaymentPanel'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   InternshipReadinessFlowStepper,
   ScheduleChip,
   labelInternshipState,
@@ -14,39 +18,13 @@ import {
 } from '../utils/internshipReadinessConsultationDisplay'
 
 const PROCESS_TITLE_FA = 'مشورت و تعیین آمادگی برای آغاز انترنی (فرایند ۳۷)'
+const PROC_CODE = 'internship_readiness_consultation'
 
-/** راهنمای هر وضعیت برای دانشجو. */
-const STATE_HINTS = {
-  auto_trigger:
-    'پس از پاس شدن تئوری تکنیک ۳، این فرایند به‌صورت خودکار برای شما فعال شده است. درخواست ارتقا به انترن را در همین صفحه ثبت کنید.',
-  student_request:
-    'درخواست ارتقا به انترن را ثبت کنید تا پروندهٔ شما برای بررسی کمیته نظارت ارسال شود.',
-  supervision_committee_review:
-    'پروندهٔ شما در حال بررسی توسط کمیته نظارت است. پس از صدور مجوز یا رد، وضعیت این صفحه به‌روز می‌شود.',
-  interview_scheduling:
-    'کمیته پیشرفت در حال تنظیم وقت مصاحبه است. پس از تعیین زمان، جزئیات جلسه در این صفحه نمایش داده می‌شود.',
-  interview_held:
-    'مصاحبه کمیته پیشرفت برگزار می‌شود یا در حال برگزاری است. منتظر ثبت نتیجه توسط مسئول علمی باشید.',
-  interview_result_unconditional:
-    'نتیجه مصاحبه: قبولی بدون شرط با ظرفیت ۳ ساعت در هفته. سامانه شما را به مرحلهٔ قراردادها هدایت می‌کند.',
-  interview_result_conditional:
-    'نتیجه مصاحبه: قبولی مشروط با ظرفیت ۱ ساعت در هفته. سامانه شما را به مرحلهٔ قراردادها هدایت می‌کند.',
-  contract_practice:
-    'متن قرارداد پرکیس را مطالعه کنید، گزینهٔ پذیرش را تأیید و کد پیامکی را وارد کنید تا قرارداد امضا شود.',
-  contract_rules:
-    'متن قوانین اداری، آموزشی و بالینی را مطالعه کنید و با کد پیامکی امضای الکترونیکی را تکمیل کنید.',
-  promissory_note:
-    'سفته تضمین را حضوری به انستیتو تحویل دهید. پس از ثبت دریافت توسط کمیته پیشرفت، مرحلهٔ بعد فعال می‌شود.',
-  capacity_check:
-    'کمیته نظارت در حال بررسی وجود بیمار مناسب برای ارجاع است. این مرحله خودکار است؛ در صورت تأخیر صفحه را تازه کنید.',
-  pending_patient:
-    'فعلاً بیماری برای ارجاع موجود نیست. پرونده در وضعیت انتظار است تا بیمار مناسب تأمین شود.',
-  supervisor_selection:
-    'از فهرست سوپروایزرهای دارای وقت آزاد، یک سوپروایزر و زمان جلسه انتخاب کنید. قانون ۲۴ ساعت برای تاریخ شروع اعمال می‌شود.',
-  first_session_payment:
-    'از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.',
-  internship_started:
-    'انترنی شما آغاز شد. جلسات سوپرویژن در LMS ثبت شده و جزئیات از طریق پیامک اعلام می‌شود.',
+function resolveInternshipHint(state) {
+  if (!state) return 'آغاز انترنی — مراحل را طبق راهنمای پنل پیش ببرید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return 'آغاز انترنی — مراحل را طبق راهنمای پنل پیش ببرید.'
 }
 
 function InfoTile({ label, value, tone = '#2563eb', bg = '#eff6ff' }) {
@@ -115,8 +93,8 @@ export default function StudentInternshipReadinessConsultationPanel({
 
   const isStop = isInternshipStopState(currentState)
   const isComplete = currentState === 'internship_started'
-  const hint = STATE_HINTS[currentState]
-    ?? 'آغاز انترنی — مراحل را طبق راهنمای پنل پیش ببرید.'
+  const hint = resolveInternshipHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelInternshipState(currentState)) ?? ''
 
   const showInterview = !!(internship.interview.date || internship.interview.time)
     && POST_INTERVIEW_STATES.includes(currentState)
@@ -172,6 +150,12 @@ export default function StudentInternshipReadinessConsultationPanel({
               color: '#1e3a8a',
             }}
           >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
           </div>
         )}

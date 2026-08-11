@@ -1,5 +1,9 @@
 import React, { useMemo } from 'react'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   PASS_THRESHOLD,
   PROCESS_TITLE_FA,
   STATE_HINTS,
@@ -15,21 +19,13 @@ import {
   variantLabel,
 } from '../utils/skillsCourseCompletionDisplay'
 
-const STUDENT_STATE_HINTS = {
-  awaiting_session_17:
-    'درس شما در انتظار جلسه ۱۷ است. پس از برگزاری امتحان عملی، مدرس نمرات را ثبت می‌کند.',
-  session_17_grades_entry:
-    'جلسه ۱۷ — مدرس در حال ثبت مشارکت و امتحان عملی است.',
-  awaiting_session_18:
-    'نمرات جلسه ۱۷ ثبت شد. جلسه ۱۸ (آزمون تستی) در راه است.',
-  session_18_grades_entry:
-    'جلسه ۱۸ — آزمون تستی برگزار می‌شود. غیبت در عملی یا تست → Incomplete.',
-  grades_computed: 'نمرات در حال نهایی‌سازی است.',
-  ta_evaluation_entry: 'مدرس در حال ارزیابی کمک‌مدرس است.',
-  qualitative_eval_pending: 'مدرس فرم ارزیابی کیفی را تکمیل می‌کند.',
-  grades_locked: 'نمره نهایی ثبت و قفل شد.',
-  session_17_delay: 'مهلت ثبت جلسه ۱۷ گذشته است. با دفتر آموزش تماس بگیرید.',
-  qualitative_eval_delay: 'تأخیر در ارزیابی کیفی. با دفتر آموزش تماس بگیرید.',
+const PROC_CODE = 'skills_course_completion'
+
+function resolveSkillsHint(state) {
+  if (!state) return 'خاتمه دروس تکنیک تمرین مهارت‌ها — وضعیت پرونده را در همین صفحه دنبال کنید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return STATE_HINTS[state] || 'خاتمه دروس تکنیک تمرین مهارت‌ها — وضعیت پرونده را در همین صفحه دنبال کنید.'
 }
 
 /**
@@ -48,8 +44,8 @@ export default function StudentSkillsCourseCompletionPanel({
     return null
   }
 
-  const hint = STUDENT_STATE_HINTS[currentState] || STATE_HINTS[currentState]
-    || 'خاتمه دروس تکنیک تمرین مهارت‌ها — وضعیت پرونده را در همین صفحه دنبال کنید.'
+  const hint = resolveSkillsHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelSkillsState(currentState)) ?? ''
   const isTerminal = isTerminalState(currentState)
 
   const myRow = (skillsCtx.studentsGrades || []).find(

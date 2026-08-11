@@ -1,8 +1,11 @@
 import React, { useMemo } from 'react'
 import { labelState } from '../utils/processDisplay'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   FullLeaveFlowStepper,
-  FULL_LEAVE_STATE_HINTS,
   FULL_LEAVE_SOP_WARNING_FA,
   HintBlock,
   InfoTile,
@@ -16,6 +19,17 @@ import {
 } from '../utils/fullEducationLeaveDisplay'
 
 const PROCESS_TITLE_FA = 'مرخصی موقت از کل آموزش (فرایند ۵۹)'
+const PROC_CODE = 'full_education_leave'
+
+function resolveFullLeaveHint(state) {
+  if (!state) {
+    return 'مراحل مرخصی از کل آموزش را طبق راهنمای این پنل پیش ببرید.'
+  }
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  const short = PROCESS_STATE_LABELS_FA[PROC_CODE]?.[state]
+  return short || 'مراحل مرخصی از کل آموزش را طبق راهنمای این پنل پیش ببرید.'
+}
 
 /**
  * داشبورد راهنمای فرایند ۵۹ — مرخصی موقت از کل آموزش.
@@ -38,8 +52,8 @@ export default function StudentFullEducationLeavePanel({
 
   const isTerminal = isFullLeaveTerminal(currentState)
   const isOnLeave = isFullLeaveActiveLeave(currentState)
-  const hint = FULL_LEAVE_STATE_HINTS[currentState]
-    || 'مراحل مرخصی از کل آموزش را طبق راهنمای این پنل پیش ببرید.'
+  const hint = resolveFullLeaveHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelState(currentState)) ?? ''
 
   const showMeeting = [
     'session_scheduled',
@@ -86,10 +100,28 @@ export default function StudentFullEducationLeavePanel({
           </HintBlock>
         )}
 
-        {!isTerminal && (
-          <HintBlock tone={isOnLeave ? '#d97706' : '#2563eb'} bg={isOnLeave ? '#fffbeb' : '#eff6ff'}>
+        {!isTerminal && hint && (
+          <div
+            data-testid="full-leave-state-hint"
+            style={{
+              marginBottom: compact ? '0.65rem' : '0.85rem',
+              padding: '0.75rem 1rem',
+              borderRadius: '10px',
+              background: isOnLeave ? '#fffbeb' : '#eff6ff',
+              borderRight: `4px solid ${isOnLeave ? '#d97706' : '#2563eb'}`,
+              fontSize: '0.86rem',
+              lineHeight: 1.75,
+              color: isOnLeave ? '#92400e' : '#1e3a8a',
+            }}
+          >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
-          </HintBlock>
+          </div>
         )}
 
         {currentState === 'leave_complete' && (

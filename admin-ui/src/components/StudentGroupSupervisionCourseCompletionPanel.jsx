@@ -1,8 +1,11 @@
 import React, { useMemo } from 'react'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   HOURS_PER_PASS_DISPLAY,
   PROCESS_TITLE_FA,
-  STATE_HINTS,
   GroupSupervisionFlowStepper,
   GroupSupervisionHintBlock,
   GroupSupervisionSlaBanner,
@@ -15,17 +18,13 @@ import {
   resolveGroupSupervisionContext,
 } from '../utils/groupSupervisionCourseCompletionDisplay'
 
-const STUDENT_STATE_HINTS = {
-  awaiting_session_18:
-    'درس شما در انتظار جلسه ۱۸ است. پس از برگزاری، مدرس وضعیت Pass/Fail را ثبت می‌کند.',
-  session_18_pass_fail_entry:
-    'جلسه ۱۸ — مدرس در حال ثبت Pass/Fail مشارکت است (مهلت ۲۴ ساعت).',
-  pass_fail_applied: 'نتایج در حال اعمال در پرونده است.',
-  ta_evaluation_entry: 'مدرس در حال ارزیابی کمک‌مدرس است.',
-  qualitative_eval_pending: 'مدرس فرم ارزیابی کیفی را تکمیل می‌کند.',
-  grades_locked: 'نتیجه نهایی ثبت و قفل شد.',
-  session_18_delay: 'مهلت ثبت Pass/Fail گذشته است. با دفتر آموزش تماس بگیرید.',
-  qualitative_eval_delay: 'تأخیر در ارزیابی کیفی. با دفتر آموزش تماس بگیرید.',
+const PROC_CODE = 'group_supervision_course_completion'
+
+function resolveGroupSupervisionHint(state) {
+  if (!state) return 'خاتمه درس سوپرویژن گروهی — وضعیت پرونده را در همین صفحه دنبال کنید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return 'خاتمه درس سوپرویژن گروهی — وضعیت پرونده را در همین صفحه دنبال کنید.'
 }
 
 /**
@@ -44,8 +43,8 @@ export default function StudentGroupSupervisionCourseCompletionPanel({
     return null
   }
 
-  const hint = STUDENT_STATE_HINTS[currentState] || STATE_HINTS[currentState]
-    || 'خاتمه درس سوپرویژن گروهی — وضعیت پرونده را در همین صفحه دنبال کنید.'
+  const hint = resolveGroupSupervisionHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelGroupSupervisionState(currentState)) ?? ''
   const isTerminal = isTerminalState(currentState)
 
   const myRow = (gsCtx.studentsGrades || []).find(
@@ -99,7 +98,14 @@ export default function StudentGroupSupervisionCourseCompletionPanel({
         </div>
 
         <GroupSupervisionSlaBanner ctx={ctx} currentState={currentState} startedAt={detail.started_at} />
-        <GroupSupervisionHintBlock>{hint}</GroupSupervisionHintBlock>
+        <GroupSupervisionHintBlock title="اقدام بعدی شما">
+          {statusShort && (
+            <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+              وضعیت فعلی: {statusShort}
+            </div>
+          )}
+          {hint}
+        </GroupSupervisionHintBlock>
         <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '0.5rem' }}>
           {hoursSummaryLabel()}
         </p>

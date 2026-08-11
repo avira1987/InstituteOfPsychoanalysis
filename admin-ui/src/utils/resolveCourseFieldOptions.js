@@ -8,9 +8,20 @@ function resolveAdmissionKind(contextData) {
   const ctx = contextData && typeof contextData === 'object' ? contextData : {}
   const ir = ctx.interview_result
   const at = ctx.admission_type
-  if (ir === 'single_course' || at === 'single_course') return 'single_course'
-  if (ir === 'conditional_therapy' || at === 'conditional_therapy') return 'conditional_therapy'
-  if (ir === 'full_admission' || at === 'full_admission' || at === 'full') return 'full_admission'
+  const res = ctx.result
+  if (ir === 'single_course' || at === 'single_course' || res === 'single_course') return 'single_course'
+  if (ir === 'conditional_therapy' || at === 'conditional_therapy' || res === 'conditional_therapy') {
+    return 'conditional_therapy'
+  }
+  if (
+    ir === 'full_admission' ||
+    at === 'full_admission' ||
+    at === 'full' ||
+    res === 'full_admission' ||
+    res === 'full'
+  ) {
+    return 'full_admission'
+  }
   return null
 }
 

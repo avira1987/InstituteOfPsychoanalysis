@@ -6,6 +6,8 @@ import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
 import { processExecApi, studentApi, panelApi, assignmentApi, interviewSlotsApi } from '../services/api'
 import GamificationPanel from '../components/GamificationPanel'
 import StudentQuestCard from '../components/StudentQuestCard'
+import StudentActionInbox from '../components/StudentActionInbox'
+import StudentConditionalTherapyCard from '../components/StudentConditionalTherapyCard'
 import StudentSmsHistorySection from '../components/StudentSmsHistorySection'
 import StudentProcessStepReview from '../components/StudentProcessStepReview'
 import StudentDynamicFormsSection from '../components/StudentDynamicFormsSection'
@@ -51,6 +53,8 @@ import StudentTaTrackPortfolioSection from '../components/StudentTaTrackPortfoli
 import TaTrackCompletionInstancePanel from '../components/TaTrackCompletionInstancePanel'
 import StudentSessionPaymentPanel from '../components/StudentSessionPaymentPanel'
 import StudentTherapyHoursPanel from '../components/StudentTherapyHoursPanel'
+import StudentTherapyJourneyPanel from '../components/StudentTherapyJourneyPanel'
+import StudentTherapyCompletionPanel from '../components/StudentTherapyCompletionPanel'
 import StudentTherapyReductionPanel from '../components/StudentTherapyReductionPanel'
 import StudentTherapyInterruptionPanel from '../components/StudentTherapyInterruptionPanel'
 import StudentSessionCancellationPanel from '../components/StudentSessionCancellationPanel'
@@ -85,7 +89,9 @@ import StudentLiveSupervisionMirrorWritePanel from '../components/StudentLiveSup
 import StudentThesisDefenseRequestPanel from '../components/StudentThesisDefenseRequestPanel'
 import StudentCommitteesRestartPanel from '../components/StudentCommitteesRestartPanel'
 import StudentFeeDeterminationPanel from '../components/StudentFeeDeterminationPanel'
+import StudentFinancialPlanPanel from '../components/StudentFinancialPlanPanel'
 import StudentEducationalTherapistUpgradePanel from '../components/StudentEducationalTherapistUpgradePanel'
+import StudentInternshipReadinessConsultationPanel from '../components/StudentInternshipReadinessConsultationPanel'
 import StudentReturnToFullEducationPanel from '../components/StudentReturnToFullEducationPanel'
 import StudentStartTherapyPanel from '../components/StudentStartTherapyPanel'
 import StudentFullEducationLeavePanel from '../components/StudentFullEducationLeavePanel'
@@ -105,7 +111,7 @@ const studentProcessCodes = [
   'supervision_interruption', 'supervisor_session_cancellation',
   'introductory_course_registration', 'comprehensive_course_registration',
   'fee_determination', 'therapy_completion', 'upgrade_to_ta', 'ta_track_change', 'upgrade_to_educational_therapist', 'internship_readiness_consultation',
-  'thesis_defense_request',
+  'thesis_defense_request', 'lesson_start_per_term',
 ]
 
 /** ناوبری دو سطحی: گروه → زیرتب (testidهای student-portal-tab-* حفظ می‌شوند) */
@@ -170,11 +176,16 @@ export default function StudentPortal() {
   const [assignments, setAssignments] = useState([])
   const [primaryJourney, setPrimaryJourney] = useState(null)
   const [primaryJourneyLoading, setPrimaryJourneyLoading] = useState(false)
+  const [actionInboxItems, setActionInboxItems] = useState([])
+  const [actionInboxLoading, setActionInboxLoading] = useState(false)
   /** پروفایل Student هنوز ایجاد نشده (GET /students/me → 404) — فرم پذیرش در همان پنل */
   const [admissionRequired, setAdmissionRequired] = useState(false)
   const [instanceForms, setInstanceForms] = useState([])
   const [stepFormValues, setStepFormValues] = useState({})
   const lastFormCtxRef = useRef('')
+  const handleStepFieldChange = useCallback((name, v) => {
+    setStepFormValues((prev) => ({ ...prev, [name]: v }))
+  }, [])
   const gamificationTabPanelRef = useRef(null)
   const [showNewRequestModal, setShowNewRequestModal] = useState(false)
   const [selectedProcessTransitionIdx, setSelectedProcessTransitionIdx] = useState(0)
@@ -319,6 +330,14 @@ export default function StudentPortal() {
   }, [activeTab])
 
   useEffect(() => {
+    if (!studentProfile?.extra_data?.installment_portal_lock?.active) return
+    const allowed = new Set(['profile', 'processes', 'dashboard'])
+    if (!allowed.has(activeTab)) {
+      setActiveTab('processes')
+    }
+  }, [studentProfile?.extra_data?.installment_portal_lock, activeTab])
+
+  useEffect(() => {
     setSelectedProcessTransitionIdx(0)
   }, [selectedInstance, instanceDetail?.current_state])
 
@@ -372,6 +391,19 @@ export default function StudentPortal() {
       setPrimaryJourney(null)
     } finally {
       setPrimaryJourneyLoading(false)
+    }
+  }, [])
+
+  const loadActionInbox = useCallback(async () => {
+    setActionInboxLoading(true)
+    try {
+      const res = await studentApi.actionInbox()
+      setActionInboxItems(Array.isArray(res.data?.items) ? res.data.items : [])
+    } catch (e) {
+      console.error('Action inbox load failed', e)
+      setActionInboxItems([])
+    } finally {
+      setActionInboxLoading(false)
     }
   }, [])
 
@@ -441,12 +473,13 @@ export default function StudentPortal() {
       setAvailableProcesses(allDefs.filter(p =>
         studentProcessCodes.includes(p.code) || p.code?.includes('student')
       ))
+      await loadActionInbox()
     } catch (err) {
       console.error('Load error:', err)
     } finally {
       setLoading(false)
     }
-  }, [user?.id, user?.role, loadPrimaryJourney])
+  }, [user?.id, user?.role, loadPrimaryJourney, loadActionInbox])
 
   const handleInterviewBooked = useCallback(async () => {
     const pid =
@@ -726,6 +759,16 @@ export default function StudentPortal() {
     setActiveTab('sessions')
   }, [])
 
+  const openActionInboxItem = useCallback((item) => {
+    if (!item) return
+    if (item.kind === 'hint' || !item.instance_id) {
+      goToOnlineSessions()
+      return
+    }
+    setActiveTab('processes')
+    viewInstance(item.instance_id)
+  }, [goToOnlineSessions, viewInstance])
+
   const activeEvaluationInstance = useMemo(
     () => activeProcesses.find(
       (p) => p.process_code === 'student_instructor_evaluation'
@@ -808,6 +851,7 @@ export default function StudentPortal() {
   }
 
   const activeNavGroup = STUDENT_TAB_TO_GROUP[activeTab] || 'journey'
+  const installmentLockActive = Boolean(studentProfile?.extra_data?.installment_portal_lock?.active)
 
   const roadmapStates = processDefinition ? buildRoadmapStates(processDefinition) : []
   const roadmapProgress = instanceDetail && roadmapStates.length
@@ -833,6 +877,18 @@ export default function StudentPortal() {
   })
   const selectedProcessTransition = availableTransitions[selectedProcessTransitionIdx] ?? availableTransitions[0]
 
+  // قبل از buildStudentGuidance — در غیر این صورت TDZ: Cannot access before initialization
+  const introGate = studentProfile?.intro_registration_gate
+  const introGateClosed = Boolean(
+    studentProfile?.course_type === 'introductory' &&
+      introGate &&
+      introGate.allowed === false,
+  )
+  const introGateReason =
+    introGate?.reason_fa ||
+    primaryJourney?.registrationGate?.reason_fa ||
+    'ثبت‌نام دورهٔ آشنایی پس از انتشار تقویم آموزشی باز می‌شود.'
+
   const primaryGuidance =
     studentProfile && primaryJourney?.detail && primaryJourney?.definition
       ? buildStudentGuidance({
@@ -841,6 +897,7 @@ export default function StudentPortal() {
           transitions: primaryJourney.transitions,
           forms: primaryJourney.forms,
           stepFormLocked: stepFormLockedPrimary,
+          registrationGate: primaryJourney?.registrationGate || introGate,
         })
       : null
 
@@ -856,6 +913,10 @@ export default function StudentPortal() {
           transitions: availableTransitions,
           forms: instanceForms,
           stepFormLocked: stepFormLockedProcess,
+          registrationGate:
+            instanceDetail?.process_code === 'introductory_course_registration'
+              ? introGate
+              : null,
         })
       : null
 
@@ -871,16 +932,6 @@ export default function StudentPortal() {
       regCodeForProfile &&
       canStartProcess(regCodeForProfile, accessCtx).ok,
   )
-  const introGate = studentProfile?.intro_registration_gate
-  const introGateClosed = Boolean(
-    studentProfile?.course_type === 'introductory' &&
-      introGate &&
-      introGate.allowed === false,
-  )
-  const introGateReason =
-    introGate?.reason_fa ||
-    primaryJourney?.registrationGate?.reason_fa ||
-    'ثبت‌نام دورهٔ آشنایی پس از انتشار تقویم آموزشی باز می‌شود.'
   const registrationBlocking = studentProfile && hasActiveRegistrationProcess(activeProcesses)
 
   const primarySmsRefreshKey = primaryJourney?.detail
@@ -891,7 +942,9 @@ export default function StudentPortal() {
     : null
 
   const quickActionItems = [
+    { code: 'lesson_start_per_term', icon: '📘', label: 'ثبت درس این ترم' },
     { code: 'session_payment', icon: '💳', label: 'پرداخت جلسات' },
+    { code: 'therapy_completion', icon: '🏁', label: 'خاتمه درمان آموزشی' },
     { code: 'educational_leave', icon: '🏖️', label: 'درخواست مرخصی' },
     { code: 'full_education_leave', icon: '🛑', label: 'مرخصی از کل آموزش' },
     { code: 'extra_session', icon: '➕', label: 'جلسه اضافی درمان' },
@@ -1275,6 +1328,27 @@ export default function StudentPortal() {
         </div>
       )}
 
+      {installmentLockActive && (
+        <div
+          role="alert"
+          data-testid="student-installment-portal-lock-banner"
+          style={{
+            marginBottom: '1rem',
+            padding: '0.85rem 1.1rem',
+            borderRadius: '10px',
+            background: '#fef2f2',
+            borderRight: '4px solid #dc2626',
+            color: '#991b1b',
+            fontSize: '0.9rem',
+            lineHeight: 1.75,
+          }}
+        >
+          <strong>پنل به‌دلیل قسط معوق شهریه محدود شده است.</strong>
+          {' '}
+          برای ادامه، قسط معوق را از بخش «فرایندها» یا «پروفایل → پلن مالی و اقساط» پرداخت کنید.
+        </div>
+      )}
+
       {/* ناوبری گروه‌بندی‌شدهٔ پنل آموزشی */}
       <div className="student-portal-nav" data-testid="student-portal-tab-bar">
         <div className="student-portal-nav-groups" role="tablist" aria-label="بخش‌های پنل آموزشی">
@@ -1313,6 +1387,22 @@ export default function StudentPortal() {
       {/* Dashboard Tab — فقط مسیر جاری + حداکثر یک یادآور فوری */}
       {activeTab === 'dashboard' && (
         <>
+          {studentProfile && !admissionRequired && studentProfile.conditional_therapy_required && (
+            <StudentConditionalTherapyCard
+              studentProfile={studentProfile}
+              onOpened={async ({ instanceId }) => {
+                if (!instanceId) return
+                try {
+                  await loadData()
+                } catch {
+                  /* ignore */
+                }
+                await viewInstance(instanceId)
+                await loadPrimaryJourney(instanceId)
+                setActiveTab('processes')
+              }}
+            />
+          )}
           {studentProfile && !admissionRequired && (
             primaryJourneyLoading ? (
               <StudentQuestCard
@@ -1323,7 +1413,7 @@ export default function StudentPortal() {
                 forms={primaryJourney?.forms}
                 stepFormLocked={stepFormLockedPrimary}
                 stepFormValues={stepFormValues}
-                onStepFieldChange={(name, v) => setStepFormValues(prev => ({ ...prev, [name]: v }))}
+                onStepFieldChange={handleStepFieldChange}
                 onFormRegisterSubmit={async () => {}}
                 decisionNotes={decisionNotes}
                 onDecisionNotesChange={setDecisionNotes}
@@ -1391,7 +1481,7 @@ export default function StudentPortal() {
                 forms={primaryJourney?.forms}
                 stepFormLocked={stepFormLockedPrimary}
                 stepFormValues={stepFormValues}
-                onStepFieldChange={(name, v) => setStepFormValues(prev => ({ ...prev, [name]: v }))}
+                onStepFieldChange={handleStepFieldChange}
                 onFormRegisterSubmit={registerPrimaryStepForms}
                 decisionNotes={decisionNotes}
                 onDecisionNotesChange={setDecisionNotes}
@@ -1410,10 +1500,37 @@ export default function StudentPortal() {
             )
           )}
 
+          {studentProfile?.therapy_started && !admissionRequired && (
+            <StudentTherapyJourneyPanel
+              studentProfile={studentProfile}
+              activeProcesses={activeProcesses}
+              completedProcesses={completedProcesses}
+              active={activeTab === 'dashboard'}
+              onStartProcess={(code) => startProcess(code)}
+              onOpenSessionPayment={(id) => {
+                setActiveTab('processes')
+                if (id) viewInstance(id)
+              }}
+              onGoToOnlineSessions={goToOnlineSessions}
+              onOpenTherapyCompletion={(id) => {
+                setActiveTab('processes')
+                if (id) viewInstance(id)
+              }}
+            />
+          )}
+
           {studentProfile && !admissionRequired && primaryJourney?.detail?.instance_id && !showManualRegStart && (
             <StudentDynamicFormsSection
               instanceId={primaryJourney.detail.instance_id}
               onSubmitted={() => loadPrimaryJourney(primaryJourney.detail.instance_id)}
+            />
+          )}
+
+          {studentProfile && !admissionRequired && (
+            <StudentActionInbox
+              items={actionInboxItems}
+              loading={actionInboxLoading}
+              onOpenItem={openActionInboxItem}
             />
           )}
 
@@ -1626,6 +1743,10 @@ export default function StudentPortal() {
                 history={instanceDetail.history}
                 forms={instanceForms}
                 extraLabelForms={instanceContextExtraLabelForms}
+                portalRole={user?.role}
+                instanceDetail={instanceDetail}
+                showTechnicalContext={user?.role === 'admin'}
+                showOperatorCaseFacts={false}
                 title="پرونده و سابقه (قبل از اقدام)"
               />
 
@@ -1670,6 +1791,15 @@ export default function StudentPortal() {
                     therapyHoursProgressFa={studentProfile.therapy_hours_progress_fa}
                     active={activeTab === 'processes'}
                     compact
+                  />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'therapy_completion' && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentTherapyCompletionPanel
+                    detail={instanceDetail}
+                    active={activeTab === 'processes'}
                   />
                 </div>
               )}
@@ -1941,7 +2071,7 @@ export default function StudentPortal() {
                     showToast={showToast}
                     onRefreshInstance={() => viewInstance(selectedInstance)}
                     stepFormValues={stepFormValues}
-                    onFieldChange={(name, v) => setStepFormValues((prev) => ({ ...prev, [name]: v }))}
+                    onFieldChange={handleStepFieldChange}
                     stepFormLocked={stepFormLockedProcess}
                     active={activeTab === 'processes'}
                   />
@@ -1956,7 +2086,7 @@ export default function StudentPortal() {
                     showToast={showToast}
                     onRefreshInstance={() => viewInstance(selectedInstance)}
                     stepFormValues={stepFormValues}
-                    onFieldChange={(name, v) => setStepFormValues((prev) => ({ ...prev, [name]: v }))}
+                    onFieldChange={handleStepFieldChange}
                     stepFormLocked={stepFormLockedProcess}
                     active={activeTab === 'processes'}
                   />
@@ -2066,6 +2196,7 @@ export default function StudentPortal() {
                       detail={instanceDetail}
                       stepFormValues={stepFormValues}
                       extraData={studentProfile?.extra_data}
+                      studentId={studentProfile?.id}
                       active={activeTab === 'processes'}
                     />
                   </div>
@@ -2115,6 +2246,16 @@ export default function StudentPortal() {
                 && studentProfile?.therapy_started && (
                 <div style={{ marginBottom: '1.25rem' }}>
                   <StudentFeeDeterminationPanel active={activeTab === 'processes'} compact />
+                </div>
+              )}
+
+              {instanceDetail.process_code === 'internship_readiness_consultation' && !instanceDetailDone && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <StudentInternshipReadinessConsultationPanel
+                    detail={instanceDetail}
+                    studentProfile={studentProfile}
+                    active={activeTab === 'processes'}
+                  />
                 </div>
               )}
 
@@ -2209,12 +2350,13 @@ export default function StudentPortal() {
                   <ProcessStepForms
                     forms={instanceForms}
                     values={stepFormValues}
-                    onFieldChange={(name, v) => setStepFormValues(prev => ({ ...prev, [name]: v }))}
+                    onFieldChange={handleStepFieldChange}
                     disabled={false}
                     hasAvailableTransitions={(availableTransitions?.length || 0) > 0}
                     instanceId={selectedInstance}
                     resubmitFieldNames={docsResubmitProcess || null}
                     contextData={instanceDetail?.context_data}
+                    currentState={instanceDetail?.current_state}
                     onRegisterSubmit={async ({ ok, missing }) => {
                       if (!ok) {
                         showToast(`موارد ناقص: ${missing.join('، ')}`, 'error')
@@ -2500,7 +2642,7 @@ export default function StudentPortal() {
                 forms={primaryJourney?.forms}
                 stepFormLocked={stepFormLockedPrimary}
                 stepFormValues={stepFormValues}
-                onStepFieldChange={(name, v) => setStepFormValues(prev => ({ ...prev, [name]: v }))}
+                onStepFieldChange={handleStepFieldChange}
                 onFormRegisterSubmit={async () => {}}
                 decisionNotes={decisionNotes}
                 onDecisionNotesChange={setDecisionNotes}
@@ -2568,7 +2710,7 @@ export default function StudentPortal() {
                 forms={primaryJourney?.forms}
                 stepFormLocked={stepFormLockedPrimary}
                 stepFormValues={stepFormValues}
-                onStepFieldChange={(name, v) => setStepFormValues(prev => ({ ...prev, [name]: v }))}
+                onStepFieldChange={handleStepFieldChange}
                 onFormRegisterSubmit={registerPrimaryStepForms}
                 decisionNotes={decisionNotes}
                 onDecisionNotesChange={setDecisionNotes}
@@ -2616,6 +2758,24 @@ export default function StudentPortal() {
             />
           )}
           {studentProfile?.therapy_started && (
+            <StudentTherapyJourneyPanel
+              studentProfile={studentProfile}
+              activeProcesses={activeProcesses}
+              completedProcesses={completedProcesses}
+              active={activeTab === 'profile'}
+              onStartProcess={(code) => startProcess(code)}
+              onOpenSessionPayment={(id) => {
+                setActiveTab('processes')
+                if (id) viewInstance(id)
+              }}
+              onGoToOnlineSessions={goToOnlineSessions}
+              onOpenTherapyCompletion={(id) => {
+                setActiveTab('processes')
+                if (id) viewInstance(id)
+              }}
+            />
+          )}
+          {studentProfile?.therapy_started && (
             <StudentTherapyHoursPanel
               therapyHoursProgressFa={studentProfile.therapy_hours_progress_fa}
               active={activeTab === 'profile'}
@@ -2638,6 +2798,12 @@ export default function StudentPortal() {
           )}
           {studentProfile?.therapy_started && (
             <StudentFeeDeterminationPanel active={activeTab === 'profile'} />
+          )}
+          {studentProfile && (
+            <StudentFinancialPlanPanel
+              studentId={studentProfile.id}
+              active={activeTab === 'profile'}
+            />
           )}
           {studentProfile && (
             <div className="card student-profile-summary-card">

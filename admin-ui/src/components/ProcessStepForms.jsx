@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { filterFormsForStudent, validateStepForms } from '../utils/processFormsStudent'
+import {
+  filterFormsForStudent,
+  validateStepForms,
+} from '../utils/processFormsStudent'
+import { isStepOtpAlreadyVerified } from '../utils/stepOtpVerified'
+import { fieldVisible, fieldRequired } from '../utils/formConditions'
 import { processExecApi, studentApi } from '../services/api'
 import EducationalTherapistSlotPicker from './EducationalTherapistSlotPicker'
 import { resolveUploadPublicUrl, parseStepFileUploadValue } from '../utils/uploadPublicUrl'
@@ -17,6 +22,9 @@ import {
   defaultShamsiDate,
   formatShamsiTehran,
 } from '../utils/shamsiDateTime'
+
+/** جلوگیری از ارسال دوبارهٔ OTP خودکار پس از remount همان پرونده */
+const autoOtpSentInstanceIds = new Set()
 
 /** پیش‌نمایش کوچک آپلود فایل مرحله با لایت‌باکس بزرگ‌نمایی */
 function StepFilePreviewThumb({ label, src, mime, fileName }) {
@@ -157,11 +165,35 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
   const value = values[name]
   const onChange = v => onFieldChange(name, v)
   const locked = !!lockedInPartialMode
+  const answers = values || {}
+  const visible = fieldVisible(field, answers)
+  const requiredMark = fieldRequired(field, answers)
+
+  if (!visible) {
+    // لیست تعداد اقساط: با انتخاب نقدی غیرفعال بماند (نه مخفی کامل)
+    if (t === 'select' && Array.isArray(field.options) && (field.show_if || field.visible_when || field.visible_if)) {
+      return (
+        <label className="psf-field" htmlFor={id}>
+          <span className="psf-label">{field.label_fa || name}</span>
+          <select
+            id={id}
+            className="psf-input"
+            value=""
+            disabled
+            aria-disabled="true"
+          >
+            <option value="">— انتخاب کنید —</option>
+          </select>
+        </label>
+      )
+    }
+    return null
+  }
 
   if (t === 'textarea') {
     return (
       <label className="psf-field" htmlFor={id}>
-        <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
+        <span className="psf-label">{field.label_fa || name}{requiredMark ? ' *' : ''}</span>
         <textarea
           id={id}
           className="psf-input psf-textarea"
@@ -181,6 +213,7 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
   if (t === 'therapist_slot_picker') {
     const slotFieldName = 'slot_ids'
     const courseType = contextData?.course_type || null
+    const isSupervisorPick = name === 'new_supervisor_id' || field.slot_role === 'supervisor'
     return (
       <div className="psf-field">
         <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
@@ -188,11 +221,18 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
         <EducationalTherapistSlotPicker
           therapistId={value ?? ''}
           slotIds={values[slotFieldName] || []}
-          weeklySessions={values.weekly_sessions}
+          weeklySessions={values.weekly_sessions || values.selected_supervision_weekly_count || (isSupervisorPick ? 1 : '')}
           courseType={courseType}
           therapistFieldName={name}
+          slotRole={isSupervisorPick ? 'supervisor' : 'therapist'}
           onTherapistChange={(v) => onFieldChange(name, v)}
-          onSlotsChange={(ids) => onFieldChange(slotFieldName, ids)}
+          onSlotsChange={(ids) => {
+            onFieldChange(slotFieldName, ids)
+            if (isSupervisorPick) {
+              onFieldChange('weekly_sessions', 1)
+              onFieldChange('selected_supervision_weekly_count', 1)
+            }
+          }}
           disabled={disabled || locked}
         />
       </div>
@@ -212,14 +252,38 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
   }
 
   if (t === 'select' && Array.isArray(field.options)) {
+    const tuitionRial = contextData?.tuition_total_rial != null
+      ? Number(contextData.tuition_total_rial)
+      : (contextData?.invoice_amount != null
+        ? Math.round(Number(contextData.invoice_amount) * 10)
+        : null)
+    let installmentPreview = null
+    if (name === 'installment_count' && value && tuitionRial && tuitionRial > 0) {
+      const n = parseInt(value, 10)
+      if (n > 1) {
+        const per = Math.floor(tuitionRial / n)
+        installmentPreview = (
+          <p className="psf-hint" style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#1e3a8a' }}>
+            مبلغ تقریبی هر قسط:{' '}
+            <strong>{Math.round(per / 10).toLocaleString('fa-IR')} تومان</strong>
+            {' '}
+            (شهریه کل {Math.round(tuitionRial / 10).toLocaleString('fa-IR')} تومان ÷ {n.toLocaleString('fa-IR')})
+          </p>
+        )
+      }
+    }
     return (
       <label className="psf-field" htmlFor={id}>
-        <span className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</span>
+        <span className="psf-label">{field.label_fa || name}{requiredMark ? ' *' : ''}</span>
         <select
           id={id}
           className="psf-input"
           value={value ?? ''}
-          onChange={e => onChange(e.target.value)}
+          onChange={e => {
+            const raw = e.target.value
+            const num = raw === '' ? '' : Number(raw)
+            onChange(Number.isNaN(num) ? raw : num)
+          }}
           disabled={disabled || locked}
         >
           <option value="">— انتخاب کنید —</option>
@@ -231,14 +295,21 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
             )
           })}
         </select>
+        {installmentPreview}
       </label>
     )
   }
 
   if (t === 'radio' && Array.isArray(field.options)) {
+    const onPaymentMethodChange = (v) => {
+      onChange(v)
+      if (name === 'payment_method' && v !== 'installment' && values?.installment_count != null && values.installment_count !== '') {
+        onFieldChange('installment_count', '')
+      }
+    }
     return (
       <fieldset className="psf-field psf-fieldset">
-        <legend className="psf-label">{field.label_fa || name}{field.required ? ' *' : ''}</legend>
+        <legend className="psf-label">{field.label_fa || name}{requiredMark ? ' *' : ''}</legend>
         <div className="psf-radio-group">
           {field.options.map(opt => {
             const v = typeof opt === 'object' ? opt.value : opt
@@ -249,7 +320,7 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
                   type="radio"
                   name={name}
                   checked={value === v}
-                  onChange={() => onChange(v)}
+                  onChange={() => onPaymentMethodChange(v)}
                   disabled={disabled || locked}
                 />
                 <span>{lab}</span>
@@ -283,6 +354,13 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
     const href = field.rules_link_href
     const linkText = field.rules_link_label_fa || 'قوانین انستیتو'
     const isExternal = typeof href === 'string' && /^https?:\/\//i.test(href)
+    const debtCount = name === 'debt_settlement_included'
+      ? Number(contextData?.debt_sessions_count)
+      : 0
+    const debtForced = name === 'debt_settlement_included'
+      && Number.isFinite(debtCount)
+      && debtCount > 0
+    const checked = debtForced ? true : !!value
     const labelSpan = href ? (
       <span>
         {isExternal ? (
@@ -300,19 +378,34 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
       </span>
     ) : (
       <span>
-        {field.label_fa || name}
-        {field.required ? ' *' : ''}
+        {debtForced
+          ? `تسویهٔ ${debtCount.toLocaleString('fa-IR')} جلسهٔ بدهکار در همین پرداخت (الزامی)`
+          : (field.label_fa || name)}
+        {field.required || debtForced ? ' *' : ''}
       </span>
     )
     return (
       <label className="psf-field psf-check">
         <input
           type="checkbox"
-          checked={!!value}
-          onChange={e => onChange(e.target.checked)}
-          disabled={disabled || locked}
+          checked={checked}
+          onChange={e => {
+            if (debtForced) return
+            onChange(e.target.checked)
+          }}
+          disabled={disabled || locked || debtForced}
         />
         {labelSpan}
+        {debtForced && (
+          <span className="psf-hint" style={{ display: 'block', marginTop: '0.35rem', color: '#b45309' }}>
+            به‌خاطر وجود بدهی، تسویه خودکار در فاکتور لحاظ می‌شود و قابل خاموش کردن نیست.
+          </span>
+        )}
+        {!debtForced && field.hint_fa && (
+          <span className="psf-hint" style={{ display: 'block', marginTop: '0.35rem' }}>
+            {field.hint_fa}
+          </span>
+        )}
       </label>
     )
   }
@@ -480,7 +573,7 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
         instanceId={instanceId}
         value={value}
         onChange={onChange}
-        disabled={disabled || locked}
+        disabled={disabled || locked || !!fileUploadBlocked}
         labelFa={field.label_fa || name}
         required={!!field.required}
         verified={!!values.step_otp_verified}
@@ -623,9 +716,79 @@ export default function ProcessStepForms({
   resubmitFieldNames = null,
   /** پرونده نمونه — برای لیست دروس مجاز از روی interview_result و غیره */
   contextData = null,
+  /** وضعیت فعلی نمونه — برای هم‌خوانی فلگ سروری OTP */
+  currentState = null,
 }) {
   const [uploadErr, setUploadErr] = useState(null)
+  const autoOtpSentRef = useRef(false)
+  const onFieldChangeRef = useRef(onFieldChange)
+  onFieldChangeRef.current = onFieldChange
+
+  // با وجود بدهی جلسه، تسویه باید در values باشد تا به payload برود (نه فقط نمایش چک‌باکس)
+  useEffect(() => {
+    const debt = Number(contextData?.debt_sessions_count)
+    if (!Number.isFinite(debt) || debt <= 0) return
+    if (values?.debt_settlement_included === true) return
+    const hasField = (forms || []).some(
+      (f) => Array.isArray(f?.fields) && f.fields.some((ff) => ff?.name === 'debt_settlement_included'),
+    )
+    const setField = onFieldChangeRef.current
+    if (hasField && typeof setField === 'function') {
+      setField('debt_settlement_included', true)
+    }
+  }, [contextData?.debt_sessions_count, values?.debt_settlement_included, forms])
+
   const list = filterFormsForStudent(forms || [])
+  const flatFieldsEarly = list.flatMap(form => form.fields || [])
+  const rulesGateFieldEarly = flatFieldsEarly.find(f => f.type === 'checkbox' && f.rules_link_href)
+  const gateKeyEarly = rulesGateFieldEarly?.name
+  const rulesAccepted = !!(gateKeyEarly && values?.[gateKeyEarly])
+  const hasStepOtpField = flatFieldsEarly.some(f => (f.type || '') === 'step_otp')
+  const otpAlreadyVerified = isStepOtpAlreadyVerified(values, contextData, currentState)
+
+  // هم‌تراز کردن فلگ فرم با تأیید سروری (بعد از رفرش / remount)
+  useEffect(() => {
+    if (!hasStepOtpField || !otpAlreadyVerified) return
+    if (values?.step_otp_verified === true) return
+    const setField = onFieldChangeRef.current
+    if (typeof setField === 'function') setField('step_otp_verified', true)
+  }, [hasStepOtpField, otpAlreadyVerified, values?.step_otp_verified])
+
+  // با تیک تأیید قوانین، یک‌بار OTP خودکار ارسال شود (نه بعد از تأیید یا آپلود)
+  useEffect(() => {
+    if (!instanceId || !hasStepOtpField || !gateKeyEarly) return
+    if (!rulesAccepted) {
+      autoOtpSentRef.current = false
+      autoOtpSentInstanceIds.delete(instanceId)
+      if (values?.step_otp_verified && typeof onFieldChangeRef.current === 'function') {
+        onFieldChangeRef.current('step_otp_verified', false)
+      }
+      return
+    }
+    if (otpAlreadyVerified || values?.step_otp_verified) {
+      autoOtpSentRef.current = true
+      autoOtpSentInstanceIds.add(instanceId)
+      return
+    }
+    if (autoOtpSentRef.current || autoOtpSentInstanceIds.has(instanceId)) return
+    if (disabled) return
+    autoOtpSentRef.current = true
+    autoOtpSentInstanceIds.add(instanceId)
+    processExecApi.requestStudentStepOtp(instanceId).catch(() => {
+      // کاربر می‌تواند از دکمه «ارسال کد» دوباره بفرستد
+      autoOtpSentRef.current = false
+      autoOtpSentInstanceIds.delete(instanceId)
+    })
+  }, [
+    instanceId,
+    hasStepOtpField,
+    gateKeyEarly,
+    rulesAccepted,
+    disabled,
+    otpAlreadyVerified,
+    values?.step_otp_verified,
+  ])
+
   if (list.length === 0) return null
 
   const validateOpts = {
@@ -645,7 +808,13 @@ export default function ProcessStepForms({
 
   const partialMode = Array.isArray(resubmitFieldNames) && resubmitFieldNames.length > 0
   const resubmitSet = partialMode ? new Set(resubmitFieldNames) : null
-  const lockedInPartial = (fieldName) => partialMode && resubmitSet && !resubmitSet.has(fieldName)
+  const lockedInPartial = (field) => {
+    if (!partialMode || !resubmitSet) return false
+    const t = field?.type || 'text'
+    if (t === 'step_otp') return false
+    if (t === 'checkbox' && field?.rules_link_href) return false
+    return !resubmitSet.has(field?.name)
+  }
 
   const flatFields = list.flatMap(form => form.fields || [])
   const rulesGateField = flatFields.find(f => f.type === 'checkbox' && f.rules_link_href)
@@ -706,7 +875,7 @@ export default function ProcessStepForms({
                   instanceId={instanceId}
                   onUploadError={msg => setUploadErr(msg || null)}
                   contextData={contextData}
-                  lockedInPartialMode={lockedInPartial(field.name)}
+                  lockedInPartialMode={lockedInPartial(field)}
                   fileUploadBlocked={uploadsBlockedByRules}
                 />
               ))}

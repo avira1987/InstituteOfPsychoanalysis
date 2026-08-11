@@ -526,10 +526,13 @@ async def build_prep_sla_warning_log(db: AsyncSession) -> dict[str, Any]:
 
 async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
     """Status payload for admin API."""
+    from app.services.institute_operational_anchor import anchor_public_info
+
     anchor = await ensure_institute_operational_student(db)
     out: dict[str, Any] = {
         "anchor_student_code": anchor.student_code,
         "anchor_student_id": str(anchor.id),
+        "anchor": anchor_public_info(anchor),
         "processes": {},
     }
     engine = StateMachineEngine(db)
@@ -617,6 +620,31 @@ async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
     from app.services.semester_prep_readiness_service import compute_semester_prep_readiness
 
     out["readiness"] = await compute_semester_prep_readiness(db)
+
+    processes = out["processes"]
+    active_codes = [
+        code for code, entry in processes.items() if entry.get("active") and entry.get("instance_id")
+    ]
+    overdue_codes = [
+        code
+        for code, entry in processes.items()
+        if entry.get("active") and entry.get("sla_overdue")
+    ]
+    readiness = out.get("readiness") or {}
+    out["anchor"] = {
+        **out["anchor"],
+        "active_process_codes": active_codes,
+        "active_count": len(active_codes),
+        "overdue_count": len(overdue_codes),
+        "overdue_process_codes": overdue_codes,
+        "readiness_ready": bool(readiness.get("ready")),
+        "readiness_blocking_count": len(readiness.get("blocking") or []),
+        "hub_path": "/panel/semester-prep",
+        "workbench_path": "/panel/semester-prep/workbench",
+        "sla_warnings_path": "/panel/semester-prep/sla-warnings",
+        "readiness_path": "/panel/semester-prep/readiness",
+        "academic_calendar_path": "/panel/academic-calendar",
+    }
     return out
 
 

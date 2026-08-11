@@ -48,6 +48,17 @@ def pytest_sessionstart(session):
 
         eng = create_engine(url)
         with eng.begin() as conn:
+            # anistito_test ممکن است هنوز خالی باشد؛ ALTER روی جدول ناموجود فقط ERROR در لاگ Postgres می‌نویسد
+            has_users = conn.execute(
+                text(
+                    "SELECT EXISTS ("
+                    " SELECT 1 FROM information_schema.tables"
+                    " WHERE table_schema = 'public' AND table_name = 'users'"
+                    ")"
+                )
+            ).scalar()
+            if not has_users:
+                return
             conn.execute(
                 text(
                     "ALTER TABLE users ADD COLUMN IF NOT EXISTS portal_password_plain VARCHAR(128)"
@@ -63,7 +74,7 @@ def pytest_sessionstart(session):
                     """
                     CREATE TABLE IF NOT EXISTS sms_simulation_outbox (
                         id VARCHAR(36) NOT NULL PRIMARY KEY,
-                        phone VARCHAR(15) NOT NULL,
+                        phone VARCHAR(32) NOT NULL,
                         message TEXT NOT NULL,
                         kind VARCHAR(32) NOT NULL,
                         template_key VARCHAR(120),

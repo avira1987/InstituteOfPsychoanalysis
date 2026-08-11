@@ -15,7 +15,7 @@ import OperatorProcessInstancePanel from '../components/OperatorProcessInstanceP
 import AttendanceTrackingPanel from '../components/AttendanceTrackingPanel'
 import Supervision50hCompletionPanel from '../components/Supervision50hCompletionPanel'
 import UnannouncedAbsenceReactionPanel from '../components/UnannouncedAbsenceReactionPanel'
-import UnannouncedSupervisionAbsenceReactionPanel from '../components/UnannouncedSupervisionAbsenceReactionPanel'
+import SiteManagerAttendanceQueue, { isAttendanceFollowupItem } from '../components/SiteManagerAttendanceQueue'
 
 const SITE_MANAGER_DEEP_LINK_TABS = [
   'dashboard',
@@ -60,8 +60,8 @@ export default function SiteManagerPortal() {
       setOperatorReadinessAlerts(followupRes.data?.readiness_alerts || [])
 
       const pending = []
-      const alerts = []
       const allActive = []
+      const followupItems = followupRes.data?.items || []
       for (const s of students) {
         try {
           const instRes = await processExecApi.studentInstances(s.id)
@@ -72,13 +72,11 @@ export default function SiteManagerPortal() {
               if (isWaitingForSiteManager(inst.current_state)) {
                 pending.push({ ...inst, student_code: s.student_code, student_id: s.id })
               }
-              if (isAttendanceRelated(inst.process_code, inst.current_state)) {
-                alerts.push({ ...inst, student_code: s.student_code, student_id: s.id })
-              }
             }
           }
         } catch { /* skip */ }
       }
+      const alerts = followupItems.filter(isAttendanceFollowupItem)
       setPendingActions(pending)
       setAttendanceAlerts(alerts)
       setAllActiveInstances(allActive)
@@ -93,11 +91,6 @@ export default function SiteManagerPortal() {
     if (!state) return false
     return siteManagerReviewStates.some(rs => state.includes(rs)) ||
            state.includes('site_manager') || state.includes('followup')
-  }
-
-  const isAttendanceRelated = (processCode, state) => {
-    return processCode?.includes('attendance') || processCode?.includes('absence') ||
-           state?.includes('attendance') || state?.includes('absence')
   }
 
   const viewInstance = async (instanceId) => {
@@ -296,36 +289,11 @@ export default function SiteManagerPortal() {
                   </button>
                 )}
               </div>
-              {attendanceAlerts.length === 0 ? (
-                <div className="empty-state" style={{ padding: '2rem' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>✅</div>
-                  <p>هشداری وجود ندارد</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {attendanceAlerts.slice(0, 5).map(a => (
-                    <button
-                      key={a.instance_id}
-                      onClick={() => { viewInstance(a.instance_id); setActiveTab('alerts') }}
-                      style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer',
-                        textAlign: 'right', border: '1px solid #fca5a5', background: '#fef2f2',
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>
-                          {labelProcess(a.process_code)}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                          دانشجو: {formatStudentCodeDisplay(a.student_code)} | {labelState(a.current_state)}
-                        </div>
-                      </div>
-                      <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>هشدار</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <SiteManagerAttendanceQueue
+                items={attendanceAlerts}
+                compact
+                onOpenInstance={(id) => { viewInstance(id); setActiveTab('alerts') }}
+              />
             </div>
 
             {/* Pending Follow-ups */}
@@ -375,36 +343,11 @@ export default function SiteManagerPortal() {
             <div className="card-header">
               <h3 className="card-title">هشدارهای حضور و غیاب ({attendanceAlerts.length})</h3>
             </div>
-            {attendanceAlerts.length === 0 ? (
-              <div className="empty-state" style={{ padding: '3rem' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>✅</div>
-                <p>هشداری وجود ندارد</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {attendanceAlerts.map(a => (
-                  <button
-                    key={a.instance_id}
-                    onClick={() => viewInstance(a.instance_id)}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer',
-                      textAlign: 'right',
-                      border: selectedInstance === a.instance_id ? '2px solid var(--danger)' : '1px solid #fca5a5',
-                      background: selectedInstance === a.instance_id ? 'var(--danger-light)' : '#fef2f2',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 500 }}>{labelProcess(a.process_code)}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                        دانشجو: {formatStudentCodeDisplay(a.student_code)} | {labelState(a.current_state)}
-                      </div>
-                    </div>
-                    <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>هشدار</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <SiteManagerAttendanceQueue
+              items={attendanceAlerts}
+              selectedInstanceId={selectedInstance}
+              onOpenInstance={viewInstance}
+            />
           </div>
           {instanceDetail && <ActionPanel
             instanceDetail={instanceDetail}

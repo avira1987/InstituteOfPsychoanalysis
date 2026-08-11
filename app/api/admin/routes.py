@@ -6,15 +6,23 @@ import uuid
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import get_settings
 from app.database import get_db
 from app.api.auth import get_current_user, require_role, get_password_hash
+from app.core.user_roles import (
+    normalize_user_roles,
+    primary_role,
+    sync_primary_and_roles,
+    user_has_role,
+    user_matches_role_sql,
+)
 from app.models.operational_models import (
     User,
     ProcessInstance,
@@ -34,6 +42,13 @@ from app.models.meta_models import ProcessDefinition, StateDefinition, Transitio
 from app.models.audit_models import AuditLog
 from app.core.audit import AuditLogger
 from app.services.process_title import find_process_by_normalized_title
+from app.services.backup_catalog import (
+    BackupCatalogError,
+    get_snapshot,
+    list_snapshots,
+    resolve_download_path,
+    verify_snapshot,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
@@ -82,6 +97,10 @@ class ProcessResponse(BaseModel):
     sop_order: Optional[int] = Field(None, description="شمارهٔ مرحله در سند SOP (INDEX / یادداشت‌ها)")
     source_text: Optional[str] = None
     has_flowchart: bool = False
+    manual_start_scope: Optional[str] = Field(
+        None,
+        description="student | staff | institute — دامنهٔ شروع دستی",
+    )
 
 
 class SopDocUpsertResponse(BaseModel):
@@ -857,9 +876,14 @@ async def get_dashboard_stats(
     """Get dashboard statistics."""
     from app.models.operational_models import ProcessInstance, Student
 
+    from app.services.institute_operational_anchor import institute_operational_student_code
+
     process_count = await db.execute(select(func.count(ProcessDefinition.id)).where(ProcessDefinition.is_active == True))
     rule_count = await db.execute(select(func.count(RuleDefinition.id)).where(RuleDefinition.is_active == True))
-    student_count = await db.execute(select(func.count(Student.id)))
+    ops_code = institute_operational_student_code()
+    student_count = await db.execute(
+        select(func.count(Student.id)).where(Student.student_code != ops_code)
+    )
     active_instances = await db.execute(select(func.count(ProcessInstance.id)).where(ProcessInstance.is_completed == False, ProcessInstance.is_cancelled == False))
 
     return {
@@ -1284,7 +1308,8 @@ async def list_users(
     role: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
     search: Optional[str] = Query(None, description="جست‌وجو در نام فارسی یا نام کاربری"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(2000, ge=1, le=10000),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin", "staff", "deputy_education", "site_manager", "course_committee")),
 ):
@@ -1293,7 +1318,7 @@ async def list_users(
 
     stmt = select(User)
     if role:
-        stmt = stmt.where(User.role == role)
+        stmt = stmt.where(user_matches_role_sql(role))
     if is_active is not None:
         stmt = stmt.where(User.is_active == is_active)
     q = (search or "").strip()
@@ -1305,7 +1330,12 @@ async def list_users(
                 User.username.ilike(term),
             )
         )
-    stmt = stmt.order_by(User.created_at.desc()).limit(limit).options(selectinload(User.student_profile))
+    stmt = (
+        stmt.order_by(User.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .options(selectinload(User.student_profile))
+    )
     result = await db.execute(stmt)
     users = result.scalars().unique().all()
     return [
@@ -1315,7 +1345,8 @@ async def list_users(
             "email": u.email,
             "full_name_fa": u.full_name_fa,
             "full_name_en": u.full_name_en,
-            "role": u.role,
+            "role": primary_role(u),
+            "roles": normalize_user_roles(u),
             "phone": u.phone,
             "national_code": _national_code_from_extra_data(
                 u.student_profile.extra_data if u.student_profile else None
@@ -1341,20 +1372,47 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    allowed_fields = {"full_name_fa", "full_name_en", "role", "phone", "email", "is_active"}
-    if current_user.role == "admin":
-        allowed_fields = allowed_fields | {"profile_meta"}
-    if current_user.role == "staff":
+    is_admin = user_has_role(current_user, "admin", admin_bypass=False)
+    allowed_fields = {"full_name_fa", "full_name_en", "phone", "email", "is_active"}
+    if is_admin:
+        allowed_fields = allowed_fields | {"role", "roles", "profile_meta"}
+    if user_has_role(current_user, "staff", admin_bypass=False) and not is_admin:
         allowed_fields = {"full_name_fa", "full_name_en", "phone", "email"}
+
+    # همگام‌سازی نقش‌ها قبل از setattr ساده
+    if is_admin and ("roles" in data or "role" in data):
+        try:
+            roles_in = data.get("roles")
+            if roles_in is None:
+                roles_in = normalize_user_roles(user)
+                if "role" in data and data.get("role"):
+                    # فقط primary عوض شده
+                    roles_in = list(dict.fromkeys(
+                        [str(data["role"]).strip()] + [r for r in roles_in if r != str(data["role"]).strip()]
+                    ))
+            prim, ordered = sync_primary_and_roles(
+                roles_in,
+                primary=data.get("role") if data.get("role") is not None else user.role,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        user.role = prim
+        user.roles = ordered
+
     for key, value in data.items():
+        if key in ("role", "roles"):
+            continue  # بالا اعمال شد
         if key in allowed_fields:
+            # empty string must not be stored for unique nullable email
+            if key in ("email", "phone") and isinstance(value, str):
+                value = value.strip() or None
             setattr(user, key, value)
     if "password" in data and data.get("password"):
         user.hashed_password = get_password_hash(data["password"])
         user.portal_password_plain = None
     await db.flush()
     national_code = None
-    if (user.role or "").strip() == "student":
+    if "student" in normalize_user_roles(user):
         st_res = await db.execute(select(Student).where(Student.user_id == user.id))
         st = st_res.scalars().first()
         national_code = _national_code_from_extra_data(st.extra_data if st else None)
@@ -1364,7 +1422,8 @@ async def update_user(
         "email": user.email,
         "full_name_fa": user.full_name_fa,
         "full_name_en": user.full_name_en,
-        "role": user.role,
+        "role": primary_role(user),
+        "roles": normalize_user_roles(user),
         "phone": user.phone,
         "national_code": national_code,
         "is_active": user.is_active,
@@ -1508,6 +1567,7 @@ def _normalize_rule_json_optional_dict(val) -> Optional[dict]:
 
 
 def _process_response(p: ProcessDefinition, *, include_source_text: bool = True) -> ProcessResponse:
+    from app.meta.process_start_scope import get_manual_start_scope
     from app.meta.sop_registry import get_sop_order_for_process_code
 
     cfg = _normalize_process_config(p.config)
@@ -1522,6 +1582,7 @@ def _process_response(p: ProcessDefinition, *, include_source_text: bool = True)
         sop_order=sop_order,
         source_text=(p.source_text if include_source_text else None),
         has_flowchart=has_fc,
+        manual_start_scope=get_manual_start_scope(p.code),
     )
 
 
@@ -1562,6 +1623,58 @@ async def get_system_resource_snapshot(
     from app.services.system_resource_snapshot import collect_resource_snapshot
 
     return collect_resource_snapshot()
+
+
+def _backup_http(exc: BackupCatalogError) -> HTTPException:
+    return HTTPException(status_code=exc.status_code, detail=exc.message)
+
+
+@router.get("/system/backups")
+async def list_system_backups(
+    current_user: User = Depends(require_role("admin")),
+):
+    """فهرست اسنپ‌شات‌های روزانه روی دیسک (BACKUP_DIR) — فقط ادمین؛ بدون restore."""
+    settings = get_settings()
+    items = list_snapshots(settings.BACKUP_DIR)
+    return {
+        "backup_dir": settings.BACKUP_DIR,
+        "count": len(items),
+        "items": items,
+        "note_fa": "بازگردانی خودکار روی دیتابیس زنده از این API انجام نمی‌شود.",
+    }
+
+
+@router.get("/system/backups/{date}")
+async def get_system_backup(
+    date: str,
+    verify: bool = Query(False, description="اگر true باشد sha256 فایل‌ها با manifest مقایسه می‌شود"),
+    current_user: User = Depends(require_role("admin")),
+):
+    """جزئیات یک بکاپ تاریخ‌دار؛ با verify=1 اعتبارسنجی چک‌سام."""
+    settings = get_settings()
+    try:
+        if verify:
+            return verify_snapshot(settings.BACKUP_DIR, date)
+        return get_snapshot(settings.BACKUP_DIR, date)
+    except BackupCatalogError as exc:
+        raise _backup_http(exc) from exc
+
+
+@router.get("/system/backups/{date}/download/{kind}")
+async def download_system_backup(
+    date: str,
+    kind: Literal["db", "uploads"],
+    current_user: User = Depends(require_role("admin")),
+):
+    """دانلود db.dump یا uploads.tar.gz یک تاریخ — فقط ادمین."""
+    settings = get_settings()
+    try:
+        path = resolve_download_path(settings.BACKUP_DIR, date, kind)
+    except BackupCatalogError as exc:
+        raise _backup_http(exc) from exc
+    media = "application/octet-stream"
+    filename = f"anistito-{date}-{path.name}"
+    return FileResponse(path, media_type=media, filename=filename)
 
 
 # ─── Academic calendar (InstituteCalendar) ───────────────────
@@ -1672,7 +1785,7 @@ async def list_interviewers(
     """فهرست مصاحبه‌کنندگان فعال."""
     from sqlalchemy import or_
 
-    stmt = select(User).where(User.role == "interviewer", User.is_active.is_(True))
+    stmt = select(User).where(user_matches_role_sql("interviewer"), User.is_active.is_(True))
     q = (search or "").strip()
     if q:
         term = f"%{q}%"
@@ -1828,7 +1941,21 @@ async def start_semester_prep(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class SemesterPrepInterviewerScheduleBody(BaseModel):
+    interviewer_id: Optional[str] = None
+    dates: list[str] = Field(default_factory=list)
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+
+
 class SemesterPrepInterviewGroupBody(BaseModel):
+    """گروه مصاحبهٔ یک نوع دوره.
+
+    فرمت جدید: ``interviewers`` با روز/ساعت جداگانه برای هر نفر.
+    فرمت قدیمی (``interviewer_ids`` + روز/ساعت مشترک) همچنان پذیرفته می‌شود.
+    """
+
+    interviewers: list[SemesterPrepInterviewerScheduleBody] = Field(default_factory=list)
     interviewer_ids: list[str] = Field(default_factory=list)
     dates: list[str] = Field(default_factory=list)
     start_time: Optional[str] = None

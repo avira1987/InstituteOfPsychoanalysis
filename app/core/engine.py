@@ -16,7 +16,13 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.models.meta_models import ProcessDefinition, StateDefinition, TransitionDefinition, RuleDefinition
 from app.models.operational_models import ProcessInstance, InterviewSlot, Student, StateHistory, TherapySession
 from app.core.rule_engine import RuleEvaluator
-from app.core.transition import TransitionManager, TransitionResult, TransitionError
+from app.core.transition import (
+    TransitionManager,
+    TransitionResult,
+    TransitionError,
+    is_payment_gateway_trigger,
+    human_may_list_system_transition,
+)
 from app.core.event_bus import event_bus, Event
 from app.core.audit import AuditLogger
 from app.services.attendance_service import AttendanceService
@@ -297,6 +303,19 @@ class StateMachineEngine:
             except Exception:
                 logger.exception(
                     "full_education_leave propagate on start failed (instance=%s)",
+                    instance.id,
+                )
+
+        if process_code == "introductory_term_end":
+            try:
+                await self.db.flush()
+                from app.services.introductory_term_end_chaining import advance_introductory_term_end
+
+                await advance_introductory_term_end(self.db, self, instance, actor_id)
+                instance = await self.get_process_instance(instance.id)
+            except Exception:
+                logger.exception(
+                    "introductory_term_end auto-advance on start failed (instance=%s)",
                     instance.id,
                 )
 
@@ -774,6 +793,8 @@ class StateMachineEngine:
                 ctx["documents_correction_deadline"] = (
                     datetime.now(timezone.utc) + timedelta(hours=48)
                 ).date().isoformat()
+            if instance.process_code == "session_payment":
+                ctx = await self._merge_session_payment_financial_context(instance, ctx)
             instance.context_data = ctx
             flag_modified(instance, "context_data")
 
@@ -1344,6 +1365,14 @@ class StateMachineEngine:
         for t in transitions:
             if actor_role == "student" and t.trigger_event in STUDENT_FORBIDDEN_TRIGGER_EVENTS:
                 continue
+            if actor_role != "system" and is_payment_gateway_trigger(t.trigger_event):
+                continue
+            if (
+                actor_role != "system"
+                and (t.required_role or "") == "system"
+                and not human_may_list_system_transition(t.trigger_event, actor_role)
+            ):
+                continue
             if portal_registration and t.trigger_event in _REGISTRATION_INTERVIEW_BOOKING_TRIGGERS:
                 continue
             if (
@@ -1543,13 +1572,22 @@ class StateMachineEngine:
                 )
 
         student_extra_data = None
-        if instance.process_code == "violation_registration" and instance.student_id:
+        student_code = None
+        student_name_fa = None
+        student_id_str = str(instance.student_id) if instance.student_id else None
+        if instance.student_id:
             st_row = await self.db.get(Student, instance.student_id)
-            if st_row and st_row.extra_data:
-                extra = self._as_mapping(st_row.extra_data)
-                student_extra_data = {
-                    "monitoring_performance_log": extra.get("monitoring_performance_log") or [],
-                }
+            if st_row:
+                student_code = st_row.student_code
+                if st_row.user_id:
+                    st_user = await self.db.get(User, st_row.user_id)
+                    if st_user:
+                        student_name_fa = (st_user.full_name_fa or st_user.username or "").strip() or None
+                if instance.process_code == "violation_registration" and st_row.extra_data:
+                    extra = self._as_mapping(st_row.extra_data)
+                    student_extra_data = {
+                        "monitoring_performance_log": extra.get("monitoring_performance_log") or [],
+                    }
 
         result = {
             "instance_id": str(instance.id),
@@ -1558,6 +1596,9 @@ class StateMachineEngine:
             "is_completed": instance.is_completed,
             "is_cancelled": instance.is_cancelled,
             "context_data": ctx_out,
+            "student_id": student_id_str,
+            "student_code": student_code,
+            "student_name_fa": student_name_fa,
             "started_at": instance.started_at.isoformat() if instance.started_at else None,
             "completed_at": instance.completed_at.isoformat() if instance.completed_at else None,
             "last_transition_at": instance.last_transition_at.isoformat() if instance.last_transition_at else None,
@@ -1657,8 +1698,82 @@ class StateMachineEngine:
             ):
                 ctx.pop(k, None)
 
+        # دانشجو پس از بازگشت باید UI همان مرحلهٔ هدف را ببیند (فرم قفل‌شده نماند)
+        from app.meta.student_step_forms import apply_rollback_student_forms_to_context
+
+        ctx = apply_rollback_student_forms_to_context(
+            ctx,
+            target_state=target_state,
+            from_state=from_current,
+        )
+
+        # اگر نتیجهٔ مصاحبه فقط با نام قدیمی result مانده، برای فیلتر دروس همگام کن
+        if not ctx.get("interview_result") and ctx.get("result") in (
+            "conditional_therapy",
+            "single_course",
+            "full_admission",
+            "rejected",
+        ):
+            ctx["interview_result"] = ctx["result"]
+
+        # بازیابی نوع پذیرش از تاریخچه (اگر هنگام بازگشت از دست رفته باشد)
+        if (
+            target_state in ("course_selection", "course_display", "payment", "payment_method", "payment_processing")
+            and not ctx.get("interview_result")
+            and not ctx.get("admission_type")
+        ):
+            _state_to_ir = {
+                "result_conditional_therapy": "conditional_therapy",
+                "result_single_course": "single_course",
+                "result_full_admission": "full_admission",
+            }
+            for h in reversed(history):
+                inferred = _state_to_ir.get(h.to_state_code) or _state_to_ir.get(h.from_state_code)
+                if inferred:
+                    ctx["interview_result"] = inferred
+                    ctx.setdefault("admission_type", inferred)
+                    break
+
         instance.context_data = ctx
         flag_modified(instance, "context_data")
+
+        # مثل ورود عادی به انتخاب درس: لیست دروس مجاز را دوباره از offerings ترم پر کن
+        if (
+            instance.process_code
+            in (
+                "introductory_course_registration",
+                "intro_second_semester_registration",
+                "comprehensive_course_registration",
+            )
+            and target_state
+            in (
+                "course_selection",
+                "course_display",
+                "payment",
+                "payment_method",
+                "payment_processing",
+            )
+        ):
+            try:
+                from app.services.term_course_offering_service import (
+                    merge_offerings_into_instance_context,
+                )
+
+                st_stmt = select(Student).where(Student.id == instance.student_id)
+                student = (await self.db.execute(st_stmt)).scalar_one_or_none()
+                ctx = await merge_offerings_into_instance_context(
+                    self.db,
+                    instance.process_code,
+                    self._as_mapping(instance.context_data),
+                    student=student,
+                )
+                instance.context_data = ctx
+                flag_modified(instance, "context_data")
+            except Exception:
+                logger.exception(
+                    "merge_offerings_into_instance_context after rollback failed (instance=%s)",
+                    instance.id,
+                )
 
         rb = StateHistory(
             id=uuid.uuid4(),
@@ -1877,15 +1992,17 @@ class StateMachineEngine:
     async def _merge_session_payment_financial_context(
         self, instance: ProcessInstance, merged: dict
     ) -> dict:
-        """شمارش جلسات درمان بدون پرداخت از DB + پرچم تسویه از پرونده/فرم."""
+        """شمارش بدهی واقعی جلسه از DB + پرچم تسویه از پرونده/فرم.
+
+        بدهی = جلسات گذشته/برگزارشدهٔ بدون پرداخت (نه کل تقویم آیندهٔ pending).
+        با وجود بدهی، تسویه اجباری است — پرچم را خودکار True می‌کنیم تا دانشجو
+        با خطای مبهم payment_selection_valid گیر نکند و مبلغ بدهی در UI دیده شود.
+        """
+        from app.services.therapy_session_schedule import count_therapy_debt_sessions
+
         out = dict(merged)
-        stmt = select(func.count()).select_from(TherapySession).where(
-            TherapySession.student_id == instance.student_id,
-            TherapySession.payment_status == "pending",
-            TherapySession.status.in_(["scheduled", "completed"]),
-        )
-        r = await self.db.execute(stmt)
-        out["debt_sessions_count"] = int(r.scalar() or 0)
+        debt = await count_therapy_debt_sessions(self.db, instance.student_id)
+        out["debt_sessions_count"] = debt
         dsi = out.get("debt_settlement_included")
         if isinstance(dsi, str):
             out["debt_settlement_included"] = dsi.strip().lower() in ("1", "true", "yes", "on")
@@ -1893,6 +2010,7 @@ class StateMachineEngine:
             out["debt_settlement_included"] = False
         else:
             out["debt_settlement_included"] = bool(dsi)
+        fee = 0.0
         try:
             from app.services.financial_program_defaults_service import get_effective_financial_program_defaults
 
@@ -1906,8 +2024,23 @@ class StateMachineEngine:
             th = fd.get("default_therapy_session_fee_toman") or 0
             if float(th) > 0:
                 out["reference_therapy_session_fee_toman"] = float(th)
+                fee = float(th)
         except Exception:
             logger.exception("session_payment reference fee hints failed (instance=%s)", instance.id)
+        if debt > 0:
+            # بدهی موجود ⇒ تسویه همراه پرداخت جلسات آتی الزامی است
+            out["debt_settlement_included"] = True
+            debt_toman = round(debt * fee) if fee > 0 else None
+            out["debt_amount_toman"] = debt_toman
+            amount_part = f" (حدود {int(debt_toman)} تومان)" if debt_toman is not None else ""
+            out["debt_notice_fa"] = (
+                f"شما {debt} جلسهٔ درمان برگزارشده/گذشتهٔ بدون پرداخت دارید{amount_part}. "
+                "تسویهٔ این بدهی همراه با پیش‌پرداخت جلسات آتی الزامی است و مبلغ آن "
+                "به فاکتور همین پرداخت اضافه می‌شود."
+            )
+        else:
+            out["debt_amount_toman"] = 0
+            out.pop("debt_notice_fa", None)
         return out
 
     @staticmethod
@@ -1924,6 +2057,7 @@ class StateMachineEngine:
             "introductory_course_registration",
             "intro_second_semester_registration",
             "comprehensive_course_registration",
+            "comprehensive_term_start",
         ):
             return ctx, False
         if current_state not in (
@@ -1931,6 +2065,9 @@ class StateMachineEngine:
             "payment",
             "payment_method",
             "payment_processing",
+            "payment_choice",
+            "installment_overdue",
+            "registration_complete",
         ):
             return ctx, False
 
@@ -1948,11 +2085,27 @@ class StateMachineEngine:
                 out["payment_amount_rial"] = fee
                 out["invoice_amount"] = float(fee) / 10.0
                 changed = True
-        elif current_state in ("payment", "payment_method", "payment_processing"):
-            if not _valid_rial(out.get("payment_amount_rial")):
+        elif current_state in (
+            "payment",
+            "payment_method",
+            "payment_processing",
+            "payment_choice",
+            "installment_overdue",
+            "registration_complete",
+        ):
+            if not _valid_rial(out.get("tuition_total_rial")):
                 tom = float(registration_tuition_invoice_toman)
                 out["invoice_amount"] = tom
-                out["payment_amount_rial"] = int(round(tom * 10))
+                total_rial = int(round(tom * 10))
+                out["tuition_total_rial"] = total_rial
+                out["tuition_amount_rial"] = total_rial
+                out["tuition_amount"] = tom
+                changed = True
+            from app.services.tuition_installment_service import apply_tuition_payment_context
+
+            updated = apply_tuition_payment_context(out)
+            if updated != out:
+                out = updated
                 changed = True
         return out, changed
 
@@ -1978,9 +2131,18 @@ class StateMachineEngine:
             new_ctx["fee_source"] = fees["fee_source"]
         if fees.get("tuition_reason_fa"):
             new_ctx["tuition_reason_fa"] = fees["tuition_reason_fa"]
-        if changed or fees.get("fee_source"):
+        from app.services.tuition_installment_service import refresh_instance_tuition_context
+
+        new_ctx = await refresh_instance_tuition_context(
+            self.db,
+            instance.process_code,
+            instance.current_state_code or "",
+            new_ctx,
+        )
+        if changed or fees.get("fee_source") or new_ctx != dict(self._as_mapping(instance.context_data)):
             instance.context_data = new_ctx
             flag_modified(instance, "context_data")
+            changed = True
         return changed
 
     async def _merge_registration_payment_context_for_status(
@@ -2006,7 +2168,14 @@ class StateMachineEngine:
             out["fee_source"] = fees["fee_source"]
         if fees.get("tuition_reason_fa"):
             out["tuition_reason_fa"] = fees["tuition_reason_fa"]
-        return out
+        from app.services.tuition_installment_service import refresh_instance_tuition_context
+
+        return await refresh_instance_tuition_context(
+            self.db,
+            instance.process_code,
+            instance.current_state_code or "",
+            out,
+        )
 
     async def _merge_therapy_session_reduction_instance_context(
         self, instance: ProcessInstance, merged: dict
@@ -2295,7 +2464,14 @@ class StateMachineEngine:
         }
 
         if student:
+            from app.services.admission_type_service import (
+                derive_has_active_therapist,
+                normalize_admission_type,
+            )
+
             extra = self._as_mapping(student.extra_data)
+            admission_canonical = normalize_admission_type(extra.get("admission_type"))
+            has_therapist = derive_has_active_therapist(student, extra)
             context["student"] = {
                 "id": str(student.id),
                 "student_code": student.student_code,
@@ -2306,7 +2482,12 @@ class StateMachineEngine:
                 "therapy_started": student.therapy_started,
                 "weekly_sessions": student.weekly_sessions,
                 **extra,
+                "has_active_therapist": has_therapist,
+                # قوانین eq false روی فیلد غایب (None) شکست می‌خورند
+                "is_suspended": bool(extra.get("is_suspended")),
             }
+            if admission_canonical:
+                context["student"]["admission_type"] = admission_canonical
 
             # Enrich instance for rules: absence quota, absences this year, completed/required hours,
             # current_week (week_9_deadline), hours_until_first_slot (24_hour_rule) — BUILD_TODO § د

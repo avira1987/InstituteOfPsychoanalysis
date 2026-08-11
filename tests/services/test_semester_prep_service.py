@@ -22,10 +22,34 @@ from app.services.semester_prep_service import (
 
 @pytest.mark.asyncio
 async def test_ensure_institute_operational_student_idempotent(db_session: AsyncSession):
+    from app.services.institute_operational_anchor import (
+        anchor_public_info,
+        is_institute_operational_student,
+    )
+
     a = await ensure_institute_operational_student(db_session)
     b = await ensure_institute_operational_student(db_session)
     assert a.id == b.id
     assert a.student_code == "INST-OPS"
+    assert is_institute_operational_student(a) is True
+    info = anchor_public_info(a)
+    assert info["is_system"] is True
+    assert info["student_code"] == "INST-OPS"
+    assert "student_id" in info
+
+
+@pytest.mark.asyncio
+async def test_build_prep_status_includes_anchor_panel_fields(db_session: AsyncSession):
+    from app.services.semester_prep_service import build_prep_status
+
+    status = await build_prep_status(db_session)
+    assert status["anchor_student_code"] == "INST-OPS"
+    assert status["anchor"]["student_code"] == "INST-OPS"
+    assert status["anchor"]["is_system"] is True
+    assert status["anchor"]["hub_path"] == "/panel/semester-prep"
+    assert "active_count" in status["anchor"]
+    assert "readiness_ready" in status["anchor"]
+
 
 
 @pytest.mark.asyncio

@@ -19,14 +19,12 @@ export function filterFormsForStudent(forms) {
   })
 }
 
-// شرط نمایش: show_if شیئی (در صورت وجود) ارزیابی می‌شود؛ visible_when رشته‌ای قدیمی نادیده گرفته می‌شود.
+// شرط نمایش/الزام: show_if / required_if شیئی، یا visible_when / required_when رشته‌ای metadata
 function fieldVisible(field, values) {
   return unifiedVisible(field, values)
 }
 
-// الزام: required_if شیئی (در صورت وجود)؛ وگرنه required ثابت. required_when رشته‌ای قدیمی = الزامی نیست.
 function fieldRequired(field, values) {
-  if (field.required_when && !field.required_if) return false
   return unifiedRequired(field, values)
 }
 
@@ -53,10 +51,11 @@ export function validateStepForms(forms, values, opts = {}) {
   const missing = []
   for (const form of filtered) {
     for (const field of form.fields || []) {
-      if (resubmitSet && !resubmitSet.has(field.name)) continue
+      const t = field.type || 'text'
+      const isRulesGate = t === 'checkbox' && !!field.rules_link_href
+      if (resubmitSet && !resubmitSet.has(field.name) && t !== 'step_otp' && !isRulesGate) continue
       if (!fieldVisible(field, values)) continue
       if (!fieldRequired(field, values)) continue
-      const t = field.type || 'text'
       if (t === 'hidden') {
         if (fieldRequired(field, values)) {
           const v = values[field.name]
@@ -105,6 +104,20 @@ export function validateStepForms(forms, values, opts = {}) {
         }
         continue
       }
+      if (t === 'step_otp') {
+        if (isEmpty(values[field.name])) {
+          missing.push(field.label_fa || field.name)
+        } else if (values.step_otp_verified !== true) {
+          missing.push(`${field.label_fa || field.name} (تأیید کد الزامی است)`)
+        }
+        continue
+      }
+      if (t === 'checkbox') {
+        if (!values[field.name]) {
+          missing.push(field.label_fa || field.name)
+        }
+        continue
+      }
       if (isEmpty(values[field.name])) {
         missing.push(field.label_fa || field.name)
         continue
@@ -122,9 +135,21 @@ export const CTX_STUDENT_FORMS_UNLOCK = '__student_forms_edit_unlock'
 /** پس از رد جزئی مدارک توسط پذیرش */
 export const CTX_DOCUMENTS_RESUBMIT_FIELDS = '__documents_resubmit_fields'
 
+export { CTX_STEP_OTP_VERIFIED_STATE, isStepOtpAlreadyVerified } from './stepOtpVerified'
+
+/** فرم روش پرداخت تا قبل از پرداخت درگاه قابل ویرایش می‌ماند */
+export const PAYMENT_METHOD_EDITABLE_STATES = new Set([
+  'payment',
+  'payment_method',
+  'payment_choice',
+  'payment_processing',
+])
+
 /** فرم این مرحله ثبت شده و مسئول هنوز ویرایش را باز نکرده → در UI مخفی */
 export function isStudentStepFormLocked(contextData, currentState) {
   if (!currentState || !contextData) return false
+  // تا قبل از پرداخت موفق، دانشجو باید بتواند روش/تعداد اقساط را عوض کند
+  if (PAYMENT_METHOD_EDITABLE_STATES.has(currentState)) return false
   const submitted = contextData[CTX_STUDENT_FORMS_SUBMITTED] || {}
   const unlock = contextData[CTX_STUDENT_FORMS_UNLOCK] || {}
   if (!submitted[currentState]) return false
@@ -154,6 +179,13 @@ export function pickFormValuesFromContext(forms, contextData) {
   for (const k of keySet) {
     if (Object.prototype.hasOwnProperty.call(ctx, k) && ctx[k] !== undefined) {
       out[k] = ctx[k]
+    }
+  }
+  // بدهی جلسه ⇒ تسویه در همین پرداخت الزامی است (هم‌تراز بک‌اند)
+  if (keySet.has('debt_settlement_included')) {
+    const debt = Number(ctx.debt_sessions_count)
+    if (Number.isFinite(debt) && debt > 0) {
+      out.debt_settlement_included = true
     }
   }
   return out

@@ -1,5 +1,6 @@
 """Student-facing API endpoints."""
 
+import logging
 import uuid
 from typing import Literal, Optional
 
@@ -21,7 +22,7 @@ from app.services.student_registration import (
     find_student_by_national_code,
 )
 from app.services.student_service import StudentService
-from app.services.student_tracker_summary import summarize_primary_path_for_student
+from app.services.student_tracker_summary import summarize_primary_path_for_student, build_student_action_inbox
 from app.services.attendance_service import AttendanceService
 from app.api.public_routes import (
     StudentRegistrationRequest,
@@ -29,6 +30,8 @@ from app.api.public_routes import (
     _normalize_phone,
     validate_national_code_ir,
 )
+
+logger = logging.getLogger(__name__)
 from app.services.student_registration_profile import (
     StudentRegistrationProfileFields,
     registration_profile_from_extra,
@@ -104,6 +107,9 @@ class StudentResponse(BaseModel):
     primary_path_missing: Optional[bool] = None
     therapy_hours_progress_fa: Optional[str] = None
     intro_registration_gate: Optional[dict] = None
+    admission_type: Optional[str] = None
+    conditional_therapy_required: Optional[bool] = None
+    therapy_deadline_hint_fa: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -113,6 +119,26 @@ def _extra_for_response(raw) -> Optional[dict]:
     if raw is None:
         return None
     return StateMachineEngine._as_mapping(raw)
+
+
+def _admission_fields_for_response(student: Student) -> dict:
+    from app.services.admission_type_service import (
+        ADMISSION_CONDITIONAL_THERAPY,
+        normalize_admission_type,
+        therapy_deadline_hint_fa,
+    )
+
+    extra = StateMachineEngine._as_mapping(student.extra_data)
+    admission = normalize_admission_type(extra.get("admission_type"))
+    required = admission == ADMISSION_CONDITIONAL_THERAPY and not student.therapy_started
+    hint = None
+    if required:
+        hint = extra.get("conditional_therapy_deadline_hint_fa") or therapy_deadline_hint_fa()
+    return {
+        "admission_type": admission,
+        "conditional_therapy_required": bool(required),
+        "therapy_deadline_hint_fa": hint,
+    }
 
 
 # ─── Endpoints ──────────────────────────────────────────────────
@@ -177,6 +203,7 @@ def _student_to_response(s: Student, tracker: Optional[dict] = None) -> StudentR
         therapy_started=s.therapy_started,
         weekly_sessions=s.weekly_sessions,
         extra_data=_extra_for_response(s.extra_data),
+        **_admission_fields_for_response(s),
     )
     if tracker:
         base.update(tracker)
@@ -189,12 +216,21 @@ async def list_students(
     current_user: User = Depends(require_role("admin", "staff", "interviewer", "therapist", "supervisor", "site_manager", "progress_committee", "education_committee", "supervision_committee", "specialized_commission", "therapy_committee_chair", "therapy_committee_executor", "deputy_education", "monitoring_committee_officer")),
     tracker_summary: bool = Query(False, description="پیشرفت تقریبی مسیر اصلی و اقدام معلق (دید دانشجو)"),
 ):
-    """List all students (admin/staff/committee/therapist/supervisor)."""
-    stmt = select(Student)
+    """List real students only (excludes institute operational anchor INST-OPS)."""
+    from app.services.institute_operational_anchor import (
+        institute_operational_student_code,
+        is_institute_operational_student,
+    )
+
+    ops_code = institute_operational_student_code()
+    stmt = select(Student).where(Student.student_code != ops_code)
     result = await db.execute(stmt)
     students = result.scalars().all()
     out: list[StudentResponse] = []
     for s in students:
+        # دفاع در عمق: پرچم extra_data حتی اگر کد تغییر کرده باشد
+        if is_institute_operational_student(s):
+            continue
         tr: Optional[dict] = None
         if tracker_summary:
             tr = await summarize_primary_path_for_student(db, s)
@@ -356,6 +392,20 @@ async def get_my_ta_portfolio(
     return build_ta_portfolio(student, current_user)
 
 
+@router.get("/me/action-inbox")
+async def get_my_action_inbox(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """صندوق اقدام دانشجو — اقدام‌های فعال با short/task/why."""
+    stmt = select(Student).where(Student.user_id == current_user.id)
+    result = await db.execute(stmt)
+    student = result.scalars().first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student profile not found")
+    return await build_student_action_inbox(db, student)
+
+
 @router.get("/{student_id}/ta-portfolio")
 async def get_student_ta_portfolio(
     student_id: str,
@@ -371,6 +421,23 @@ async def get_student_ta_portfolio(
     if student.user_id:
         user = (await db.execute(select(User).where(User.id == student.user_id))).scalars().first()
     return build_ta_portfolio(student, user)
+
+
+@router.get("/me/finance")
+async def get_my_finance_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """خلاصه مالی دانشجو: موجودی، گردش حساب، برنامه اقساط."""
+    stmt = select(Student).where(Student.user_id == current_user.id)
+    result = await db.execute(stmt)
+    student = result.scalars().first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student profile not found")
+
+    from app.services.tuition_installment_service import build_student_finance_summary
+
+    return await build_student_finance_summary(db, student.id)
 
 
 @router.get("/me", response_model=StudentResponse)
@@ -405,6 +472,16 @@ async def get_my_student_profile(
     therapy_hours_progress_fa: Optional[str] = None
     if student.therapy_started:
         try:
+            from app.services.therapy_session_schedule import repair_student_therapy_continuity
+
+            repair = await repair_student_therapy_continuity(db, student.id)
+            if (repair.get("seed") or {}).get("created") or (repair.get("session_payment") or {}).get("started"):
+                await db.commit()
+                await db.refresh(student)
+        except Exception:
+            logger.exception("repair_student_therapy_continuity failed student=%s", student.id)
+
+        try:
             m = await AttendanceService(db).get_therapy_completion_metrics(student.id)
             th = float(m.get("therapy_hours_2x") or 0)
             therapy_hours_progress_fa = (
@@ -434,7 +511,39 @@ async def get_my_student_profile(
         extra_data=_extra_for_response(student.extra_data),
         therapy_hours_progress_fa=therapy_hours_progress_fa,
         intro_registration_gate=intro_gate,
+        **_admission_fields_for_response(student),
     )
+
+
+class ConditionalTherapyEnsureResponse(BaseModel):
+    ok: bool
+    already_existed: Optional[bool] = None
+    instance_id: Optional[str] = None
+    current_state: Optional[str] = None
+    process_code: Optional[str] = None
+    error: Optional[str] = None
+    detail_fa: Optional[str] = None
+
+
+@router.post("/me/conditional-therapy/ensure-start", response_model=ConditionalTherapyEnsureResponse)
+async def ensure_conditional_therapy_start(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """کارت مشروط: ensure نمونهٔ start_therapy و چسباندن primary_instance."""
+    stmt = select(Student).where(Student.user_id == current_user.id)
+    student = (await db.execute(stmt)).scalars().first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student profile not found")
+
+    service = StudentService(db)
+    result = await service.ensure_conditional_start_therapy(student, current_user.id)
+    await db.commit()
+    if not result.get("ok"):
+        code = result.get("error")
+        status = 403 if code in ("only_conditional", "therapy_already_started") else 400
+        raise HTTPException(status_code=status, detail=result.get("detail_fa") or code)
+    return ConditionalTherapyEnsureResponse(**result)
 
 
 @router.get("/{student_id}", response_model=StudentResponse)

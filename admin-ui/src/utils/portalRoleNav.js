@@ -8,37 +8,41 @@ export const ADMIN_ONLY_PATHS = new Set([
   '/panel/dynamic-forms',
   '/panel/audit',
   '/panel/system-resources',
+  '/panel/backups',
 ])
 
 /** مسیرهای پورتال تک‌صفحه‌ای */
 const SINGLE_PORTAL_NAV = [
-  { path: '/panel/portal/student', label: 'پنل آموزشی', icon: '🎓', roles: ['student'], strictRoles: true, priority: 20 },
-  { path: '/panel/portal/therapist', label: 'پنل درمانگر', icon: '💊', roles: ['therapist'], priority: 21 },
-  { path: '/panel/portal/supervisor', label: 'پنل سوپروایزر', icon: '👁️', roles: ['supervisor'], priority: 22 },
-  { path: '/panel/portal/interviewer', label: 'پنل مصاحبه‌گر', icon: '🎤', roles: ['interviewer', 'staff'], priority: 22 },
-  { path: '/panel/portal/site-manager', label: 'پنل مسئول سایت', icon: '🏗️', roles: ['site_manager'], priority: 24 },
+  { path: '/panel/portal/student', label: 'پنل آموزشی', icon: '🎓', roles: ['student'], strictRoles: true, priority: 20, groupId: 'home' },
+  { path: '/panel/portal/therapist', label: 'پنل درمانگر', icon: '💊', roles: ['therapist'], priority: 21, groupId: 'operations' },
+  { path: '/panel/portal/supervisor', label: 'پنل سوپروایزر', icon: '👁️', roles: ['supervisor', 'faculty_1'], priority: 22, groupId: 'operations' },
+  { path: '/panel/portal/interviewer', label: 'پنل مصاحبه‌گر', icon: '🎤', roles: ['interviewer', 'staff', 'faculty_1'], priority: 22, groupId: 'operations' },
+  { path: '/panel/portal/site-manager', label: 'پنل مسئول سایت', icon: '🏗️', roles: ['site_manager'], priority: 24, groupId: 'operations' },
 ]
 
 const SHARED_NAV = [
-  { path: '/panel', label: 'داشبورد', icon: '📊', priority: 10 },
+  { path: '/panel', label: 'داشبورد', icon: '📊', priority: 10, groupId: 'home' },
   {
     path: '/panel/tickets',
     label: 'تیکت‌ها و درخواست‌ها',
     icon: '🎫',
     roles: [
-      'student', 'admin', 'staff', 'finance', 'therapist', 'supervisor', 'site_manager', 'interviewer',
+      'student', 'admin', 'staff', 'finance', 'therapist', 'supervisor', 'faculty_1', 'site_manager', 'interviewer',
       'progress_committee', 'education_committee', 'supervision_committee',
       'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor',
       'deputy_education', 'monitoring_committee_officer',
     ],
     priority: 35,
+    groupId: 'home',
   },
+  { path: '/panel/users', label: 'مدیریت کاربران', icon: '👥', roles: ['admin'], priority: 21.5, groupId: 'admin_tools' },
   {
     path: '/panel/students',
     label: 'ردیابی دانشجو',
     icon: '👨‍🎓',
-    roles: ['admin', 'staff', 'supervisor', 'therapist'],
-    priority: 40,
+    roles: ['admin', 'staff', 'supervisor', 'faculty_1', 'therapist'],
+    priority: 21.6,
+    groupId: 'home',
   },
   {
     path: '/panel/reports',
@@ -46,20 +50,21 @@ const SHARED_NAV = [
     icon: '📈',
     roles: ['admin', 'staff', 'deputy_education', 'monitoring_committee_officer', 'finance'],
     priority: 42,
+    groupId: 'finance_reports',
   },
-  { path: '/panel/users', label: 'مدیریت کاربران', icon: '👥', roles: ['admin'], priority: 21.5 },
   {
     path: '/panel/academic-calendar',
     label: 'تقویم آموزشی',
     icon: '📆',
     roles: [
-      'student', 'admin', 'staff', 'finance', 'therapist', 'supervisor', 'site_manager', 'interviewer',
+      'student', 'admin', 'staff', 'finance', 'therapist', 'supervisor', 'faculty_1', 'site_manager', 'interviewer',
       'deputy_education', 'course_committee', 'teaching_assistant', 'monitoring_committee_officer',
       'progress_committee', 'education_committee', 'supervision_committee', 'specialized_commission',
       'therapy_committee_chair', 'therapy_committee_executor', 'applicant', 'instructor',
       'admissions_officer',
     ],
     priority: 44,
+    groupId: 'academic',
   },
   /** workbench و هاب آماده‌سازی ترم از منوی «فرایندها» (process-nav) در دسترس‌اند؛ اینجا فقط ابزار مکمل SLA */
   {
@@ -68,6 +73,7 @@ const SHARED_NAV = [
     icon: '⏰',
     roles: ['admin', 'deputy_education', 'staff', 'course_committee'],
     priority: 45.25,
+    groupId: 'academic',
   },
   {
     path: '/panel/automation-scheduler',
@@ -75,16 +81,23 @@ const SHARED_NAV = [
     icon: '⏱️',
     roles: ['admin', 'staff', 'deputy_education'],
     priority: 45.5,
+    groupId: 'academic',
   },
-  { path: '/panel/finance', label: 'داشبورد مالی', icon: '💵', roles: ['admin', 'finance'], priority: 50 },
-  { path: '/panel/profile', label: 'پروفایل من', icon: '👤', priority: 85 },
-  { path: '/panel/guide', label: 'راهنمای جامع', icon: '📖', priority: 90 },
+  { path: '/panel/finance', label: 'داشبورد مالی', icon: '💵', roles: ['admin', 'finance'], priority: 50, groupId: 'finance_reports' },
+  { path: '/panel/profile', label: 'پروفایل من', icon: '👤', priority: 85, groupId: 'account' },
+  { path: '/panel/guide', label: 'راهنمای جامع', icon: '📖', priority: 90, groupId: 'account' },
 ]
 
 export const SCHEDULER_AUTOMATION_ROLES = ['admin', 'staff', 'deputy_education']
 
-export function canViewSchedulerAutomation(portalRole) {
-  return portalRole === 'admin' || SCHEDULER_AUTOMATION_ROLES.includes(portalRole)
+export function canViewSchedulerAutomation(portalRoleOrRoles) {
+  const roles = Array.isArray(portalRoleOrRoles)
+    ? portalRoleOrRoles
+    : portalRoleOrRoles
+      ? [portalRoleOrRoles]
+      : []
+  if (roles.includes('admin')) return true
+  return SCHEDULER_AUTOMATION_ROLES.some((r) => roles.includes(r))
 }
 
 function staffLaneNavItems(portalRole) {
@@ -94,6 +107,7 @@ function staffLaneNavItems(portalRole) {
     icon: lane.icon,
     roles: lane.allowedPortalRoles,
     priority: lane.priority,
+    groupId: lane.groupId || 'operations',
   }))
 }
 
@@ -105,6 +119,7 @@ function committeeKindNavItems(portalRole) {
     roles: kind.portalRoles,
     strictRoles: portalRole !== 'admin',
     priority: kind.priority,
+    groupId: kind.groupId || 'committees',
   }))
 }
 
@@ -113,14 +128,15 @@ export function buildBaseNavItems() {
   const items = [...SHARED_NAV.filter((i) => !ADMIN_ONLY_PATHS.has(i.path))]
   for (const p of ADMIN_ONLY_PATHS) {
     const labels = {
-      '/panel/processes': ['مدیریت فرایندها', '🔄', 47],
-      '/panel/dynamic-forms': ['فرم‌های داینامیک', '📝', 46],
-      '/panel/audit': ['گزارش حسابرسی', '📝', 46],
-      '/panel/rules': ['مدیریت قوانین', '📋', 48],
-      '/panel/system-resources': ['منابع سرور', '🖥️', 49],
+      '/panel/processes': ['مدیریت فرایندها', '🔄', 47, 'admin_tools'],
+      '/panel/dynamic-forms': ['فرم‌های داینامیک', '📝', 46, 'admin_tools'],
+      '/panel/audit': ['گزارش حسابرسی', '📝', 46, 'finance_reports'],
+      '/panel/rules': ['مدیریت قوانین', '📋', 48, 'admin_tools'],
+      '/panel/system-resources': ['منابع سرور', '🖥️', 49, 'admin_tools'],
+      '/panel/backups': ['بکاپ‌ها', '💾', 49.5, 'admin_tools'],
     }
-    const [label, icon, priority] = labels[p] || [p, '📋', 50]
-    items.push({ path: p, label, icon, roles: ['admin'], priority })
+    const [label, icon, priority, groupId] = labels[p] || [p, '📋', 50, 'admin_tools']
+    items.push({ path: p, label, icon, roles: ['admin'], priority, groupId })
   }
   items.push(...SINGLE_PORTAL_NAV)
   return items
@@ -145,14 +161,42 @@ function itemVisibleForRole(item, portalRole) {
   return true
 }
 
+function itemVisibleForRoles(item, portalRoles) {
+  const roles = (portalRoles || []).filter(Boolean)
+  if (!roles.length) return false
+  if (roles.includes('admin')) {
+    if (item.strictRoles && item.roles) {
+      return item.roles.some((r) => roles.includes(r))
+    }
+    return true
+  }
+  return roles.some((r) => itemVisibleForRole(item, r))
+}
+
+function buildPortalLaneNavItemsForRoles(portalRoles) {
+  const roles = (portalRoles || []).filter(Boolean)
+  const merged = []
+  for (const role of roles) {
+    for (const item of buildPortalLaneNavItems(role)) {
+      if (!merged.some((m) => m.path === item.path)) merged.push(item)
+    }
+  }
+  return merged
+}
+
 /** آیا این مسیر در منوی کناری برای نقش دیده می‌شود؟ */
 export function isNavPathVisibleForRole(path, portalRole) {
-  if (!path || !portalRole) return false
-  if (portalRole === 'admin') return true
+  return isNavPathVisibleForRoles(path, portalRole ? [portalRole] : [])
+}
+
+export function isNavPathVisibleForRoles(path, portalRoles) {
+  const roles = (portalRoles || []).filter(Boolean)
+  if (!path || !roles.length) return false
+  if (roles.includes('admin')) return true
   if (ADMIN_ONLY_PATHS.has(path)) return false
   const all = [
     ...buildBaseNavItems(),
-    ...buildPortalLaneNavItems(portalRole),
+    ...buildPortalLaneNavItemsForRoles(roles),
     ...Object.values(STAFF_LANES).map((l) => ({ path: l.path, roles: l.allowedPortalRoles })),
     ...Object.values(COMMITTEE_KINDS).map((k) => ({ path: k.path, roles: [...k.portalRoles, 'admin'] })),
   ]
@@ -163,22 +207,30 @@ export function isNavPathVisibleForRole(path, portalRole) {
     }
     if (path.startsWith('/panel/portal/staff/')) {
       const laneId = path.replace('/panel/portal/staff/', '')
-      return Object.values(STAFF_LANES).some((l) => l.id === laneId && l.allowedPortalRoles.includes(portalRole))
+      return Object.values(STAFF_LANES).some(
+        (l) => l.id === laneId && l.allowedPortalRoles.some((r) => roles.includes(r)),
+      )
     }
     if (path.startsWith('/panel/portal/committee/')) {
       const kindId = path.replace('/panel/portal/committee/', '')
       const kind = COMMITTEE_KINDS[kindId]
-      return kind && kind.portalRoles.includes(portalRole)
+      return kind && kind.portalRoles.some((r) => roles.includes(r))
     }
     return false
   }
-  return itemVisibleForRole(item, portalRole)
+  return itemVisibleForRoles(item, roles)
 }
 
 /** منوی کامل فیلترشده برای Layout */
 export function navItemsForRole(portalRole) {
-  const base = buildBaseNavItems().filter((item) => itemVisibleForRole(item, portalRole))
-  const portals = buildPortalLaneNavItems(portalRole)
+  return navItemsForRoles(portalRole ? [portalRole] : [])
+}
+
+export function navItemsForRoles(portalRoles) {
+  const roles = (portalRoles || []).filter(Boolean)
+  if (!roles.length) return []
+  const base = buildBaseNavItems().filter((item) => itemVisibleForRoles(item, roles))
+  const portals = buildPortalLaneNavItemsForRoles(roles)
   const merged = [...base]
   for (const p of portals) {
     if (!merged.some((m) => m.path === p.path)) merged.push(p)

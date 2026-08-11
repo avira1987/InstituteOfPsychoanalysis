@@ -20,8 +20,10 @@ import {
 import { showStudentTransitionCta } from '../utils/studentTransitionCtaVisibility'
 import SepPaymentPanel from './SepPaymentPanel'
 import StudentSessionPaymentPanel from './StudentSessionPaymentPanel'
+import StudentTherapyCompletionPanel from './StudentTherapyCompletionPanel'
 import StudentSupervisionBlockTransitionPanel from './StudentSupervisionBlockTransitionPanel'
 import StudentEducationalTherapistUpgradePanel from './StudentEducationalTherapistUpgradePanel'
+import StudentInternshipReadinessConsultationPanel from './StudentInternshipReadinessConsultationPanel'
 import StudentReturnToFullEducationPanel from './StudentReturnToFullEducationPanel'
 import StudentFullEducationLeavePanel from './StudentFullEducationLeavePanel'
 import StudentUpgradeToTaPanel from './StudentUpgradeToTaPanel'
@@ -42,6 +44,7 @@ import StudentProcessStepReview from './StudentProcessStepReview'
 import StudentSmsHistorySection from './StudentSmsHistorySection'
 
 const REGISTRATION_PROCESS_CODES = ['introductory_course_registration', 'comprehensive_course_registration']
+const TERM2_REG_CODE = 'intro_second_semester_registration'
 
 function hasRegistrationInterviewBooking(detail) {
   const ctx = detail?.context_data || {}
@@ -56,6 +59,10 @@ function resolveSepPaymentDescription(detail) {
   const cs = detail?.current_state
   if (pc === 'start_therapy' && cs === 'payment_pending') {
     return 'پرداخت هزینه جلسه اول آغاز درمان آموزشی'
+  }
+  if (pc === 'session_payment') {
+    if (cs === 'awaiting_payment') return 'پرداخت جلسات آتی درمان آموزشی'
+    if (cs === 'payment_failed') return 'تلاش مجدد پرداخت جلسات آتی درمان آموزشی'
   }
   if (pc === 'extra_session' && cs === 'payment_required') {
     return 'پرداخت جلسه اضافی درمان آموزشی'
@@ -74,6 +81,13 @@ function resolveSepPaymentDescription(detail) {
     return pc === 'comprehensive_course_registration'
       ? 'پرداخت شهریه دوره جامع'
       : 'پرداخت شهریه دوره آشنایی'
+  }
+  if (cs === 'installment_overdue' && pc === 'introductory_course_registration') {
+    return 'پرداخت قسط معوق شهریه دوره آشنایی'
+  }
+  if (pc === TERM2_REG_CODE) {
+    if (cs === 'payment_processing') return 'پرداخت شهریه ترم دوم دوره آشنایی'
+    if (cs === 'installment_overdue') return 'پرداخت قسط معوق شهریه ترم دوم'
   }
   if (pc === 'supervision_block_transition') {
     if (cs === 'slot_selected') return 'پرداخت جلسه اول دوره سوپرویژن جدید'
@@ -147,9 +161,7 @@ export default function StudentQuestCard({
     ? Math.min(100, Math.round(((curIdx + 1) / roadmapStates.length) * 100))
     : 0
 
-  const currentStateMeta = roadmapStates.find(s => s.code === detail?.current_state)
   const processCode = definition?.process?.code
-  const currentStateLabel = resolveStateDisplayLabel(detail?.current_state, currentStateMeta?.name_fa, processCode) || '—'
 
   const level = extraData?.gamification?.level
 
@@ -207,19 +219,71 @@ export default function StudentQuestCard({
     transitions,
     forms,
     stepFormLocked,
+    registrationGate,
   })
 
   const showLegacySep = detail?.current_state === 'awaiting_payment'
     || detail?.current_state === 'payment_pending'
+    || (detail?.process_code === 'session_payment' && detail?.current_state === 'payment_failed')
     || (detail?.process_code === 'extra_session' && detail?.current_state === 'payment_required')
     || (detail?.process_code === 'extra_supervision_session' && detail?.current_state === 'payment_required')
 
+  // قبل از paymentMethodChosen — در غیر این صورت TDZ: Cannot access 'ctx'/'me' before initialization
+  const ctx = detail?.context_data || {}
   const hasInterviewBooking = hasRegistrationInterviewBooking(detail)
+  const tuitionTotalRial = (() => {
+    if (ctx.tuition_total_rial != null) return Number(ctx.tuition_total_rial)
+    if (ctx.invoice_amount != null) return Math.round(Number(ctx.invoice_amount) * 10)
+    if (ctx.payment_amount_rial != null) return Number(ctx.payment_amount_rial)
+    return 0
+  })()
+  const livePaymentMethod = stepFormValues?.payment_method ?? ctx.payment_method
+  const liveInstallmentCount = (() => {
+    const raw = stepFormValues?.installment_count ?? ctx.installment_count
+    try {
+      return raw != null && raw !== '' ? parseInt(raw, 10) : null
+    } catch {
+      return null
+    }
+  })()
+  const paymentAmountRial = (() => {
+    const total = tuitionTotalRial
+    if (livePaymentMethod === 'installment' && liveInstallmentCount && liveInstallmentCount > 1 && total > 0) {
+      return Math.floor(total / liveInstallmentCount)
+    }
+    if (livePaymentMethod === 'cash' && total > 0) return total
+    if (ctx.payable_amount_rial != null) return Number(ctx.payable_amount_rial)
+    if (ctx.payment_amount_rial != null) return Number(ctx.payment_amount_rial)
+    return total
+  })()
+  const isInstallmentPayment = livePaymentMethod === 'installment'
+    && liveInstallmentCount > 1
+    && tuitionTotalRial > 0
+    && paymentAmountRial > 0
+  const paymentMethodChosen = Boolean(ctx.payment_method)
+  const formMatchesRegistered = (() => {
+    if (!ctx.payment_method) return false
+    const formPm = stepFormValues?.payment_method
+    if (formPm != null && formPm !== '' && formPm !== ctx.payment_method) return false
+    if (ctx.payment_method === 'installment') {
+      const formIc = stepFormValues?.installment_count
+      if (formIc != null && formIc !== '' && String(formIc) !== String(ctx.installment_count)) return false
+    }
+    return true
+  })()
+  const gatewayReady = paymentMethodChosen && formMatchesRegistered
   const showRegistrationSep = REGISTRATION_PROCESS_CODES.includes(detail?.process_code)
     && (
       detail?.current_state === 'interview_payment'
-      || detail?.current_state === 'payment'
+      || detail?.current_state === 'installment_overdue'
+      || (detail?.current_state === 'payment' && gatewayReady)
       || (detail?.current_state === 'interview_scheduled' && hasInterviewBooking)
+    )
+
+  const showIntro2Sep = detail?.process_code === TERM2_REG_CODE
+    && (
+      detail?.current_state === 'installment_overdue'
+      || (detail?.current_state === 'payment_processing' && gatewayReady)
     )
 
   const showSupervisionBlockSep = detail?.process_code === 'supervision_block_transition'
@@ -230,7 +294,7 @@ export default function StudentQuestCard({
 
   const showSepPanel = !done && studentId && detail?.instance_id
     && !compTermStartSepInPanel
-    && (showLegacySep || showRegistrationSep || showSupervisionBlockSep)
+    && (showLegacySep || showRegistrationSep || showIntro2Sep || showSupervisionBlockSep)
 
   const transitionListForCta = transitionList.filter((t) => {
     if (
@@ -250,12 +314,6 @@ export default function StudentQuestCard({
   }) && !introRegGateClosed
 
   const selectedTransition = transitionListForCta[selectedTransitionIdx] ?? transitionListForCta[0]
-
-  const ctx = detail?.context_data || {}
-  const paymentAmountRial =
-    ctx.payment_amount_rial != null
-      ? Number(ctx.payment_amount_rial)
-      : Math.round(Number(ctx.invoice_amount || 0) * 10)
 
   const stateDefForRole = definition && detail?.current_state
     ? findStateDefinition(definition, detail.current_state)
@@ -331,9 +389,10 @@ export default function StudentQuestCard({
             borderRight: '4px solid #2563eb',
             fontSize: '0.9rem',
             lineHeight: 1.75,
+            color: '#0f172a',
           }}
         >
-          <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>اطلاعات ورود به پرتال دانشجویی (LMS)</div>
+          <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#0f172a' }}>اطلاعات ورود به پرتال دانشجویی (LMS)</div>
           <p style={{ margin: 0 }}>
             مدارک شما تأیید شد. تا {ctx.lms_login_deadline || 'مهلت اعلام‌شده'} با مشخصات زیر وارد سامانه شوید و دروس را انتخاب کنید.
           </p>
@@ -364,7 +423,7 @@ export default function StudentQuestCard({
           </div>
           <p>
             {staffDepFa
-              || 'این مرحله توسط مرکز در حال پیگیری است؛ پس از به‌روزرسانی وضعیت، همین صفحه را تازه کنید. جزئیات در بخش «وظیفهٔ شما در این مرحله» بالاتر آمده است.'}
+              || 'این مرحله توسط مرکز در حال پیگیری است؛ پس از به‌روزرسانی وضعیت، همین صفحه را تازه کنید. جزئیات در بخش «اقدام بعدی شما» بالاتر آمده است.'}
           </p>
         </div>
       )}
@@ -386,17 +445,6 @@ export default function StudentQuestCard({
         <InterviewPaidBookingSummary onGoToOnlineSessions={onGoToOnlineSessions} />
       )}
 
-      {showRegistrationSep && (
-        <div data-testid="student-quest-sep-payment" style={{ marginTop: '0.85rem' }}>
-          <SepPaymentPanel
-            instanceId={detail.instance_id}
-            studentId={studentId}
-            amountRial={paymentAmountRial}
-            description={resolveSepPaymentDescription(detail)}
-          />
-        </div>
-      )}
-
       {!done && detail?.process_code === 'session_payment'
         && ['payment_due', 'payment_selection', 'awaiting_payment', 'payment_failed'].includes(detail?.current_state) && (
         <StudentSessionPaymentPanel
@@ -406,11 +454,23 @@ export default function StudentQuestCard({
         />
       )}
 
+      {!done && detail?.process_code === 'therapy_completion' && (
+        <StudentTherapyCompletionPanel detail={detail} compact />
+      )}
+
       {!done && detail?.process_code === 'supervision_block_transition' && (
         <StudentSupervisionBlockTransitionPanel
           detail={detail}
           stepFormValues={stepFormValues}
           extraData={extraData}
+          compact
+        />
+      )}
+
+      {!done && detail?.process_code === 'internship_readiness_consultation' && (
+        <StudentInternshipReadinessConsultationPanel
+          detail={detail}
+          studentProfile={studentId ? { id: studentId, extra_data: extraData } : null}
           compact
         />
       )}
@@ -978,6 +1038,112 @@ export default function StudentQuestCard({
         </div>
       )}
 
+      {done && detail?.process_code === 'start_therapy' && (
+        <div
+          data-testid="start-therapy-next-step-card"
+          style={{
+            marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #ecfdf5 0%, #f8fafc 100%)',
+            borderRight: '4px solid #059669', fontSize: '0.86rem', lineHeight: 1.75,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#065f46' }}>گام بعدی مسیر شما</div>
+          <p style={{ margin: 0 }}>
+            {(detail?.context_data?.start_therapy_next_step_fa || '').trim()
+              || 'درمان آموزشی فعال شد. گام بعدی: پرداخت جلسات آتی — داشبورد را تازه کنید تا مسیر اصلی به‌روز شود.'}
+          </p>
+          {extraData?.primary_instance_id && String(extraData.primary_instance_id) !== String(detail?.instance_id) && (
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+              مسیر اصلی پرتال به فرایند بعدی منتقل شده است؛ داشبورد را تازه کنید.
+            </p>
+          )}
+        </div>
+      )}
+
+      {done && detail?.process_code === 'session_payment' && (
+        <div
+          data-testid="session-payment-next-step-card"
+          style={{
+            marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #ecfdf5 0%, #f8fafc 100%)',
+            borderRight: '4px solid #059669', fontSize: '0.86rem', lineHeight: 1.75,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#065f46' }}>گام بعدی مسیر شما</div>
+          <p style={{ margin: 0 }}>
+            {(detail?.context_data?.session_payment_next_step_fa || extraData?.dashboard_therapy_hint_fa || '').trim()
+              || 'پرداخت جلسات ثبت شد. برای شرکت در جلسات به تب «جلسات آنلاین» بروید.'}
+          </p>
+          {onGoToOnlineSessions && (
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              style={{ marginTop: '0.5rem' }}
+              onClick={onGoToOnlineSessions}
+            >
+              رفتن به جلسات آنلاین
+            </button>
+          )}
+        </div>
+      )}
+
+      {done && detail?.process_code === 'introductory_course_registration' && (
+        <div
+          data-testid="intro-reg-next-step-card"
+          style={{
+            marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #ecfdf5 0%, #f8fafc 100%)',
+            borderRight: '4px solid #059669', fontSize: '0.86rem', lineHeight: 1.75,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#065f46' }}>گام بعدی مسیر شما</div>
+          <p style={{ margin: 0 }}>
+            {(detail?.context_data?.intro_registration_next_step_fa || '').trim()
+              || 'ثبت‌نام دوره آشنایی تکمیل شد. گام بعدی: آغاز درمان آموزشی — داشبورد را تازه کنید تا مسیر اصلی به‌روز شود.'}
+          </p>
+          {extraData?.primary_instance_id && String(extraData.primary_instance_id) !== String(detail?.instance_id) && (
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+              مسیر اصلی پرتال به فرایند بعدی منتقل شده است؛ داشبورد را تازه کنید.
+            </p>
+          )}
+        </div>
+      )}
+
+      {done && detail?.process_code === 'comprehensive_course_registration' && (
+        <div
+          data-testid="comp-reg-next-step-card"
+          style={{
+            marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #ecfdf5 0%, #f8fafc 100%)',
+            borderRight: '4px solid #059669', fontSize: '0.86rem', lineHeight: 1.75,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#065f46' }}>گام بعدی مسیر شما</div>
+          <p style={{ margin: 0 }}>
+            ثبت‌نام دوره جامع تکمیل شد. کلاس‌ها و لینک‌های آنلاین در پنل آموزش برای شما فعال می‌شود؛ ادامهٔ مسیر از همان بخش‌هاست.
+          </p>
+        </div>
+      )}
+
+      {detail?.process_code === TERM2_REG_CODE
+        && ['registration_complete', 'term2_registration_closed'].includes(detail?.current_state) && (
+        <div
+          data-testid="intro2-reg-next-step-card"
+          style={{
+            marginTop: '0.75rem', padding: '0.85rem 1rem', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #ecfdf5 0%, #f8fafc 100%)',
+            borderRight: '4px solid #059669', fontSize: '0.86rem', lineHeight: 1.75,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: '#065f46' }}>گام بعدی مسیر شما</div>
+          <p style={{ margin: 0 }}>
+            {detail?.current_state === 'term2_registration_closed'
+              ? 'ثبت‌نام ترم دوم و تسویهٔ مالی کامل شد؛ دروس و لینک‌های کلاس در پنل آموزش در دسترس است.'
+              : 'ثبت‌نام ترم دوم تکمیل شد؛ لینک کلاس فعال است. اگر اقساطی پرداخت کردید، اقساط بعدی را در سررسید از همین پرتال بپردازید.'}
+          </p>
+        </div>
+      )}
+
       {done && detail?.process_code === 'ta_track_completion' && (
         <div
           style={{
@@ -1017,25 +1183,9 @@ export default function StudentQuestCard({
         </div>
       )}
 
-      <div className="quest-current-box">
-        <span className="quest-current-label">وضعیت فعلی</span>
-        <strong className="quest-current-value">{currentStateLabel}</strong>
-      </div>
-
       <StudentSmsHistorySection refreshKey={smsRefreshKey ?? `${detail?.instance_id || ''}-${detail?.current_state || ''}`} />
 
       <StudentProcessStepReview detail={detail} definition={definition} />
-
-      {showSepPanel && !showRegistrationSep && (
-        <div data-testid="student-quest-sep-payment">
-          <SepPaymentPanel
-            instanceId={detail.instance_id}
-            studentId={studentId}
-            amountRial={paymentAmountRial}
-            description={resolveSepPaymentDescription(detail)}
-          />
-        </div>
-      )}
 
       {!done && studentForms.length > 0 && stepFormLocked && (
         <div className="quest-forms-wrap">
@@ -1060,12 +1210,98 @@ export default function StudentQuestCard({
             resubmitFieldNames={docsResubmit}
             onRegisterSubmit={onFormRegisterSubmit}
             contextData={detail?.context_data}
+            currentState={detail?.current_state}
           />
           {transitionBlocked && (transitions?.length || 0) > 0 && (
             <p className="quest-block-hint" style={{ marginTop: '0.75rem' }}>
               ابتدا فرم بالا را تکمیل کنید؛ سپس دکمهٔ ثبت مرحله در همین کارت ظاهر می‌شود.
             </p>
           )}
+        </div>
+      )}
+
+      {(showRegistrationSep || showIntro2Sep || (detail?.current_state === 'payment' && livePaymentMethod)) && (
+        <div data-testid="student-quest-sep-payment" style={{ marginTop: '0.85rem' }}>
+          {detail?.current_state === 'payment' && !paymentMethodChosen && (
+            <p
+              style={{
+                margin: '0 0 0.5rem',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                background: '#eff6ff',
+                borderRight: '4px solid #2563eb',
+                fontSize: '0.86rem',
+                lineHeight: 1.7,
+                color: '#1e3a8a',
+              }}
+            >
+              ابتدا روش پرداخت (نقدی یا اقساطی) را در فرم بالا انتخاب و ثبت کنید؛ سپس درگاه پرداخت آنلاین فعال می‌شود.
+            </p>
+          )}
+          {detail?.current_state === 'payment' && paymentMethodChosen && !formMatchesRegistered && (
+            <p
+              style={{
+                margin: '0 0 0.5rem',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                background: '#fffbeb',
+                borderRight: '4px solid #d97706',
+                fontSize: '0.86rem',
+                lineHeight: 1.7,
+                color: '#92400e',
+              }}
+            >
+              انتخاب شما تغییر کرد. دوباره دکمهٔ ثبت فرم را بزنید تا مبلغ درگاه به‌روز شود؛ تا آن زمان درگاه غیرفعال است.
+            </p>
+          )}
+          {(isInstallmentPayment || (livePaymentMethod === 'installment' && liveInstallmentCount > 1)) && tuitionTotalRial > 0 && (
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.86rem', color: '#1e3a8a', lineHeight: 1.7 }}>
+              شهریه کل: {Math.round(tuitionTotalRial / 10).toLocaleString('fa-IR')} تومان
+              {' · '}
+              {liveInstallmentCount > 1
+                ? `${Number(liveInstallmentCount).toLocaleString('fa-IR')} قسط — مبلغ هر قسط (قسط اول): `
+                : 'مبلغ قابل پرداخت: '}
+              <strong>{Math.round(paymentAmountRial / 10).toLocaleString('fa-IR')} تومان</strong>
+            </p>
+          )}
+          {livePaymentMethod === 'cash' && tuitionTotalRial > 0 && (
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.86rem', color: '#1e3a8a', lineHeight: 1.7 }}>
+              پرداخت نقدی — مبلغ کل:{' '}
+              <strong>{Math.round(tuitionTotalRial / 10).toLocaleString('fa-IR')} تومان</strong>
+            </p>
+          )}
+          {(
+            detail?.current_state === 'installment_overdue'
+            || detail?.current_state === 'interview_payment'
+            || (detail?.current_state === 'interview_scheduled' && hasInterviewBooking)
+            || gatewayReady
+          ) && (
+            <SepPaymentPanel
+              instanceId={detail.instance_id}
+              studentId={studentId}
+              amountRial={
+                detail?.current_state === 'payment' || detail?.current_state === 'payment_processing'
+                  ? (ctx.payable_amount_rial != null ? Number(ctx.payable_amount_rial) : paymentAmountRial)
+                  : (ctx.payable_amount_rial != null
+                    ? Number(ctx.payable_amount_rial)
+                    : (ctx.payment_amount_rial != null
+                      ? Number(ctx.payment_amount_rial)
+                      : paymentAmountRial))
+              }
+              description={resolveSepPaymentDescription(detail)}
+            />
+          )}
+        </div>
+      )}
+
+      {showSepPanel && !showRegistrationSep && !showIntro2Sep && (
+        <div data-testid="student-quest-sep-payment" style={{ marginTop: '0.85rem' }}>
+          <SepPaymentPanel
+            instanceId={detail.instance_id}
+            studentId={studentId}
+            amountRial={paymentAmountRial}
+            description={resolveSepPaymentDescription(detail)}
+          />
         </div>
       )}
 

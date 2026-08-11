@@ -30,7 +30,9 @@ class User(Base):
     portal_password_plain = Column(String(128), nullable=True)
     full_name_fa = Column(String(255), nullable=True)
     full_name_en = Column(String(255), nullable=True)
-    role = Column(String(50), nullable=False, default="student")  # admin, staff, finance, therapist, student, …
+    role = Column(String(50), nullable=False, default="student")  # نقش اصلی (خانهٔ ورود)
+    # همهٔ نقش‌های پورتال کاربر (شامل role)؛ JSONB آرایهٔ رشته‌ها
+    roles = Column(JSONB, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     phone = Column(String(20), nullable=True)
     avatar_url = Column(String(512), nullable=True)  # مسیر نسبی عکس پروفایل، مثلاً /uploads/avatars/xxx.jpg
@@ -396,7 +398,7 @@ class InterviewSlot(Base):
 
 
 class EducationalTherapistSlot(Base):
-    """شیت وقت‌های آزاد درمانگران آموزشی — اسلات هفتگی تکرارشونده (روز + ساعت)."""
+    """شیت وقت‌های آزاد درمانگران آموزشی — اسلات تکرارشونده (روز + ساعت + فاصله هفته)."""
 
     __tablename__ = "educational_therapist_slots"
     __table_args__ = (
@@ -411,6 +413,8 @@ class EducationalTherapistSlot(Base):
     day_of_week = Column(Integer, nullable=False)
     start_local_time = Column(Time(timezone=False), nullable=False)
     end_local_time = Column(Time(timezone=False), nullable=False)
+    # 1 = هر هفته، 2 = هفته در میان
+    week_interval = Column(Integer, nullable=False, default=1, server_default="1")
     course_type = Column(String(50), nullable=True)  # introductory | comprehensive | None = هر دو
     label_fa = Column(String(255), nullable=True)
     status = Column(String(20), nullable=False, default="free", server_default="free")  # free | booked
@@ -524,7 +528,7 @@ class SmsSimulationOutbox(Base):
     )
 
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
-    phone = Column(String(15), nullable=False)
+    phone = Column(String(32), nullable=False)
     message = Column(Text, nullable=False)
     kind = Column(String(32), nullable=False)  # otp | notification | pattern | free_text
     template_key = Column(String(120), nullable=True)

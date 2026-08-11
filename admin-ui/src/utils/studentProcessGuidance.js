@@ -2,6 +2,12 @@ import { filterFormsForStudent } from './processFormsStudent'
 import { labelState } from './processDisplay'
 import { STUDENT_TASK_LABELS_FA, PROCESS_STUDENT_TASK_LABELS_FA, PROCESS_STATE_LABELS_FA } from './processMetadataLabels'
 
+export const INTRO_REG_ADMISSION_RESULT_STATES = new Set([
+  'result_conditional_therapy',
+  'result_single_course',
+  'result_full_admission',
+])
+
 export function findStateDefinition(definition, stateCode) {
   if (!definition?.states || !stateCode) return null
   return definition.states.find(s => s.code === stateCode) || null
@@ -17,15 +23,18 @@ export function buildStudentGuidance({
   transitions,
   forms,
   stepFormLocked,
+  registrationGate = null,
 }) {
   const proc = definition?.process
   const procCode = proc?.code
   const overviewFa = (proc?.description && String(proc.description).trim()) || ''
   const st = findStateDefinition(definition, detail?.current_state)
   const meta = st?.metadata || {}
+  const ctx = detail?.context_data || {}
   const shortFa = (meta.student_short_fa || meta.student_guidance_fa || '').trim()
     || (procCode && PROCESS_STATE_LABELS_FA[procCode]?.[detail?.current_state])
     || (st?.name_fa || detail?.current_state || '')
+  const whyFa = (meta.student_why_fa || '').trim()
   const role = st?.assigned_role
   const done = detail?.is_completed || detail?.is_cancelled
 
@@ -68,10 +77,30 @@ export function buildStudentGuidance({
     }
   }
 
+  const ctxOverride = (ctx.student_next_action_fa || '').trim()
+  if (!done && ctxOverride) {
+    taskFa = ctxOverride
+  }
+
+  const introGateClosed =
+    procCode === 'introductory_course_registration'
+    && registrationGate
+    && registrationGate.allowed === false
+  if (
+    !done
+    && introGateClosed
+    && INTRO_REG_ADMISSION_RESULT_STATES.has(detail?.current_state)
+  ) {
+    taskFa =
+      registrationGate.reason_fa
+      || 'پذیرش شما ثبت شد. آپلود مدارک پس از باز شدن پنجرهٔ ثبت‌نام ترم فعال می‌شود؛ همین صفحه را بعد از اعلام باز شدن ثبت‌نام تازه کنید.'
+  }
+
   return {
     overviewFa,
     shortFa,
     taskFa: taskFa || '',
+    whyFa,
     role,
     done,
   }

@@ -63,21 +63,24 @@ def _display_name(u: Optional[User]) -> str:
 
 async def resolve_triage_assignee(db: AsyncSession) -> User:
     """یک مسئول واحد: از TICKET_TRIAGE_USERNAME یا اولین staff فعال یا اولین admin."""
+    from app.core.user_roles import normalize_user_roles, user_matches_role_sql
+
     settings = get_settings()
     uname = (settings.TICKET_TRIAGE_USERNAME or "").strip()
     if uname:
         r = await db.execute(select(User).where(User.username == uname, User.is_active.is_(True)))
         u = r.scalars().first()
-        if u and u.role != "student":
+        roles = set(normalize_user_roles(u)) if u else set()
+        if u and roles - {"student", "applicant"}:
             return u
     r = await db.execute(
-        select(User).where(User.role == "staff", User.is_active.is_(True)).order_by(User.created_at.asc())
+        select(User).where(user_matches_role_sql("staff"), User.is_active.is_(True)).order_by(User.created_at.asc())
     )
     u = r.scalars().first()
     if u:
         return u
     r = await db.execute(
-        select(User).where(User.role == "admin", User.is_active.is_(True)).order_by(User.created_at.asc())
+        select(User).where(user_matches_role_sql("admin"), User.is_active.is_(True)).order_by(User.created_at.asc())
     )
     u = r.scalars().first()
     if u:

@@ -14,6 +14,54 @@ CTX_SUBMITTED = "__student_forms_submitted_states"
 CTX_EDIT_UNLOCK = "__student_forms_edit_unlock"
 # پس از رد جزئی مدارک: نام فیلدهایی که دانشجو باید دوباره بارگذاری کند
 CTX_DOCUMENTS_RESUBMIT_FIELDS = "__documents_resubmit_fields"
+# پس از تأیید موفق OTP مرحله (قبل از register) — جلوگیری از مصرف دوبارهٔ کد
+CTX_STEP_OTP_VERIFIED_STATE = "__step_otp_verified_state"
+CTX_STEP_OTP_VERIFIED_AT = "__step_otp_verified_at"
+
+
+def context_has_step_otp_verified(context_data: Optional[dict], state_code: str) -> bool:
+    """آیا برای همین وضعیت فعلی، OTP مرحله قبلاً روی سرور تأیید شده است؟"""
+    if not state_code:
+        return False
+    return (context_data or {}).get(CTX_STEP_OTP_VERIFIED_STATE) == state_code
+
+
+def stamp_step_otp_verified(context_data: Optional[dict], state_code: str) -> dict:
+    """ثبت فلگ سروری تأیید OTP برای وضعیت فعلی."""
+    ctx = dict(context_data or {})
+    ctx[CTX_STEP_OTP_VERIFIED_STATE] = state_code
+    ctx[CTX_STEP_OTP_VERIFIED_AT] = datetime.now(timezone.utc).isoformat()
+    return ctx
+
+
+def clear_step_otp_verified_flags(context_data: Optional[dict]) -> dict:
+    """پاک کردن فلگ‌های موقت OTP پس از ثبت موفق فرم."""
+    ctx = dict(context_data or {})
+    ctx.pop(CTX_STEP_OTP_VERIFIED_STATE, None)
+    ctx.pop(CTX_STEP_OTP_VERIFIED_AT, None)
+    return ctx
+
+
+def process_state_requires_step_otp(process_code: str, state_code: str) -> bool:
+    """وضعیت‌هایی که قبل از register باید OTP مرحله تأیید شده باشد."""
+    if process_code == "upgrade_to_ta" and state_code == "commitment_signature":
+        return True
+    if process_code == "introductory_course_registration" and state_code in (
+        "documents_upload",
+        "documents_incomplete",
+    ):
+        return True
+    return False
+
+# فرم روش پرداخت تا قبل از پرداخت موفق باید قابل تغییر بماند
+PAYMENT_METHOD_EDITABLE_STATES = frozenset(
+    {
+        "payment",
+        "payment_method",
+        "payment_choice",
+        "payment_processing",
+    }
+)
 
 
 def filter_forms_for_student(forms: list) -> list[dict]:
@@ -32,16 +80,9 @@ def filter_forms_for_student(forms: list) -> list[dict]:
 
 
 def _field_required(field: dict, values: dict) -> bool:
-    # گزارهٔ شیئی required_if (فرم یکپارچه) اولویت دارد.
-    req_if = field.get("required_if")
-    if isinstance(req_if, dict):
-        from app.services.forms.condition import field_required as _unified_required
+    from app.services.forms.condition import field_required as _unified_required
 
-        return _unified_required(field, values or {})
-    # عبارت رشته‌ای قدیمی required_when روی سرور الزام ایجاد نمی‌کند.
-    if field.get("required_when"):
-        return False
-    return bool(field.get("required"))
+    return _unified_required(field, values or {})
 
 
 def _is_empty(v: Any) -> bool:
@@ -75,7 +116,11 @@ def validate_student_step_forms(
             if not name:
                 continue
             if partial_set is not None and name not in partial_set:
-                continue
+                # تأیید قوانین + OTP همیشه در ثبت مجدد مدارک هم الزامی است
+                t_early = field.get("type") or "text"
+                is_rules_gate = t_early == "checkbox" and bool(field.get("rules_link_href"))
+                if t_early != "step_otp" and not is_rules_gate:
+                    continue
             # فیلد نامرئی (show_if شیئی) را اعتبارسنجی نکن.
             if not _unified_visible(field, vals):
                 continue
@@ -83,6 +128,10 @@ def validate_student_step_forms(
                 continue
             if t == "checkbox":
                 if field.get("required") and not vals.get(name):
+                    missing.append(field.get("label_fa") or name)
+                continue
+            if t == "step_otp":
+                if _is_empty(vals.get(name)):
                     missing.append(field.get("label_fa") or name)
                 continue
             if t in ("radio_list", "checkbox_list"):
@@ -114,6 +163,9 @@ def collect_allowed_value_keys(forms: list) -> set[str]:
             t = field.get("type") or "text"
             if t in ("radio_list", "checkbox_list"):
                 keys.add(f"{name}_ack")
+            if t == "step_otp":
+                # فقط پس از gate سروری در register نوشته می‌شود؛ از کلاینت به‌تنهایی اعتماد نمی‌شود
+                keys.add("step_otp_verified")
     return keys
 
 
@@ -208,12 +260,17 @@ def collect_partial_allowed_keys(forms: list, partial_names: set[str]) -> set[st
             if not isinstance(field, dict):
                 continue
             name = field.get("name")
-            if not name or name not in partial_names:
+            if not name:
+                continue
+            t = field.get("type") or "text"
+            is_rules_gate = t == "checkbox" and bool(field.get("rules_link_href"))
+            if name not in partial_names and t != "step_otp" and not is_rules_gate:
                 continue
             keys.add(name)
-            t = field.get("type") or "text"
             if t in ("radio_list", "checkbox_list"):
                 keys.add(f"{name}_ack")
+            if t == "step_otp":
+                keys.add("step_otp_verified")
     return keys
 
 
@@ -246,7 +303,11 @@ def apply_register_to_context(
     submitted[current_state] = datetime.now(timezone.utc).isoformat()
     new_ctx[CTX_SUBMITTED] = submitted
     unlock = dict(StateMachineEngine._as_mapping(new_ctx.get(CTX_EDIT_UNLOCK)))
-    unlock.pop(current_state, None)
+    # روش پرداخت: تا قبل از پرداخت درگاه، دانشجو بتواند نقدی/اقساط و تعداد را عوض کند
+    if current_state in PAYMENT_METHOD_EDITABLE_STATES:
+        unlock[current_state] = True
+    else:
+        unlock.pop(current_state, None)
     new_ctx[CTX_EDIT_UNLOCK] = unlock
     return new_ctx
 
@@ -259,12 +320,71 @@ def apply_unlock_to_context(ctx: object, state_code: str) -> dict:
     return new_ctx
 
 
+def apply_rollback_student_forms_to_context(
+    ctx: object,
+    target_state: str,
+    from_state: Optional[str] = None,
+) -> dict:
+    """
+    پس از بازگشت دستی به مرحلهٔ قبل: UI فرم همان مرحله برای دانشجو دوباره نمایش داده شود.
+
+    - مرحلهٔ هدف: قفل ثبت قبلی برداشته می‌شود (ویرایش باز).
+    - مرحلهٔ ترک‌شده با rollback: پرچم ثبت حذف می‌شود تا در ورود مجدد قفل نماند.
+    """
+    if not target_state:
+        return dict(StateMachineEngine._as_mapping(ctx))
+    new_ctx = apply_unlock_to_context(ctx, target_state)
+    # اگر قبلاً ثبت شده بود، با unlock فرم قابل مشاهده/ویرایش می‌شود؛
+    # submitted را نگه می‌داریم تا مقادیر قبلی در context بماند.
+    if from_state and from_state != target_state:
+        submitted = dict(StateMachineEngine._as_mapping(new_ctx.get(CTX_SUBMITTED)))
+        if from_state in submitted:
+            submitted.pop(from_state, None)
+            new_ctx[CTX_SUBMITTED] = submitted
+        unlock = dict(StateMachineEngine._as_mapping(new_ctx.get(CTX_EDIT_UNLOCK)))
+        if from_state in unlock:
+            unlock.pop(from_state, None)
+            new_ctx[CTX_EDIT_UNLOCK] = unlock
+    return new_ctx
+
+
+def apply_reopen_student_step_forms_to_context(
+    ctx: object,
+    state_code: str,
+    *,
+    clear_keys: Optional[list[str]] = None,
+    clear_submitted: bool = True,
+) -> dict:
+    """
+    پس از رد/بازگشت فرایندی (مثلاً therapist_declined): فرم همان مرحله دوباره برای دانشجو باز شود.
+
+    - قفل UI برداشته می‌شود (edit unlock).
+    - به‌طور پیش‌فرض پرچم ثبت همان مرحله پاک می‌شود تا مثل اولین ورود باشد.
+    - clear_keys: کلیدهای context که باید پاک شوند (مثلاً therapist_id / slot_ids).
+    """
+    if not state_code:
+        return dict(StateMachineEngine._as_mapping(ctx))
+    new_ctx = apply_unlock_to_context(ctx, state_code)
+    if clear_submitted:
+        submitted = dict(StateMachineEngine._as_mapping(new_ctx.get(CTX_SUBMITTED)))
+        if state_code in submitted:
+            submitted.pop(state_code, None)
+            new_ctx[CTX_SUBMITTED] = submitted
+    for key in clear_keys or []:
+        name = str(key).strip()
+        if name and not name.startswith("__"):
+            new_ctx.pop(name, None)
+    return new_ctx
+
+
 def is_state_locked_for_student(
     context_data: Optional[dict],
     state_code: Optional[str],
 ) -> bool:
     """اگر برای این مرحله ثبت شده و باز بودن ویرایش فعال نباشد → فرم مخفی."""
     if not state_code:
+        return False
+    if state_code in PAYMENT_METHOD_EDITABLE_STATES:
         return False
     # JSONB / نمونهٔ قدیمی: context_data گاهی رشتهٔ JSON است.
     ctx = StateMachineEngine._as_mapping(context_data)

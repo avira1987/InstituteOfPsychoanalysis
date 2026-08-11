@@ -147,6 +147,8 @@ class Settings(BaseSettings):
 
     # Uploads (avatars, etc.)
     UPLOAD_DIR: str = "uploads"  # مسیر نسبی از روت پروژه
+    # فهرست بکاپ‌های روزانه روی دیسک (در prod: bind-mount /var/backups/anistito → /backups)
+    BACKUP_DIR: str = "backups"
 
     # Optional outbound integration (LMS / سامانه بیرونی) — اکشن‌های «ثبت در LMS»
     LMS_INTEGRATION_WEBHOOK_URL: str = ""  # اگر خالی باشد فقط روی context_data لاگ می‌شود
@@ -166,9 +168,13 @@ class Settings(BaseSettings):
     # اگر True و خطای شبکه/API، به رفتار قبلی (ui_hints + وب‌هوک) برمی‌گردد
     ALOCOM_FALLBACK_TO_UI_HINTS: bool = True
 
-    # CORS — در production لیست دامنه‌ها را با کاما بگذارید (مثلاً https://lms...،https://ims...).
-    # مقدار * فقط برای توسعه؛ با allow_credentials سازگار نیست.
-    CORS_ALLOW_ORIGINS: str = "*"
+    # CORS — دامنه‌های مجاز با کاما (هم‌تراز scripts/deploy_internet_host.py روی هاست).
+    # لوکال با پروکسی Vite معمولاً همین لیست کافی است؛ برای origin مستقیم مثلاً :5173 را اضافه کنید.
+    # مقدار * فقط برای توسعهٔ موقت؛ با allow_credentials سازگار نیست و در DEBUG=false رد می‌شود.
+    CORS_ALLOW_ORIGINS: str = (
+        "https://lms.psychoanalysis.ir,https://ims.psychoanalysis.ir,"
+        "http://lms.psychoanalysis.ir,http://ims.psychoanalysis.ir"
+    )
 
     # آغاز درمان آموزشی: مبلغ جلسهٔ اول (ریال) برای درگاه SEP وقتی در context تنظیم نشده باشد
     START_THERAPY_FIRST_SESSION_FEE_RIAL: int = 10_000_000

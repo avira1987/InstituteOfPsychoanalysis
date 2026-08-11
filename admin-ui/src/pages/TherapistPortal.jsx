@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
-import { processExecApi, studentApi, therapyApi, alocomApi, panelApi } from '../services/api'
+import { processExecApi, studentApi, therapyApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { isDocumentReviewState } from '../utils/documentReviewStates'
-import InstanceContextSummary from '../components/InstanceContextSummary'
+import OperatorInstanceContextSummary from '../components/OperatorInstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import { useToast } from '../contexts/ToastContext'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
@@ -15,7 +16,7 @@ import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
-import TherapistAttendancePanel from '../components/TherapistAttendancePanel'
+import TherapistTherapyWorkbench from '../components/TherapistTherapyWorkbench'
 import AttendanceTrackingPanel from '../components/AttendanceTrackingPanel'
 import TherapistEarlyTerminationPanel from '../components/TherapistEarlyTerminationPanel'
 import ShamsiDatePicker from '../components/ShamsiDatePicker'
@@ -23,14 +24,29 @@ import {
   isoDateToShamsiParts,
   shamsiDateToIsoDate,
   defaultShamsiDate,
+  formatShamsiTehran,
 } from '../utils/shamsiDateTime'
 
-const THERAPIST_DEEP_LINK_TABS = ['dashboard', 'pending', 'attendance', 'students', 'sessions', 'active']
+const THERAPIST_DEEP_LINK_TABS = ['dashboard', 'pending', 'workbench', 'attendance', 'students', 'sessions', 'active']
 
 const reviewStates = [
   'therapist_review', 'therapist_decision', 'awaiting_therapist',
-  'therapist_confirmation', 'pending_therapist', 'waiting_therapist',
+  'pending_therapist', 'waiting_therapist',
 ]
+
+/** جلسات حضور آینده — هر جلسه یک نمونه جدا؛ در تب فرایندها مخفی و در میزکار پیگیری می‌شوند. */
+function isScheduledAttendanceInstance(inst) {
+  return inst?.process_code === 'attendance_tracking'
+    && (inst.current_state === 'session_scheduled' || inst.current_state_code === 'session_scheduled')
+}
+
+function therapistActiveListLabel(inst) {
+  const base = labelProcess(inst.process_code)
+  if (inst.process_code !== 'attendance_tracking') return base
+  const sd = inst.session_date
+  if (!sd) return base
+  return `${base} — ${formatShamsiTehran(sd, { dateOnly: true })}`
+}
 
 export default function TherapistPortal() {
   const { user } = useAuth()
@@ -49,36 +65,43 @@ export default function TherapistPortal() {
   const [therapyIncreaseAltTime, setTherapyIncreaseAltTime] = useState('')
   const [loading, setLoading] = useState(true)
   const [studentSearch, setStudentSearch] = useState('')
-  const [therapySessions, setTherapySessions] = useState([])
+  const [workbenchTotals, setWorkbenchTotals] = useState(null)
+  const [workbenchFilter, setWorkbenchFilter] = useState('')
   const [operatorFollowupItems, setOperatorFollowupItems] = useState([])
   const [operatorReadinessAlerts, setOperatorReadinessAlerts] = useState([])
-  const [attendanceNeedsCount, setAttendanceNeedsCount] = useState(0)
   const [startingEarlyTerminationFor, setStartingEarlyTerminationFor] = useState(null)
+  const [scheduledAttendanceHiddenCount, setScheduledAttendanceHiddenCount] = useState(0)
+  const [searchParams] = useSearchParams()
+
   const { showToast } = useToast()
+
+  useEffect(() => {
+    const f = searchParams.get('filter')
+    if (f) setWorkbenchFilter(f)
+  }, [searchParams])
 
   useEffect(() => { loadData() }, [])
 
-  const loadTherapySessions = async () => {
-    try {
-      const r = await therapyApi.forTherapist()
-      setTherapySessions(Array.isArray(r.data) ? r.data : [])
-    } catch {
-      setTherapySessions([])
-    }
-  }
-
+  // سازگاری با لینک‌های قدیمی tab=attendance و tab=sessions
+  // باید قبل از early-returnِ loading باشد تا تعداد hooks بین رندرها ثابت بماند (React #310)
   useEffect(() => {
-    if (activeTab === 'sessions') loadTherapySessions()
+    if (activeTab === 'attendance' || activeTab === 'sessions') {
+      setActiveTab('workbench')
+    }
   }, [activeTab])
 
-  const loadAttendanceStats = async () => {
+  const loadWorkbenchTotals = async () => {
     try {
-      const r = await therapyApi.attendanceWorkbench()
-      setAttendanceNeedsCount(r.data?.stats?.needs_recording ?? 0)
+      const r = await therapyApi.workbenchSummary({ role_scope: 'therapist', limit: 1 })
+      setWorkbenchTotals(r.data?.totals || null)
     } catch {
-      setAttendanceNeedsCount(0)
+      setWorkbenchTotals(null)
     }
   }
+
+  const handleWorkbenchTotals = useCallback((totals) => {
+    setWorkbenchTotals(totals)
+  }, [])
 
   const loadData = async () => {
     try {
@@ -93,6 +116,7 @@ export default function TherapistPortal() {
 
       const pending = []
       const allActive = []
+      let hiddenScheduledAttendance = 0
       for (const s of students) {
         try {
           const instRes = await processExecApi.studentInstances(s.id)
@@ -101,9 +125,15 @@ export default function TherapistPortal() {
             if (!inst.is_completed && !inst.is_cancelled) {
               // مراحل بررسی/تکمیل مدارک مخصوص پنل کارمند است و در پنل درمانگر نمایش داده نمی‌شود.
               if (isDocumentReviewState(inst.current_state)) continue
-              allActive.push({ ...inst, student_code: s.student_code, student_id: s.id })
+              const row = { ...inst, student_code: s.student_code, student_id: s.id }
+              // هر جلسه درمان یک attendance_tracking دارد؛ جلسات آینده را اینجا شلوغ نکن
+              if (isScheduledAttendanceInstance(row)) {
+                hiddenScheduledAttendance += 1
+                continue
+              }
+              allActive.push(row)
               if (isWaitingForTherapist(inst.current_state)) {
-                pending.push({ ...inst, student_code: s.student_code, student_id: s.id })
+                pending.push(row)
               }
             }
           }
@@ -111,7 +141,8 @@ export default function TherapistPortal() {
       }
       setPendingActions(pending)
       setMyActiveInstances(allActive)
-      loadAttendanceStats()
+      setScheduledAttendanceHiddenCount(hiddenScheduledAttendance)
+      loadWorkbenchTotals()
     } catch (err) {
       console.error('Load error:', err)
     } finally {
@@ -257,6 +288,9 @@ export default function TherapistPortal() {
     )
   }
 
+  const workbenchActionCount = (workbenchTotals?.needs_recording ?? 0)
+    + (workbenchTotals?.missing_future_schedule ?? 0)
+
   const filteredStudents = allStudents.filter(s => {
     if (!studentSearch) return true
     return s.student_code?.includes(studentSearch) || s.course_type?.includes(studentSearch)
@@ -264,10 +298,9 @@ export default function TherapistPortal() {
 
   const tabs = [
     { id: 'pending', label: `کارهای من (${displayPendingActions.length})`, icon: '📥' },
-    { id: 'attendance', label: `حضور و غیاب (${attendanceNeedsCount})`, icon: '✅' },
+    { id: 'workbench', label: `میزکار درمان${workbenchActionCount > 0 ? ` (${workbenchActionCount})` : ''}`, icon: '🩺' },
     { id: 'dashboard', label: 'داشبورد', icon: '📊' },
     { id: 'students', label: 'دانشجویان', icon: '👨‍🎓' },
-    { id: 'sessions', label: 'جلسات آنلاین', icon: '🎥' },
     { id: 'active', label: 'فرایندها', icon: '🔄' },
   ]
 
@@ -401,7 +434,7 @@ export default function TherapistPortal() {
                     >
                       <div>
                         <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>
-                          {labelProcess(p.process_code)}
+                          {therapistActiveListLabel(p)}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                           دانشجو: {formatStudentCodeDisplay(p.student_code)} | {labelState(p.current_state)}
@@ -476,7 +509,7 @@ export default function TherapistPortal() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 500 }}>{labelProcess(p.process_code)}</div>
+                      <div style={{ fontWeight: 500 }}>{therapistActiveListLabel(p)}</div>
                       <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                         دانشجو: {formatStudentCodeDisplay(p.student_code)} | {labelState(p.current_state)}
                       </div>
@@ -511,13 +544,12 @@ export default function TherapistPortal() {
         </div>
       )}
 
-      {activeTab === 'attendance' && (
-        <TherapistAttendancePanel
-          active={activeTab === 'attendance'}
+      {activeTab === 'workbench' && (
+        <TherapistTherapyWorkbench
+          active={activeTab === 'workbench'}
           showToast={showToast}
-          onRecorded={() => {
-            loadData()
-          }}
+          initialFilter={workbenchFilter}
+          onTotalsLoaded={handleWorkbenchTotals}
         />
       )}
 
@@ -594,24 +626,46 @@ export default function TherapistPortal() {
         </div>
       )}
 
-      {activeTab === 'sessions' && (
-        <TherapistSessionsPanel
-          sessions={therapySessions}
-          onReload={loadTherapySessions}
-          showToast={showToast}
-        />
-      )}
-
-      {/* Active Processes Tab */}
+      {/* Students Tab — جلسات آنلاین و حضور در میزکار درمان ادغام شد */}
       {activeTab === 'active' && (
         <div style={{ display: 'grid', gridTemplateColumns: instanceDetail ? '1fr 1.5fr' : '1fr', gap: '1.5rem' }}>
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">فرایندهای فعال ({myActiveInstances.length})</h3>
             </div>
+            {scheduledAttendanceHiddenCount > 0 && (
+              <div
+                style={{
+                  margin: '0 1rem 0.75rem',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '8px',
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  fontSize: '0.88rem',
+                  lineHeight: 1.65,
+                  color: 'var(--text-secondary, #4b5563)',
+                }}
+              >
+                {scheduledAttendanceHiddenCount.toLocaleString('fa-IR')} جلسهٔ برنامه‌ریزی‌شدهٔ حضور در این تب مخفی است
+                (هر جلسه یک نمونه جداست). ورود به کلاس، فعال‌سازی لینک دانشجو و ثبت حضور از{' '}
+                <button
+                  type="button"
+                  className="btn btn-link"
+                  style={{ padding: 0, verticalAlign: 'baseline', fontSize: 'inherit' }}
+                  onClick={() => setActiveTab('workbench')}
+                >
+                  میزکار درمان
+                </button>
+                {' '}انجام شود.
+              </div>
+            )}
             {myActiveInstances.length === 0 ? (
               <div className="empty-state" style={{ padding: '2rem' }}>
-                <p>فرایند فعالی وجود ندارد</p>
+                <p>
+                  {scheduledAttendanceHiddenCount > 0
+                    ? 'فرایند دیگری غیر از جلسات حضور آینده وجود ندارد'
+                    : 'فرایند فعالی وجود ندارد'}
+                </p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -627,7 +681,7 @@ export default function TherapistPortal() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 500 }}>{labelProcess(p.process_code)}</div>
+                      <div style={{ fontWeight: 500 }}>{therapistActiveListLabel(p)}</div>
                       <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                         دانشجو: {formatStudentCodeDisplay(p.student_code)} | {labelState(p.current_state)}
                       </div>
@@ -666,164 +720,6 @@ export default function TherapistPortal() {
   )
 }
 
-function TherapistSessionsPanel({ sessions, onReload, showToast }) {
-  const [draft, setDraft] = useState({})
-  const [alocomAgentServiceId, setAlocomAgentServiceId] = useState('')
-  const setField = (id, field, value) => {
-    setDraft(prev => ({
-      ...prev,
-      [id]: { ...prev[id], [field]: value },
-    }))
-  }
-  const provisionAlocom = async (s) => {
-    const aid = parseInt(String(alocomAgentServiceId).trim(), 10)
-    if (!aid || Number.isNaN(aid)) {
-      showToast('شناسهٔ سرویس الوکام (agent_service_id) را در فیلد بالا وارد کنید.', 'error')
-      return
-    }
-    try {
-      await alocomApi.provisionTherapySession(s.id, {
-        agent_service_id: aid,
-        title: `جلسه درمان ${s.session_date}`,
-        fetch_student_event_link: true,
-      })
-      showToast('کلاس الوکام ایجاد و لینک ذخیره شد')
-      onReload()
-    } catch (e) {
-      const d = e.response?.data?.detail
-      showToast(typeof d === 'string' ? d : (e.message || 'خطا در الوکام'), 'error')
-    }
-  }
-  const save = async (s) => {
-    const row = draft[s.id] || {}
-    const meetingUrl = row.meeting_url !== undefined ? row.meeting_url : (s.meeting_url || '')
-    const provider = row.meeting_provider !== undefined ? row.meeting_provider : (s.meeting_provider || 'manual')
-    const scoreRaw = row.instructor_score !== undefined ? row.instructor_score : (s.instructor_score ?? '')
-    const comment = row.instructor_comment !== undefined ? row.instructor_comment : (s.instructor_comment || '')
-    const attendance = row.attendance_status !== undefined ? row.attendance_status : ''
-    try {
-      const payload = {
-        meeting_url: meetingUrl || null,
-        meeting_provider: provider || 'manual',
-        instructor_comment: comment || null,
-      }
-      if (scoreRaw !== '' && scoreRaw != null) {
-        const n = Number(scoreRaw)
-        if (!Number.isNaN(n)) payload.instructor_score = n
-      }
-      if (attendance === 'present' || attendance === 'absent_excused' || attendance === 'absent_unexcused') {
-        payload.attendance_status = attendance
-      }
-      await therapyApi.patchSession(s.id, payload)
-      showToast('ذخیره شد')
-      onReload()
-    } catch (e) {
-      showToast(e.response?.data?.detail || 'خطا در ذخیره', 'error')
-    }
-  }
-  return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="card-title">جلسات آنلاین — لینک و نمره</h3>
-      </div>
-      <div style={{ padding: '0 1rem 1rem', borderBottom: '1px solid var(--border)' }}>
-        <label className="form-label" style={{ fontSize: '0.8rem' }}>شناسهٔ سرویس خریداری‌شده در الوکام (agent_service_id)</label>
-        <input
-          className="form-input"
-          dir="ltr"
-          style={{ textAlign: 'left', maxWidth: '220px' }}
-          placeholder="مثال: ۱۴"
-          value={alocomAgentServiceId}
-          onChange={e => setAlocomAgentServiceId(e.target.value)}
-        />
-      </div>
-      {sessions.length === 0 ? (
-        <div className="empty-state" style={{ padding: '2rem' }}>
-          <p>هیچ جلسه‌ای در تقویم شما ثبت نشده است.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {sessions.map(s => {
-            const row = draft[s.id] || {}
-            const meetingUrl = row.meeting_url !== undefined ? row.meeting_url : (s.meeting_url || '')
-            const provider = row.meeting_provider !== undefined ? row.meeting_provider : (s.meeting_provider || 'manual')
-            const score = row.instructor_score !== undefined ? row.instructor_score : (s.instructor_score ?? '')
-            const comment = row.instructor_comment !== undefined ? row.instructor_comment : (s.instructor_comment || '')
-            return (
-              <div
-                key={s.id}
-                style={{
-                  padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)',
-                  display: 'grid', gap: '0.5rem',
-                }}
-              >
-                <div style={{ fontWeight: 600 }}>
-                  تاریخ {s.session_date} | دانشجو: {s.student_id?.slice(0, 8)}…
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                  پرداخت: {s.payment_status} | وضعیت: {s.status} | لینک فعال: {s.links_unlocked ? 'بله' : 'خیر'}
-                  {s.alocom_event_id ? ` | رویداد الوکام: ${s.alocom_event_id}` : ''}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => provisionAlocom(s)}>
-                    ایجاد کلاس الوکام و لینک دانشجو
-                  </button>
-                </div>
-                <input
-                  className="form-input"
-                  placeholder="لینک ورود (اسکای‌روم / الوکام و …)"
-                  dir="ltr"
-                  style={{ textAlign: 'left' }}
-                  value={meetingUrl}
-                  onChange={e => setField(s.id, 'meeting_url', e.target.value)}
-                />
-                <select
-                  className="form-input"
-                  value={provider}
-                  onChange={e => setField(s.id, 'meeting_provider', e.target.value)}
-                >
-                  <option value="manual">دستی</option>
-                  <option value="skyroom">اسکای‌روم</option>
-                  <option value="voicoom">ویوکام</option>
-                  <option value="alocom">الوکام (یکپارچه)</option>
-                </select>
-                <select
-                  className="form-input"
-                  value={row.attendance_status !== undefined ? row.attendance_status : ''}
-                  onChange={e => setField(s.id, 'attendance_status', e.target.value)}
-                >
-                  <option value="">حضور/غیاب (بدون تغییر)</option>
-                  <option value="present">حاضر</option>
-                  <option value="absent_excused">غایب موجه</option>
-                  <option value="absent_unexcused">غایب غیرموجه</option>
-                </select>
-                <input
-                  className="form-input"
-                  type="number"
-                  placeholder="نمره (اختیاری)"
-                  dir="ltr"
-                  value={score}
-                  onChange={e => setField(s.id, 'instructor_score', e.target.value)}
-                />
-                <textarea
-                  className="form-input"
-                  placeholder="نظر و بازخورد"
-                  rows={2}
-                  value={comment}
-                  onChange={e => setField(s.id, 'instructor_comment', e.target.value)}
-                />
-                <button type="button" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => save(s)}>
-                  ذخیره
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function InstanceDetailPanel({
   portalRole,
   instanceDetail,
@@ -851,6 +747,10 @@ function InstanceDetailPanel({
     (instanceDetail?.process_code === 'therapy_session_increase'
       || instanceDetail?.process_code === 'extra_session')
     && instanceDetail?.current_state === 'therapist_review'
+
+  const decisionTransitions = (availableTransitions || []).filter(
+    (t) => t.required_role !== 'system',
+  )
 
   const isAttendanceRecording =
     instanceDetail?.process_code === 'attendance_tracking'
@@ -956,13 +856,14 @@ function InstanceDetailPanel({
         </div>
       )}
 
-      <InstanceContextSummary
-        contextData={instanceDetail.context_data}
-        history={instanceDetail.history}
+      <OperatorInstanceContextSummary
+        user={user}
+        instanceDetail={instanceDetail}
+        availableTransitions={availableTransitions}
         title="پرونده و سابقه (قبل از تصمیم)"
       />
 
-      {availableTransitions.length > 0 && (
+      {decisionTransitions.length > 0 && (
         <div style={{
           padding: '1.25rem', background: 'var(--warning-light)',
           borderRadius: '10px', marginBottom: '1.5rem', borderRight: '4px solid var(--warning)',
@@ -1023,7 +924,7 @@ function InstanceDetailPanel({
             hint="این متن همراه همان دکمه‌ای که می‌زنید در پرونده ثبت می‌شود."
           />
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {availableTransitions.map((t, idx) => {
+            {decisionTransitions.map((t, idx) => {
               const isApproval = t.trigger_event?.includes('approved') || t.trigger_event?.includes('confirm') || t.trigger_event?.includes('accept')
               const isReject = t.trigger_event?.includes('reject') || t.trigger_event?.includes('decline') || t.trigger_event?.includes('unavailable')
               return (

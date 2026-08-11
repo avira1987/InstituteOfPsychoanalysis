@@ -1,6 +1,309 @@
 {
-  "_note": "خروجی JSON در metadata/processes/start_therapy.json ذخیره شده است.",
-  "source_file": "metadata/processes/start_therapy.json",
-  "states_count": 10,
-  "transitions_count": 10
+  "process": {
+    "code": "start_therapy",
+    "name_fa": "آغاز درمان آموزشی",
+    "name_en": "Start Educational Therapy",
+    "description": "دروازه ورود دانشجو به درمان شخصی. فرایند یک‌بارمصرف (آشنایی و جامع هر کدام یک بار). شامل: بررسی قبلی اجرا، صلاحیت، قانون هفته نهم، انتخاب درمانگر با برنامه هفتگی (جامع ۲+/هفته، آشنایی ۱–۲/هفته)، قانون ۲۴ ساعت برای تاریخ شروع، پرداخت، ثبت، رفع محدودیت و اطلاع‌رسانی.",
+    "initial_state": "eligibility_check"
+  },
+  "states": [
+    {
+      "code": "eligibility_check",
+      "name_fa": "بررسی صلاحیت و یک‌بارمصرف بودن",
+      "type": "initial",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "بررسی خودکار صلاحیت",
+        "student_task_fa": "سامانه در حال بررسی صلاحیت شما برای آغاز درمان است. اگر متوقف ماند، صفحه را تازه کنید.",
+        "student_why_fa": "این بررسی خودکار است؛ پس از تأیید صلاحیت به انتخاب درمانگر می‌روید."
+      }
+    },
+    {
+      "code": "already_completed",
+      "name_fa": "قبلاً انجام شده",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "فرایند قبلاً انجام شده",
+        "student_task_fa": "شما قبلاً آغاز درمان آموزشی را تکمیل کرده‌اید. اگر نیاز به پشتیبانی دارید، تیکت ثبت کنید یا با پذیرش تماس بگیرید.",
+        "student_why_fa": "این فرایند یک‌بارمصرف است و دوباره قابل اجرا نیست."
+      }
+    },
+    {
+      "code": "therapist_selection",
+      "name_fa": "انتخاب درمانگر و برنامه هفتگی",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب درمانگر از شیت وقت آزاد",
+        "student_task_fa": "از شیت وقت‌های آزاد (ثبت‌شده توسط کمیته نظارت) درمانگر و برنامهٔ جلسات را انتخاب کنید؛ سپس ادامه دهید تا تاریخ شروع محاسبه و به پرداخت جلسهٔ اول بروید.",
+        "student_why_fa": "وقت‌ها از قبل در شیت تعریف شده‌اند؛ پس از انتخاب، بدون تأیید مجدد درمانگر، زمان‌بندی و پرداخت انجام می‌شود."
+      }
+    },
+    {
+      "code": "first_session_24h_check",
+      "name_fa": "محاسبه تاریخ شروع (قانون ۲۴ ساعت)",
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "در حال ثبت زمان‌بندی",
+        "student_task_fa": "سامانه تاریخ اولین جلسه را از روی برنامهٔ انتخاب‌شده و قانون ۲۴ ساعت محاسبه می‌کند. اگر متوقف ماند، صفحه را تازه کنید.",
+        "student_why_fa": "قانون ۲۴ ساعت تعیین می‌کند که اولین جلسه حداقل ۲۴ ساعت بعد از انتخاب شما برگزار شود."
+      }
+    },
+    {
+      "code": "payment_pending",
+      "name_fa": "در انتظار پرداخت جلسه اول",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "sla_hours": 48,
+      "metadata": {
+        "student_short_fa": "پرداخت جلسهٔ اول",
+        "student_task_fa": "هزینهٔ جلسهٔ اول را از طریق درگاه بانک همین صفحه بپردازید. پس از تأیید بانک، درمان در پروندهٔ شما فعال می‌شود و به مرحلهٔ «پرداخت جلسات آتی» هدایت می‌شوید.",
+        "student_why_fa": "پس از پرداخت، درمان فعال می‌شود و مسیر پرداخت جلسات آتی برای شما باز می‌شود."
+      }
+    },
+    {
+      "code": "therapy_active",
+      "name_fa": "درمان فعال",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "درمان فعال — گام بعدی",
+        "student_task_fa": "گام بعدی: پرداخت جلسات آتی درمان. مسیر اصلی پرتال به «پرداخت برای جلسات آتی» منتقل شده یا خواهد شد.",
+        "student_why_fa": "برای ادامهٔ جلسات درمان، پیش‌پرداخت جلسات از همین پرتال انجام می‌شود."
+      }
+    },
+    {
+      "code": "ineligible",
+      "name_fa": "عدم صلاحیت",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "عدم صلاحیت آغاز درمان",
+        "student_task_fa": "در حال حاضر شرایط آغاز درمان آموزشی را ندارید. برای اطلاع از دلیل و راه‌حل، با پذیرش یا پشتیبانی تماس بگیرید.",
+        "student_why_fa": "شرایط پیش‌نیاز (مانند تکمیل ثبت‌نام یا پذیرش) هنوز کامل نشده است."
+      }
+    },
+    {
+      "code": "week9_blocked",
+      "name_fa": "مسدود - هفته نهم",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "مسدود — مهلت هفتهٔ نهم",
+        "student_task_fa": "مهلت هفتهٔ نهم برای آغاز درمان گذشته است. برای رفع مسدودیت کلاس‌ها، با پذیرش یا پشتیبانی تماس بگیرید.",
+        "student_why_fa": "طبق قوانین موسسه، آغاز درمان تا هفتهٔ نهم الزامی است و پس از آن محدودیت‌های کلاس اعمال می‌شود."
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "from": "eligibility_check",
+      "to": "already_completed",
+      "trigger": "duplicate_attempt",
+      "conditions": [
+        "already_started_therapy"
+      ],
+      "description_fa": "دانشجو قبلاً این فرایند را انجام داده — پیام و پایان",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_already_used",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "eligibility_check",
+      "to": "therapist_selection",
+      "trigger": "eligible",
+      "conditions": [
+        "student_eligible_for_therapy",
+        "therapy_not_started"
+      ],
+      "description_fa": "صلاحیت تایید شد — نمایش وقت‌های آزاد درمانگران",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_eligible",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "eligibility_check",
+      "to": "ineligible",
+      "trigger": "not_eligible",
+      "conditions": [
+        "student_not_eligible"
+      ],
+      "description_fa": "عدم صلاحیت",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_ineligible",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "eligibility_check",
+      "to": "week9_blocked",
+      "trigger": "week9_deadline_exceeded",
+      "conditions": [
+        "week_9_deadline"
+      ],
+      "description_fa": "مهلت هفته نهم گذشته — مسدودیت کلاس آنلاین و حضور/غیاب",
+      "actions": [
+        {
+          "type": "block_class_access"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "week9_block",
+          "recipients": [
+            "student",
+            "admin"
+          ]
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "therapist_selection",
+      "to": "first_session_24h_check",
+      "trigger": "therapist_selected",
+      "required_role": "student",
+      "conditions": [
+        "schedule_valid_for_course"
+      ],
+      "description_fa": "دانشجو از شیت وقت آزاد انتخاب کرد — رزرو اسلات، محاسبه تاریخ شروع (قانون ۲۴ ساعت) و رفتن به پرداخت",
+      "actions": [
+        {
+          "type": "book_educational_therapist_slots"
+        },
+        {
+          "type": "apply_start_therapy_session_schedule"
+        }
+      ]
+    },
+    {
+      "from": "first_session_24h_check",
+      "to": "payment_pending",
+      "trigger": "24h_check_passed",
+      "conditions": [
+        "24_hour_rule"
+      ],
+      "description_fa": "تاریخ اولین جلسه محاسبه شد (قانون ۲۴ ساعت)",
+      "required_role": "system"
+    },
+    {
+      "from": "payment_pending",
+      "to": "payment_pending",
+      "trigger": "payment_failed",
+      "description_fa": "پرداخت ناموفق — بازگشت برای تلاش مجدد",
+      "actions": [
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "payment_rejected",
+          "recipients": [
+            "student"
+          ]
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "payment_pending",
+      "to": "therapy_active",
+      "trigger": "payment_confirmed",
+      "description_fa": "پرداخت تایید — ثبت نهایی، رفع محدودیت، اطلاع‌رسانی",
+      "actions": [
+        {
+          "type": "activate_therapy"
+        },
+        {
+          "type": "resolve_access_restrictions"
+        },
+        {
+          "type": "create_session_link"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_scheduled_student",
+          "recipients": [
+            "student"
+          ]
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "therapy_scheduled_therapist",
+          "recipients": [
+            "therapist"
+          ]
+        }
+      ],
+      "required_role": "system"
+    }
+  ],
+  "forms": [
+    {
+      "code": "start_therapy_therapist_pick",
+      "name_fa": "انتخاب درمانگر و برنامه هفتگی",
+      "used_in_state": "therapist_selection",
+      "fields": [
+        {
+          "name": "therapist_id",
+          "label_fa": "درمانگر آموزشی",
+          "type": "therapist_slot_picker",
+          "required": true,
+          "description_fa": "درمانگر و روز/ساعت جلسات هفتگی را از شیت وقت‌های آزاد انتخاب کنید."
+        },
+        {
+          "name": "slot_ids",
+          "label_fa": "اسلات‌های هفتگی",
+          "type": "hidden",
+          "required": true
+        },
+        {
+          "name": "weekly_sessions",
+          "label_fa": "تعداد جلسات در هفته",
+          "type": "select",
+          "options": [
+            1,
+            2
+          ],
+          "required": true,
+          "description_fa": "دوره جامع: دقیقاً ۲ جلسه؛ دوره آشنایی: ۱ یا ۲ جلسه."
+        }
+      ]
+    }
+  ],
+  "scheduled_automation": {
+    "mode": "calendar_date",
+    "completion_role": "student",
+    "triggers": [
+      {
+        "event": "week9_deadline_exceeded",
+        "when": "current_week_gte_9"
+      }
+    ]
+  }
 }

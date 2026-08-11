@@ -71,30 +71,37 @@ SIMPLE_STEPS_FALLBACK: dict[str, list[str]] = {
     ],
     "lesson_start_per_term": [
         f"در مرورگر بروید به {SITE_URL}",
-        "با staff1 / demo123 وارد شوید.",
-        "پنل مدرس / کارهای من را باز کنید.",
-        "فرایند آغاز درس را پیدا یا شروع کنید.",
+        "با student1 / demo123 وارد شوید.",
+        "پنل آموزشی / تب داشبورد را باز کنید.",
+        "دکمه «ثبت درس این ترم» را بزنید (یا تب فرایندها).",
+        "درس/ترم را انتخاب و ثبت کنید؛ پیام فعال شدن درس را ببینید.",
+        "اختیاری: پیامک یا اعلان درون‌سایت درباره فعال شدن درس را چک کنید.",
     ],
     "start_therapy": [
         f"در مرورگر بروید به {SITE_URL}",
         "با student1 / demo123 وارد شوید و درخواست درمان ثبت کنید.",
         "خروج؛ سپس با therapist1 / demo123 وارد شوید و درخواست را تأیید کنید.",
+        "با student1 برگردید و پرداخت/جلسه اول را در تب فرایندها پیگیری کنید.",
     ],
     "attendance_tracking": [
         f"در مرورگر بروید به {SITE_URL}",
         "با therapist1 / demo123 وارد شوید.",
-        "پنل درمانگر / کارهای من — حضور یا غیاب را ثبت کنید.",
+        "پنل درمانگر / کارهای من یا میزکار درمان را باز کنید.",
+        "برای یک جلسهٔ برنامه‌ریزی‌شده حضور یا غیاب را ثبت کنید.",
     ],
     "session_payment": [
         f"در مرورگر بروید به {SITE_URL}",
         "با student1 / demo123 وارد شوید.",
-        "پنل آموزشی / فرایندها — پرداخت جلسه را انجام دهید.",
+        "پنل آموزشی / تب فرایندها — پرونده پرداخت جلسه را باز کنید.",
+        "پرداخت را با درگاه (یا شبیه‌سازی پرداخت دمو) تکمیل کنید.",
+        "تب جلسات آنلاین را باز کنید و ببینید لینک جلسه باز شده یا نه.",
     ],
     "supervision_block_transition": [
         f"در مرورگر بروید به {SITE_URL}",
-        "با student1 درخواست سوپرویژن ثبت کنید.",
-        "با supervisor1 / demo123 بررسی کنید.",
-        "پرداخت جلسه اول بلوک جدید را انجام دهید.",
+        "با student1 / demo123 وارد شوید.",
+        "پنل آموزشی / تب فرایندها — پرونده انتقال بلوک سوپرویژن را باز کنید.",
+        "سوپروایزر و زمان اسلات را انتخاب و رزرو کنید.",
+        "پرداخت‌های خواسته‌شده (جلسه اول بلوک جدید / جلسه ۵۰ام) را انجام دهید.",
     ],
     "educational_leave": [
         f"در مرورگر بروید به {SITE_URL}",
@@ -121,11 +128,11 @@ SIMPLE_STEPS_FALLBACK: dict[str, list[str]] = {
 SIMPLE_EXPECT: dict[str, str] = {
     "fall_semester_preparation": "ترم پاییز منتشر شود و ثبت‌نام آشنایی باز شود.",
     "introductory_course_registration": "متقاضی تا ثبت‌نام نهایی برسد.",
-    "lesson_start_per_term": "درس در سامانه فعال شود.",
-    "start_therapy": "درمان دانشجو فعال شود.",
-    "attendance_tracking": "حضور/غیاب ثبت و در پروفایل دیده شود.",
-    "session_payment": "پرداخت جلسه ثبت شود.",
-    "supervision_block_transition": "بلوک سوپرویژن جدید فعال شود.",
+    "lesson_start_per_term": "فرایند ثبت درس باز شود؛ درس فعال شود و پیام/اعلان فعال شدن دیده شود (لینک کلاس از پورتال).",
+    "start_therapy": "درمان دانشجو فعال شود و جلسهٔ اول در مسیر دانشجو دیده شود.",
+    "attendance_tracking": "حضور یا غیاب ثبت شود و دانشجو در جلسات/پروفایل اثر آن را ببیند.",
+    "session_payment": "پرداخت جلسه ثبت شود و لینک جلسه در تب جلسات آنلاین باز شود.",
+    "supervision_block_transition": "اسلات رزرو شود، پرداخت‌ها انجام شود و بلوک سوپرویژن جدید فعال شود.",
     "educational_leave": "مرخصی تأیید یا رد شود و وضعیت عوض شود.",
     "violation_registration": "پرونده تخلف قابل پیگیری باشد.",
     "comprehensive_course_registration": "ثبت‌نام جامع کامل شود.",
@@ -149,11 +156,12 @@ class SimplePhase1Builder:
         self.pdf.output(str(path))
 
     def _simple_steps(self, spec: ProcessTestSpec) -> list[str]:
+        # قالب: SIMPLE_STEPS_FALLBACK اولویت دارد تا متن فنی enrichment وارد PDF نشود.
+        if spec.code in SIMPLE_STEPS_FALLBACK:
+            return SIMPLE_STEPS_FALLBACK[spec.code][:6]
         enrich = spec.enrichment or {}
         if enrich.get("steps"):
             return [str(s) for s in enrich["steps"][:6]]
-        if spec.code in SIMPLE_STEPS_FALLBACK:
-            return SIMPLE_STEPS_FALLBACK[spec.code]
         ui = derive_ui_start(spec)
         return [
             f"با {ui.account} وارد شوید.",

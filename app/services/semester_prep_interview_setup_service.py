@@ -1,8 +1,9 @@
 """مرحلهٔ یکپارچهٔ «مصاحبه‌ها» در آماده‌سازی ترم (ادغام گام‌های ۷ و ۸).
 
-کاربر یک بار مصاحبه‌گرها (از میان کارمندان اتوماسیون) و روز/ساعت مصاحبه را
-تعیین می‌کند؛ این سرویس از همان ورودی ساده، مقادیر فرم دو مرحله و فهرست
-اسلات‌های قابل رزرو را می‌سازد.
+کاربر مصاحبه‌گرها (از میان کارمندان اتوماسیون) را انتخاب می‌کند و برای هر نفر
+می‌تواند روزها و بازهٔ ساعت مستقل بگذارد؛ این سرویس از همان ورودی، مقادیر فرم
+دو مرحله و فهرست اسلات‌های قابل رزرو را می‌سازد. فرمت قدیمی (روز/ساعت مشترک)
+همچنان پذیرفته می‌شود.
 """
 
 from __future__ import annotations
@@ -91,40 +92,104 @@ def tehran_local_to_utc(day: date, at: time) -> datetime:
     return datetime.combine(day, at, tzinfo=TEHRAN).astimezone(timezone.utc)
 
 
-def normalize_interview_group(raw: Any) -> dict[str, Any]:
-    """ورودی خام یک دورهٔ مصاحبه را به ساختار یکدست تبدیل می‌کند."""
+def normalize_interviewer_schedule(raw: Any) -> dict[str, Any]:
+    """برنامهٔ یک مصاحبه‌گر (روزها و بازهٔ ساعت اختصاصی)."""
     data = raw if isinstance(raw, dict) else {}
+    ids = _normalized_ids(
+        data.get("interviewer_id")
+        if data.get("interviewer_id") not in (None, "")
+        else data.get("interviewer_ids")
+    )
     return {
-        "interviewer_ids": _normalized_ids(data.get("interviewer_ids")),
+        "interviewer_id": ids[0] if ids else "",
         "dates": _normalized_dates(data.get("dates")),
         "start_time": parse_time_hhmm(data.get("start_time")),
         "end_time": parse_time_hhmm(data.get("end_time")),
+    }
+
+
+def _legacy_shared_schedules(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """فرمت قدیمی (روز/ساعت مشترک برای همه) → فهرست برنامهٔ جداگانه."""
+    dates = _normalized_dates(data.get("dates"))
+    start = parse_time_hhmm(data.get("start_time"))
+    end = parse_time_hhmm(data.get("end_time"))
+    return [
+        {
+            "interviewer_id": uid,
+            "dates": list(dates),
+            "start_time": start,
+            "end_time": end,
+        }
+        for uid in _normalized_ids(data.get("interviewer_ids"))
+    ]
+
+
+def normalize_interview_group(raw: Any) -> dict[str, Any]:
+    """ورودی خام یک دورهٔ مصاحبه را به ساختار یکدست تبدیل می‌کند.
+
+    هر مصاحبه‌گر می‌تواند روزها و بازهٔ ساعت مستقل داشته باشد.
+    فرمت قدیمی (interviewer_ids + dates/start/end مشترک) همچنان پذیرفته می‌شود.
+    """
+    data = raw if isinstance(raw, dict) else {}
+    raw_schedules = data.get("interviewers")
+    schedules: list[dict[str, Any]] = []
+    if isinstance(raw_schedules, (list, tuple)) and raw_schedules:
+        seen: set[str] = set()
+        for item in raw_schedules:
+            schedule = normalize_interviewer_schedule(item)
+            uid = schedule["interviewer_id"]
+            if not uid or uid in seen:
+                continue
+            seen.add(uid)
+            schedules.append(schedule)
+    else:
+        schedules = _legacy_shared_schedules(data)
+
+    all_dates = sorted({d for s in schedules for d in (s.get("dates") or [])})
+    return {
+        "interviewers": schedules,
+        "interviewer_ids": [s["interviewer_id"] for s in schedules],
+        "dates": all_dates,
+        "start_time": schedules[0].get("start_time") if schedules else None,
+        "end_time": schedules[0].get("end_time") if schedules else None,
         "session_minutes": _session_minutes(data.get("session_minutes")),
     }
 
 
+def _schedule_label(index: int) -> str:
+    return f"مصاحبه‌گر {index}"
+
+
 def interview_group_errors(group: dict[str, Any], label_fa: str) -> list[str]:
     errors: list[str] = []
-    if not group.get("interviewer_ids"):
+    schedules = group.get("interviewers") or []
+    if not schedules:
         errors.append(f"برای {label_fa} حداقل یک مصاحبه‌گر انتخاب کنید.")
-    if not group.get("dates"):
-        errors.append(f"برای {label_fa} حداقل یک روز مصاحبه انتخاب کنید.")
-    start, end = group.get("start_time"), group.get("end_time")
-    if start is None or end is None:
-        errors.append(f"ساعت شروع و پایان مصاحبه {label_fa} را وارد کنید.")
-    elif end <= start:
-        errors.append(f"ساعت پایان مصاحبه {label_fa} باید بعد از ساعت شروع باشد.")
+
     minutes = group.get("session_minutes")
     if minutes is None:
         errors.append(
             f"مدت هر نوبت مصاحبه {label_fa} باید عددی بین "
             f"{MIN_SESSION_MINUTES} تا {MAX_SESSION_MINUTES} دقیقه باشد."
         )
-    elif start is not None and end is not None:
-        window = _minutes_between(start, end)
-        if window < minutes:
+
+    for idx, schedule in enumerate(schedules, start=1):
+        who = _schedule_label(idx)
+        if not schedule.get("interviewer_id"):
+            errors.append(f"برای {label_fa} شناسهٔ {_schedule_label(idx)} معتبر نیست.")
+            continue
+        if not schedule.get("dates"):
+            errors.append(f"برای {label_fa} ({who}) حداقل یک روز مصاحبه انتخاب کنید.")
+        start, end = schedule.get("start_time"), schedule.get("end_time")
+        if start is None or end is None:
+            errors.append(f"ساعت شروع و پایان مصاحبه {label_fa} ({who}) را وارد کنید.")
+        elif end <= start:
             errors.append(
-                f"بازهٔ ساعت مصاحبه {label_fa} کوتاه‌تر از مدت یک نوبت است."
+                f"ساعت پایان مصاحبه {label_fa} ({who}) باید بعد از ساعت شروع باشد."
+            )
+        elif minutes is not None and _minutes_between(start, end) < minutes:
+            errors.append(
+                f"بازهٔ ساعت مصاحبه {label_fa} ({who}) کوتاه‌تر از مدت یک نوبت است."
             )
     return errors
 
@@ -140,15 +205,19 @@ def build_group_slot_specs(
     mode: str,
     location_fa: Optional[str],
 ) -> list[dict[str, Any]]:
-    """برای هر مصاحبه‌گر × هر روز، بازهٔ ساعت را به نوبت‌های هم‌اندازه می‌شکند."""
-    start, end, minutes = group.get("start_time"), group.get("end_time"), group.get("session_minutes")
-    if start is None or end is None or not minutes:
+    """برای هر مصاحبه‌گر، روزها و بازهٔ ساعت خودش را به نوبت‌های هم‌اندازه می‌شکند."""
+    minutes = group.get("session_minutes")
+    if not minutes:
         return []
     specs: list[dict[str, Any]] = []
-    for day in group.get("dates") or []:
-        day_start = datetime.combine(day, start, tzinfo=TEHRAN)
-        day_end = datetime.combine(day, end, tzinfo=TEHRAN)
-        for interviewer_id in group.get("interviewer_ids") or []:
+    for schedule in group.get("interviewers") or []:
+        start, end = schedule.get("start_time"), schedule.get("end_time")
+        interviewer_id = schedule.get("interviewer_id")
+        if start is None or end is None or not interviewer_id:
+            continue
+        for day in schedule.get("dates") or []:
+            day_start = datetime.combine(day, start, tzinfo=TEHRAN)
+            day_end = datetime.combine(day, end, tzinfo=TEHRAN)
             cursor = day_start
             while cursor + timedelta(minutes=minutes) <= day_end:
                 finish = cursor + timedelta(minutes=minutes)
@@ -259,16 +328,36 @@ def interview_scheduling_form_values(payload: dict[str, Any]) -> dict[str, Any]:
     return values
 
 
+def _schedule_to_plan(schedule: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "interviewer_id": schedule.get("interviewer_id") or "",
+        "dates": [d.isoformat() for d in schedule.get("dates") or []],
+        "start_time": (
+            schedule["start_time"].strftime("%H:%M") if schedule.get("start_time") else ""
+        ),
+        "end_time": (
+            schedule["end_time"].strftime("%H:%M") if schedule.get("end_time") else ""
+        ),
+    }
+
+
 def interview_plan_context_values(payload: dict[str, Any]) -> dict[str, Any]:
     """طرح زمان‌بندی برای بازگرداندن در فرم هنگام ویرایش مجدد."""
     plan: dict[str, Any] = {}
     for course_type in COURSE_TYPES:
         group = payload.get(course_type) or {}
+        schedules = [_schedule_to_plan(s) for s in (group.get("interviewers") or [])]
+        # فیلدهای تخت برای سازگاری با خواننده‌های قدیمی نگه داشته می‌شوند
         plan[course_type] = {
+            "interviewers": schedules,
             "interviewer_ids": list(group.get("interviewer_ids") or []),
             "dates": [d.isoformat() for d in group.get("dates") or []],
-            "start_time": group["start_time"].strftime("%H:%M") if group.get("start_time") else "",
-            "end_time": group["end_time"].strftime("%H:%M") if group.get("end_time") else "",
+            "start_time": (
+                group["start_time"].strftime("%H:%M") if group.get("start_time") else ""
+            ),
+            "end_time": (
+                group["end_time"].strftime("%H:%M") if group.get("end_time") else ""
+            ),
             "session_minutes": group.get("session_minutes"),
         }
     return {"interview_setup_plan": plan}

@@ -90,10 +90,22 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
         result = await db.execute(select(User).where(User.username == username))
         user = result.scalars().first()
 
+        # کمیته پیشرفت: پروژه + علمی روی همان حساب واحد
+        roles_list = (
+            [
+                "progress_committee",
+                "progress_committee_project",
+                "progress_committee_scientific",
+            ]
+            if role == "progress_committee"
+            else [role]
+        )
+
         if user:
             user.email = email
             user.full_name_fa = full_name_fa
             user.role = role
+            user.roles = roles_list
             user.hashed_password = get_password_hash(password)
             user.portal_password_plain = password
             user.is_active = True
@@ -106,6 +118,7 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
                 portal_password_plain=password,
                 full_name_fa=full_name_fa,
                 role=role,
+                roles=roles_list,
                 is_active=True,
             )
             db.add(user)

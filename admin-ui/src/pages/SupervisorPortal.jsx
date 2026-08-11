@@ -7,7 +7,7 @@ import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/pro
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { isDocumentReviewState } from '../utils/documentReviewStates'
-import InstanceContextSummary from '../components/InstanceContextSummary'
+import OperatorInstanceContextSummary from '../components/OperatorInstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import { useToast } from '../contexts/ToastContext'
 import OperatorPortalReminderBanner from '../components/OperatorPortalReminderBanner'
@@ -654,9 +654,10 @@ export default function SupervisorPortal() {
                 onUpdated={() => viewInstance(selectedInstance)}
               />
 
-              <InstanceContextSummary
-                contextData={instanceDetail.context_data}
-                history={instanceDetail.history}
+              <OperatorInstanceContextSummary
+                user={user}
+                instanceDetail={instanceDetail}
+                availableTransitions={availableTransitions}
                 title="پرونده و سابقه (قبل از تصمیم)"
               />
 

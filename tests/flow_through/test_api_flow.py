@@ -134,6 +134,15 @@ async def test_api_flow_step(
         assert can_act is not False, f"ROLE_CANNOT_ACT: {portal_role} on {state_code}"
         sample = build_sample_values(row.get("field_specs") or [])
         if portal_role in ("student", "applicant"):
+            from tests.helpers.step_otp_fixture import (
+                field_specs_include_step_otp,
+                stamp_instance_step_otp_verified,
+            )
+
+            if field_specs_include_step_otp(row.get("field_specs")):
+                await stamp_instance_step_otp_verified(
+                    db_session, seed.instance_id, state_code
+                )
             reg = await client.post(
                 f"/api/process/{iid}/student-step-forms/register",
                 json={"form_values": sample},

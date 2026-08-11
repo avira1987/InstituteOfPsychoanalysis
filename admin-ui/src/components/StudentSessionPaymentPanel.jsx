@@ -2,6 +2,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { therapyApi } from '../services/api'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import { labelState } from '../utils/processDisplay'
+import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+
+const PROC_CODE = 'session_payment'
 
 const PAYMENT_STATUS_FA = {
   pending: 'در انتظار پرداخت',
@@ -27,6 +33,24 @@ function sessionReadyLabel(session) {
     return 'پرداخت‌شده — لینک در حال آماده‌سازی'
   }
   return PAYMENT_STATUS_FA[session.payment_status] || session.payment_status || '—'
+}
+
+/** هم‌تراز بک‌اند: بدهی = pending + (completed یا تاریخ قبل از امروز تهران) */
+function tehranTodayYmd() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tehran',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+function sessionCountsAsDebt(session, todayYmd = tehranTodayYmd()) {
+  if (!session || session.payment_status !== 'pending') return false
+  if (!['scheduled', 'completed'].includes(session.status)) return false
+  if (session.status === 'completed') return true
+  const d = String(session.session_date || '').slice(0, 10)
+  return Boolean(d && d < todayYmd)
 }
 
 function StatTile({ label, value, tone = '#14532d', bg = '#f0fdf4' }) {
@@ -87,7 +111,8 @@ export default function StudentSessionPaymentPanel({
 
   const stats = useMemo(() => {
     const scheduledOrDone = sessions.filter((s) => ['scheduled', 'completed'].includes(s.status))
-    const debt = scheduledOrDone.filter((s) => s.payment_status === 'pending').length
+    const todayYmd = tehranTodayYmd()
+    const debt = scheduledOrDone.filter((s) => sessionCountsAsDebt(s, todayYmd)).length
     const prepaid = scheduledOrDone.filter((s) => s.payment_status === 'paid' || s.payment_status === 'waived').length
     const ctxDebt = ctx.debt_sessions_count != null ? Number(ctx.debt_sessions_count) : null
     const fee = Number(
@@ -122,9 +147,9 @@ export default function StudentSessionPaymentPanel({
 
   const formValues = stepFormValues || {}
   const sessionsToPay = Math.max(1, Number(formValues.sessions_to_pay) || Number(ctx.sessions_to_pay) || 1)
-  const debtSettlement = Boolean(
-    formValues.debt_settlement_included ?? ctx.debt_settlement_included,
-  )
+  const debtSettlement = stats.debt > 0
+    ? true
+    : Boolean(formValues.debt_settlement_included ?? ctx.debt_settlement_included)
   const estimatedToman = useMemo(() => {
     if (!stats.fee) return null
     let total = sessionsToPay * stats.fee
@@ -139,14 +164,11 @@ export default function StudentSessionPaymentPanel({
       : null
 
   const stateHint = isProcessActive && currentState
-    ? ({
-      payment_due: 'برای ادامه، دکمهٔ «ادامه به انتخاب جلسات و تسویه» را در پایین کارت بزنید.',
-      payment_selection: stats.debt > 0
-        ? 'با وجود بدهی، گزینهٔ «تسویه بدهی» را فعال کنید؛ سپس تعداد جلسات پیش‌پرداخت را مشخص و مرحله را ثبت کنید.'
-        : 'تعداد جلسات پیش‌پرداخت را در فرم زیر مشخص کنید؛ سپس به درگاه هدایت می‌شوید.',
-      awaiting_payment: 'مبلغ فاکتور در زیر آمده است؛ از بخش پرداخت درگاه استفاده کنید. پس از بازگشت از بانک، صفحه را تازه کنید.',
-      payment_failed: 'پرداخت قبلی ناموفق بود. می‌توانید دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.',
-    }[currentState] || null)
+    ? (PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[currentState] || null)
+    : null
+
+  const statusShort = currentState
+    ? (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelState(currentState))
     : null
 
   if (compact && !isProcessActive) {
@@ -167,8 +189,13 @@ export default function StudentSessionPaymentPanel({
           }}
         >
           <strong>مرحلهٔ فرایند:</strong>{' '}
-          {labelState(currentState)}
-          {stateHint && <p style={{ margin: '0.35rem 0 0', color: '#334155' }}>{stateHint}</p>}
+          {statusShort || labelState(currentState)}
+          {stateHint && (
+            <div style={{ marginTop: '0.35rem' }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.15rem' }}>اقدام بعدی شما</div>
+              <p style={{ margin: 0, color: '#334155' }}>{stateHint}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -210,6 +237,30 @@ export default function StudentSessionPaymentPanel({
         )}
       </div>
 
+      {stats.debt > 0 && (
+        <div
+          data-testid="session-payment-debt-banner"
+          role="status"
+          style={{
+            marginBottom: '0.75rem',
+            padding: '0.75rem 0.9rem',
+            borderRadius: '8px',
+            background: '#fff7ed',
+            borderRight: '4px solid #ea580c',
+          }}
+        >
+          <strong style={{ color: '#9a3412' }}>بدهی جلسات درمان</strong>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.84rem', color: '#7c2d12', lineHeight: 1.7 }}>
+            {ctx.debt_notice_fa
+              || `شما ${stats.debt.toLocaleString('fa-IR')} جلسهٔ درمان بدون پرداخت دارید${
+                stats.fee
+                  ? ` (حدود ${fmtMoney(stats.debt * stats.fee)} تومان)`
+                  : ''
+              }. تسویهٔ این بدهی همراه با پیش‌پرداخت جلسات آتی الزامی است و به فاکتور اضافه می‌شود.`}
+          </p>
+        </div>
+      )}
+
       {currentState === 'payment_selection' && estimatedToman != null && (
         <div
           data-testid="session-payment-estimate"
@@ -219,9 +270,10 @@ export default function StudentSessionPaymentPanel({
             borderRadius: '8px',
             background: '#fefce8',
             borderRight: '3px solid #ca8a04',
+            color: '#713f12',
           }}
         >
-          <strong>تخمین مبلغ این پرداخت:</strong>{' '}
+          <strong style={{ color: '#854d0e' }}>تخمین مبلغ این پرداخت:</strong>{' '}
           {fmtMoney(estimatedToman)} تومان
           <span style={{ display: 'block', fontSize: '0.8rem', color: '#713f12', marginTop: '0.2rem' }}>
             {sessionsToPay.toLocaleString('fa-IR')} جلسه پیش‌پرداخت
@@ -241,9 +293,10 @@ export default function StudentSessionPaymentPanel({
             borderRadius: '8px',
             background: '#ecfdf5',
             borderRight: '3px solid #16a34a',
+            color: '#14532d',
           }}
         >
-          <strong>مبلغ فاکتور:</strong>{' '}
+          <strong style={{ color: '#166534' }}>مبلغ فاکتور:</strong>{' '}
           {Math.round(invoiceRial).toLocaleString('fa-IR')} ریال
           <span style={{ marginRight: '0.5rem', color: '#64748b' }}>
             ({fmtMoney(invoiceRial / 10)} تومان)
@@ -253,7 +306,7 @@ export default function StudentSessionPaymentPanel({
 
       {stats.debt > 0 && currentState === 'payment_selection' && !debtSettlement && (
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.82rem', color: '#b45309' }}>
-          با وجود بدهی، پرداخت فقط برای جلسات آینده مجاز نیست — گزینهٔ تسویه بدهی را در فرم فعال کنید.
+          سامانه در حال اعمال تسویهٔ بدهی است؛ اگر این پیام ماند، صفحه را تازه کنید.
         </p>
       )}
 
@@ -262,27 +315,27 @@ export default function StudentSessionPaymentPanel({
       ) : error ? (
         <p style={{ color: 'var(--danger, #b91c1c)', margin: 0 }}>{error}</p>
       ) : upcoming.length > 0 ? (
-        <div>
-          <div style={{ fontWeight: 700, marginBottom: '0.4rem', fontSize: '0.84rem' }}>
+        <div className="session-payment-upcoming" data-testid="session-payment-upcoming">
+          <div style={{ fontWeight: 700, marginBottom: '0.4rem', fontSize: '0.84rem', color: '#0f172a' }}>
             جلسات پیشِ رو
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <table className="table table-sm" style={{ width: '100%', fontSize: '0.8rem' }}>
+            <table className="table table-sm" style={{ width: '100%', fontSize: '0.8rem', color: '#1e293b' }}>
               <thead>
                 <tr>
-                  <th>شماره</th>
-                  <th>تاریخ</th>
-                  <th>پرداخت</th>
-                  <th>وضعیت برگزاری</th>
+                  <th style={{ color: '#334155' }}>شماره</th>
+                  <th style={{ color: '#334155' }}>تاریخ</th>
+                  <th style={{ color: '#334155' }}>پرداخت</th>
+                  <th style={{ color: '#334155' }}>وضعیت برگزاری</th>
                 </tr>
               </thead>
               <tbody>
                 {upcoming.map((s) => (
                   <tr key={s.id}>
-                    <td>{s.session_number != null ? s.session_number.toLocaleString('fa-IR') : '—'}</td>
-                    <td>{fmtDate(s.session_starts_at || s.session_date)}</td>
-                    <td>{PAYMENT_STATUS_FA[s.payment_status] || s.payment_status}</td>
-                    <td>{sessionReadyLabel(s)}</td>
+                    <td style={{ color: '#1e293b' }}>{s.session_number != null ? s.session_number.toLocaleString('fa-IR') : '—'}</td>
+                    <td style={{ color: '#1e293b' }}>{fmtDate(s.session_starts_at || s.session_date)}</td>
+                    <td style={{ color: '#1e293b' }}>{PAYMENT_STATUS_FA[s.payment_status] || s.payment_status}</td>
+                    <td style={{ color: '#1e293b' }}>{sessionReadyLabel(s)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -291,7 +344,8 @@ export default function StudentSessionPaymentPanel({
         </div>
       ) : (
         <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-          جلسهٔ برنامه‌ریزی‌شده‌ای در تقویم درمان یافت نشد. پس از آغاز درمان و تنظیم برنامه، اینجا نمایش داده می‌شود.
+          جلسهٔ برنامه‌ریزی‌شده‌ای در تقویم درمان یافت نشد. پس از آغاز درمان، جلسات تا پایان ترم
+          باید در سامانه ثبت شوند؛ صفحه را تازه کنید یا از «پرداخت جلسات» / پشتیبانی پیگیری کنید.
         </p>
       )}
     </>
@@ -310,6 +364,7 @@ export default function StudentSessionPaymentPanel({
           borderRight: '4px solid #16a34a',
           fontSize: '0.86rem',
           lineHeight: 1.75,
+          color: '#0f172a',
         }}
       >
         <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: '#14532d' }}>

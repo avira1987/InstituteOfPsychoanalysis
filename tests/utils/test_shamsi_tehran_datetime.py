@@ -8,6 +8,7 @@ from app.utils.shamsi_calendar_utils import (
     format_shamsi_date,
     format_shamsi_datetime_for_sms,
     normalize_sms_context_dates,
+    tehran_calendar_date,
     tehran_datetime_parts,
 )
 
@@ -53,3 +54,16 @@ def test_normalize_sms_context_dates_converts_known_fields() -> None:
     assert ctx["day"] == "شنبه"
     assert ctx["session_time"] == "10:30"
     assert "1405" in ctx["absence_dates"]
+
+
+def test_tehran_calendar_date_avoids_utc_slice_off_by_one() -> None:
+    # Midnight Tehran 1405/02/17 == 2026-05-06 20:30 UTC
+    assert tehran_calendar_date("2026-05-06T20:30:00+00:00") == date(2026, 5, 7)
+    assert format_shamsi_date("2026-05-06T20:30:00+00:00") == "1405/02/17"
+    # Sliced UTC prefix would wrongly yield 1405/02/16
+    assert format_shamsi_date("2026-05-06") == "1405/02/16"
+
+
+def test_normalize_due_date_full_iso_not_sliced() -> None:
+    ctx = normalize_sms_context_dates({"due_date": "2026-05-06T20:30:00+00:00", "amount": 1})
+    assert ctx["due_date"] == "1405/02/17"

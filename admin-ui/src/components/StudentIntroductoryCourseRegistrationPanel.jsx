@@ -10,27 +10,22 @@ import {
   ADMISSION_TYPE_LABELS,
   INTRO_REG_TERMINAL_REJECT,
 } from '../utils/introductoryCourseRegistrationDisplay'
+import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
 
 const PROCESS_TITLE_FA = 'ثبت‌نام دوره آشنایی (فرایند ۳۱)'
+const PROC_CODE = 'introductory_course_registration'
 
-/** راهنمای هر وضعیت برای متقاضی/دانشجو. */
-const STATE_HINTS = {
-  application_submitted: 'فرم پذیرش شما ثبت شد. اکنون زمان مصاحبه را از مسیر اعلام‌شده در سایت یا پیامک پذیرش انتخاب کنید؛ پس از رزرو، مرحلهٔ پرداخت هزینهٔ مصاحبه به‌صورت خودکار فعال می‌شود.',
-  interview_scheduled: 'زمان مصاحبه انتخاب شد. برای ادامه، هزینهٔ مصاحبه را در درگاه پرداخت همین صفحه بپردازید.',
-  interview_payment: 'هزینهٔ مصاحبه را در درگاه پرداخت تکمیل کنید؛ در صورت خطا دوباره تلاش کنید تا تأیید پرداخت ثبت شود.',
-  interview_payment_confirmed: 'پرداخت شما ثبت شد و جزئیات مصاحبه از طریق پیامک ارسال شده است. در زمان مقرر در مصاحبه حاضر شوید و پس از برگزاری، این صفحه را تازه‌سازی کنید.',
-  interview_completed: 'مصاحبه انجام شد. منتظر ثبت نتیجه توسط مصاحبه‌گر باشید؛ به‌محض اعلام نتیجه، مراحل بعد فعال می‌شود.',
-  result_conditional_therapy: 'پذیرش شما مشروط به شروع درمان شخصی است. مراحل بعد (آپلود مدارک، انتخاب درس و پرداخت) را طبق راهنمای پنل پیش ببرید.',
-  result_single_course: 'پذیرش شما محدود به درس اعلام‌شده در فهرست ترم است و فقط پرداخت نقدی مجاز است. آپلود مدارک را آغاز کنید.',
-  result_full_admission: 'پذیرش کامل دریافت شد. مراحل بعد (آپلود مدارک، انتخاب درس و پرداخت) را پیش ببرید.',
-  documents_upload: 'مدارک و تأییدیه‌های خواسته‌شده را در همین پورتال بارگذاری و ثبت کنید. مهلت: ۴۸ ساعت.',
-  documents_incomplete: 'کاستی‌های اعلام‌شده در مدارک را برطرف و فایل‌ها را دوباره بارگذاری کنید. مهلت: ۴۸ ساعت.',
-  documents_review: 'مسئول پذیرش در حال بررسی مدارک شماست؛ پس از تعیین نتیجه، وضعیت این صفحه به‌روز می‌شود.',
-  credentials_created: 'حساب کاربری شما ایجاد شد و اطلاعات ورود ارسال شده است. پس از ورود، مرحلهٔ انتخاب درس فعال می‌شود.',
-  course_selection: 'دروس مجاز را طبق سطح پذیرش انتخاب و ثبت کنید؛ پس از تأیید، به مرحلهٔ پرداخت شهریه هدایت می‌شوید.',
-  payment: 'شهریه را به‌صورت نقدی یا حداکثر در ۴ قسط طبق راهنمای پنل پرداخت کنید تا ثبت‌نام نهایی شود.',
-  registration_complete: 'ثبت‌نام شما در دوره آشنایی تکمیل شد. کلاس‌ها و لینک‌های آنلاین برای شما ایجاد می‌شود.',
-  installment_overdue: 'قسط معوق دارید و ثبت حضور و غیاب شما بلاک شده است. برای رفع بلاک، قسط معوق را پرداخت کنید.',
+function resolveIntroRegHint(state) {
+  if (!state) {
+    return 'پذیرش و ثبت‌نام در دوره آشنایی — مراحل را طبق راهنمای پنل پیش ببرید.'
+  }
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  const short = PROCESS_STATE_LABELS_FA[PROC_CODE]?.[state]
+  return short || 'پذیرش و ثبت‌نام در دوره آشنایی — مراحل را طبق راهنمای پنل پیش ببرید.'
 }
 
 function InfoTile({ label, value, tone = '#2563eb', bg = '#eff6ff' }) {
@@ -67,12 +62,12 @@ export default function StudentIntroductoryCourseRegistrationPanel({
   const interview = useMemo(() => resolveInterviewSchedule(ctx), [ctx])
   const admission = useMemo(() => resolveAdmission(ctx), [ctx])
 
-  if (!active || !detail || detail.process_code !== 'introductory_course_registration') {
+  if (!active || !detail || detail.process_code !== PROC_CODE) {
     return null
   }
 
-  const hint = STATE_HINTS[currentState]
-    ?? 'پذیرش و ثبت‌نام در دوره آشنایی — مراحل را طبق راهنمای پنل پیش ببرید.'
+  const hint = resolveIntroRegHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelIntroRegState(currentState)) ?? ''
 
   const isRejected = currentState === INTRO_REG_TERMINAL_REJECT
   const isComplete = currentState === 'registration_complete'
@@ -122,6 +117,12 @@ export default function StudentIntroductoryCourseRegistrationPanel({
               color: '#1e3a8a',
             }}
           >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
           </div>
         )}
@@ -214,6 +215,11 @@ export default function StudentIntroductoryCourseRegistrationPanel({
               {ctx.registered_at ? ` — ${fmtIsoDate(ctx.registered_at)}` : ''}
               . کلاس‌ها و لینک‌های آنلاین در پنل آموزش در دسترس قرار می‌گیرد.
             </p>
+            {(ctx.intro_registration_next_step_fa || '').trim() && (
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.84rem', color: '#166534', lineHeight: 1.7 }}>
+                {ctx.intro_registration_next_step_fa}
+              </p>
+            )}
           </div>
         )}
       </div>

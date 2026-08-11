@@ -19,7 +19,12 @@
       "code": "blocked",
       "name_fa": "مسدود — تعلیق یا مرخصی",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "مسدود — تعلیق یا مرخصی",
+        "student_task_fa": "به دلیل تعلیق انضباطی یا مرخصی تحصیلی، ثبت‌نام ترم جدید مسدود است. برای رفع مانع با بخش آموزش تماس بگیرید.",
+        "student_why_fa": "ثبت‌نام ترم جدید به‌خاطر تعلیق یا مرخصی تحصیلی مسدود شده است؛ برای ادامه باید مانع برطرف شود."
+      }
     },
     {
       "code": "course_display",
@@ -27,7 +32,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "دروس ثابت ترم را مشاهده کنید و پس از تأیید، به مرحلهٔ انتخاب روش پرداخت بروید."
+        "student_short_fa": "نمایش دروس و شهریه",
+        "student_task_fa": "دروس ثابت ترم را مشاهده کنید و پس از تأیید، به مرحلهٔ انتخاب روش پرداخت بروید.",
+        "student_why_fa": "در دوره جامع امکان حذف یا انتخاب اختیاری درس وجود ندارد؛ پس از مشاهده دروس ثابت، تأیید کنید تا به انتخاب روش پرداخت بروید."
       }
     },
     {
@@ -36,7 +43,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "روش پرداخت (نقدی یا ۲ تا ۴ قسط) را انتخاب کنید."
+        "student_short_fa": "انتخاب نحوه پرداخت",
+        "student_task_fa": "روش پرداخت (نقدی یا ۲ تا ۴ قسط) را انتخاب کنید.",
+        "student_why_fa": "روش پرداخت را انتخاب کنید: نقدی (یکجا) یا اقساطی (۲ تا ۴ قسط). قسط اول در زمان ثبت‌نام پرداخت می‌شود."
       }
     },
     {
@@ -45,14 +54,32 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        "student_short_fa": "پرداخت درگاه",
+        "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.",
+        "student_why_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید تا تأیید پرداخت ثبت شود؛ در صورت خطا دوباره تلاش کنید."
       }
     },
     {
       "code": "registration_complete",
       "name_fa": "ثبت‌نام نهایی — لینک کلاس‌ها فعال",
-      "type": "terminal",
-      "assigned_role": "system"
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "ثبت‌نام نهایی",
+        "student_task_fa": "لینک کلاس‌های آنلاین فعال است؛ در صورت انتخاب پرداخت اقساطی، اقساط بعدی را در سررسید پرداخت کنید.",
+        "student_why_fa": "ثبت‌نام شما در ترم جدید نهایی شد و لینک کلاس‌های آنلاین فعال است. در صورت انتخاب پرداخت اقساطی، اقساط بعدی را در سررسید پرداخت کنید."
+      }
+    },
+    {
+      "code": "installment_overdue",
+      "name_fa": "قسط معوق شهریه ترم",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "قسط معوق",
+        "student_task_fa": "قسط شهریه سررسید گذشته است. از بخش پرداخت آنلاین همین صفحه یا پروفایل مالی، قسط معوق را پرداخت کنید.",
+        "student_why_fa": "تا زمان تسویه قسط معوق، ثبت حضور و غیاب محدود می‌شود."
+      }
     }
   ],
   "transitions": [
@@ -100,6 +127,53 @@
           "recipients": [
             "accounting"
           ]
+        },
+        {
+          "type": "schedule_installment_reminders",
+          "condition": "payment_method == 'installment'",
+          "reminder_days_before": 1,
+          "description_fa": "برنامه‌ریزی یادآوری اقساط"
+        },
+        {
+          "type": "merge_instance_context",
+          "mode": "initial_payment"
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "registration_complete",
+      "to": "installment_overdue",
+      "trigger": "installment_due_date_passed",
+      "conditions": [
+        "installment_not_paid"
+      ],
+      "description_fa": "قسط معوق — بلاک ثبت حضور و غیاب",
+      "actions": [
+        {
+          "type": "block_attendance_registration"
+        },
+        {
+          "type": "set_installment_portal_lock"
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "installment_overdue",
+      "to": "registration_complete",
+      "trigger": "overdue_installment_paid",
+      "description_fa": "قسط معوق پرداخت شد",
+      "actions": [
+        {
+          "type": "unblock_attendance_registration"
+        },
+        {
+          "type": "clear_installment_portal_lock"
+        },
+        {
+          "type": "merge_instance_context",
+          "mode": "installment_paid"
         }
       ],
       "required_role": "system"
@@ -147,15 +221,29 @@
             3,
             4
           ],
+          "show_if": {"field": "payment_method", "op": "eq", "value": "installment"},
+          "required_if": {"field": "payment_method", "op": "eq", "value": "installment"},
           "visible_when": "payment_method == 'installment'"
         }
       ]
     }
   ],
   "scheduled_automation": {
-    "mode": "batch_start",
+    "mode": "reminder_queue",
     "completion_role": "student",
+    "context_required": [
+      "next_installment_due_at"
+    ],
     "triggers": [
+      {
+        "event": "installment_due_date_passed",
+        "when": {
+          "state": "registration_complete",
+          "context_field": "next_installment_due_at",
+          "op": "lte_today"
+        },
+        "actor_role": "system"
+      },
       {
         "event": "term_registration_window",
         "source": "InstituteCalendar"

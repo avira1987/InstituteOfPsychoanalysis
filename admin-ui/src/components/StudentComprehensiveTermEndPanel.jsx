@@ -2,6 +2,10 @@ import React, { useMemo } from 'react'
 import TermTranscriptGradesTable from './TermTranscriptGradesTable'
 import TermEndArtifactsSection from './TermEndArtifactsSection'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   ComprehensiveTermEndFlowStepper,
   labelComprehensiveTermEndState,
   resolveTermEndContext,
@@ -12,28 +16,20 @@ import {
 } from '../utils/comprehensiveTermEndDisplay'
 
 const PROCESS_TITLE_FA = 'پایان ترم‌های دوره جامع (فرایند ۳۶)'
+const PROC_CODE = 'comprehensive_term_end'
+
+function resolveComprehensiveTermEndHint(state) {
+  if (!state) return 'پایان ترم دوره جامع — مراحل عمدتاً خودکار است؛ این صفحه را بعداً تازه کنید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return 'پایان ترم دوره جامع — مراحل عمدتاً خودکار است؛ این صفحه را بعداً تازه کنید.'
+}
 
 const SYSTEM_STATES = new Set([
   'grades_submitted',
   'transcript_generated',
   'graduation_check',
 ])
-
-/** راهنمای هر وضعیت برای دانشجو. */
-const STATE_HINTS = {
-  grades_submitted:
-    'تمام نمرات ترم جاری توسط اساتید ثبت شده است. سامانه در حال تولید کارنامه ترمی و کارنامه کلی (آکادمیک، بالینی و نظارتی) شماست — این مرحله خودکار است؛ چند دقیقه بعد صفحه را تازه کنید.',
-  transcript_generated:
-    'کارنامه ترمی و کارنامه کلی شما آماده است. از بخش «کارنامه‌ها» در تب پروفایل می‌توانید آن را مشاهده یا دانلود کنید. بررسی اتمام دروس جامع به‌صورت خودکار ادامه می‌یابد.',
-  graduation_check:
-    'سامانه در حال بررسی می‌کند آیا تمام دروس دوره جامع را پاس کرده‌اید یا خیر. این مرحله خودکار است؛ در صورت نیاز به اقدام از سمت شما، در همین صفحه اعلام می‌شود.',
-  completed_all_courses:
-    'تبریک! تمام دروس دوره جامع را با موفقیت پاس کرده‌اید. کارنامه‌ها در تب پروفایل در دسترس است. فرایند پایان ترم بدون ارسال پیامک ثبت‌نام تکمیل شده است.',
-  registration_notification_sent:
-    'هنوز دروس باقی‌مانده در دوره جامع دارید. پیامک مهلت ثبت‌نام ترم بعد برای شما ارسال شده است. در مهلت اعلام‌شده دروس ترم بعد را انتخاب و شهریه را پرداخت کنید.',
-  process_complete:
-    'فرایند پایان ترم تکمیل شد. کارنامه‌ها در تب پروفایل در دسترس است؛ برای ترم بعد طبق پیامک و راهنمای پنل اقدام کنید.',
-}
 
 function InfoTile({ label, value, tone = '#2563eb', bg = '#eff6ff' }) {
   if (value == null || value === '') return null
@@ -76,8 +72,8 @@ export default function StudentComprehensiveTermEndPanel({
     return null
   }
 
-  const hint = STATE_HINTS[currentState]
-    ?? 'پایان ترم دوره جامع — مراحل عمدتاً خودکار است؛ این صفحه را بعداً تازه کنید.'
+  const hint = resolveComprehensiveTermEndHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelComprehensiveTermEndState(currentState)) ?? ''
   const isComplete = isProcessComplete(currentState)
   const graduated = currentState === 'completed_all_courses' || termEnd.allCoursesPassed
   const showTranscripts = hasTranscriptsReady(currentState)
@@ -136,6 +132,12 @@ export default function StudentComprehensiveTermEndPanel({
               color: '#1e3a8a',
             }}
           >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
           </div>
         )}

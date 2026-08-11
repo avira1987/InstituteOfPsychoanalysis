@@ -3,15 +3,16 @@
 | فیلد | مقدار |
 |------|-------|
 | **وضعیت** | complete_in_metadata |
-| **آخرین به‌روزرسانی** | 2026-08-02 |
+| **آخرین به‌روزرسانی** | 2026-08-10 |
 | **منبع ورودی** | فلوچارت + متن ۷ گامی |
 
 ## پیاده‌سازی شیت وقت آزاد
 - [x] مدل `EducationalTherapistSlot` + API + سرویس book/release
-- [x] UI ادمین: `EducationalTherapistSlotsAdmin` (پنل پذیرش / هماهنگی درمان)
+- [x] UI کمیته نظارت / هماهنگی: `EducationalTherapistSlotsAdmin`
 - [x] UI دانشجو: `therapist_slot_picker` + `StudentStartTherapyPanel`
-- [x] اکشن `book_educational_therapist_slots` روی `therapist_selected`
-- [x] آزادسازی واقعی اسلات روی `therapist_declined`
+- [x] اکشن `book_educational_therapist_slots` + `apply_start_therapy_session_schedule` روی `therapist_selected`
+- [x] حذف گیت `therapist_confirmation` — وقت‌ها از قبل در شیت کمیته تعریف شده‌اند
+- [x] الگوی تکرار اسلات: `week_interval` (۱=هفتگی، ۲=هفته‌درمیان)
 
 ## نواقص
 - [ ] قانون پذیرش مشروط (فرایند ثبت‌نام ترم ۲) — در فرایند دیگر

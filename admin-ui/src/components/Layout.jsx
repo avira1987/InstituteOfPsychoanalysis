@@ -1,15 +1,34 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { getAvatarUrl, panelApi, dynamicFormsApi } from '../services/api'
 import NotificationBell from './NotificationBell'
 import { getSiteLogoUrl } from '../utils/siteLogo'
-import { navItemsForRole } from '../utils/portalRoleNav'
+import { navItemsForRoles } from '../utils/portalRoleNav'
 import { mapProcessNavItemsFromApi, PROCESS_NAV_PATH_PREFIX } from '../utils/processNavLinks'
 import ProcessNavSidebarSection from './ProcessNavSidebarSection'
+import SidebarNavGroups, { SidebarFooterNavLinks } from './SidebarNavGroups'
 import { PANEL_NOTIFICATIONS_CHANGED_EVENT } from '../utils/panelNotifications'
 import { labelRoleFa } from '../utils/roleLabels'
 import { normalizeNavPath, resolveActiveSidebarNavPath } from '../utils/sidebarNavActive'
+import { groupSidebarNavItems, inferSidebarGroupId } from '../utils/sidebarNavGroups'
+import { getUserRoles, primaryRole } from '../utils/userRoles'
+
+const SIDEBAR_WIDTH_KEY = 'anistito.sidebarWidth'
+const SIDEBAR_WIDTH_DEFAULT = 272
+const SIDEBAR_WIDTH_MIN = 200
+const SIDEBAR_WIDTH_MAX = 480
+
+function readStoredSidebarWidth() {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_WIDTH_KEY)
+    const n = Number(raw)
+    if (Number.isFinite(n) && n >= SIDEBAR_WIDTH_MIN && n <= SIDEBAR_WIDTH_MAX) return n
+  } catch {
+    /* ignore */
+  }
+  return SIDEBAR_WIDTH_DEFAULT
+}
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -17,6 +36,8 @@ export default function Layout() {
   const sidebarNavRef = useRef(null)
   const { user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(readStoredSidebarWidth)
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false)
   const [navPendingByPath, setNavPendingByPath] = useState({})
   const [dynamicNavItems, setDynamicNavItems] = useState([])
   const [dynamicNavMergeMode, setDynamicNavMergeMode] = useState('append')
@@ -48,14 +69,20 @@ export default function Layout() {
       }
       const mapped = raw
         .filter((it) => it && it.path && it.label)
-        .map((it) => ({
-          path: String(it.path).startsWith('/') ? it.path : `/panel/${String(it.path).replace(/^\//, '')}`,
-          label: it.label,
-          icon: it.icon || '📎',
-          priority: typeof it.priority === 'number' ? it.priority : 55,
-          roles: it.roles,
-          strictRoles: false,
-        }))
+        .map((it) => {
+          const path = String(it.path).startsWith('/')
+            ? it.path
+            : `/panel/${String(it.path).replace(/^\//, '')}`
+          return {
+            path,
+            label: it.label,
+            icon: it.icon || '📎',
+            priority: typeof it.priority === 'number' ? it.priority : 55,
+            roles: it.roles,
+            strictRoles: false,
+            groupId: it.groupId || inferSidebarGroupId(path),
+          }
+        })
       setDynamicNavItems(mapped)
     } catch {
       setDynamicNavItems([])
@@ -69,7 +96,7 @@ export default function Layout() {
     }
     try {
       const res = await panelApi.processNavItems()
-      const mapped = mapProcessNavItemsFromApi(res.data?.items || [], user.role)
+      const mapped = mapProcessNavItemsFromApi(res.data?.items || [], getUserRoles(user))
       setProcessNavItems(mapped)
     } catch {
       setProcessNavItems([])
@@ -100,10 +127,11 @@ export default function Layout() {
   }
 
   const visibleNav = useMemo(() => {
-    const filtered = navItemsForRole(user?.role)
+    const userRoles = getUserRoles(user)
+    const filtered = navItemsForRoles(userRoles)
     const dyn = dynamicNavItems.filter((item) => {
       if (!item.roles || !Array.isArray(item.roles) || item.roles.length === 0) return true
-      return item.roles.includes(user?.role) || user?.role === 'admin'
+      return item.roles.some((r) => userRoles.includes(r)) || userRoles.includes('admin')
     })
     let merged
     if (dynamicNavMergeMode === 'replace') {
@@ -125,7 +153,12 @@ export default function Layout() {
       if (pa !== pb) return pa - pb
       return a.path.localeCompare(b.path)
     })
-  }, [user?.role, dynamicNavItems, dynamicNavMergeMode, processNavItems])
+  }, [user, dynamicNavItems, dynamicNavMergeMode, processNavItems])
+
+  const footerNavItems = useMemo(
+    () => groupSidebarNavItems(visibleNav).footerItems,
+    [visibleNav],
+  )
 
   const processNavForSidebar = useMemo(
     () => processNavItems.map((item) => ({
@@ -169,14 +202,65 @@ export default function Layout() {
     }
   }, [activeNavPath, location.pathname])
 
+  const closeMobile = () => setMobileOpen(false)
+
+  const clampSidebarWidth = useCallback((w) => {
+    const maxForViewport = typeof window !== 'undefined'
+      ? Math.min(SIDEBAR_WIDTH_MAX, Math.floor(window.innerWidth * 0.55))
+      : SIDEBAR_WIDTH_MAX
+    return Math.min(maxForViewport, Math.max(SIDEBAR_WIDTH_MIN, Math.round(w)))
+  }, [])
+
+  const onSidebarResizeStart = useCallback((e) => {
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches) return
+    e.preventDefault()
+    setIsResizingSidebar(true)
+    const startX = e.clientX
+    const startWidth = sidebarWidth
+
+    const onMove = (ev) => {
+      // سایدبار در RTL سمت راست است؛ کشیدن به چپ = پهن‌تر، به راست = باریک‌تر
+      const next = clampSidebarWidth(startWidth + (startX - ev.clientX))
+      setSidebarWidth(next)
+    }
+    const onUp = () => {
+      setIsResizingSidebar(false)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [clampSidebarWidth, sidebarWidth])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth))
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarWidth])
+
   return (
-    <div className="layout">
-      {/* Mobile overlay */}
+    <div
+      className={`layout${isResizingSidebar ? ' layout-sidebar-resizing' : ''}`}
+      style={{ '--sidebar-width': `${sidebarWidth}px` }}
+    >
       {mobileOpen && (
         <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />
       )}
 
       <aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}>
+        <button
+          type="button"
+          className="sidebar-resize-handle"
+          aria-label="تغییر عرض منو"
+          title="کشیدن برای تغییر عرض"
+          onMouseDown={onSidebarResizeStart}
+        />
         <div className="sidebar-brand">
           <div className="sidebar-brand-row">
             <div className="sidebar-brand-main">
@@ -192,46 +276,30 @@ export default function Layout() {
           </div>
         </div>
         <nav className="sidebar-nav" ref={sidebarNavRef} aria-label="منوی اصلی">
-          {visibleNav.map((item, idx) => {
-            const raw = navPendingByPath[item.path]
-            const n = typeof raw === 'number' && raw > 0 ? raw : 0
-            const badge =
-              n > 0 ? (n > 99 ? '۹۹+' : n.toLocaleString('fa-IR')) : null
-            const itemPath = normalizeNavPath(item.path)
-            const isItemActive = activeNavPath === itemPath
-            return (
-              <NavLink
-                key={`${item.path}-${idx}`}
-                to={item.path}
-                end={item.path === '/panel' || item.path === '/panel/portal/student'}
-                aria-current={isItemActive ? 'page' : undefined}
-                className={`sidebar-link${isItemActive ? ' active' : ''}`}
-                onClick={() => setMobileOpen(false)}
-              >
-                <span className="sidebar-link-icon" aria-hidden="true">{item.icon}</span>
-                <span className="sidebar-link-text">
-                  <span className="sidebar-link-label">{item.label}</span>
-                  {badge != null ? (
-                    <span className="sidebar-nav-badge" title="کار منتظر">
-                      {badge}
-                    </span>
-                  ) : null}
-                </span>
-              </NavLink>
-            )
-          })}
+          <SidebarNavGroups
+            items={visibleNav}
+            activeNavPath={activeNavPath}
+            navPendingByPath={navPendingByPath}
+            onNavigate={closeMobile}
+          />
 
           {processNavItems.length > 0 && (
             <ProcessNavSidebarSection
               items={processNavItems}
               activeNavPath={activeNavPath}
               navPendingByPath={navPendingByPath}
-              onNavigate={() => setMobileOpen(false)}
+              onNavigate={closeMobile}
             />
           )}
         </nav>
 
         <div className="sidebar-footer">
+          <SidebarFooterNavLinks
+            items={footerNavItems}
+            activeNavPath={activeNavPath}
+            navPendingByPath={navPendingByPath}
+            onNavigate={closeMobile}
+          />
           {user && (
             <div className="sidebar-user-card">
               <div className="sidebar-user-avatar">
@@ -243,7 +311,9 @@ export default function Layout() {
               </div>
               <div className="sidebar-user-info">
                 <div className="sidebar-user-name">{user.full_name_fa || user.username}</div>
-                <div className="sidebar-user-role">{labelRoleFa(user.role)}</div>
+                <div className="sidebar-user-role">
+                  {getUserRoles(user).map((r) => labelRoleFa(r, { includeCode: false })).join('، ') || labelRoleFa(primaryRole(user))}
+                </div>
               </div>
             </div>
           )}
@@ -255,7 +325,6 @@ export default function Layout() {
       </aside>
 
       <main className="main-content">
-        {/* Mobile header / top bar */}
         <div className="mobile-header">
           <button className="mobile-menu-btn" onClick={() => setMobileOpen(!mobileOpen)}>
             ☰

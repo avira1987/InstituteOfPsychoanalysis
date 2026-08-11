@@ -12,6 +12,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.core.user_roles import (
+    normalize_user_roles,
+    primary_role,
+    sync_primary_and_roles,
+    user_has_role,
+)
 from app.database import get_db
 from app.meta.role_labels import format_role_forbidden_message
 from app.models.operational_models import User
@@ -47,6 +53,7 @@ class UserCreate(BaseModel):
     password: str
     full_name_fa: Optional[str] = None
     role: str = "student"
+    roles: Optional[list[str]] = None
     email: Optional[str] = None
     phone: Optional[str] = None
 
@@ -60,6 +67,7 @@ class UserResponse(BaseModel):
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
     role: str
+    roles: list[str] = []
     is_active: bool
     primary_site_admin: bool = False
 
@@ -68,7 +76,9 @@ class UserResponse(BaseModel):
 
 def user_to_response(user: User) -> UserResponse:
     """JSON پروفایل کاربر؛ primary_site_admin فقط برای مدیر سیستم با نام کاربری تنظیم‌شده."""
-    flag = user.role == "admin" and user.username == get_settings().PRIMARY_SITE_ADMIN_USERNAME
+    roles = normalize_user_roles(user)
+    prim = primary_role(user)
+    flag = "admin" in roles and user.username == get_settings().PRIMARY_SITE_ADMIN_USERNAME
     return UserResponse(
         id=str(user.id),
         username=user.username,
@@ -77,7 +87,8 @@ def user_to_response(user: User) -> UserResponse:
         email=user.email,
         phone=user.phone,
         avatar_url=user.avatar_url,
-        role=user.role,
+        role=prim,
+        roles=roles,
         is_active=user.is_active,
         primary_site_admin=flag,
     )
@@ -152,12 +163,12 @@ async def get_optional_user(
 
 
 def require_role(*roles: str):
-    """Dependency factory that requires the user to have one of the specified roles."""
+    """Dependency factory: کاربر باید حداقل یکی از نقش‌ها را داشته باشد (admin همیشه مجاز)."""
     async def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in roles and current_user.role != "admin":
+        if not user_has_role(current_user, *roles, admin_bypass=True):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=format_role_forbidden_message(current_user.role, *roles),
+                detail=format_role_forbidden_message(primary_role(current_user), *roles),
             )
         return current_user
     return role_checker
@@ -166,7 +177,7 @@ def require_role(*roles: str):
 async def require_primary_site_admin(current_user: User = Depends(get_current_user)) -> User:
     """فقط مدیر سیستم با نام کاربری PRIMARY_SITE_ADMIN_USERNAME."""
     s = get_settings()
-    if current_user.role != "admin" or current_user.username != s.PRIMARY_SITE_ADMIN_USERNAME:
+    if not user_has_role(current_user, "admin", admin_bypass=False) or current_user.username != s.PRIMARY_SITE_ADMIN_USERNAME:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="فقط مدیر اصلی سامانه به این بخش دسترسی دارد.",
@@ -176,7 +187,7 @@ async def require_primary_site_admin(current_user: User = Depends(get_current_us
 
 async def require_admin_only(current_user: User = Depends(get_current_user)) -> User:
     """هر حساب با نقش admin (صندوق پیگیری سراسری، گزارش‌های مدیریتی، …)."""
-    if (current_user.role or "").strip() != "admin":
+    if not user_has_role(current_user, "admin", admin_bypass=False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="فقط مدیر سیستم به این بخش دسترسی دارد.",
@@ -203,16 +214,44 @@ async def authenticate_user(
 
 
 async def create_user(db: AsyncSession, user_data: UserCreate) -> User:
-    """Create a new user."""
+    """Create a new user.
+
+    Empty email/phone from the admin UI are stored as NULL so they do not
+    collide with the unique constraint on users.email ('' != NULL).
+    """
+    username = (user_data.username or "").strip()
+    if not username:
+        raise ValueError("نام کاربری الزامی است")
+
+    email = (user_data.email or "").strip() or None
+    phone = (user_data.phone or "").strip() or None
+    full_name_fa = (user_data.full_name_fa or "").strip() or None
+    role_hint = (user_data.role or "student").strip() or "student"
+    roles_in = user_data.roles if user_data.roles else [role_hint]
+    try:
+        role, roles = sync_primary_and_roles(roles_in, primary=role_hint)
+    except ValueError as e:
+        raise ValueError(str(e)) from e
+
+    existing_username = await db.execute(select(User).where(User.username == username))
+    if existing_username.scalars().first():
+        raise ValueError("این نام کاربری قبلاً ثبت شده است")
+
+    if email:
+        existing_email = await db.execute(select(User).where(User.email == email))
+        if existing_email.scalars().first():
+            raise ValueError("این ایمیل قبلاً ثبت شده است")
+
     user = User(
         id=uuid.uuid4(),
-        username=user_data.username,
-        email=user_data.email,
+        username=username,
+        email=email,
         hashed_password=get_password_hash(user_data.password),
         portal_password_plain=None,
-        full_name_fa=user_data.full_name_fa,
-        role=user_data.role,
-        phone=user_data.phone,
+        full_name_fa=full_name_fa,
+        role=role,
+        roles=roles,
+        phone=phone,
     )
     db.add(user)
     return user

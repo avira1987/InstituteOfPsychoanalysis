@@ -20,11 +20,13 @@ from app.services.educational_therapist_slot_service import (
     book_slots_for_student,
     create_slot,
     delete_slot,
+    list_available_grouped_by_supervisor,
     list_available_grouped_by_therapist,
     list_slots_for_manage,
     release_slots,
     slot_to_dict,
     update_slot,
+    user_display_name,
 )
 
 router = APIRouter(prefix="/api/educational-therapist-slots", tags=["Educational therapist slots"])
@@ -52,6 +54,7 @@ class CreateSlotBody(BaseModel):
     end_local_time: str
     course_type: Optional[Literal["introductory", "comprehensive"]] = None
     label_fa: Optional[str] = None
+    week_interval: int = Field(default=1, ge=1, le=2)
 
 
 class UpdateSlotBody(BaseModel):
@@ -60,6 +63,7 @@ class UpdateSlotBody(BaseModel):
     end_local_time: Optional[str] = None
     course_type: Optional[Literal["introductory", "comprehensive", ""]] = None
     label_fa: Optional[str] = None
+    week_interval: Optional[int] = Field(default=None, ge=1, le=2)
 
 
 class BookSlotsBody(BaseModel):
@@ -72,17 +76,51 @@ class BookSlotsBody(BaseModel):
 @router.get("/available")
 async def get_available_slots(
     course_type: Optional[str] = None,
+    role: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("student", "admin", "staff", "therapist", "site_manager")),
+    current_user: User = Depends(require_role("student", "admin", "staff", "therapist", "supervisor", "site_manager")),
 ):
-    """اسلات‌های آزاد گروه‌بندی‌شده بر درمانگر — برای انتخاب دانشجو."""
+    """اسلات‌های آزاد گروه‌بندی‌شده — درمانگر یا سوپروایزر."""
     ct = (course_type or "").strip() or None
     if current_user.role == "student":
         stmt = select(Student).where(Student.user_id == current_user.id)
         student = (await db.execute(stmt)).scalars().first()
         if student and student.course_type:
             ct = student.course_type
+    want_supervisor = (role or "").strip().lower() in ("supervisor", "supervisors")
+    if want_supervisor:
+        return await list_available_grouped_by_supervisor(db, course_type=ct)
     return await list_available_grouped_by_therapist(db, course_type=ct)
+
+
+@router.get("/manage/therapists")
+async def manage_list_therapists(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """فهرست درمانگران فعال برای انتخاب در شیت وقت آزاد.
+
+    کمیته نظارت و سایر نقش‌های SLOT_MANAGE_ROLES به admin/users دسترسی ندارند؛
+    این endpoint جایگزین امن برای همان نیاز است.
+    """
+    if not _can_manage_slots(current_user):
+        raise HTTPException(status_code=403, detail="دسترسی مدیریت شیت وقت آزاد ندارید.")
+    stmt = (
+        select(User)
+        .where(User.role == "therapist", User.is_active.is_(True))
+        .order_by(User.full_name_fa.asc(), User.username.asc())
+    )
+    therapists = (await db.execute(stmt)).scalars().all()
+    return {
+        "therapists": [
+            {
+                "id": str(u.id),
+                "label_fa": (u.full_name_fa or u.full_name_en or u.username or str(u.id)).strip(),
+                "username": u.username,
+            }
+            for u in therapists
+        ]
+    }
 
 
 @router.get("/manage")
@@ -125,12 +163,14 @@ async def manage_create_slot(
             end_local_time=_parse_time_hm(body.end_local_time),
             course_type=body.course_type,
             label_fa=body.label_fa,
+            week_interval=body.week_interval,
             created_by=current_user.id,
         )
         await db.commit()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"slot": slot_to_dict(slot)}
+    therapist = await db.get(User, tid)
+    return {"slot": slot_to_dict(slot, therapist_name=user_display_name(therapist, fallback_id=tid))}
 
 
 @router.patch("/manage/{slot_id}")
@@ -155,11 +195,18 @@ async def manage_update_slot(
             end_local_time=_parse_time_hm(body.end_local_time) if body.end_local_time else None,
             course_type=body.course_type if body.course_type is not None else None,
             label_fa=body.label_fa,
+            week_interval=body.week_interval,
         )
         await db.commit()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"slot": slot_to_dict(slot)}
+    therapist = await db.get(User, slot.therapist_user_id)
+    return {
+        "slot": slot_to_dict(
+            slot,
+            therapist_name=user_display_name(therapist, fallback_id=slot.therapist_user_id),
+        )
+    }
 
 
 @router.delete("/manage/{slot_id}")

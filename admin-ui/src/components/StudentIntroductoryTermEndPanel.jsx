@@ -2,6 +2,10 @@ import React, { useMemo } from 'react'
 import TermTranscriptGradesTable from './TermTranscriptGradesTable'
 import TermEndArtifactsSection from './TermEndArtifactsSection'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   IntroTermEndFlowStepper,
   labelIntroTermEndState,
   resolveTermEndContext,
@@ -12,6 +16,15 @@ import {
 } from '../utils/introductoryTermEndDisplay'
 
 const PROCESS_TITLE_FA = 'پایان ترم دوره آشنایی (فرایند ۳۲)'
+const PROC_CODE = 'introductory_term_end'
+
+function resolveIntroTermEndHint(state) {
+  if (!state) return 'پایان ترم دوره آشنایی — مراحل عمدتاً خودکار است؛ این صفحه را بعداً تازه کنید.'
+  if (state === 'therapy_blocked') return THERAPY_BLOCK_MESSAGE_FA
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return 'پایان ترم دوره آشنایی — مراحل عمدتاً خودکار است؛ این صفحه را بعداً تازه کنید.'
+}
 
 const SYSTEM_STATES = new Set([
   'grades_submitted',
@@ -19,18 +32,6 @@ const SYSTEM_STATES = new Set([
   'therapy_check',
   'decline_list_generated',
 ])
-
-/** راهنمای هر وضعیت برای دانشجو. */
-const STATE_HINTS = {
-  grades_submitted: 'تمام نمرات ترم توسط اساتید ثبت شده است. سامانه در حال تولید کارنامه ترمی و کارنامه تجمیعی شماست — این مرحله خودکار است؛ چند دقیقه بعد صفحه را تازه کنید.',
-  transcript_generated: 'کارنامه ترمی و تجمیعی شما آماده است. از بخش «کارنامه‌ها» در تب پروفایل می‌توانید آن را مشاهده یا دانلود کنید. مراحل بعد (بررسی شرط درمان و اطلاع‌رسانی) به‌صورت خودکار ادامه می‌یابد.',
-  therapy_check: 'سامانه در حال بررسی شرط درمان (برای پذیرش مشروط) است. اگر اقدامی از سمت شما لازم باشد، در همین صفحه اعلام می‌شود.',
-  therapy_blocked: THERAPY_BLOCK_MESSAGE_FA,
-  registration_notification_sent: 'پیامک مهلت ثبت‌نام ترم بعد برای شما ارسال شده است. در مهلت اعلام‌شده دروس ترم بعد را انتخاب و شهریه را پرداخت کنید.',
-  decline_list_generated: 'فرایند پایان ترم در حال تکمیل است. در صورت افت تحصیلی، مسئول پذیرش ممکن است با شما تماس بگیرد.',
-  followup_in_progress: 'مسئول پذیرش در حال پیگیری دانشجویان افت تحصیلی است. اگر برای شما تماس یا پیام ثبت شد، همان را دنبال کنید؛ در غیر این صورت نیازی به اقدام فوری در پنل نیست.',
-  followup_complete: 'فرایند پایان ترم تکمیل شد. کارنامه‌ها در تب پروفایل در دسترس است؛ برای ترم بعد طبق پیامک و راهنمای پنل اقدام کنید.',
-}
 
 function InfoTile({ label, value, tone = '#2563eb', bg = '#eff6ff' }) {
   if (value == null || value === '') return null
@@ -73,8 +74,8 @@ export default function StudentIntroductoryTermEndPanel({
     return null
   }
 
-  const hint = STATE_HINTS[currentState]
-    ?? 'پایان ترم دوره آشنایی — مراحل عمدتاً خودکار است؛ این صفحه را بعداً تازه کنید.'
+  const hint = resolveIntroTermEndHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelIntroTermEndState(currentState)) ?? ''
   const isComplete = currentState === 'followup_complete'
   const showTranscripts = hasTranscriptsReady(currentState)
   const showTherapyBlock = currentState === 'therapy_blocked' || termEnd.therapyBlocked
@@ -133,6 +134,12 @@ export default function StudentIntroductoryTermEndPanel({
               color: '#1e3a8a',
             }}
           >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
           </div>
         )}

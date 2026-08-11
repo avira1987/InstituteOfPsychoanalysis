@@ -24,7 +24,6 @@ _THERAPIST_REVIEW_STATES = (
     "therapist_review",
     "therapist_decision",
     "awaiting_therapist",
-    "therapist_confirmation",
     "pending_therapist",
     "waiting_therapist",
 )
@@ -47,6 +46,15 @@ _STAFF_REVIEW_STATES = (
     "payment_required",
     "awaiting_payment",
     "document_check",
+    "documents_review",
+)
+
+# نوبت دانشجو — در بج پذیرش شمارش نمی‌شوند
+_STUDENT_DOCUMENT_TURN_STATES = frozenset(
+    {
+        "documents_upload",
+        "documents_incomplete",
+    }
 )
 
 _SITE_MANAGER_REVIEW_STATES = (
@@ -139,9 +147,14 @@ def _waiting_supervisor(state: str) -> bool:
 def _waiting_staff(state: str) -> bool:
     if not state:
         return False
-    if any(rs in state for rs in _STAFF_REVIEW_STATES):
+    s = state.strip().lower()
+    if s in _STUDENT_DOCUMENT_TURN_STATES:
+        return False
+    if any(rs in s for rs in _STAFF_REVIEW_STATES):
         return True
-    return "staff" in state or "payment" in state or "office" in state
+    if "document" in s:
+        return True
+    return "staff" in s or "payment" in s or "office" in s
 
 
 def _waiting_site_manager(state: str) -> bool:

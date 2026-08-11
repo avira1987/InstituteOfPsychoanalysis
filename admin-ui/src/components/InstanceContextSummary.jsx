@@ -4,16 +4,18 @@ import {
   CTX_STUDENT_FORMS_UNLOCK,
   CTX_DOCUMENTS_RESUBMIT_FIELDS,
 } from '../utils/processFormsStudent'
-import { labelState, formatActorRole } from '../utils/processDisplay'
+import { labelState, formatActorRole, labelProcess, formatStudentCodeDisplay } from '../utils/processDisplay'
 import {
   buildFieldLabelMap,
   resolveContextRowLabel,
+  resolveContextRowLabelStrict,
   renderFriendlyContextValue,
   formatInterviewResultDisplay,
   formatContextStringForDisplay,
 } from '../utils/contextInstanceDisplay'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import { filterContextForOperators } from '../utils/operatorContextFilter'
+import { assignedRoleLabelFa } from '../utils/operatorProcessGuidance'
 
 function formatIsoMaybe(s) {
   if (typeof s !== 'string') return s
@@ -49,10 +51,68 @@ function summarizeFormsUnlock(obj) {
   return keys.map(k => labelState(k)).join('، ')
 }
 
+function OperatorCaseFactsStrip({
+  studentCode,
+  studentNameFa,
+  processCode,
+  currentState,
+  guidance,
+}) {
+  const studentLabel = [studentNameFa, studentCode ? formatStudentCodeDisplay(studentCode) : null]
+    .filter(Boolean)
+    .join(' · ') || '—'
+  const processLabel = processCode ? labelProcess(processCode) : '—'
+  const stageLabel = (guidance?.shortFa || '').trim()
+    || (currentState ? labelState(currentState) : '—')
+  const roleLabel = (guidance?.waitingRoleLabelFa || '').trim()
+    || assignedRoleLabelFa(guidance?.role)
+    || '—'
+  const taskLabel = (guidance?.taskFa || '').trim() || '—'
+
+  const cells = [
+    { label: 'دانشجو', value: studentLabel },
+    { label: 'فرایند', value: processLabel },
+    { label: 'مرحله', value: stageLabel },
+    { label: 'نقش مسئول', value: roleLabel },
+    { label: 'اقدام لازم', value: taskLabel },
+  ]
+
+  return (
+    <div
+      data-testid="operator-case-facts-strip"
+      style={{
+        marginBottom: '1rem',
+        padding: '0.75rem 0.85rem',
+        borderRadius: '10px',
+        border: '1px solid #c7d2fe',
+        background: 'linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%)',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: '0.65rem 1rem',
+      }}
+    >
+      {cells.map((c) => (
+        <div key={c.label} style={{ minWidth: 0 }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', marginBottom: '0.2rem' }}>
+            {c.label}
+          </div>
+          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b', lineHeight: 1.45, wordBreak: 'break-word' }}>
+            {c.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /**
  * سابقه انتقال + جزئیات پرونده (بدون کلیدهای فنی مثل integration_events).
  *
- * @param {boolean} [showTechnicalContext=false] — اگر true باشد همهٔ کلیدها (مثلاً برای دیباگ) نمایش داده می‌شود.
+ * @param {boolean} [showTechnicalContext=false] — اگر true باشد همهٔ کلیدها (مثلاً برای دیباگ / admin) نمایش داده می‌شود.
+ * @param {string} [portalRole] — نقش پورتال؛ برای admin فیلتر سخت‌گیرانه خاموش است.
+ * @param {boolean} [showOperatorCaseFacts=false] — نوار خلاصه نقش‌محور (فقط اپراتور غیر-admin).
+ * @param {'interviewer'|null} [contextAudience] — برای مصاحبه‌گر فقط فیلدهای کاربری مصاحبه.
+ * @param {boolean} [showHistory=true] — نمایش سابقهٔ انتقال‌ها.
  */
 export default function InstanceContextSummary({
   contextData,
@@ -64,7 +124,39 @@ export default function InstanceContextSummary({
   maxHeight = '240px',
   historyMaxHeight = '200px',
   showTechnicalContext = false,
+  portalRole = null,
+  /** وضعیت کامل نمونه — برای دانشجو/فرایند/مرحله در نوار خلاصه */
+  instanceDetail = null,
+  /** راهنمای از پیش‌ساخته (useOperatorProcessGuidance) */
+  guidance = null,
+  studentCode = null,
+  studentNameFa = null,
+  showOperatorCaseFacts = false,
+  contextAudience = null,
+  showHistory = true,
 }) {
+  const isAdminTechnical = (
+    (showTechnicalContext || portalRole === 'admin')
+    && contextAudience !== 'interviewer'
+  )
+  const showCaseFacts = Boolean(
+    showOperatorCaseFacts
+    && portalRole
+    && (portalRole !== 'admin' || contextAudience === 'interviewer'),
+  )
+  const detailsSectionTitle = contextAudience === 'interviewer'
+    ? 'اطلاعات مصاحبه'
+    : 'جزئیات ثبت‌شده روی پرونده'
+
+  const resolvedProcessCode = instanceDetail?.process_code || null
+  const resolvedCurrentState = instanceDetail?.current_state || null
+  const resolvedStudentCode = studentCode
+    ?? instanceDetail?.student_code
+    ?? null
+  const resolvedStudentNameFa = studentNameFa
+    ?? instanceDetail?.student_name_fa
+    ?? null
+
   const fieldLabelMap = useMemo(() => {
     const primary = buildFieldLabelMap(forms)
     const extras = Array.isArray(extraLabelForms) ? extraLabelForms : []
@@ -78,20 +170,26 @@ export default function InstanceContextSummary({
   }, [forms, extraLabelForms])
 
   const displayContext = useMemo(() => {
-    if (showTechnicalContext && contextData && typeof contextData === 'object' && !Array.isArray(contextData)) {
-      return { ...contextData }
+    if (isAdminTechnical && contextData && typeof contextData === 'object' && !Array.isArray(contextData)) {
+      return filterContextForOperators(contextData, { technical: true })
     }
-    return filterContextForOperators(contextData)
-  }, [contextData, showTechnicalContext])
+    return filterContextForOperators(contextData, {
+      technical: false,
+      audience: contextAudience === 'interviewer' ? 'interviewer' : null,
+    })
+  }, [contextData, isAdminTechnical, contextAudience])
 
   const hasContext = displayContext && typeof displayContext === 'object' && Object.keys(displayContext).length > 0
-  const historyList = Array.isArray(history) ? history : []
+  const historyList = showHistory && Array.isArray(history) ? history : []
   const hasHistory = historyList.length > 0
 
   const rows = useMemo(() => {
     if (!hasContext) return []
     const out = []
     const keys = Object.keys(displayContext)
+    const resolveLabel = isAdminTechnical
+      ? (key) => resolveContextRowLabel(key, fieldLabelMap)
+      : (key) => resolveContextRowLabelStrict(key, fieldLabelMap)
 
     const sorted = [...keys].sort((a, b) => {
       const ai = a.startsWith('__') ? 1 : 0
@@ -111,7 +209,9 @@ export default function InstanceContextSummary({
         continue
       }
       if (key === CTX_DOCUMENTS_RESUBMIT_FIELDS) {
-        const parts = Array.isArray(raw) ? raw.map((k) => resolveContextRowLabel(k, fieldLabelMap) || k) : []
+        const parts = Array.isArray(raw)
+          ? raw.map((k) => resolveContextRowLabelStrict(k, fieldLabelMap) || resolveContextRowLabel(k, fieldLabelMap) || k)
+          : []
         out.push({
           key,
           label: 'مدارک نیازمند بارگذاری مجدد',
@@ -144,7 +244,7 @@ export default function InstanceContextSummary({
         continue
       }
 
-      const label = resolveContextRowLabel(key, fieldLabelMap)
+      const label = resolveLabel(key)
       if (!label) continue
 
       if (key === 'interview_result') {
@@ -176,9 +276,9 @@ export default function InstanceContextSummary({
     }
 
     return out
-  }, [displayContext, hasContext, fieldLabelMap])
+  }, [displayContext, hasContext, fieldLabelMap, isAdminTechnical])
 
-  if (!hasContext && !hasHistory) {
+  if (!hasContext && !hasHistory && !showCaseFacts) {
     return null
   }
 
@@ -191,8 +291,18 @@ export default function InstanceContextSummary({
         <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1f2937' }}>{title}</label>
       </div>
 
+      {showCaseFacts && (
+        <OperatorCaseFactsStrip
+          studentCode={resolvedStudentCode}
+          studentNameFa={resolvedStudentNameFa}
+          processCode={resolvedProcessCode}
+          currentState={resolvedCurrentState}
+          guidance={guidance}
+        />
+      )}
+
       {hasHistory && (
-        <div style={{ marginBottom: hasContext ? '1.25rem' : 0 }}>
+        <div style={{ marginBottom: hasContext || rows.length ? '1.25rem' : 0 }}>
           <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>
             سابقه انتقال‌ها
           </div>
@@ -247,18 +357,26 @@ export default function InstanceContextSummary({
         </div>
       )}
 
-      {hasContext && (
-        <>
-          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>
-            جزئیات ثبت‌شده روی پرونده
-          </div>
+      {(hasContext || showCaseFacts) && (
+        <details data-testid="instance-context-details">
+          <summary style={{
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            color: '#374151',
+            marginBottom: '0.5rem',
+            cursor: 'pointer',
+          }}>
+            {detailsSectionTitle}
+          </summary>
 
           {rows.length === 0 ? (
             <p style={{
               fontSize: '0.82rem', color: '#6b7280', margin: 0, padding: '0.75rem 1rem',
               background: '#f9fafb', borderRadius: '8px', border: '1px dashed #d1d5db',
             }}>
-              فقط اطلاعات مرتبط با پیگیری پرونده اینجا نشان داده می‌شود. اگر خالی است، سابقهٔ بالا را ببینید.
+              {contextAudience === 'interviewer'
+                ? 'هنوز جزئیات کاربری مصاحبه (تاریخ، محل، نتیجه و…) روی پرونده نیست.'
+                : 'فقط اطلاعات مرتبط با پیگیری پرونده اینجا نشان داده می‌شود. اگر خالی است، خلاصهٔ بالا و سابقه را ببینید.'}
             </p>
           ) : (
             <div style={{
@@ -284,12 +402,17 @@ export default function InstanceContextSummary({
               ))}
             </div>
           )}
-          {rows.length > 0 && (
+          {rows.length > 0 && !isAdminTechnical && contextAudience !== 'interviewer' && (
+            <p style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.4rem', marginBottom: 0 }}>
+              فقط فیلدهای دارای برچسب فارسی (فرم یا فهرست ثابت) نمایش داده می‌شوند.
+            </p>
+          )}
+          {rows.length > 0 && isAdminTechnical && (
             <p style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.4rem', marginBottom: 0 }}>
               برچسب‌ها در صورت وجود، از فرم همین فرایند خوانده می‌شوند.
             </p>
           )}
-        </>
+        </details>
       )}
     </div>
   )

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { semesterPrepApi } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import SemesterPrepReadinessPanel from '../components/SemesterPrepReadinessPanel'
+import InstituteOperationalAnchorPanel from '../components/InstituteOperationalAnchorPanel'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import { labelRoleFa } from '../utils/roleLabels'
 
@@ -59,6 +60,8 @@ export default function SemesterPrepPage() {
         شروع و پیگیری فرایندهای آماده‌سازی پاییز و زمستان. شروع خودکار پاییز در ۱۵–۲۰ فروردین و زمستان
         در پنجرهٔ قبل از شروع ترم انجام می‌شود؛ در صورت نیاز می‌توانید دستی هم شروع کنید.
       </p>
+
+      {!loading && status ? <InstituteOperationalAnchorPanel status={status} /> : null}
 
       {!loading && status?.readiness ? (
         <div style={{ marginBottom: '1.25rem' }}>
@@ -204,8 +207,9 @@ export default function SemesterPrepPage() {
                         <Link
                           className="btn btn-secondary"
                           to={`/panel/students?student_id=${anchorId}&instance_id=${entry.completed_instance_id}`}
+                          title="مشاهدهٔ خام نمونه، ریست و انتقال دستی"
                         >
-                          باز کردن پرونده
+                          جزئیات فنی نمونه
                         </Link>
                         {canStartNewTerm && (
                           <button
@@ -230,8 +234,9 @@ export default function SemesterPrepPage() {
                         <Link
                           className="btn btn-secondary"
                           to={`/panel/students?student_id=${anchorId}&instance_id=${entry.instance_id}`}
+                          title="مشاهدهٔ خام نمونه، ریست و انتقال دستی"
                         >
-                          باز کردن پرونده
+                          جزئیات فنی نمونه
                         </Link>
                       </>
                     )}

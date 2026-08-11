@@ -17,7 +17,7 @@ import {
   canSubmitInterviewResult,
   filterInterviewResultTransitions,
 } from '../utils/interviewResultAccess'
-import InstanceContextSummary from '../components/InstanceContextSummary'
+import OperatorInstanceContextSummary from '../components/OperatorInstanceContextSummary'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import { useToast } from '../contexts/ToastContext'
 import ProcessRollbackSection from '../components/ProcessRollbackSection'
@@ -27,6 +27,7 @@ import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
+import { userHasAnyRole } from '../utils/userRoles'
 import { mergeEducationalLeaveTriggerPayload } from '../utils/educationalLeaveTriggerPayload'
 import { mergeFullEducationLeaveTriggerPayload } from '../utils/fullEducationLeaveTriggerPayload'
 import { mergeCommitteesReviewTriggerPayload } from '../utils/committeesReviewTriggerPayload'
@@ -48,6 +49,7 @@ import ThesisDefenseEducationSchedulePanel from '../components/ThesisDefenseEduc
 import EducationalTherapistMonitoringReviewPanel from '../components/EducationalTherapistMonitoringReviewPanel'
 import EducationalTherapistInterviewPanel from '../components/EducationalTherapistInterviewPanel'
 import EducationalTherapistTherapistReviewPanel from '../components/EducationalTherapistTherapistReviewPanel'
+import EducationalTherapistSlotsAdmin from '../components/EducationalTherapistSlotsAdmin'
 import TaToAssistantFacultyReviewPanel from '../components/TaToAssistantFacultyReviewPanel'
 import TaUpgradeSupervisionReviewPanel from '../components/TaUpgradeSupervisionReviewPanel'
 import { mergeEducationalTherapistUpgradeTriggerPayload } from '../utils/educationalTherapistUpgradeTriggerPayload'
@@ -245,13 +247,13 @@ export default function CommitteePortal() {
       if (user?.role === 'admin') return true
       if (
         state === 'interview_scheduling'
-        && (user?.role === 'progress_committee' || user?.role === 'progress_committee_project')
+        && userHasAnyRole(user, ['progress_committee', 'progress_committee_project'])
       ) {
         return true
       }
       if (
         state === 'interview_held'
-        && (user?.role === 'progress_committee' || user?.role === 'progress_committee_scientific')
+        && userHasAnyRole(user, ['progress_committee', 'progress_committee_scientific'])
       ) {
         return true
       }
@@ -501,8 +503,11 @@ export default function CommitteePortal() {
       base.push({ id: 'all', label: 'همه فرایندها', icon: '🔄' })
     }
     base.push({ id: 'students', label: 'دانشجویان', icon: '👨‍🎓' })
+    if (kind === 'supervision' || user?.role === 'admin') {
+      base.push({ id: 'etTherapistSlots', label: 'شیت وقت درمان آموزشی', icon: '🗓️' })
+    }
     return base
-  }, [displayPendingReviews.length, kindMeta, user?.role])
+  }, [displayPendingReviews.length, kindMeta, user?.role, kind])
 
   if (loading) {
     return (
@@ -830,9 +835,10 @@ export default function CommitteePortal() {
                 active={instanceDetail?.process_code === 'ta_track_completion'}
               />
 
-              <InstanceContextSummary
-                contextData={instanceDetail.context_data}
-                history={instanceDetail.history}
+              <OperatorInstanceContextSummary
+                user={user}
+                instanceDetail={instanceDetail}
+                availableTransitions={availableTransitions}
                 title="پرونده و سابقه (قبل از تصمیم)"
               />
 
@@ -1045,6 +1051,10 @@ export default function CommitteePortal() {
             </table>
           </div>
         </div>
+      )}
+
+      {activeTab === 'etTherapistSlots' && (kind === 'supervision' || user?.role === 'admin') && (
+        <EducationalTherapistSlotsAdmin showToast={showToast} />
       )}
     </div>
   )

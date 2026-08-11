@@ -49,6 +49,38 @@ async def _resolve_system_actor_id(db) -> uuid.UUID:
     return row if row else uuid.uuid4()
 
 
+async def _persist_admission_from_instance(db, instance: ProcessInstance, to_state: str) -> None:
+    """نوع پذیرش را از context/نتیجه روی Student.extra_data بنویس (برای گیت ترم ۲)."""
+    from app.services.admission_type_service import (
+        persist_admission_type_on_student,
+        resolve_admission_type_from_context,
+    )
+
+    ctx = _ctx(instance)
+    student = (
+        await db.execute(select(Student).where(Student.id == instance.student_id))
+    ).scalars().first()
+    if not student:
+        return
+    canonical = persist_admission_type_on_student(
+        student,
+        admission_type=ctx.get("admission_type") or resolve_admission_type_from_context(ctx),
+        interview_result=ctx.get("interview_result") or ctx.get("result"),
+        result_state=to_state,
+    )
+    if canonical and not ctx.get("admission_type"):
+        ctx = dict(ctx)
+        ctx["admission_type"] = canonical
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+    if canonical:
+        logger.info(
+            "persisted admission_type=%s on student=%s (intro registration)",
+            canonical,
+            student.id,
+        )
+
+
 async def chain_introductory_registration_after_transition(
     db,
     engine: StateMachineEngine,
@@ -61,10 +93,19 @@ async def chain_introductory_registration_after_transition(
         return
 
     if to_state in _INTRO_ADMISSION_RESULT_STATES:
+        await _persist_admission_from_instance(db, instance, to_state)
+
         from app.services.registration_readiness_service import check_intro_registration_gate
 
         gate = await check_intro_registration_gate(db)
         if not gate.allowed:
+            ctx = _ctx(instance)
+            ctx["student_next_action_fa"] = (
+                "پذیرش شما ثبت شد. آپلود مدارک پس از باز شدن پنجرهٔ ثبت‌نام ترم فعال می‌شود؛ "
+                "همین صفحه را بعد از اعلام باز شدن ثبت‌نام تازه کنید."
+            )
+            instance.context_data = ctx
+            flag_modified(instance, "context_data")
             logger.info(
                 "introductory proceed_to_documents deferred (gate closed) instance=%s",
                 instance.id,

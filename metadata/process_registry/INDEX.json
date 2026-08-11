@@ -5,7 +5,7 @@
   "processes": [
     {
       "code": "educational_leave",
-      "name_fa": "رخص آزش ت از ثبتا در کاسا",
+      "name_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/educational_leave",
@@ -31,7 +31,7 @@
     },
     {
       "code": "start_therapy",
-      "name_fa": "آغاز درا آزش",
+      "name_fa": "آغاز درمان آموزشی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/start_therapy",
@@ -51,12 +51,12 @@
         "system"
       ],
       "sub_process_refs": [],
-      "last_converted": "2026-02-14",
-      "notes": "کبارصرف. ا ۲۴ ساعت. ا فت . پذرش شرط در فراد ثبتا. SOP کا: processes/start_therapy/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code start_therapy"
+      "last_converted": "2026-08-04",
+      "notes": "بدون تأیید درمانگر: therapist_selected → book اسلات‌های شیت کمیته + apply_start_therapy_session_schedule (قانون ۲۴ ساعت) → payment_pending → therapy_active. week_interval روی اسلات (هفتگی/هفته‌درمیان). SOP: processes/start_therapy/SOP_document.txt"
     },
     {
       "code": "therapy_changes",
-      "name_fa": "درت تغرات درا آزش",
+      "name_fa": "مدیریت تغییرات درمان آموزشی (آغاز مجدد، تغییر درمانگر، تغییر ساعت)",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/therapy_changes",
@@ -74,7 +74,7 @@
     },
     {
       "code": "extra_session",
-      "name_fa": "برگزار جس اضاف درا آزش",
+      "name_fa": "برگزاری جلسه اضافی درمان آموزشی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/extra_session",
@@ -94,7 +94,7 @@
     },
     {
       "code": "session_payment",
-      "name_fa": "پرداخت برا جسات آت درا آزش",
+      "name_fa": "پرداخت برای جلسات آتی درمان آموزشی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/session_payment",
@@ -109,13 +109,13 @@
         "system"
       ],
       "sub_process_refs": [],
-      "last_converted": "2026-02-14",
+      "last_converted": "2026-08-06",
       "sop_order": 5,
-      "notes": "شرط بد. تخصص اعتبار. فعاساز ک  ثبت حضر بحض پرداخت. SOP کا: processes/session_payment/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code session_payment"
+      "notes": "بدهی: تسویه خودکار + بنر UI + مبلغ در فاکتور. SOP: processes/session_payment/SOP_document.txt"
     },
     {
       "code": "attendance_tracking",
-      "name_fa": "تک شد ساعات درا آزش (حضر  غاب)",
+      "name_fa": "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/attendance_tracking",
@@ -147,7 +147,7 @@
     },
     {
       "code": "fee_determination",
-      "name_fa": "تع تکف ز جس درا آزش ا سپر فرد",
+      "name_fa": "تعیین تکلیف هزینه جلسه درمان آموزشی یا سوپرویژن فردی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/fee_determination",
@@ -173,7 +173,7 @@
     },
     {
       "code": "therapy_completion",
-      "name_fa": "تک  خات درا آزش",
+      "name_fa": "تکمیل و خاتمه درمان آموزشی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/therapy_completion",
@@ -196,7 +196,7 @@
     },
     {
       "code": "therapy_session_increase",
-      "name_fa": "درخاست داشج برا افزاش جسات فتگ درا آزش",
+      "name_fa": "درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/therapy_session_increase",
@@ -216,7 +216,7 @@
     },
     {
       "code": "therapy_session_reduction",
-      "name_fa": "درخاست داشج برا کاش جسات فتگ درا آزش",
+      "name_fa": "درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/therapy_session_reduction",
@@ -245,7 +245,7 @@
     },
     {
       "code": "therapy_early_termination",
-      "name_fa": "طع زدرس درا آزش تسط دراگر آزش",
+      "name_fa": "قطع زودرس درمان آموزشی توسط درمانگر آموزشی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/therapy_early_termination",
@@ -272,7 +272,7 @@
     },
     {
       "code": "specialized_commission_review",
-      "name_fa": "بررس کس تخصص (زرفراد اف)",
+      "name_fa": "بررسی کمیسیون تخصصی (زیرفرایند الف)",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/specialized_commission_review",
@@ -294,7 +294,7 @@
     },
     {
       "code": "committees_review",
-      "name_fa": "بررس کتا ظارت  آزش (زرفراد ب)",
+      "name_fa": "بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/committees_review",
@@ -320,7 +320,7 @@
     },
     {
       "code": "therapist_session_cancellation",
-      "name_fa": "کس کرد جس از س دراگر آزش",
+      "name_fa": "کنسل کردن جلسه از سوی درمانگر آموزشی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/therapist_session_cancellation",
@@ -343,7 +343,7 @@
     },
     {
       "code": "unannounced_absence_reaction",
-      "name_fa": "اکش استت ب غبت بد اطاع در جس آد",
+      "name_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/unannounced_absence_reaction",
@@ -368,7 +368,7 @@
     },
     {
       "code": "unannounced_supervision_absence_reaction",
-      "name_fa": "اکش استت ب غبت بد اطاع در جس آد سپر فرد",
+      "name_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/unannounced_supervision_absence_reaction",
@@ -396,7 +396,7 @@
     },
     {
       "code": "therapy_interruption",
-      "name_fa": "ف در درا آزش تسط داشج",
+      "name_fa": "وقفه در درمان آموزشی توسط دانشجو",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/therapy_interruption",
@@ -420,7 +420,7 @@
     },
     {
       "code": "student_session_cancellation",
-      "name_fa": "کس کرد جسات درا آزش تسط داشج",
+      "name_fa": "۱۷: کنسل کردن جلسات درمان آموزشی توسط دانشجو",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/student_session_cancellation",
@@ -446,7 +446,7 @@
     },
     {
       "code": "supervision_block_transition",
-      "name_fa": "درت تغرات سپر فرد (آغاز جدد تغر سپرازر تغر ساعت)",
+      "name_fa": "مدیریت تغییرات سوپرویژن فردی (آغاز مجدد، تغییر سوپروایزر، تغییر ساعت)",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/supervision_block_transition",
@@ -469,7 +469,7 @@
     },
     {
       "code": "supervision_50h_completion",
-      "name_fa": "تک درا ۵۰ ساعت سپر فرد",
+      "name_fa": "تکمیل کردن دوره‌های ۵۰ ساعته سوپرویژن فردی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/supervision_50h_completion",
@@ -499,7 +499,7 @@
     },
     {
       "code": "supervision_session_increase",
-      "name_fa": "درخاست داشج برا افزاش جسات فتگ سپر",
+      "name_fa": "۲۱: درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/supervision_session_increase",
@@ -521,7 +521,7 @@
     },
     {
       "code": "extra_supervision_session",
-      "name_fa": "درخاست داشج برا برگزار جس اضاف سپر",
+      "name_fa": "۲۲: درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/extra_supervision_session",
@@ -542,7 +542,7 @@
     },
     {
       "code": "supervision_session_reduction",
-      "name_fa": "درخاست داشج برا کاش جسات فتگ سپر",
+      "name_fa": "۲۳: درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/supervision_session_reduction",
@@ -568,7 +568,7 @@
     },
     {
       "code": "student_supervision_cancellation",
-      "name_fa": "کس کرد جسات سپر تسط داشج  اکش استت",
+      "name_fa": "کنسل کردن جلسات سوپرویژن توسط دانشجو و واکنش انستیتو",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/student_supervision_cancellation",
@@ -595,7 +595,7 @@
     },
     {
       "code": "supervisor_session_cancellation",
-      "name_fa": "کس کرد جس از س سپرازر",
+      "name_fa": "کنسل کردن جلسه از سوی سوپروایزر",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/supervisor_session_cancellation",
@@ -620,7 +620,7 @@
     },
     {
       "code": "supervision_interruption",
-      "name_fa": "ف در سپر فرد تسط داشج",
+      "name_fa": "وقفه در سوپرویژن فردی توسط دانشجو",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/supervision_interruption",
@@ -644,7 +644,7 @@
     },
     {
       "code": "fall_semester_preparation",
-      "name_fa": "آادساز تر پاز",
+      "name_fa": "آماده‌سازی ترم پاییز",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/fall_semester_preparation",
@@ -665,7 +665,7 @@
     },
     {
       "code": "winter_semester_preparation",
-      "name_fa": "آادساز تر زستا",
+      "name_fa": "آماده‌سازی ترم زمستان",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/winter_semester_preparation",
@@ -687,7 +687,7 @@
     },
     {
       "code": "introductory_course_registration",
-      "name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "name_fa": "ثبت‌نام دوره آشنایی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/introductory_course_registration",
@@ -706,7 +706,7 @@
     },
     {
       "code": "introductory_term_end",
-      "name_fa": "پاا ترا در آشا",
+      "name_fa": "پایان ترم‌های دوره آشنایی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/introductory_term_end",
@@ -724,7 +724,7 @@
     },
     {
       "code": "intro_second_semester_registration",
-      "name_fa": "ثبتا داشج برا تر د در آشا",
+      "name_fa": "ثبت‌نام دانشجو برای ترم دوم دوره آشنایی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/intro_second_semester_registration",
@@ -743,7 +743,7 @@
     },
     {
       "code": "introductory_course_completion",
-      "name_fa": "خات در آشا",
+      "name_fa": "خاتمه دوره آشنایی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/introductory_course_completion",
@@ -760,7 +760,7 @@
     },
     {
       "code": "comprehensive_course_registration",
-      "name_fa": "ثبتا در در جاع",
+      "name_fa": "ثبت‌نام در دوره جامع",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/comprehensive_course_registration",
@@ -782,7 +782,7 @@
     },
     {
       "code": "comprehensive_term_end",
-      "name_fa": "پاا ترا در جاع",
+      "name_fa": "پایان ترم‌های دوره جامع",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/comprehensive_term_end",
@@ -798,7 +798,7 @@
     },
     {
       "code": "internship_readiness_consultation",
-      "name_fa": "شرت  تع آادگ برا آغاز اتر",
+      "name_fa": "مشورت و تعیین آمادگی برای آغاز انترنی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/internship_readiness_consultation",
@@ -820,7 +820,7 @@
     },
     {
       "code": "internship_12month_conditional_review",
-      "name_fa": "۱۲ ا پس از ب شرط در اتر",
+      "name_fa": "۱۲ ماه پس از گذشت قبولی به صورت مشروط در انترنی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/internship_12month_conditional_review",
@@ -841,7 +841,7 @@
     },
     {
       "code": "intern_hours_increase",
-      "name_fa": "اضاف شد حداکثر ساعتا ارائ درا اتر",
+      "name_fa": "اضافه شدن حداکثر ساعت‌های ارائه درمان انترن",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/intern_hours_increase",
@@ -880,7 +880,7 @@
     },
     {
       "code": "lesson_start_per_term",
-      "name_fa": "آغاز ر درس در ر تر",
+      "name_fa": "آغاز هر درس در هر ترم",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/lesson_start_per_term",
@@ -903,7 +903,7 @@
     },
     {
       "code": "student_non_registration",
-      "name_fa": "عد ثبتا داشج برا تر بعد",
+      "name_fa": "عدم ثبت‌نام دانشجو برای ترم بعد",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/student_non_registration",
@@ -924,7 +924,7 @@
     },
     {
       "code": "ta_conceptual_questions",
-      "name_fa": "ثبت ۳ سا تستف (ککدرس)",
+      "name_fa": "ثبت ۳ سوال تستی‌مفهومی پس از هر جلسه کلاس (کمک‌مدرس)",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/ta_conceptual_questions",
@@ -945,7 +945,7 @@
     },
     {
       "code": "ta_student_consultation",
-      "name_fa": "شاسا تش  شرت آزش (ککدرس)",
+      "name_fa": "شناسایی، تشویق و مشورت آموزشی به دانشجویان (کمک‌مدرس)",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/ta_student_consultation",
@@ -963,7 +963,7 @@
     },
     {
       "code": "ta_essay_upload",
-      "name_fa": "آپد جستار  دا تخب ف (ککدرس)",
+      "name_fa": "آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس (کمک‌مدرس)",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/ta_essay_upload",
@@ -986,7 +986,7 @@
     },
     {
       "code": "ta_blog_content",
-      "name_fa": "ثبت حتا باگ از حتا درس (ککدرس)",
+      "name_fa": "ثبت محتوای وبلاگ از محتوای درسی توسط کمک‌مدرس",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/ta_blog_content",
@@ -1008,7 +1008,7 @@
     },
     {
       "code": "upgrade_to_ta",
-      "name_fa": "ارتا ب ککدرس",
+      "name_fa": "ارتقا دانشجو به کمک‌مدرس",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/upgrade_to_ta",
@@ -1028,7 +1028,7 @@
     },
     {
       "code": "mentor_private_sessions",
-      "name_fa": "ثبت تارخ ۲ جس تدرس خصص درس ب ککدرس",
+      "name_fa": "ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/mentor_private_sessions",
@@ -1050,7 +1050,7 @@
     },
     {
       "code": "ta_to_assistant_faculty",
-      "name_fa": "ارتا رتب از ککدرس ب دستار ئت ع",
+      "name_fa": "ارتقا رتبهٔ تحلیل دانشجو از کمک‌مدرسی به دستیار هیئت علمی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/ta_to_assistant_faculty",
@@ -1069,7 +1069,7 @@
     },
     {
       "code": "ta_to_instructor_auto",
-      "name_fa": "تبد خدکار ککدرس ب درس در ر درس",
+      "name_fa": "تبدیل شدن کمک‌مدرس به مدرس در هر درس",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/ta_to_instructor_auto",
@@ -1087,7 +1087,7 @@
     },
     {
       "code": "ta_track_change",
-      "name_fa": "تغر ا اضاف کرد رست ککدرس",
+      "name_fa": "تغییر یا اضافه کردن رسته کمک‌مدرسی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/ta_track_change",
@@ -1105,7 +1105,7 @@
     },
     {
       "code": "ta_track_completion",
-      "name_fa": "خات ککدرس برا ر رست",
+      "name_fa": "خاتمه کمک‌مدرسی برای هر رسته",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/ta_track_completion",
@@ -1123,7 +1123,7 @@
     },
     {
       "code": "ta_instructor_leave",
-      "name_fa": "رخص ککدرس  درس",
+      "name_fa": "مرخصی کمک‌مدرسی و مدرسین",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/ta_instructor_leave",
@@ -1142,7 +1142,7 @@
     },
     {
       "code": "class_attendance",
-      "name_fa": "حضر  غاب در تا کاسا",
+      "name_fa": "حضور و غیاب در تمامی کلاس‌ها",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/class_attendance",
@@ -1164,7 +1164,7 @@
     },
     {
       "code": "violation_registration",
-      "name_fa": "ثبت تخفات",
+      "name_fa": "ثبت تخلفات",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/violation_registration",
@@ -1184,7 +1184,7 @@
     },
     {
       "code": "class_session_cancellation",
-      "name_fa": "کس کرد جسات کاسا درس",
+      "name_fa": "کنسل کردن جلسات کلاس‌های درسی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/class_session_cancellation",
@@ -1206,7 +1206,7 @@
     },
     {
       "code": "student_instructor_evaluation",
-      "name_fa": "ارزاب داشج از درس",
+      "name_fa": "ارزیابی دانشجو از مدرسین",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/student_instructor_evaluation",
@@ -1225,7 +1225,7 @@
     },
     {
       "code": "process_merged_to_one",
-      "name_fa": "تشد ب فراد شار ۱",
+      "name_fa": "منتقل‌شده به فرایند شماره ۱",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/process_merged_to_one",
@@ -1243,7 +1243,7 @@
     },
     {
       "code": "full_education_leave",
-      "name_fa": "رخص ت از ک آزش",
+      "name_fa": "مرخصی موقت از کل آموزش",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/full_education_leave",
@@ -1270,7 +1270,7 @@
     },
     {
       "code": "return_to_full_education",
-      "name_fa": "بازگشت دبار ب ک آزش پس از رخص از ک آزش",
+      "name_fa": "بازگشت دوباره به کل آموزش پس از مرخصی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/return_to_full_education",
@@ -1289,7 +1289,7 @@
     },
     {
       "code": "theory_course_completion",
-      "name_fa": "خات درس تئر",
+      "name_fa": "خاتمه دروس تئوری",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/theory_course_completion",
@@ -1312,7 +1312,7 @@
     },
     {
       "code": "group_supervision_course_completion",
-      "name_fa": "خات ر درس سپر گر",
+      "name_fa": "خاتمه هر درس سوپرویژن گروهی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/group_supervision_course_completion",
@@ -1335,7 +1335,7 @@
     },
     {
       "code": "skills_course_completion",
-      "name_fa": "خات درس تکک تر ارتا",
+      "name_fa": "خاتمه دروس تکنیک تمرین مهارت‌ها",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/skills_course_completion",
@@ -1358,7 +1358,7 @@
     },
     {
       "code": "film_observation_course_completion",
-      "name_fa": "خات ر درس ع کاربرد شاد فا  بخش آپد گزارش پاا",
+      "name_fa": "خاتمه هر درس عملی کاربردی و مشاهده فیلم‌ها",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/film_observation_course_completion",
@@ -1376,7 +1376,7 @@
     },
     {
       "code": "live_therapy_observation_course_completion",
-      "name_fa": "خات درس شاد زد درا  بخش آپد گزارش پاا",
+      "name_fa": "خاتمه درس مشاهده زنده درمان – بخش آپلود گزارش پایانی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/live_therapy_observation_course_completion",
@@ -1394,7 +1394,7 @@
     },
     {
       "code": "live_therapy_observation_session_prep",
-      "name_fa": "دات برگزار جسات شاد زد درا",
+      "name_fa": "مقدمات برگزاری جلسات مشاهده زنده درمان",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/live_therapy_observation_session_prep",
@@ -1412,7 +1412,7 @@
     },
     {
       "code": "live_supervision_course_completion",
-      "name_fa": "خات درس سپر زد",
+      "name_fa": "خاتمه درس سوپرویژن زنده",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/live_supervision_course_completion",
@@ -1434,7 +1434,7 @@
     },
     {
       "code": "live_supervision_session_prep",
-      "name_fa": "دات برگزار جسات سپر زد",
+      "name_fa": "مقدمات برگزاری جلسات سوپرویژن زنده",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/live_supervision_session_prep",
@@ -1452,7 +1452,7 @@
     },
     {
       "code": "article_writing_completion",
-      "name_fa": "خات درس اس جت گزارش رد",
+      "name_fa": "خاتمه درس مقاله‌نویسی جهت گزارش موردی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/article_writing_completion",
@@ -1474,7 +1474,7 @@
     },
     {
       "code": "thesis_defense_request",
-      "name_fa": "درخاست ثبت دفاع پااا",
+      "name_fa": "درخواست ثبت دفاع پایان‌نامه",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/thesis_defense_request",
@@ -1498,7 +1498,7 @@
     },
     {
       "code": "upgrade_to_educational_therapist",
-      "name_fa": "ارتا ب دراگر آزش",
+      "name_fa": "ارتقا به درمانگر آموزشی",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/upgrade_to_educational_therapist",
@@ -1519,7 +1519,7 @@
     },
     {
       "code": "intern_bulk_patient_referral",
-      "name_fa": "ارجاع ک بارا اتر ب دراگرا دگر",
+      "name_fa": "ارجاع کلیه بیماران انترن به درمانگران دیگر",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/intern_bulk_patient_referral",
@@ -1542,7 +1542,7 @@
     },
     {
       "code": "live_supervision_ta_evaluation",
-      "name_fa": "ارزاب ککدرس درس سپر زد",
+      "name_fa": "ارزیابی کمک مدرس درس سوپرویژن زنده",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/live_supervision_ta_evaluation",
@@ -1567,7 +1567,7 @@
     },
     {
       "code": "live_therapy_observation_ta_attendance_completion",
-      "name_fa": "خات درس شاد زد درا  بخش کک درس  ر حضر  غاب  شارکت",
+      "name_fa": "خاتمه درس مشاهده زنده درمان – بخش کمک مدرس و نمره حضور و غیاب و مشارکت",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/live_therapy_observation_ta_attendance_completion",
@@ -1591,7 +1591,7 @@
     },
     {
       "code": "film_observation_ta_attendance_completion",
-      "name_fa": "خات ر درس ع کاربرد شاد فا  بخش کک درس  ر حضر  غاب  شارکت",
+      "name_fa": "خاتمه هر درس عملی کاربردی، مشاهده فیلم‌ها — بخش کمک مدرس و نمره حضور و غیاب و مشارکت",
       "status": "complete_in_metadata",
       "has_registry_entry": true,
       "registry_path": "processes/film_observation_ta_attendance_completion",

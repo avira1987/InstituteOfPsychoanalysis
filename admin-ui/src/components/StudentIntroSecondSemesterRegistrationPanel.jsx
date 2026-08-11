@@ -9,18 +9,22 @@ import {
   PAYMENT_METHOD_LABELS,
   fmtIsoDate,
 } from '../utils/introSecondSemesterRegistrationDisplay'
+import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
 
 const PROCESS_TITLE_FA = 'ثبت‌نام ترم دوم دوره آشنایی (فرایند ۳۳)'
+const PROC_CODE = 'intro_second_semester_registration'
 
-/** راهنمای هر وضعیت برای دانشجو. */
-const STATE_HINTS = {
-  eligibility_check: 'سامانه در حال بررسی صلاحیت ثبت‌نام شماست (شرط درمان و وضعیت تعلیق). این مرحله خودکار است؛ چند لحظه بعد صفحه را تازه کنید.',
-  course_selection: 'دروس مجاز ترم دوم را بر اساس نوع پذیرش و فهرست منتشرشدهٔ آماده‌سازی ترم انتخاب و تأیید کنید.',
-  payment_method: 'روش پرداخت را انتخاب کنید: نقدی (یکجا) یا اقساطی (حداکثر ۴ قسط). دانشجویان تک‌درس فقط مجاز به پرداخت نقدی هستند.',
-  payment_processing: 'از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید تا تأیید پرداخت ثبت شود؛ در صورت خطا دوباره تلاش کنید.',
-  registration_complete: 'ثبت‌نام شما در ترم دوم نهایی شد و لینک کلاس آنلاین فعال است. در صورت انتخاب پرداخت اقساطی، اقساط بعدی را در سررسید پرداخت کنید.',
-  installment_overdue: 'قسط معوق دارید و ثبت حضور و غیاب شما بلاک شده است. برای رفع بلاک، قسط معوق را پرداخت کنید.',
-  term2_registration_closed: 'تسویه مالی کامل شد و فرایند ثبت‌نام ترم دوم بسته شد. دروس و لینک‌های کلاس در پنل آموزش در دسترس است.',
+function resolveIntro2Hint(state) {
+  if (!state) {
+    return 'ثبت‌نام ترم دوم دوره آشنایی — مراحل را طبق راهنمای پنل پیش ببرید.'
+  }
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  const short = PROCESS_STATE_LABELS_FA[PROC_CODE]?.[state]
+  return short || 'ثبت‌نام ترم دوم دوره آشنایی — مراحل را طبق راهنمای پنل پیش ببرید.'
 }
 
 function InfoTile({ label, value, tone = '#2563eb', bg = '#eff6ff' }) {
@@ -64,8 +68,10 @@ export default function StudentIntroSecondSemesterRegistrationPanel({
   const isComplete = currentState === 'registration_complete'
   const isClosed = currentState === 'term2_registration_closed'
 
-  const hint = STATE_HINTS[currentState]
-    ?? 'ثبت‌نام ترم دوم دوره آشنایی — مراحل را طبق راهنمای پنل پیش ببرید.'
+  const hint = isStop
+    ? (INTRO2_STOP_MESSAGES[currentState] || resolveIntro2Hint(currentState))
+    : resolveIntro2Hint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelIntro2State(currentState)) ?? ''
 
   const admissionLabel = term2.admissionType
     ? (ADMISSION_TYPE_LABELS_T2[term2.admissionType] || term2.admissionType)
@@ -142,6 +148,12 @@ export default function StudentIntroSecondSemesterRegistrationPanel({
               color: '#1e3a8a',
             }}
           >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
           </div>
         )}

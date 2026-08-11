@@ -6,19 +6,64 @@ from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.auth import get_current_user, require_role
 from app.models.operational_models import User, Student, TherapySession, AttendanceRecord, ProcessInstance
-from app.services.alocom_provision import refresh_therapy_session_alocom_links
+from app.services.alocom_provision import (
+    ensure_therapy_session_alocom_links,
+    is_stub_therapy_meeting_url,
+    is_tokenized_alocom_join_url,
+    refresh_therapy_session_alocom_links,
+)
 from app.services.attendance_service import AttendanceService
 from app.services.attendance_tracking_sync import (
     apply_therapy_attendance_via_process,
     find_attendance_instance_for_session,
     refresh_attendance_instance_from_db,
 )
+
+
+async def _list_therapy_sessions_for_therapist(
+    db: AsyncSession,
+    therapist_user_id,
+    *,
+    order_upcoming_first: bool = True,
+) -> list[TherapySession]:
+    """جلسات این درمانگر: روی خود جلسه یا از طریق student.therapist_id.
+
+    اگر therapist_id جلسه خالی باشد ولی دانشجو به این درمانگر وصل باشد، مقدار را پر می‌کند
+    تا در تب جلسات آنلاین و میزکار حضور/غیاب دیده شود.
+    """
+    q = (
+        select(TherapySession)
+        .outerjoin(Student, TherapySession.student_id == Student.id)
+        .where(
+            or_(
+                TherapySession.therapist_id == therapist_user_id,
+                Student.therapist_id == therapist_user_id,
+            )
+        )
+    )
+    if order_upcoming_first:
+        q = q.order_by(
+            TherapySession.session_date.asc(),
+            TherapySession.session_starts_at.asc().nulls_last(),
+        )
+    else:
+        q = q.order_by(TherapySession.session_date.desc())
+
+    rows = list((await db.execute(q)).scalars().unique().all())
+    dirty = False
+    for s in rows:
+        if s.therapist_id is None:
+            s.therapist_id = therapist_user_id
+            dirty = True
+    if dirty:
+        await db.flush()
+    return rows
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/therapy-sessions", tags=["TherapySessions"])
@@ -36,6 +81,8 @@ class TherapySessionOut(BaseModel):
     id: str
     student_id: str
     therapist_id: Optional[str]
+    student_code: Optional[str] = None
+    student_meeting_url_ready: bool = False
     session_date: str
     session_number: Optional[int]
     status: str
@@ -65,23 +112,42 @@ class TherapySessionPatch(BaseModel):
     )
 
 
-def _to_out(s: TherapySession, *, viewer: Optional[User] = None) -> dict:
-    starts = s.session_starts_at.isoformat() if getattr(s, "session_starts_at", None) else None
+def _host_meeting_url_for_viewer(s: TherapySession, viewer: Optional[User] = None) -> Optional[str]:
     meeting_url = s.meeting_url
     if viewer and viewer.role in ("therapist", "admin", "staff"):
         host = getattr(s, "host_meeting_url", None)
         if (host or "").strip():
             meeting_url = host
+    url = (meeting_url or "").strip() or None
+    # لینک ساختگی داخلی را به‌عنوان لینک ورود نشان نده
+    if url and is_stub_therapy_meeting_url(url):
+        return None
+    return url
+
+
+def _to_out(
+    s: TherapySession,
+    *,
+    viewer: Optional[User] = None,
+    student_code: Optional[str] = None,
+) -> dict:
+    starts = s.session_starts_at.isoformat() if getattr(s, "session_starts_at", None) else None
+    meeting_url = _host_meeting_url_for_viewer(s, viewer)
+    student_link_ready = bool(is_tokenized_alocom_join_url(s.meeting_url) or (
+        (s.meeting_url or "").strip() and not is_stub_therapy_meeting_url(s.meeting_url)
+    ))
     return {
         "id": str(s.id),
         "student_id": str(s.student_id),
         "therapist_id": str(s.therapist_id) if s.therapist_id else None,
+        "student_code": student_code,
+        "student_meeting_url_ready": student_link_ready,
         "session_date": s.session_date.isoformat() if s.session_date else "",
         "session_number": s.session_number,
         "status": s.status,
         "payment_status": s.payment_status,
         "meeting_url": meeting_url,
-        "meeting_provider": s.meeting_provider,
+        "meeting_provider": s.meeting_provider if meeting_url else None,
         "links_unlocked": bool(s.links_unlocked),
         "instructor_score": s.instructor_score,
         "instructor_comment": s.instructor_comment,
@@ -89,6 +155,41 @@ def _to_out(s: TherapySession, *, viewer: Optional[User] = None) -> dict:
         "alocom_event_id": getattr(s, "alocom_event_id", None),
         "session_starts_at": starts,
     }
+
+
+def _attendance_recording_flags(
+    s: TherapySession,
+    *,
+    proc_state: Optional[str],
+    recorded_status: Optional[str],
+    today,
+) -> tuple[bool, bool, bool, Optional[str]]:
+    """Return (can_record_present, can_record_absent, can_record, block_reason)."""
+    terminal_states = (
+        "session_completed",
+        "excused_absence",
+        "unexcused_absence",
+        "recording_closed",
+        "auto_absence_unpaid",
+    )
+    if s.status == "cancelled":
+        return False, False, False, "session_cancelled"
+    if recorded_status:
+        return False, False, False, "already_recorded"
+    if proc_state in terminal_states:
+        return False, False, False, proc_state
+
+    session_ready = proc_state == "therapist_recording" or (
+        proc_state == "session_scheduled" and s.session_date <= today
+    )
+    if not session_ready:
+        return False, False, False, None
+
+    paid = s.payment_status in ("paid", "waived")
+    if paid:
+        return True, True, True, None
+    # SOP: unpaid — Present grayed, Absent allowed
+    return False, True, True, "unpaid"
 
 
 @router.get("/me", response_model=list[TherapySessionOut])
@@ -102,6 +203,17 @@ async def list_my_sessions(
     st = r.scalars().first()
     if not st:
         raise HTTPException(status_code=404, detail="Student profile not found")
+
+    if st.therapy_started:
+        try:
+            from app.services.therapy_session_schedule import repair_student_therapy_continuity
+
+            repair = await repair_student_therapy_continuity(db, st.id)
+            if (repair.get("seed") or {}).get("created") or (repair.get("session_payment") or {}).get("started"):
+                await db.commit()
+        except Exception:
+            logger.exception("repair_student_therapy_continuity on /me failed student=%s", st.id)
+
     q = select(TherapySession).where(TherapySession.student_id == st.id).order_by(TherapySession.session_date.desc())
     r2 = await db.execute(q)
     rows = r2.scalars().all()
@@ -126,22 +238,36 @@ async def list_for_therapist(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("therapist", "admin")),
 ):
-    """Therapist: sessions assigned to this user."""
-    q = (
-        select(TherapySession)
-        .where(TherapySession.therapist_id == current_user.id)
-        .order_by(TherapySession.session_date.desc())
+    """Therapist: sessions assigned to this user (upcoming-first order)."""
+    rows = await _list_therapy_sessions_for_therapist(
+        db, current_user.id, order_upcoming_first=True
     )
-    r = await db.execute(q)
-    rows = r.scalars().all()
+    if not rows:
+        return []
+
+    student_ids = {s.student_id for s in rows}
+    st_rows = await db.execute(select(Student).where(Student.id.in_(student_ids)))
+    students_by_id = {st.id: st for st in st_rows.scalars().all()}
+
     out = []
     for s in rows:
+        try:
+            await ensure_therapy_session_alocom_links(db, s)
+        except Exception:
+            logger.exception("ensure therapy alocom link failed session=%s", s.id)
         if s.meeting_provider == "alocom":
             try:
                 await refresh_therapy_session_alocom_links(db, s)
             except Exception:
                 logger.exception("refresh therapist therapy link failed session=%s", s.id)
-        out.append(_to_out(s, viewer=current_user))
+        st = students_by_id.get(s.student_id)
+        out.append(
+            _to_out(
+                s,
+                viewer=current_user,
+                student_code=st.student_code if st else None,
+            )
+        )
     return out
 
 
@@ -167,17 +293,49 @@ async def list_for_student(
 
 @router.get("/attendance-workbench")
 async def attendance_workbench(
+    needs_recording_only: bool = False,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("therapist", "admin", "staff")),
 ):
     """Therapist workbench for process #6 (attendance_tracking): sessions + process state."""
-    from datetime import date as date_type
+    from datetime import date as date_type, timedelta
 
-    q = select(TherapySession).order_by(TherapySession.session_date.desc())
+    from app.utils.shamsi_calendar_utils import parse_iso_date, tehran_today
+
+    today = tehran_today()
+    from_d = parse_iso_date(from_date) if from_date else today - timedelta(days=7)
+    to_d = parse_iso_date(to_date) if to_date else today + timedelta(days=14)
+    limit = min(max(1, limit), 200)
+    offset = max(0, offset)
+
     if current_user.role == "therapist":
-        q = q.where(TherapySession.therapist_id == current_user.id)
-    r = await db.execute(q)
-    sessions = list(r.scalars().all())
+        sessions = await _list_therapy_sessions_for_therapist(
+            db, current_user.id, order_upcoming_first=False
+        )
+        sessions = [
+            s for s in sessions
+            if s.session_date and from_d <= s.session_date <= to_d
+        ]
+    else:
+        span = (to_d - from_d).days
+        if span > 31:
+            raise HTTPException(
+                status_code=400,
+                detail="برای staff بازهٔ تاریخ حداکثر ۳۱ روز است.",
+            )
+        q = (
+            select(TherapySession)
+            .where(
+                TherapySession.session_date >= from_d,
+                TherapySession.session_date <= to_d,
+            )
+            .order_by(TherapySession.session_date.desc())
+        )
+        sessions = list((await db.execute(q)).scalars().all())
     if not sessions:
         return {"stats": {"needs_recording": 0, "recorded": 0, "closed": 0}, "sessions": []}
 
@@ -185,7 +343,6 @@ async def attendance_workbench(
     st_rows = await db.execute(select(Student).where(Student.id.in_(student_ids)))
     students_by_id = {st.id: st for st in st_rows.scalars().all()}
 
-    today = date_type.today()
     needs_recording = 0
     recorded = 0
     closed = 0
@@ -211,26 +368,30 @@ async def attendance_workbench(
         last_rec = rec_r.scalars().first()
         recorded_status = last_rec.status if last_rec else None
 
-        can_record = False
-        block_reason = None
-        if s.status == "cancelled":
-            block_reason = "session_cancelled"
-        elif s.payment_status not in ("paid", "waived"):
-            block_reason = "unpaid"
-        elif proc_state == "therapist_recording":
-            can_record = True
-        elif proc_state == "session_scheduled" and s.session_date <= today:
-            can_record = True
-        elif recorded_status:
-            block_reason = "already_recorded"
-        elif proc_state in ("session_completed", "excused_absence", "unexcused_absence", "recording_closed", "auto_absence_unpaid"):
-            block_reason = proc_state
+        if s.meeting_provider == "alocom":
+            try:
+                await refresh_therapy_session_alocom_links(db, s)
+            except Exception:
+                logger.exception("refresh workbench therapy link failed session=%s", s.id)
+        else:
+            try:
+                await ensure_therapy_session_alocom_links(db, s)
+            except Exception:
+                logger.exception("ensure workbench therapy alocom link failed session=%s", s.id)
+
+        can_record_present, can_record_absent, can_record, block_reason = _attendance_recording_flags(
+            s,
+            proc_state=proc_state,
+            recorded_status=recorded_status,
+            today=today,
+        )
+        host_url = _host_meeting_url_for_viewer(s, current_user)
 
         if can_record and not recorded_status:
             needs_recording += 1
         elif recorded_status or proc_state in ("session_completed", "excused_absence", "unexcused_absence"):
             recorded += 1
-        elif block_reason in ("session_cancelled", "unpaid", "recording_closed", "auto_absence_unpaid"):
+        elif block_reason in ("session_cancelled", "recording_closed", "auto_absence_unpaid"):
             closed += 1
 
         out_sessions.append({
@@ -245,9 +406,26 @@ async def attendance_workbench(
             "attendance_process_state": proc_state,
             "attendance_instance_id": instance_id,
             "recorded_status": recorded_status,
+            "can_record_present": can_record_present and not recorded_status,
+            "can_record_absent": can_record_absent and not recorded_status,
             "can_record": can_record and not recorded_status,
             "record_block_reason": block_reason,
+            "meeting_url": host_url,
+            "meeting_provider": s.meeting_provider if host_url else None,
+            "links_unlocked": bool(s.links_unlocked),
+            "student_meeting_url_ready": bool(
+                (s.meeting_url or "").strip() and not is_stub_therapy_meeting_url(s.meeting_url)
+            ),
+            "alocom_event_id": getattr(s, "alocom_event_id", None),
+            "instructor_score": s.instructor_score,
+            "instructor_comment": s.instructor_comment,
         })
+
+    if needs_recording_only:
+        out_sessions = [row for row in out_sessions if row["can_record"]]
+
+    total_sessions = len(out_sessions)
+    out_sessions = out_sessions[offset: offset + limit]
 
     return {
         "stats": {
@@ -256,6 +434,12 @@ async def attendance_workbench(
             "closed": closed,
         },
         "sessions": out_sessions,
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total_sessions,
+        },
+        "date_range": {"from": from_d.isoformat(), "to": to_d.isoformat()},
     }
 
 
@@ -434,8 +618,20 @@ async def patch_session(
             )
 
     meeting_url_set = "meeting_url" in data
+    links_unlocked_set = "links_unlocked" in data
     for k, v in data.items():
         setattr(s, k, v)
+    if links_unlocked_set and s.links_unlocked:
+        if s.payment_status not in ("paid", "waived"):
+            raise HTTPException(
+                status_code=409,
+                detail="لینک دانشجو پس از پرداخت یا معافیت قابل فعال‌سازی است.",
+            )
+        if not (s.meeting_url or "").strip():
+            raise HTTPException(
+                status_code=409,
+                detail="ابتدا لینک جلسه (الوکام یا دستی) باید ساخته شود.",
+            )
     if meeting_url_set and (s.meeting_url or "").strip():
         if s.payment_status in ("paid", "waived") and "links_unlocked" not in data:
             s.links_unlocked = True

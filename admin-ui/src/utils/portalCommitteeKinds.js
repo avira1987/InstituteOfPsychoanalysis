@@ -11,6 +11,7 @@ export const COMMITTEE_KINDS = {
     portalRoles: ['progress_committee'],
     showAllTab: true,
     priority: 25,
+    groupId: 'committees',
   },
   education: {
     id: 'education',
@@ -19,6 +20,7 @@ export const COMMITTEE_KINDS = {
     portalRoles: ['education_committee', 'deputy_education'],
     showAllTab: false,
     priority: 25.1,
+    groupId: 'committees',
   },
   supervision: {
     id: 'supervision',
@@ -27,6 +29,7 @@ export const COMMITTEE_KINDS = {
     portalRoles: ['supervision_committee', 'monitoring_committee_officer', 'specialized_commission'],
     showAllTab: false,
     priority: 25.2,
+    groupId: 'committees',
   },
   therapy: {
     id: 'therapy',
@@ -35,6 +38,7 @@ export const COMMITTEE_KINDS = {
     portalRoles: ['therapy_committee_chair', 'therapy_committee_executor'],
     showAllTab: false,
     priority: 25.3,
+    groupId: 'committees',
   },
 }
 
@@ -187,6 +191,7 @@ export function committeeKindForAssignedRole(roleCode) {
     committee: 'progress',
     progress_committee: 'progress',
     progress_committee_project: 'progress',
+    progress_committee_scientific: 'progress',
     education_committee: 'education',
     deputy_education: 'education',
     deputy_education_director: 'education',
@@ -201,4 +206,4 @@ export function committeeKindForAssignedRole(roleCode) {
   return committeeRoleMap[code] || 'progress'
 }
 
-export const COMMITTEE_DEEP_LINK_TABS = ['dashboard', 'reviews', 'all', 'students']
+export const COMMITTEE_DEEP_LINK_TABS = ['dashboard', 'reviews', 'all', 'students', 'etTherapistSlots']

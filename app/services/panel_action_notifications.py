@@ -137,6 +137,7 @@ def notification_action_path(item: dict[str, Any]) -> str:
     student_id = item.get("student_id")
     code = (item.get("responsible_role_code") or "").strip().lower()
     process_code = (item.get("process_code") or "").strip().lower()
+    state_code = (item.get("state_code") or "").strip().lower()
     base = {"instance_id": instance_id, "student_id": student_id}
 
     if code in ("student", "applicant"):
@@ -149,6 +150,15 @@ def notification_action_path(item: dict[str, Any]) -> str:
         if process_code in ("fall_semester_preparation", "winter_semester_preparation"):
             return "/panel/semester-prep"
         return _path_query("/panel/students", {"student_id": student_id, "instance_id": instance_id})
+
+    if (
+        process_code == "introductory_course_registration"
+        and state_code == "documents_review"
+    ):
+        return _path_query(
+            staff_lane_path("admissions"),
+            {**base, "tab": "documentsReview"},
+        )
 
     if code == "therapist":
         return _path_query("/panel/portal/therapist", {**base, "tab": "pending"})

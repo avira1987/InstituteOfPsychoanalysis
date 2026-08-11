@@ -58,7 +58,7 @@ curl -s http://127.0.0.1:3000/debug/process-count 2>&1 || echo 'N/A'
 
 echo ''
 echo '=== 10. Website via proxy (curl) ==='
-curl -s -o /dev/null -w 'HTTP:%{http_code}' http://127.0.0.1/anistito/ 2>/dev/null || curl -s -o /dev/null -w 'HTTP:%{http_code}' https://bpms.psychoanalysis.ir/anistito/ 2>/dev/null || echo 'N/A'
+curl -s -o /dev/null -w 'HTTP:%{http_code}' http://127.0.0.1/anistito/ 2>/dev/null || curl -s -o /dev/null -w 'HTTP:%{http_code}' https://lms.psychoanalysis.ir/anistito/ 2>/dev/null || echo 'N/A'
 "@
 
 $ErrorActionPreference = "Continue"
@@ -68,4 +68,4 @@ $ErrorActionPreference = "Stop"
 Write-Host $out
 Write-Host ""
 Write-Host "=== Done ===" -ForegroundColor Green
-Write-Host "URL: https://bpms.psychoanalysis.ir/anistito/" -ForegroundColor White
+Write-Host "URL: https://lms.psychoanalysis.ir/anistito/" -ForegroundColor White

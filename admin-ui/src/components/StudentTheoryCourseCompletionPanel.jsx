@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react'
 import { processExecApi } from '../services/api'
 import {
-  BORDERLINE_HINT_FA,
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   EXAM_MAX,
   PROCESS_TITLE_FA,
   STATE_HINTS,
@@ -18,21 +21,13 @@ import {
   scoringSummaryLabel,
 } from '../utils/theoryCourseCompletionDisplay'
 
-const STUDENT_STATE_HINTS = {
-  awaiting_session_18:
-    'درس شما در انتظار جلسه ۱۸ است. پس از برگزاری جلسه، مدرس مشارکت را ثبت می‌کند.',
-  session_18_entry:
-    'جلسه ۱۸ — مدرس در حال ثبت مشارکت و انتخاب پک آزمون است.',
-  final_exam_open:
-    'آزمون تستی آنلاین (۸۲ نمره) آماده است. غیبت در آزمون → Incomplete.',
-  grades_computed: 'نمرات در حال نهایی‌سازی است.',
-  borderline_student_choice: BORDERLINE_HINT_FA,
-  retake_exam_open:
-    'امتحان مجدد فعال شد. پس از پرداخت، در زمان مقرر آزمون را بگذرانید.',
-  qualitative_eval_pending: 'مدرس فرم ارزیابی کیفی را تکمیل می‌کند.',
-  grades_locked: 'نمره نهایی ثبت و قفل شد.',
-  session_18_delay: 'مهلت ثبت جلسه ۱۸ گذشته است. با دفتر آموزش تماس بگیرید.',
-  qualitative_eval_delay: 'تأخیر در ارزیابی کیفی. با دفتر آموزش تماس بگیرید.',
+const PROC_CODE = 'theory_course_completion'
+
+function resolveTheoryHint(state) {
+  if (!state) return 'خاتمه دروس تئوری — وضعیت پرونده را در همین صفحه دنبال کنید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return STATE_HINTS[state] || 'خاتمه دروس تئوری — وضعیت پرونده را در همین صفحه دنبال کنید.'
 }
 
 /**
@@ -57,8 +52,8 @@ export default function StudentTheoryCourseCompletionPanel({
     return null
   }
 
-  const hint = STUDENT_STATE_HINTS[currentState] || STATE_HINTS[currentState]
-    || 'خاتمه دروس تئوری — وضعیت پرونده را در همین صفحه دنبال کنید.'
+  const hint = resolveTheoryHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelTheoryState(currentState)) ?? ''
   const isTerminal = isTerminalState(currentState)
 
   const myRow = (theoryCtx.studentsGrades || []).find(
@@ -161,7 +156,12 @@ export default function StudentTheoryCourseCompletionPanel({
         <TheorySlaBanner ctx={ctx} startedAt={detail.started_at} currentState={currentState} />
 
         {hint && (
-          <TheoryHintBlock tone={currentState?.includes('delay') ? 'danger' : 'info'}>
+          <TheoryHintBlock tone={currentState?.includes('delay') ? 'danger' : 'info'} title="اقدام بعدی شما">
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
             {hint}
           </TheoryHintBlock>
         )}

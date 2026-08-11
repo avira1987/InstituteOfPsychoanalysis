@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { processExecApi } from '../services/api'
 import { notesPayload } from '../utils/decisionPayload'
 import DecisionNotesBlock from './DecisionNotesBlock'
-import InstanceContextSummary from './InstanceContextSummary'
+import OperatorInstanceContextSummary from './OperatorInstanceContextSummary'
 import {
   canSubmitInterviewResult,
   filterInterviewResultTransitions,
@@ -226,10 +226,13 @@ export default function InterviewerResultPanel({
           </div>
         )}
 
-        <InstanceContextSummary
-          contextData={instanceDetail.context_data}
-          history={instanceDetail.history}
-          title="اطلاعات مصاحبه"
+        <OperatorInstanceContextSummary
+          user={user}
+          instanceDetail={instanceDetail}
+          availableTransitions={availableTransitions}
+          title="خلاصه پرونده"
+          contextAudience="interviewer"
+          showHistory={false}
         />
 
         {showInterviewAdvance && (

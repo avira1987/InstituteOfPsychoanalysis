@@ -2,6 +2,10 @@ import React, { useMemo } from 'react'
 import UploadedDocumentsReadonlyGrid from './UploadedDocumentsReadonlyGrid'
 import LiveTherapyObservationFinalReportUploadSection from './LiveTherapyObservationFinalReportUploadSection'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   BORDERLINE_SMS_FA,
   LiveTherapyCompletionFlowStepper,
   LiveTherapyCompletionHintBlock,
@@ -17,13 +21,13 @@ import {
   resolveLiveTherapyCompletionContext,
 } from '../utils/liveTherapyObservationCourseCompletionDisplay'
 
-const STUDENT_STATE_HINTS = {
-  grades_entry:
-    'گزارش پایانی درس را فقط به‌صورت PDF آپلود کنید. فرم از پایان جلسه ۱۷ باز و در ۲۴:۰۰ روز جلسه ۱۸ بسته می‌شود. پس از آپلود، مدرس ظرف ۵ روز گزارش را تصحیح می‌کند.',
-  grades_locked:
-    'نمره گزارش ثبت شد. اگر نمره نهایی شما در بازه مرزی ۶۴ تا ۷۳ باشد، می‌توانید امتحان مجدد (با پرداخت) یا دوباره گذراندن درس را انتخاب کنید.',
-  delay_reported:
-    'مهلت ثبت یا تصحیح گزارش گذشته است. برای پیگیری با دفتر آموزش تماس بگیرید.',
+const PROC_CODE = 'live_therapy_observation_course_completion'
+
+function resolveLiveTherapyHint(state) {
+  if (!state) return 'خاتمه درس مشاهده زنده درمان — وضعیت پرونده را در همین صفحه دنبال کنید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return STATE_HINTS[state] || 'خاتمه درس مشاهده زنده درمان — وضعیت پرونده را در همین صفحه دنبال کنید.'
 }
 
 /**
@@ -49,8 +53,8 @@ export default function StudentLiveTherapyObservationCourseCompletionPanel({
     return null
   }
 
-  const hint = STUDENT_STATE_HINTS[currentState] || STATE_HINTS[currentState]
-    || 'خاتمه درس مشاهده زنده درمان — وضعیت پرونده را در همین صفحه دنبال کنید.'
+  const hint = resolveLiveTherapyHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelLiveTherapyCompletionState(currentState)) ?? ''
   const isTerminal = isTerminalState(currentState)
   const isBorderline = therapyCtx.passFail === 'مرزی'
     || (therapyCtx.totalScore != null && therapyCtx.totalScore >= 64 && therapyCtx.totalScore <= 73)

@@ -10,10 +10,14 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.interview_slots_routes import _slot_to_dict
+from app.api.interview_slots_routes import _interviewer_names_for_slots, _slot_to_dict
 from app.core.engine import StateMachineEngine
 from app.models.operational_models import InterviewSlot, Student, TherapySession, User
-from app.services.alocom_provision import refresh_therapy_session_alocom_links
+from app.services.alocom_provision import (
+    ensure_therapy_session_alocom_links,
+    is_stub_therapy_meeting_url,
+    refresh_therapy_session_alocom_links,
+)
 from app.services.interview_slot_service import (
     expire_interview_booking_payment_deadlines,
     interview_slot_result_recorded,
@@ -80,18 +84,27 @@ def _therapy_status_fa(session: TherapySession) -> str:
         parts.append(st)
     if not session.links_unlocked:
         parts.append("لینک هنوز فعال نشده")
-    elif not (session.meeting_url or "").strip():
+    elif is_stub_therapy_meeting_url(session.meeting_url) or not (session.meeting_url or "").strip():
         parts.append("در انتظار لینک از درمانگر")
     return " · ".join(parts) if parts else "—"
 
 
-def _therapy_item(session: TherapySession, *, viewer: User) -> dict[str, Any]:
+def _therapy_item(
+    session: TherapySession,
+    *,
+    viewer: User,
+    therapist_name_fa: Optional[str] = None,
+) -> dict[str, Any]:
     starts = session.session_starts_at
     if starts is None and session.session_date:
         starts = datetime.combine(session.session_date, time.min, tzinfo=timezone.utc)
     ends = None
     link_visible = bool(session.links_unlocked)
-    meeting_link = (session.meeting_url or "").strip() if link_visible else None
+    raw_link = (session.meeting_url or "").strip() if link_visible else None
+    if raw_link and is_stub_therapy_meeting_url(raw_link):
+        raw_link = None
+    meeting_link = raw_link
+    name = (therapist_name_fa or "").strip() or None
     return {
         "id": str(session.id),
         "kind": "therapy",
@@ -107,8 +120,10 @@ def _therapy_item(session: TherapySession, *, viewer: User) -> dict[str, Any]:
         "session_status": session.status,
         "student_join_open": False,
         "source_ref": f"therapy_session:{session.id}",
-        "meeting_provider": session.meeting_provider if link_visible else None,
+        "meeting_provider": session.meeting_provider if meeting_link else None,
         "links_unlocked": bool(session.links_unlocked),
+        "therapist_id": str(session.therapist_id) if session.therapist_id else None,
+        "therapist_name_fa": name,
     }
 
 
@@ -154,6 +169,7 @@ def _interview_item(slot_dict: dict[str, Any]) -> dict[str, Any]:
         "source_ref": f"interview_slot:{slot_dict['id']}",
         "meeting_provider": "alocom" if slot_dict.get("alocom_event_id") else None,
         "links_unlocked": None,
+        "interviewer_name_fa": (slot_dict.get("interviewer_name_fa") or None),
     }
 
 
@@ -259,6 +275,21 @@ async def list_student_online_sessions(
         .order_by(TherapySession.session_date.desc())
     )
     therapy_rows = (await db.execute(t_stmt)).scalars().all()
+    therapist_ids: set[uuid.UUID] = set()
+    if student.therapist_id:
+        therapist_ids.add(student.therapist_id)
+    for session in therapy_rows:
+        if session.therapist_id:
+            therapist_ids.add(session.therapist_id)
+    therapist_name_by_id: dict[uuid.UUID, str] = {}
+    if therapist_ids:
+        th_rows = (
+            await db.execute(select(User).where(User.id.in_(list(therapist_ids))))
+        ).scalars().all()
+        for th in th_rows:
+            label = (th.full_name_fa or th.username or "").strip()
+            if label:
+                therapist_name_by_id[th.id] = label
     for session in therapy_rows:
         if not include_past:
             ref = session.session_starts_at
@@ -266,6 +297,10 @@ async def list_student_online_sessions(
                 ref = datetime.combine(session.session_date, time.max, tzinfo=timezone.utc)
             if ref and ref < now and session.status != "scheduled":
                 continue
+        try:
+            await ensure_therapy_session_alocom_links(db, session)
+        except Exception:
+            logger.exception("ensure_therapy_session_alocom_links failed session=%s", session.id)
         if session.meeting_provider == "alocom" and session.links_unlocked:
             try:
                 await refresh_therapy_session_alocom_links(db, session)
@@ -273,7 +308,14 @@ async def list_student_online_sessions(
                 logger.exception(
                     "refresh_therapy_session_alocom_links failed session=%s", session.id
                 )
-        items.append(_therapy_item(session, viewer=viewer))
+        tid = session.therapist_id or student.therapist_id
+        items.append(
+            _therapy_item(
+                session,
+                viewer=viewer,
+                therapist_name_fa=therapist_name_by_id.get(tid) if tid else None,
+            )
+        )
 
     # ── Interview slots (payment confirmed — آنلاین و حضوری) ──
     await expire_interview_booking_payment_deadlines(db, now=now)
@@ -285,14 +327,20 @@ async def list_student_online_sessions(
         iv_stmt = iv_stmt.where(InterviewSlot.ends_at >= now)
     iv_stmt = iv_stmt.order_by(InterviewSlot.starts_at)
     interview_rows = (await db.execute(iv_stmt)).scalars().all()
+    interviewer_names = await _interviewer_names_for_slots(db, list(interview_rows))
     for slot in interview_rows:
         result_recorded = await interview_slot_result_recorded(db, slot)
         if slot.mode == "online" and not result_recorded:
             await maybe_provision_interview_slot_alocom_link(
                 db, slot, payment_confirmed=True
             )
+        iv_id = getattr(slot, "interviewer_user_id", None)
         slot_dict = _slot_to_dict(
-            slot, viewer=viewer, now=now, result_recorded=result_recorded
+            slot,
+            viewer=viewer,
+            now=now,
+            result_recorded=result_recorded,
+            interviewer_name_fa=interviewer_names.get(iv_id) if iv_id else None,
         )
         items.append(_interview_item(slot_dict))
 

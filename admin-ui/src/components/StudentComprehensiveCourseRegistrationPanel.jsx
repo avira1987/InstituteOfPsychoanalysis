@@ -8,35 +8,22 @@ import {
   fmtRialAsToman,
   isCompRegRejected,
 } from '../utils/comprehensiveCourseRegistrationDisplay'
+import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
 
 const PROCESS_TITLE_FA = 'ثبت‌نام دوره جامع (فرایند ۳۵)'
+const PROC_CODE = 'comprehensive_course_registration'
 
-/** راهنمای هر وضعیت برای دانشجو. */
-const STATE_HINTS = {
-  application_submitted:
-    'درخواست ورود به دوره جامع ثبت شد. پروندهٔ شما برای بررسی به کمیته نظارت ارسال می‌شود؛ منتظر نتیجهٔ بررسی باشید.',
-  supervision_committee_review:
-    'پروندهٔ شما در حال بررسی توسط کمیته نظارت است. پس از تعیین نتیجه، وضعیت این صفحه به‌روز می‌شود.',
-  executive_review:
-    'پروندهٔ شما توسط مسئول اجرایی کمیته پیشرفت در حال بررسی است. منتظر نتیجهٔ بررسی باشید.',
-  scientific_review:
-    'پروندهٔ شما در انتظار تصمیم مسئول علمی کمیته پیشرفت است. پس از تعیین نتیجه، مرحلهٔ بعد فعال می‌شود.',
-  document_upload:
-    'گزارش تجربه شخصی را طبق قالب اعلام‌شده در همین پورتال بارگذاری و ثبت کنید.',
-  interview_scheduled:
-    'زمان مصاحبه را از مسیر اعلام‌شده در سایت یا پیامک پذیرش انتخاب کنید؛ پس از رزرو، مرحلهٔ پرداخت هزینهٔ مصاحبه فعال می‌شود.',
-  interview_payment:
-    'هزینهٔ مصاحبه را در درگاه پرداخت تکمیل کنید؛ در صورت خطا دوباره تلاش کنید تا تأیید پرداخت ثبت شود.',
-  interview_completed:
-    'مصاحبه انجام شد. منتظر ثبت نتیجه توسط مصاحبه‌گر باشید؛ به‌محض اعلام نتیجه، مراحل بعد فعال می‌شود.',
-  result_accepted:
-    'پذیرش شما در دوره جامع تأیید شد. شرط پذیرش: حداقل ۲ بار در هفته درمان شخصی و ثبت‌نام در تمامی دروس ترم جامع. مراحل بعد را طبق راهنمای پنل پیش ببرید.',
-  course_display:
-    'دروس ترم ۳ (اول جامع) برای شما نمایش داده شده است. تمامی دروس الزامی هستند؛ پس از تأیید، به مرحلهٔ پرداخت شهریه هدایت می‌شوید.',
-  payment:
-    'شهریه را به‌صورت نقدی یا حداکثر در ۴ قسط طبق راهنمای پنل پرداخت کنید تا ثبت‌نام نهایی شود.',
-  registration_complete:
-    'ثبت‌نام شما در دوره جامع تکمیل شد. کلاس‌ها و لینک‌های آنلاین برای شما ایجاد می‌شود.',
+function resolveCompRegHint(state) {
+  if (!state) {
+    return 'ثبت‌نام در دوره جامع — مراحل را طبق راهنمای پنل پیش ببرید.'
+  }
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  const short = PROCESS_STATE_LABELS_FA[PROC_CODE]?.[state]
+  return short || 'ثبت‌نام در دوره جامع — مراحل را طبق راهنمای پنل پیش ببرید.'
 }
 
 function InfoTile({ label, value, tone = '#2563eb', bg = '#eff6ff' }) {
@@ -76,8 +63,8 @@ export default function StudentComprehensiveCourseRegistrationPanel({
     return null
   }
 
-  const hint = STATE_HINTS[currentState]
-    ?? 'ثبت‌نام در دوره جامع — مراحل را طبق راهنمای پنل پیش ببرید.'
+  const hint = resolveCompRegHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelCompRegState(currentState)) ?? ''
 
   const isRejected = isCompRegRejected(currentState)
   const isComplete = currentState === 'registration_complete'
@@ -110,20 +97,26 @@ export default function StudentComprehensiveCourseRegistrationPanel({
       <div style={{ padding: compact ? '0 0.75rem 0.75rem' : '0 1rem 1rem' }}>
         <CompRegFlowStepper currentState={currentState} compact={compact} />
 
-        {!isRejected && hint && (
+        {hint && (
           <div
             data-testid="comp-reg-state-hint"
             style={{
               marginBottom: compact ? '0.65rem' : '0.85rem',
               padding: '0.75rem 1rem',
               borderRadius: '10px',
-              background: '#eff6ff',
-              borderRight: '4px solid #2563eb',
+              background: isRejected ? '#fef2f2' : '#eff6ff',
+              borderRight: isRejected ? '4px solid #dc2626' : '4px solid #2563eb',
               fontSize: '0.86rem',
               lineHeight: 1.75,
-              color: '#1e3a8a',
+              color: isRejected ? '#991b1b' : '#1e3a8a',
             }}
           >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
           </div>
         )}

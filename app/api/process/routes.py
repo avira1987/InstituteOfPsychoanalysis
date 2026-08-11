@@ -43,9 +43,13 @@ from app.meta.course_selection_validation import (
 from app.meta.student_step_forms import (
     apply_register_to_context,
     apply_unlock_to_context,
+    clear_step_otp_verified_flags,
+    context_has_step_otp_verified,
     filter_forms_for_student,
+    process_state_requires_step_otp,
     sanitize_form_values,
     sanitize_operator_form_values,
+    stamp_step_otp_verified,
     validate_operator_step_forms,
     validate_student_step_forms,
 )
@@ -66,6 +70,39 @@ def _normalize_actor_role(role: Optional[str]) -> str:
     return s or "student"
 
 
+async def _ensure_step_otp_verified_for_register(
+    db: AsyncSession,
+    *,
+    current_user: User,
+    instance: ProcessInstance,
+    sanitized: dict,
+) -> dict:
+    """دروازه OTP مرحله: فلگ سروری پس از /step-otp/verify، یا تأیید otp_code در همان register."""
+    if not process_state_requires_step_otp(instance.process_code, instance.current_state_code):
+        return sanitized
+
+    if context_has_step_otp_verified(instance.context_data, instance.current_state_code):
+        sanitized["step_otp_verified"] = True
+        return sanitized
+
+    otp_code = str(sanitized.get("otp_code") or "").strip()
+    if not otp_code:
+        raise HTTPException(status_code=400, detail="کد پیامکی الزامی است.")
+    phone = (current_user.phone or "").strip()
+    if not phone:
+        raise HTTPException(status_code=400, detail="شماره موبایل در پروفایل شما ثبت نشده است.")
+    from app.services.otp_service import verify_otp_code_only
+
+    otp_res = await verify_otp_code_only(db, phone, otp_code)
+    if not otp_res.get("success"):
+        raise HTTPException(
+            status_code=400,
+            detail=otp_res.get("error") or "کد پیامکی نامعتبر است.",
+        )
+    sanitized["step_otp_verified"] = True
+    return sanitized
+
+
 def _portal_role_can_act_on_state(actor_role: str, process_code: str, state_code: str) -> bool:
     from app.meta.operator_state_catalog import (
         normalize_assigned_role,
@@ -82,6 +119,16 @@ def _portal_role_can_act_on_state(actor_role: str, process_code: str, state_code
     if actor_role in ("student", "applicant") and norm_assigned in ("student", "applicant"):
         return True
     return portal_role_can_act_on_assigned_role(actor_role, norm_assigned)
+
+
+def _user_can_act_on_state(user: User, process_code: str, state_code: str) -> bool:
+    """اجتماع نقش‌های کاربر — اگر هر نقش بتواند روی مرحله اقدام کند."""
+    from app.core.user_roles import normalize_user_roles
+
+    roles = normalize_user_roles(user)
+    if "admin" in roles:
+        return True
+    return any(_portal_role_can_act_on_state(r, process_code, state_code) for r in roles)
 
 
 def _lock_forms_when_cannot_act(forms: list, *, can_act: bool) -> list:
@@ -348,21 +395,61 @@ async def _enrich_supervision_session_reduction_start(
     return out
 
 
-def _enrich_lesson_start_context(
+async def _enrich_lesson_start_context(
+    db: AsyncSession,
     initial_context: Optional[dict],
     student_row: Student,
 ) -> Optional[dict]:
-    """دروس قابل انتخاب را از lms پروندهٔ دانشجو برای فرم ثبت‌نام در درس seed می‌کند."""
+    """دروس قابل انتخاب را از TermCourseOffering فعال (و در صورت نبود از lms) seed می‌کند."""
+    from app.services.term_course_offering_service import (
+        list_offerings,
+        offering_to_option,
+    )
+
     out = dict(initial_context or {})
     extra = StateMachineEngine._as_mapping(student_row.extra_data)
     lms = StateMachineEngine._as_mapping(extra.get("lms"))
-    available = list(lms.get("available_courses") or lms.get("enrolled_courses") or [])
-    if not available:
+    program_kind = (student_row.course_type or "introductory").strip() or "introductory"
+    term_number = int(student_row.current_term or 1)
+    offerings = await list_offerings(
+        db,
+        program_kind=program_kind,
+        term_number=term_number,
+        active_only=True,
+    )
+    offering_options = [offering_to_option(r) for r in offerings]
+    available_codes = [o["value"] for o in offering_options if o.get("value")]
+    if not available_codes:
+        available_codes = list(lms.get("available_courses") or lms.get("enrolled_courses") or [])
+        # normalize string codes from enrolled list
+        available_codes = [
+            (c.get("code") or c.get("course_code") or c) if isinstance(c, dict) else c
+            for c in available_codes
+        ]
+        available_codes = [str(c).strip() for c in available_codes if c]
+    if not available_codes:
+        # demo/empty fallback — marked so UI/tests can detect synthetic catalog
         term = int(student_row.current_term or 1)
         ctype = student_row.course_type or "introductory"
-        available = [f"{ctype}_term{term}_course{i}" for i in range(1, 4)]
+        available_codes = [f"{ctype}_term{term}_course{i}" for i in range(1, 4)]
+        out["lesson_catalog_synthetic"] = True
+    else:
+        out["lesson_catalog_synthetic"] = False
     out.setdefault("lms", dict(lms))
-    out["lms"].setdefault("available_courses", available)
+    out["lms"]["available_courses"] = available_codes
+    if offering_options:
+        out["lms"]["available_course_options"] = offering_options
+        out["prep_course_rows"] = [
+            {
+                "course_code": o.get("value"),
+                "course_name": o.get("label_fa") or o.get("value"),
+                "teaching_assistant": o.get("teaching_assistant_name") or "",
+                "instructor": o.get("instructor_name") or "",
+                "day": o.get("day"),
+                "time": o.get("time_text"),
+            }
+            for o in offering_options
+        ]
     return out
 
 
@@ -974,7 +1061,8 @@ def _file_upload_field_names_for_process(
 
 class StartProcessRequest(BaseModel):
     process_code: str
-    student_id: str
+    student_id: Optional[str] = None
+    user_id: Optional[str] = None
     initial_context: Optional[dict] = None
 
 
@@ -1151,10 +1239,25 @@ async def get_process_forms_for_state(
     current_user: User = Depends(get_current_user),
 ):
     """Get form metadata for a process (for rendering in UI). Optional state filter for current state forms (BUILD_TODO § ز)."""
-    actor_role = _normalize_actor_role(current_user.role)
+    from app.core.user_roles import normalize_user_roles, user_has_role
+
     raw_forms = get_process_forms(process_code, state_code=state)
-    forms = visible_forms_for_role(raw_forms, actor_role) if actor_role != "student" else raw_forms
-    can_act_on_state = _portal_role_can_act_on_state(actor_role, process_code, state or "")
+    if user_has_role(current_user, "student", admin_bypass=False) and len(normalize_user_roles(current_user)) == 1:
+        forms = raw_forms
+    else:
+        # اجتماع فیلدهای قابل‌رؤیت برای همهٔ نقش‌های کاربر
+        seen_codes: set[str] = set()
+        forms = []
+        for r in normalize_user_roles(current_user):
+            for f in visible_forms_for_role(raw_forms, r):
+                code = (f.get("code") or f.get("form_code") or id(f))
+                if code in seen_codes:
+                    continue
+                seen_codes.add(code)
+                forms.append(f)
+        if not forms and user_has_role(current_user, "student", admin_bypass=False):
+            forms = raw_forms
+    can_act_on_state = _user_can_act_on_state(current_user, process_code, state or "")
     forms = _lock_forms_when_cannot_act(forms, can_act=can_act_on_state)
     state_assigned_role = get_state_assigned_role(process_code, state or "") if state else None
     suggested_context: dict = {}
@@ -1187,28 +1290,108 @@ async def start_process(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Start a new process instance for a student."""
-    student_uuid = uuid.UUID(request.student_id)
-    stmt = select(Student).where(Student.id == student_uuid)
-    student_row = (await db.execute(stmt)).scalars().first()
-    if not student_row:
-        raise HTTPException(status_code=404, detail="Student not found")
+    """Start a new process instance (student case, or staff subject on INST-OPS carrier)."""
+    from app.meta.process_start_scope import (
+        MANUAL_START_OPERATOR_ROLES,
+        get_manual_start_scope,
+    )
+    from app.services.institute_operational_anchor import (
+        ensure_institute_operational_student,
+        is_institute_operational_student,
+    )
 
-    if _normalize_actor_role(current_user.role) == "student" and student_row.user_id != current_user.id:
+    actor_role = _normalize_actor_role(current_user.role)
+    scope = get_manual_start_scope(request.process_code)
+    initial_ctx = dict(request.initial_context or {}) if request.initial_context else {}
+    subject_user: User | None = None
+
+    if scope == "institute":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="فقط می‌توانید فرایند را برای پروفایل خودتان آغاز کنید.",
+            status_code=400,
+            detail=(
+                "فرایندهای آماده‌سازی ترم را از هاب آماده‌سازی ترم "
+                "(/panel/semester-prep) شروع کنید؛ شروع از ردیابی دانشجو یا مدیریت کاربران مجاز نیست."
+            ),
         )
+
+    if scope == "staff":
+        if actor_role not in MANUAL_START_OPERATOR_ROLES:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="فقط پرسنل مجاز می‌توانند این فرایند را برای کاربر شروع کنند.",
+            )
+        if not (request.user_id or "").strip():
+            raise HTTPException(
+                status_code=400,
+                detail="برای شروع این فرایند، شناسهٔ کاربر (user_id) الزامی است.",
+            )
+        try:
+            subject_uuid = uuid.UUID(str(request.user_id).strip())
+        except ValueError:
+            raise HTTPException(status_code=400, detail="شناسهٔ کاربر نامعتبر است.")
+        subject_user = await db.get(User, subject_uuid)
+        if not subject_user:
+            raise HTTPException(status_code=404, detail="کاربر یافت نشد.")
+        student_row = await ensure_institute_operational_student(db)
+        student_uuid = student_row.id
+        initial_ctx["subject_user_id"] = str(subject_user.id)
+        initial_ctx["subject_username"] = subject_user.username
+        initial_ctx["subject_user_role"] = (subject_user.role or "").strip()
+        if subject_user.full_name_fa:
+            initial_ctx["subject_user_name_fa"] = subject_user.full_name_fa
+    else:
+        # student scope
+        if not (request.student_id or "").strip():
+            raise HTTPException(
+                status_code=400,
+                detail="برای شروع این فرایند، شناسهٔ دانشجو (student_id) الزامی است.",
+            )
+        try:
+            student_uuid = uuid.UUID(str(request.student_id).strip())
+        except ValueError:
+            raise HTTPException(status_code=400, detail="شناسهٔ دانشجو نامعتبر است.")
+        stmt = select(Student).where(Student.id == student_uuid)
+        student_row = (await db.execute(stmt)).scalars().first()
+        if not student_row:
+            raise HTTPException(status_code=404, detail="Student not found")
+        if is_institute_operational_student(student_row):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "این رکورد پرونده عملیاتی انستیتو است؛ فرایند دانشجو‌محور را "
+                    "روی دانشجوی واقعی شروع کنید."
+                ),
+            )
+        if actor_role == "student" and student_row.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="فقط می‌توانید فرایند را برای پروفایل خودتان آغاز کنید.",
+            )
 
     extra = StateMachineEngine._as_mapping(student_row.extra_data)
     if (
-        request.process_code in _REGISTRATION_PROCESS_CODES_BLOCKED_UNDER_CLASS_ACCESS
+        scope == "student"
+        and request.process_code in _REGISTRATION_PROCESS_CODES_BLOCKED_UNDER_CLASS_ACCESS
         and extra.get("class_access_blocked")
     ):
         raise HTTPException(
             status_code=400,
             detail="به‌دلیل مرخصی آموزشی فعال، ثبت‌نام ترم/درس تا زمان بازگشت و رفع مسدودیت در سامانه مجاز نیست.",
         )
+
+    if (
+        scope == "student"
+        and request.process_code == "intro_second_semester_registration"
+    ):
+        gates = extra.get("gates") if isinstance(extra.get("gates"), dict) else {}
+        if gates.get("next_term_registration_blocked"):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "ثبت‌نام در ترم دوم دوره آشنایی منوط به آغاز درمان آموزشی و ثبت درمانگر فعال است. "
+                    "لطفاً ابتدا از کارت/فرایند «آغاز درمان آموزشی» در پورتال اقدام کنید."
+                ),
+            )
 
     if request.process_code == "introductory_course_registration":
         from app.services.registration_readiness_service import check_intro_registration_gate
@@ -1217,7 +1400,8 @@ async def start_process(
         if not gate.allowed:
             raise HTTPException(status_code=403, detail=gate.reason_fa)
 
-    initial_ctx = request.initial_context
+    enrich_actor = subject_user if (scope == "staff" and subject_user is not None) else current_user
+
     if request.process_code == "therapy_session_increase":
         initial_ctx = _enrich_therapy_session_increase_start(initial_ctx, student_row)
     if request.process_code == "supervision_session_increase":
@@ -1229,14 +1413,26 @@ async def start_process(
     if request.process_code == "supervision_session_reduction":
         initial_ctx = await _enrich_supervision_session_reduction_start(db, initial_ctx, student_row)
     if request.process_code == "lesson_start_per_term":
-        initial_ctx = _enrich_lesson_start_context(initial_ctx, student_row)
+        initial_ctx = await _enrich_lesson_start_context(db, initial_ctx, student_row)
     if request.process_code == "class_session_cancellation":
         initial_ctx = await _enrich_class_session_cancellation_start(
-            db, initial_ctx, student_row, current_user
+            db, initial_ctx, student_row, enrich_actor
+        )
+    if request.process_code == "intro_second_semester_registration":
+        from app.services.admission_type_service import (
+            derive_has_active_therapist,
+            normalize_admission_type,
         )
 
+        extra_st = StateMachineEngine._as_mapping(student_row.extra_data)
+        admission = normalize_admission_type(extra_st.get("admission_type"))
+        if admission:
+            initial_ctx.setdefault("admission_type", admission)
+            initial_ctx.setdefault("interview_result", admission)
+        initial_ctx["has_active_therapist"] = derive_has_active_therapist(student_row, extra_st)
+
     student_svc = StudentService(db)
-    if request.process_code in REGISTRATION_PROCESS_CODES:
+    if scope == "student" and request.process_code in REGISTRATION_PROCESS_CODES:
         existing_reg = await student_svc.pick_best_active_registration_instance(
             student_uuid,
             request.process_code,
@@ -1260,14 +1456,22 @@ async def start_process(
             process_code=request.process_code,
             student_id=student_uuid,
             actor_id=current_user.id,
-            actor_role=_normalize_actor_role(current_user.role),
-            initial_context=initial_ctx,
+            actor_role=actor_role,
+            initial_context=initial_ctx or None,
         )
         await db.flush()
-        if request.process_code in REGISTRATION_PROCESS_CODES.union(
+        if scope == "student" and request.process_code in REGISTRATION_PROCESS_CODES.union(
             {"educational_leave", "session_payment"}
         ):
             await student_svc.set_primary_instance_for_student(student_row, instance.id)
+        if request.process_code == "intro_second_semester_registration":
+            if instance.current_state_code == "eligibility_check":
+                await student_svc.advance_intro_second_eligibility(
+                    instance.id, current_user.id
+                )
+                instance = await engine.get_process_instance(instance.id)
+            if scope == "student":
+                await student_svc.set_primary_instance_for_student(student_row, instance.id)
         return ProcessInstanceResponse(
             instance_id=str(instance.id),
             process_code=instance.process_code,
@@ -1621,33 +1825,45 @@ async def register_student_step_forms(
             sanitized["leave_terms"] = int(sanitized["leave_terms"])
         except (TypeError, ValueError):
             pass
-    if (
-        instance.process_code == "upgrade_to_ta"
-        and instance.current_state_code == "commitment_signature"
-    ):
-        if sanitized.get("step_otp_verified") is not True:
-            otp_code = str(sanitized.get("otp_code") or "").strip()
-            if not otp_code:
-                raise HTTPException(status_code=400, detail="کد پیامکی الزامی است.")
-            phone = (current_user.phone or "").strip()
-            if not phone:
-                raise HTTPException(status_code=400, detail="شماره موبایل در پروفایل شما ثبت نشده است.")
-            from app.services.otp_service import verify_otp_code_only
-
-            otp_res = await verify_otp_code_only(db, phone, otp_code)
-            if not otp_res.get("success"):
-                raise HTTPException(
-                    status_code=400,
-                    detail=otp_res.get("error") or "کد پیامکی نامعتبر است.",
-                )
-            sanitized["step_otp_verified"] = True
+    sanitized = await _ensure_step_otp_verified_for_register(
+        db,
+        current_user=current_user,
+        instance=instance,
+        sanitized=sanitized,
+    )
     ctx = apply_register_to_context(
-        instance.context_data or {},
+        clear_step_otp_verified_flags(instance.context_data or {}),
         instance.current_state_code,
         sanitized,
     )
     if sanitized.get("final_report_pdf"):
         ctx["final_report_uploaded_at"] = datetime.now(timezone.utc).isoformat()
+    payment_fields_touched = (
+        sanitized.get("payment_method") is not None
+        or sanitized.get("installment_count") is not None
+    )
+    if payment_fields_touched:
+        from app.services.tuition_installment_service import refresh_instance_tuition_context
+
+        # تعداد/روش عوض شده → برنامه اقساط قبلی نامعتبر است
+        if (
+            sanitized.get("installment_count") is not None
+            and str(sanitized.get("installment_count")) != str(ctx_before.get("installment_count"))
+        ) or (
+            sanitized.get("payment_method") is not None
+            and sanitized.get("payment_method") != ctx_before.get("payment_method")
+        ):
+            ctx.pop("installment_plan", None)
+            ctx.pop("current_installment_index", None)
+            ctx.pop("pending_installments_remaining", None)
+            ctx.pop("next_installment_due_at", None)
+
+        ctx = await refresh_instance_tuition_context(
+            db,
+            instance.process_code,
+            instance.current_state_code,
+            ctx,
+        )
     instance.context_data = ctx
     flag_modified(instance, "context_data")
     await db.flush()
@@ -1750,6 +1966,12 @@ async def verify_student_step_otp(
     result = await verify_otp_code_only(db, phone, body.code)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error") or "کد نامعتبر است")
+    instance.context_data = stamp_step_otp_verified(
+        instance.context_data,
+        instance.current_state_code,
+    )
+    flag_modified(instance, "context_data")
+    await db.commit()
     return {"success": True, "verification_token": body.code.strip()}
 
 
@@ -1910,8 +2132,10 @@ async def download_marketing_campaign_pack_pdf(
     current_user: User = Depends(get_current_user),
 ):
     """خروجی PDF فعالیت‌های مرتبط با کمپین بازاریابی برای انتقال به مدیر مارکتینگ."""
-    actor_role = _normalize_actor_role(current_user.role)
-    if actor_role == "student":
+    from app.core.user_roles import normalize_user_roles
+
+    roles = set(normalize_user_roles(current_user))
+    if roles <= {"student", "applicant"}:
         raise HTTPException(status_code=403, detail="Only operators can download marketing pack")
 
     instance = await _get_instance_or_404(db, instance_id)
@@ -1921,7 +2145,7 @@ async def download_marketing_campaign_pack_pdf(
         raise HTTPException(status_code=400, detail="این خروجی فقط برای فرایند آماده‌سازی ترم است")
     if (instance.current_state_code or "") != "marketing_campaign":
         raise HTTPException(status_code=400, detail="خروجی PDF فقط در مرحلهٔ کمپین بازاریابی در دسترس است")
-    if not _portal_role_can_act_on_state(actor_role, instance.process_code, "marketing_campaign"):
+    if not _user_can_act_on_state(current_user, instance.process_code, "marketing_campaign"):
         raise HTTPException(
             status_code=403,
             detail="دانلود PDF این مرحله فقط برای مسئول پذیرش مجاز است.",
@@ -1970,8 +2194,10 @@ async def register_operator_step_forms(
     برای فرایندهای آماده‌سازی ترم (۲۹/۳۰): تقویم، شهریه، پروانه، لیست دروس،
     تعیین مصاحبه‌کنندگان و زمان‌بندی. قبل از اجرای ترنزیشن این مرحله فراخوانی می‌شود.
     """
-    actor_role = _normalize_actor_role(current_user.role)
-    if actor_role == "student":
+    from app.core.user_roles import normalize_user_roles, primary_role
+
+    roles = set(normalize_user_roles(current_user))
+    if roles <= {"student", "applicant"}:
         raise HTTPException(status_code=403, detail="Only operators can register operator step forms")
 
     instance = await _get_instance_or_404(db, instance_id)
@@ -1984,11 +2210,17 @@ async def register_operator_step_forms(
     if state != (instance.current_state_code or ""):
         raise HTTPException(status_code=400, detail="فقط فرم مرحلهٔ فعلی قابل ثبت است.")
 
-    if not _portal_role_can_act_on_state(actor_role, instance.process_code, state):
+    if not _user_can_act_on_state(current_user, instance.process_code, state):
         raise HTTPException(
             status_code=403,
             detail="شما مسئول اقدام در این مرحله نیستید؛ فقط مشاهده مجاز است.",
         )
+    roles_list = normalize_user_roles(current_user)
+    actor_role = _normalize_actor_role(primary_role(current_user))
+    for r in roles_list:
+        if _portal_role_can_act_on_state(r, instance.process_code, state):
+            actor_role = r
+            break
 
     raw_forms = get_process_forms(instance.process_code, state_code=state)
     forms = visible_forms_for_role(raw_forms, actor_role)
@@ -2422,20 +2654,28 @@ async def get_student_instances(
         if own is not None and own.id == uuid.UUID(student_id):
             instances = [i for i in instances if i.process_code not in PREP_PROCESS_CODES]
 
-    return {
-        "instances": [
-            {
-                "instance_id": str(i.id),
-                "process_code": i.process_code,
-                "current_state": i.current_state_code,
-                "is_completed": i.is_completed,
-                "is_cancelled": i.is_cancelled,
-                "started_at": i.started_at.isoformat() if i.started_at else None,
-                "completed_at": i.completed_at.isoformat() if i.completed_at else None,
-            }
-            for i in instances
-        ]
-    }
+    def _list_item(i: ProcessInstance) -> dict:
+        item = {
+            "instance_id": str(i.id),
+            "process_code": i.process_code,
+            "current_state": i.current_state_code,
+            "is_completed": i.is_completed,
+            "is_cancelled": i.is_cancelled,
+            "started_at": i.started_at.isoformat() if i.started_at else None,
+            "completed_at": i.completed_at.isoformat() if i.completed_at else None,
+        }
+        # تاریخ جلسه برای attendance_tracking تا UI بتواند ردیف‌های هم‌نام را از هم تشخیص دهد
+        if i.process_code == "attendance_tracking":
+            ctx = i.context_data if isinstance(i.context_data, dict) else {}
+            session_date = ctx.get("session_date") or ctx.get("record_date")
+            if session_date:
+                item["session_date"] = str(session_date)[:10]
+            sid = ctx.get("therapy_session_id") or ctx.get("session_id")
+            if sid:
+                item["therapy_session_id"] = str(sid)
+        return item
+
+    return {"instances": [_list_item(i) for i in instances]}
 
 
 @router.get("/student/{student_id}/artifacts")

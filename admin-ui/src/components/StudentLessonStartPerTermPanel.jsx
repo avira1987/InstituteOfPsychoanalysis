@@ -1,5 +1,9 @@
 import React, { useMemo } from 'react'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   LessonStartFlowStepper,
   labelLessonStartState,
   resolveLessonStartContext,
@@ -8,13 +12,13 @@ import {
 } from '../utils/lessonStartPerTermDisplay'
 
 const PROCESS_TITLE_FA = 'آغاز هر درس در هر ترم (فرایند ۴۱)'
+const PROC_CODE = 'lesson_start_per_term'
 
-/** راهنمای هر وضعیت برای دانشجو. */
-const STATE_HINTS = {
-  student_enrollment: 'درس مورد نظر را از فرم زیر انتخاب و ثبت کنید. در هر جلسه می‌توانید آنلاین یا حضوری شرکت کنید؛ لینک کلاس برای همه فعال می‌شود.',
-  links_created: 'سامانه در حال ایجاد و قرار دادن لینک کلاس آنلاین است. این مرحله خودکار است — چند لحظه بعد صفحه را تازه کنید.',
-  attendance_list_ready: 'سامانه در حال تشکیل لیست حضور و غیاب و ثبت کمک‌مدرسین است. این مرحله خودکار است — صفحه را تازه کنید.',
-  lesson_active: 'درس شما فعال است. از دکمهٔ ورود به کلاس آنلاین استفاده کنید؛ وضعیت حضور هر جلسه پس از ثبت توسط مدرس در جدول زیر به‌روز می‌شود.',
+function resolveLessonStartHint(state) {
+  if (!state) return 'ثبت‌نام در درس — مراحل را طبق راهنمای پنل پیش ببرید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return 'ثبت‌نام در درس — مراحل را طبق راهنمای پنل پیش ببرید.'
 }
 
 function InfoTile({ label, value, tone = '#2563eb', bg = '#eff6ff' }) {
@@ -61,8 +65,8 @@ export default function StudentLessonStartPerTermPanel({
   const isComplete = currentState === 'lesson_active'
   const isSystemPending = ['links_created', 'attendance_list_ready'].includes(currentState)
 
-  const hint = STATE_HINTS[currentState]
-    ?? 'ثبت‌نام در درس — مراحل را طبق راهنمای پنل پیش ببرید.'
+  const hint = resolveLessonStartHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelLessonStartState(currentState)) ?? ''
 
   const showCourseInfo = ['student_enrollment', 'lesson_active'].includes(currentState)
     && lessonCtx.courseLabel
@@ -102,6 +106,12 @@ export default function StudentLessonStartPerTermPanel({
               color: isSystemPending ? '#134e4a' : '#1e3a8a',
             }}
           >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
           </div>
         )}

@@ -45,6 +45,9 @@ async def get_db() -> AsyncSession:
 async def apply_schema_safety_patches(conn) -> None:
     """Idempotent column/table fixes when Alembic stamp drifted ahead of real schema."""
     await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512)"))
+    # '' collides with UNIQUE(email); admin create-user used to store empty string
+    await conn.execute(text("UPDATE users SET email = NULL WHERE email = ''"))
+    await conn.execute(text("UPDATE users SET phone = NULL WHERE phone = ''"))
     await conn.execute(
         text("ALTER TABLE ticket_comments ADD COLUMN IF NOT EXISTS kind VARCHAR(20) DEFAULT 'user'")
     )
@@ -53,7 +56,7 @@ async def apply_schema_safety_patches(conn) -> None:
             """
             CREATE TABLE IF NOT EXISTS sms_simulation_outbox (
                 id VARCHAR(36) NOT NULL PRIMARY KEY,
-                phone VARCHAR(15) NOT NULL,
+                phone VARCHAR(32) NOT NULL,
                 message TEXT NOT NULL,
                 kind VARCHAR(32) NOT NULL,
                 template_key VARCHAR(120),

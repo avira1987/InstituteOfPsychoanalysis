@@ -1,31 +1,33 @@
 import React, { useMemo } from 'react'
 import SepPaymentPanel from './SepPaymentPanel'
 import { labelState } from '../utils/processDisplay'
+import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
 
 const PROCESS_TITLE_FA = 'آغاز درمان آموزشی'
+const PROC_CODE = 'start_therapy'
 
-const STATE_HINTS = {
-  eligibility_check: 'در حال بررسی صلاحیت شما برای آغاز درمان آموزشی…',
-  therapist_selection: 'از شیت وقت‌های آزاد، درمانگر و روز/ساعت جلسات هفتگی را انتخاب کنید؛ سپس فرم زیر را ثبت کنید.',
-  therapist_confirmation: 'درمانگر انتخابی باید درخواست را در پنل خود بپذیرد. پس از تأیید، تاریخ شروع را ثبت می‌کنید.',
-  schedule_first_session: 'تاریخ شروع اولین جلسه را ثبت کنید؛ سامانه قانون ۲۴ ساعت را اعمال می‌کند.',
-  first_session_24h_check: 'در حال محاسبه تاریخ شروع…',
-  payment_pending: 'هزینهٔ جلسهٔ اول را بپردازید تا درمان فعال شود و محدودیت‌های کلاس رفع گردد.',
-  therapy_active: 'درمان آموزشی شما فعال است.',
-  week9_blocked: 'مهلت هفتهٔ نهم گذشته است. برای رفع مسدودیت کلاس‌ها، همین فرایند را تکمیل کنید یا با پذیرش هماهنگ کنید.',
-  already_completed: 'شما قبلاً این فرایند را انجام داده‌اید.',
-  ineligible: 'در حال حاضر شرایط آغاز درمان آموزشی را ندارید.',
+function resolveStartTherapyHint(state) {
+  if (!state) {
+    return 'مراحل آغاز درمان آموزشی را در فرم زیر پیش ببرید.'
+  }
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  const short = PROCESS_STATE_LABELS_FA[PROC_CODE]?.[state]
+  return short || 'مراحل آغاز درمان آموزشی را در فرم زیر پیش ببرید.'
 }
 
 const STEPS = [
-  { key: 'therapist_selection', label: 'انتخاب درمانگر' },
-  { key: 'therapist_confirmation', label: 'تأیید درمانگر' },
-  { key: 'schedule_first_session', label: 'تاریخ شروع' },
+  { key: 'therapist_selection', label: 'انتخاب از شیت' },
+  { key: 'first_session_24h_check', label: 'زمان‌بندی' },
   { key: 'payment_pending', label: 'پرداخت' },
   { key: 'therapy_active', label: 'فعال' },
 ]
 
 function stepIndex(state) {
+  if (state === 'first_session_24h_check') return 1
   const order = STEPS.map((s) => s.key)
   const idx = order.indexOf(state)
   return idx >= 0 ? idx : 0
@@ -80,7 +82,8 @@ export default function StudentStartTherapyPanel({
     return null
   }
 
-  const hint = STATE_HINTS[currentState] || 'مراحل آغاز درمان آموزشی را در فرم زیر پیش ببرید.'
+  const hint = resolveStartTherapyHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelState(currentState)) ?? ''
   const isComplete = currentState === 'therapy_active'
   const isBlocked = currentState === 'week9_blocked'
 
@@ -108,6 +111,19 @@ export default function StudentStartTherapyPanel({
           </p>
         )}
 
+        {(studentProfile?.admission_type === 'conditional_therapy'
+          || studentProfile?.extra_data?.admission_type === 'conditional_therapy'
+          || ctx.admission_type === 'conditional_therapy') && !isComplete && (
+          <p
+            className="psf-hint psf-hint--warn"
+            data-testid="start-therapy-conditional-banner"
+            style={{ marginBottom: '0.75rem' }}
+          >
+            پذیرش شما مشروط به آغاز درمان آموزشی است. تکمیل این فرایند تا قبل از آغاز ترم دوم الزامی است؛
+            در غیر این صورت ثبت‌نام ترم دوم برای شما باز نمی‌شود.
+          </p>
+        )}
+
         {isBlocked && (
           <p className="psf-hint psf-hint--warn">
             دسترسی کلاس‌های آنلاین و حضور/غیاب به‌دلیل عدم آغاز درمان تا هفتهٔ نهم مسدود شده است.
@@ -115,8 +131,28 @@ export default function StudentStartTherapyPanel({
           </p>
         )}
 
-        {!isComplete && (
-          <p className="psf-hint" style={{ marginTop: 0 }}>{hint}</p>
+        {!isComplete && hint && (
+          <div
+            data-testid="start-therapy-state-hint"
+            style={{
+              marginBottom: compact ? '0.65rem' : '0.85rem',
+              padding: '0.75rem 1rem',
+              borderRadius: '10px',
+              background: '#eff6ff',
+              borderRight: '4px solid #2563eb',
+              fontSize: '0.86rem',
+              lineHeight: 1.75,
+              color: '#1e3a8a',
+            }}
+          >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
+            {hint}
+          </div>
         )}
 
         {isComplete && (

@@ -22,6 +22,8 @@ async def main():
             admin.is_active = True
             admin.email = admin.email or "admin@anistito.ir"
             admin.full_name_fa = admin.full_name_fa or "مدیر سیستم"
+            admin.role = "admin"
+            admin.roles = ["admin"]
             await db.commit()
             print("Admin UPDATED: username=admin, password=admin123")
         else:
@@ -32,6 +34,7 @@ async def main():
                 hashed_password=get_password_hash("admin123"),
                 full_name_fa="مدیر سیستم",
                 role="admin",
+                roles=["admin"],
                 is_active=True,
             )
             db.add(admin)

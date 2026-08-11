@@ -226,6 +226,7 @@ export default function StudentProcessStepReview({
               hasAvailableTransitions={false}
               instanceId={instanceId}
               contextData={contextData}
+              currentState={viewedStateCode}
             />
           )}
           {!reviewFormsLoading && editableFieldNames.length > 0 && (

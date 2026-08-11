@@ -268,6 +268,10 @@ export default function LoginPage() {
       let errMsg = 'خطا در ورود'
       if (status === 401) {
         errMsg = 'نام کاربری یا رمز عبور اشتباه است'
+      } else if (status === 429) {
+        errMsg = typeof detail === 'string' && detail.trim()
+          ? detail
+          : 'تعداد تلاش‌های ورود بیش از حد مجاز است. لطفاً چند دقیقه بعد دوباره تلاش کنید.'
       } else if (!err.response) {
         errMsg = 'خطا در اتصال به سرور'
       } else if (detail) {

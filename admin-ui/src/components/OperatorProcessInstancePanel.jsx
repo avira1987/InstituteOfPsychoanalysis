@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { processExecApi } from '../services/api'
 import { notesPayload } from '../utils/decisionPayload'
 import { labelProcess, labelState } from '../utils/processDisplay'
-import InstanceContextSummary from './InstanceContextSummary'
+import OperatorInstanceContextSummary from './OperatorInstanceContextSummary'
 import DecisionNotesBlock from './DecisionNotesBlock'
 import OperatorInstanceGuidanceBlock from './OperatorInstanceGuidanceBlock'
 import OperatorCourseSelectionEditor from './OperatorCourseSelectionEditor'
@@ -58,6 +58,9 @@ export default function OperatorProcessInstancePanel({
   if (typeof filterTransitions === 'function') {
     transitionsForActions = filterTransitions(availableTransitions)
   }
+  transitionsForActions = (transitionsForActions || []).filter(
+    (t) => t.required_role !== 'system',
+  )
 
   const defaultTrigger = async (transition) => {
     if (!instanceId) return
@@ -168,9 +171,10 @@ export default function OperatorProcessInstancePanel({
         />
       )}
 
-      <InstanceContextSummary
-        contextData={instanceDetail.context_data}
-        history={instanceDetail.history}
+      <OperatorInstanceContextSummary
+        user={user}
+        instanceDetail={instanceDetail}
+        availableTransitions={availableTransitions}
         title={contextSummaryTitle}
       />
 

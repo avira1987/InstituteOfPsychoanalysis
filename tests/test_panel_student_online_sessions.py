@@ -34,12 +34,25 @@ async def test_list_student_online_sessions_aggregates_sources(
     sample_student: Student,
     sample_student_user: User,
 ):
+    therapist = User(
+        id=uuid.uuid4(),
+        username=f"th_{uuid.uuid4().hex[:8]}",
+        email=f"th_{uuid.uuid4().hex[:8]}@test.com",
+        hashed_password="x",
+        role="therapist",
+        is_active=True,
+        full_name_fa="دکتر درمانگر نمونه",
+    )
+    db_session.add(therapist)
+    await db_session.flush()
+    sample_student.therapist_id = therapist.id
+
     future = datetime.now(timezone.utc) + timedelta(days=3)
     session_end = future + timedelta(hours=1)
     ts = TherapySession(
         id=uuid.uuid4(),
         student_id=sample_student.id,
-        therapist_id=None,
+        therapist_id=therapist.id,
         session_date=future.date(),
         session_starts_at=future,
         status="scheduled",
@@ -89,6 +102,7 @@ async def test_list_student_online_sessions_aggregates_sources(
     therapy_items = [x for x in out["items"] if x["kind"] == "therapy"]
     assert therapy_items[0]["meeting_link"] is None
     assert therapy_items[0]["meeting_link_is_visible"] is False
+    assert therapy_items[0]["therapist_name_fa"] == "دکتر درمانگر نمونه"
 
 
 @pytest.mark.asyncio

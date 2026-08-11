@@ -41,6 +41,7 @@ class TestActionHandlerTherapyLifecycle:
 
         await db_session.refresh(sample_student)
         assert sample_student.therapy_started is True
+        assert (sample_student.extra_data or {}).get("has_active_therapist") is True
 
     async def test_activate_therapy_sets_therapist_id_from_context(
         self, db_session: AsyncSession, sample_student: Student, sample_user
@@ -204,6 +205,50 @@ class TestActionHandlerTherapyLifecycle:
         await db_session.refresh(ts)
         assert ts.meeting_url == "https://meet.example/x"
         assert ts.links_unlocked is True
+
+    async def test_create_session_link_marks_first_start_therapy_session_paid(
+        self, db_session: AsyncSession, sample_student: Student, sample_user, monkeypatch
+    ):
+        """بدون الوکام: لینک استاب + پرداخت جلسه اول + last_session_link در context."""
+        monkeypatch.setattr(
+            "app.services.alocom_provision.is_alocom_configured",
+            lambda settings=None: (False, 0),
+        )
+        today = datetime.now(timezone.utc).date()
+        ts = TherapySession(
+            id=uuid.uuid4(),
+            student_id=sample_student.id,
+            therapist_id=sample_user.id,
+            session_date=today + timedelta(days=3),
+            status="scheduled",
+            payment_status="pending",
+        )
+        db_session.add(ts)
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code="start_therapy",
+            student_id=sample_student.id,
+            current_state_code="payment_pending",
+            context_data={"therapist_id": str(sample_user.id)},
+        )
+        db_session.add(instance)
+        await db_session.flush()
+
+        handler = ActionHandler(db_session)
+        results = await handler.handle_actions(
+            [{"type": "create_session_link"}],
+            instance,
+            {},
+        )
+        await db_session.commit()
+
+        assert results[0]["success"] is True
+        await db_session.refresh(ts)
+        await db_session.refresh(instance)
+        assert ts.payment_status == "paid"
+        assert ts.links_unlocked is True
+        assert (ts.meeting_url or "").strip()
+        assert (instance.context_data or {}).get("last_session_link")
 
     async def test_update_record_writes_gradebook(
         self, db_session: AsyncSession, sample_student: Student

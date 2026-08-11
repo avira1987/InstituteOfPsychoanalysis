@@ -7,6 +7,8 @@ from urllib.parse import urlencode
 # نقش کمیته → kind مسیر
 _COMMITTEE_ROLE_TO_KIND: dict[str, str] = {
     "progress_committee": "progress",
+    "progress_committee_project": "progress",
+    "progress_committee_scientific": "progress",
     "education_committee": "education",
     "deputy_education": "education",
     "supervision_committee": "supervision",
@@ -21,7 +23,7 @@ STAFF_DEFAULT_LANE = "admissions"
 _STAFF_LANE_BY_ASSIGNED: dict[str, str] = {}
 for _lane, _roles in {
     "admissions": ("admissions_officer", "admission_officer", "interviewer"),
-    "instruction": ("instructor", "teaching_assistant", "teaching_assistant_or_instructor"),
+    "instruction": ("instructor", "educational_instructor", "teaching_assistant", "teaching_assistant_or_instructor"),
     "content-ops": ("reference_center", "marketing", "admissions_officer"),
     "therapy-coord": ("therapy_education_coordinator",),
     "course-committee": (
@@ -38,6 +40,7 @@ _ASSIGNED_TO_COMMITTEE_KIND: dict[str, str] = {
     "committee": "progress",
     "progress_committee": "progress",
     "progress_committee_project": "progress",
+    "progress_committee_scientific": "progress",
     "education_committee": "education",
     "deputy_education": "education",
     "deputy_education_director": "education",
@@ -83,9 +86,12 @@ PORTAL_ROLE_HOME: dict[str, tuple[str, str | None]] = {
     "student": ("/panel/portal/student", None),
     "therapist": ("/panel/portal/therapist", "pending"),
     "supervisor": ("/panel/portal/supervisor", "reviews"),
+    "faculty_1": ("/panel/portal/supervisor", "reviews"),
     "staff": (staff_lane_path(STAFF_DEFAULT_LANE), "pending"),
     "course_committee": (staff_lane_path("course-committee"), "pending"),
     "teaching_assistant": (staff_lane_path("instruction"), "pending"),
+    "educational_instructor": (staff_lane_path("instruction"), "pending"),
+    "instructor": (staff_lane_path("instruction"), "pending"),
     "site_manager": ("/panel/portal/site-manager", "pending"),
     "interviewer": ("/panel/portal/interviewer", None),
     "finance": ("/panel/finance", None),

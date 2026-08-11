@@ -4,9 +4,11 @@ import pytest
 
 from app.meta.course_selection_validation import (
     normalize_course_codes,
+    resolve_admission_kind,
     validate_intro_term1_selected_courses,
     validate_selected_courses_for_process,
 )
+from app.services.term_course_offering_service import _filter_by_admission_kind
 
 _SAMPLE_OPTIONS = [
     {"value": "theory_psychoanalysis_1", "label_fa": "تئوری روانکاوی ۱"},
@@ -20,6 +22,23 @@ def test_normalize_course_codes_from_list():
         "theory_psychoanalysis_1",
         "theory_psychoanalysis_2",
     ]
+
+
+def test_resolve_admission_kind_from_result_alias():
+    assert resolve_admission_kind({"result": "full_admission"}) == "full_admission"
+    assert resolve_admission_kind({"result": "single_course"}) == "single_course"
+    assert resolve_admission_kind({"result": "conditional_therapy"}) == "conditional_therapy"
+
+
+def test_filter_by_admission_kind_uses_result_when_interview_result_missing():
+    filtered, max_select, hint = _filter_by_admission_kind(
+        _SAMPLE_OPTIONS,
+        {"result": "full_admission", "allowed_course_count": 2},
+        term_number=1,
+    )
+    assert hint is None
+    assert len(filtered) == 3
+    assert max_select == 2
 
 
 def test_single_course_only_first_offered():

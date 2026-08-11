@@ -17,7 +17,7 @@ const RECORDED_FA = {
 
 const BLOCK_FA = {
   session_cancelled: 'جلسه کنسل شده',
-  unpaid: 'پرداخت نشده — غیبت خودکار',
+  unpaid: 'پرداخت نشده — فقط غیبت قابل ثبت',
   already_recorded: 'قبلاً ثبت شده',
   recording_closed: 'ثبت بسته (وقفه/کنسلی)',
   auto_absence_unpaid: 'غیبت خودکار (پرداخت نشده)',
@@ -90,7 +90,11 @@ export default function TherapistAttendancePanel({
     if (filter === 'recorded') {
       return sessions.filter((s) => s.recorded_status || ['session_completed', 'excused_absence', 'unexcused_absence'].includes(s.attendance_process_state))
     }
-    return sessions.filter((s) => s.record_block_reason && !s.can_record)
+    return sessions.filter((s) => {
+      if (s.can_record) return false
+      if (s.recorded_status) return false
+      return Boolean(s.record_block_reason) && s.record_block_reason !== 'unpaid'
+    })
   }, [sessions, filter])
 
   const record = async (sessionId, attendanceStatus) => {
@@ -132,8 +136,15 @@ export default function TherapistAttendancePanel({
       <div style={{ padding: '0 1rem 1rem' }}>
         <p style={{ margin: '0 0 0.85rem', fontSize: '0.88rem', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           پس از برگزاری جلسه، وضعیت <strong>حاضر</strong> یا <strong>غایب</strong> را ثبت کنید.
-          ثبت تا پایان همان روز (۲۴:۰۰) امکان‌پذیر است. جلسات پرداخت‌نشده به‌صورت خودکار غیبت می‌خورند.
+          ثبت تا پایان همان روز (۲۴:۰۰) امکان‌پذیر است و ویرایش فقط تا ۲۴:۰۰ همان روزِ ثبت باز است.
+          برای جلسهٔ پرداخت‌نشده فقط <strong>غیبت</strong> قابل ثبت است (انضباط مالی-آموزشی؛ اولویت حضور بر پرداخت).
         </p>
+        <ul style={{ margin: '0 0 0.85rem', paddingInlineStart: '1.15rem', fontSize: '0.82rem', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+          <li>حاضر: +۱ ساعت به فیلد مناسب دوره (۱× / ۲× هفتگی و مجموع)</li>
+          <li>غایب موجه: بدون افزایش ساعت</li>
+          <li>غایب غیرموجه: تعیین تکلیف هزینه جلسه (فرایند ۷)</li>
+          <li>اگر ثبت نکنید، پرونده به مسئول سایت و سپس معاون آموزش اسکیت می‌شود</li>
+        </ul>
 
         <div
           style={{
@@ -190,6 +201,9 @@ export default function TherapistAttendancePanel({
             {filtered.map((s) => {
               const busy = busyId === s.session_id
               const recorded = s.recorded_status
+              const canPresent = Boolean(s.can_record_present)
+              const canAbsent = Boolean(s.can_record_absent)
+              const showActions = (canPresent || canAbsent) && !recorded
               return (
                 <div
                   key={s.session_id}
@@ -236,32 +250,40 @@ export default function TherapistAttendancePanel({
                     )}
                   </div>
 
-                  {s.can_record && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <button
-                        type="button"
-                        className="btn btn-success btn-sm"
-                        disabled={busy}
-                        onClick={() => record(s.session_id, 'present')}
-                      >
-                        {busy ? '…' : '✓ حاضر (+۱ ساعت)'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline btn-sm"
-                        disabled={busy}
-                        onClick={() => record(s.session_id, 'absent_excused')}
-                      >
-                        غایب موجه
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-danger btn-sm"
-                        disabled={busy}
-                        onClick={() => record(s.session_id, 'absent_unexcused')}
-                      >
-                        غایب غیرموجه
-                      </button>
+                  {showActions && (
+                    <div>
+                      {s.record_block_reason === 'unpaid' && (
+                        <p style={{ margin: '0 0 0.45rem', fontSize: '0.78rem', color: '#b45309', lineHeight: 1.6 }}>
+                          جلسه پرداخت‌نشده: دکمهٔ حاضر غیرفعال است؛ فقط غیبت قابل ثبت است.
+                        </p>
+                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          className="btn btn-success btn-sm"
+                          disabled={busy || !canPresent}
+                          title={!canPresent ? 'برای جلسه پرداخت‌نشده غیرفعال است' : ''}
+                          onClick={() => record(s.session_id, 'present')}
+                        >
+                          {busy ? '…' : '✓ حاضر (+۱ ساعت)'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          disabled={busy || !canAbsent}
+                          onClick={() => record(s.session_id, 'absent_excused')}
+                        >
+                          غایب موجه
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          disabled={busy || !canAbsent}
+                          onClick={() => record(s.session_id, 'absent_unexcused')}
+                        >
+                          غایب غیرموجه
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

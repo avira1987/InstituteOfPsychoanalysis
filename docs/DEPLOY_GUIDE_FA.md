@@ -23,7 +23,7 @@
 | کاربر | `root` |
 | رمز | (در اسکریپت یا فایل‌های deploy موجود است) |
 | مسیر روی سرور | `/opt/anistito` |
-| آدرس نهایی سایت | https://bpms.psychoanalysis.ir/anistito/ |
+| آدرس نهایی سایت | https://lms.psychoanalysis.ir/anistito/ |
 
 ---
 
@@ -46,7 +46,7 @@ cd C:\Users\Administrator\Desktop\anistito
 - اجرای دستورات روی سرور: unzip، حذف کانتینر قبلی، `docker build`، `docker run`، مایگریشن و چک سلامت
 
 در پایان آدرس و ورود نمایش داده می‌شود:
-- **URL:** https://bpms.psychoanalysis.ir/anistito/
+- **URL:** https://lms.psychoanalysis.ir/anistito/
 - **ورود:** admin / admin123
 
 ---
@@ -183,4 +183,4 @@ bash server-deploy-now.sh
 - **فقط روی سرور (وقتی zip آماده است):** در `/opt/anistito` اجرا کنید: `bash server-deploy-now.sh`
 - **دستی:** بیلد فرانت → ساخت zip → آپلود با pscp/WinSCP → اجرای دستورات بالا روی سرور با SSH.
 
-بعد از دیپلوی، آخرین نسخهٔ وب‌سایت روی هاست در آدرس https://bpms.psychoanalysis.ir/anistito/ در دسترس است.
+بعد از دیپلوی، آخرین نسخهٔ وب‌سایت روی هاست در آدرس https://lms.psychoanalysis.ir/anistito/ در دسترس است.

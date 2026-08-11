@@ -354,6 +354,10 @@ TEMPLATES = {
     "supervision_block_transition_complete": {
         "sms": "سوپرویژن فردی جدید: روز {day} ساعت {time} با {supervisor_name}. تاریخ آغاز: {start_date}. انستیتو روانکاوی تهران."
     },
+    "lesson_start_active": {
+        "in_app": "درس شما فعال شد. از پورتال می‌توانید وارد کلاس آنلاین شوید و وضعیت حضور را پیگیری کنید.",
+        "sms": "دانشجوی گرامی، درس انتخاب‌شده فعال شد. برای ورود به کلاس آنلاین به پورتال مراجعه کنید. انستیتو روانکاوی تهران.",
+    },
     "therapy_interruption_meeting": {
         "sms": "جزئیات جلسه بررسی درخواست وقفه درمان آموزشی در پورتال و ایمیل شما موجود است. لطفاً مراجعه فرمایید.",
         "email_subject": "تعیین زمان جلسه بررسی درخواست وقفه درمان آموزشی",
@@ -427,10 +431,30 @@ TEMPLATES = {
         "sms": "دانشجوی گرامی، شما قبلاً از این فرایند برای شروع درمان آموزشی استفاده کرده‌اید.",
     },
     "therapy_scheduled_student": {
-        "sms": "دانشجوی گرامی\nموضوع: زمان‌بندی آغاز درمان آموزشی\nبه اطلاع می‌رساند که وقت شما برای درمان آموزشی با آقای/خانم ...، روز... ساعت... و روز... ساعت... با تاریخ آغاز... ثبت شده است.\nمسئول هماهنگی‌ها ۰۲۱۲۲۷۲۸۰۰۰ داخلی ۱",
+        "sms": (
+            "دانشجوی گرامی\n"
+            "موضوع: زمانبندی آغاز درمان آموزشی\n\n"
+            "به اطلاع میرساند که وقت شما برای درمان آموزشی خود با آقای/خانم {therapist_name}، "
+            "{weekly_schedule_fa} با تاریخ آغاز {first_session_date} ثبت شده است.\n"
+            "{session_link_line}\n"
+            "مسئول هماهنگی ها\n"
+            "۰۲۱۲۲۷۲۸۰۰۰\n"
+            "داخلی ۱"
+        ),
     },
     "therapy_scheduled_therapist": {
-        "sms": "درمانگر آموزشی محترم\nموضوع: آغاز درمان آموزشی دانشجو\nبه اطلاع می‌رساند که آقای/خانم ... دانشجوی دوره... درخواست آغاز درمان آموزشی خود را با شما در روز... ساعت... و روز... ساعت... و تاریخ آغاز... ثبت کرده‌اند.\nمسئول هماهنگی‌ها ۰۲۱۲۲۷۲۸۰۰ داخلی ۱",
+        "sms": (
+            "درمانگر آموزشی محترم\n"
+            "جناب آقای/ سرکار خانم {therapist_name}\n"
+            "موضوع: آغاز درمان آموزشی دانشجو\n\n"
+            "به اطلاع میرساند که آقای/خانم {student_name} دانشجوی دوره {course_type_fa} "
+            "درخواست آغاز درمان آموزشی خود را با شما در {weekly_schedule_fa} "
+            "و تاریخ آغاز {first_session_date} ثبت کرده‌اند.\n"
+            "{session_link_line}\n"
+            "مسئول هماهنگی ها\n"
+            "۰۲۱۲۲۷۲۸۰۰۰\n"
+            "داخلی ۱"
+        ),
     },
     "start_therapy_sla_therapist_pending": {
         "sms": "یادآوری آغاز درمان آموزشی: درخواست شما هنوز در انتظار پاسخ درمانگر است. لطفاً پورتال دانشجویی را بررسی کنید.",
@@ -683,6 +707,15 @@ TEMPLATES = {
     "therapy_condition_block": {
         "sms": "دانشجوی محترم\nموضوع: شرط ثبت نام در ترم دوم\nطبق توافق قبلی در مورد پذیرش شما، می بایست وارد درمان شخصی شوید. لطفا از فرایند «آغاز درمان آموزشی» در پورتال اقدام بفرمایید.\nبخش پذیرش ۰۹۱۲۲۲۰۶۷۹۶",
     },
+    "conditional_therapy_deadline_after_registration": {
+        "sms": (
+            "دانشجوی محترم\nموضوع: مهلت آغاز درمان آموزشی\n"
+            "پذیرش شما مشروط به آغاز درمان آموزشی است. "
+            "تا قبل از آغاز ترم دوم این دوره باید از پورتال، فرایند «آغاز درمان آموزشی» را شروع و تکمیل کنید؛ "
+            "در غیر این صورت امکان ثبت‌نام ترم دوم فراهم نمی‌شود.\n"
+            "بخش پذیرش ۰۹۱۲۲۲۰۶۷۹۶"
+        ),
+    },
     "term_registration_general": {
         "sms": "دانشجوی محترم\nموضوع: مهلت ثبت نام در ترم ها\nمهلت ثبت نام در دروس ترم بعدی تاریخ {deadline} می باشد. لطفا زودتر اقدام بفرمایید.\nمسئول هماهنگی ها ۰۲۱۲۲۷۲۸۰۰۰ داخلی ۱",
     },
@@ -858,7 +891,8 @@ class NotificationService:
         from app.services.sms_gateway import send_sms as gateway_send
         from app.utils.shamsi_calendar_utils import normalize_sms_context_dates
 
-        ctx = normalize_sms_context_dates(dict(context or {}))
+        raw_ctx = dict(context or {})
+        ctx = normalize_sms_context_dates(raw_ctx)
         sms_pattern = None
         if notification_type == "sms":
             sms_pattern = resolve_sms_pattern_for_template(template_name, ctx)
@@ -870,6 +904,41 @@ class NotificationService:
             )
         elif message and ctx:
             message = _apply_template_context(message, ctx)
+        # #region agent log
+        if notification_type == "sms":
+            try:
+                import json as _json
+                from pathlib import Path as _Path
+                from time import time as _time
+                from datetime import datetime as _dt, timezone as _tz
+                from app.utils.shamsi_calendar_utils import tehran_today as _tt
+                _date_keys = [
+                    k for k in set(list(raw_ctx) + list(ctx))
+                    if any(x in str(k) for x in ("date", "time", "deadline", "due", "at", "تاریخ", "ساعت"))
+                ]
+                _line = {
+                    "sessionId": "8e31fd",
+                    "hypothesisId": "A,B,D,E",
+                    "location": "notification_service.py:send_notification",
+                    "message": "sms send with date fields",
+                    "data": {
+                        "template": template_name,
+                        "raw_dates": {k: str(raw_ctx.get(k))[:80] for k in _date_keys if k in raw_ctx},
+                        "norm_dates": {k: str(ctx.get(k))[:80] for k in _date_keys if k in ctx},
+                        "message_snip": (message or "")[:220],
+                        "utc_now": _dt.now(_tz.utc).isoformat(),
+                        "utc_today": str(_dt.now(_tz.utc).date()),
+                        "tehran_today": str(_tt()),
+                        "has_pattern": bool(sms_pattern),
+                    },
+                    "timestamp": int(_time() * 1000),
+                    "runId": "post-fix",
+                }
+                with open(_Path(__file__).resolve().parents[2] / "debug-8e31fd.log", "a", encoding="utf-8") as _f:
+                    _f.write(_json.dumps(_line, ensure_ascii=False) + "\n")
+            except Exception:
+                pass
+        # #endregion
 
         if not message and notification_type != "sms":
             return NotificationResult(

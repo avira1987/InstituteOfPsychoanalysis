@@ -11,13 +11,23 @@
       "code": "eligibility_check",
       "name_fa": "بررسی صلاحیت و یک‌بارمصرف بودن",
       "type": "initial",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "بررسی خودکار صلاحیت",
+        "student_task_fa": "سامانه در حال بررسی صلاحیت شما برای آغاز درمان است. اگر متوقف ماند، صفحه را تازه کنید.",
+        "student_why_fa": "این بررسی خودکار است؛ پس از تأیید صلاحیت به انتخاب درمانگر می‌روید."
+      }
     },
     {
       "code": "already_completed",
       "name_fa": "قبلاً انجام شده",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "فرایند قبلاً انجام شده",
+        "student_task_fa": "شما قبلاً آغاز درمان آموزشی را تکمیل کرده‌اید. اگر نیاز به پشتیبانی دارید، تیکت ثبت کنید یا با پذیرش تماس بگیرید.",
+        "student_why_fa": "این فرایند یک‌بارمصرف است و دوباره قابل اجرا نیست."
+      }
     },
     {
       "code": "therapist_selection",
@@ -25,31 +35,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_short_fa": "انتخاب درمانگر و تعداد جلسات هفتگی",
-        "student_task_fa": "درمانگر آموزشی و برنامهٔ هفتگی (مثلاً ۲ جلسه در هفته برای دوره جامع) را در فرم زیر مشخص کنید؛ سپس دکمهٔ ادامه را بزنید تا درخواست برای درمانگر ارسال شود."
-      }
-    },
-    {
-      "code": "therapist_confirmation",
-      "name_fa": "تایید درمانگر",
-      "type": "intermediate",
-      "assigned_role": "therapist",
-      "sla_hours": 72,
-      "metadata": {
-        "student_short_fa": "در انتظار پاسخ درمانگر",
-        "student_task_fa": "درمانگر انتخابی باید درخواست شما را در پنل خود بررسی و بپذیرد یا رد کند. لطفاً چند ساعت صبر کنید و همین صفحه را تازه کنید.",
-        "operator_task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.",
-        "operator_short_fa": "تایید درمانگر"
-      }
-    },
-    {
-      "code": "schedule_first_session",
-      "name_fa": "تنظیم روز و ساعت جلسات",
-      "type": "intermediate",
-      "assigned_role": "student",
-      "metadata": {
-        "student_short_fa": "تاریخ شروع جلسات",
-        "student_task_fa": "تاریخ شروع اولین جلسه را ثبت کنید؛ سامانه قانون ۲۴ ساعت را اعمال می‌کند و در صورت نیاز تاریخ را به هفتهٔ بعد موکول می‌کند. سپس به مرحلهٔ پرداخت هدایت می‌شوید."
+        "student_short_fa": "انتخاب درمانگر از شیت وقت آزاد",
+        "student_task_fa": "از شیت وقت‌های آزاد (ثبت‌شده توسط کمیته نظارت) درمانگر و برنامهٔ جلسات را انتخاب کنید؛ سپس ادامه دهید تا تاریخ شروع محاسبه و به پرداخت جلسهٔ اول بروید.",
+        "student_why_fa": "وقت‌ها از قبل در شیت تعریف شده‌اند؛ پس از انتخاب، بدون تأیید مجدد درمانگر، زمان‌بندی و پرداخت انجام می‌شود."
       }
     },
     {
@@ -59,7 +47,8 @@
       "assigned_role": "system",
       "metadata": {
         "student_short_fa": "در حال ثبت زمان‌بندی",
-        "student_task_fa": "این مرحله معمولاً به‌صورت خودکار طی چند ثانیه تکمیل می‌شود. اگر متوقف ماند، صفحه را تازه کنید."
+        "student_task_fa": "سامانه تاریخ اولین جلسه را از روی برنامهٔ انتخاب‌شده و قانون ۲۴ ساعت محاسبه می‌کند. اگر متوقف ماند، صفحه را تازه کنید.",
+        "student_why_fa": "قانون ۲۴ ساعت تعیین می‌کند که اولین جلسه حداقل ۲۴ ساعت بعد از انتخاب شما برگزار شود."
       }
     },
     {
@@ -70,26 +59,42 @@
       "sla_hours": 48,
       "metadata": {
         "student_short_fa": "پرداخت جلسهٔ اول",
-        "student_task_fa": "هزینهٔ جلسهٔ اول را از طریق درگاه بانک همین صفحه بپردازید. پس از تأیید بانک، درمان در پروندهٔ شما فعال می‌شود و به مرحلهٔ «پرداخت جلسات آتی» هدایت می‌شوید."
+        "student_task_fa": "هزینهٔ جلسهٔ اول را از طریق درگاه بانک همین صفحه بپردازید. پس از تأیید بانک، درمان در پروندهٔ شما فعال می‌شود و به مرحلهٔ «پرداخت جلسات آتی» هدایت می‌شوید.",
+        "student_why_fa": "پس از پرداخت، درمان فعال می‌شود و مسیر پرداخت جلسات آتی برای شما باز می‌شود."
       }
     },
     {
       "code": "therapy_active",
       "name_fa": "درمان فعال",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "درمان فعال — گام بعدی",
+        "student_task_fa": "گام بعدی: پرداخت جلسات آتی درمان. مسیر اصلی پرتال به «پرداخت برای جلسات آتی» منتقل شده یا خواهد شد.",
+        "student_why_fa": "برای ادامهٔ جلسات درمان، پیش‌پرداخت جلسات از همین پرتال انجام می‌شود."
+      }
     },
     {
       "code": "ineligible",
       "name_fa": "عدم صلاحیت",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "عدم صلاحیت آغاز درمان",
+        "student_task_fa": "در حال حاضر شرایط آغاز درمان آموزشی را ندارید. برای اطلاع از دلیل و راه‌حل، با پذیرش یا پشتیبانی تماس بگیرید.",
+        "student_why_fa": "شرایط پیش‌نیاز (مانند تکمیل ثبت‌نام یا پذیرش) هنوز کامل نشده است."
+      }
     },
     {
       "code": "week9_blocked",
       "name_fa": "مسدود - هفته نهم",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "مسدود — مهلت هفتهٔ نهم",
+        "student_task_fa": "مهلت هفتهٔ نهم برای آغاز درمان گذشته است. برای رفع مسدودیت کلاس‌ها، با پذیرش یا پشتیبانی تماس بگیرید.",
+        "student_why_fa": "طبق قوانین موسسه، آغاز درمان تا هفتهٔ نهم الزامی است و پس از آن محدودیت‌های کلاس اعمال می‌شود."
+      }
     }
   ],
   "transitions": [
@@ -180,53 +185,17 @@
     },
     {
       "from": "therapist_selection",
-      "to": "therapist_confirmation",
-      "trigger": "therapist_selected",
-      "required_role": "student",
-      "description_fa": "دانشجو درمانگر و برنامه هفتگی را انتخاب کرد",
-      "actions": [
-        {
-          "type": "book_educational_therapist_slots"
-        }
-      ]
-    },
-    {
-      "from": "therapist_confirmation",
-      "to": "schedule_first_session",
-      "trigger": "therapist_accepted",
-      "required_role": "therapist",
-      "description_fa": "درمانگر پذیرفت"
-    },
-    {
-      "from": "therapist_confirmation",
-      "to": "therapist_selection",
-      "trigger": "therapist_declined",
-      "required_role": "therapist",
-      "description_fa": "درمانگر نپذیرفت",
-      "actions": [
-        {
-          "type": "release_therapist_slots_to_available_sheet"
-        },
-        {
-          "type": "notification",
-          "notification_type": "sms",
-          "template": "therapist_declined",
-          "recipients": [
-            "student"
-          ]
-        }
-      ]
-    },
-    {
-      "from": "schedule_first_session",
       "to": "first_session_24h_check",
-      "trigger": "session_time_selected",
+      "trigger": "therapist_selected",
       "required_role": "student",
       "conditions": [
         "schedule_valid_for_course"
       ],
-      "description_fa": "برنامه هفتگی ثبت شد (جامع ۲+/هفته، آشنایی ۱–۲/هفته)",
+      "description_fa": "دانشجو از شیت وقت آزاد انتخاب کرد — رزرو اسلات، محاسبه تاریخ شروع (قانون ۲۴ ساعت) و رفتن به پرداخت",
       "actions": [
+        {
+          "type": "book_educational_therapist_slots"
+        },
         {
           "type": "apply_start_therapy_session_schedule"
         }
@@ -323,19 +292,6 @@
           ],
           "required": true,
           "description_fa": "دوره جامع: دقیقاً ۲ جلسه؛ دوره آشنایی: ۱ یا ۲ جلسه."
-        }
-      ]
-    },
-    {
-      "code": "start_therapy_first_session_date",
-      "name_fa": "تاریخ شروع اولین جلسه",
-      "used_in_state": "schedule_first_session",
-      "fields": [
-        {
-          "name": "first_session_date",
-          "label_fa": "تاریخ اولین جلسه (میلادی)",
-          "type": "date_picker",
-          "required": true
         }
       ]
     }

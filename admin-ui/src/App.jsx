@@ -11,6 +11,7 @@ import { canAccessReportsHub } from './utils/reportsAccess'
 import { getCommitteeHomePathForRole, getPortalHomeHref, getPortalHomePath } from './utils/portalRoleHome'
 import { canAccessStaffLane } from './utils/portalStaffLanes'
 import { canAccessCommitteeKind } from './utils/portalCommitteeKinds'
+import { getUserRoles, primaryRole, userHasAnyRole, userHasRole } from './utils/userRoles'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ProcessEditor = lazy(() => import('./pages/ProcessEditor'))
@@ -35,6 +36,7 @@ const TicketsPage = lazy(() => import('./pages/TicketsPage'))
 const DynamicFormsAdmin = lazy(() => import('./pages/DynamicFormsAdmin'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const SystemResourcesPage = lazy(() => import('./pages/SystemResourcesPage'))
+const BackupSnapshotsPage = lazy(() => import('./pages/BackupSnapshotsPage'))
 const AutomationSchedulerPage = lazy(() => import('./pages/AutomationSchedulerPage'))
 const SemesterPrepPage = lazy(() => import('./pages/SemesterPrepPage'))
 const SemesterPrepCalendarPage = lazy(() => import('./pages/SemesterPrepCalendarPage'))
@@ -127,8 +129,8 @@ function RequireStudentTrackerRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  const ok = ['admin', 'staff', 'supervisor', 'therapist'].includes(user.role)
-  if (!ok) return <Navigate to={getPortalHomeHref(user.role)} replace />
+  const ok = userHasAnyRole(user, ['admin', 'staff', 'supervisor', 'therapist'])
+  if (!ok) return <Navigate to={getPortalHomeHref(primaryRole(user))} replace />
   return children
 }
 
@@ -137,17 +139,18 @@ function RequireStudentRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  if (user.role !== 'student') return <Navigate to="/panel" replace />
+  if (!userHasRole(user, 'student', { adminBypass: false })) return <Navigate to="/panel" replace />
   return children
 }
 
 /** برای دانشجو/مالی/مصاحبه‌گر/اپراتور = پنل نقش؛ admin = داشبورد */
 function PanelIndex() {
   const { user } = useAuth()
-  if (!user?.role) return <Dashboard />
-  const homePath = getPortalHomePath(user.role)
-  if (homePath && user.role !== 'admin') {
-    return <Navigate to={getPortalHomeHref(user.role)} replace />
+  if (!user?.role && !getUserRoles(user).length) return <Dashboard />
+  const role = primaryRole(user)
+  const homePath = getPortalHomePath(role)
+  if (homePath && !userHasRole(user, 'admin', { adminBypass: false })) {
+    return <Navigate to={getPortalHomeHref(role)} replace />
   }
   return <Dashboard />
 }
@@ -157,7 +160,7 @@ function RequireInterviewerPortalRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  if (user.role !== 'interviewer' && user.role !== 'admin' && user.role !== 'staff') return <Navigate to="/panel" replace />
+  if (!userHasAnyRole(user, ['interviewer', 'admin', 'staff'])) return <Navigate to="/panel" replace />
   return children
 }
 
@@ -166,7 +169,7 @@ function RequireFinanceRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  if (user.role !== 'admin' && user.role !== 'finance') return <Navigate to="/panel" replace />
+  if (!userHasAnyRole(user, ['admin', 'finance'])) return <Navigate to="/panel" replace />
   return children
 }
 
@@ -175,7 +178,7 @@ function RequireAdminRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  if (user.role !== 'admin') return <Navigate to="/panel" replace />
+  if (!userHasRole(user, 'admin', { adminBypass: false })) return <Navigate to="/panel" replace />
   return children
 }
 
@@ -184,7 +187,7 @@ function RequireSemesterPrepRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  const ok = ['admin', 'staff', 'deputy_education', 'site_manager', 'course_committee', 'admissions_officer'].includes(user.role)
+  const ok = userHasAnyRole(user, ['admin', 'staff', 'deputy_education', 'site_manager', 'course_committee', 'admissions_officer'])
   if (!ok) return <Navigate to="/panel" replace />
   return children
 }
@@ -194,7 +197,7 @@ function RequireSchedulerViewRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  const ok = ['admin', 'staff', 'deputy_education'].includes(user.role)
+  const ok = userHasAnyRole(user, ['admin', 'staff', 'deputy_education'])
   if (!ok) return <Navigate to="/panel" replace />
   return children
 }
@@ -204,7 +207,9 @@ function RequireReportsRole({ children }) {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  if (!canAccessReportsHub(user.role)) return <Navigate to="/panel" replace />
+  if (!getUserRoles(user).some((r) => canAccessReportsHub(r)) && !userHasRole(user, 'admin')) {
+    return <Navigate to="/panel" replace />
+  }
   return children
 }
 
@@ -213,8 +218,10 @@ function RequireStaffLane({ children }) {
   const { lane } = useParams()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  if (!lane || !canAccessStaffLane(user.role, lane)) {
-    return <Navigate to={getPortalHomeHref(user.role)} replace />
+  const roles = getUserRoles(user)
+  const ok = roles.some((r) => canAccessStaffLane(r, lane))
+  if (!lane || !ok) {
+    return <Navigate to={getPortalHomeHref(primaryRole(user))} replace />
   }
   return children
 }
@@ -224,8 +231,10 @@ function RequireCommitteeKind({ children }) {
   const { kind } = useParams()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  if (!kind || !canAccessCommitteeKind(user.role, kind)) {
-    return <Navigate to={getPortalHomeHref(user.role)} replace />
+  const roles = getUserRoles(user)
+  const ok = roles.some((r) => canAccessCommitteeKind(r, kind))
+  if (!kind || !ok) {
+    return <Navigate to={getPortalHomeHref(primaryRole(user))} replace />
   }
   return children
 }
@@ -234,7 +243,9 @@ function CommitteeHomeRedirect() {
   const { user, loading } = useAuth()
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
-  const path = getCommitteeHomePathForRole(user.role)
+  const roles = getUserRoles(user)
+  const path = roles.map((r) => getCommitteeHomePathForRole(r)).find(Boolean)
+    || getCommitteeHomePathForRole(primaryRole(user))
   return <Navigate to={`${path}?tab=reviews`} replace />
 }
 
@@ -277,7 +288,7 @@ export default function App() {
           <Route path="dynamic-forms" element={<DynamicFormsAdmin />} />
           <Route path="rules" element={<RuleManager />} />
           <Route path="students" element={<RequireStudentTrackerRole><StudentTracker /></RequireStudentTrackerRole>} />
-          <Route path="users" element={<UserManagement />} />
+          <Route path="users" element={<RequireAdminRole><UserManagement /></RequireAdminRole>} />
           <Route path="audit" element={<AuditViewer />} />
           <Route
             path="reports"
@@ -296,6 +307,14 @@ export default function App() {
             element={
               <RequireAdminRole>
                 <SystemResourcesPage />
+              </RequireAdminRole>
+            }
+          />
+          <Route
+            path="backups"
+            element={
+              <RequireAdminRole>
+                <BackupSnapshotsPage />
               </RequireAdminRole>
             }
           />

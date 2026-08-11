@@ -376,6 +376,7 @@ from app.api.payment_routes import router as payment_router
 from app.api.blog_routes import router as blog_router
 from app.api.public_routes import router as public_router
 from app.api.therapy_routes import router as therapy_router
+from app.api.therapy_workbench_routes import router as therapy_workbench_router
 from app.api.finance_routes import router as finance_router
 from app.api.assignment_routes import router as assignment_router
 from app.api.ticket_routes import router as ticket_router
@@ -395,6 +396,7 @@ app.include_router(payment_router)
 app.include_router(blog_router)
 app.include_router(public_router)
 app.include_router(therapy_router)
+app.include_router(therapy_workbench_router)
 app.include_router(finance_router)
 app.include_router(assignment_router)
 app.include_router(ticket_router)

@@ -281,6 +281,26 @@ def main() -> int:
     if dump_path is not None:
         sftp_put(dump_path, REMOTE_DUMP, pw)
 
+    try:
+        _scripts_dir = str(Path(__file__).resolve().parent)
+        if _scripts_dir not in sys.path:
+            sys.path.insert(0, _scripts_dir)
+        from integration_env_sync import extract_integration_env, upsert_remote_dotenv
+
+        integ = extract_integration_env()
+        if integ:
+            keys = upsert_remote_dotenv(
+                host=HOST,
+                port=PORT,
+                user="root",
+                password=pw,
+                remote_dir="/opt/anistito",
+                updates=integ,
+            )
+            print(f"=== synced integration env ({len(keys)} keys) ===", flush=True)
+    except Exception as e:
+        print(f"=== warning: integration env sync failed: {e} ===", file=sys.stderr)
+
     remote_script = remote_deploy_script(preserve_remote_db=preserve_db)
     print("=== Running remote deploy ===")
     code, out, err = ssh_bash(pw, remote_script)

@@ -83,7 +83,7 @@ export default function InterviewBookingsPanel({ showToast, onOpenResult }) {
       <div className="card-header">
         <h3 className="card-title">رزروهای وقت مصاحبه</h3>
         <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', maxWidth: '42rem' }}>
-          دانشجویانی که وقت را انتخاب کرده‌اند؛ شامل نام، تماس، وضعیت فرایند و اقدام «ثبت برگزاری». برای تعریف/حذف بازهٔ آزاد به «فهرست وقت‌ها» بروید.
+          دانشجویانی که وقت را انتخاب کرده‌اند؛ شامل نام دانشجو، مصاحبه‌گر، تماس، وضعیت فرایند و اقدام «ثبت برگزاری». برای تعریف/حذف بازهٔ آزاد به «فهرست وقت‌ها» بروید.
         </p>
       </div>
       <div style={{ padding: '0 1.25rem 1.25rem' }}>
@@ -105,6 +105,7 @@ export default function InterviewBookingsPanel({ showToast, onOpenResult }) {
                   <th>دانشجو</th>
                   <th>کد</th>
                   <th>تماس</th>
+                  <th>مصاحبه‌گر</th>
                   <th>دوره</th>
                   <th>حضور</th>
                   <th>مکان / لینک</th>
@@ -163,6 +164,7 @@ export default function InterviewBookingsPanel({ showToast, onOpenResult }) {
                       <td>{st.full_name_fa || '—'}</td>
                       <td>{formatStudentCodeDisplay(st.student_code)}</td>
                       <td dir="ltr" style={{ fontSize: '0.82rem' }}>{st.phone || st.email || '—'}</td>
+                      <td>{s.interviewer_name_fa || '—'}</td>
                       <td>{st.course_type === 'comprehensive' ? 'جامع' : st.course_type === 'introductory' ? 'آشنایی' : (st.course_type || '—')}</td>
                       <td>{s.mode === 'online' ? 'آنلاین' : 'حضوری'}</td>
                       <td style={{ fontSize: '0.78rem', maxWidth: '12rem', wordBreak: 'break-word' }} dir={s.mode === 'online' ? 'ltr' : 'rtl'}>{loc}</td>

@@ -12,33 +12,58 @@
       "code": "eligibility_check",
       "name_fa": "بررسی صلاحیت ثبت‌نام",
       "type": "initial",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "بررسی صلاحیت ثبت‌نام",
+        "student_task_fa": "سامانه در حال بررسی شرط درمان و وضعیت تعلیق است؛ چند لحظه بعد همین صفحه را تازه کنید.",
+        "student_why_fa": "پس از تأیید صلاحیت، انتخاب دروس ترم دوم برای شما باز می‌شود."
+      }
     },
     {
       "code": "therapy_check_failed",
       "name_fa": "توقف — شرط درمان برآورده نشده",
       "type": "terminal",
       "assigned_role": "system",
-      "ui_hint": "popup_message"
+      "ui_hint": "popup_message",
+      "metadata": {
+        "student_short_fa": "توقف — شرط درمان برآورده نشده",
+        "student_task_fa": "برای ثبت‌نام ترم دوم ابتدا باید درمان شخصی خود را آغاز و درمانگر فعال ثبت کنید.",
+        "student_why_fa": "پذیرش مشروط به درمان بدون درمانگر فعال، ثبت‌نام ترم دوم را مجاز نمی‌کند."
+      }
     },
     {
       "code": "suspension_check_failed",
       "name_fa": "توقف — دانشجو تعلیق شده",
       "type": "terminal",
       "assigned_role": "system",
-      "ui_hint": "popup_message"
+      "ui_hint": "popup_message",
+      "metadata": {
+        "student_short_fa": "توقف — تعلیق از آموزش",
+        "student_task_fa": "به دلیل تعلیق از آموزش، امکان ثبت‌نام در ترم دوم وجود ندارد؛ برای رفع تعلیق با واحد انستیتو تماس بگیرید.",
+        "student_why_fa": "تا رفع تعلیق، ثبت‌نام ترم جدید از پنل برای شما باز نمی‌شود."
+      }
     },
     {
       "code": "course_selection",
       "name_fa": "انتخاب دروس ترم دوم",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب دروس ترم دوم",
+        "student_task_fa": "دروس مجاز ترم دوم را در فرم همین صفحه انتخاب و تأیید کنید؛ سپس دکمهٔ ادامه را بزنید.",
+        "student_why_fa": "فهرست دروس بر اساس نوع پذیرش شما (تک‌درس یا کامل) محدود شده است."
+      }
     },
     {
       "code": "payment_method",
       "name_fa": "انتخاب روش پرداخت",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب روش پرداخت",
+        "student_task_fa": "روش پرداخت را در فرم همین صفحه انتخاب کنید (نقدی یا اقساط تا ۴ قسط)؛ دانشجوی تک‌درس فقط نقدی — سپس ادامه دهید.",
+        "student_why_fa": "پس از انتخاب روش، به درگاه پرداخت سپ هدایت می‌شوید."
+      }
     },
     {
       "code": "payment_processing",
@@ -46,26 +71,43 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        "student_short_fa": "در حال پرداخت شهریه ترم دوم",
+        "student_task_fa": "شهریه ترم دوم را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.",
+        "student_why_fa": "پس از تأیید پرداخت، ثبت‌نام نهایی و لینک کلاس برای شما فعال می‌شود."
       }
     },
     {
       "code": "registration_complete",
       "name_fa": "ثبت‌نام نهایی — دروس ثبت و لینک کلاس فعال (اقساط باز یا تسویهٔ در حال انجام)",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "ثبت‌نام ترم دوم نهایی شد",
+        "student_task_fa": "ثبت‌نام ترم دوم تکمیل شد؛ لینک کلاس فعال است. اگر اقساطی پرداخت کردید، اقساط بعدی را در سررسید از همین پرتال بپردازید.",
+        "student_why_fa": "تا تسویهٔ کامل اقساط، در صورت معوق شدن قسط، حضور شما در کلاس بلاک می‌شود."
+      }
     },
     {
       "code": "installment_overdue",
       "name_fa": "قسط معوق — بلاک حضور و غیاب",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "قسط معوق — بلاک حضور و غیاب",
+        "student_task_fa": "قسط معوق را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را تازه کنید.",
+        "student_why_fa": "تا پرداخت قسط معوق، حضور شما در کلاس‌ها ثبت نمی‌شود."
+      }
     },
     {
       "code": "term2_registration_closed",
       "name_fa": "پایان فرایند ثبت‌نام ترم دوم — تسویهٔ مالی تکمیل‌شده",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "تسویه مالی ترم دوم کامل شد",
+        "student_task_fa": "فرایند ثبت‌نام ترم دوم بسته شد؛ دروس و لینک‌های کلاس در پنل آموزش در دسترس است.",
+        "student_why_fa": "ادامهٔ مسیر آموزشی شما از طریق کلاس‌ها و جلسات آنلاین در پنل دانشجوست."
+      }
     }
   ],
   "transitions": [
@@ -165,7 +207,8 @@
         {
           "type": "schedule_installment_reminders",
           "condition": "payment_method == 'installment'",
-          "description_fa": "برنامه‌ریزی یادآوری اقساط: پیامک ۱ هفته قبل از سررسید هر قسط"
+          "reminder_days_before": 1,
+          "description_fa": "برنامه‌ریزی یادآوری اقساط: پیامک ۱ روز قبل از سررسید هر قسط"
         },
         {
           "type": "notification",
@@ -230,6 +273,9 @@
           "type": "block_attendance_registration"
         },
         {
+          "type": "set_installment_portal_lock"
+        },
+        {
           "type": "notify_instructor",
           "message_fa": "امکان ثبت حضور برای این دانشجو به دلیل عدم تسویه بدهی شهریه وجود ندارد"
         }
@@ -244,6 +290,9 @@
       "actions": [
         {
           "type": "unblock_attendance_registration"
+        },
+        {
+          "type": "clear_installment_portal_lock"
         },
         {
           "type": "merge_instance_context",
@@ -336,6 +385,8 @@
               "label_fa": "۴ قسط"
             }
           ],
+          "show_if": {"field": "payment_method", "op": "eq", "value": "installment"},
+          "required_if": {"field": "payment_method", "op": "eq", "value": "installment"},
           "visible_when": "payment_method == 'installment'",
           "required_when": "payment_method == 'installment'"
         },

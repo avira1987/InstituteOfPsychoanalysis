@@ -240,6 +240,9 @@ class TestStateMachineEngine:
         assert status["process_code"] == "test_process"
         assert status["current_state"] == "review"
         assert len(status["history"]) == 2  # initial + submitted
+        assert status["student_id"] == str(sample_student.id)
+        assert status["student_code"] == sample_student.student_code
+        assert status.get("student_name_fa")
 
     async def test_get_available_transitions(self, db_session, sample_process, sample_rules, sample_student, sample_user, sample_student_user):
         """Test getting available transitions."""

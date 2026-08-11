@@ -1,6 +1,10 @@
 import React, { useMemo } from 'react'
 import SepPaymentPanel from './SepPaymentPanel'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   CompTermStartFlowStepper,
   labelCompTermStartState,
   resolveCompTermContext,
@@ -11,14 +15,13 @@ import {
 } from '../utils/comprehensiveTermStartDisplay'
 
 const PROCESS_TITLE_FA = 'آغاز ترم‌های دوره جامع (فرایند ۴۰)'
+const PROC_CODE = 'comprehensive_term_start'
 
-/** راهنمای هر وضعیت برای دانشجو. */
-const STATE_HINTS = {
-  eligibility_check: 'سامانه در حال بررسی موانع ثبت‌نام شماست (تعلیق انضباطی یا مرخصی تحصیلی). این مرحله خودکار است؛ چند لحظه بعد صفحه را تازه کنید.',
-  course_display: 'دروس ثابت ترم جدید و شهریه نمایش داده می‌شود. در دوره جامع امکان حذف یا انتخاب اختیاری درس وجود ندارد؛ پس از مشاهده، تأیید کنید تا به انتخاب روش پرداخت بروید.',
-  payment_choice: 'روش پرداخت را انتخاب کنید: نقدی (یکجا) یا اقساطی (۲ تا ۴ قسط). قسط اول در زمان ثبت‌نام پرداخت می‌شود.',
-  payment_processing: 'از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید تا تأیید پرداخت ثبت شود؛ در صورت خطا دوباره تلاش کنید.',
-  registration_complete: 'ثبت‌نام شما در ترم جدید نهایی شد و لینک کلاس‌های آنلاین فعال است. در صورت انتخاب پرداخت اقساطی، اقساط بعدی را در سررسید پرداخت کنید.',
+function resolveCompTermStartHint(state) {
+  if (!state) return 'ثبت‌نام ترم جدید دوره جامع — مراحل را طبق راهنمای پنل پیش ببرید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return 'ثبت‌نام ترم جدید دوره جامع — مراحل را طبق راهنمای پنل پیش ببرید.'
 }
 
 function InfoTile({ label, value, tone = '#2563eb', bg = '#eff6ff' }) {
@@ -72,8 +75,8 @@ export default function StudentComprehensiveTermStartPanel({
   const isStop = COMP_TERM_START_TERMINAL_STOP.has(currentState)
   const isComplete = currentState === 'registration_complete'
 
-  const hint = STATE_HINTS[currentState]
-    ?? 'ثبت‌نام ترم جدید دوره جامع — مراحل را طبق راهنمای پنل پیش ببرید.'
+  const hint = resolveCompTermStartHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelCompTermStartState(currentState)) ?? ''
 
   const termLabel = termCtx.termNumber
     ? `ترم ${Number(termCtx.termNumber).toLocaleString('fa-IR')}`
@@ -105,9 +108,14 @@ export default function StudentComprehensiveTermStartPanel({
   const showCourses = ['course_display', 'payment_choice'].includes(currentState) && termCtx.courses.length > 0
   const hasRemedial = termCtx.remedialCourses.length > 0
 
-  const paymentAmountRial = ctx.payment_amount_rial != null
-    ? Number(ctx.payment_amount_rial)
-    : Math.round(Number(ctx.invoice_amount || ctx.tuition_amount || 0) * 10)
+  const paymentAmountRial = ctx.payable_amount_rial != null
+    ? Number(ctx.payable_amount_rial)
+    : ctx.payment_amount_rial != null
+      ? Number(ctx.payment_amount_rial)
+      : Math.round(Number(ctx.invoice_amount || ctx.tuition_amount || 0) * 10)
+
+  const paymentMethodChosen = Boolean(ctx.payment_method || termCtx.paymentMethod)
+  const showSep = ['payment_processing', 'installment_overdue'].includes(currentState) && paymentMethodChosen
 
   return (
     <div className="card" data-testid="student-comprehensive-term-start-panel">
@@ -159,6 +167,12 @@ export default function StudentComprehensiveTermStartPanel({
               color: '#1e3a8a',
             }}
           >
+            {statusShort && (
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                وضعیت فعلی: {statusShort}
+              </div>
+            )}
+            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
           </div>
         )}
@@ -222,8 +236,20 @@ export default function StudentComprehensiveTermStartPanel({
           </div>
         )}
 
-        {currentState === 'payment_processing' && resolvedStudentId && (
+        {showSep && resolvedStudentId && (
           <div style={{ marginBottom: compact ? '0.65rem' : '0.85rem' }} data-testid="comp-term-start-sep-payment">
+            {currentState === 'payment_processing' && !paymentMethodChosen && (
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.86rem', color: '#1e3a8a', lineHeight: 1.7 }}>
+                ابتدا روش پرداخت را در فرم بالا انتخاب و ثبت کنید؛ سپس درگاه پرداخت فعال می‌شود.
+              </p>
+            )}
+            {ctx.payment_method === 'installment' && paymentAmountRial > 0 && (
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.86rem', color: '#1e3a8a' }}>
+                مبلغ قابل پرداخت الان (قسط {Number(ctx.current_installment_index || 1).toLocaleString('fa-IR')}):
+                {' '}
+                <strong>{Math.round(paymentAmountRial / 10).toLocaleString('fa-IR')} تومان</strong>
+              </p>
+            )}
             <SepPaymentPanel
               instanceId={detail.instance_id}
               studentId={resolvedStudentId}

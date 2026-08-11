@@ -13,11 +13,13 @@ function sortSlots(slots) {
 }
 
 function slotLabel(slot) {
-  return `${slot.day_label_fa} ${slot.start_local_time}–${slot.end_local_time}`
+  const cadence = slot.week_interval_label_fa
+    || (Number(slot.week_interval) === 2 ? 'هفته‌درمیان' : 'هفتگی')
+  return `${slot.day_label_fa} ${slot.start_local_time}–${slot.end_local_time} (${cadence})`
 }
 
 /**
- * انتخاب درمانگر و اسلات‌های هفتگی از شیت وقت‌های آزاد.
+ * انتخاب درمانگر و اسلات‌ها از شیت وقت‌های آزاد کمیته نظارت.
  * خروجی: therapistId + slotIds[]
  */
 export default function EducationalTherapistSlotPicker({
@@ -26,6 +28,7 @@ export default function EducationalTherapistSlotPicker({
   weeklySessions = '',
   courseType = null,
   therapistFieldName = 'therapist_id',
+  slotRole = 'therapist',
   onTherapistChange,
   onSlotsChange,
   disabled = false,
@@ -33,41 +36,59 @@ export default function EducationalTherapistSlotPicker({
   const [therapists, setTherapists] = useState([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
+  const isSupervisor = slotRole === 'supervisor'
 
   const weeklyRequired = useMemo(() => {
     const n = Number(weeklySessions)
     if (n > 0) return n
+    if (isSupervisor) return 1
     if (courseType === 'comprehensive') return 2
     return 1
-  }, [weeklySessions, courseType])
+  }, [weeklySessions, courseType, isSupervisor])
 
   useEffect(() => {
     let active = true
     setLoading(true)
     setErr('')
     educationalTherapistSlotsApi
-      .available(courseType || undefined)
+      .available(courseType || undefined, isSupervisor ? 'supervisor' : undefined)
       .then((r) => {
         if (!active) return
-        setTherapists(r.data?.therapists || [])
+        setTherapists(r.data?.therapists || r.data?.supervisors || [])
       })
       .catch(() => {
         if (!active) return
-        setErr('بارگذاری شیت وقت‌های آزاد درمانگران ناموفق بود.')
+        setErr(
+          isSupervisor
+            ? 'بارگذاری شیت وقت‌های آزاد سوپروایزرها ناموفق بود.'
+            : 'بارگذاری شیت وقت‌های آزاد درمانگران ناموفق بود.',
+        )
       })
       .finally(() => {
         if (active) setLoading(false)
       })
     return () => { active = false }
-  }, [courseType])
+  }, [courseType, isSupervisor])
 
   const selectedTherapist = useMemo(
     () => therapists.find((t) => t.id === therapistId) || null,
     [therapists, therapistId],
   )
 
-  const toggleSlot = (slotId) => {
+  const visibleSlotsForTherapist = (t) => {
+    const slots = sortSlots(t.slots)
+    if (courseType === 'comprehensive' && !isSupervisor) {
+      return slots.filter((s) => Number(s.week_interval || 1) === 1)
+    }
+    return slots
+  }
+
+  const toggleSlot = (slotId, slotMeta) => {
     if (disabled) return
+    if (courseType === 'comprehensive' && !isSupervisor && Number(slotMeta?.week_interval || 1) !== 1) {
+      setErr('دوره جامع فقط وقت‌های هفتگی را می‌پذیرد.')
+      return
+    }
     const current = Array.isArray(slotIds) ? [...slotIds] : []
     const idx = current.indexOf(slotId)
     if (idx >= 0) {
@@ -76,7 +97,7 @@ export default function EducationalTherapistSlotPicker({
       return
     }
     if (current.length >= weeklyRequired) {
-      setErr(`حداکثر ${weeklyRequired} اسلات هفتگی می‌توانید انتخاب کنید.`)
+      setErr(`حداکثر ${weeklyRequired} اسلات می‌توانید انتخاب کنید.`)
       return
     }
     setErr('')
@@ -102,7 +123,9 @@ export default function EducationalTherapistSlotPicker({
     return (
       <div className="et-slot-picker" data-testid="et-slot-picker-empty">
         <p className="psf-hint psf-hint--warn" style={{ margin: 0 }}>
-          در حال حاضر وقت آزاد درمانگر آموزشی در شیت ثبت نشده است. لطفاً با هماهنگی انستیتو تماس بگیرید.
+          {isSupervisor
+            ? 'در حال حاضر وقت آزاد سوپروایزر در شیت ثبت نشده است. لطفاً با هماهنگی انستیتو تماس بگیرید.'
+            : 'در حال حاضر وقت آزاد درمانگر آموزشی در شیت ثبت نشده است. لطفاً با کمیته نظارت تماس بگیرید.'}
         </p>
       </div>
     )
@@ -111,18 +134,19 @@ export default function EducationalTherapistSlotPicker({
   return (
     <div className="et-slot-picker" data-testid="et-slot-picker">
       <p className="psf-hint" style={{ marginTop: 0 }}>
-        {courseType === 'comprehensive'
-          ? 'دوره جامع: دقیقاً ۲ جلسه در هفته با یک درمانگر انتخاب کنید.'
-          : 'دوره آشنایی: ۱ یا ۲ جلسه در هفته با یک درمانگر انتخاب کنید.'}
-        {' '}
-        (فیلد «تعداد جلسات در هفته» را با تعداد اسلات هماهنگ کنید.)
+        {isSupervisor
+          ? 'حداکثر ۱ جلسه در هفته با یک سوپروایزر انتخاب کنید.'
+          : courseType === 'comprehensive'
+            ? 'دوره جامع: دقیقاً ۲ جلسه هفتگی با یک درمانگر از شیت انتخاب کنید (بدون نیاز به تأیید مجدد درمانگر).'
+            : 'دوره آشنایی: ۱ یا ۲ جلسه از شیت انتخاب کنید؛ پس از ثبت، مستقیم به زمان‌بندی و پرداخت می‌روید.'}
+        {!isSupervisor && ' (فیلد «تعداد جلسات در هفته» را با تعداد اسلات هماهنگ کنید.)'}
       </p>
       {err && <p className="psf-hint psf-hint--warn">{err}</p>}
 
       <div className="et-slot-picker-therapists">
         {therapists.map((t) => {
           const active = t.id === therapistId
-          const slots = sortSlots(t.slots)
+          const slots = visibleSlotsForTherapist(t)
           return (
             <div
               key={t.id}
@@ -140,6 +164,11 @@ export default function EducationalTherapistSlotPicker({
               </button>
               {active && (
                 <div className="et-slot-picker-slots">
+                  {slots.length === 0 && (
+                    <p className="psf-hint psf-hint--warn" style={{ margin: 0 }}>
+                      برای دوره شما وقت هفتگی آزاد در این درمانگر نیست.
+                    </p>
+                  )}
                   {slots.map((slot) => {
                     const selected = (slotIds || []).includes(slot.id)
                     return (
@@ -148,7 +177,7 @@ export default function EducationalTherapistSlotPicker({
                         type="button"
                         className={`et-slot-chip${selected ? ' et-slot-chip--selected' : ''}`}
                         disabled={disabled}
-                        onClick={() => toggleSlot(slot.id)}
+                        onClick={() => toggleSlot(slot.id, slot)}
                         data-testid={`et-slot-${slot.id}`}
                       >
                         {slotLabel(slot)}

@@ -7,6 +7,7 @@ from typing import Iterable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.user_roles import user_matches_role_sql
 from app.models.operational_models import User
 
 # Metadata assigned_role → portal User.role search order
@@ -29,8 +30,14 @@ _METADATA_TO_PORTAL_ROLES: dict[str, tuple[str, ...]] = {
     "monitoring_committee_officer": ("monitoring_committee_officer",),
     "therapy_committee_chair": ("therapy_committee_chair",),
     "therapy_committee_executor": ("therapy_committee_executor",),
-    "progress_committee_scientific": ("progress_committee",),
-    "progress_committee_project": ("progress_committee",),
+    "progress_committee_scientific": (
+        "progress_committee_scientific",
+        "progress_committee",
+    ),
+    "progress_committee_project": (
+        "progress_committee_project",
+        "progress_committee",
+    ),
 }
 
 
@@ -56,7 +63,11 @@ async def resolve_users_for_assigned_role(
     seen: set = set()
     out: list[User] = []
     for pr in roles:
-        stmt = select(User).where(User.role == pr, User.is_active.is_(True)).order_by(User.full_name_fa.asc())
+        stmt = (
+            select(User)
+            .where(user_matches_role_sql(pr), User.is_active.is_(True))
+            .order_by(User.full_name_fa.asc())
+        )
         if limit is not None:
             stmt = stmt.limit(max(0, limit - len(out)))
         for u in (await db.execute(stmt)).scalars().all():

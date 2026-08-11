@@ -191,6 +191,20 @@ export const auditApi = {
 export const systemApi = {
   /** اسنپ‌شات منابع کانتینر/میزبان (RAM, CPU load, RSS, disk) — فقط ادمین. */
   resourceSnapshot: () => api.get('admin/system/resource-snapshot'),
+  /** فهرست بکاپ‌های روزانه روی هاست — فقط ادمین. */
+  listBackups: () => api.get('admin/system/backups'),
+  /** جزئیات / verify یک بکاپ تاریخ‌دار (YYYY-MM-DD). */
+  getBackup: (date, { verify = false } = {}) =>
+    api.get(`admin/system/backups/${encodeURIComponent(date)}`, {
+      params: verify ? { verify: true } : undefined,
+    }),
+  /** URL دانلود db یا uploads (نیاز به توکن در هدر — از downloadBackup استفاده کنید). */
+  backupDownloadPath: (date, kind) =>
+    `admin/system/backups/${encodeURIComponent(date)}/download/${encodeURIComponent(kind)}`,
+  downloadBackup: (date, kind) =>
+    api.get(`admin/system/backups/${encodeURIComponent(date)}/download/${encodeURIComponent(kind)}`, {
+      responseType: 'blob',
+    }),
 }
 
 /** تقویم آموزشی و اتوماسیون زمان‌محور */
@@ -246,6 +260,9 @@ export const studentApi = {
   /** @param {{ tracker_summary?: boolean }} [params] */
   list: (params) => api.get('students', { params }),
   me: () => api.get('students/me'),
+  myFinance: () => api.get('students/me/finance'),
+  actionInbox: () => api.get('students/me/action-inbox'),
+  ensureConditionalTherapyStart: () => api.post('students/me/conditional-therapy/ensure-start'),
   get: (id) => api.get(`students/${id}`),
   create: (data) => api.post('students', data),
   update: (id, data) => api.patch(`students/${id}`, data),
@@ -416,9 +433,12 @@ export const interviewSlotsApi = {
 
 // ─── شیت وقت آزاد درمانگران آموزشی ─────────────────────────
 export const educationalTherapistSlotsApi = {
-  available: (courseType) =>
+  available: (courseType, role) =>
     api.get('educational-therapist-slots/available', {
-      params: courseType ? { course_type: courseType } : {},
+      params: {
+        ...(courseType ? { course_type: courseType } : {}),
+        ...(role ? { role } : {}),
+      },
     }),
   book: (body) => api.post('educational-therapist-slots/book', body),
   manageList: (includeBooked = true, therapistUserId) =>
@@ -428,6 +448,8 @@ export const educationalTherapistSlotsApi = {
         ...(therapistUserId ? { therapist_user_id: therapistUserId } : {}),
       },
     }),
+  /** فهرست درمانگران برای نقش‌های مدیریت شیت (از جمله کمیته نظارت) */
+  manageTherapists: () => api.get('educational-therapist-slots/manage/therapists'),
   manageCreate: (body) => api.post('educational-therapist-slots/manage', body),
   manageUpdate: (id, body) => api.patch(`educational-therapist-slots/manage/${id}`, body),
   manageDelete: (id) => api.delete(`educational-therapist-slots/manage/${id}`),
@@ -440,9 +462,12 @@ export const therapyApi = {
   myTherapyProgress: () => api.get('therapy-sessions/me/therapy-progress'),
   myFeeDeterminationSummary: () => api.get('therapy-sessions/me/fee-determination-summary'),
   forTherapist: () => api.get('therapy-sessions/for-therapist'),
-  attendanceWorkbench: () => api.get('therapy-sessions/attendance-workbench'),
+  attendanceWorkbench: (params) => api.get('therapy-sessions/attendance-workbench', { params }),
   forStudent: (studentId) => api.get(`therapy-sessions/for-student/${studentId}`),
   patchSession: (sessionId, data) => api.patch(`therapy-sessions/${sessionId}`, data),
+  workbenchSummary: (params) => api.get('therapy-workbench/summary', { params }),
+  workbenchSessions: (params) => api.get('therapy-workbench/sessions', { params }),
+  workbenchRepair: (studentId) => api.post(`therapy-workbench/repair/${studentId}`),
 }
 
 export const alocomApi = {

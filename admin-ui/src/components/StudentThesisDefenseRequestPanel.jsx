@@ -1,6 +1,10 @@
 import React, { useMemo } from 'react'
 import UploadedDocumentsReadonlyGrid from './UploadedDocumentsReadonlyGrid'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   ThesisDefenseFlowStepper,
   EligibilityChecklistTiles,
   DefenseScheduleChip,
@@ -15,36 +19,14 @@ import {
 } from '../utils/thesisDefenseRequestDisplay'
 
 const PROCESS_TITLE_FA = 'درخواست ثبت دفاع پایان‌نامه (فرایند ۷۰)'
+const PROC_CODE = 'thesis_defense_request'
 
-const STATE_HINTS = {
-  eligibility_check:
-    'وضعیت چهار شرط زیر را بررسی کنید. در صورت احراز همهٔ شروط، فایل PDF گزارش ۱۵۰ ساعت بیماران سایکوتیک را در فرم پایین بارگذاری و «ادامه و ثبت مرحله» را بزنید.',
-  conditions_not_met: ELIGIBILITY_ERROR_FA,
-  progress_committee_review:
-    'گزارش شما در کمیته پیشرفت در حال بررسی است. پس از اعلام نتیجه، این صفحه به‌روز می‌شود.',
-  report_revision:
-    'کمیته پیشرفت نیاز به اصلاح گزارش سایکوتیک اعلام کرده است. توضیحات را در باکس زیر ببینید؛ فایل اصلاح‌شده را بارگذاری کنید.',
-  supervision_committee_review:
-    'پرونده در کمیته نظارت است. پس از صدور مجوز یا رد، وضعیت اینجا نمایش داده می‌شود.',
-  defense_permit_denied:
-    'کمیته نظارت مجوز دفاع صادر نکرده است. توضیحات در باکس زیر آمده است.',
-  thesis_upload:
-    'مجوز دفاع صادر شد. فایل پایان‌نامه / گزارش موردی (PDF) را در فرم پایین بارگذاری کنید.',
-  education_committee_scheduling:
-    'پایان‌نامه ثبت شد. کمیته آموزش در حال تعیین زمان و داوران است؛ جزئیات جلسه (بدون نام داور) پس از ثبت اینجا نمایش داده می‌شود.',
-  first_defense_held:
-    'زمان دفاع ثبت شده است. در روز مقرر طبق اعلام کمیته حاضر شوید. پس از برگزاری، نتیجه در همین صفحه اعلام می‌شود.',
-  revision_required:
-    'حداقل یک داور نمره C/D/F داده است. حداکثر ۲ هفته فرصت دارید فایل اصلاح‌شده را بارگذاری کنید.',
-  revision_upload:
-    'فایل اصلاح‌شده ثبت شد. کمیته آموزش زمان دفاع مجدد را هماهنگ می‌کند.',
-  second_defense_held:
-    'دفاع مجدد برنامه‌ریزی شده است. در روز مقرر حاضر شوید؛ نتیجه نهایی پس از داوری اعلام می‌شود.',
-  defense_passed: 'تبریک — دفاع با موفقیت (PASS) به پایان رسید.',
-  defense_failed: 'نتیجه نهایی دفاع: مردود (FAIL). در صورت پرسش با کمیته پیشرفت تماس بگیرید.',
-  report_rejected: 'گزارش سایکوتیک توسط کمیته پیشرفت رد شد و فرایند خاتمه یافته است.',
-  revision_delay_violation:
-    'مهلت ۲ هفته برای آپلود اصلاحات به پایان رسید. پرونده به کمیته نظارت برای بررسی تخلف ارجاع شده است.',
+function resolveThesisHint(state) {
+  if (!state) return 'مسیر دفاع پایان‌نامه — مراحل را طبق راهنمای این صفحه پیش ببرید.'
+  if (state === 'conditions_not_met') return ELIGIBILITY_ERROR_FA
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return 'مسیر دفاع پایان‌نامه — مراحل را طبق راهنمای این صفحه پیش ببرید.'
 }
 
 const FILE_FIELDS = [
@@ -81,8 +63,8 @@ export default function StudentThesisDefenseRequestPanel({
     return null
   }
 
-  const hint = STATE_HINTS[currentState]
-    ?? 'مسیر دفاع پایان‌نامه — مراحل را طبق راهنمای این صفحه پیش ببرید.'
+  const hint = resolveThesisHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelThesisDefenseState(currentState)) ?? ''
   const isTerminal = [
     'conditions_not_met',
     'report_rejected',

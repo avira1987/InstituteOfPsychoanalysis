@@ -1,8 +1,14 @@
 import React, { useMemo } from 'react'
 import { labelState } from '../utils/processDisplay'
+import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
+import SepPaymentPanel from './SepPaymentPanel'
 
 const BLOCK_SIZE = 50
+const PROC_CODE = 'supervision_block_transition'
 
 const PROCESS_TITLE_FA =
   'آغاز سوپرویژن فردی دوم یا سوم یا چهارم یا پنجم (فرایند ۱۹)'
@@ -205,6 +211,7 @@ export default function StudentSupervisionBlockTransitionPanel({
   detail = null,
   stepFormValues = {},
   extraData = null,
+  studentId = null,
   compact = false,
   active = true,
 }) {
@@ -257,17 +264,15 @@ export default function StudentSupervisionBlockTransitionPanel({
   const mandatoryMsg = ctx.mandatory_message_fa || MANDATORY_LOCK_MSG
 
   const stateHint = isProcessActive && currentState
-    ? ({
-      payment_intent_50th: at50th
-        ? 'به جلسه ۵۰ رسیده‌اید. «ادامه و ثبت مرحله» را بزنید تا سوابق و وقت‌های آزاد نمایش داده شود.'
-        : 'اگر هنوز به جلسه ۵۰ نرسیده‌اید، پس از «ادامه» به پرداخت عادی سوپرویژن هدایت می‌شوید؛ در غیر این صورت مسیر انتقال بلوک باز می‌شود.',
-      not_at_50th: 'هنوز به جلسه ۵۰ نرسیده‌اید — از فرایند پرداخت جلسات یا تکمیل بلوک ۵۰ ساعته ادامه دهید.',
-      supervisor_slots_displayed: 'سوابق و شیت وقت‌های آزاد را در باکس‌های زیر ببینید؛ سپس در فرم، سوپروایزر و یک زمان (حداکثر ۱ جلسه در هفته) را انتخاب کنید.',
-      slot_selected: 'تاریخ شروع با قانون ۲۴ ساعت محاسبه شده است. ابتدا هزینهٔ جلسه اول دوره جدید را بپردازید.',
-      new_block_first_paid: 'پرداخت جلسه اول دوره جدید انجام شد — اکنون می‌توانید جلسه ۵۰ام دوره فعلی را پرداخت کنید.',
-      both_paid_completed: 'هر دو پرداخت انجام شد. جزئیات جلسه جدید از طریق پیامک به شما و سوپروایزر ارسال می‌شود.',
-    }[currentState] || null)
+    ? (() => {
+      if (currentState === 'payment_intent_50th' && at50th) {
+        return PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.supervisor_slots_displayed
+          || 'به جلسه ۵۰ رسیده‌اید. «ادامه و ثبت مرحله» را بزنید تا سوابق و وقت‌های آزاد نمایش داده شود.'
+      }
+      return PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[currentState] || null
+    })()
     : null
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelState(currentState)) ?? ''
 
   if (!active || !detail || detail.process_code !== 'supervision_block_transition') {
     return null
@@ -288,7 +293,17 @@ export default function StudentSupervisionBlockTransitionPanel({
         >
           <strong>مرحلهٔ فرایند:</strong>{' '}
           {labelState(currentState)}
-          {stateHint && <p style={{ margin: '0.35rem 0 0', color: '#334155' }}>{stateHint}</p>}
+          {stateHint && (
+            <div style={{ marginTop: '0.35rem', color: '#334155' }}>
+              {statusShort && (
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                  وضعیت فعلی: {statusShort}
+                </div>
+              )}
+              <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
+              {stateHint}
+            </div>
+          )}
         </div>
       )}
 
@@ -506,6 +521,25 @@ export default function StudentSupervisionBlockTransitionPanel({
           }}
         >
           قفل پرداخت جلسه ۵۰ام باز شد. از بخش پرداخت همین صفحه برای جلسه پنجاهم دوره فعلی استفاده کنید.
+        </div>
+      )}
+
+      {studentId && detail?.instance_id && ['slot_selected', 'new_block_first_paid'].includes(currentState) && (
+        <div style={{ marginBottom: '0.85rem' }} data-testid="supervision-block-inline-sep">
+          <SepPaymentPanel
+            instanceId={detail.instance_id}
+            studentId={studentId}
+            amountRial={
+              ctx.payment_amount_rial != null
+                ? Number(ctx.payment_amount_rial)
+                : Math.round(Number(ctx.invoice_amount || 0) * 10)
+            }
+            description={
+              currentState === 'slot_selected'
+                ? 'پرداخت جلسه اول دوره سوپرویژن جدید'
+                : 'پرداخت جلسه ۵۰ام دوره سوپرویژن فعلی'
+            }
+          />
         </div>
       )}
 

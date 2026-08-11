@@ -215,6 +215,16 @@ export function getOperatorFollowupDestination(item) {
   }
 
   if (
+    processCode === 'introductory_course_registration'
+    && stateCode === 'documents_review'
+  ) {
+    return {
+      href: staffHref({ ...base, tab: 'documentsReview' }, 'admissions'),
+      hintFa: 'پنل پذیرش — بررسی مدارک ثبت‌نام',
+    }
+  }
+
+  if (
     processCode === 'live_supervision_session_prep'
     || processCode === 'live_therapy_observation_session_prep'
   ) {
@@ -538,6 +548,16 @@ export function getOperatorFollowupDestinationForProcess(opts) {
     return {
       href: staffHref({ tab: 'pending', process_code: processCode }, 'admissions'),
       hintFa: 'پنل پذیرش — پیگیری افت تحصیلی پایان ترم آشنایی',
+    }
+  }
+
+  if (
+    processCode === 'introductory_course_registration'
+    && stateCode === 'documents_review'
+  ) {
+    return {
+      href: staffHref({ tab: 'documentsReview', process_code: processCode }, 'admissions'),
+      hintFa: 'پنل پذیرش — بررسی مدارک ثبت‌نام',
     }
   }
 

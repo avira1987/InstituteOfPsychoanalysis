@@ -9,9 +9,12 @@ import {
   countGroupSessions,
   countSetupSessions,
   describeGroupPlan,
+  describeSchedulePlan,
   emptyInterviewSetup,
   interviewSetupErrors,
   interviewSetupFromContext,
+  patchInterviewerSchedule,
+  toggleInterviewerInGroup,
 } from '../utils/semesterPrepInterviewPlan'
 import {
   defaultShamsiDate,
@@ -30,28 +33,141 @@ function shamsiLabel(isoDate) {
   return formatShamsiTehran(isoDate, { dateOnly: true })
 }
 
-function CourseTypeCard({ courseType, group, candidates, disabled, onChange, onCopyFrom }) {
-  const labelFa = INTERVIEW_COURSE_LABELS_FA[courseType]
+function InterviewerScheduleCard({
+  courseType,
+  schedule,
+  candidateName,
+  sessionMinutes,
+  disabled,
+  onChange,
+}) {
   const [pickerDate, setPickerDate] = useState(defaultShamsiDate)
-
-  const patch = (next) => onChange({ ...group, ...next })
-
-  const toggleInterviewer = (id) => {
-    const has = group.interviewerIds.includes(id)
-    patch({
-      interviewerIds: has
-        ? group.interviewerIds.filter((x) => x !== id)
-        : [...group.interviewerIds, id],
-    })
-  }
+  const uid = schedule.interviewerId
 
   const addDate = () => {
     const iso = shamsiDateToIsoDate(pickerDate.jy, pickerDate.jm, pickerDate.jd)
-    if (group.dates.includes(iso)) return
-    patch({ dates: [...group.dates, iso].sort() })
+    if (schedule.dates.includes(iso)) return
+    onChange({ dates: [...schedule.dates, iso].sort() })
   }
 
-  const removeDate = (iso) => patch({ dates: group.dates.filter((d) => d !== iso) })
+  const removeDate = (iso) => onChange({ dates: schedule.dates.filter((d) => d !== iso) })
+
+  const summary = describeSchedulePlan(schedule, sessionMinutes, candidateName)
+
+  return (
+    <div
+      data-testid={`interview-setup-${courseType}-schedule-${uid}`}
+      className="interview-setup-schedule-card"
+    >
+      <div className="interview-setup-schedule-card__title">
+        برنامهٔ {candidateName || 'مصاحبه‌گر'}
+      </div>
+
+      <div style={{ marginBottom: '0.7rem' }}>
+        <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+          روزهای مصاحبه
+        </div>
+        <div className="interview-setup-date-row">
+          <ShamsiDatePicker
+            value={pickerDate}
+            onChange={setPickerDate}
+            idPrefix={`interview-setup-${courseType}-${uid}-date`}
+            compact
+            disabled={disabled}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm interview-setup-date-row__add"
+            disabled={disabled}
+            onClick={addDate}
+            data-testid={`interview-setup-${courseType}-${uid}-add-date`}
+          >
+            افزودن روز
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.45rem' }}>
+          {schedule.dates.map((iso) => (
+            <span
+              key={iso}
+              style={{
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '999px',
+                padding: '0.25rem 0.6rem',
+                fontSize: '0.78rem',
+                display: 'inline-flex',
+                gap: '0.35rem',
+                alignItems: 'center',
+              }}
+            >
+              {shamsiLabel(iso)}
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => removeDate(iso)}
+                  aria-label={`حذف ${iso}`}
+                  style={{ border: 'none', background: 'none', color: '#b91c1c', cursor: 'pointer' }}
+                >
+                  ×
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <label style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          ساعت شروع
+          <input
+            type="time"
+            className="form-input psf-input"
+            value={schedule.startTime}
+            disabled={disabled}
+            data-testid={`interview-setup-${courseType}-${uid}-start`}
+            onChange={(e) => onChange({ startTime: e.target.value })}
+          />
+        </label>
+        <label style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          ساعت پایان
+          <input
+            type="time"
+            className="form-input psf-input"
+            value={schedule.endTime}
+            disabled={disabled}
+            data-testid={`interview-setup-${courseType}-${uid}-end`}
+            onChange={(e) => onChange({ endTime: e.target.value })}
+          />
+        </label>
+      </div>
+
+      {summary ? (
+        <p style={{ fontSize: '0.78rem', color: '#166534', margin: '0.5rem 0 0' }}>{summary}</p>
+      ) : (
+        <p style={{ fontSize: '0.78rem', color: '#b45309', margin: '0.5rem 0 0' }}>
+          روز و ساعت این مصاحبه‌گر را مشخص کنید.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function CourseTypeCard({ courseType, group, candidates, disabled, onChange, onCopyFrom }) {
+  const labelFa = INTERVIEW_COURSE_LABELS_FA[courseType]
+  const nameById = useMemo(() => {
+    const map = {}
+    for (const c of candidates) map[c.id] = c.full_name_fa
+    return map
+  }, [candidates])
+
+  const selectedIds = useMemo(
+    () => new Set((group.interviewers || []).map((s) => s.interviewerId)),
+    [group.interviewers],
+  )
+
+  const toggleInterviewer = (id) => {
+    onChange(toggleInterviewerInGroup(group, id))
+  }
 
   const summary = describeGroupPlan(group)
 
@@ -94,7 +210,7 @@ function CourseTypeCard({ courseType, group, candidates, disabled, onChange, onC
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
             {candidates.map((c) => {
-              const active = group.interviewerIds.includes(c.id)
+              const active = selectedIds.has(c.id)
               return (
                 <button
                   key={c.id}
@@ -120,84 +236,26 @@ function CourseTypeCard({ courseType, group, candidates, disabled, onChange, onC
             })}
           </div>
         )}
+        <p className="muted" style={{ fontSize: '0.75rem', margin: '0.45rem 0 0', lineHeight: 1.6 }}>
+          برای هر مصاحبه‌گر می‌توانید روزها و ساعات جداگانه تعیین کنید.
+        </p>
       </div>
 
-      <div style={{ marginBottom: '0.8rem' }}>
-        <div style={{ fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-          روزهای مصاحبه
-        </div>
-        <div className="interview-setup-date-row">
-          <ShamsiDatePicker
-            value={pickerDate}
-            onChange={setPickerDate}
-            idPrefix={`interview-setup-${courseType}-date`}
-            compact
-            disabled={disabled}
-          />
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm interview-setup-date-row__add"
-            disabled={disabled}
-            onClick={addDate}
-            data-testid={`interview-setup-${courseType}-add-date`}
-          >
-            افزودن روز
-          </button>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
-          {group.dates.map((iso) => (
-            <span
-              key={iso}
-              style={{
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                borderRadius: '999px',
-                padding: '0.25rem 0.6rem',
-                fontSize: '0.78rem',
-                display: 'inline-flex',
-                gap: '0.35rem',
-                alignItems: 'center',
-              }}
-            >
-              {shamsiLabel(iso)}
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={() => removeDate(iso)}
-                  aria-label={`حذف ${iso}`}
-                  style={{ border: 'none', background: 'none', color: '#b91c1c', cursor: 'pointer' }}
-                >
-                  ×
-                </button>
-              )}
-            </span>
-          ))}
-        </div>
-      </div>
+      {(group.interviewers || []).map((schedule) => (
+        <InterviewerScheduleCard
+          key={schedule.interviewerId}
+          courseType={courseType}
+          schedule={schedule}
+          candidateName={nameById[schedule.interviewerId]}
+          sessionMinutes={group.sessionMinutes}
+          disabled={disabled}
+          onChange={(patch) =>
+            onChange(patchInterviewerSchedule(group, schedule.interviewerId, patch))
+          }
+        />
+      ))}
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <label style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-          ساعت شروع
-          <input
-            type="time"
-            className="form-input psf-input"
-            value={group.startTime}
-            disabled={disabled}
-            data-testid={`interview-setup-${courseType}-start`}
-            onChange={(e) => patch({ startTime: e.target.value })}
-          />
-        </label>
-        <label style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-          ساعت پایان
-          <input
-            type="time"
-            className="form-input psf-input"
-            value={group.endTime}
-            disabled={disabled}
-            data-testid={`interview-setup-${courseType}-end`}
-            onChange={(e) => patch({ endTime: e.target.value })}
-          />
-        </label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.2rem' }}>
         <label style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
           مدت هر نوبت
           <select
@@ -205,7 +263,7 @@ function CourseTypeCard({ courseType, group, candidates, disabled, onChange, onC
             value={group.sessionMinutes}
             disabled={disabled}
             data-testid={`interview-setup-${courseType}-minutes`}
-            onChange={(e) => patch({ sessionMinutes: Number(e.target.value) })}
+            onChange={(e) => onChange({ ...group, sessionMinutes: Number(e.target.value) })}
           >
             {SESSION_MINUTE_OPTIONS.map((m) => (
               <option key={m} value={m}>{`${m} دقیقه`}</option>
@@ -303,8 +361,9 @@ export default function SemesterPrepInterviewSetupPanel({
   return (
     <div data-testid="semester-prep-interview-setup">
       <p style={{ fontSize: '0.82rem', color: '#334155', margin: '0 0 0.85rem', lineHeight: 1.7 }}>
-        مصاحبه‌گرها را از میان کارمندان اتوماسیون انتخاب کنید و روز و ساعت مصاحبه‌ها را مشخص
-        کنید. نوبت‌های قابل رزرو خودکار ساخته می‌شوند و با ثبت همین فرم، تقویم منتشر می‌شود.
+        مصاحبه‌گرها را از میان کارمندان اتوماسیون انتخاب کنید. برای هر نفر می‌توانید روزها و
+        ساعات جداگانه بگذارید؛ نوبت‌های قابل رزرو خودکار ساخته می‌شوند و با ثبت همین فرم، تقویم
+        منتشر می‌شود.
       </p>
 
       <section
@@ -365,7 +424,14 @@ export default function SemesterPrepInterviewSetupPanel({
           onChange={(next) => patchGroup(courseType, next)}
           onCopyFrom={
             courseType === 'introductory'
-              ? () => patchGroup('introductory', { ...setup.comprehensive })
+              ? () =>
+                  patchGroup('introductory', {
+                    ...setup.comprehensive,
+                    interviewers: (setup.comprehensive.interviewers || []).map((s) => ({
+                      ...s,
+                      dates: [...(s.dates || [])],
+                    })),
+                  })
               : null
           }
         />

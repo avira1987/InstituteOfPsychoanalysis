@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { panelApi } from '../services/api'
@@ -8,6 +8,52 @@ import { PANEL_NOTIFICATIONS_CHANGED_EVENT } from '../utils/panelNotifications'
 
 function isFlashItem(it) {
   return it?.kind === 'flash_message'
+}
+
+function ActionItem({ it, onNavigate }) {
+  return (
+    <li>
+      <Link
+        role="menuitem"
+        className="notification-bell-item notification-bell-item--action"
+        to={appendNotificationFollow(it.action_path || '/panel')}
+        onClick={onNavigate}
+      >
+        <span className="notification-bell-item-title">
+          <span className="notification-bell-action-badge">اعلان</span>
+          {it.title_fa}
+        </span>
+        {it.summary_fa ? (
+          <span className="notification-bell-item-summary">{it.summary_fa}</span>
+        ) : null}
+      </Link>
+    </li>
+  )
+}
+
+function MessageItem({ it, onNavigate }) {
+  const levelClass =
+    it.level === 'error'
+      ? ' notification-bell-item--flash-error'
+      : ' notification-bell-item--flash-success'
+  return (
+    <li>
+      <button
+        type="button"
+        role="menuitem"
+        className={`notification-bell-item notification-bell-item--message${levelClass}`}
+        onClick={onNavigate}
+      >
+        <span className="notification-bell-item-title">
+          <span className="notification-bell-flash-badge">پیام</span>
+          {it.title_fa}
+        </span>
+        {it.summary_fa ? (
+          <span className="notification-bell-item-summary">{it.summary_fa}</span>
+        ) : null}
+      </button>
+    </li>
+  )
 }
 
 export default function NotificationBell({ variant = 'sidebar' }) {
@@ -23,7 +69,7 @@ export default function NotificationBell({ variant = 'sidebar' }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const r = await panelApi.actionNotifications({ limit: 8, offset: 0 })
+      const r = await panelApi.actionNotifications({ limit: 12, offset: 0 })
       setItems(Array.isArray(r.data?.items) ? r.data.items : [])
       setTotal(typeof r.data?.total === 'number' ? r.data.total : 0)
     } catch {
@@ -53,6 +99,19 @@ export default function NotificationBell({ variant = 'sidebar' }) {
     }
   }, [load])
 
+  const { actions, messages } = useMemo(() => {
+    const acts = []
+    const msgs = []
+    for (const it of items) {
+      if (isFlashItem(it)) msgs.push(it)
+      else acts.push(it)
+    }
+    return {
+      actions: acts.slice(0, 5),
+      messages: msgs.slice(0, 5),
+    }
+  }, [items])
+
   const updatePanelPosition = useCallback(() => {
     if (!open || !wrapRef.current) return
     const btn = wrapRef.current.querySelector('button')
@@ -80,7 +139,7 @@ export default function NotificationBell({ variant = 'sidebar' }) {
       window.removeEventListener('resize', updatePanelPosition)
       window.removeEventListener('scroll', updatePanelPosition, true)
     }
-  }, [open, updatePanelPosition, loading, items.length])
+  }, [open, updatePanelPosition, loading, actions.length, messages.length])
 
   useEffect(() => {
     if (!open) return
@@ -105,6 +164,10 @@ export default function NotificationBell({ variant = 'sidebar' }) {
   const wrapClass =
     variant === 'mobile' ? 'notification-bell-wrap notification-bell-wrap--mobile' : 'notification-bell-wrap'
 
+  const close = () => setOpen(false)
+  const empty = !loading && actions.length === 0 && messages.length === 0
+  const showLoading = loading && items.length === 0
+
   const dropdown =
     open && panelPos
       ? createPortal(
@@ -121,76 +184,63 @@ export default function NotificationBell({ variant = 'sidebar' }) {
             role="menu"
           >
             <div className="notification-bell-dropdown-head">اعلان‌ها و پیام‌ها</div>
-            {loading && items.length === 0 ? (
+            {showLoading ? (
               <div className="notification-bell-empty muted">در حال بارگذاری…</div>
             ) : null}
-            {!loading && items.length === 0 ? (
+            {empty ? (
               <div className="notification-bell-empty muted">موردی برای نمایش نیست.</div>
             ) : null}
-            <ul className="notification-bell-list">
-              {items.map((it) => {
-                const flash = isFlashItem(it)
-                const levelClass =
-                  flash && it.level === 'error'
-                    ? ' notification-bell-item--flash-error'
-                    : flash
-                      ? ' notification-bell-item--flash-success'
-                      : ''
-                const itemClass = `notification-bell-item${levelClass}`
-                const content = (
-                  <>
-                    <span className="notification-bell-item-title">
-                      {flash ? (
-                        <span className="notification-bell-flash-badge">پیام</span>
-                      ) : null}
-                      {it.title_fa}
-                    </span>
-                    {it.summary_fa ? (
-                      <span className="notification-bell-item-summary">{it.summary_fa}</span>
-                    ) : null}
-                  </>
-                )
-                if (flash) {
-                  return (
-                    <li key={it.notification_id || it.title_fa}>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={itemClass}
-                        onClick={() => {
-                          setOpen(false)
-                          navigate('/panel/notifications?tab=messages')
-                        }}
-                      >
-                        {content}
-                      </button>
-                    </li>
-                  )
-                }
-                return (
-                  <li key={it.notification_id || it.title_fa}>
-                    <Link
-                      role="menuitem"
-                      className={itemClass}
-                      to={appendNotificationFollow(it.action_path || '/panel')}
-                      onClick={() => setOpen(false)}
-                    >
-                      {content}
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
+            {!showLoading && !empty ? (
+              <div className="notification-bell-sections">
+                <section className="notification-bell-section notification-bell-section--actions" aria-label="اعلان‌ها">
+                  <div className="notification-bell-section-head">
+                    <span className="notification-bell-section-title">اعلان‌ها</span>
+                    <span className="notification-bell-section-hint">کارهای نیازمند اقدام</span>
+                  </div>
+                  {actions.length === 0 ? (
+                    <div className="notification-bell-section-empty muted">اعلانی نیست.</div>
+                  ) : (
+                    <ul className="notification-bell-list">
+                      {actions.map((it) => (
+                        <ActionItem key={it.notification_id || it.title_fa} it={it} onNavigate={close} />
+                      ))}
+                    </ul>
+                  )}
+                </section>
+                <section className="notification-bell-section notification-bell-section--messages" aria-label="پیام‌ها">
+                  <div className="notification-bell-section-head">
+                    <span className="notification-bell-section-title">پیام‌ها</span>
+                    <span className="notification-bell-section-hint">پیام‌های پاپ‌آپ سیستم</span>
+                  </div>
+                  {messages.length === 0 ? (
+                    <div className="notification-bell-section-empty muted">پیامی نیست.</div>
+                  ) : (
+                    <ul className="notification-bell-list">
+                      {messages.map((it) => (
+                        <MessageItem
+                          key={it.notification_id || it.title_fa}
+                          it={it}
+                          onNavigate={() => {
+                            close()
+                            navigate('/panel/notifications?tab=messages')
+                          }}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              </div>
+            ) : null}
             <div className="notification-bell-dropdown-foot">
               <button
                 type="button"
                 className="btn btn-sm btn-primary notification-bell-all-btn"
                 onClick={() => {
-                  setOpen(false)
+                  close()
                   navigate('/panel/notifications')
                 }}
               >
-                نمایش همه اعلان‌ها
+                نمایش همه اعلان‌ها و پیام‌ها
               </button>
             </div>
           </div>,
@@ -205,7 +255,7 @@ export default function NotificationBell({ variant = 'sidebar' }) {
         className={btnClass}
         aria-expanded={open}
         aria-haspopup="true"
-        aria-label="اعلان‌ها و کارهای معلق"
+        aria-label="اعلان‌ها و پیام‌ها"
         onClick={() => setOpen((v) => !v)}
       >
         <span className="notification-bell-icon" aria-hidden="true">🔔</span>

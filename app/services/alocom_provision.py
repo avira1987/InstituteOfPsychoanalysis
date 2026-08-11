@@ -11,7 +11,6 @@ from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
 
 from app.config import get_settings
 from app.models.operational_models import Student, TherapySession, User
@@ -85,6 +84,41 @@ def _link_has_join_token(link: Optional[str]) -> bool:
     return bool(link) and "token=" in link
 
 
+def is_stub_therapy_meeting_url(url: Optional[str]) -> bool:
+    """لینک داخلی ساختگی سامانه (/meet/therapy/...) بدون توکن الوکام."""
+    u = (url or "").strip()
+    if not u:
+        return True
+    return "/meet/therapy/" in u
+
+
+def is_tokenized_alocom_join_url(url: Optional[str]) -> bool:
+    """لینک ورود با توکن (الوکام یا fixture تست)."""
+    u = (url or "").strip()
+    return bool(u) and u.startswith("http") and "token=" in u and not is_stub_therapy_meeting_url(u)
+
+
+def therapy_session_needs_alocom_provision(session: TherapySession) -> bool:
+    """آیا باید رویداد/لینک واقعی الوکام ساخته یا جایگزین استاب شود؟"""
+    if (session.payment_status or "").strip() not in ("paid", "waived"):
+        return False
+    if (session.status or "").strip() not in ("scheduled", "completed"):
+        return False
+    student_ok = is_tokenized_alocom_join_url(session.meeting_url)
+    host_ok = is_tokenized_alocom_join_url(getattr(session, "host_meeting_url", None))
+    if student_ok and (host_ok or not session.therapist_id):
+        return False
+    provider = (session.meeting_provider or "").strip().lower()
+    # لینک دستی/خارجی معتبر (غیر استاب) را بازنویسی نکن
+    if (
+        provider in ("manual", "skyroom", "voicoom")
+        and (session.meeting_url or "").strip()
+        and not is_stub_therapy_meeting_url(session.meeting_url)
+    ):
+        return False
+    return True
+
+
 async def _ensure_alocom_user_id(
     db: AsyncSession,
     client: AlocomClient,
@@ -94,19 +128,41 @@ async def _ensure_alocom_user_id(
         return int(user.alocom_agent_user_id)
     name, surname = _split_name(user)
     username = f"anistito_u_{user.id.hex[:20]}"
+    cellphone = _normalize_cellphone(user.phone)
+    email = (user.email or "").strip() or None
+    # ایمیل‌های دمو/داخلی را به الوکام نفرست (گاهی ۴۲۲ می‌دهد)
+    if email and (
+        email.endswith(".local")
+        or email.endswith("@demo.anistito.local")
+        or "example.com" in email
+    ):
+        email = None
     try:
         resp = await client.create_agent_user(
             name=name,
             surname=surname,
             username=username,
             status=1,
-            cellphone=_normalize_cellphone(user.phone),
-            email=user.email,
+            cellphone=cellphone,
+            email=email,
             password=secrets.token_urlsafe(16),
         )
     except AlocomAPIError as e:
-        logger.warning("Alocom create user failed for %s: %s", user.id, e)
-        return None
+        # تلاش دوم بدون تلفن/ایمیل و با نام‌کاربری یکتا
+        logger.warning("Alocom create user failed for %s: %s — retry unique username", user.id, e)
+        try:
+            resp = await client.create_agent_user(
+                name=name,
+                surname=surname,
+                username=f"an_{user.id.hex[:18]}",
+                status=1,
+                cellphone=None,
+                email=None,
+                password=secrets.token_urlsafe(16),
+            )
+        except AlocomAPIError as e2:
+            logger.warning("Alocom create user retry failed for %s: %s", user.id, e2)
+            return None
     uid = extract_agent_user_id(resp)
     if uid is None:
         logger.warning("Alocom create user response had no id: %s", resp)
@@ -114,6 +170,154 @@ async def _ensure_alocom_user_id(
     user.alocom_agent_user_id = uid
     await db.flush()
     return uid
+
+
+async def _register_event_role_link(
+    client: AlocomClient,
+    event_id: str,
+    *,
+    user: User,
+    role: str,
+) -> Optional[str]:
+    name, surname = _split_name(user)
+    uname = f"anistito_u_{user.id.hex[:20]}"
+    try:
+        reg = await client.register_user_in_event(
+            event_id,
+            name=name,
+            surname=surname,
+            username=uname,
+            role=role,
+            cellphone=_normalize_cellphone(user.phone),
+        )
+        return _extract_register_link(reg)
+    except AlocomAPIError as reg_err:
+        # نام‌کاربری تکراری / تداخل — با پسوند یکتا دوباره
+        logger.warning(
+            "Alocom register-user role=%s user=%s event=%s: %s — retry unique username",
+            role,
+            user.id,
+            event_id,
+            reg_err,
+        )
+        try:
+            reg = await client.register_user_in_event(
+                event_id,
+                name=name,
+                surname=surname,
+                username=f"an_{role[:3]}_{user.id.hex[:14]}",
+                role=role,
+                cellphone=None,
+            )
+            return _extract_register_link(reg)
+        except AlocomAPIError as e2:
+            logger.warning(
+                "Alocom register-user retry failed role=%s user=%s event=%s: %s body=%s",
+                role,
+                user.id,
+                event_id,
+                e2,
+                getattr(e2, "body", None),
+            )
+            return None
+
+
+async def _create_therapy_alocom_event(
+    client: AlocomClient,
+    *,
+    title: str,
+    agent_service_id: int,
+    base_slug: str,
+    duration_minutes: Optional[int],
+) -> tuple[dict[str, Any], str]:
+    """رویداد درمان را مثل مصاحبه بدون users و با guest_access می‌سازد.
+
+    نکته: start_by_admin باید 0 باشد؛ با 1 ثبت نقش participant با خطای
+    backend_not_login_administrator شکست می‌خورد. نقش teacher همچنان توکن admin می‌گیرد.
+    """
+    last_err: Optional[AlocomAPIError] = None
+    for attempt in range(5):
+        slug = base_slug if attempt == 0 else f"{base_slug}-r{uuid.uuid4().hex[:6]}"
+        event_title = title if attempt == 0 else f"{title[:420]} {uuid.uuid4().hex[:6]}"
+        try:
+            raw = await client.create_event(
+                title=event_title,
+                agent_service_id=agent_service_id,
+                slug=slug,
+                start_by_admin=0,
+                status=1,
+                duration_time=duration_minutes,
+                users=None,
+                guest_access=True,
+            )
+            return raw, slug
+        except AlocomAPIError as e:
+            last_err = e
+            if e.status_code != 422:
+                raise
+            logger.warning(
+                "Alocom create_event 422 therapy slug=%s title=%s body=%s",
+                slug,
+                event_title,
+                getattr(e, "body", None),
+            )
+    if last_err is not None:
+        raise last_err
+    raise AlocomAPIError("Alocom create_event failed after retries")
+
+
+async def _build_therapy_links_for_event(
+    client: AlocomClient,
+    *,
+    event_id: str,
+    default_link: Optional[str],
+    student_user: User,
+    therapist_user: Optional[User],
+    fetch_student_event_link: bool,
+) -> tuple[str, Optional[str]]:
+    """برمی‌گرداند (student_meeting_url, host_meeting_url)."""
+    host_link: Optional[str] = None
+    student_link: Optional[str] = None
+
+    # اول درمانگر (teacher → JWT role=admin) تا میزبان کلاس مشخص شود
+    if therapist_user:
+        host_link = await _register_event_role_link(
+            client, event_id, user=therapist_user, role="teacher"
+        )
+
+    if fetch_student_event_link:
+        direct = await _register_event_role_link(
+            client, event_id, user=student_user, role="participant"
+        )
+        if direct and _link_has_join_token(direct):
+            student_link = direct
+        elif direct:
+            logger.warning(
+                "Alocom participant link without join token event_id=%s user=%s",
+                event_id,
+                student_user.id,
+            )
+
+    if not host_link and _link_has_join_token(default_link):
+        host_link = default_link
+    elif not host_link:
+        host_link = (default_link or "").strip() or None
+
+    student_ok = bool(student_link and _link_has_join_token(student_link))
+    host_ok = bool(host_link and _link_has_join_token(host_link))
+
+    if fetch_student_event_link and not student_ok:
+        raise AlocomAPIError(
+            f"Alocom did not return a participant token link for event_id={event_id}",
+            body={"default_link": default_link, "host_link": host_link},
+        )
+    if therapist_user and not host_ok:
+        raise AlocomAPIError(
+            f"Alocom did not return a host/teacher token link for event_id={event_id}",
+            body={"default_link": default_link, "student_link": student_link},
+        )
+
+    return student_link or "", host_link
 
 
 async def provision_therapy_session_alocom(
@@ -126,7 +330,12 @@ async def provision_therapy_session_alocom(
     start_by_admin: int = 0,
     fetch_student_event_link: bool = True,
 ) -> dict[str, Any]:
-    """Create Alocom event, set session.meeting_url / alocom_event_id / links_unlocked."""
+    """Create Alocom event, set student/host token links on TherapySession.
+
+    ``start_by_admin`` عمداً نادیده گرفته می‌شود (همیشه 0) تا لینک دانشجو ساخته شود؛
+    دسترسی ادمین میزبان از نقش teacher در ثبت‌نام رویداد می‌آید.
+    """
+    del start_by_admin  # API الوکام با start_by_admin=1 لینک participant را می‌بندد
     settings = get_settings()
     if not settings.ALOCOM_ENABLED:
         raise AlocomAPIError("Alocom integration is disabled (ALOCOM_ENABLED=false)")
@@ -147,102 +356,83 @@ async def provision_therapy_session_alocom(
         therapist_user = tu_r.scalars().first()
 
     client = AlocomClient(settings)
-    su_alocom = await _ensure_alocom_user_id(db, client, student_user)
-    users_payload: list[dict[str, Any]] = []
-    if su_alocom is not None:
-        users_payload.append({"userid": su_alocom, "role": "participant"})
-    if therapist_user:
-        th_alocom = await _ensure_alocom_user_id(db, client, therapist_user)
-        if th_alocom is not None:
-            users_payload.append({"userid": th_alocom, "role": "teacher"})
-
-    slug = build_event_slug(student.student_code, session.id)
+    base_slug = build_event_slug(student.student_code, session.id)
     session_title = f"{title[:440]} {session.id.hex[:8]}".strip()[:500]
-    last_err: AlocomAPIError | None = None
-    raw: dict[str, Any] | None = None
-    for attempt in range(5):
-        event_slug = slug if attempt == 0 else f"{slug}-r{uuid.uuid4().hex[:6]}"
-        event_title = session_title if attempt == 0 else f"{session_title[:420]} {uuid.uuid4().hex[:6]}"
+
+    existing_event_id = (getattr(session, "alocom_event_id", None) or "").strip()
+    if existing_event_id:
+        default_link = (
+            (getattr(session, "host_meeting_url", None) or "").strip()
+            or (session.meeting_url or "").strip()
+            or None
+        )
+        if is_stub_therapy_meeting_url(default_link):
+            default_link = None
         try:
-            raw = await client.create_event(
-                title=event_title,
-                agent_service_id=agent_service_id,
-                slug=event_slug,
-                start_by_admin=start_by_admin,
-                status=1,
-                duration_time=duration_minutes,
-                users=users_payload or None,
+            meeting_url, host_meeting_url = await _build_therapy_links_for_event(
+                client,
+                event_id=existing_event_id,
+                default_link=default_link,
+                student_user=student_user,
+                therapist_user=therapist_user,
+                fetch_student_event_link=fetch_student_event_link,
             )
-            slug = event_slug
-            break
-        except AlocomAPIError as e:
-            last_err = e
-            if e.status_code != 422:
-                raise
+        except AlocomAPIError as recover_err:
             logger.warning(
-                "Alocom create_event 422 therapy session=%s slug=%s body=%s",
+                "Recover existing Alocom therapy event failed session=%s event=%s: %s — create new",
                 session.id,
-                event_slug,
-                getattr(e, "body", None),
+                existing_event_id,
+                recover_err,
             )
-    if raw is None:
-        if last_err is not None:
-            raise last_err
-        raise AlocomAPIError("Alocom create_event failed after retries")
+            session.alocom_event_id = None
+            if is_stub_therapy_meeting_url(session.meeting_url) or not _link_has_join_token(
+                session.meeting_url
+            ):
+                session.meeting_url = None
+            if not _link_has_join_token(getattr(session, "host_meeting_url", None)):
+                session.host_meeting_url = None
+            await db.flush()
+        else:
+            session.meeting_url = meeting_url or session.meeting_url
+            session.host_meeting_url = host_meeting_url
+            session.meeting_provider = "alocom"
+            session.links_unlocked = True
+            await db.flush()
+            return {
+                "alocom_event_id": existing_event_id,
+                "meeting_url": session.meeting_url,
+                "host_meeting_url": session.host_meeting_url,
+                "slug": base_slug,
+                "recovered_existing_event": True,
+            }
 
+    raw, slug = await _create_therapy_alocom_event(
+        client,
+        title=session_title,
+        agent_service_id=agent_service_id,
+        base_slug=base_slug,
+        duration_minutes=duration_minutes,
+    )
     eid, link = _extract_event_id_and_link(raw)
-    if not link and eid:
-        logger.info("Create event response had no alocom_link; event_id=%s keys=%s", eid, list(raw.keys()))
+    if not eid:
+        raise AlocomAPIError("Alocom create event did not return event id", body=raw)
+    if not link:
+        logger.info("Create therapy event had no alocom_link; event_id=%s keys=%s", eid, list(raw.keys()))
 
-    host_meeting_url: Optional[str] = None
-    if eid and therapist_user:
-        name, surname = _split_name(therapist_user)
-        uname = f"anistito_u_{therapist_user.id.hex[:20]}"
-        try:
-            treg = await client.register_user_in_event(
-                eid,
-                name=name,
-                surname=surname,
-                username=uname,
-                role="teacher",
-                cellphone=_normalize_cellphone(therapist_user.phone),
-            )
-            host_meeting_url = _extract_register_link(treg)
-        except AlocomAPIError as reg_err:
-            logger.warning("Alocom teacher register failed: %s", reg_err)
-
-    meeting_url = link
-    if fetch_student_event_link and eid and student_user:
-        name, surname = _split_name(student_user)
-        uname = f"anistito_u_{student_user.id.hex[:20]}"
-        try:
-            reg = await client.register_user_in_event(
-                eid,
-                name=name,
-                surname=surname,
-                username=uname,
-                role="participant",
-                cellphone=_normalize_cellphone(student_user.phone),
-            )
-            direct = _extract_register_link(reg)
-            if direct:
-                meeting_url = direct
-        except AlocomAPIError as reg_err:
-            logger.warning("Alocom register-user failed (using class link if any): %s", reg_err)
-
-    if not meeting_url:
-        meeting_url = link
-    if fetch_student_event_link and not _link_has_join_token(meeting_url):
-        raise AlocomAPIError("Alocom did not return a participant token link", body=raw)
-    if not meeting_url:
-        raise AlocomAPIError("Alocom did not return a meeting link", body=raw)
+    meeting_url, host_meeting_url = await _build_therapy_links_for_event(
+        client,
+        event_id=eid,
+        default_link=link,
+        student_user=student_user,
+        therapist_user=therapist_user,
+        fetch_student_event_link=fetch_student_event_link,
+    )
 
     session.meeting_url = meeting_url
-    session.host_meeting_url = host_meeting_url or link
+    session.host_meeting_url = host_meeting_url
     session.meeting_provider = "alocom"
     session.links_unlocked = True
-    if eid:
-        session.alocom_event_id = eid
+    session.alocom_event_id = eid
     if session.session_starts_at is None:
         session.session_starts_at = datetime.combine(
             session.session_date,
@@ -267,7 +457,9 @@ async def refresh_therapy_session_alocom_links(
     """لینک‌های توکن‌دار دانشجو/درمانگر را برای رویداد موجود دوباره می‌سازد."""
     eid = (getattr(session, "alocom_event_id", None) or "").strip()
     if not eid or session.meeting_provider != "alocom":
-        return bool((session.meeting_url or "").strip())
+        return _link_has_join_token(session.meeting_url) and not is_stub_therapy_meeting_url(
+            session.meeting_url
+        )
 
     student_user = None
     therapist_user = None
@@ -280,7 +472,9 @@ async def refresh_therapy_session_alocom_links(
         tu_r = await db.execute(select(User).where(User.id == session.therapist_id))
         therapist_user = tu_r.scalars().first()
 
-    student_ok = _link_has_join_token(session.meeting_url)
+    student_ok = _link_has_join_token(session.meeting_url) and not is_stub_therapy_meeting_url(
+        session.meeting_url
+    )
     host_ok = _link_has_join_token(getattr(session, "host_meeting_url", None))
     if student_ok and (host_ok or not therapist_user):
         return True
@@ -288,46 +482,26 @@ async def refresh_therapy_session_alocom_links(
         return student_ok
 
     client = AlocomClient(get_settings())
+    try:
+        meeting_url, host_meeting_url = await _build_therapy_links_for_event(
+            client,
+            event_id=eid,
+            default_link=(getattr(session, "host_meeting_url", None) or session.meeting_url),
+            student_user=student_user,
+            therapist_user=therapist_user,
+            fetch_student_event_link=True,
+        )
+    except AlocomAPIError as e:
+        logger.warning("refresh therapy links failed session=%s: %s", session.id, e)
+        return student_ok
+
     changed = False
-    if therapist_user and not host_ok:
-        teacher_direct = None
-        name, surname = _split_name(therapist_user)
-        uname = f"anistito_u_{therapist_user.id.hex[:20]}"
-        try:
-            treg = await client.register_user_in_event(
-                eid,
-                name=name,
-                surname=surname,
-                username=uname,
-                role="teacher",
-                cellphone=_normalize_cellphone(therapist_user.phone),
-            )
-            teacher_direct = _extract_register_link(treg)
-        except AlocomAPIError as e:
-            logger.warning("refresh therapy teacher link failed session=%s: %s", session.id, e)
-        if teacher_direct:
-            session.host_meeting_url = teacher_direct
-            changed = True
-
-    if not student_ok:
-        name, surname = _split_name(student_user)
-        uname = f"anistito_u_{student_user.id.hex[:20]}"
-        try:
-            reg = await client.register_user_in_event(
-                eid,
-                name=name,
-                surname=surname,
-                username=uname,
-                role="participant",
-                cellphone=_normalize_cellphone(student_user.phone),
-            )
-            direct = _extract_register_link(reg)
-            if direct:
-                session.meeting_url = direct
-                changed = True
-        except AlocomAPIError as e:
-            logger.warning("refresh therapy student link failed session=%s: %s", session.id, e)
-
+    if meeting_url and meeting_url != session.meeting_url:
+        session.meeting_url = meeting_url
+        changed = True
+    if host_meeting_url and host_meeting_url != getattr(session, "host_meeting_url", None):
+        session.host_meeting_url = host_meeting_url
+        changed = True
     if changed:
         await db.flush()
     return _link_has_join_token(session.meeting_url)
@@ -339,8 +513,7 @@ async def ensure_paid_session_alocom_links(
     student_id: uuid.UUID,
     title: Optional[str] = None,
 ) -> list[dict[str, Any]]:
-    """پس از پرداخت موفق جلسات: برای هر جلسهٔ پرداخت‌شدهٔ زمان‌بندی‌شده که هنوز لینک ندارد،
-    رویداد الوکام ساخته و لینک روی TherapySession (پروفایل دانشجو) ذخیره می‌شود."""
+    """پس از پرداخت موفق: برای جلسات پرداخت‌شده لینک واقعی الوکام بساز/جایگزین استاب کن."""
     settings = get_settings()
     alocom_ready, agent_service_id = is_alocom_configured(settings)
     if not alocom_ready:
@@ -366,7 +539,7 @@ async def ensure_paid_session_alocom_links(
     sessions = (await db.execute(stmt)).scalars().all()
     out: list[dict[str, Any]] = []
     for session in sessions:
-        if (session.meeting_url or "").strip():
+        if not therapy_session_needs_alocom_provision(session):
             continue
         try:
             detail = await provision_therapy_session_alocom(
@@ -378,8 +551,40 @@ async def ensure_paid_session_alocom_links(
             )
         except AlocomAPIError as e:
             logger.warning(
-                "ensure_paid_session_alocom_links failed session=%s: %s", session.id, e
+                "ensure_paid_session_alocom_links failed session=%s: %s body=%s",
+                session.id,
+                e,
+                getattr(e, "body", None),
             )
             continue
         out.append({"session_id": str(session.id), **detail})
     return out
+
+
+async def ensure_therapy_session_alocom_links(
+    db: AsyncSession,
+    session: TherapySession,
+    *,
+    title: Optional[str] = None,
+) -> Optional[dict[str, Any]]:
+    """یک جلسهٔ مشخص را در صورت نیاز به الوکام وصل می‌کند (برای پنل درمانگر/دانشجو)."""
+    if not therapy_session_needs_alocom_provision(session):
+        if (getattr(session, "alocom_event_id", None) or "").strip() and session.meeting_provider == "alocom":
+            await refresh_therapy_session_alocom_links(db, session)
+        return None
+    ready, agent_service_id = is_alocom_configured()
+    if not ready:
+        return None
+    st = await db.get(Student, session.student_id)
+    base_title = (
+        title
+        or (f"جلسه درمان — {st.student_code}" if st else None)
+        or "جلسه درمان آنلاین"
+    )
+    return await provision_therapy_session_alocom(
+        db,
+        session=session,
+        agent_service_id=agent_service_id,
+        title=str(base_title)[:500],
+        fetch_student_event_link=True,
+    )

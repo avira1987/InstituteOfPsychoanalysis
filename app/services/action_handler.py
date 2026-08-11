@@ -14,7 +14,7 @@ import uuid
 import logging
 from typing import Optional, Any, List
 from datetime import datetime, timezone, date, timedelta
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -1134,6 +1134,35 @@ class ActionHandler:
 
         return f"therapy_sessions_cancelled={len(cancelled_ids)} new_weekly={new_weekly}"
 
+    async def _handle_reopen_student_step_forms(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        """باز کردن مجدد فرم مرحلهٔ دانشجو پس از رد/بازگشت (مثلاً therapist_declined)."""
+        from app.meta.student_step_forms import apply_reopen_student_step_forms_to_context
+
+        state_code = (
+            str(action.get("state") or action.get("state_code") or instance.current_state_code or "").strip()
+        )
+        if not state_code:
+            return "reopen_student_step_forms skipped (no state)"
+
+        clear_keys = action.get("clear_keys") or action.get("clear_context_keys") or []
+        if isinstance(clear_keys, str):
+            clear_keys = [p.strip() for p in clear_keys.split(",") if p.strip()]
+        elif not isinstance(clear_keys, list):
+            clear_keys = []
+
+        clear_submitted = action.get("clear_submitted", True)
+        ctx = apply_reopen_student_step_forms_to_context(
+            instance.context_data,
+            state_code,
+            clear_keys=[str(k) for k in clear_keys if k is not None],
+            clear_submitted=bool(clear_submitted),
+        )
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        return f"reopen_student_step_forms state={state_code} cleared={len(clear_keys)}"
+
     async def _handle_release_therapist_slots(self, action: dict, instance: ProcessInstance, context: dict):
         """آزادسازی اسلات‌های درمانگر آموزشی در شیت وقت‌های آزاد."""
         from app.services.educational_therapist_slot_service import release_slots
@@ -1539,30 +1568,53 @@ class ActionHandler:
             n_sessions = 1
         fd_inv = await get_effective_financial_program_defaults(self.db)
         per = float(fd_inv.get("default_therapy_session_fee_toman") or self.payment.DEFAULT_SESSION_FEE)
-        computed = per * float(n_sessions)
+        # بدهی واقعی (گذشته/برگزارشده) — نه جلسات آیندهٔ تقویم؛ با تسویه اجباری به فاکتور
+        from app.services.therapy_session_schedule import count_therapy_debt_sessions
+
+        debt_n = await count_therapy_debt_sessions(self.db, instance.student_id)
+        dsi = ctx_map.get("debt_settlement_included")
+        if isinstance(dsi, str):
+            include_debt = dsi.strip().lower() in ("1", "true", "yes", "on")
+        else:
+            include_debt = bool(dsi)
+        if debt_n > 0:
+            include_debt = True
+        billable = n_sessions + (debt_n if include_debt else 0)
+        computed = per * float(billable)
         if context.get("amount") is not None:
             try:
                 amount = float(context["amount"])
             except (TypeError, ValueError):
                 amount = computed
+        elif include_debt and debt_n > 0:
+            # مبلغ پرونده ممکن است بدون بدهی قدیمی باشد — با بدهی از محاسبهٔ تازه استفاده کن
+            amount = computed
         elif ctx_map.get("amount") not in (None, "", 0) and float(ctx_map.get("amount") or 0) > 0:
             amount = float(ctx_map["amount"])
         elif ctx_map.get("total_amount") not in (None, "", 0) and float(ctx_map.get("total_amount") or 0) > 0:
             amount = float(ctx_map["total_amount"])
         else:
             amount = computed
+        desc = "پیش‌فاکتور پرداخت جلسات درمان"
+        if include_debt and debt_n > 0:
+            desc = f"پیش‌فاکتور {n_sessions} جلسه آتی + تسویه {debt_n} جلسه بدهکار"
         await self.payment.generate_invoice(
             student_id=instance.student_id,
             amount=amount,
-            description="پیش‌فاکتور پرداخت جلسات درمان",
+            description=desc,
             reference_id=instance.id,
         )
         ctx = _as_mapping(instance.context_data)
         ctx["invoice_amount"] = amount
         ctx["payment_amount_rial"] = int(round(float(amount) * 10))
+        ctx["sessions_to_pay"] = n_sessions
+        ctx["debt_sessions_count"] = debt_n
+        ctx["debt_settlement_included"] = include_debt
+        if include_debt and debt_n > 0:
+            ctx["debt_amount_toman"] = per * float(debt_n)
         instance.context_data = ctx
         flag_modified(instance, "context_data")
-        return f"payment_invoice_generated amount={amount}"
+        return f"payment_invoice_generated amount={amount} sessions={n_sessions} debt={debt_n if include_debt else 0}"
 
     async def _handle_zero_debt_if_paid(self, action: dict, instance: ProcessInstance, context: dict):
         stmt = delete(FinancialRecord).where(
@@ -1642,6 +1694,31 @@ class ActionHandler:
         flag_modified(student, "extra_data")
         return "attendance_registration_unlocked"
 
+    async def _handle_set_installment_portal_lock(self, action: dict, instance: ProcessInstance, context: dict):
+        student = await self._get_student(instance.student_id)
+        if not student:
+            return "student_not_found"
+        extra = _as_mapping(student.extra_data)
+        extra["installment_portal_lock"] = {
+            "active": True,
+            "instance_id": str(instance.id),
+            "process_code": instance.process_code,
+            "locked_at": datetime.now(timezone.utc).isoformat(),
+        }
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+        return "installment_portal_lock_set"
+
+    async def _handle_clear_installment_portal_lock(self, action: dict, instance: ProcessInstance, context: dict):
+        student = await self._get_student(instance.student_id)
+        if not student:
+            return "student_not_found"
+        extra = _as_mapping(student.extra_data)
+        extra.pop("installment_portal_lock", None)
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+        return "installment_portal_lock_cleared"
+
     async def _handle_suspend_sessions(self, action: dict, instance: ProcessInstance, context: dict):
         student = await self._get_student(instance.student_id)
         if not student:
@@ -1656,16 +1733,31 @@ class ActionHandler:
 
     async def _handle_activate_therapy(self, action: dict, instance: ProcessInstance, context: dict):
         """Set student.therapy_started = True and optionally therapist_id from context (BUILD_TODO § ب)."""
+        from app.services.admission_type_service import set_has_active_therapist_flag
+
         student = await self._get_student(instance.student_id)
         if not student:
             return "student_not_found"
         student.therapy_started = True
+        set_has_active_therapist_flag(student, True)
         ctx = _as_mapping(instance.context_data)
         ctx.update(context or {})
         if ctx.get("therapist_id"):
             student.therapist_id = uuid.UUID(ctx["therapist_id"]) if isinstance(ctx["therapist_id"], str) else ctx["therapist_id"]
         if ctx.get("weekly_sessions") is not None:
             student.weekly_sessions = int(ctx["weekly_sessions"])
+        # هم‌ترازی جلسات زمان‌بندی‌شده بدون therapist_id تا در پنل درمانگر لیست شوند
+        if student.therapist_id:
+            orphan_q = await self.db.execute(
+                select(TherapySession).where(
+                    TherapySession.student_id == student.id,
+                    TherapySession.status == "scheduled",
+                    TherapySession.therapist_id.is_(None),
+                )
+            )
+            for ts in orphan_q.scalars().all():
+                ts.therapist_id = student.therapist_id
+            await self.db.flush()
         return "therapy_activated"
 
     async def _handle_block_class_access(self, action: dict, instance: ProcessInstance, context: dict):
@@ -1810,6 +1902,81 @@ class ActionHandler:
             res = await self.db.execute(stmt)
             sessions = list(res.scalars().all())
             target = sessions[0] if sessions else None
+
+        if target is not None and instance.process_code == "start_therapy":
+            if (target.payment_status or "").strip() in ("", "pending"):
+                target.payment_status = "paid"
+
+        # ترجیح: لینک واقعی الوکام (در غیر این صورت فقط اگر الوکام خاموش است استاب محلی)
+        from app.services.alocom_provision import (
+            is_alocom_configured,
+            is_stub_therapy_meeting_url,
+            provision_therapy_session_alocom,
+        )
+
+        alocom_ready, agent_service_id = is_alocom_configured(settings)
+        if url and is_stub_therapy_meeting_url(str(url)):
+            url = None
+        if alocom_ready and target is not None and not url:
+            title = (
+                action.get("title")
+                or action.get("title_fa")
+                or ctx.get("class_title")
+                or ctx.get("alocom_event_title")
+                or f"درمان آموزشی — جلسه اول"
+            )
+            duration_raw = action.get("duration_minutes") or ctx.get("duration_minutes")
+            try:
+                duration_minutes = int(duration_raw) if duration_raw is not None else 50
+            except (TypeError, ValueError):
+                duration_minutes = 50
+            try:
+                detail = await provision_therapy_session_alocom(
+                    self.db,
+                    session=target,
+                    agent_service_id=agent_service_id,
+                    title=str(title)[:500],
+                    duration_minutes=duration_minutes,
+                    fetch_student_event_link=bool(
+                        action.get("fetch_student_event_link", ctx.get("fetch_student_event_link", True))
+                    ),
+                )
+                url = (detail.get("meeting_url") or "").strip() or None
+                ctx_store = _as_mapping(instance.context_data)
+                ctx_store["alocom_last_provision"] = detail
+                ctx_store["last_session_link"] = url
+                ctx_store["meeting_url"] = url
+                ctx_store["host_meeting_url"] = detail.get("host_meeting_url")
+                instance.context_data = ctx_store
+                flag_modified(instance, "context_data")
+                await self.db.flush()
+                return (
+                    f"session_link_alocom url={url} session_id={target.id} "
+                    f"event_id={detail.get('alocom_event_id')}"
+                )
+            except Exception as e:
+                logger.exception(
+                    "create_session_link Alocom provision failed instance=%s session=%s: %s",
+                    instance.id,
+                    getattr(target, "id", None),
+                    e,
+                )
+                ctx_err = _as_mapping(instance.context_data)
+                ctx_err["alocom_last_error"] = str(e)
+                instance.context_data = ctx_err
+                flag_modified(instance, "context_data")
+                # وقتی الوکام فعال است لینک ساختگی ذخیره نکن — تا ensure بعدی بتواند بسازد
+                if target and is_stub_therapy_meeting_url(target.meeting_url):
+                    target.meeting_url = None
+                    target.host_meeting_url = None
+                    target.meeting_provider = None
+                    target.links_unlocked = False
+                await self.db.flush()
+                return f"session_link_alocom_failed: {e}"
+
+        if alocom_ready and not url:
+            return "session_link_pending_alocom"
+
         base = settings.APP_BASE_URL.rstrip("/")
         if not url:
             if target:
@@ -1822,10 +1989,12 @@ class ActionHandler:
                 action.get("meeting_provider") or ctx.get("meeting_provider") or "manual"
             )
             target.links_unlocked = True
-        ctx = _as_mapping(instance.context_data)
-        ctx["last_session_link"] = url
-        instance.context_data = ctx
+        ctx_store = _as_mapping(instance.context_data)
+        ctx_store["last_session_link"] = url
+        ctx_store["meeting_url"] = url
+        instance.context_data = ctx_store
         flag_modified(instance, "context_data")
+        await self.db.flush()
         return f"session_link_set url={url} session_id={getattr(target, 'id', None)}"
 
     async def _resolve_system_actor_id_for_actions(self) -> uuid.UUID:
@@ -1840,8 +2009,10 @@ class ActionHandler:
     async def _handle_apply_start_therapy_session_schedule(
         self, action: dict, instance: ProcessInstance, context: dict
     ):
-        """پس از انتخاب زمان توسط دانشجو: اعمال قانون ۲۴ ساعت، بذر جلسات درمان، مبلغ ریال، و انتقال خودکار به payment_pending."""
+        """پس از انتخاب دانشجو از شیت: تاریخ شروع، قانون ۲۴ ساعت، بذر جلسات، انتقال به payment_pending."""
         from app.core.engine import StateMachineEngine
+        from app.services.educational_therapist_slot_service import _parse_slot_ids
+        from app.models.operational_models import EducationalTherapistSlot
 
         if instance.process_code != "start_therapy":
             return "skip_not_start_therapy"
@@ -1863,25 +2034,50 @@ class ActionHandler:
             except (TypeError, ValueError):
                 return None
 
+        def _next_on_or_after(d: date, weekday: int) -> date:
+            delta = (int(weekday) - d.weekday()) % 7
+            return d + timedelta(days=delta)
+
         student = await self._get_student(instance.student_id)
         today = datetime.now(timezone.utc).date()
 
+        slot_ids = _parse_slot_ids(
+            merged.get("booked_slot_ids") or merged.get("slot_ids")
+        )
+        slot_rows: List[EducationalTherapistSlot] = []
+        if slot_ids:
+            slot_rows = list(
+                (
+                    await self.db.execute(
+                        select(EducationalTherapistSlot).where(
+                            EducationalTherapistSlot.id.in_(slot_ids)
+                        )
+                    )
+                ).scalars().all()
+            )
+        slot_weekdays = sorted({int(s.day_of_week) for s in slot_rows}) if slot_rows else []
+
         first = _parse_first_date(merged.get("first_session_date"))
         if first is None:
-            first = today + timedelta(days=1)
+            if slot_weekdays:
+                first = min(_next_on_or_after(today, wd) for wd in slot_weekdays)
+            else:
+                first = today + timedelta(days=1)
 
         ws_raw = merged.get("weekly_sessions")
         if ws_raw is None and student is not None:
             ws_raw = student.weekly_sessions
         try:
-            ws = int(ws_raw) if ws_raw is not None else 1
+            ws = int(ws_raw) if ws_raw is not None else (len(slot_weekdays) or 1)
         except (TypeError, ValueError):
-            ws = 1
+            ws = len(slot_weekdays) or 1
         ws = max(1, min(ws, 12))
 
         tid = merged.get("therapist_id")
         if not tid and student is not None and student.therapist_id:
             tid = str(student.therapist_id)
+        if not tid and slot_rows:
+            tid = str(slot_rows[0].therapist_user_id)
         if not tid:
             raise ValueError("therapist_id در پروندهٔ این مرحله ثبت نشده است.")
 
@@ -1891,10 +2087,26 @@ class ActionHandler:
             raise ValueError("شناسهٔ درمانگر نامعتبر است.") from e
 
         if first <= today:
-            first = today + timedelta(days=7)
+            bump_from = today + timedelta(days=1)
+            if slot_weekdays:
+                first = min(_next_on_or_after(bump_from, wd) for wd in slot_weekdays)
+            else:
+                first = bump_from
 
-        n_weeks = max(1, min(ws, 12))
+        from app.services.therapy_session_schedule import (
+            expand_session_dates_for_slots,
+            expand_weekly_session_dates,
+            fallback_weekdays,
+            resolve_term_end_date,
+        )
+        from app.utils.shamsi_calendar_utils import TEHRAN
+
         note_tag = f"start_therapy_instance:{instance.id}"
+        final_session_dates: List[date] = []
+        weekdays_for_seed = list(slot_weekdays) if slot_weekdays else fallback_weekdays(first, ws)
+        term_end = await resolve_term_end_date(self.db, student, fallback_from=first)
+        if term_end < first:
+            term_end = first + timedelta(weeks=16)
 
         for _attempt in range(8):
             stmt_old_ids = select(TherapySession.id).where(
@@ -1911,14 +2123,30 @@ class ActionHandler:
                     TherapySession.notes.like(f"%{note_tag}%"),
                 )
             )
+            # بذر جلسات تا پایان ترم (با week_interval هر اسلات)
+            if slot_rows:
+                session_dates = expand_session_dates_for_slots(first, slot_rows, term_end)
+            else:
+                session_dates = expand_weekly_session_dates(first, weekdays_for_seed, term_end)
+            if not session_dates:
+                session_dates = [_next_on_or_after(first, weekdays_for_seed[0])]
+
+            slot_by_weekday = {int(s.day_of_week): s for s in slot_rows} if slot_rows else {}
+
             created_sessions: List[TherapySession] = []
-            for i in range(n_weeks):
-                d = first + timedelta(weeks=i)
+            for d in session_dates:
+                starts_at = None
+                slot = slot_by_weekday.get(d.weekday())
+                if slot is not None and getattr(slot, "start_local_time", None) is not None:
+                    starts_at = datetime.combine(
+                        d, slot.start_local_time, tzinfo=TEHRAN
+                    ).astimezone(timezone.utc)
                 ts = TherapySession(
                     id=uuid.uuid4(),
                     student_id=instance.student_id,
                     therapist_id=tid_uuid,
                     session_date=d,
+                    session_starts_at=starts_at,
                     status="scheduled",
                     payment_status="pending",
                     notes=note_tag,
@@ -1937,6 +2165,7 @@ class ActionHandler:
 
             hours = await self.attendance.get_hours_until_first_slot(instance.student_id)
             if hours >= 24:
+                final_session_dates = session_dates
                 break
             first = first + timedelta(days=7)
         else:
@@ -1944,6 +2173,9 @@ class ActionHandler:
                 "start_therapy: 24h rule not satisfied after bumps instance=%s",
                 instance.id,
             )
+            final_session_dates = session_dates if session_dates else [first]
+
+        effective_first = min(final_session_dates) if final_session_dates else first
 
         fd_st = await get_effective_financial_program_defaults(self.db)
         fee = int(fd_st["start_therapy_first_session_fee_rial"])
@@ -1957,12 +2189,18 @@ class ActionHandler:
         ctx.update(merged)
         ctx["therapist_id"] = str(tid_uuid)
         ctx["weekly_sessions"] = ws
-        ctx["first_session_date"] = first.isoformat()
-        ctx["first_session_date_effective"] = first.isoformat()
+        ctx["first_session_date"] = effective_first.isoformat()
+        ctx["first_session_date_effective"] = effective_first.isoformat()
+        ctx["therapy_schedule_term_end"] = term_end.isoformat()
+        ctx["therapy_sessions_seeded_count"] = len(final_session_dates)
         ctx["payment_amount_rial"] = fee
         ctx["start_therapy_sessions_seeded"] = True
         instance.context_data = ctx
         flag_modified(instance, "context_data")
+        # از همین مرحله درمانگر روی پروندهٔ دانشجو ثبت شود تا قبل از پرداخت هم در پنل دیده شود
+        if student is not None:
+            student.therapist_id = tid_uuid
+            student.weekly_sessions = ws
         await self.db.flush()
 
         engine = StateMachineEngine(self.db)
@@ -1983,7 +2221,11 @@ class ActionHandler:
             return f"nested_transition_failed: {res.error}"
 
         await self.db.refresh(instance)
-        return f"start_therapy_schedule_applied fee_rial={fee} to_state={res.to_state}"
+        return (
+            f"start_therapy_schedule_applied fee_rial={fee} "
+            f"sessions={len(final_session_dates)} term_end={term_end.isoformat()} "
+            f"to_state={res.to_state}"
+        )
 
     async def _handle_prefill_return_context(
         self, action: dict, instance: ProcessInstance, context: dict,
@@ -2254,9 +2496,12 @@ class ActionHandler:
         student = await self._get_student(instance.student_id)
         if not student:
             return "student_not_found"
+        from app.services.admission_type_service import set_has_active_therapist_flag
+
         prev = str(student.therapist_id) if student.therapist_id else None
         student.therapist_id = None
         student.therapy_started = False
+        set_has_active_therapist_flag(student, False)
         extra = _as_mapping(student.extra_data)
         extra["therapy_relationship"] = "released_on_full_leave"
         extra["therapist_auto_released_at"] = datetime.now(timezone.utc).isoformat()
@@ -2333,12 +2578,15 @@ class ActionHandler:
         return f"therapy_status_updated status={status}"
 
     async def _handle_mark_terminated(self, action: dict, instance: ProcessInstance, context: dict):
+        from app.services.admission_type_service import set_has_active_therapist_flag
+
         student = await self._get_student(instance.student_id)
         if not student:
             return "student_not_found"
         student.therapy_started = False
         if action.get("clear_therapist", True):
             student.therapist_id = None
+        set_has_active_therapist_flag(student, False)
         extra = _as_mapping(student.extra_data)
         extra["therapy_relationship"] = "terminated"
         student.extra_data = extra
@@ -2397,18 +2645,182 @@ class ActionHandler:
         return "payment_unlocked_for_50th_session"
 
     async def _handle_display_supervision_history(self, action: dict, instance: ProcessInstance, context: dict):
+        student = await self._get_student(instance.student_id)
         ctx = _as_mapping(instance.context_data)
+        blocks = []
+        attendance = ctx.get("current_supervision_block_attendance")
+        if student:
+            extra = _as_mapping(student.extra_data)
+            lms = _as_mapping(extra.get("lms"))
+            blocks = list(lms.get("supervision_blocks") or [])
+            if attendance is None:
+                active = next(
+                    (b for b in blocks if isinstance(b, dict) and b.get("status") == "active"),
+                    blocks[-1] if blocks else None,
+                )
+                if isinstance(active, dict) and active.get("hours") is not None:
+                    try:
+                        attendance = int(active.get("hours") or 0)
+                    except (TypeError, ValueError):
+                        attendance = 0
+                elif ctx.get("current_supervision_block_attendance") is None:
+                    attendance = int(extra.get("supervision_block_attendance") or lms.get("current_block_hours") or 0)
+        ctx["supervision_history"] = blocks
+        ctx["supervision_blocks"] = blocks
+        if attendance is not None:
+            ctx["current_supervision_block_attendance"] = int(attendance)
         ctx.setdefault("ui_hints", []).append({"action": "display_supervision_history", "payload": {}})
         instance.context_data = ctx
         flag_modified(instance, "context_data")
-        return "supervision_history_displayed"
+        return f"supervision_history_displayed n={len(blocks)}"
 
-    async def _handle_remove_slot_from_available(self, action: dict, instance: ProcessInstance, context: dict):
+    async def _handle_display_available_supervisor_slots(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        from app.services.educational_therapist_slot_service import list_available_grouped_by_supervisor
+        from app.services.workflow import portal_notifications as _svc_portal
+
+        student = await self._get_student(instance.student_id)
+        course_type = (student.course_type if student else None) or "introductory"
+        grouped = await list_available_grouped_by_supervisor(self.db, course_type=course_type)
+        supervisors = grouped.get("supervisors") or grouped.get("therapists") or []
+        by_sup: dict = {}
+        for row in supervisors:
+            if not isinstance(row, dict):
+                continue
+            sid = str(row.get("id") or "")
+            by_sup[sid or row.get("label_fa") or "supervisor"] = row.get("slots") or []
         ctx = _as_mapping(instance.context_data)
-        ctx["supervisor_slot_removed_from_available"] = True
+        ctx["available_supervisor_slots"] = by_sup
+        ctx["supervisor_slots"] = by_sup
+        ctx["displayed_supervisor_slots"] = by_sup
+        ctx["available_supervisors"] = supervisors
+        if not ctx.get("mandatory_message_fa"):
+            ctx["mandatory_message_fa"] = (
+                "دانشجوی گرامی، برای پرداخت جهت حضور در 50مین جلسه سوپرویژن باید اول زمان و "
+                "سوپرویژن بعدی خود را انتخاب کنید تا قادر به پرداخت برای حضور در 50مین جلسه سوپرویژن باشید"
+            )
         instance.context_data = ctx
         flag_modified(instance, "context_data")
-        return "slot_removed_from_available_sheet"
+        await _svc_portal.handle(
+            self.db,
+            instance,
+            {"type": "display_available_supervisor_slots"},
+            context or {},
+        )
+        return f"supervisor_slots_loaded n={len(supervisors)}"
+
+    async def _handle_remove_slot_from_available(self, action: dict, instance: ProcessInstance, context: dict):
+        from app.services.educational_therapist_slot_service import (
+            book_slots_from_context,
+            build_slot_summary_for_context,
+            _parse_slot_ids,
+        )
+        from app.models.operational_models import EducationalTherapistSlot
+        from sqlalchemy import select
+
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+        # Ensure weekly count for supervision = 1
+        merged.setdefault("weekly_sessions", 1)
+        merged.setdefault("selected_supervision_weekly_count", 1)
+        result = await book_slots_from_context(
+            self.db,
+            instance_id=instance.id,
+            student_id=instance.student_id,
+            context=merged,
+            therapist_id_key="new_supervisor_id",
+            slot_ids_key="slot_ids",
+            weekly_sessions_key="weekly_sessions",
+            skip_weekly_course_rule=True,
+        )
+        ctx = _as_mapping(instance.context_data)
+        ctx["supervisor_slot_removed_from_available"] = True
+        slot_ids = merged.get("slot_ids")
+        ids = _parse_slot_ids(slot_ids)
+        if ids:
+            rows = (
+                await self.db.execute(
+                    select(EducationalTherapistSlot).where(EducationalTherapistSlot.id.in_(ids))
+                )
+            ).scalars().all()
+            summary = build_slot_summary_for_context(rows)
+            ctx.update(summary)
+            ctx["booked_slot_ids"] = summary.get("slot_ids")
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        return result if result != "skip_no_slot_ids" else "slot_removed_from_available_sheet"
+
+    async def _handle_prepare_supervision_block_payment(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        """مبلغ جلسه اول بلوک جدید / جلسه ۵۰ام را برای SepPaymentPanel آماده می‌کند."""
+        from app.services.return_to_full_education_service import supervision_payment_fee_rial
+
+        if instance.process_code != "supervision_block_transition":
+            return "skip"
+        ctx = _as_mapping(instance.context_data)
+        merged = {**ctx, **(context or {})}
+        fee_rial = await supervision_payment_fee_rial(self.db, merged)
+        purpose = (action.get("purpose") or merged.get("supervision_payment_purpose") or "new_block_first").strip()
+        ctx["payment_amount_rial"] = int(fee_rial)
+        ctx["invoice_amount"] = float(fee_rial) / 10.0
+        ctx["supervision_payment_amount_rial"] = int(fee_rial)
+        ctx["supervision_payment_purpose"] = purpose
+        if purpose == "session_50th":
+            ctx["payment_unlocked_for_50th_session"] = True
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        return f"supervision_block_payment_ready purpose={purpose} fee_rial={fee_rial}"
+
+    async def _handle_book_supervision_block_slots(
+        self, action: dict, instance: ProcessInstance, context: dict
+    ):
+        """رزرو اسلات سوپروایزر هنگام انتخاب در supervision_block_transition."""
+        from app.services.educational_therapist_slot_service import (
+            book_slots_from_context,
+            build_slot_summary_for_context,
+            _parse_slot_ids,
+        )
+        from app.models.operational_models import EducationalTherapistSlot
+        from sqlalchemy import select
+
+        merged = {**_as_mapping(instance.context_data), **(context or {})}
+        merged.setdefault("weekly_sessions", 1)
+        merged.setdefault("selected_supervision_weekly_count", 1)
+        # Map supervisor picker field if form used therapist_id alias
+        if not merged.get("new_supervisor_id") and merged.get("therapist_id"):
+            merged["new_supervisor_id"] = merged["therapist_id"]
+        result = await book_slots_from_context(
+            self.db,
+            instance_id=instance.id,
+            student_id=instance.student_id,
+            context=merged,
+            therapist_id_key="new_supervisor_id",
+            slot_ids_key="slot_ids",
+            weekly_sessions_key="weekly_sessions",
+            skip_weekly_course_rule=True,
+        )
+        ctx = _as_mapping(instance.context_data)
+        if merged.get("new_supervisor_id"):
+            ctx["new_supervisor_id"] = str(merged["new_supervisor_id"])
+            ctx["supervisor_id"] = str(merged["new_supervisor_id"])
+        ctx["weekly_sessions"] = 1
+        ctx["selected_supervision_weekly_count"] = 1
+        ids = _parse_slot_ids(merged.get("slot_ids"))
+        if ids:
+            rows = (
+                await self.db.execute(
+                    select(EducationalTherapistSlot).where(EducationalTherapistSlot.id.in_(ids))
+                )
+            ).scalars().all()
+            summary = build_slot_summary_for_context(rows)
+            ctx.update(summary)
+            ctx["booked_slot_ids"] = summary.get("slot_ids")
+            if rows:
+                ctx["requested_start_date"] = ctx.get("requested_start_date") or ctx.get("first_session_date")
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        return result
 
     async def _handle_add_hour_by_course_and_weekly_sessions(self, action: dict, instance: ProcessInstance, context: dict):
         """هر جلسهٔ حضور: +۱ ساعت در context نمونه؛ ساعات خاتمه از جلسات completed + متریک‌ها."""
@@ -2505,6 +2917,11 @@ class ActionHandler:
     async def _handle_merge_instance_context(self, action: dict, instance: ProcessInstance, context: dict):
         """ثبت payment_method و شمارندهٔ اقساط در context_data؛ در صورت صفر، بستن خودکار با finalize_term2_registration."""
         from app.core.engine import StateMachineEngine, InvalidTransitionError
+        from app.services.tuition_installment_service import (
+            apply_tuition_payment_context,
+            mark_installment_paid,
+            refresh_instance_tuition_context,
+        )
 
         system_actor = uuid.UUID("00000000-0000-0000-0000-000000000001")
         ctx = _as_mapping(instance.context_data)
@@ -2515,6 +2932,13 @@ class ActionHandler:
 
         policy = await get_installment_policy(self.db)
         term2_installment_gap_days = int(policy.get("term2_installment_gap_days") or 25)
+
+        merged = await refresh_instance_tuition_context(
+            self.db,
+            instance.process_code,
+            instance.current_state_code or "",
+            merged,
+        )
 
         if mode == "initial_payment":
             pm = merged.get("payment_method")
@@ -2529,7 +2953,6 @@ class ActionHandler:
                     merged["pending_installments_remaining"] = max(0, n - 1)
                 except (TypeError, ValueError):
                     pass
-                # سررسید قسط بعدی: از تاریخ شروع ترم در extra دانشجو یا N روز پس از امروز
                 extra_st = {}
                 stu = await self._get_student(instance.student_id)
                 if stu:
@@ -2544,24 +2967,31 @@ class ActionHandler:
                 merged["next_installment_due_at"] = (
                     base_date + timedelta(days=term2_installment_gap_days)
                 ).isoformat()
+                plan = merged.get("installment_plan") or []
+                if plan and len(plan) > 1:
+                    merged["next_installment_due_at"] = plan[1].get("due_at") or merged.get(
+                        "next_installment_due_at"
+                    )
         elif mode == "installment_paid":
-            cur = merged.get("pending_installments_remaining")
-            if isinstance(cur, int) and cur > 0:
-                merged["pending_installments_remaining"] = cur - 1
-            elif cur is not None:
+            amount_rial = context.get("amount_rial")
+            if amount_rial is None and context.get("amount") is not None:
                 try:
-                    c = int(cur)
-                    if c > 0:
-                        merged["pending_installments_remaining"] = c - 1
+                    amount_rial = int(round(float(context["amount"]) * 10))
                 except (TypeError, ValueError):
-                    pass
-            pending_after = merged.get("pending_installments_remaining")
-            if isinstance(pending_after, int) and pending_after > 0:
-                merged["next_installment_due_at"] = (
-                    datetime.now(timezone.utc).date() + timedelta(days=term2_installment_gap_days)
-                ).isoformat()
+                    amount_rial = 0
             else:
-                merged.pop("next_installment_due_at", None)
+                try:
+                    amount_rial = int(amount_rial or 0)
+                except (TypeError, ValueError):
+                    amount_rial = 0
+            merged = mark_installment_paid(
+                merged,
+                str(context.get("ref_id") or context.get("payment_ref") or ""),
+                amount_rial,
+                gap_days=term2_installment_gap_days,
+            )
+
+        merged = apply_tuition_payment_context(merged, gap_days=term2_installment_gap_days)
 
         instance.context_data = merged
         flag_modified(instance, "context_data")
@@ -3525,7 +3955,9 @@ class ActionHandler:
 
         if role in ("site_manager", "deputy_education", "monitoring_committee_officer",
                      "therapy_committee_chair", "therapy_committee_executor"):
-            stmt = select(User).where(User.role == role, User.is_active == True).limit(1)
+            from app.core.user_roles import user_matches_role_sql
+
+            stmt = select(User).where(user_matches_role_sql(role), User.is_active == True).limit(1)
             result = await self.db.execute(stmt)
             user = result.scalars().first()
             return user.phone or user.email if user else None
@@ -3686,12 +4118,87 @@ class ActionHandler:
             ctxm = _as_mapping(instance.context_data)
             sd = ctxm.get("session_date")
             st = str(ctxm.get("session_time") or "").strip()
-            date_fa = str(sd)[:10] if sd else "—"
+            # Keep full value; normalize_sms_context_dates formats Shamsi in Tehran.
+            date_fa = sd if sd not in (None, "") else "—"
             notif_ctx["تاریخ ثبت شده"] = date_fa
             notif_ctx["ساعت ثبت شده"] = st or "—"
             notif_ctx.setdefault("session_date_fa", date_fa)
             notif_ctx.setdefault("session_date", date_fa)
             notif_ctx.setdefault("session_time", st or "—")
+            # #region agent log
+            try:
+                import json as _json
+                from pathlib import Path as _Path
+                from time import time as _time
+                from app.utils.shamsi_calendar_utils import format_shamsi_date as _fsd
+                _line = {
+                    "sessionId": "8e31fd",
+                    "hypothesisId": "E",
+                    "location": "action_handler.py:_build_notification_context:live_session",
+                    "message": "live session sms date (no utc slice)",
+                    "data": {
+                        "process_code": instance.process_code,
+                        "session_date_raw": str(sd)[:80] if sd is not None else None,
+                        "date_fa_passed": str(date_fa)[:80],
+                        "date_fa_shamsi": _fsd(date_fa) if date_fa not in (None, "—") else "—",
+                        "session_time": st or "—",
+                    },
+                    "timestamp": int(_time() * 1000),
+                    "runId": "post-fix",
+                }
+                with open(_Path(__file__).resolve().parents[2] / "debug-8e31fd.log", "a", encoding="utf-8") as _f:
+                    _f.write(_json.dumps(_line, ensure_ascii=False) + "\n")
+            except Exception:
+                pass
+            # #endregion
+
+        if instance.process_code == "start_therapy":
+            ctxm = _as_mapping(instance.context_data)
+            # درمانگر از پرونده دانشجو یا context
+            if not notif_ctx.get("therapist_name"):
+                tid = ctxm.get("therapist_id") or (str(student.therapist_id) if student and student.therapist_id else None)
+                if tid:
+                    try:
+                        th_user = await self._get_user_direct(uuid.UUID(str(tid)))
+                        if th_user:
+                            notif_ctx["therapist_name"] = th_user.full_name_fa or "درمانگر"
+                    except (ValueError, TypeError):
+                        pass
+            notif_ctx.setdefault("therapist_name", "درمانگر")
+
+            summary = ctxm.get("selected_slots_summary_fa") or notif_ctx.get("selected_slots_summary_fa")
+            if isinstance(summary, list) and summary:
+                notif_ctx["weekly_schedule_fa"] = " و ".join(str(x) for x in summary if x)
+            elif summary:
+                notif_ctx["weekly_schedule_fa"] = str(summary)
+            else:
+                notif_ctx.setdefault("weekly_schedule_fa", "طبق برنامهٔ هفتگی ثبت‌شده")
+
+            course = (student.course_type if student else None) or ctxm.get("course_type") or ""
+            course_fa = {
+                "introductory": "آشنایی",
+                "comprehensive": "جامع",
+            }.get(str(course).strip(), str(course).strip() or "—")
+            notif_ctx.setdefault("course_type_fa", course_fa)
+            notif_ctx.setdefault(
+                "first_session_date",
+                ctxm.get("first_session_date_effective") or ctxm.get("first_session_date") or "—",
+            )
+
+            link = (
+                (notif_ctx.get("last_session_link") or notif_ctx.get("meeting_url") or "")
+                .strip()
+            )
+            if link and "/meet/therapy/" not in link:
+                notif_ctx["session_link_line"] = f"لینک ورود به جلسه:\n{link}"
+            elif link:
+                notif_ctx["session_link_line"] = (
+                    "لینک ورود به جلسه در پورتال دانشجویی (تب جلسات آنلاین) در دسترس است."
+                )
+            else:
+                notif_ctx["session_link_line"] = (
+                    "لینک ورود به جلسه پس از آماده‌سازی در پورتال (تب جلسات آنلاین) نمایش داده می‌شود."
+                )
 
         from app.utils.shamsi_calendar_utils import normalize_sms_context_dates
 
@@ -3778,6 +4285,7 @@ class ActionHandler:
         "remove_selected_therapy_sessions": _handle_remove_therapy_sessions,
         "remove_selected_supervision_sessions": _handle_remove_selected_sessions,
         "release_therapist_slots_to_available_sheet": _handle_release_therapist_slots,
+        "reopen_student_step_forms": _handle_reopen_student_step_forms,
         "book_educational_therapist_slots": _handle_book_educational_therapist_slots,
         "release_supervisor_slots_to_available_sheet": _handle_release_slots,
         "record_therapy_change_history": _handle_record_change_history,
@@ -3837,7 +4345,10 @@ class ActionHandler:
         "send_45_48_reminder_if_applicable": _handle_send_reminder,
         "unlock_payment_for_50th_session": _handle_unlock_payment_50th,
         "display_supervision_history": _handle_display_supervision_history,
+        "display_available_supervisor_slots": _handle_display_available_supervisor_slots,
         "remove_slot_from_available": _handle_remove_slot_from_available,
+        "prepare_supervision_block_payment": _handle_prepare_supervision_block_payment,
+        "book_supervision_block_slots": _handle_book_supervision_block_slots,
 
         "record_attendance": _handle_record_attendance_action,
         "record_absence_auto": _handle_record_absence_auto,
@@ -3898,7 +4409,7 @@ class ActionHandler:
         "enable_attendance_for_new_supervisor": _handle_svc_lms,
         "create_online_link_50th": _handle_svc_lms,
         "enable_attendance_for_current_supervisor_50th": _handle_svc_lms,
-        "display_available_supervisor_slots": _handle_svc_portal,
+        "display_available_supervisor_slots": _handle_display_available_supervisor_slots,
         "display_mandatory_message": _handle_svc_portal,
         "apply_24h_rule_for_start_date": _handle_svc_calendar,
         "display_calculated_start_date": _handle_svc_portal,
@@ -3924,8 +4435,10 @@ class ActionHandler:
         "create_online_class_links": _handle_create_online_class_links,
         "schedule_installment_reminders": _handle_svc_portal,
         "block_attendance_registration": _handle_block_attendance,
+        "set_installment_portal_lock": _handle_set_installment_portal_lock,
         "notify_instructor": _handle_svc_portal,
         "unblock_attendance_registration": _handle_unlock_attendance_registration,
+        "clear_installment_portal_lock": _handle_clear_installment_portal_lock,
 
         "record_commission_result_in_student_portal": _handle_svc_evaluation,
         "record_evaluation_completion": _handle_svc_evaluation,

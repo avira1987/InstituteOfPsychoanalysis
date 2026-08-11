@@ -1,5 +1,5 @@
 # Deploy anistito to internet host
-# Target: https://bpms.psychoanalysis.ir/anistito/
+# Target: https://lms.psychoanalysis.ir/anistito/
 
 $HostIP = "80.191.11.129"
 $HostPort = 2022
@@ -44,16 +44,14 @@ Write-Host "`n=== Step 3: Connect and upload ===" -ForegroundColor Cyan
 
 $HostKey = "SHA256:F459aXR14g147aSBxWlTypGEKisuxzYnrYl4kcDyPdA"
 
-# SMS env vars از .env (برای ارسال واقعی پیامک روی هاست)
-$smsEnv = ""
-if (Test-Path (Join-Path $PSScriptRoot ".env")) {
-    Get-Content (Join-Path $PSScriptRoot ".env") -ErrorAction SilentlyContinue | ForEach-Object {
-        if ($_ -match '^\s*SMS_PROVIDER=(.+)$') { $smsEnv += " -e SMS_PROVIDER=$($matches[1].Trim())" }
-        if ($_ -match '^\s*SMS_API_KEY=(.+)$') { $smsEnv += " -e SMS_API_KEY=$($matches[1].Trim())" }
-        if ($_ -match '^\s*SMS_LINE_NUMBER=(.+)$') { $smsEnv += " -e SMS_LINE_NUMBER=$($matches[1].Trim())" }
-    }
+# Alocom/SMS از .env لوکال → fragment (بدون DB/DEBUG لوکال) برای --env-file روی سرور
+$integFrag = Join-Path $env:TEMP "anistito-integration.env"
+$hasIntegFrag = $false
+& python (Join-Path $PSScriptRoot "scripts\integration_env_sync.py") --fragment-only $integFrag
+if (($LASTEXITCODE -eq 0) -and (Test-Path $integFrag) -and ((Get-Item $integFrag).Length -gt 0)) {
+    $hasIntegFrag = $true
+    Write-Host "Integration env (Alocom/SMS) fragment ready for container" -ForegroundColor Gray
 }
-if ($smsEnv) { Write-Host "SMS config from .env will be passed to container" -ForegroundColor Gray }
 
 $pscpPath = $null
 $plinkPath = $null
@@ -66,12 +64,19 @@ foreach ($p in @("$PSScriptRoot\plink.exe", "plink", "C:\Program Files\PuTTY\pli
     if ($p -notmatch "\\") { $x = Get-Command $p -ErrorAction SilentlyContinue; if ($x) { $plinkPath = $x.Source; break } }
 }
 
+$envFileArg = ""
+if ($hasIntegFrag) { $envFileArg = " --env-file /tmp/anistito-integration.env" }
+
 if ($pscpPath -and $plinkPath) {
     Write-Host "Using PuTTY: pscp, plink" -ForegroundColor Gray
     & $pscpPath -P $HostPort -pw $HostPass -hostkey $HostKey $archivePath "${HostUser}@${HostIP}:${RemotePath}/deploy-anistito.zip"
     if ($LASTEXITCODE -ne 0) { throw "Upload failed" }
+    if ($hasIntegFrag) {
+        & $pscpPath -P $HostPort -pw $HostPass -hostkey $HostKey $integFrag "${HostUser}@${HostIP}:/tmp/anistito-integration.env"
+        if ($LASTEXITCODE -ne 0) { throw "Integration env upload failed" }
+    }
     Write-Host "`n=== Step 4: Run commands on server ===" -ForegroundColor Cyan
-    $cmds = "docker rm -f anistito-api 2>/dev/null; cd $RemotePath && unzip -o deploy-anistito.zip -d . && rm -f deploy-anistito.zip && docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 3000:3000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret$smsEnv anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 3000'"
+    $cmds = "docker rm -f anistito-api 2>/dev/null; cd $RemotePath && unzip -o deploy-anistito.zip -d . && rm -f deploy-anistito.zip && docker build -t anistito-api . && docker run -d --name anistito-api --network anistito-net -p 3000:3000$envFileArg -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 3000'"
     $ErrorActionPreferenceBak = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
     $plinkOut = & $plinkPath -P $HostPort -pw $HostPass -hostkey $HostKey -batch "${HostUser}@${HostIP}" $cmds 2>&1
@@ -92,8 +97,11 @@ if ($pscpPath -and $plinkPath) {
     if (-not $session) { throw "SSH connection failed" }
     try {
         Set-SCPItem -ComputerName $HostIP -Port $HostPort -Credential $cred -Path $archivePath -Destination "$RemotePath/deploy-anistito.zip" -AcceptKey
+        if ($hasIntegFrag) {
+            Set-SCPItem -ComputerName $HostIP -Port $HostPort -Credential $cred -Path $integFrag -Destination "/tmp/anistito-integration.env" -AcceptKey
+        }
         Write-Host "`n=== Step 4: Run commands on server ===" -ForegroundColor Cyan
-        $cmds = "cd $RemotePath; unzip -o deploy-anistito.zip -d .; rm -f deploy-anistito.zip; docker rm -f anistito-api 2>/dev/null || true; docker build -t anistito-api .; docker run -d --name anistito-api --network anistito-net -p 3000:3000 -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret$smsEnv anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 3000'; sleep 15; curl -s http://localhost:3000/health || docker logs anistito-api --tail 15"
+        $cmds = "cd $RemotePath; unzip -o deploy-anistito.zip -d .; rm -f deploy-anistito.zip; docker rm -f anistito-api 2>/dev/null || true; docker build -t anistito-api .; docker run -d --name anistito-api --network anistito-net -p 3000:3000$envFileArg -e DATABASE_URL=postgresql+asyncpg://anistito:anistito@anistito-db:5432/anistito -e DATABASE_URL_SYNC=postgresql://anistito:anistito@anistito-db:5432/anistito -e REDIS_URL=redis://anistito-redis:6379/0 -e DEBUG=false -e SECRET_KEY=anistito-prod-secret anistito-api:latest sh -c 'python -m alembic upgrade head 2>/dev/null || true && python -m uvicorn app.main:app --host 0.0.0.0 --port 3000'; sleep 15; curl -s http://localhost:3000/health || docker logs anistito-api --tail 15"
         $result = Invoke-SSHCommand -SessionId $session.SessionId -Command $cmds -TimeOut 600
         Write-Host $result.Output
         if ($result.Error) { Write-Host $result.Error -ForegroundColor Red }
@@ -104,6 +112,7 @@ if ($pscpPath -and $plinkPath) {
 }
 
 Remove-Item $archivePath -Force -ErrorAction SilentlyContinue
+Remove-Item $integFrag -Force -ErrorAction SilentlyContinue
 Write-Host "`n=== Done ===" -ForegroundColor Green
-Write-Host "URL: https://bpms.psychoanalysis.ir/anistito/" -ForegroundColor White
+Write-Host "URL: https://lms.psychoanalysis.ir/anistito/" -ForegroundColor White
 Write-Host "Login: admin / admin123" -ForegroundColor White

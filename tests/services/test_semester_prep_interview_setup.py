@@ -56,6 +56,27 @@ def _payload(interviewer_ids: list[str], **overrides) -> dict:
     return base
 
 
+def _per_interviewer_payload(
+    schedules: list[dict],
+    *,
+    session_minutes: int = 30,
+    **overrides,
+) -> dict:
+    """فرمت جدید: هر مصاحبه‌گر روز/ساعت مستقل."""
+    group = {
+        "interviewers": schedules,
+        "session_minutes": session_minutes,
+    }
+    base = {
+        "interview_mode": "آنلاین",
+        "interview_location_fa": "",
+        "comprehensive": dict(group),
+        "introductory": dict(group),
+    }
+    base.update(overrides)
+    return base
+
+
 class TestPlanHelpers:
     def test_parse_time_accepts_persian_digits(self):
         assert parse_time_hhmm("۰۹:۳۰") == time(9, 30)
@@ -73,6 +94,48 @@ class TestPlanHelpers:
         assert {s["course_type"] for s in specs} == {"comprehensive", "introductory"}
         assert all(s["mode"] == "online" for s in specs)
         assert all(s["starts_at"].tzinfo is not None for s in specs)
+
+    def test_per_interviewer_schedules_use_independent_days_and_hours(self):
+        payload = normalize_interview_setup_payload(
+            _per_interviewer_payload(
+                [
+                    {
+                        "interviewer_id": "alice",
+                        "dates": ["2026-09-05"],
+                        "start_time": "09:00",
+                        "end_time": "12:00",
+                    },
+                    {
+                        "interviewer_id": "bob",
+                        "dates": ["2026-09-06"],
+                        "start_time": "14:00",
+                        "end_time": "17:00",
+                    },
+                ]
+            )
+        )
+        specs = build_interview_slot_specs(payload)
+        # هر نفر: ۱ روز × ۶ نوبت ۳۰ دقیقه‌ای؛ دو دوره
+        assert len(specs) == 2 * 6 * 2
+        alice = [s for s in specs if s["interviewer_user_id"] == "alice"]
+        bob = [s for s in specs if s["interviewer_user_id"] == "bob"]
+        assert len(alice) == 12
+        assert len(bob) == 12
+        assert all(s["starts_at"].date().isoformat() == "2026-09-05" for s in alice)
+        assert all(s["starts_at"].date().isoformat() == "2026-09-06" for s in bob)
+        # ۰۹:۰۰ تهران = ۰۵:۳۰ UTC ؛ ۱۴:۰۰ تهران = ۱۰:۳۰ UTC
+        assert alice[0]["starts_at"] == datetime(2026, 9, 5, 5, 30, tzinfo=timezone.utc)
+        assert bob[0]["starts_at"] == datetime(2026, 9, 6, 10, 30, tzinfo=timezone.utc)
+
+    def test_legacy_shared_payload_expands_to_per_interviewer_schedules(self):
+        payload = normalize_interview_setup_payload(
+            _payload(["a", "b"], dates=["2026-09-01"])
+        )
+        group = payload["comprehensive"]
+        assert len(group["interviewers"]) == 2
+        assert {s["interviewer_id"] for s in group["interviewers"]} == {"a", "b"}
+        assert all(s["dates"] == [date(2026, 9, 1)] for s in group["interviewers"])
+        assert all(s["start_time"] == time(9, 0) for s in group["interviewers"])
 
     def test_tehran_local_times_are_converted_to_utc(self):
         payload = normalize_interview_setup_payload(
@@ -94,7 +157,17 @@ class TestPlanHelpers:
 
     def test_missing_interviewer_or_day_is_reported_per_course(self):
         raw = _payload([])
-        raw["introductory"]["dates"] = []
+        raw["introductory"] = {
+            "interviewers": [
+                {
+                    "interviewer_id": "x",
+                    "dates": [],
+                    "start_time": "09:00",
+                    "end_time": "11:00",
+                }
+            ],
+            "session_minutes": 30,
+        }
         errors = interview_setup_errors(normalize_interview_setup_payload(raw))
         assert any("دوره جامع" in e and "مصاحبه‌گر" in e for e in errors)
         assert any("دوره آشنایی" in e and "روز" in e for e in errors)
@@ -104,6 +177,26 @@ class TestPlanHelpers:
         raw["comprehensive"]["end_time"] = "08:00"
         errors = interview_setup_errors(normalize_interview_setup_payload(raw))
         assert any("بعد از ساعت شروع" in e for e in errors)
+
+    def test_per_interviewer_end_time_error_names_that_interviewer(self):
+        raw = _per_interviewer_payload(
+            [
+                {
+                    "interviewer_id": "ok",
+                    "dates": ["2026-09-01"],
+                    "start_time": "09:00",
+                    "end_time": "11:00",
+                },
+                {
+                    "interviewer_id": "bad",
+                    "dates": ["2026-09-02"],
+                    "start_time": "16:00",
+                    "end_time": "14:00",
+                },
+            ]
+        )
+        errors = interview_setup_errors(normalize_interview_setup_payload(raw))
+        assert any("مصاحبه‌گر 2" in e and "بعد از ساعت شروع" in e for e in errors)
 
     def test_form_values_derived_from_plan(self):
         payload = normalize_interview_setup_payload(
@@ -201,6 +294,56 @@ class TestApplyInterviewSetup:
         assert ctx["comprehensive_interviewers"] == [str(employee.id)]
         assert ctx["interview_mode"] == "آنلاین"
         assert ctx["interview_setup_plan"]["comprehensive"]["start_time"] == "09:00"
+        assert ctx["interview_setup_plan"]["comprehensive"]["interviewers"][0]["interviewer_id"] == str(
+            employee.id
+        )
+
+    async def test_per_interviewer_schedules_create_distinct_slots(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        instance = await self._instance_at_interview_step(db_session, sample_student, sample_user)
+        first = await self._employee(db_session)
+        second = await self._employee(db_session)
+        day_a, day_b = _future_dates(2)
+
+        result = await apply_semester_prep_interview_setup(
+            db_session,
+            instance_id=str(instance.id),
+            payload=_per_interviewer_payload(
+                [
+                    {
+                        "interviewer_id": str(first.id),
+                        "dates": [day_a],
+                        "start_time": "09:00",
+                        "end_time": "10:00",
+                    },
+                    {
+                        "interviewer_id": str(second.id),
+                        "dates": [day_b],
+                        "start_time": "14:00",
+                        "end_time": "15:00",
+                    },
+                ]
+            ),
+            actor=sample_user,
+        )
+        await db_session.commit()
+
+        # هر نفر: ۱ روز × ۲ نوبت ۳۰ دقیقه‌ای × ۲ دوره = ۴ نوبت؛ جمع ۸
+        assert result["created_slots"]["total"] == 8
+        slots = list((await db_session.execute(select(InterviewSlot))).scalars().all())
+        by_interviewer = {}
+        for slot in slots:
+            by_interviewer.setdefault(slot.interviewer_user_id, []).append(slot)
+        assert set(by_interviewer) == {first.id, second.id}
+        assert len(by_interviewer[first.id]) == 4
+        assert len(by_interviewer[second.id]) == 4
+
+        plan = (instance.context_data or {})["interview_setup_plan"]["comprehensive"]["interviewers"]
+        assert plan[0]["start_time"] == "09:00"
+        assert plan[1]["start_time"] == "14:00"
+        assert plan[0]["dates"] == [day_a]
+        assert plan[1]["dates"] == [day_b]
 
     async def test_only_slots_generated_by_this_step_are_replaced(
         self, db_session: AsyncSession, sample_student, sample_user

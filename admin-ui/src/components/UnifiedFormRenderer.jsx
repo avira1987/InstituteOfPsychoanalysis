@@ -990,17 +990,25 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
 
   if (t === 'therapist_slot_picker') {
     const courseType = values.course_type || null
+    const isSupervisorPick = name === 'new_supervisor_id'
     return (
       <div className={shellCls} data-testid={fieldTestId}>
         {labelEl}
         <EducationalTherapistSlotPicker
           therapistId={value ?? ''}
           slotIds={values.slot_ids || []}
-          weeklySessions={values.weekly_sessions}
+          weeklySessions={values.weekly_sessions || values.selected_supervision_weekly_count || (isSupervisorPick ? 1 : '')}
           courseType={courseType}
           therapistFieldName={name}
+          slotRole={isSupervisorPick ? 'supervisor' : 'therapist'}
           onTherapistChange={(v) => onFieldChange(name, v)}
-          onSlotsChange={(ids) => onFieldChange('slot_ids', ids)}
+          onSlotsChange={(ids) => {
+            onFieldChange('slot_ids', ids)
+            if (isSupervisorPick) {
+              onFieldChange('weekly_sessions', 1)
+              onFieldChange('selected_supervision_weekly_count', 1)
+            }
+          }}
           disabled={disabled}
         />
         <FieldErrorMsg message={fieldError} />

@@ -18,6 +18,45 @@ SEMESTER_PREP_INTERVIEW_SETUP_TRIGGERS = frozenset(
     {"interviewers_assigned", "interview_times_set"}
 )
 
+# نتیجهٔ درگاه پرداخت — فقط callback با actor_role=system (بدون bypass ادمین)
+PAYMENT_GATEWAY_TRIGGER_EVENTS = frozenset(
+    {
+        "payment_confirmed",
+        "payment_failed",
+        "payment_successful",
+        "payment_unsuccessful",
+        "payment_success",
+        "interview_payment_confirmed",
+        "interview_payment_failed",
+        "tuition_payment_confirmed",
+        "tuition_payment_failed",
+    }
+)
+
+# نقش‌هایی که می‌توانند interview_time_reached را دستی بزنند (استثنای system)
+_INTERVIEW_TIME_REACHED_OPERATOR_ROLES = frozenset(
+    {
+        "interviewer",
+        "staff",
+        "site_manager",
+        "deputy_education",
+    }
+)
+
+
+def is_payment_gateway_trigger(trigger_event: str | None) -> bool:
+    return bool(trigger_event) and trigger_event in PAYMENT_GATEWAY_TRIGGER_EVENTS
+
+
+def human_may_list_system_transition(trigger_event: str | None, actor_role: str) -> bool:
+    """آیا transition با required_role=system برای نقش انسانی در لیست اقدامات دیده شود؟"""
+    if actor_role == "system":
+        return True
+    return (
+        trigger_event == "interview_time_reached"
+        and actor_role in _INTERVIEW_TIME_REACHED_OPERATOR_ROLES
+    )
+
 
 class TransitionError(Exception):
     """Raised when a transition cannot be performed."""
@@ -111,7 +150,10 @@ class TransitionManager:
         """Check if the actor's role is authorized for this transition."""
         required = transition.required_role
         te = trigger_event or transition.trigger_event
-        # Allow admin to do everything
+        # نتیجهٔ درگاه: فقط system — حتی ادمین نباید دستی بزند
+        if is_payment_gateway_trigger(te):
+            return actor_role == "system"
+        # Allow admin to do everything else
         if actor_role == "admin":
             return True
         # ثبت نتیجهٔ مصاحبه: فقط مصاحبه‌گر (مالکیت در engine بررسی می‌شود) یا ادمین
@@ -127,12 +169,7 @@ class TransitionManager:
         if required == "system":
             if actor_role == "system":
                 return True
-            if te == "interview_time_reached" and actor_role in (
-                "interviewer",
-                "staff",
-                "site_manager",
-                "deputy_education",
-            ):
+            if te == "interview_time_reached" and actor_role in _INTERVIEW_TIME_REACHED_OPERATOR_ROLES:
                 return True
             return False
         if actor_role == required:
@@ -153,6 +190,14 @@ class TransitionManager:
             "site_manager",
             "deputy_education",
         ):
+            return True
+        # کمیته پیشرفت — نقش‌های پروژه/علمی با حساب واحد progress_committee یکی‌اند
+        _PROGRESS = (
+            "progress_committee",
+            "progress_committee_project",
+            "progress_committee_scientific",
+        )
+        if required in _PROGRESS and actor_role in _PROGRESS:
             return True
         # کمیته پیشرفت — در پنل همان کارمندان/معاون
         if required == "progress_committee" and actor_role in (

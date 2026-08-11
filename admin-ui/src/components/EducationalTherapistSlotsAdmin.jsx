@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { educationalTherapistSlotsApi } from '../services/api'
 import CreatableSearchSelect from './CreatableSearchSelect'
-import { resolveUsersOptionsSource } from '../utils/resolveFormOptionsSource'
 
 const DAY_OPTIONS = [
   { value: 5, label: 'شنبه' },
@@ -33,6 +32,7 @@ export default function EducationalTherapistSlotsAdmin({ showToast }) {
   const [startTime, setStartTime] = useState('10:00')
   const [endTime, setEndTime] = useState('11:00')
   const [courseType, setCourseType] = useState('')
+  const [weekInterval, setWeekInterval] = useState(1)
   const [labelFa, setLabelFa] = useState('')
 
   const load = () => {
@@ -49,12 +49,40 @@ export default function EducationalTherapistSlotsAdmin({ showToast }) {
   }, [includeBooked, filterTherapist])
 
   useEffect(() => {
-    resolveUsersOptionsSource({ type: 'users', roles: ['therapist'], is_active: true })
-      .then((opts) => setTherapists(opts))
-      .catch(() => {})
+    educationalTherapistSlotsApi
+      .manageTherapists()
+      .then((r) => {
+        const rows = Array.isArray(r.data?.therapists) ? r.data.therapists : []
+        setTherapists(
+          rows.map((t) => ({
+            value: t.id,
+            label_fa: t.label_fa || t.username || t.id,
+          })),
+        )
+      })
+      .catch(() => {
+        setTherapists([])
+        showToast?.('بارگذاری فهرست درمانگران ناموفق بود.', 'error')
+      })
   }, [])
 
   const therapistOptions = useMemo(() => therapists, [therapists])
+
+  const therapistNameById = useMemo(() => {
+    const map = new Map()
+    for (const t of therapists) {
+      if (t?.value) map.set(String(t.value), t.label_fa || t.value)
+    }
+    return map
+  }, [therapists])
+
+  const displayTherapistName = (slot) => {
+    const fromApi = (slot?.therapist_name_fa || '').trim()
+    const tid = String(slot?.therapist_user_id || '')
+    const looksLikeId = !fromApi || fromApi === tid || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fromApi)
+    if (!looksLikeId) return fromApi
+    return therapistNameById.get(tid) || fromApi || '—'
+  }
 
   const createSlot = async (e) => {
     e.preventDefault()
@@ -70,6 +98,7 @@ export default function EducationalTherapistSlotsAdmin({ showToast }) {
         start_local_time: startTime,
         end_local_time: endTime,
         course_type: courseType || null,
+        week_interval: Number(weekInterval) === 2 ? 2 : 1,
         label_fa: labelFa || null,
       })
       showToast?.('وقت آزاد ثبت شد.')
@@ -113,7 +142,7 @@ export default function EducationalTherapistSlotsAdmin({ showToast }) {
         <h3 className="card-title">شیت وقت‌های آزاد درمانگران آموزشی</h3>
       </div>
       <p className="psf-hint" style={{ padding: '0 1rem' }}>
-        پیش از شروع فرایند انتخاب درمانگر توسط دانشجو، وقت‌های آزاد را در این شیت بارگذاری کنید.
+        وقت‌های اعلام‌شده توسط درمانگران آموزشی را در این شیت ثبت کنید. دانشجو از همین شیت انتخاب می‌کند و بدون تأیید مجدد درمانگر، پس از پرداخت فعال می‌شود.
       </p>
 
       <form onSubmit={createSlot} style={{ padding: '0 1rem 1rem', display: 'grid', gap: '0.75rem' }}>
@@ -125,6 +154,7 @@ export default function EducationalTherapistSlotsAdmin({ showToast }) {
               value={therapistUserId}
               onChange={setTherapistUserId}
               placeholder="انتخاب درمانگر"
+              allowCreate={false}
             />
           </label>
           <label className="psf-field">
@@ -142,6 +172,13 @@ export default function EducationalTherapistSlotsAdmin({ showToast }) {
           <label className="psf-field">
             <span className="psf-label">پایان *</span>
             <input className="psf-input" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+          </label>
+          <label className="psf-field">
+            <span className="psf-label">تکرار *</span>
+            <select className="psf-input" value={weekInterval} onChange={(e) => setWeekInterval(Number(e.target.value))}>
+              <option value={1}>هفتگی</option>
+              <option value={2}>هفته‌درمیان</option>
+            </select>
           </label>
           <label className="psf-field">
             <span className="psf-label">محدودیت دوره</span>
@@ -167,10 +204,11 @@ export default function EducationalTherapistSlotsAdmin({ showToast }) {
         <label className="psf-field" style={{ margin: 0, minWidth: 200 }}>
           <span className="psf-label">فیلتر درمانگر</span>
           <CreatableSearchSelect
-            options={[{ value: '', label: 'همه' }, ...therapistOptions]}
+            options={[{ value: '', label_fa: 'همه' }, ...therapistOptions]}
             value={filterTherapist}
             onChange={setFilterTherapist}
             placeholder="همه"
+            allowCreate={false}
           />
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -189,6 +227,7 @@ export default function EducationalTherapistSlotsAdmin({ showToast }) {
                 <th>درمانگر</th>
                 <th>روز</th>
                 <th>ساعت</th>
+                <th>تکرار</th>
                 <th>دوره</th>
                 <th>وضعیت</th>
                 <th>عملیات</th>
@@ -196,13 +235,14 @@ export default function EducationalTherapistSlotsAdmin({ showToast }) {
             </thead>
             <tbody>
               {slots.length === 0 && (
-                <tr><td colSpan={6}>وقتی ثبت نشده است.</td></tr>
+                <tr><td colSpan={7}>وقتی ثبت نشده است.</td></tr>
               )}
               {slots.map((s) => (
                 <tr key={s.id}>
-                  <td>{s.therapist_name_fa || '—'}</td>
+                  <td>{displayTherapistName(s)}</td>
                   <td>{s.day_label_fa}</td>
                   <td>{s.start_local_time}–{s.end_local_time}</td>
+                  <td>{s.week_interval_label_fa || (Number(s.week_interval) === 2 ? 'هفته‌درمیان' : 'هفتگی')}</td>
                   <td>{s.course_type === 'comprehensive' ? 'جامع' : s.course_type === 'introductory' ? 'آشنایی' : '—'}</td>
                   <td>{statusBadge(s.status)}</td>
                   <td style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>

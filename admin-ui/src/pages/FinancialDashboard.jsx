@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { financeApi } from '../services/api'
+import { parseFloatLoose, parseIntLoose } from '../utils/persianDigits'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 
 const TYPE_LABELS = {
@@ -190,30 +191,21 @@ export default function FinancialDashboard() {
     setErr(null)
     setProgSaving(true)
     try {
-      const parseIntSafe = (v) => {
-        const n = parseInt(String(v).replace(/[,\s،]/g, ''), 10)
-        return Number.isNaN(n) ? null : n
-      }
-      const parseFloatSafe = (v) => {
-        const s = String(v).replace(/[,\s،]/g, '').replace(/[^\d.-]/g, '')
-        const n = parseFloat(s)
-        return Number.isNaN(n) ? null : n
-      }
       const parseOptionalRial = (v) => {
         if (String(v).trim() === '') return null
-        return parseIntSafe(v)
+        return parseIntLoose(v)
       }
       const puIntro = parseOptionalRial(perUnitIntro)
       const puComp = parseOptionalRial(perUnitComp)
       const ivIntro = parseOptionalRial(interviewIntro)
       const ivComp = parseOptionalRial(interviewComp)
       const ri1 =
-        parseIntSafe(interviewRial) ??
+        parseIntLoose(interviewRial) ??
         (ivIntro != null && ivIntro >= 1000 ? ivIntro : null)
-      const tuition = parseFloatSafe(tuitionToman)
-      const st = parseIntSafe(therapyFirstRial)
-      const ex = parseIntSafe(extraRial)
-      const th = parseFloatSafe(therapySessionToman)
+      const tuition = parseFloatLoose(tuitionToman)
+      const st = parseIntLoose(therapyFirstRial)
+      const ex = parseIntLoose(extraRial)
+      const th = parseFloatLoose(therapySessionToman)
       for (const [label, val] of [
         ['هزینه هر واحد آشنایی', puIntro],
         ['هزینه هر واحد جامع', puComp],
@@ -245,8 +237,8 @@ export default function FinancialDashboard() {
         setErr('پیش‌فرض هر جلسه درمان آموزشی (تومان) باید بزرگ‌تر از صفر باشد.')
         return
       }
-      const cl = String(classSessionToman).trim() === '' ? 0 : parseFloatSafe(classSessionToman)
-      const cr = String(courseSessionToman).trim() === '' ? 0 : parseFloatSafe(courseSessionToman)
+      const cl = String(classSessionToman).trim() === '' ? 0 : parseFloatLoose(classSessionToman)
+      const cr = String(courseSessionToman).trim() === '' ? 0 : parseFloatLoose(courseSessionToman)
       if (cl == null || cl < 0) {
         setErr('«پیش‌فرض هر جلسه کلاس» باید خالی یا عدد نامنفی باشد.')
         return
@@ -282,10 +274,10 @@ export default function FinancialDashboard() {
     try {
       const parts = countOptsStr.split(/[,،\s]+/).map((s) => s.trim()).filter(Boolean)
       const installment_count_options = parts
-        .map((s) => parseInt(s, 10))
-        .filter((n) => !Number.isNaN(n) && n >= 2 && n <= 24)
-      const g = parseInt(String(gapDays).replace(/[^\d]/g, ''), 10)
-      if (Number.isNaN(g) || g < 1 || g > 365) {
+        .map((s) => parseIntLoose(s))
+        .filter((n) => n != null && n >= 2 && n <= 24)
+      const g = parseIntLoose(gapDays)
+      if (g == null || g < 1 || g > 365) {
         setErr('فاصلهٔ روزهای بین اقساط باید بین ۱ تا ۳۶۵ باشد.')
         return
       }

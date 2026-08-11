@@ -39,6 +39,11 @@ from app.services.alocom_provision import ensure_paid_session_alocom_links
 from app.core.engine import StateMachineEngine
 from app.core.audit import AuditLogger
 from app.core.resource_access import ensure_can_pay_for_instance
+from app.services.tuition_installment_service import (
+    apply_post_payment_context_update,
+    is_tuition_gateway_state,
+    resolve_expected_payable_rial,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/payment", tags=["Payment"])
@@ -570,6 +575,20 @@ async def create_payment_endpoint(
         iid = uuid.UUID(req.instance_id) if req.instance_id and _is_uuid(req.instance_id) else None
         await ensure_can_pay_for_instance(db, current_user, sid, iid)
 
+        if iid is not None:
+            inst_row = await db.execute(select(ProcessInstance).where(ProcessInstance.id == iid))
+            inst = inst_row.scalars().first()
+            if inst and is_tuition_gateway_state(inst.process_code, inst.current_state_code or ""):
+                expected = await resolve_expected_payable_rial(db, inst)
+                if expected is not None and int(req.amount) != int(expected):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"مبلغ پرداخت ({int(req.amount):,} ریال) با مبلغ قابل‌پرداخت "
+                            f"({int(expected):,} ریال) مطابقت ندارد. صفحه را تازه کنید."
+                        ),
+                    )
+
     effective_provider = _effective_payment_provider(req)
     payment_req = PaymentRequest(
         amount=req.amount,
@@ -731,6 +750,21 @@ async def _apply_payment_success_transition(
                 amount_toman,
                 ref_id,
             )
+            try:
+                links = await ensure_paid_session_alocom_links(
+                    db, student_id=pending.student_id
+                )
+                if links:
+                    logger.info(
+                        "[PAYMENT] start_therapy alocom links provisioned student_id=%s count=%s",
+                        str(pending.student_id),
+                        len(links),
+                    )
+            except Exception:
+                logger.exception(
+                    "[PAYMENT] start_therapy alocom link provisioning failed student_id=%s",
+                    str(pending.student_id),
+                )
             return True
         except Exception as e:
             logger.exception(f"[PAYMENT] Transition payment_confirmed failed for start_therapy: {e}")
@@ -824,6 +858,9 @@ async def _apply_payment_success_transition(
                 return False
         if inst.current_state_code == "payment":
             try:
+                await apply_post_payment_context_update(
+                    db, inst, payment_ref=ref_id, amount_rial=int(round(amount_toman * 10))
+                )
                 await engine.execute_transition(
                     instance_id=instance_id,
                     trigger_event="payment_completed",
@@ -864,6 +901,9 @@ async def _apply_payment_success_transition(
                 return False
         if inst.current_state_code == "payment":
             try:
+                await apply_post_payment_context_update(
+                    db, inst, payment_ref=ref_id, amount_rial=int(round(amount_toman * 10))
+                )
                 await engine.execute_transition(
                     instance_id=instance_id,
                     trigger_event="tuition_payment_confirmed",
@@ -884,6 +924,9 @@ async def _apply_payment_success_transition(
     if inst.process_code == "comprehensive_term_start":
         if inst.current_state_code == "payment_processing":
             try:
+                await apply_post_payment_context_update(
+                    db, inst, payment_ref=ref_id, amount_rial=int(round(amount_toman * 10))
+                )
                 await engine.execute_transition(
                     instance_id=instance_id,
                     trigger_event="payment_confirmed",
@@ -944,6 +987,115 @@ async def _apply_payment_success_transition(
                     e,
                 )
                 return False
+
+    if inst.process_code == "intro_second_semester_registration":
+        if inst.current_state_code == "payment_processing":
+            try:
+                await apply_post_payment_context_update(
+                    db, inst, payment_ref=ref_id, amount_rial=int(round(amount_toman * 10))
+                )
+                await engine.execute_transition(
+                    instance_id=instance_id,
+                    trigger_event="payment_completed",
+                    actor_id=system_actor_id,
+                    actor_role="system",
+                    payload=payload,
+                )
+                logger.info(
+                    "[PAYMENT] intro_term2 payment_completed instance_id=%s ref=%s",
+                    instance_id,
+                    ref_id,
+                )
+                return True
+            except Exception as e:
+                logger.exception("[PAYMENT] intro_term2 payment_completed failed: %s", e)
+                return False
+        if inst.current_state_code == "installment_overdue":
+            try:
+                await apply_post_payment_context_update(
+                    db, inst, payment_ref=ref_id, amount_rial=int(round(amount_toman * 10))
+                )
+                await engine.execute_transition(
+                    instance_id=instance_id,
+                    trigger_event="overdue_installment_paid",
+                    actor_id=system_actor_id,
+                    actor_role="system",
+                    payload=payload,
+                )
+                logger.info(
+                    "[PAYMENT] intro_term2 overdue_installment_paid instance_id=%s ref=%s",
+                    instance_id,
+                    ref_id,
+                )
+                return True
+            except Exception as e:
+                logger.exception("[PAYMENT] intro_term2 overdue_installment_paid failed: %s", e)
+                return False
+        if inst.current_state_code == "registration_complete":
+            ctx = dict(inst.context_data or {})
+            try:
+                pending = int(ctx.get("pending_installments_remaining") or 0)
+            except (TypeError, ValueError):
+                pending = 0
+            if pending > 0 and ctx.get("payment_method") == "installment":
+                await apply_post_payment_context_update(
+                    db, inst, payment_ref=ref_id, amount_rial=int(round(amount_toman * 10))
+                )
+                logger.info(
+                    "[PAYMENT] intro_term2 installment paid (registration_complete) instance_id=%s ref=%s",
+                    instance_id,
+                    ref_id,
+                )
+                return True
+
+    if inst.process_code in (
+        "introductory_course_registration",
+        "comprehensive_course_registration",
+        "comprehensive_term_start",
+    ) and inst.current_state_code == "installment_overdue":
+        try:
+            await apply_post_payment_context_update(
+                db, inst, payment_ref=ref_id, amount_rial=int(round(amount_toman * 10))
+            )
+            await engine.execute_transition(
+                instance_id=instance_id,
+                trigger_event="overdue_installment_paid",
+                actor_id=system_actor_id,
+                actor_role="system",
+                payload=payload,
+            )
+            logger.info(
+                "[PAYMENT] %s overdue_installment_paid instance_id=%s ref=%s",
+                inst.process_code,
+                instance_id,
+                ref_id,
+            )
+            return True
+        except Exception as e:
+            logger.exception("[PAYMENT] overdue_installment_paid failed: %s", e)
+            return False
+
+    if inst.process_code in (
+        "introductory_course_registration",
+        "comprehensive_course_registration",
+        "comprehensive_term_start",
+    ) and inst.current_state_code == "registration_complete":
+        ctx = dict(inst.context_data or {})
+        try:
+            pending = int(ctx.get("pending_installments_remaining") or 0)
+        except (TypeError, ValueError):
+            pending = 0
+        if pending > 0 and ctx.get("payment_method") == "installment":
+            await apply_post_payment_context_update(
+                db, inst, payment_ref=ref_id, amount_rial=int(round(amount_toman * 10))
+            )
+            logger.info(
+                "[PAYMENT] %s installment paid (registration_complete) instance_id=%s ref=%s",
+                inst.process_code,
+                instance_id,
+                ref_id,
+            )
+            return True
 
     return False
 

@@ -1,5 +1,5 @@
 # Sync anistito to internet host - code, UI, and database
-# Target: https://bpms.psychoanalysis.ir/anistito/
+# Target: https://lms.psychoanalysis.ir/anistito/
 
 $HostIP = "80.191.11.129"
 $HostPort = 2022
@@ -127,5 +127,5 @@ if (-not $pscpPath -or -not $plinkPath) {
 
 Remove-Item $archivePath -Force -ErrorAction SilentlyContinue
 Write-Host "`n=== Sync Complete ===" -ForegroundColor Green
-Write-Host "URL: https://bpms.psychoanalysis.ir/anistito/" -ForegroundColor White
+Write-Host "URL: https://lms.psychoanalysis.ir/anistito/" -ForegroundColor White
 Write-Host "Login: admin / admin123  |  student1 / demo123  |  staff1 / demo123  |  ..." -ForegroundColor White

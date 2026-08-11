@@ -92,47 +92,84 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
 
     if action_type in ("schedule_reminder", "scheduled_notification", "schedule_installment_reminders"):
         if action_type == "schedule_installment_reminders":
-            count = action.get("installments") or ctx.get("installment_count") or ctx.get("pending_installments_remaining")
-            try:
-                count = max(1, int(count)) if count is not None else 3
-            except (TypeError, ValueError):
-                count = 3
-            created = []
             ic = C.instance_ctx(instance)
             merged_ic = {**ic, **ctx}
-            next_due_raw = merged_ic.get("next_installment_due_at")
+            plan = merged_ic.get("installment_plan") or []
+            reminder_days = 1
+            try:
+                reminder_days = max(1, int(action.get("reminder_days_before") or 1))
+            except (TypeError, ValueError):
+                pass
             gap_days = 30
             try:
                 gap_days = max(1, int(action.get("installment_gap_days") or ctx.get("installment_gap_days") or 30))
             except (TypeError, ValueError):
                 pass
-            reminder_days = 7
-            try:
-                reminder_days = max(1, int(action.get("reminder_days_before") or 7))
-            except (TypeError, ValueError):
-                pass
-            base_due = _parse_due(merged_ic, {"due_at": next_due_raw}) if next_due_raw else None
-            if base_due is None:
-                base_due = datetime.now(timezone.utc) + timedelta(days=gap_days)
-            for i in range(count):
-                due_at = base_due + timedelta(days=gap_days * i)
-                remind_at = due_at - timedelta(days=reminder_days)
-                rec = {
-                    "id": C.new_id(),
-                    "type": "installment",
-                    "sequence": i + 1,
-                    "due_at": remind_at.isoformat(),
-                    "installment_due_at": due_at.date().isoformat(),
-                    "template": action.get("template") or "installment_due_reminder",
-                    "process_code": instance.process_code,
-                    "instance_id": str(instance.id),
-                    "created_at": C.now_iso(),
-                    "sent": False,
-                }
-                C.append_to_extra_list(student, "scheduled_reminders", rec)
-                created.append(rec["id"])
-            C.record_event(instance, action_type, {"installments": count, "created_ids": created})
-            return f"scheduled_installment_reminders n={count}"
+            template = action.get("template") or "installment_reminder"
+            created = []
+            pending_items = [
+                p for p in plan
+                if isinstance(p, dict) and p.get("status") in ("pending", "overdue")
+            ]
+            if not pending_items:
+                count = action.get("installments") or merged_ic.get("installment_count") or merged_ic.get(
+                    "pending_installments_remaining"
+                )
+                try:
+                    count = max(1, int(count)) if count is not None else 3
+                except (TypeError, ValueError):
+                    count = 3
+                next_due_raw = merged_ic.get("next_installment_due_at")
+                base_due = _parse_due(merged_ic, {"due_at": next_due_raw}) if next_due_raw else None
+                if base_due is None:
+                    base_due = datetime.now(timezone.utc) + timedelta(days=gap_days)
+                for i in range(count):
+                    due_at = base_due + timedelta(days=gap_days * i)
+                    remind_at = due_at - timedelta(days=reminder_days)
+                    from app.utils.shamsi_calendar_utils import tehran_calendar_date
+
+                    due_day = tehran_calendar_date(due_at) or due_at.date()
+                    rec = {
+                        "id": C.new_id(),
+                        "type": "installment",
+                        "sequence": i + 1,
+                        "due_at": remind_at.isoformat(),
+                        "installment_due_at": due_day.isoformat(),
+                        "template": template,
+                        "process_code": instance.process_code,
+                        "instance_id": str(instance.id),
+                        "created_at": C.now_iso(),
+                        "sent": False,
+                    }
+                    C.append_to_extra_list(student, "scheduled_reminders", rec)
+                    created.append(rec["id"])
+            else:
+                for item in pending_items:
+                    due_raw = item.get("due_at")
+                    due_at = _parse_due(merged_ic, {"due_at": due_raw})
+                    if due_at is None:
+                        continue
+                    remind_at = due_at - timedelta(days=reminder_days)
+                    from app.utils.shamsi_calendar_utils import tehran_calendar_date
+
+                    due_day = tehran_calendar_date(due_at) or due_at.date()
+                    rec = {
+                        "id": C.new_id(),
+                        "type": "installment",
+                        "sequence": item.get("index"),
+                        "due_at": remind_at.isoformat(),
+                        "installment_due_at": due_day.isoformat(),
+                        "amount_rial": item.get("amount_rial"),
+                        "template": template,
+                        "process_code": instance.process_code,
+                        "instance_id": str(instance.id),
+                        "created_at": C.now_iso(),
+                        "sent": False,
+                    }
+                    C.append_to_extra_list(student, "scheduled_reminders", rec)
+                    created.append(rec["id"])
+            C.record_event(instance, action_type, {"installments": len(created), "created_ids": created})
+            return f"scheduled_installment_reminders n={len(created)}"
         rec = {
             "id": C.new_id(),
             "type": action_type,

@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { studentApi, processExecApi, processApi, userApi } from '../services/api'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { notesPayload } from '../utils/decisionPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
-import InstanceContextSummary from '../components/InstanceContextSummary'
+import OperatorInstanceContextSummary from '../components/OperatorInstanceContextSummary'
 import ProcessRestartSection from '../components/ProcessRestartSection'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import { useToast } from '../contexts/ToastContext'
@@ -13,6 +13,13 @@ import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBa
 import OperatorCourseSelectionEditor from '../components/OperatorCourseSelectionEditor'
 import RegistrationCourseTypeEditor from '../components/RegistrationCourseTypeEditor'
 import { isInstituteLevelProcess } from '../utils/instituteProcesses'
+import { getManualStartScope } from '../utils/processStartScope'
+import {
+  INSTITUTE_OPS_LABEL_FA,
+  isInstituteOperationalStudent,
+} from '../utils/instituteOperationalAnchor'
+import { sortProcessNavItems } from '../utils/processNavOrder'
+import { groupProcessNavItemsByCategory } from '../utils/processNavCategories'
 
 export default function StudentTracker() {
   const { user } = useAuth()
@@ -25,6 +32,7 @@ export default function StudentTracker() {
 
   // Selected student
   const [selectedStudent, setSelectedStudent] = useState(null)
+  const [selectedStudentMeta, setSelectedStudentMeta] = useState(null)
   const [instances, setInstances] = useState([])
   const [instanceStatus, setInstanceStatus] = useState(null)
   const [availableTransitions, setAvailableTransitions] = useState([])
@@ -53,7 +61,8 @@ export default function StudentTracker() {
     try {
       setError(null)
       const res = await studentApi.list({ tracker_summary: true })
-      setStudents(Array.isArray(res.data) ? res.data : [])
+      const rows = Array.isArray(res.data) ? res.data : []
+      setStudents(rows.filter((s) => !isInstituteOperationalStudent(s)))
     } catch (err) {
       console.error('Failed to load students:', err)
       setError('خطا در بارگذاری لیست دانشجویان: ' + (err.response?.data?.detail || err.message))
@@ -65,9 +74,13 @@ export default function StudentTracker() {
 
   const loadStudentInstances = async (studentId) => {
     try {
-      const res = await processExecApi.studentInstances(studentId)
-      setInstances(res.data.instances || [])
+      const [instRes, studentRes] = await Promise.all([
+        processExecApi.studentInstances(studentId),
+        studentApi.get(studentId).catch(() => null),
+      ])
+      setInstances(instRes.data.instances || [])
       setSelectedStudent(studentId)
+      setSelectedStudentMeta(studentRes?.data || null)
       setInstanceStatus(null)
       setAvailableTransitions([])
     } catch (err) {
@@ -186,12 +199,30 @@ export default function StudentTracker() {
     setStartForm({ process_code: '', student_id: studentId })
     try {
       const res = await processApi.list()
-      setProcessDefinitions(res.data.filter((p) => p.is_active))
+      const active = (Array.isArray(res.data) ? res.data : []).filter(
+        (p) => p.is_active && getManualStartScope(p.code) === 'student',
+      )
+      // همان ترتیب/دسته‌بندی سایدبار پنل ادمین (موج ۱، موج ۲، SOP، سایر)
+      setProcessDefinitions(
+        sortProcessNavItems(
+          active.map((p) => ({
+            ...p,
+            process_code: p.code,
+            label_fa: p.name_fa,
+            sop_order: p.sop_order,
+          })),
+        ),
+      )
     } catch (err) {
       console.error(err)
     }
     setShowStartProcess(true)
   }
+
+  const startProcessGroups = useMemo(
+    () => groupProcessNavItemsByCategory(processDefinitions),
+    [processDefinitions],
+  )
 
   const openCreateStudent = async () => {
     try {
@@ -205,6 +236,7 @@ export default function StudentTracker() {
 
   const closeStudentDetail = () => {
     setSelectedStudent(null)
+    setSelectedStudentMeta(null)
     setInstances([])
     setInstanceStatus(null)
     setAvailableTransitions([])
@@ -220,10 +252,15 @@ export default function StudentTracker() {
   }
 
   const filteredStudents = (Array.isArray(students) ? students : []).filter((s) => {
+    if (isInstituteOperationalStudent(s)) return false
     if (!search) return true
     const q = search.toLowerCase()
     return (s.student_code || '').toLowerCase().includes(q)
   })
+
+  const viewingOperationalAnchor = isInstituteOperationalStudent(
+    selectedStudentMeta || students.find((s) => s.id === selectedStudent),
+  )
 
   return (
     <div>
@@ -255,8 +292,14 @@ export default function StudentTracker() {
                   <label className="form-label">فرایند</label>
                   <select className="form-input" value={startForm.process_code} onChange={(e) => setStartForm({ ...startForm, process_code: e.target.value })} required>
                     <option value="">انتخاب فرایند...</option>
-                    {processDefinitions.map((p) => (
-                      <option key={p.code} value={p.code}>{p.name_fa} ({p.code})</option>
+                    {startProcessGroups.map((group) => (
+                      <optgroup key={group.id} label={group.label}>
+                        {group.items.map((p) => (
+                          <option key={p.code} value={p.code}>
+                            {p.name_fa} ({p.code})
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </div>
@@ -270,7 +313,13 @@ export default function StudentTracker() {
       <div className="page-header">
         <div>
           <h1 className="page-title">ردیابی دانشجو</h1>
-          <p className="page-subtitle">نمایش وضعیت هر دانشجو در تمام فرایندها | مجموع: {students.length} دانشجو</p>
+          <p className="page-subtitle">
+            نمایش وضعیت هر دانشجو در تمام فرایندها | مجموع: {students.length} دانشجو
+            {' · '}
+            پرونده عملیاتی انستیتو در{' '}
+            <Link to="/panel/semester-prep">آماده‌سازی ترم</Link>
+            {' '}است.
+          </p>
         </div>
         <button className="btn btn-primary" onClick={openCreateStudent}>
           + دانشجوی جدید
@@ -445,11 +494,36 @@ export default function StudentTracker() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h3>فرایندهای دانشجو</h3>
+              <h3>{viewingOperationalAnchor ? INSTITUTE_OPS_LABEL_FA : 'فرایندهای دانشجو'}</h3>
               <button type="button" className="modal-close" onClick={closeStudentDetail} aria-label="بستن">&times;</button>
             </div>
             <div className="modal-body" style={{ paddingTop: 0 }}>
+              {viewingOperationalAnchor && (
+                <div
+                  data-testid="institute-ops-tracker-banner"
+                  style={{
+                    margin: '0.75rem 0 1rem',
+                    padding: '0.85rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #c7d2fe',
+                    background: '#eef2ff',
+                    fontSize: '0.88rem',
+                    lineHeight: 1.7,
+                    color: '#312e81',
+                  }}
+                >
+                  <strong>رکورد سیستمی:</strong>
+                  {' '}
+                  این پرونده دانشجوی واقعی نیست؛ برای فرایندهای سطح مؤسسه (آماده‌سازی ترم) است.
+                  کار روزمره را از{' '}
+                  <Link to="/panel/semester-prep" style={{ fontWeight: 700 }}>
+                    هاب آماده‌سازی ترم
+                  </Link>
+                  {' '}ادامه دهید. اینجا فقط برای جزئیات فنی، ریست یا انتقال دستی است.
+                </div>
+              )}
               {selectedStudent
+                && !viewingOperationalAnchor
                 && !isInstituteLevelProcess(instanceStatus?.process_code)
                 && !(instances.length > 0 && instances.every((i) => isInstituteLevelProcess(i.process_code))) && (
                 <RegistrationCourseTypeEditor
@@ -533,9 +607,10 @@ export default function StudentTracker() {
                     onUpdated={() => loadInstanceStatus(instanceStatus.instance_id)}
                   />
 
-                  <InstanceContextSummary
-                    contextData={instanceStatus.context_data}
-                    history={instanceStatus.history}
+                  <OperatorInstanceContextSummary
+                    user={user}
+                    instanceDetail={instanceStatus}
+                    availableTransitions={availableTransitions}
                     title="پرونده و سابقه (زمینهٔ تصمیم)"
                   />
 

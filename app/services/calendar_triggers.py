@@ -64,18 +64,9 @@ def _parse_iso_datetime(value: Any) -> Optional[datetime]:
 
 
 def _parse_date(value: Any) -> Optional[date]:
-    if value is None:
-        return None
-    if isinstance(value, date) and not isinstance(value, datetime):
-        return value
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, str):
-        try:
-            return date.fromisoformat(value[:10])
-        except Exception:
-            return None
-    return None
+    from app.utils.shamsi_calendar_utils import tehran_calendar_date
+
+    return tehran_calendar_date(value)
 
 
 async def _get_state_sla_hours(db: AsyncSession, process_code: str, state_code: str) -> Optional[int]:
@@ -563,10 +554,9 @@ async def _run_therapy_session_increase_student_response_reminders(db: AsyncSess
 
 
 async def _run_start_therapy_sla_reminders(db: AsyncSession, now: datetime) -> list[dict]:
-    """یادآوری پیامکی نیمهٔ مهلت SLA برای مراحل تایید درمانگر و پرداخت جلسه اول."""
+    """یادآوری پیامکی نیمهٔ مهلت SLA برای پرداخت جلسه اول آغاز درمان."""
     out: list[dict] = []
     pairs = [
-        ("therapist_confirmation", "start_therapy_sla_reminder_therapist", "start_therapy_sla_therapist_pending", 72.0),
         ("payment_pending", "start_therapy_sla_reminder_payment", "start_therapy_sla_payment_pending", 48.0),
     ]
     for state_code, ctx_flag, template_name, default_sla_h in pairs:
@@ -825,8 +815,35 @@ def _calendar_part_event_count(part: Any) -> int:
 
 async def run_calendar_trigger_pass(db: AsyncSession) -> dict[str, Any]:
     """یک دور کامل بررسی تریگرهای تقویمی."""
+    from app.utils.shamsi_calendar_utils import tehran_today
+
     now = datetime.now(timezone.utc)
-    today = now.date()
+    today = tehran_today()
+    # #region agent log
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        from time import time as _time
+        _line = {
+            "sessionId": "8e31fd",
+            "hypothesisId": "B",
+            "location": "calendar_triggers.py:run_calendar_trigger_pass",
+            "message": "scheduler today uses tehran",
+            "data": {
+                "utc_now": now.isoformat(),
+                "scheduler_today": str(today),
+                "tehran_today": str(today),
+                "utc_date": str(now.date()),
+                "mismatch_utc_vs_tehran": str(now.date()) != str(today),
+            },
+            "timestamp": int(_time() * 1000),
+            "runId": "post-fix",
+        }
+        with open(_Path(__file__).resolve().parents[2] / "debug-8e31fd.log", "a", encoding="utf-8") as _f:
+            _f.write(_json.dumps(_line, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # #endregion
     payment = await _run_payment_timeouts(db, now)
     session_pay_rem = await _run_session_payment_sla_reminders(db, now)
     session_pay_auto = await _run_session_payment_autostart_unpaid(db)

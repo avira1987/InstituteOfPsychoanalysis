@@ -25,7 +25,12 @@
       "code": "application_submitted",
       "name_fa": "ثبت درخواست ورود به دوره جامع",
       "type": "initial",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "درخواست ورود به دوره جامع ثبت شد",
+        "student_task_fa": "دکمهٔ «ادامه و ثبت مرحله» را بزنید تا پروندهٔ شما برای بررسی کمیته نظارت ارسال شود.",
+        "student_why_fa": "پس از تأیید کمیته نظارت، مراحل بعدی ثبت‌نام در همین صفحه فعال می‌شود."
+      }
     },
     {
       "code": "supervision_committee_review",
@@ -35,14 +40,22 @@
       "sla_days": 2,
       "metadata": {
         "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
-        "operator_short_fa": "بررسی پرونده توسط کمیته نظارت"
+        "operator_short_fa": "بررسی پرونده توسط کمیته نظارت",
+        "student_short_fa": "بررسی پرونده توسط کمیته نظارت",
+        "student_task_fa": "الان کاری در پرتال ندارید؛ منتظر بررسی کمیته نظارت بمانید و بعداً همین صفحه را تازه کنید.",
+        "student_why_fa": "پس از تعیین نتیجه، مرحلهٔ بعد در همین صفحه به‌روز می‌شود."
       }
     },
     {
       "code": "supervision_rejected",
       "name_fa": "رد توسط کمیته نظارت",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "رد توسط کمیته نظارت",
+        "student_task_fa": "پرونده شما در این مرحله رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید.",
+        "student_why_fa": "ادامهٔ ثبت‌نام در دوره جامع از پنل برای شما بسته شده است."
+      }
     },
     {
       "code": "executive_review",
@@ -52,7 +65,10 @@
       "sla_days": 2,
       "metadata": {
         "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
-        "operator_short_fa": "بررسی پرونده و معدل توسط مسئول اجرایی کمیته پیشرفت"
+        "operator_short_fa": "بررسی پرونده و معدل توسط مسئول اجرایی کمیته پیشرفت",
+        "student_short_fa": "بررسی پرونده توسط مسئول اجرایی",
+        "student_task_fa": "الان کاری در پرتال ندارید؛ منتظر بررسی مسئول اجرایی کمیته پیشرفت بمانید و بعداً صفحه را تازه کنید.",
+        "student_why_fa": "پس از بررسی معدل و پرونده، مرحلهٔ بعد برای شما فعال می‌شود."
       }
     },
     {
@@ -63,26 +79,44 @@
       "sla_days": 2,
       "metadata": {
         "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
-        "operator_short_fa": "تصمیم‌گیری مسئول علمی کمیته پیشرفت"
+        "operator_short_fa": "تصمیم‌گیری مسئول علمی کمیته پیشرفت",
+        "student_short_fa": "بررسی توسط مسئول علمی کمیته پیشرفت",
+        "student_task_fa": "الان کاری در پرتال ندارید؛ منتظر تصمیم مسئول علمی بمانید و بعداً همین صفحه را تازه کنید.",
+        "student_why_fa": "پس از تصمیم علمی، مرحلهٔ بارگذاری مدارک یا نتیجهٔ نهایی برای شما مشخص می‌شود."
       }
     },
     {
       "code": "scientific_rejected",
       "name_fa": "رد توسط مسئول علمی کمیته پیشرفت",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "رد توسط مسئول علمی",
+        "student_task_fa": "پرونده شما در این مرحله رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید.",
+        "student_why_fa": "ادامهٔ ثبت‌نام در دوره جامع از پنل برای شما بسته شده است."
+      }
     },
     {
       "code": "document_upload",
       "name_fa": "بارگذاری گزارش تجربه شخصی",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "بارگذاری گزارش تجربه شخصی",
+        "student_task_fa": "گزارش تجربه شخصی را طبق قالب اعلام‌شده در همین صفحه بارگذاری و ثبت کنید؛ سپس دکمهٔ ادامه را بزنید.",
+        "student_why_fa": "این گزارش پیش‌نیاز رزرو وقت مصاحبه در دوره جامع است."
+      }
     },
     {
       "code": "interview_scheduled",
       "name_fa": "انتخاب زمان مصاحبه",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب وقت مصاحبه",
+        "student_task_fa": "از تقویم همین صفحه یک وقت مصاحبه انتخاب و رزرو کنید.",
+        "student_why_fa": "پس از رزرو موفق، مرحلهٔ پرداخت هزینهٔ مصاحبه برای شما فعال می‌شود."
+      }
     },
     {
       "code": "interview_payment",
@@ -90,7 +124,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        "student_short_fa": "پرداخت هزینه مصاحبه",
+        "student_task_fa": "هزینه مصاحبه را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.",
+        "student_why_fa": "بدون پرداخت، مصاحبه شما تأیید نهایی نمی‌شود."
       }
     },
     {
@@ -100,32 +136,55 @@
       "assigned_role": "progress_committee",
       "metadata": {
         "operator_task_fa": "بررسی پرونده و ثبت تصمیم جلسه.",
-        "operator_short_fa": "مصاحبه انجام شده — در انتظار نتیجه"
+        "operator_short_fa": "مصاحبه انجام شده — در انتظار نتیجه",
+        "student_short_fa": "مصاحبه انجام شد — منتظر نتیجه",
+        "student_task_fa": "منتظر ثبت نتیجه مصاحبه بمانید؛ فرمی برای شما باز نمی‌شود.",
+        "student_why_fa": "به‌محض ثبت نتیجه، مراحل بعدی ثبت‌نام در همین صفحه فعال می‌شود."
       }
     },
     {
       "code": "result_accepted",
       "name_fa": "پذیرفته شده",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "پذیرش در دوره جامع",
+        "student_task_fa": "پذیرش شما ثبت شد؛ به‌زودی مرحلهٔ نمایش دروس ترم ۳ در همین صفحه فعال می‌شود.",
+        "student_why_fa": "شرط پذیرش: حداقل ۲ بار در هفته درمان شخصی و ثبت‌نام در تمامی دروس ترم جامع."
+      }
     },
     {
       "code": "result_rejected",
       "name_fa": "رد قطعی",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "رد قطعی",
+        "student_task_fa": "پرونده شما رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید.",
+        "student_why_fa": "ادامهٔ ثبت‌نام در دوره جامع از پنل برای شما بسته شده است."
+      }
     },
     {
       "code": "result_rejected_with_suggestion",
       "name_fa": "رد همراه با پیشنهاد",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "رد همراه با پیشنهاد",
+        "student_task_fa": "نتیجهٔ مصاحبه رد با پیشنهاد ثبت شده است؛ جزئیات در پیامک یا تیکت پذیرش را ببینید و در صورت نیاز تماس بگیرید.",
+        "student_why_fa": "پیشنهاد مسئول علمی ممکن است مسیر دیگری برای ادامهٔ آموزش شما باشد."
+      }
     },
     {
       "code": "course_display",
       "name_fa": "نمایش دروس ترم ۳ (اول جامع)",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "تأیید دروس ترم ۳",
+        "student_task_fa": "دروس ترم ۳ (اول جامع) را در همین صفحه ببینید؛ تمامی دروس الزامی هستند — پس از تأیید، دکمهٔ ادامه را بزنید.",
+        "student_why_fa": "پس از تأیید، به مرحلهٔ پرداخت شهریه هدایت می‌شوید."
+      }
     },
     {
       "code": "payment",
@@ -133,14 +192,32 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+        "student_short_fa": "پرداخت شهریه",
+        "student_task_fa": "روش پرداخت را در فرم همین صفحه انتخاب کنید؛ سپس شهریه را از بخش پرداخت سپ بپردازید و صفحه را تازه کنید.",
+        "student_why_fa": "شهریه را می‌توانید نقدی یا حداکثر در ۴ قسط پرداخت کنید."
       }
     },
     {
       "code": "registration_complete",
       "name_fa": "ثبت‌نام نهایی انجام شد",
-      "type": "terminal",
-      "assigned_role": "system"
+      "type": "intermediate",
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "ثبت‌نام نهایی انجام شد",
+        "student_task_fa": "ثبت‌نام دوره جامع تکمیل شد؛ کلاس‌ها و لینک‌های آنلاین در پنل آموزش برای شما فعال می‌شود. در صورت پرداخت اقساطی، اقساط بعدی را در سررسید پرداخت کنید.",
+        "student_why_fa": "ادامهٔ مسیر آموزشی شما از طریق کلاس‌ها و جلسات آنلاین در پنل دانشجوست."
+      }
+    },
+    {
+      "code": "installment_overdue",
+      "name_fa": "قسط معوق شهریه",
+      "type": "intermediate",
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "قسط معوق",
+        "student_task_fa": "قسط شهریه سررسید گذشته است. از بخش پرداخت آنلاین همین صفحه یا پروفایل مالی، قسط معوق را پرداخت کنید.",
+        "student_why_fa": "تا زمان تسویه قسط معوق، ثبت حضور و غیاب محدود می‌شود."
+      }
     }
   ],
   "transitions": [
@@ -532,6 +609,53 @@
           "recipients": [
             "student"
           ]
+        },
+        {
+          "type": "schedule_installment_reminders",
+          "condition": "payment_method == 'installment'",
+          "reminder_days_before": 1,
+          "description_fa": "برنامه‌ریزی یادآوری اقساط"
+        },
+        {
+          "type": "merge_instance_context",
+          "mode": "initial_payment"
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "registration_complete",
+      "to": "installment_overdue",
+      "trigger": "installment_due_date_passed",
+      "conditions": [
+        "installment_not_paid"
+      ],
+      "description_fa": "قسط معوق — بلاک ثبت حضور و غیاب",
+      "actions": [
+        {
+          "type": "block_attendance_registration"
+        },
+        {
+          "type": "set_installment_portal_lock"
+        }
+      ],
+      "required_role": "system"
+    },
+    {
+      "from": "installment_overdue",
+      "to": "registration_complete",
+      "trigger": "overdue_installment_paid",
+      "description_fa": "قسط معوق پرداخت شد",
+      "actions": [
+        {
+          "type": "unblock_attendance_registration"
+        },
+        {
+          "type": "clear_installment_portal_lock"
+        },
+        {
+          "type": "merge_instance_context",
+          "mode": "installment_paid"
         }
       ],
       "required_role": "system"
@@ -555,6 +679,57 @@
     }
   ],
   "forms": [
+    {
+      "code": "comprehensive_payment_form",
+      "name_fa": "فرم پرداخت شهریه",
+      "used_in_state": "payment",
+      "fields": [
+        {
+          "name": "payment_method",
+          "label_fa": "روش پرداخت",
+          "type": "radio",
+          "options": [
+            {
+              "value": "cash",
+              "label_fa": "پرداخت نقدی (یکجا)"
+            },
+            {
+              "value": "installment",
+              "label_fa": "پرداخت اقساطی"
+            }
+          ],
+          "required": true
+        },
+        {
+          "name": "installment_count",
+          "label_fa": "تعداد اقساط",
+          "type": "select",
+          "options": [
+            {
+              "value": 2,
+              "label_fa": "۲ قسط"
+            },
+            {
+              "value": 3,
+              "label_fa": "۳ قسط"
+            },
+            {
+              "value": 4,
+              "label_fa": "۴ قسط"
+            }
+          ],
+          "show_if": {"field": "payment_method", "op": "eq", "value": "installment"},
+          "required_if": {"field": "payment_method", "op": "eq", "value": "installment"}
+        }
+      ],
+      "installment_schedule": {
+        "installment_1": "هنگام ثبت‌نام",
+        "installment_2": "۲۵ روز پس از شروع کلاس‌ها",
+        "subsequent": "هر ۲۵ روز پس از قسط قبل",
+        "reminder": "۱ هفته قبل از سررسید هر قسط — پیامک یادآوری"
+      },
+      "submit_label_fa": "ادامه به پرداخت"
+    },
     {
       "code": "interview_evaluation_form",
       "name_fa": "فرم ارزیابی مصاحبه ورود به دوره جامع",

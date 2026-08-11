@@ -54,17 +54,6 @@
       "priority": "high"
     },
     {
-      "process_code": "start_therapy",
-      "state_code": "schedule_first_session",
-      "form_code": "start_therapy_first_session_date",
-      "field_names": [
-        "first_session_date"
-      ],
-      "default_target_role": "therapist",
-      "allow_after_submit": true,
-      "priority": "normal"
-    },
-    {
       "process_code": "therapy_changes",
       "state_code": "change_request",
       "form_code": "therapy_change_request",

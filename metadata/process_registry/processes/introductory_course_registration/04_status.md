@@ -41,7 +41,9 @@
 - payment_form (نقدی/اقساطی) ✓
 
 ## یادداشت
-از 2026-05-07: پس از انتخاب زمان مصاحبه (`timeslot_selected`) ورود مستقیم به `interview_payment`. متادیتای `student_task_fa` روی stateها برای راهنمای پنل دانشجو.
+از 2026-05-07: پس از انتخاب زمان مصاحبه (`timeslot_selected`) ورود مستقیم به `interview_payment`. متادیتای `student_short_fa` / `student_task_fa` / `student_why_fa` روی stateها برای نوار «وضعیت فعلی / اقدام بعدی» در پنل دانشجو.
+
+از 2026-08-03: راهنمای گام بعدی در `StudentQuestCard` و `StudentIntroductoryCourseRegistrationPanel`؛ گیت بسته روی نتیجهٔ پذیرش → `context_data.student_next_action_fa`؛ Sep برای `installment_overdue`.
 
 همگام‌سازی SOP با DB:
 `scripts/sync_sop_doc_from_registry_files.py --code introductory_course_registration`

@@ -13,7 +13,9 @@ from app.services.educational_therapist_slot_service import (
     book_slots_for_student,
     create_slot,
     list_available_grouped_by_therapist,
+    list_slots_for_manage,
     release_slots,
+    user_display_name,
 )
 
 
@@ -139,3 +141,47 @@ async def test_book_rejects_wrong_weekly_count(db_session, sample_student):
             course_type="comprehensive",
             weekly_sessions=1,
         )
+
+
+def test_user_display_name_prefers_username_over_id():
+    user = User(
+        id=uuid.uuid4(),
+        username="dr_only_username",
+        hashed_password="x",
+        role="therapist",
+        full_name_fa=None,
+        full_name_en=None,
+        is_active=True,
+    )
+    assert user_display_name(user) == "dr_only_username"
+
+
+@pytest.mark.asyncio
+async def test_manage_list_shows_username_when_full_name_missing(db_session):
+    """لیست مدیریت نباید به‌جای نام، UUID درمانگر را نشان دهد."""
+    username = f"therapist_uname_{uuid.uuid4().hex[:8]}"
+    therapist = User(
+        id=uuid.uuid4(),
+        username=username,
+        hashed_password="x",
+        role="therapist",
+        full_name_fa=None,
+        full_name_en=None,
+        is_active=True,
+    )
+    db_session.add(therapist)
+    await db_session.flush()
+
+    slot = await create_slot(
+        db_session,
+        therapist_user_id=therapist.id,
+        day_of_week=5,
+        start_local_time=time(10, 0),
+        end_local_time=time(11, 0),
+    )
+    await db_session.commit()
+
+    rows = await list_slots_for_manage(db_session, include_booked=True)
+    hit = next(r for r in rows if r["id"] == str(slot.id))
+    assert hit["therapist_name_fa"] == username
+    assert hit["therapist_name_fa"] != str(therapist.id)

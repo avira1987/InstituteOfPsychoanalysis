@@ -1,12 +1,15 @@
 """Tests for SMS when a process is started for a student."""
 
-from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
 
 from app.core.engine import StateMachineEngine
 from app.models.operational_models import SmsSimulationOutbox
+from app.services.manual_process_start_notification import notify_manual_process_started
 
 
 @pytest.mark.asyncio
@@ -94,3 +97,24 @@ async def test_notify_writes_simulation_outbox_when_no_mock(
     assert len(rows) >= 1
     assert "فرایند تست" in (rows[-1].message or "")
     assert rows[-1].template_key == "manual_process_started"
+
+
+@pytest.mark.asyncio
+async def test_lesson_start_per_term_skips_start_sms(db_session):
+    instance = SimpleNamespace(
+        id=uuid4(),
+        process_code="lesson_start_per_term",
+        student_id=uuid4(),
+    )
+    process_def = MagicMock()
+    process_def.name_fa = "آغاز هر درس در هر ترم"
+    process_def.code = "lesson_start_per_term"
+
+    with patch(
+        "app.services.manual_process_start_notification.notification_service.send_notification",
+        new_callable=AsyncMock,
+    ) as send_mock:
+        result = await notify_manual_process_started(db_session, instance, process_def)
+
+    assert result == "skipped"
+    send_mock.assert_not_awaited()

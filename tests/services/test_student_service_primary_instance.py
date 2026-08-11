@@ -222,10 +222,13 @@ async def test_maybe_start_session_payment_reuses_active_instance(db_session: As
     await service.maybe_start_session_payment_after_start_therapy(therapy_done)
     await db_session.commit()
     await db_session.refresh(student)
+    await db_session.refresh(therapy_done)
 
     rows = (await db_session.execute(select(ProcessInstance).where(ProcessInstance.student_id == student.id))).scalars().all()
     assert len([r for r in rows if r.process_code == "session_payment"]) == 1
     assert student.extra_data.get("primary_instance_id") == str(existing_pay.id)
+    assert therapy_done.context_data.get("start_therapy_next_step_fa")
+    assert "پرداخت جلسات آتی" in therapy_done.context_data["start_therapy_next_step_fa"]
 
 
 @pytest.mark.asyncio
@@ -266,12 +269,15 @@ async def test_maybe_start_session_payment_creates_when_none(db_session: AsyncSe
     await service.maybe_start_session_payment_after_start_therapy(therapy_done)
     await db_session.commit()
     await db_session.refresh(student)
+    await db_session.refresh(therapy_done)
 
     rows = (await db_session.execute(select(ProcessInstance).where(ProcessInstance.student_id == student.id))).scalars().all()
     pay = [r for r in rows if r.process_code == "session_payment"]
     assert len(pay) == 1
     assert pay[0].context_data.get("source") == "after_start_therapy_complete"
     assert student.extra_data.get("primary_instance_id") == str(pay[0].id)
+    assert therapy_done.context_data.get("start_therapy_next_step_fa")
+    assert "پرداخت جلسات آتی" in therapy_done.context_data["start_therapy_next_step_fa"]
 
 
 @pytest.mark.asyncio
@@ -359,7 +365,10 @@ async def test_repoint_primary_after_session_payment_sets_hint_when_no_active(db
     await service.repoint_primary_after_session_payment_completed(pay_done)
     await db_session.commit()
     await db_session.refresh(student)
+    await db_session.refresh(pay_done)
 
     assert student.extra_data.get("primary_instance_id") is None
     assert student.extra_data.get("dashboard_therapy_hint_fa")
+    assert pay_done.context_data.get("session_payment_next_step_fa")
+    assert "جلسات آنلاین" in pay_done.context_data["session_payment_next_step_fa"]
 

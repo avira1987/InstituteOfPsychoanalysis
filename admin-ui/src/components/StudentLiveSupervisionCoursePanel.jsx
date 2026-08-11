@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { panelApi } from '../services/api'
 import {
+  PROCESS_STUDENT_TASK_LABELS_FA,
+  PROCESS_STATE_LABELS_FA,
+} from '../utils/processMetadataLabels'
+import {
   HintBlock,
   InfoTile,
   LiveSupervisionFlowStepper,
@@ -14,19 +18,13 @@ import {
 } from '../utils/liveSupervisionCourseCompletionDisplay'
 
 const PROCESS_TITLE_FA = 'خاتمه درس سوپرویژن زنده (فرایند ۶۷)'
+const PROC_CODE = 'live_supervision_course_completion'
 
-const STUDENT_STATE_HINTS = {
-  sessions_in_progress:
-    'کلاس سوپرویژن زنده برای شما فعال است. پس از هر جلسه پشت‌آینه، فرم پیاده‌سازی در پورتال شما باز می‌شود.',
-  mirror_implementation_pending:
-    'لطفاً جلسه پشت آینه خود را پیاده‌سازی کنید. مهلت: ۵ روز پس از برگزاری جلسه (فرم پایین یا «ادامه و ثبت مرحله»).',
-  mirror_eval_pending:
-    'مدرس در حال تکمیل ارزیابی ۳ جلسه پشت‌آینه است. پس از آن، با تکمیل ۱۸ حضور، ارزیابی نهایی انجام می‌شود.',
-  final_eval_pending:
-    'هجدهمین حضور شما ثبت شد. مدرس موظف است ارزیابی نهایی را تا پایان امروز تکمیل کند.',
-  completed: 'درس سوپرویژن زنده برای شما تکمیل شد و در کارنامه ثبت می‌گردد.',
-  mirror_write_violation:
-    'مهلت پیاده‌سازی پشت‌آینه گذشته است. گزارش به کمیته نظارت ارسال شده؛ هرچه سریع‌تر تکلیف را ثبت کنید.',
+function resolveLiveSupervisionHint(state) {
+  if (!state) return 'وضعیت درس سوپرویژن زنده را در همین صفحه دنبال کنید.'
+  const task = PROCESS_STUDENT_TASK_LABELS_FA[PROC_CODE]?.[state]
+  if (task) return task
+  return 'وضعیت درس سوپرویژن زنده را در همین صفحه دنبال کنید.'
 }
 
 export default function StudentLiveSupervisionCoursePanel({
@@ -59,8 +57,8 @@ export default function StudentLiveSupervisionCoursePanel({
     return null
   }
 
-  const hint = STUDENT_STATE_HINTS[currentState]
-    ?? 'وضعیت درس سوپرویژن زنده را در همین صفحه دنبال کنید.'
+  const hint = resolveLiveSupervisionHint(currentState)
+  const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelLiveSupervisionState(currentState)) ?? ''
   const isComplete = currentState === 'completed'
   const prog = progressRow || ls
 

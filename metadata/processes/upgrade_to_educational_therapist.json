@@ -14,13 +14,23 @@
       "code": "student_start",
       "name_fa": "شروع درخواست توسط دانشجو",
       "type": "initial",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "شروع درخواست توسط دانشجو",
+        "student_task_fa": "شرایط ارتقا را مطالعه کنید و درخواست را ثبت کنید.",
+        "student_why_fa": "شرایط ارتقا را مطالعه کنید و درخواست را ثبت کنید."
+      }
     },
     {
       "code": "eligibility_failed",
       "name_fa": "عدم احراز شروط ارتقا",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "عدم احراز شروط ارتقا",
+        "student_task_fa": "دانشجوی گرامی، شما شرایط لازم جهت ارتقا به درمانگر آموزشی را کسب نکرده‌اید.",
+        "student_why_fa": "دانشجوی گرامی، شما شرایط لازم جهت ارتقا به درمانگر آموزشی را کسب نکرده‌اید."
+      }
     },
     {
       "code": "monitoring_review",
@@ -30,14 +40,22 @@
       "sla_days": 7,
       "metadata": {
         "operator_task_fa": "بررسی/صدور مجوز طبق دستور کار.",
-        "operator_short_fa": "بررسی صلاحیت — کمیته نظارت"
+        "operator_short_fa": "بررسی صلاحیت — کمیته نظارت",
+        "student_short_fa": "بررسی صلاحیت — کمیته نظارت",
+        "student_task_fa": "پرونده در کمیته نظارت در حال بررسی است.",
+        "student_why_fa": "پرونده در کمیته نظارت در حال بررسی است."
       }
     },
     {
       "code": "monitoring_rejected",
       "name_fa": "رد صلاحیت — کمیته نظارت",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "رد صلاحیت — کمیته نظارت",
+        "student_task_fa": "صلاحیت شما توسط کمیته نظارت تأیید نشد. برای پیگیری با بخش آموزش تماس بگیرید.",
+        "student_why_fa": "صلاحیت شما توسط کمیته نظارت تأیید نشد. برای پیگیری با بخش آموزش تماس بگیرید."
+      }
     },
     {
       "code": "interview_scheduling",
@@ -47,7 +65,10 @@
       "sla_days": 7,
       "metadata": {
         "operator_task_fa": "هماهنگی وقت مصاحبه با دانشجو و ثبت در LMS.",
-        "operator_short_fa": "تنظیم وقت مصاحبه"
+        "operator_short_fa": "تنظیم وقت مصاحبه",
+        "student_short_fa": "تنظیم وقت مصاحبه — کمیته درمان آموزشی و سوپرویژن",
+        "student_task_fa": "کمیته درمان آموزشی در حال تنظیم وقت مصاحبه است.",
+        "student_why_fa": "کمیته درمان آموزشی در حال تنظیم وقت مصاحبه است."
       }
     },
     {
@@ -57,20 +78,33 @@
       "assigned_role": "education_committee",
       "metadata": {
         "operator_task_fa": "بررسی پرونده در جلسه کمیته آموزش.",
-        "operator_short_fa": "برگزاری مصاحبه"
+        "operator_short_fa": "برگزاری مصاحبه",
+        "student_short_fa": "برگزاری مصاحبه — کمیته درمان آموزشی و سوپرویژن",
+        "student_task_fa": "مصاحبه برگزار می‌شود یا در حال برگزاری است.",
+        "student_why_fa": "مصاحبه برگزار می‌شود یا در حال برگزاری است."
       }
     },
     {
       "code": "interview_rejected",
       "name_fa": "رد صلاحیت پس از مصاحبه",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "رد صلاحیت پس از مصاحبه",
+        "student_task_fa": "صلاحیت شما پس از مصاحبه تأیید نشد. برای پیگیری با کمیته درمان آموزشی تماس بگیرید.",
+        "student_why_fa": "صلاحیت شما پس از مصاحبه تأیید نشد. برای پیگیری با کمیته درمان آموزشی تماس بگیرید."
+      }
     },
     {
       "code": "therapy_readiness_check",
       "name_fa": "بررسی وضعیت درمان شخصی",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "بررسی وضعیت درمان شخصی",
+        "student_task_fa": "سامانه در حال بررسی وضعیت درمان شخصی شماست.",
+        "student_why_fa": "سامانه در حال بررسی وضعیت درمان شخصی شماست."
+      }
     },
     {
       "code": "therapy_frequency_adjustment",
@@ -78,7 +112,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "درمان شخصی را به حداقل یک جلسه در هفته افزایش دهید. مهلت: ۱۰ روز."
+        "student_task_fa": "درمان شخصی را به حداقل یک جلسه در هفته افزایش دهید. مهلت: ۱۰ روز.",
+        "student_short_fa": "افزایش فرکانس درمان به یک جلسه در هفته",
+        "student_why_fa": "درمان شخصی را به حداقل یک جلسه در هفته افزایش دهید. مهلت: ۱۰ روز."
       }
     },
     {
@@ -88,7 +124,10 @@
       "assigned_role": "education_committee",
       "metadata": {
         "operator_task_fa": "پیگیری عدم فعال‌سازی درمان هفتگی در مهلت ۱۰ روز.",
-        "operator_short_fa": "هشدار مهلت فرکانس درمان"
+        "operator_short_fa": "هشدار مهلت فرکانس درمان",
+        "student_short_fa": "هشدار مهلت فرکانس درمان — مسئول پروژه",
+        "student_task_fa": "مهلت افزایش فرکانس درمان در حال پیگیری است؛ درمان هفتگی را فعال کنید.",
+        "student_why_fa": "مهلت افزایش فرکانس درمان در حال پیگیری است؛ درمان هفتگی را فعال کنید."
       }
     },
     {
@@ -97,7 +136,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "۵۰ ساعت دیگر درمان شخصی را دریافت کنید؛ قوانین سختگیرانه غیبت/کنسلی اعمال نمی‌شود."
+        "student_task_fa": "۵۰ ساعت دیگر درمان شخصی را دریافت کنید؛ قوانین سختگیرانه غیبت/کنسلی اعمال نمی‌شود.",
+        "student_short_fa": "تکمیل ۵۰ ساعت درمان شخصی",
+        "student_why_fa": "۵۰ ساعت دیگر درمان شخصی را دریافت کنید؛ قوانین سختگیرانه غیبت/کنسلی اعمال نمی‌شود."
       }
     },
     {
@@ -106,7 +147,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "از شیت وقت‌های آزاد درمانگران، درمانگر پیشنهادی خود را انتخاب کنید."
+        "student_task_fa": "از شیت وقت‌های آزاد درمانگران، درمانگر پیشنهادی خود را انتخاب کنید.",
+        "student_short_fa": "انتخاب درمانگر از شیت وقت‌های آزاد",
+        "student_why_fa": "از شیت وقت‌های آزاد درمانگران، درمانگر پیشنهادی خود را انتخاب کنید."
       }
     },
     {
@@ -116,14 +159,22 @@
       "assigned_role": "education_committee",
       "metadata": {
         "operator_task_fa": "تایید یا رد درمانگر پیشنهادی متقاضی.",
-        "operator_short_fa": "بررسی درمانگر پیشنهادی"
+        "operator_short_fa": "بررسی درمانگر پیشنهادی",
+        "student_short_fa": "بررسی درمانگر پیشنهادی — کمیته درمان آموزشی",
+        "student_task_fa": "درمانگر پیشنهادی در حال بررسی توسط کمیته است.",
+        "student_why_fa": "درمانگر پیشنهادی در حال بررسی توسط کمیته است."
       }
     },
     {
       "code": "supervision_readiness_check",
       "name_fa": "بررسی وضعیت سوپرویژن فردی",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "بررسی وضعیت سوپرویژن فردی",
+        "student_task_fa": "سامانه در حال بررسی وضعیت سوپرویژن فردی شماست.",
+        "student_why_fa": "سامانه در حال بررسی وضعیت سوپرویژن فردی شماست."
+      }
     },
     {
       "code": "supervision_frequency_adjustment",
@@ -131,7 +182,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "سوپرویژن فردی را به دو جلسه در ماه افزایش دهید تا ۵۰ ساعت تکمیل شود."
+        "student_task_fa": "سوپرویژن فردی را به دو جلسه در ماه افزایش دهید تا ۵۰ ساعت تکمیل شود.",
+        "student_short_fa": "افزایش فرکانس سوپرویژن به دو جلسه در ماه",
+        "student_why_fa": "سوپرویژن فردی را به دو جلسه در ماه افزایش دهید."
       }
     },
     {
@@ -140,7 +193,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "سوپرویژن فعلی قطع شده؛ با عضو هیئت علمی کامل سوپرویژن را از نو آغاز کنید."
+        "student_task_fa": "سوپرویژن فعلی قطع شده؛ با عضو هیئت علمی کامل سوپرویژن را از نو آغاز کنید.",
+        "student_short_fa": "آغاز مجدد سوپرویژن با عضو هیئت علمی کامل",
+        "student_why_fa": "سوپرویژن قبلی قطع شده؛ با عضو هیئت علمی کامل سوپرویژن را آغاز کنید."
       }
     },
     {
@@ -149,7 +204,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "تا تکمیل ۵۰ ساعت سوپرویژن فردی ادامه دهید."
+        "student_task_fa": "تا تکمیل ۵۰ ساعت سوپرویژن فردی ادامه دهید.",
+        "student_short_fa": "تکمیل ۵۰ ساعت سوپرویژن فردی",
+        "student_why_fa": "تا تکمیل ۵۰ ساعت سوپرویژن فردی ادامه دهید."
       }
     },
     {
@@ -158,7 +215,9 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "از شیت وقت‌های آزاد سوپروایزرها (هیئت علمی کامل) زمان سوپرویژن را انتخاب کنید."
+        "student_task_fa": "از شیت وقت‌های آزاد سوپروایزرها (هیئت علمی کامل) زمان سوپرویژن را انتخاب کنید.",
+        "student_short_fa": "انتخاب سوپروایزر از شیت هیئت علمی کامل",
+        "student_why_fa": "از شیت وقت‌های آزاد سوپروایزرها (هیئت علمی کامل) زمان انتخاب کنید."
       }
     },
     {
@@ -167,14 +226,21 @@
       "type": "intermediate",
       "assigned_role": "student",
       "metadata": {
-        "student_task_fa": "دو زمان خالی برای ارائه خدمات به‌عنوان درمانگر آموزشی در شیت ثبت کنید."
+        "student_task_fa": "دو زمان خالی برای ارائه خدمات به‌عنوان درمانگر آموزشی در شیت ثبت کنید.",
+        "student_short_fa": "ثبت دو زمان خالی در شیت درمانگران آموزشی",
+        "student_why_fa": "دو زمان خالی برای ارائه خدمات به‌عنوان درمانگر آموزشی ثبت کنید."
       }
     },
     {
       "code": "promotion_completed",
       "name_fa": "ثبت زمان‌های خالی درمانگر آموزشی — پایان",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "ثبت زمان‌های خالی درمانگر آموزشی — پایان",
+        "student_task_fa": "ارتقا به درمانگر آموزشی با موفقیت تکمیل شد.",
+        "student_why_fa": "ارتقا به درمانگر آموزشی با موفقیت تکمیل شد."
+      }
     }
   ],
   "transitions": [
@@ -182,7 +248,9 @@
       "from": "student_start",
       "to": "eligibility_failed",
       "trigger": "conditions_failed",
-      "conditions": ["et_upgrade_eligibility_not_met"],
+      "conditions": [
+        "et_upgrade_eligibility_not_met"
+      ],
       "description_fa": "عدم تحقق شروط ارتقا — پیغام رد",
       "required_role": "student",
       "actions": [
@@ -190,7 +258,9 @@
           "type": "notification",
           "notification_type": "sms",
           "template": "et_eligibility_failed",
-          "recipients": ["student"]
+          "recipients": [
+            "student"
+          ]
         }
       ]
     },
@@ -198,7 +268,9 @@
       "from": "student_start",
       "to": "monitoring_review",
       "trigger": "conditions_met",
-      "conditions": ["et_upgrade_eligibility_met"],
+      "conditions": [
+        "et_upgrade_eligibility_met"
+      ],
       "description_fa": "شروط اولیه — ارسال به کمیته نظارت",
       "required_role": "student"
     },
@@ -213,7 +285,9 @@
           "type": "notification",
           "notification_type": "sms",
           "template": "et_monitoring_rejected",
-          "recipients": ["student"]
+          "recipients": [
+            "student"
+          ]
         }
       ]
     },
@@ -240,7 +314,10 @@
           "type": "notification",
           "notification_type": "sms",
           "template": "et_interview_scheduled",
-          "recipients": ["student", "education_committee"]
+          "recipients": [
+            "student",
+            "education_committee"
+          ]
         }
       ]
     },
@@ -255,7 +332,9 @@
           "type": "notification",
           "notification_type": "sms",
           "template": "et_interview_rejected",
-          "recipients": ["student"]
+          "recipients": [
+            "student"
+          ]
         }
       ]
     },
@@ -270,7 +349,9 @@
           "type": "notification",
           "notification_type": "sms",
           "template": "et_interview_approved",
-          "recipients": ["student"]
+          "recipients": [
+            "student"
+          ]
         },
         {
           "type": "evaluate_et_therapy_readiness"
@@ -281,7 +362,9 @@
       "from": "therapy_readiness_check",
       "to": "therapy_frequency_adjustment",
       "trigger": "therapy_frequency_low",
-      "conditions": ["et_therapy_frequency_below_weekly"],
+      "conditions": [
+        "et_therapy_frequency_below_weekly"
+      ],
       "required_role": "system",
       "description_fa": "فرکانس درمان کمتر از یک جلسه در هفته"
     },
@@ -289,7 +372,9 @@
       "from": "therapy_readiness_check",
       "to": "personal_therapy_hours",
       "trigger": "therapy_active",
-      "conditions": ["et_therapy_active"],
+      "conditions": [
+        "et_therapy_active"
+      ],
       "required_role": "system",
       "description_fa": "درمان شخصی فعال — پیگیری ۵۰ ساعت"
     },
@@ -297,7 +382,9 @@
       "from": "therapy_readiness_check",
       "to": "therapist_selection",
       "trigger": "no_active_therapy",
-      "conditions": ["et_therapy_not_active"],
+      "conditions": [
+        "et_therapy_not_active"
+      ],
       "required_role": "system",
       "description_fa": "درمان شخصی فعال نیست — انتخاب درمانگر"
     },
@@ -319,7 +406,9 @@
       "from": "personal_therapy_hours",
       "to": "supervision_readiness_check",
       "trigger": "hours_complete",
-      "conditions": ["et_personal_therapy_hours_complete"],
+      "conditions": [
+        "et_personal_therapy_hours_complete"
+      ],
       "required_role": "student",
       "description_fa": "۵۰ ساعت درمان شخصی تکمیل شد",
       "actions": [
@@ -343,10 +432,19 @@
       "description_fa": "رد درمانگر — انتخاب مجدد",
       "actions": [
         {
+          "type": "reopen_student_step_forms",
+          "state": "therapist_selection",
+          "clear_keys": [
+            "therapist_id"
+          ]
+        },
+        {
           "type": "notification",
           "notification_type": "sms",
           "template": "et_therapist_rejected",
-          "recipients": ["student"]
+          "recipients": [
+            "student"
+          ]
         }
       ]
     },
@@ -366,7 +464,9 @@
       "from": "supervision_readiness_check",
       "to": "supervision_frequency_adjustment",
       "trigger": "frequency_increase_needed",
-      "conditions": ["et_supervision_frequency_one_per_month"],
+      "conditions": [
+        "et_supervision_frequency_one_per_month"
+      ],
       "required_role": "system",
       "description_fa": "یک جلسه در ماه — افزایش به دو جلسه"
     },
@@ -374,7 +474,9 @@
       "from": "supervision_readiness_check",
       "to": "supervision_hours",
       "trigger": "supervision_active",
-      "conditions": ["et_supervision_active_two_per_month"],
+      "conditions": [
+        "et_supervision_active_two_per_month"
+      ],
       "required_role": "system",
       "description_fa": "سوپرویژن فعال — پیگیری ۵۰ ساعت"
     },
@@ -382,7 +484,9 @@
       "from": "supervision_readiness_check",
       "to": "supervision_restart",
       "trigger": "supervision_restart_needed",
-      "conditions": ["et_supervision_frequency_below_monthly"],
+      "conditions": [
+        "et_supervision_frequency_below_monthly"
+      ],
       "required_role": "system",
       "description_fa": "فرکانس کمتر از یک جلسه در ماه — آغاز مجدد"
     },
@@ -404,7 +508,9 @@
       "from": "supervision_hours",
       "to": "supervisor_selection",
       "trigger": "hours_complete",
-      "conditions": ["et_supervision_hours_complete"],
+      "conditions": [
+        "et_supervision_hours_complete"
+      ],
       "required_role": "student",
       "description_fa": "۵۰ ساعت سوپرویژن تکمیل شد"
     },
@@ -429,7 +535,9 @@
           "type": "notification",
           "notification_type": "sms",
           "template": "et_promotion_completed",
-          "recipients": ["student"]
+          "recipients": [
+            "student"
+          ]
         }
       ]
     }
@@ -459,8 +567,14 @@
           "type": "radio",
           "required": true,
           "options": [
-            { "value": "approve", "label_fa": "تایید صلاحیت" },
-            { "value": "reject", "label_fa": "رد صلاحیت" }
+            {
+              "value": "approve",
+              "label_fa": "تایید صلاحیت"
+            },
+            {
+              "value": "reject",
+              "label_fa": "رد صلاحیت"
+            }
           ]
         },
         {
@@ -493,8 +607,14 @@
           "type": "radio",
           "required": true,
           "options": [
-            { "value": "in_person", "label_fa": "حضوری" },
-            { "value": "online", "label_fa": "آنلاین" }
+            {
+              "value": "in_person",
+              "label_fa": "حضوری"
+            },
+            {
+              "value": "online",
+              "label_fa": "آنلاین"
+            }
           ]
         }
       ]
@@ -510,8 +630,14 @@
           "type": "radio",
           "required": true,
           "options": [
-            { "value": "approve", "label_fa": "تایید صلاحیت" },
-            { "value": "reject", "label_fa": "رد صلاحیت" }
+            {
+              "value": "approve",
+              "label_fa": "تایید صلاحیت"
+            },
+            {
+              "value": "reject",
+              "label_fa": "رد صلاحیت"
+            }
           ]
         },
         {
@@ -558,8 +684,14 @@
           "type": "radio",
           "required": true,
           "options": [
-            { "value": "approve", "label_fa": "تایید درمانگر" },
-            { "value": "reject", "label_fa": "رد — انتخاب مجدد" }
+            {
+              "value": "approve",
+              "label_fa": "تایید درمانگر"
+            },
+            {
+              "value": "reject",
+              "label_fa": "رد — انتخاب مجدد"
+            }
           ]
         },
         {
@@ -613,12 +745,30 @@
           "type": "select",
           "required": true,
           "options": [
-            { "value": "saturday", "label_fa": "شنبه" },
-            { "value": "sunday", "label_fa": "یکشنبه" },
-            { "value": "monday", "label_fa": "دوشنبه" },
-            { "value": "tuesday", "label_fa": "سه‌شنبه" },
-            { "value": "wednesday", "label_fa": "چهارشنبه" },
-            { "value": "thursday", "label_fa": "پنج‌شنبه" }
+            {
+              "value": "saturday",
+              "label_fa": "شنبه"
+            },
+            {
+              "value": "sunday",
+              "label_fa": "یکشنبه"
+            },
+            {
+              "value": "monday",
+              "label_fa": "دوشنبه"
+            },
+            {
+              "value": "tuesday",
+              "label_fa": "سه‌شنبه"
+            },
+            {
+              "value": "wednesday",
+              "label_fa": "چهارشنبه"
+            },
+            {
+              "value": "thursday",
+              "label_fa": "پنج‌شنبه"
+            }
           ]
         },
         {
@@ -640,12 +790,30 @@
           "type": "select",
           "required": true,
           "options": [
-            { "value": "saturday", "label_fa": "شنبه" },
-            { "value": "sunday", "label_fa": "یکشنبه" },
-            { "value": "monday", "label_fa": "دوشنبه" },
-            { "value": "tuesday", "label_fa": "سه‌شنبه" },
-            { "value": "wednesday", "label_fa": "چهارشنبه" },
-            { "value": "thursday", "label_fa": "پنج‌شنبه" }
+            {
+              "value": "saturday",
+              "label_fa": "شنبه"
+            },
+            {
+              "value": "sunday",
+              "label_fa": "یکشنبه"
+            },
+            {
+              "value": "monday",
+              "label_fa": "دوشنبه"
+            },
+            {
+              "value": "tuesday",
+              "label_fa": "سه‌شنبه"
+            },
+            {
+              "value": "wednesday",
+              "label_fa": "چهارشنبه"
+            },
+            {
+              "value": "thursday",
+              "label_fa": "پنج‌شنبه"
+            }
           ]
         },
         {
@@ -660,12 +828,30 @@
           "type": "select",
           "required": true,
           "options": [
-            { "value": "saturday", "label_fa": "شنبه" },
-            { "value": "sunday", "label_fa": "یکشنبه" },
-            { "value": "monday", "label_fa": "دوشنبه" },
-            { "value": "tuesday", "label_fa": "سه‌شنبه" },
-            { "value": "wednesday", "label_fa": "چهارشنبه" },
-            { "value": "thursday", "label_fa": "پنج‌شنبه" }
+            {
+              "value": "saturday",
+              "label_fa": "شنبه"
+            },
+            {
+              "value": "sunday",
+              "label_fa": "یکشنبه"
+            },
+            {
+              "value": "monday",
+              "label_fa": "دوشنبه"
+            },
+            {
+              "value": "tuesday",
+              "label_fa": "سه‌شنبه"
+            },
+            {
+              "value": "wednesday",
+              "label_fa": "چهارشنبه"
+            },
+            {
+              "value": "thursday",
+              "label_fa": "پنج‌شنبه"
+            }
           ]
         },
         {

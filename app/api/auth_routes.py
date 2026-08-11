@@ -54,9 +54,6 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate and get an access token."""
-    from app.middleware.login_rate_limit import check_login_rate_limit
-
-    check_login_rate_limit(request)
     if not form_data.username or not form_data.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -117,9 +114,6 @@ async def login_json(
     db: AsyncSession = Depends(get_db),
 ):
     """Login with JSON body (alternative to form for debugging)."""
-    from app.middleware.login_rate_limit import check_login_rate_limit
-
-    check_login_rate_limit(request)
     if not body.username or not body.password:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     try:
@@ -184,8 +178,19 @@ async def register(
     current_user: User = Depends(require_role("admin")),
 ):
     """Register a new user (admin only)."""
-    user = await create_user(db, user_data)
-    await db.flush()
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        user = await create_user(db, user_data)
+        await db.flush()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="نام کاربری یا ایمیل تکراری است",
+        )
     return user_to_response(user)
 
 

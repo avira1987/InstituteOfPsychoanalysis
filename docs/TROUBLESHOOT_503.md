@@ -4,7 +4,7 @@
 Apache به بک‌اند (کانتینر FastAPI روی پورت 3000) وصل نمی‌شود. معمولاً یکی از این موارد:
 
 1. **کانتینر Docker متوقف شده** – خطای migration یا crash هنگام استارت
-2. **ProxyPass در Apache تنظیم نشده** – vhost مربوط به bpms.psychoanalysis.ir
+2. **ProxyPass در Apache تنظیم نشده** – vhost مربوط به lms.psychoanalysis.ir
 3. **شبکه Docker** – کانتینر anistito-db یا anistito-redis در دسترس نیست
 
 ---
@@ -51,7 +51,7 @@ ProxyPass /anistito/ http://127.0.0.1:3000/
 ProxyPassReverse /anistito/ http://127.0.0.1:3000/
 ```
 
-اگر نیست، فایل vhost مربوط به `bpms.psychoanalysis.ir` را پیدا کنید و این بلوک را قبل از `</VirtualHost>` اضافه کنید:
+اگر نیست، فایل vhost مربوط به `lms.psychoanalysis.ir` را پیدا کنید و این بلوک را قبل از `</VirtualHost>` اضافه کنید:
 
 ```bash
 # پیدا کردن فایل vhost

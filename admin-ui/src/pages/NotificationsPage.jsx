@@ -13,12 +13,72 @@ const PAGE = 20
 
 const TABS = [
   { id: 'all', label: 'همه' },
-  { id: 'actions', label: 'کارهای معلق' },
-  { id: 'messages', label: 'پیام‌های پاپ‌آپ' },
+  { id: 'actions', label: 'اعلان‌ها' },
+  { id: 'messages', label: 'پیام‌ها' },
 ]
 
 function isFlashItem(it) {
   return it?.kind === 'flash_message'
+}
+
+function ActionRow({ it, onDismiss }) {
+  return (
+    <li className="notifications-page-row notifications-page-row--action">
+      <div className="notifications-page-row-inner">
+        <Link className="notifications-page-link" to={appendNotificationFollow(it.action_path || '/panel')}>
+          <span className="notifications-page-title">
+            <span className="notification-bell-action-badge">اعلان</span>
+            {it.title_fa}
+          </span>
+          {it.summary_fa ? (
+            <span className="notifications-page-summary">{it.summary_fa}</span>
+          ) : null}
+        </Link>
+        <button
+          type="button"
+          className="notifications-page-dismiss"
+          title="انجام شد / بستن"
+          aria-label="حذف از لیست وظایف"
+          onClick={(e) => onDismiss(e, it)}
+        >
+          ✓
+        </button>
+      </div>
+    </li>
+  )
+}
+
+function MessageRow({ it, onDismiss }) {
+  const when = it.sort_at ? formatShamsiTehran(it.sort_at) : ''
+  return (
+    <li
+      className={`notifications-page-row notifications-page-row--flash notifications-page-row--flash-${it.level || 'success'}`}
+    >
+      <div className="notifications-page-flash notifications-page-row-inner">
+        <div className="notifications-page-flash-body">
+          <span className="notifications-page-title">
+            <span className="notification-bell-flash-badge">پیام</span>
+            {it.title_fa}
+          </span>
+          {it.summary_fa ? (
+            <span className="notifications-page-summary">{it.summary_fa}</span>
+          ) : null}
+          {when ? (
+            <span className="notifications-page-when muted">{when}</span>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="notifications-page-dismiss"
+          title="بستن"
+          aria-label="بستن این پیام"
+          onClick={(e) => onDismiss(e, it)}
+        >
+          ✕
+        </button>
+      </div>
+    </li>
+  )
 }
 
 export default function NotificationsPage() {
@@ -86,11 +146,21 @@ export default function NotificationsPage() {
     }
   }
 
+  const { actions, messages } = useMemo(() => {
+    const acts = []
+    const msgs = []
+    for (const it of items) {
+      if (isFlashItem(it)) msgs.push(it)
+      else acts.push(it)
+    }
+    return { actions: acts, messages: msgs }
+  }, [items])
+
   const filteredItems = useMemo(() => {
-    if (tab === 'messages') return items.filter(isFlashItem)
-    if (tab === 'actions') return items.filter((it) => !isFlashItem(it))
+    if (tab === 'messages') return messages
+    if (tab === 'actions') return actions
     return items
-  }, [items, tab])
+  }, [items, tab, actions, messages])
 
   const setTab = (id) => {
     const next = new URLSearchParams(searchParams)
@@ -109,18 +179,66 @@ export default function NotificationsPage() {
 
   const emptyMessage =
     tab === 'messages'
-      ? 'هنوز پیام پاپ‌آپی ذخیره نشده است.'
+      ? 'هنوز پیامی ذخیره نشده است.'
       : tab === 'actions'
-        ? 'در حال حاضر موردی برای اقدام در کارتابل شما ثبت نشده است.'
-        : 'در حال حاضر اعلانی برای نمایش وجود ندارد.'
+        ? 'در حال حاضر اعلانی برای اقدام در کارتابل شما ثبت نشده است.'
+        : 'در حال حاضر اعلان یا پیامی برای نمایش وجود ندارد.'
+
+  const renderAllSeparated = () => {
+    if (actions.length === 0 && messages.length === 0) {
+      return (
+        <div className="card" style={{ padding: '1.5rem' }}>
+          <p className="muted" style={{ margin: 0 }}>{emptyMessage}</p>
+        </div>
+      )
+    }
+    return (
+      <div className="notifications-page-sections">
+        <section className="notifications-page-section" aria-label="اعلان‌ها">
+          <div className="notifications-page-section-head">
+            <h2 className="notifications-page-section-title">اعلان‌ها</h2>
+            <p className="notifications-page-section-hint muted">کارهای نیازمند اقدام در کارتابل</p>
+          </div>
+          {actions.length === 0 ? (
+            <div className="card" style={{ padding: '1rem 1.25rem' }}>
+              <p className="muted" style={{ margin: 0 }}>اعلانی نیست.</p>
+            </div>
+          ) : (
+            <ul className="notifications-page-list">
+              {actions.map((it) => (
+                <ActionRow key={it.notification_id || `${it.title_fa}-${it.sort_at}`} it={it} onDismiss={dismissItem} />
+              ))}
+            </ul>
+          )}
+        </section>
+        <section className="notifications-page-section" aria-label="پیام‌ها">
+          <div className="notifications-page-section-head">
+            <h2 className="notifications-page-section-title">پیام‌ها</h2>
+            <p className="notifications-page-section-hint muted">پیام‌های پاپ‌آپ سیستم برای مرور</p>
+          </div>
+          {messages.length === 0 ? (
+            <div className="card" style={{ padding: '1rem 1.25rem' }}>
+              <p className="muted" style={{ margin: 0 }}>پیامی نیست.</p>
+            </div>
+          ) : (
+            <ul className="notifications-page-list">
+              {messages.map((it) => (
+                <MessageRow key={it.notification_id || `${it.title_fa}-${it.sort_at}`} it={it} onDismiss={dismissItem} />
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    )
+  }
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">همه اعلان‌ها</h1>
+          <h1 className="page-title">اعلان‌ها و پیام‌ها</h1>
           <p className="page-subtitle">
-            اقدام‌های پیشنهادی و پیام‌های سیستم
+            اعلان‌های اقدام و پیام‌های سیستم به‌صورت جداگانه
             {total > 0 ? ` — ${total.toLocaleString('fa-IR')} مورد` : ''}
           </p>
         </div>
@@ -137,73 +255,31 @@ export default function NotificationsPage() {
             onClick={() => setTab(t.id)}
           >
             {t.label}
+            {t.id === 'actions' && actions.length > 0 ? (
+              <span className="notifications-page-tab-count">{actions.length.toLocaleString('fa-IR')}</span>
+            ) : null}
+            {t.id === 'messages' && messages.length > 0 ? (
+              <span className="notifications-page-tab-count">{messages.length.toLocaleString('fa-IR')}</span>
+            ) : null}
           </button>
         ))}
       </div>
 
-      {filteredItems.length === 0 ? (
+      {tab === 'all' ? (
+        renderAllSeparated()
+      ) : filteredItems.length === 0 ? (
         <div className="card" style={{ padding: '1.5rem' }}>
           <p className="muted" style={{ margin: 0 }}>{emptyMessage}</p>
         </div>
       ) : (
         <ul className="notifications-page-list">
-          {filteredItems.map((it) => {
-            const flash = isFlashItem(it)
-            const when = it.sort_at ? formatShamsiTehran(it.sort_at) : ''
-            if (flash) {
-              return (
-                <li
-                  key={it.notification_id || `${it.title_fa}-${it.sort_at}`}
-                  className={`notifications-page-row notifications-page-row--flash notifications-page-row--flash-${it.level || 'success'}`}
-                >
-                  <div className="notifications-page-flash notifications-page-row-inner">
-                    <div className="notifications-page-flash-body">
-                      <span className="notifications-page-title">
-                        <span className="notification-bell-flash-badge">پیام</span>
-                        {it.title_fa}
-                      </span>
-                      {it.summary_fa ? (
-                        <span className="notifications-page-summary">{it.summary_fa}</span>
-                      ) : null}
-                      {when ? (
-                        <span className="notifications-page-when muted">{when}</span>
-                      ) : null}
-                    </div>
-                    <button
-                      type="button"
-                      className="notifications-page-dismiss"
-                      title="بستن"
-                      aria-label="بستن این پیام"
-                      onClick={(e) => dismissItem(e, it)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </li>
-              )
-            }
-            return (
-              <li key={it.notification_id || `${it.title_fa}-${it.sort_at}`} className="notifications-page-row">
-                <div className="notifications-page-row-inner">
-                  <Link className="notifications-page-link" to={appendNotificationFollow(it.action_path || '/panel')}>
-                    <span className="notifications-page-title">{it.title_fa}</span>
-                    {it.summary_fa ? (
-                      <span className="notifications-page-summary">{it.summary_fa}</span>
-                    ) : null}
-                  </Link>
-                  <button
-                    type="button"
-                    className="notifications-page-dismiss"
-                    title="انجام شد / بستن"
-                    aria-label="حذف از لیست وظایف"
-                    onClick={(e) => dismissItem(e, it)}
-                  >
-                    ✓
-                  </button>
-                </div>
-              </li>
-            )
-          })}
+          {filteredItems.map((it) =>
+            isFlashItem(it) ? (
+              <MessageRow key={it.notification_id || `${it.title_fa}-${it.sort_at}`} it={it} onDismiss={dismissItem} />
+            ) : (
+              <ActionRow key={it.notification_id || `${it.title_fa}-${it.sort_at}`} it={it} onDismiss={dismissItem} />
+            ),
+          )}
         </ul>
       )}
 

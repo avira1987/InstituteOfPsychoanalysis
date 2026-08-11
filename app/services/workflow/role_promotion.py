@@ -47,6 +47,8 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
         result = "promoted_to_assistant_faculty"
 
     elif action_type == "create_user_account":
+        from app.services.admission_type_service import persist_admission_type_on_student
+
         plain: str | None = None
         if user:
             user.is_active = True
@@ -58,8 +60,17 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
                 user.username = (user.phone or "").strip()
         extra["account_provisioned"] = True
         extra["account_provisioned_at"] = C.now_iso()
+        ctx = dict(C.as_mapping(instance.context_data))
+        persist_admission_type_on_student(
+            student,
+            admission_type=ctx.get("admission_type"),
+            interview_result=ctx.get("interview_result") or ctx.get("result"),
+        )
+        # re-read after persist (flag_modified already applied on student)
+        extra = C.student_extra(student)
+        extra["account_provisioned"] = True
+        extra["account_provisioned_at"] = C.now_iso()
         if user and plain:
-            ctx = dict(C.as_mapping(instance.context_data))
             login_deadline = (datetime.now(timezone.utc) + timedelta(days=14)).date().isoformat()
             ctx["portal_username"] = (user.username or "").strip()
             ctx["portal_password_display"] = plain

@@ -16,37 +16,67 @@
       "code": "payment_intent_50th",
       "name_fa": "قصد پرداخت جلسه ۵۰ام",
       "type": "initial",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتقال بلوک سوپرویژن",
+        "student_task_fa": "اگر به جلسه ۵۰ رسیده‌اید، «ادامه و ثبت مرحله» را بزنید تا سوابق و وقت‌های آزاد نمایش داده شود؛ در غیر این صورت از پرداخت عادی سوپرویژن ادامه دهید.",
+        "student_why_fa": "برای پرداخت جلسه ۵۰ام سوپرویژن، ابتدا باید سوپروایزر و زمان بلوک بعدی را انتخاب و جلسه اول آن را پرداخت کنید."
+      }
     },
     {
       "code": "not_at_50th",
       "name_fa": "هنوز به جلسه ۵۰ نرسیده",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "هنوز به جلسه ۵۰ نرسیده",
+        "student_task_fa": "از فرایند پرداخت جلسات یا تکمیل بلوک ۵۰ ساعته ادامه دهید.",
+        "student_why_fa": "هنوز به جلسه ۵۰ سوپرویژن نرسیده‌اید — مسیر انتقال بلوک فقط در جلسه ۵۰ فعال می‌شود."
+      }
     },
     {
       "code": "supervisor_slots_displayed",
       "name_fa": "نمایش شیت وقت‌های آزاد سوپروایزرها",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "انتخاب سوپروایزر",
+        "student_task_fa": "سوابق و شیت وقت‌های آزاد را ببینید؛ سپس در فرم، سوپروایزر و یک زمان (حداکثر ۱ جلسه در هفته) را انتخاب کنید.",
+        "student_why_fa": "برای باز شدن قفل پرداخت جلسه ۵۰ام، ابتدا سوپروایزر و زمان بلوک بعدی را انتخاب کنید."
+      }
     },
     {
       "code": "slot_selected",
       "name_fa": "انتخاب سوپروایزر و زمان (قانون ۲۴ ساعت اعمال شده)",
       "type": "intermediate",
-      "assigned_role": "student"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "پرداخت جلسه اول بلوک بعد",
+        "student_task_fa": "تاریخ شروع با قانون ۲۴ ساعت محاسبه شده است. ابتدا هزینهٔ جلسه اول دوره جدید را بپردازید.",
+        "student_why_fa": "پس از انتخاب سوپروایزر و زمان، ابتدا باید جلسه اول بلوک جدید پرداخت شود تا قفل جلسه ۵۰ام باز شود."
+      }
     },
     {
       "code": "new_block_first_paid",
       "name_fa": "پرداخت جلسه اول دوره جدید انجام شد — قفل ۵۰ام باز شد",
       "type": "intermediate",
-      "assigned_role": "system"
+      "assigned_role": "student",
+      "metadata": {
+        "student_short_fa": "قفل جلسه ۵۰ام باز شد",
+        "student_task_fa": "از بخش پرداخت همین صفحه برای جلسه پنجاهم دوره فعلی استفاده کنید.",
+        "student_why_fa": "پرداخت جلسه اول دوره جدید انجام شد — اکنون می‌توانید جلسه ۵۰ام دوره فعلی را پرداخت کنید."
+      }
     },
     {
       "code": "both_paid_completed",
       "name_fa": "هر دو پرداخت انجام و اطلاع‌رسانی",
       "type": "terminal",
-      "assigned_role": "system"
+      "assigned_role": "system",
+      "metadata": {
+        "student_short_fa": "انتقال بلوک تکمیل شد",
+        "student_task_fa": "هر دو پرداخت انجام شد؛ جزئیات جلسه جدید از طریق پیامک به شما و سوپروایزر ارسال می‌شود.",
+        "student_why_fa": "انتقال بلوک و هر دو پرداخت با موفقیت انجام شد."
+      }
     }
   ],
   "transitions": [
@@ -99,10 +129,17 @@
       "description_fa": "انتخاب روز و ساعت — محاسبه تاریخ شروع با قانون ۲۴ ساعت",
       "actions": [
         {
+          "type": "book_supervision_block_slots"
+        },
+        {
           "type": "apply_24h_rule_for_start_date"
         },
         {
           "type": "display_calculated_start_date"
+        },
+        {
+          "type": "prepare_supervision_block_payment",
+          "purpose": "new_block_first"
         }
       ]
     },
@@ -124,6 +161,10 @@
         },
         {
           "type": "unlock_payment_for_50th_session"
+        },
+        {
+          "type": "prepare_supervision_block_payment",
+          "purpose": "session_50th"
         }
       ]
     },
@@ -150,6 +191,43 @@
           ]
         }
       ]
+    }
+  ],
+  "forms": [
+    {
+      "code": "supervision_block_supervisor_pick",
+      "name_fa": "انتخاب سوپروایزر و زمان بلوک بعد",
+      "used_in_state": "supervisor_slots_displayed",
+      "fields": [
+        {
+          "name": "new_supervisor_id",
+          "label_fa": "سوپروایزر دورهٔ بعد",
+          "type": "therapist_slot_picker",
+          "required": true,
+          "description_fa": "سوپروایزر و یک زمان هفتگی (حداکثر ۱ جلسه در هفته) را از شیت وقت‌های آزاد انتخاب کنید."
+        },
+        {
+          "name": "slot_ids",
+          "label_fa": "اسلات هفتگی",
+          "type": "hidden",
+          "required": true
+        },
+        {
+          "name": "weekly_sessions",
+          "label_fa": "تعداد جلسات در هفته",
+          "type": "hidden",
+          "default": 1,
+          "required": true
+        },
+        {
+          "name": "selected_supervision_weekly_count",
+          "label_fa": "تعداد جلسات هفتگی سوپرویژن",
+          "type": "hidden",
+          "default": 1,
+          "required": true
+        }
+      ],
+      "submit_label_fa": "ثبت سوپروایزر و زمان"
     }
   ]
 }
