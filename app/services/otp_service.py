@@ -1,7 +1,9 @@
 """OTP (One-Time Password) service for SMS-based authentication."""
 
+import hashlib
+import hmac
 import logging
-import random
+import secrets
 import re
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -24,12 +26,12 @@ logger = logging.getLogger(__name__)
 
 
 def _generate_code() -> str:
-    return f"{random.randint(100000, 999999)}"
+    return f"{secrets.randbelow(1_000_000):06d}"
 
 
 def _generate_portal_password() -> str:
     """رمز عددی ساده برای ورود با نام کاربری (مسیر ورود پرسنل)."""
-    return f"{random.randint(100000, 999999)}"
+    return f"{secrets.randbelow(1_000_000):06d}"
 
 
 def _student_portal_welcome_sms_text(username: str, password: str) -> str:
@@ -103,6 +105,21 @@ def normalize_otp_code(raw: str) -> str:
         return ""
     t = str(raw).strip().translate(_FA_DIGITS_OTP).translate(_AR_DIGITS_OTP)
     return "".join(c for c in t if c.isdigit())
+
+
+def hash_otp_code(code: str) -> str:
+    """Store OTP as HMAC so DB leaks do not reveal live codes."""
+    secret = (get_settings().SECRET_KEY or "").encode("utf-8")
+    return hmac.new(secret, normalize_otp_code(code).encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _otp_matches(stored: str | None, code_norm: str) -> bool:
+    if not stored:
+        return False
+    # Backward-compatible: legacy rows may still hold plaintext 6-digit codes
+    if len(stored) == 6 and stored.isdigit():
+        return hmac.compare_digest(stored, code_norm)
+    return hmac.compare_digest(stored, hash_otp_code(code_norm))
 
 
 def _phone_storage_variants(normalized: str) -> list[str]:
@@ -246,7 +263,7 @@ async def request_otp(db: AsyncSession, phone: str) -> dict:
     otp = OTPCode(
         id=uuid.uuid4(),
         phone=phone,
-        code=code,
+        code=hash_otp_code(code),
         expires_at=now + timedelta(seconds=OTP_EXPIRY_SECONDS),
     )
     db.add(otp)
@@ -344,7 +361,7 @@ async def verify_otp_code_only(db: AsyncSession, phone: str, code: str) -> dict:
         return {"success": False, "error": "کد منقضی شده یا نامعتبر است. لطفاً دوباره درخواست دهید."}
 
     latest = active[0]
-    if latest.code != code_norm:
+    if not _otp_matches(latest.code, code_norm):
         latest.attempts += 1
         if latest.attempts > OTP_MAX_ATTEMPTS:
             latest.is_used = True
@@ -379,7 +396,7 @@ async def verify_otp(db: AsyncSession, phone: str, code: str) -> dict:
         return {"success": False, "error": "کد منقضی شده یا نامعتبر است. لطفاً دوباره درخواست دهید."}
 
     latest = active[0]
-    if latest.code != code_norm:
+    if not _otp_matches(latest.code, code_norm):
         latest.attempts += 1
         if latest.attempts > OTP_MAX_ATTEMPTS:
             latest.is_used = True

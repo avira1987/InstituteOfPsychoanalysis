@@ -3,9 +3,14 @@
 import os
 
 # قبل از هر import از app که get_settings() را صدا می‌زند — تست‌ها نباید به SMS واقعی بروند
+os.environ["DEBUG"] = "true"
 os.environ["SMS_PROVIDER"] = "log"
 os.environ["SMS_SIMULATION_UI"] = "true"
+os.environ["OTP_SHOW_CODE_IN_UI"] = "true"
 os.environ["OTP_RESTRICT_TO_STUDENT_PHONES"] = "false"
+os.environ["ALLOW_PUBLIC_OTP_SIGNUP"] = "true"
+os.environ["FLOW_THROUGH_SEED_ENABLED"] = "true"
+os.environ["ALLOW_DEMO_SEED"] = "true"
 # پرداخت: mock + اجازه برای تست کال‌بک با سایر الگوها
 os.environ["PAYMENT_PROVIDER"] = "mock"
 os.environ["PAYMENT_ZIBAL_ONLY"] = "false"
@@ -64,6 +69,14 @@ def pytest_sessionstart(session):
                     "ALTER TABLE users ADD COLUMN IF NOT EXISTS portal_password_plain VARCHAR(128)"
                 )
             )
+            try:
+                conn.execute(
+                    text(
+                        "ALTER TABLE otp_codes ALTER COLUMN code TYPE VARCHAR(128)"
+                    )
+                )
+            except Exception:
+                pass
             conn.execute(
                 text(
                     "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_meta JSONB"

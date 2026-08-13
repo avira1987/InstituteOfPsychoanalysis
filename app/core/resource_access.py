@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.user_roles import user_has_any_role, user_has_role
 from app.models.operational_models import ProcessInstance, Student, User
 
 # Roles that may read any student/process data (operator portals).
@@ -25,6 +26,8 @@ _OPERATOR_READ_ROLES = frozenset(
         "interviewer",
         "instructor",
         "ta",
+        "faculty_1",
+        "educational_instructor",
     }
 )
 
@@ -34,8 +37,13 @@ def normalize_role(role: Optional[str]) -> str:
 
 
 def is_operator_role(role: Optional[str]) -> bool:
+    """Legacy helper: single role string. Prefer is_operator_user for multi-role accounts."""
     r = normalize_role(role)
     return r in _OPERATOR_READ_ROLES or r == "admin"
+
+
+def is_operator_user(user: User) -> bool:
+    return user_has_any_role(user, _OPERATOR_READ_ROLES, admin_bypass=True)
 
 
 async def student_for_user(db: AsyncSession, user: User) -> Optional[Student]:
@@ -54,9 +62,9 @@ async def ensure_can_read_student(
     student = result.scalars().first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
-    if is_operator_role(current_user.role):
+    if is_operator_user(current_user):
         return student
-    if normalize_role(current_user.role) != "student":
+    if not user_has_role(current_user, "student", admin_bypass=False):
         raise HTTPException(status_code=403, detail="دسترسی به پروفایل دانشجو مجاز نیست.")
     if student.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="این پروفایل متعلق به حساب شما نیست.")
@@ -71,9 +79,9 @@ async def ensure_can_read_process_instance(
     """Students may only access their own process instances."""
     if instance is None:
         return
-    if is_operator_role(current_user.role):
+    if is_operator_user(current_user):
         return
-    if normalize_role(current_user.role) != "student":
+    if not user_has_role(current_user, "student", admin_bypass=False):
         raise HTTPException(status_code=403, detail="دسترسی به این فرایند مجاز نیست.")
     st = await student_for_user(db, current_user)
     if not st or st.id != instance.student_id:
@@ -90,7 +98,7 @@ async def ensure_can_pay_for_instance(
     instance_id: Optional[uuid.UUID],
 ) -> None:
     """Payment create/verify: student must own student_id and instance (if given)."""
-    if is_operator_role(current_user.role):
+    if is_operator_user(current_user):
         return
     st = await student_for_user(db, current_user)
     if not st or st.id != student_id:

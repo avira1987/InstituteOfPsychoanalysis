@@ -47,7 +47,7 @@ cd C:\Users\Administrator\Desktop\anistito
 
 در پایان آدرس و ورود نمایش داده می‌شود:
 - **URL:** https://lms.psychoanalysis.ir/anistito/
-- **ورود:** admin / admin123
+- **ورود:** پس از استقرار با `INITIAL_ADMIN_PASSWORD` وارد شوید و فوراً رمز را عوض کنید. جزئیات: [SECURITY_PUBLIC_LAUNCH_CHECKLIST_FA.md](SECURITY_PUBLIC_LAUNCH_CHECKLIST_FA.md)
 
 ---
 

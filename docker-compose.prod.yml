@@ -12,8 +12,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-anistito}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-anistito}
-    ports:
-      - "5433:5432"
+    # بدون publish عمومی — فقط شبکهٔ داخلی Docker (نه اینترنت)
+    # برای دسترسی ادمین از میزبان در صورت نیاز: ssh tunnel یا موقت 127.0.0.1:5433:5432
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     # محدودسازی حافظهٔ خود Postgres داخل کانتینر (با mem_limit هم‌خط) — جلوی رشد cache و work_mem
@@ -68,6 +70,9 @@ services:
       # PAYMENT_PROVIDER=saman، SEP_TERMINAL_ID، SEP_PASSWORD (در صورت نیاز)،
       # PAYMENT_CALLBACK_URL=<همان دامنهٔ عمومی>/api/payment/callback، APP_BASE_URL برای ریدایرکت پس از کال‌بک
     ports:
+      # OpenResty لبه به IP داخلی VM (گاهی .9، گاهی .20 پس از DHCP) روی :3000 پروکسی می‌کند.
+      # 0.0.0.0 فقط روی LAN داخلی دیده می‌شود؛ پورت 3000 به اینترنت DNAT نمی‌شود (از بیرون timeout).
+      # Apache روی همین VM همچنان از 127.0.0.1:3000 استفاده می‌کند.
       - "3000:3000"
     volumes:
       - uploads_data:/app/uploads

@@ -6,20 +6,59 @@ function isProtectedUploadPath(path) {
   return true
 }
 
+const _signedCache = new Map() // path -> { url, exp }
+
+function _apiBase() {
+  if (typeof window === 'undefined') return ''
+  const base = (import.meta?.env?.VITE_API_BASE || '').replace(/\/$/, '')
+  return base || ''
+}
+
+function _syncSignUpload(pathname) {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+  if (!token) return null
+  const cached = _signedCache.get(pathname)
+  const now = Math.floor(Date.now() / 1000)
+  if (cached && cached.exp > now + 15) return cached.url
+  try {
+    const xhr = new XMLHttpRequest()
+    const q = encodeURIComponent(pathname)
+    xhr.open('GET', `${_apiBase()}/api/auth/upload-sign?path=${q}`, false)
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+    xhr.send(null)
+    if (xhr.status >= 200 && xhr.status < 300) {
+      const data = JSON.parse(xhr.responseText || '{}')
+      if (data.signed_url) {
+        _signedCache.set(pathname, {
+          url: data.signed_url,
+          exp: data.expires_at || now + 240,
+        })
+        return data.signed_url
+      }
+    }
+  } catch {
+    /* ignore — caller gets empty / unsigned */
+  }
+  return null
+}
+
 /**
  * آدرس قابل نمایش در مرورگر برای مسیر نسبی آپلود (مثلاً `/uploads/...`).
- * در dev از مسیر نسبی استفاده می‌شود تا پروکسی Vite به FastAPI برود.
- * برای مدارک محافظت‌شده، access_token اضافه می‌شود چون <img>/<iframe> هدر Authorization نمی‌فرستند.
+ * برای مدارک محافظت‌شده از URL کوتاه‌عمر امضاشده استفاده می‌شود (نه JWT در query).
  */
 export function resolveUploadPublicUrl(url) {
   if (!url || typeof url !== 'string') return ''
   if (url.startsWith('http://') || url.startsWith('https://')) {
     try {
       const u = new URL(url)
-      if (isProtectedUploadPath(u.pathname) && typeof localStorage !== 'undefined') {
-        const token = localStorage.getItem('token')
-        if (token && !u.searchParams.get('access_token') && !u.searchParams.get('token')) {
-          u.searchParams.set('access_token', token)
+      // strip legacy JWT query params
+      u.searchParams.delete('access_token')
+      u.searchParams.delete('token')
+      if (isProtectedUploadPath(u.pathname)) {
+        const signed = _syncSignUpload(u.pathname)
+        if (signed) {
+          if (signed.startsWith('http')) return signed
+          return `${u.origin}${signed}`
         }
       }
       return u.toString()
@@ -31,21 +70,13 @@ export function resolveUploadPublicUrl(url) {
   let path = url.startsWith('/') ? url : `/${url}`
   const qIndex = path.indexOf('?')
   const pathname = qIndex >= 0 ? path.slice(0, qIndex) : path
-  const search = qIndex >= 0 ? path.slice(qIndex + 1) : ''
 
-  if (isProtectedUploadPath(pathname) && typeof localStorage !== 'undefined') {
-    const token = localStorage.getItem('token')
-    if (token) {
-      const params = new URLSearchParams(search)
-      if (!params.get('access_token') && !params.get('token')) {
-        params.set('access_token', token)
-      }
-      const qs = params.toString()
-      path = qs ? `${pathname}?${qs}` : pathname
-    }
+  if (isProtectedUploadPath(pathname)) {
+    const signed = _syncSignUpload(pathname)
+    if (signed) return signed
   }
 
-  return path
+  return pathname
 }
 
 /**

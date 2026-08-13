@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import uuid
 from typing import Any, Optional
 
@@ -11,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_role
+from app.config import get_settings
 from app.database import get_db
 from app.flow_through.state_seeder import seed_instance_at_state
 from app.models.operational_models import User
@@ -46,7 +46,8 @@ async def flow_through_seed(
     current_user: User = Depends(require_role("admin")),
 ):
     """Seed a process instance at target state for flow-through E2E/API tests."""
-    if os.getenv("FLOW_THROUGH_SEED_ENABLED", "1") not in ("1", "true", "yes"):
+    settings = get_settings()
+    if not (settings.DEBUG or settings.FLOW_THROUGH_SEED_ENABLED):
         raise HTTPException(status_code=403, detail="Flow-through seeding disabled")
 
     try:
@@ -75,9 +76,6 @@ async def flow_through_seed(
         mode=result.mode,
         walk_steps=result.walk_steps,
         blocked_at=result.blocked_at,
-        portal_logins={
-            "admin": "admin / admin123",
-            "demo_roles": "{role}1 / demo123",
-            "note": "Use POST /api/auth/login for API tests; login-json + challenge for browser",
-        },
+        # Never echo real credentials — DEBUG-only hint that demo accounts may exist locally
+        portal_logins={"hint": "use local DEBUG credentials from your secure runbook"} if settings.DEBUG else {},
     )

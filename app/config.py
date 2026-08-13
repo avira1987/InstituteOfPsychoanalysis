@@ -24,10 +24,16 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "Tehran Institute of Psychoanalysis - انستیتو روانکاوری تهران"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    # لوکال: در .env مقدار true بگذارید. برای استقرار اینترنتی حتماً false.
+    DEBUG: bool = False
     # اگر false باشد در استارت API فقط Alembic اسکیما را مدیریت می‌کند (بدون create_all)
     INIT_DB_ON_STARTUP: bool = True
     APP_BASE_URL: str = "https://lms.psychoanalysis.ir/anistito"  # ریدایرکت بعد از کال‌بک پرداخت، لینک SMS، …
+    # فقط وقتی ادمین وجود ندارد: رمز اولیه از env (حداقل ۸ کاراکتر). در DEBUG بدون این مقدار از admin123 استفاده می‌شود.
+    INITIAL_ADMIN_PASSWORD: str = ""
+    # seed دمو / flow-through — در production باید false باشد
+    ALLOW_DEMO_SEED: bool = False
+    FLOW_THROUGH_SEED_ENABLED: bool = False
     # مسیر نسب به APP_BASE_URL؛ پس از بازگشت از درگاه به این صفحه هدایت می‌شود
     PAYMENT_RETURN_PATH: str = "/panel/portal/student"
 
@@ -47,7 +53,7 @@ class Settings(BaseSettings):
     # Auth / JWT
     SECRET_KEY: str = "change-me-in-production-use-a-real-secret-key"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     LOGIN_RATE_LIMIT_COUNT: int = 10
     LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 600
 
@@ -75,8 +81,10 @@ class Settings(BaseSettings):
     SMS_OTP_PATTERN_BODY_ID: int = 449667
 
     # ورود با پیامک (دانشجو) — کد OTP فقط برای مسیر /api/auth/otp/*
-    # اگر true باشد فقط شماره‌هایی که در DB به‌عنوان کاربر فعال با نقش student ثبت شده‌اند کد می‌گیرند (ثبت‌نام اولیه باید از قبل انجام شده باشد).
-    OTP_RESTRICT_TO_STUDENT_PHONES: bool = False
+    # در production (DEBUG=false) production_guards اجبار می‌کند true باشد مگر ALLOW_PUBLIC_OTP_SIGNUP=true.
+    OTP_RESTRICT_TO_STUDENT_PHONES: bool = True
+    # اگر true باشد حتی در DEBUG=false، OTP می‌تواند حساب دانشجو برای شمارهٔ ناشناس بسازد (عمداً باز کردن ثبت‌نام عمومی).
+    ALLOW_PUBLIC_OTP_SIGNUP: bool = False
     # اگر true باشد، پاسخ request OTP فیلدهای dev_code/dev_hint می‌گیرد — در production معمولاً false.
     OTP_SHOW_CODE_IN_UI: bool = False
     # پس از اولین ورود موفق دانشجو با OTP: تولید رمز ساده، ذخیره در portal_password_plain و ارسال پیامک خوش‌آمد
@@ -172,9 +180,9 @@ class Settings(BaseSettings):
     # CORS — دامنه‌های مجاز با کاما (هم‌تراز scripts/deploy_internet_host.py روی هاست).
     # لوکال با پروکسی Vite معمولاً همین لیست کافی است؛ برای origin مستقیم مثلاً :5173 را اضافه کنید.
     # مقدار * فقط برای توسعهٔ موقت؛ با allow_credentials سازگار نیست و در DEBUG=false رد می‌شود.
+    # در production فقط https؛ http در production_guards رد می‌شود.
     CORS_ALLOW_ORIGINS: str = (
-        "https://lms.psychoanalysis.ir,https://ims.psychoanalysis.ir,"
-        "http://lms.psychoanalysis.ir,http://ims.psychoanalysis.ir"
+        "https://lms.psychoanalysis.ir,https://ims.psychoanalysis.ir"
     )
 
     # آغاز درمان آموزشی: مبلغ جلسهٔ اول (ریال) برای درگاه SEP وقتی در context تنظیم نشده باشد

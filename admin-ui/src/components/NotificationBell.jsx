@@ -10,6 +10,10 @@ function isFlashItem(it) {
   return it?.kind === 'flash_message'
 }
 
+function flashCategory(it) {
+  return it?.category === 'system' ? 'system' : 'popup'
+}
+
 function ActionItem({ it, onNavigate }) {
   return (
     <li>
@@ -36,16 +40,20 @@ function MessageItem({ it, onNavigate }) {
     it.level === 'error'
       ? ' notification-bell-item--flash-error'
       : ' notification-bell-item--flash-success'
+  const cat = flashCategory(it)
+  const badgeLabel = cat === 'system' ? 'سیستم' : 'پاپ‌آپ'
+  const badgeClass =
+    cat === 'system' ? 'notification-bell-system-badge' : 'notification-bell-popup-badge'
   return (
     <li>
       <button
         type="button"
         role="menuitem"
-        className={`notification-bell-item notification-bell-item--message${levelClass}`}
+        className={`notification-bell-item notification-bell-item--message notification-bell-item--${cat}${levelClass}`}
         onClick={onNavigate}
       >
         <span className="notification-bell-item-title">
-          <span className="notification-bell-flash-badge">پیام</span>
+          <span className={badgeClass}>{badgeLabel}</span>
           {it.title_fa}
         </span>
         {it.summary_fa ? (
@@ -53,6 +61,24 @@ function MessageItem({ it, onNavigate }) {
         ) : null}
       </button>
     </li>
+  )
+}
+
+function BellSection({ className, ariaLabel, title, hint, emptyText, items, renderItem }) {
+  return (
+    <section className={`notification-bell-section ${className}`} aria-label={ariaLabel}>
+      <div className="notification-bell-section-head">
+        <span className="notification-bell-section-title">{title}</span>
+        <span className="notification-bell-section-hint">{hint}</span>
+      </div>
+      {items.length === 0 ? (
+        <div className="notification-bell-section-empty muted">{emptyText}</div>
+      ) : (
+        <ul className="notification-bell-list">
+          {items.map((it) => renderItem(it))}
+        </ul>
+      )}
+    </section>
   )
 }
 
@@ -99,16 +125,19 @@ export default function NotificationBell({ variant = 'sidebar' }) {
     }
   }, [load])
 
-  const { actions, messages } = useMemo(() => {
+  const { actions, popups, systems } = useMemo(() => {
     const acts = []
-    const msgs = []
+    const pops = []
+    const sys = []
     for (const it of items) {
-      if (isFlashItem(it)) msgs.push(it)
-      else acts.push(it)
+      if (!isFlashItem(it)) acts.push(it)
+      else if (flashCategory(it) === 'system') sys.push(it)
+      else pops.push(it)
     }
     return {
-      actions: acts.slice(0, 5),
-      messages: msgs.slice(0, 5),
+      actions: acts.slice(0, 4),
+      popups: pops.slice(0, 3),
+      systems: sys.slice(0, 3),
     }
   }, [items])
 
@@ -139,7 +168,7 @@ export default function NotificationBell({ variant = 'sidebar' }) {
       window.removeEventListener('resize', updatePanelPosition)
       window.removeEventListener('scroll', updatePanelPosition, true)
     }
-  }, [open, updatePanelPosition, loading, actions.length, messages.length])
+  }, [open, updatePanelPosition, loading, actions.length, popups.length, systems.length])
 
   useEffect(() => {
     if (!open) return
@@ -165,7 +194,7 @@ export default function NotificationBell({ variant = 'sidebar' }) {
     variant === 'mobile' ? 'notification-bell-wrap notification-bell-wrap--mobile' : 'notification-bell-wrap'
 
   const close = () => setOpen(false)
-  const empty = !loading && actions.length === 0 && messages.length === 0
+  const empty = !loading && actions.length === 0 && popups.length === 0 && systems.length === 0
   const showLoading = loading && items.length === 0
 
   const dropdown =
@@ -192,43 +221,53 @@ export default function NotificationBell({ variant = 'sidebar' }) {
             ) : null}
             {!showLoading && !empty ? (
               <div className="notification-bell-sections">
-                <section className="notification-bell-section notification-bell-section--actions" aria-label="اعلان‌ها">
-                  <div className="notification-bell-section-head">
-                    <span className="notification-bell-section-title">اعلان‌ها</span>
-                    <span className="notification-bell-section-hint">کارهای نیازمند اقدام</span>
-                  </div>
-                  {actions.length === 0 ? (
-                    <div className="notification-bell-section-empty muted">اعلانی نیست.</div>
-                  ) : (
-                    <ul className="notification-bell-list">
-                      {actions.map((it) => (
-                        <ActionItem key={it.notification_id || it.title_fa} it={it} onNavigate={close} />
-                      ))}
-                    </ul>
+                <BellSection
+                  className="notification-bell-section--actions"
+                  ariaLabel="اعلان‌ها"
+                  title="اعلان‌ها"
+                  hint="کارهای نیازمند اقدام"
+                  emptyText="اعلانی نیست."
+                  items={actions}
+                  renderItem={(it) => (
+                    <ActionItem key={it.notification_id || it.title_fa} it={it} onNavigate={close} />
                   )}
-                </section>
-                <section className="notification-bell-section notification-bell-section--messages" aria-label="پیام‌ها">
-                  <div className="notification-bell-section-head">
-                    <span className="notification-bell-section-title">پیام‌ها</span>
-                    <span className="notification-bell-section-hint">پیام‌های پاپ‌آپ سیستم</span>
-                  </div>
-                  {messages.length === 0 ? (
-                    <div className="notification-bell-section-empty muted">پیامی نیست.</div>
-                  ) : (
-                    <ul className="notification-bell-list">
-                      {messages.map((it) => (
-                        <MessageItem
-                          key={it.notification_id || it.title_fa}
-                          it={it}
-                          onNavigate={() => {
-                            close()
-                            navigate('/panel/notifications?tab=messages')
-                          }}
-                        />
-                      ))}
-                    </ul>
+                />
+                <BellSection
+                  className="notification-bell-section--popup"
+                  ariaLabel="پاپ‌آپ"
+                  title="پاپ‌آپ"
+                  hint="پیام‌های toast"
+                  emptyText="پاپ‌آپی نیست."
+                  items={popups}
+                  renderItem={(it) => (
+                    <MessageItem
+                      key={it.notification_id || it.title_fa}
+                      it={it}
+                      onNavigate={() => {
+                        close()
+                        navigate('/panel/notifications?tab=popup')
+                      }}
+                    />
                   )}
-                </section>
+                />
+                <BellSection
+                  className="notification-bell-section--system"
+                  ariaLabel="سیستم"
+                  title="سیستم"
+                  hint="اعلان‌های بک‌اند"
+                  emptyText="پیام سیستمی نیست."
+                  items={systems}
+                  renderItem={(it) => (
+                    <MessageItem
+                      key={it.notification_id || it.title_fa}
+                      it={it}
+                      onNavigate={() => {
+                        close()
+                        navigate('/panel/notifications?tab=system')
+                      }}
+                    />
+                  )}
+                />
               </div>
             ) : null}
             <div className="notification-bell-dropdown-foot">

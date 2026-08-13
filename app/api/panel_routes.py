@@ -213,6 +213,7 @@ class FlashMessageCreate(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
     level: str = Field(default="success", pattern="^(success|error)$")
     source_path: Optional[str] = Field(default=None, max_length=1024)
+    category: str = Field(default="popup", pattern="^(popup|system)$")
 
 
 @router.post("/flash-messages")
@@ -221,7 +222,7 @@ async def panel_create_flash_message(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """ثبت پیام پاپ‌آپ UI برای مرور در پنل اعلان‌ها."""
+    """ثبت پیام پاپ‌آپ UI یا سیستم برای مرور در پنل اعلان‌ها."""
     try:
         row = await create_panel_flash_message(
             db,
@@ -229,6 +230,7 @@ async def panel_create_flash_message(
             message=body.message,
             level=body.level,
             source_path=body.source_path,
+            category=body.category,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

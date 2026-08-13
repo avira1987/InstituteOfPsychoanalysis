@@ -323,8 +323,13 @@ input, select, textarea { font-family: inherit; }
   background: rgba(245, 158, 11, 0.04);
 }
 
-.notification-bell-section--messages {
+.notification-bell-section--messages,
+.notification-bell-section--popup {
   background: rgba(37, 99, 235, 0.04);
+}
+
+.notification-bell-section--system {
+  background: rgba(15, 118, 110, 0.05);
 }
 
 .notification-bell-section-head {
@@ -345,8 +350,13 @@ input, select, textarea { font-family: inherit; }
   color: #b45309;
 }
 
-.notification-bell-section--messages .notification-bell-section-title {
+.notification-bell-section--messages .notification-bell-section-title,
+.notification-bell-section--popup .notification-bell-section-title {
   color: var(--primary, #2563eb);
+}
+
+.notification-bell-section--system .notification-bell-section-title {
+  color: #0f766e;
 }
 
 .notification-bell-section-hint {
@@ -405,7 +415,9 @@ button.notification-bell-item {
 }
 
 .notification-bell-action-badge,
-.notification-bell-flash-badge {
+.notification-bell-flash-badge,
+.notification-bell-popup-badge,
+.notification-bell-system-badge {
   display: inline-block;
   font-size: 0.68rem;
   font-weight: 700;
@@ -420,9 +432,15 @@ button.notification-bell-item {
   color: #b45309;
 }
 
-.notification-bell-flash-badge {
+.notification-bell-flash-badge,
+.notification-bell-popup-badge {
   background: rgba(59, 130, 246, 0.15);
   color: var(--primary, #2563eb);
+}
+
+.notification-bell-system-badge {
+  background: rgba(15, 118, 110, 0.14);
+  color: #0f766e;
 }
 
 .notification-bell-item--action {

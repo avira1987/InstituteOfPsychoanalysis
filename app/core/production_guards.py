@@ -53,9 +53,35 @@ def validate_production_settings(settings: Settings) -> None:
     cors = (settings.CORS_ALLOW_ORIGINS or "").strip()
     if cors in ("", "*"):
         errors.append("CORS_ALLOW_ORIGINS must list explicit domains (not *) when DEBUG=false")
+    else:
+        for part in (p.strip() for p in cors.split(",") if p.strip()):
+            if part.startswith("http://"):
+                errors.append(
+                    f"CORS_ALLOW_ORIGINS must use https only in production (found {part!r})"
+                )
+                break
 
     if settings.OTP_SHOW_CODE_IN_UI:
         errors.append("OTP_SHOW_CODE_IN_UI must be false in production")
+
+    if getattr(settings, "SMS_SIMULATION_UI", False):
+        errors.append("SMS_SIMULATION_UI must be false in production")
+
+    if getattr(settings, "SEED_DEMO_ON_STARTUP", False):
+        errors.append("SEED_DEMO_ON_STARTUP must be false in production")
+
+    if getattr(settings, "ALLOW_DEMO_SEED", False):
+        errors.append("ALLOW_DEMO_SEED must be false in production")
+
+    if getattr(settings, "FLOW_THROUGH_SEED_ENABLED", False):
+        errors.append("FLOW_THROUGH_SEED_ENABLED must be false in production")
+
+    if not getattr(settings, "OTP_RESTRICT_TO_STUDENT_PHONES", True):
+        if not getattr(settings, "ALLOW_PUBLIC_OTP_SIGNUP", False):
+            errors.append(
+                "OTP_RESTRICT_TO_STUDENT_PHONES must be true in production "
+                "(or set ALLOW_PUBLIC_OTP_SIGNUP=true intentionally)"
+            )
 
     if errors:
         msg = "Production configuration unsafe:\n  - " + "\n  - ".join(errors)

@@ -445,6 +445,7 @@ async def notify_institute_members_calendar_published(
             message=message,
             level="success",
             source_path=ACADEMIC_CALENDAR_PAGE_PATH,
+            category="system",
         )
     return len(user_ids)
 

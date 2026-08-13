@@ -26,7 +26,7 @@ class User(Base):
     username = Column(String(100), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=True)
     hashed_password = Column(String(255), nullable=False)
-    # رمز ورود با نام کاربری (مسیر «ورود پرسنل»)؛ متن ساده فقط برای نمایش ادمین/کارمند
+    # deprecated: never store plaintext passwords; column kept nullable for migration compatibility
     portal_password_plain = Column(String(128), nullable=True)
     full_name_fa = Column(String(255), nullable=True)
     full_name_en = Column(String(255), nullable=True)
@@ -300,7 +300,7 @@ class OTPCode(Base):
 
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
     phone = Column(String(15), nullable=False)
-    code = Column(String(6), nullable=False)
+    code = Column(String(128), nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     is_used = Column(
@@ -651,7 +651,7 @@ class PanelActionNotificationDismissal(Base):
 
 
 class PanelFlashMessage(Base):
-    """پیام‌های پاپ‌آپ UI ذخیره‌شده برای مرور در پنل اعلان‌ها."""
+    """پیام‌های پاپ‌آپ UI و پیام‌های سیستم برای مرور در پنل اعلان‌ها."""
 
     __tablename__ = "panel_flash_messages"
     __table_args__ = (
@@ -663,6 +663,8 @@ class PanelFlashMessage(Base):
     user_id = Column(UUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     message = Column(Text, nullable=False)
     level = Column(String(20), nullable=False, default="success")
+    # popup = toast UI؛ system = اعلان بک‌اند (تقویم، مصاحبه، …)
+    category = Column(String(20), nullable=False, default="popup")
     source_path = Column(String(1024), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 

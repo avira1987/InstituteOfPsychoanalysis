@@ -36,6 +36,7 @@ export function ToastProvider({ children }) {
             message: msg,
             level: lvl,
             source_path: sourcePath,
+            category: 'popup',
           })
           .then(() => dispatchFlashCreated())
           .catch(() => {

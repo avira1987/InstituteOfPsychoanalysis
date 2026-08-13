@@ -970,6 +970,12 @@ async def seed_demo_matrix(
     ایجاد کاربران/دانشجویان دمو (AUTO-DEMO-*, DEMO-SCEN-*, AUTO-PROFILE-*) در **همین** دیتابیسی که API به آن وصل است.
     اگر فقط اسکریپت را روی میزبان بدون DATABASE_URL مشابه Docker اجرا کرده‌اید، داده در SQLite محلی مانده و در پنل دیده نمی‌شود — از این endpoint یا docker exec استفاده کنید.
     """
+    from app.config import get_settings
+
+    settings = get_settings()
+    if not (settings.DEBUG or settings.ALLOW_DEMO_SEED):
+        raise HTTPException(status_code=403, detail="Demo seeding disabled in this environment")
+
     os.environ.setdefault("SMS_PROVIDER", "log")
     os.environ.setdefault("OTP_RESTRICT_TO_STUDENT_PHONES", "false")
     demo_pass = os.environ.get("DEMO_MATRIX_STUDENT_PASSWORD", "demo_student_123")
@@ -981,7 +987,7 @@ async def seed_demo_matrix(
         seed_profile_state_students,
     )
 
-    out: dict = {"admin_login": {"username": "admin", "password": "admin123", "note": "password tab + math challenge"}}
+    out: dict = {"status": "ok", "note": "demo seed completed; credentials are not returned by API"}
 
     if body.force:
         prefixes: list[str] = []
@@ -1495,6 +1501,9 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     is_admin = user_has_role(current_user, "admin", admin_bypass=False)
+    is_primary_admin = (
+        is_admin and current_user.username == get_settings().PRIMARY_SITE_ADMIN_USERNAME
+    )
     allowed_fields = {"full_name_fa", "full_name_en", "phone", "email", "is_active"}
     if is_admin:
         allowed_fields = allowed_fields | {"role", "roles", "profile_meta"}
@@ -1530,6 +1539,23 @@ async def update_user(
                 value = value.strip() or None
             setattr(user, key, value)
     if "password" in data and data.get("password"):
+        target_roles = normalize_user_roles(user)
+        if is_admin:
+            # فقط مدیر اصلی می‌تواند رمز حساب‌های admin را عوض کند؛ سایر ادمین‌ها نه adminها
+            if "admin" in target_roles and not is_primary_admin:
+                raise HTTPException(
+                    status_code=403,
+                    detail="فقط مدیر اصلی سامانه می‌تواند رمز حساب مدیر را تغییر دهد.",
+                )
+        else:
+            # staff: فقط دانشجویان
+            if "student" not in target_roles or any(
+                r in target_roles for r in ("admin", "staff", "finance", "deputy_education", "site_manager")
+            ):
+                raise HTTPException(
+                    status_code=403,
+                    detail="کارمند فقط می‌تواند رمز حساب دانشجو را تنظیم کند.",
+                )
         user.hashed_password = get_password_hash(data["password"])
         user.portal_password_plain = None
     await db.flush()

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import DOMPurify from 'dompurify'
 import { blogApi } from '../../services/api'
 
 const CATEGORY_LABELS = {
@@ -35,6 +36,11 @@ export default function BlogPost() {
       return iso.split('T')[0]
     }
   }
+
+  const safeHtml = useMemo(
+    () => (post?.content ? DOMPurify.sanitize(post.content) : ''),
+    [post?.content],
+  )
 
   if (loading) {
     return (
@@ -98,7 +104,7 @@ export default function BlogPost() {
         )}
 
         <div
-          dangerouslySetInnerHTML={{ __html: post.content }}
+          dangerouslySetInnerHTML={{ __html: safeHtml }}
           style={{ whiteSpace: 'pre-wrap' }}
         />
 

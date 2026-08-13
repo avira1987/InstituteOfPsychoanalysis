@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.operational_models import BlogPost, User
 from app.api.auth import get_current_user, require_role
+from app.services.html_sanitize import sanitize_blog_html
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/blog", tags=["Blog"])
@@ -113,7 +114,7 @@ async def get_post(slug: str, db: AsyncSession = Depends(get_db)):
         "title": post.title,
         "slug": post.slug,
         "summary": post.summary,
-        "content": post.content,
+        "content": sanitize_blog_html(post.content),
         "category": post.category,
         "tags": post.tags,
         "featured_image": post.featured_image,
@@ -176,7 +177,7 @@ async def create_post(
         title=data.title,
         slug=slug,
         summary=data.summary,
-        content=data.content,
+        content=sanitize_blog_html(data.content),
         category=data.category or "article",
         tags=data.tags,
         featured_image=data.featured_image,
@@ -203,6 +204,8 @@ async def update_post(
         raise HTTPException(status_code=404, detail="مقاله یافت نشد")
 
     for field, value in data.model_dump(exclude_unset=True).items():
+        if field == "content" and value is not None:
+            value = sanitize_blog_html(value)
         setattr(post, field, value)
 
     if data.is_published and not post.published_at:

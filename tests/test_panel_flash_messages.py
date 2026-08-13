@@ -1,4 +1,4 @@
-"""پیام‌های پاپ‌آپ UI — API، سرویس، و ادغام در فید اعلان‌ها."""
+"""پیام‌های پاپ‌آپ UI و سیستم — API، سرویس، و ادغام در فید اعلان‌ها."""
 
 import pytest
 from starlette.testclient import TestClient
@@ -35,7 +35,12 @@ def test_create_flash_message_http(client: TestClient):
         pytest.skip("Login failed")
     r = client.post(
         "/api/panel/flash-messages",
-        json={"message": "پیام تست پاپ‌آپ", "level": "success", "source_path": "/panel/test"},
+        json={
+            "message": "پیام تست پاپ‌آپ",
+            "level": "success",
+            "source_path": "/panel/test",
+            "category": "popup",
+        },
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200
@@ -52,7 +57,7 @@ def test_action_notifications_includes_flash_message(client: TestClient):
     msg = "پیام یکتا برای فید اعلان"
     cr = client.post(
         "/api/panel/flash-messages",
-        json={"message": msg, "level": "error"},
+        json={"message": msg, "level": "error", "category": "popup"},
         headers=headers,
     )
     assert cr.status_code == 200
@@ -62,6 +67,7 @@ def test_action_notifications_includes_flash_message(client: TestClient):
     flash = [i for i in items if i.get("kind") == "flash_message" and msg in (i.get("summary_fa") or "")]
     assert len(flash) >= 1
     assert flash[0].get("level") == "error"
+    assert flash[0].get("category") == "popup"
     assert flash[0].get("title_fa") == "خطا"
 
 
@@ -73,8 +79,34 @@ async def test_build_action_notifications_includes_flash(db_session, sample_user
         message="پیام async تست",
         level="success",
         source_path="/panel/foo",
+        category="popup",
     )
     await db_session.commit()
     out = await build_action_notifications(db_session, sample_user, limit=20, offset=0)
     flash = [i for i in out["items"] if i.get("kind") == "flash_message"]
-    assert any("پیام async تست" in (i.get("summary_fa") or "") for i in flash)
+    match = [i for i in flash if "پیام async تست" in (i.get("summary_fa") or "")]
+    assert match
+    assert match[0].get("category") == "popup"
+    assert match[0].get("title_fa") == "پاپ‌آپ"
+
+
+@pytest.mark.asyncio
+async def test_system_flash_category_separated(db_session, sample_user):
+    await create_panel_flash_message(
+        db_session,
+        user_id=sample_user.id,
+        message="اعلان سیستمی تست",
+        level="success",
+        source_path="/panel/calendar",
+        category="system",
+    )
+    await db_session.commit()
+    out = await build_action_notifications(db_session, sample_user, limit=20, offset=0)
+    flash = [
+        i
+        for i in out["items"]
+        if i.get("kind") == "flash_message" and "اعلان سیستمی تست" in (i.get("summary_fa") or "")
+    ]
+    assert len(flash) == 1
+    assert flash[0].get("category") == "system"
+    assert flash[0].get("title_fa") == "پیام سیستم"

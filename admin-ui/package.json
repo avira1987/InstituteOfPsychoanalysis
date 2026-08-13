@@ -18,6 +18,7 @@
   "dependencies": {
     "@fontsource-variable/vazirmatn": "^5.2.8",
     "axios": "^1.6.7",
+    "dompurify": "^3.4.13",
     "jalaali-js": "^1.2.8",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",

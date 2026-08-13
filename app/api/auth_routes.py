@@ -4,8 +4,8 @@ import logging
 import uuid
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-import random
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+import secrets
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 
 logger = logging.getLogger(__name__)
 from fastapi.security import OAuth2PasswordRequestForm
@@ -53,7 +53,12 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
-    """Authenticate and get an access token."""
+    """Authenticate and get an access token (DEBUG / OpenAPI only — use /login-json in production)."""
+    if not get_settings().DEBUG:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="برای ورود از /api/auth/login-json همراه با کد امنیتی استفاده کنید.",
+        )
     if not form_data.username or not form_data.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -76,7 +81,7 @@ async def login(
         raise
     except Exception as e:
         logger.exception("Login error: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="خطای داخلی سرور")
 
 
 @router.post("/login-challenge", response_model=LoginChallengeResponse)
@@ -87,8 +92,8 @@ async def login_challenge(
     تولید یک سوال ساده برای جلوگیری از ربات در ورود با رمز عبور.
     مثال: «حاصل ۷ + ۴ چند می‌شود؟»
     """
-    a = random.randint(1, 9)
-    b = random.randint(1, 9)
+    a = secrets.randbelow(9) + 1
+    b = secrets.randbelow(9) + 1
     question = f"حاصل {a} + {b} چند می‌شود؟"
     answer = str(a + b)
 
@@ -168,7 +173,7 @@ async def login_json(
         raise
     except Exception as e:
         logger.exception("Login error: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="خطای داخلی سرور")
 
 
 @router.post("/register", response_model=UserResponse)
@@ -317,6 +322,25 @@ async def upload_avatar(
     current_user.avatar_url = f"/uploads/avatars/{filename}"
     await db.commit()
     return user_to_response(current_user)
+
+
+@router.get("/upload-sign")
+async def sign_upload_url(
+    path: str = Query(..., description="مسیر نسبی /uploads/..."),
+    current_user: User = Depends(get_current_user),
+):
+    """Mint a short-lived signed URL for a protected /uploads path (for <img>/<iframe>)."""
+    from app.services.upload_signing import sign_upload_path
+
+    raw = (path or "").strip()
+    if not raw.startswith("/uploads/"):
+        raise HTTPException(status_code=400, detail="path must start with /uploads/")
+    if raw.startswith("/uploads/avatars/"):
+        return {"signed_url": raw, "expires_at": None}
+    try:
+        return sign_upload_path(raw, user_id=str(current_user.id))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 class OTPRequestBody(BaseModel):

@@ -1,10 +1,10 @@
-"""ذخیره و بازیابی پیام‌های پاپ‌آپ UI برای پنل اعلان‌ها."""
+"""ذخیره و بازیابی پیام‌های پاپ‌آپ UI و پیام‌های سیستم برای پنل اعلان‌ها."""
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import delete, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,15 +14,32 @@ from app.models.operational_models import PanelFlashMessage
 _RETENTION_DAYS = 90
 _MAX_PER_USER = 200
 
+FlashCategory = Literal["popup", "system"]
+VALID_CATEGORIES = frozenset({"popup", "system"})
+
+
+def _normalize_category(category: str | None) -> str:
+    cat = (category or "popup").strip().lower()
+    return cat if cat in VALID_CATEGORIES else "popup"
+
+
+def _flash_title(level: str, category: str) -> str:
+    if category == "system":
+        return "خطای سیستم" if level == "error" else "پیام سیستم"
+    return "خطا" if level == "error" else "پاپ‌آپ"
+
 
 def _flash_to_notification(row: PanelFlashMessage) -> dict[str, Any]:
     level = (row.level or "success").strip().lower()
-    title = "خطا" if level == "error" else "پیام سیستم"
+    category = _normalize_category(getattr(row, "category", None))
+    title = _flash_title(level, category)
     path = (row.source_path or "").strip()
-    action_path = path if path.startswith("/") else "/panel/notifications?tab=messages"
+    tab = "system" if category == "system" else "popup"
+    action_path = path if path.startswith("/") else f"/panel/notifications?tab={tab}"
     return {
         "notification_id": f"flash:{row.id}",
         "kind": "flash_message",
+        "category": category,
         "title_fa": title,
         "summary_fa": row.message or "",
         "action_path": action_path,
@@ -69,6 +86,7 @@ async def create_panel_flash_message(
     message: str,
     level: str = "success",
     source_path: str | None = None,
+    category: str = "popup",
 ) -> PanelFlashMessage:
     text = (message or "").strip()
     if not text:
@@ -76,11 +94,13 @@ async def create_panel_flash_message(
     lvl = (level or "success").strip().lower()
     if lvl not in ("success", "error"):
         lvl = "success"
+    cat = _normalize_category(category)
     path = (source_path or "").strip() or None
     row = PanelFlashMessage(
         user_id=user_id,
         message=text,
         level=lvl,
+        category=cat,
         source_path=path,
     )
     db.add(row)

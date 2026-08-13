@@ -77,6 +77,7 @@ async def notify_interviewer_slot_assigned(
         message=flash_msg,
         level="success",
         source_path=INTERVIEWER_PORTAL_PATH,
+        category="system",
     )
 
     phone = normalize_ir_mobile(interviewer.phone or "")
@@ -122,6 +123,7 @@ async def notify_interviewer_slot_booked(
         message=flash_msg,
         level="success",
         source_path=INTERVIEWER_PORTAL_PATH,
+        category="system",
     )
 
     phone = normalize_ir_mobile(interviewer.phone or "")

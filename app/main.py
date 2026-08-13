@@ -26,7 +26,9 @@ import app.models.dynamic_forms  # noqa: F401
 
 
 async def _ensure_admin_user(db):
-    """Ensure admin user exists. Password reset to admin123 only in DEBUG mode."""
+    """Ensure admin user exists. Never use a known password in production."""
+    import secrets
+
     from sqlalchemy import select
     from app.models.operational_models import User
     from app.api.auth import get_password_hash, verify_password
@@ -45,20 +47,34 @@ async def _ensure_admin_user(db):
                 await db.commit()
                 logger.warning("DEBUG: admin password reset to admin123")
         return
+
+    initial = (settings.INITIAL_ADMIN_PASSWORD or "").strip()
+    if settings.DEBUG and not initial:
+        initial = "admin123"
+    if not initial:
+        initial = secrets.token_urlsafe(18)
+        logger.warning(
+            "Default admin created with one-time random password (set INITIAL_ADMIN_PASSWORD next time). "
+            "password=%s — change immediately via secure channel",
+            initial,
+        )
+    elif not settings.DEBUG and len(initial) < 8:
+        raise RuntimeError("INITIAL_ADMIN_PASSWORD must be at least 8 characters when creating admin in production")
+
     admin = User(
         id=uuid.uuid4(),
         username="admin",
         email="admin@anistito.ir",
-        hashed_password=get_password_hash("admin123"),
+        hashed_password=get_password_hash(initial),
         full_name_fa="مدیر سیستم",
         role="admin",
     )
     db.add(admin)
     await db.commit()
-    if settings.DEBUG:
+    if settings.DEBUG and initial == "admin123":
         logger.warning("DEBUG: default admin created (username=admin, password=admin123)")
     else:
-        logger.warning("Default admin user created — set password immediately via secure channel")
+        logger.warning("Default admin user created — change password immediately via secure channel")
 
 
 async def _ensure_system_actor_user(db):
@@ -337,6 +353,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "Permissions-Policy",
             "geolocation=(), microphone=(), camera=(), payment=()",
         )
+        # CSP پایه — گزارش‌محور برای سازگاری با SPA؛ سخت‌گیری بیشتر در Apache
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "font-src 'self' data:; "
+            "connect-src 'self'; "
+            "frame-ancestors 'self'; "
+            "base-uri 'self'; "
+            "form-action 'self'",
+        )
         return response
 
 
@@ -430,10 +459,10 @@ async def health_readiness():
     try:
         async with async_session_factory() as db:
             await db.execute(text("SELECT 1"))
-    except Exception as e:
+    except Exception:
         return JSONResponse(
             status_code=503,
-            content={"status": "unhealthy", "db": False, "error": str(e)[:200]},
+            content={"status": "unhealthy", "db": False},
         )
     return {"status": "healthy", "db": True, "version": settings.APP_VERSION}
 

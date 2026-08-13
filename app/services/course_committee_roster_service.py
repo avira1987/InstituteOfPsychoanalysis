@@ -1575,7 +1575,7 @@ async def ensure_roster_user(
         username=username,
         email=f"{username}@course-committee.anistito.local",
         hashed_password=get_password_hash("demo123"),
-        portal_password_plain="demo123",
+        portal_password_plain=None,
         full_name_fa=label,
         role=role,
         is_active=True,
