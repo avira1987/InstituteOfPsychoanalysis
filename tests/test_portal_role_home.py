@@ -32,6 +32,11 @@ def test_staff_redirects_to_pending_tab():
     assert portal_home_path("staff") == "/panel/portal/staff/admissions"
 
 
+def test_internal_manager_redirects_like_staff():
+    assert redirect_url_for_role("internal_manager") == "/panel/portal/staff/admissions?tab=pending"
+    assert portal_home_path("internal_manager") == "/panel/portal/staff/admissions"
+
+
 def test_site_manager_redirects_to_pending_tab():
     assert redirect_url_for_role("site_manager") == "/panel/portal/site-manager?tab=pending"
 

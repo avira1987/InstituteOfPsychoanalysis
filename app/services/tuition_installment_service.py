@@ -291,8 +291,11 @@ async def refresh_instance_tuition_context(
         out["fee_source"] = fees["fee_source"]
     if fees.get("tuition_reason_fa"):
         out["tuition_reason_fa"] = fees["tuition_reason_fa"]
+    if fees.get("tuition_lines") is not None:
+        out["tuition_lines"] = fees["tuition_lines"]
 
-    total = out.get("tuition_total_rial")
+    # همیشه از انتخاب فعلی دوباره حساب شود
+    total = fees.get("tuition_total_rial")
     if not _valid_rial(total):
         try:
             tom = float(fees.get("registration_tuition_invoice_toman") or 0)
@@ -302,8 +305,9 @@ async def refresh_instance_tuition_context(
             total = None
     if _valid_rial(total):
         out["tuition_total_rial"] = int(total)
-        if not out.get("invoice_amount"):
-            out["invoice_amount"] = float(total) / 10.0
+        out["tuition_amount_rial"] = int(total)
+        out["tuition_amount"] = float(total) / 10.0
+        out["invoice_amount"] = float(total) / 10.0
 
     policy = await get_installment_policy(db)
     gap_days = int(policy.get("term2_installment_gap_days") or DEFAULT_INSTALLMENT_GAP_DAYS)
@@ -375,6 +379,7 @@ async def build_student_finance_summary(db: AsyncSession, student_id: uuid.UUID)
 
     payment_svc = PaymentService(db)
     balance = await payment_svc.get_student_balance(student_id)
+    by_cat = await payment_svc.get_student_balances_by_category(student_id)
     history = await payment_svc.get_student_financial_history(student_id, limit=200)
 
     stmt = (
@@ -426,6 +431,16 @@ async def build_student_finance_summary(db: AsyncSession, student_id: uuid.UUID)
                 }
             )
 
+    def _wallet(key: str) -> dict:
+        w = by_cat.get(key) or {}
+        return {
+            "total_paid": w.get("total_payments", 0),
+            "total_credit": w.get("total_credits", 0),
+            "total_debt": w.get("total_debts", 0),
+            "net_balance": w.get("balance", 0),
+            "has_outstanding_debt": w.get("has_outstanding_debt", False),
+        }
+
     return {
         "balance": {
             "total_paid": balance.get("total_payments", 0),
@@ -434,12 +449,18 @@ async def build_student_finance_summary(db: AsyncSession, student_id: uuid.UUID)
             "net_balance": balance.get("balance", 0),
             "has_outstanding_debt": balance.get("has_outstanding_debt", False),
         },
+        "wallets": {
+            "therapy": _wallet("therapy"),
+            "supervision": _wallet("supervision"),
+            "tuition": _wallet("tuition"),
+        },
         "ledger": [
             {
                 "id": r.get("id"),
                 "record_type": r.get("type"),
                 "amount": r.get("amount"),
                 "description_fa": r.get("description"),
+                "ledger_category": r.get("ledger_category") or "other",
                 "created_at": r.get("created_at"),
             }
             for r in history

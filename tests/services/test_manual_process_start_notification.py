@@ -118,3 +118,24 @@ async def test_lesson_start_per_term_skips_start_sms(db_session):
 
     assert result == "skipped"
     send_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_introductory_course_registration_skips_start_sms(db_session):
+    instance = SimpleNamespace(
+        id=uuid4(),
+        process_code="introductory_course_registration",
+        student_id=uuid4(),
+    )
+    process_def = MagicMock()
+    process_def.name_fa = "فرایند ثبت‌نام دوره آشنایی"
+    process_def.code = "introductory_course_registration"
+
+    with patch(
+        "app.services.manual_process_start_notification.notification_service.send_notification",
+        new_callable=AsyncMock,
+    ) as send_mock:
+        result = await notify_manual_process_started(db_session, instance, process_def)
+
+    assert result == "skipped"
+    send_mock.assert_not_awaited()

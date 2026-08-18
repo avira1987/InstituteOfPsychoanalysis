@@ -27,7 +27,9 @@ CTX_DATA_EDIT_LOG = "__data_edit_log"
 
 
 def _norm(role: Optional[str]) -> str:
-    return (role or "").strip().lower()
+    from app.core.user_roles import canonical_portal_role
+
+    return canonical_portal_role(role) or (role or "").strip().lower()
 
 
 def _norm_list(values: Optional[Iterable[Any]]) -> list[str]:

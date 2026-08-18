@@ -87,6 +87,18 @@ async def public_installment_policy(db: AsyncSession = Depends(get_db)):
     return await get_installment_policy(db)
 
 
+@router.get("/institute-info")
+async def public_institute_info(db: AsyncSession = Depends(get_db)):
+    """اطلاعات عمومی انستیتو برای فرم پذیرش (شماره پروانه فعالیت)."""
+    from app.services.institute_activity_license_service import (
+        activity_license_public_payload,
+        get_activity_license_number,
+    )
+
+    number = await get_activity_license_number(db)
+    return activity_license_public_payload(number)
+
+
 @router.get("/sms-simulation-status")
 async def public_sms_simulation_status():
     """وضعیت پاپ‌آپ تست پیامک — برای UI و اشکال‌زدایی (بدون auth)."""

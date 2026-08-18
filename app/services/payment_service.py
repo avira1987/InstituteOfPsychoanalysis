@@ -11,6 +11,22 @@ from app.models.operational_models import FinancialRecord, TherapySession, Stude
 
 logger = logging.getLogger(__name__)
 
+LEDGER_THERAPY = "therapy"
+LEDGER_SUPERVISION = "supervision"
+LEDGER_TUITION = "tuition"
+LEDGER_OTHER = "other"
+VALID_LEDGER_CATEGORIES = frozenset({
+    LEDGER_THERAPY,
+    LEDGER_SUPERVISION,
+    LEDGER_TUITION,
+    LEDGER_OTHER,
+})
+
+
+def normalize_ledger_category(category: Optional[str], default: str = LEDGER_OTHER) -> str:
+    c = (category or default or LEDGER_OTHER).strip().lower()
+    return c if c in VALID_LEDGER_CATEGORIES else default
+
 
 class PaymentResult:
     """Result of a payment operation."""
@@ -63,6 +79,7 @@ class PaymentService:
         description: str,
         reference_id: Optional[uuid.UUID] = None,
         created_by: Optional[uuid.UUID] = None,
+        category: Optional[str] = None,
     ) -> FinancialRecord:
         """Generate a payment invoice (debt record)."""
         record = FinancialRecord(
@@ -73,6 +90,7 @@ class PaymentService:
             description_fa=description,
             reference_id=reference_id,
             created_by=created_by,
+            ledger_category=normalize_ledger_category(category, LEDGER_OTHER),
             created_at=datetime.now(timezone.utc),
         )
         self.db.add(record)
@@ -86,9 +104,9 @@ class PaymentService:
         description: str = "پرداخت هزینه جلسه",
         reference_id: Optional[uuid.UUID] = None,
         created_by: Optional[uuid.UUID] = None,
+        category: Optional[str] = None,
     ) -> PaymentResult:
         """Record a payment (placeholder for actual payment gateway integration)."""
-        # In production, integrate with payment gateway here
         record = FinancialRecord(
             id=uuid.uuid4(),
             student_id=student_id,
@@ -97,6 +115,7 @@ class PaymentService:
             description_fa=description,
             reference_id=reference_id,
             created_by=created_by,
+            ledger_category=normalize_ledger_category(category, LEDGER_OTHER),
             created_at=datetime.now(timezone.utc),
         )
         self.db.add(record)
@@ -116,6 +135,7 @@ class PaymentService:
         reason: str = "استرداد هزینه",
         reference_id: Optional[uuid.UUID] = None,
         created_by: Optional[uuid.UUID] = None,
+        category: Optional[str] = None,
     ) -> PaymentResult:
         """Process a refund (credit record)."""
         record = FinancialRecord(
@@ -126,6 +146,7 @@ class PaymentService:
             description_fa=reason,
             reference_id=reference_id,
             created_by=created_by,
+            ledger_category=normalize_ledger_category(category, LEDGER_OTHER),
         )
         self.db.add(record)
 
@@ -142,6 +163,7 @@ class PaymentService:
         session_id: Optional[uuid.UUID] = None,
         amount: Optional[float] = None,
         created_by: Optional[uuid.UUID] = None,
+        category: Optional[str] = None,
     ) -> FinancialRecord:
         """Charge a fee for an absence."""
         fee = amount or self.DEFAULT_SESSION_FEE
@@ -153,31 +175,39 @@ class PaymentService:
             description_fa="هزینه غیبت جلسه درمان",
             reference_id=session_id,
             created_by=created_by,
+            ledger_category=normalize_ledger_category(category, LEDGER_THERAPY),
         )
         self.db.add(record)
         return record
 
-    async def get_student_balance(self, student_id: uuid.UUID) -> dict:
-        """Get the financial balance for a student."""
-        # Total payments
+    async def get_student_balance(
+        self,
+        student_id: uuid.UUID,
+        category: Optional[str] = None,
+    ) -> dict:
+        """Get the financial balance for a student (optionally one ledger wallet)."""
+        filters = [FinancialRecord.student_id == student_id]
+        if category:
+            filters.append(
+                FinancialRecord.ledger_category == normalize_ledger_category(category)
+            )
+
         payments_stmt = select(func.coalesce(func.sum(FinancialRecord.amount), 0)).where(
-            FinancialRecord.student_id == student_id,
+            *filters,
             FinancialRecord.record_type == "payment",
         )
         payments_result = await self.db.execute(payments_stmt)
         total_payments = payments_result.scalar()
 
-        # Total credits (refunds)
         credits_stmt = select(func.coalesce(func.sum(FinancialRecord.amount), 0)).where(
-            FinancialRecord.student_id == student_id,
+            *filters,
             FinancialRecord.record_type == "credit",
         )
         credits_result = await self.db.execute(credits_stmt)
         total_credits = credits_result.scalar()
 
-        # Total debts
         debts_stmt = select(func.coalesce(func.sum(FinancialRecord.amount), 0)).where(
-            FinancialRecord.student_id == student_id,
+            *filters,
             FinancialRecord.record_type.in_(["debt", "absence_fee"]),
         )
         debts_result = await self.db.execute(debts_stmt)
@@ -187,6 +217,7 @@ class PaymentService:
 
         return {
             "student_id": str(student_id),
+            "ledger_category": normalize_ledger_category(category) if category else None,
             "total_payments": float(total_payments),
             "total_credits": float(total_credits),
             "total_debts": float(total_debts),
@@ -194,18 +225,32 @@ class PaymentService:
             "has_outstanding_debt": balance < 0,
         }
 
+    async def get_student_balances_by_category(self, student_id: uuid.UUID) -> dict:
+        """مانده تفکیک‌شده درمان / سوپرویژن / شهریه / کل."""
+        overall = await self.get_student_balance(student_id)
+        therapy = await self.get_student_balance(student_id, LEDGER_THERAPY)
+        supervision = await self.get_student_balance(student_id, LEDGER_SUPERVISION)
+        tuition = await self.get_student_balance(student_id, LEDGER_TUITION)
+        return {
+            "overall": overall,
+            "therapy": therapy,
+            "supervision": supervision,
+            "tuition": tuition,
+        }
+
     async def get_student_financial_history(
         self,
         student_id: uuid.UUID,
         limit: int = 50,
+        category: Optional[str] = None,
     ) -> list[dict]:
         """Get financial transaction history for a student."""
-        stmt = (
-            select(FinancialRecord)
-            .where(FinancialRecord.student_id == student_id)
-            .order_by(FinancialRecord.created_at.desc())
-            .limit(limit)
-        )
+        stmt = select(FinancialRecord).where(FinancialRecord.student_id == student_id)
+        if category:
+            stmt = stmt.where(
+                FinancialRecord.ledger_category == normalize_ledger_category(category)
+            )
+        stmt = stmt.order_by(FinancialRecord.created_at.desc()).limit(limit)
         result = await self.db.execute(stmt)
         records = result.scalars().all()
 
@@ -215,6 +260,7 @@ class PaymentService:
                 "type": r.record_type,
                 "amount": r.amount,
                 "description": r.description_fa,
+                "ledger_category": getattr(r, "ledger_category", None) or LEDGER_OTHER,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
             }
             for r in records
@@ -241,6 +287,9 @@ class PaymentService:
             description_fa=f"بخشودگی: {reason}",
             reference_id=record_id,
             created_by=approved_by,
+            ledger_category=normalize_ledger_category(
+                getattr(record, "ledger_category", None), LEDGER_OTHER
+            ),
         )
         self.db.add(waiver)
         return PaymentResult(

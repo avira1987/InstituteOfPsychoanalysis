@@ -66,7 +66,9 @@ router = APIRouter(prefix="/api/process", tags=["Process"])
 
 def _normalize_actor_role(role: Optional[str]) -> str:
     """نقش‌ها در متادیتا lowercase هستند؛ اگر DB رشتۀ متفاوت داشت، RBAC از بین نرود."""
-    s = (role or "").strip().lower()
+    from app.core.user_roles import canonical_portal_role
+
+    s = canonical_portal_role(role)
     return s or "student"
 
 
@@ -108,9 +110,13 @@ def _portal_role_can_act_on_state(actor_role: str, process_code: str, state_code
         normalize_assigned_role,
         portal_role_can_act_on_assigned_role,
     )
+    from app.services.semester_prep_rbac import portal_role_can_act_on_prep_state
 
     if actor_role == "admin":
         return True
+    prep_ok = portal_role_can_act_on_prep_state(actor_role, process_code, state_code)
+    if prep_ok is not None:
+        return prep_ok
     assigned = get_state_assigned_role(process_code, state_code)
     if not assigned:
         return True
@@ -1687,15 +1693,40 @@ async def rollback_process_instance(
     instance_id: str,
     body: RollbackRequest = Body(default_factory=RollbackRequest),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "deputy_education", "staff")),
+    current_user: User = Depends(get_current_user),
 ):
-    """بازگرداندن فرایند به وضعیت قبلی بر اساس آخرین رکورد تاریخچه (مدیر آموزش / کارمند / ادمین)."""
+    """بازگرداندن فرایند به وضعیت قبلی — فقط مدیر سامانه / معاون آموزش (override SOP)."""
+    from app.core.audit import AuditLogger
+    from app.core.user_roles import normalize_user_roles
+    from app.meta.process_override_policy import OVERRIDE_ROLES, user_can_override_process
+
+    actor_role = _normalize_actor_role(current_user.role)
+    if not user_can_override_process(current_user):
+        await AuditLogger(db).log(
+            action_type="override_denied",
+            actor_id=current_user.id,
+            actor_role=actor_role,
+            instance_id=uuid.UUID(instance_id),
+            details={"action": "rollback", "reason_attempt": (body.reason or "")[:500]},
+        )
+        await db.flush()
+        raise HTTPException(status_code=403, detail="شما مجوز بازگشت به مرحلهٔ قبل را ندارید.")
+
+    if actor_role not in OVERRIDE_ROLES:
+        for r in normalize_user_roles(current_user):
+            nr = _normalize_actor_role(r)
+            if nr in OVERRIDE_ROLES:
+                actor_role = nr
+                break
+        else:
+            actor_role = "admin"
+
     engine = StateMachineEngine(db)
     try:
         result = await engine.rollback_to_previous_state(
             instance_id=uuid.UUID(instance_id),
             actor_id=current_user.id,
-            actor_role=_normalize_actor_role(current_user.role),
+            actor_role=actor_role,
             reason=body.reason,
         )
         return TransitionResultResponse(
@@ -1709,6 +1740,16 @@ async def rollback_process_instance(
         )
     except InstanceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except UnauthorizedError as e:
+        await AuditLogger(db).log(
+            action_type="override_denied",
+            actor_id=current_user.id,
+            actor_role=actor_role,
+            instance_id=uuid.UUID(instance_id),
+            details={"action": "rollback", "detail": str(e)},
+        )
+        await db.flush()
+        raise HTTPException(status_code=403, detail=str(e))
     except InvalidTransitionError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -1722,7 +1763,11 @@ async def restart_process_instance(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """بایگانی پروندهٔ فعلی و شروع دوباره از مرحلهٔ اول (پرسنل یا دانشجو برای پروندهٔ خود)."""
+    """بایگانی پروندهٔ فعلی و شروع دوباره از مرحلهٔ اول (مدیر/معاون یا دانشجو برای پروندهٔ خود)."""
+    from app.core.audit import AuditLogger
+    from app.core.user_roles import normalize_user_roles
+    from app.meta.process_override_policy import OVERRIDE_ROLES, user_can_override_process
+
     if not body.confirm:
         raise HTTPException(status_code=400, detail="برای شروع دوباره باید تأیید صریح بدهید.")
 
@@ -1733,8 +1778,27 @@ async def restart_process_instance(
     if actor_role == "student":
         await _ensure_student_owns_instance(db, current_user, inst)
         is_own_instance = True
-    elif actor_role not in ("admin", "deputy_education", "staff"):
+    elif not user_can_override_process(current_user):
+        await AuditLogger(db).log(
+            action_type="override_denied",
+            actor_id=current_user.id,
+            actor_role=actor_role,
+            instance_id=inst.id,
+            process_code=inst.process_code,
+            details={"action": "restart", "reason_attempt": (body.reason or "")[:500]},
+        )
+        await db.flush()
         raise HTTPException(status_code=403, detail="شما مجوز شروع دوباره این فرایند را ندارید.")
+    else:
+        # نقش مؤثر برای موتور: یکی از OVERRIDE_ROLES (مثلاً اگر primary متفاوت باشد)
+        if actor_role not in OVERRIDE_ROLES:
+            for r in normalize_user_roles(current_user):
+                nr = _normalize_actor_role(r)
+                if nr in OVERRIDE_ROLES:
+                    actor_role = nr
+                    break
+            else:
+                actor_role = "admin"
 
     engine = StateMachineEngine(db)
     try:
@@ -1757,6 +1821,15 @@ async def restart_process_instance(
     except InstanceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except UnauthorizedError as e:
+        await AuditLogger(db).log(
+            action_type="override_denied",
+            actor_id=current_user.id,
+            actor_role=actor_role,
+            instance_id=inst.id,
+            process_code=inst.process_code,
+            details={"action": "restart", "detail": str(e)},
+        )
+        await db.flush()
         raise HTTPException(status_code=403, detail=str(e))
     except InvalidTransitionError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1935,9 +2008,9 @@ async def request_student_step_otp(
     phone = (current_user.phone or "").strip()
     if not phone:
         raise HTTPException(status_code=400, detail="شماره موبایل در پروفایل شما ثبت نشده است.")
-    from app.services.otp_service import request_otp as do_request
+    from app.services.otp_service import STEP_OTP_EXPIRY_SECONDS, request_otp as do_request
 
-    result = await do_request(db, phone)
+    result = await do_request(db, phone, expiry_seconds=STEP_OTP_EXPIRY_SECONDS)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error") or "ارسال کد ناموفق بود")
     return result
@@ -2112,6 +2185,14 @@ async def operator_update_selected_courses(
     ctx[audit_key] = edits[-30:]
 
     ctx = apply_register_to_context(ctx, form_state, {field_name: new_codes})
+    from app.services.tuition_installment_service import refresh_instance_tuition_context
+
+    ctx = await refresh_instance_tuition_context(
+        db,
+        instance.process_code,
+        current_state,
+        ctx,
+    )
     instance.context_data = ctx
     flag_modified(instance, "context_data")
     await db.flush()
@@ -2219,7 +2300,7 @@ async def register_operator_step_forms(
     actor_role = _normalize_actor_role(primary_role(current_user))
     for r in roles_list:
         if _portal_role_can_act_on_state(r, instance.process_code, state):
-            actor_role = r
+            actor_role = _normalize_actor_role(r)
             break
 
     raw_forms = get_process_forms(instance.process_code, state_code=state)
@@ -2238,6 +2319,7 @@ async def register_operator_step_forms(
         )
 
     from app.services.process_form_prefill import apply_pre_filled_fields
+    from app.services.semester_prep_service import PREP_PROCESS_CODES
 
     merged_ctx = await apply_pre_filled_fields(
         db,
@@ -2258,11 +2340,46 @@ async def register_operator_step_forms(
             detail="شما اجازهٔ ثبت فرم این مرحله را ندارید.",
         )
 
+    if (
+        state == "course_finalization"
+        and instance.process_code in PREP_PROCESS_CODES
+    ):
+        from app.services.semester_prep_service import (
+            _apply_course_finalization_prefill,
+            apply_course_finalization_form_save,
+        )
+
+        submitted_finalized = {
+            k: list(form_values[k])
+            for k in (
+                "courses_finalized_fall",
+                "courses_finalized_winter",
+                "courses_finalized",
+            )
+            if isinstance(form_values.get(k), list)
+        }
+        base_ctx = StateMachineEngine._as_mapping(instance.context_data)
+        combined = {**base_ctx, **form_values}
+        synced_ctx = _apply_course_finalization_prefill(
+            instance.process_code, state, combined
+        )
+        for key in (
+            "courses_finalized_fall",
+            "courses_finalized_winter",
+            "courses_finalized",
+        ):
+            if key in synced_ctx:
+                form_values[key] = synced_ctx[key]
+        # روز/ساعت ویرایش‌شده در فرم را نگه دار و به پیش‌نویس مرحلهٔ ۴ بنویس
+        form_values = apply_course_finalization_form_save(
+            instance.process_code,
+            {**base_ctx, **synced_ctx},
+            {**form_values, **submitted_finalized},
+        )
+
     ok, missing = validate_operator_step_forms(forms, form_values, instance.context_data or {})
     if not ok:
         raise HTTPException(status_code=400, detail={"error": "validation_failed", "missing": missing})
-
-    from app.services.semester_prep_service import PREP_PROCESS_CODES
 
     if (
         state == "calendar_entry"
@@ -2282,7 +2399,43 @@ async def register_operator_step_forms(
     ):
         _validate_semester_prep_interview_scheduling_form(form_values)
 
+    if (
+        state in ("course_list_creation", "course_list_review")
+        and instance.process_code in PREP_PROCESS_CODES
+    ):
+        from app.services.course_committee_roster_service import (
+            validate_semester_prep_course_table_rows,
+        )
+
+        table_keys = (
+            ("courses_fall", "courses_winter")
+            if state == "course_list_creation"
+            else ("courses",)
+        )
+        all_errors: list[str] = []
+        for key in table_keys:
+            rows = form_values.get(key)
+            if rows is None:
+                continue
+            errs = await validate_semester_prep_course_table_rows(db, rows)
+            all_errors.extend(errs)
+        if all_errors:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "roster_validation_failed",
+                    "missing": all_errors,
+                },
+            )
+
     sanitized = sanitize_operator_form_values(forms, form_values)
+    if (
+        state == "course_finalization"
+        and instance.process_code in PREP_PROCESS_CODES
+    ):
+        from app.services.semester_prep_service import merge_course_finalization_draft_writeback
+
+        sanitized = merge_course_finalization_draft_writeback(sanitized, form_values)
     from app.services.course_committee_roster_service import enrich_course_table_rows
 
     sanitized = await enrich_course_table_rows(db, forms, sanitized)
@@ -2627,11 +2780,18 @@ async def get_available_transitions(
 async def get_student_instances(
     student_id: str,
     is_completed: Optional[bool] = Query(None),
+    include_institute_prep: bool = Query(
+        False,
+        description=(
+            "اگر true باشد فقط نمونه‌های آماده‌سازی ترم برگردانده می‌شوند "
+            "(برای تب پرونده عملیاتی در ردیابی). در غیر این صورت آن‌ها حذف می‌شوند."
+        ),
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Get all process instances for a student."""
-    from app.core.resource_access import ensure_can_read_student
+    from app.core.resource_access import ensure_can_read_student, normalize_role
 
     await ensure_can_read_student(db, current_user, uuid.UUID(student_id))
     stmt = select(ProcessInstance).where(
@@ -2644,15 +2804,18 @@ async def get_student_instances(
     result = await db.execute(stmt)
     instances = result.scalars().all()
 
-    from app.core.resource_access import normalize_role, student_for_user
     from app.services.semester_prep_service import PREP_PROCESS_CODES
 
-    # فرایندهای سطح مؤسسه (آماده‌سازی ترم) روی پروندهٔ anchor فنی ذخیره می‌شوند؛
-    # در پنل آموزشی دانشجو واقعی نمایش داده نشوند.
-    if normalize_role(current_user.role) == "student":
-        own = await student_for_user(db, current_user)
-        if own is not None and own.id == uuid.UUID(student_id):
-            instances = [i for i in instances if i.process_code not in PREP_PROCESS_CODES]
+    if include_institute_prep:
+        if normalize_role(current_user.role) == "student":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="دسترسی به نمونه‌های آماده‌سازی ترم برای دانشجو مجاز نیست.",
+            )
+        instances = [i for i in instances if i.process_code in PREP_PROCESS_CODES]
+    else:
+        # آماده‌سازی ترم سطح مؤسسه است؛ با دانشجویان واقعی قاطی نشود.
+        instances = [i for i in instances if i.process_code not in PREP_PROCESS_CODES]
 
     def _list_item(i: ProcessInstance) -> dict:
         item = {

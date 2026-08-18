@@ -205,7 +205,6 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
             emptyLabel={isMarketing && !isWinter ? 'ثبت نشده' : null}
           />
           {(ctx.registration_interview_fee_rial != null
-            || ctx.registration_tuition_invoice_toman != null
             || ctx.start_therapy_first_session_fee_rial != null
             || ctx.extra_session_fee_rial != null
             || ctx.default_therapy_session_fee_toman != null) && (
@@ -214,14 +213,6 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
                 سایر پیش‌فرض‌های پرداخت
               </div>
               <Row label="مصاحبه ثبت‌نام (پشتیبان)" value={fmtRialDisplay(ctx.registration_interview_fee_rial)} />
-              <Row
-                label="فاکتور ثبت‌نام (پشتیبان، تومان)"
-                value={
-                  ctx.registration_tuition_invoice_toman != null
-                    ? Number(ctx.registration_tuition_invoice_toman).toLocaleString('fa-IR')
-                    : null
-                }
-              />
               <Row label="اولین جلسه درمان" value={fmtRialDisplay(ctx.start_therapy_first_session_fee_rial)} />
               <Row label="جلسه اضافه درمان" value={fmtRialDisplay(ctx.extra_session_fee_rial)} />
               <Row
@@ -229,22 +220,6 @@ export default function FallSemesterPrepReadonlySummary({ currentState, contextD
                 value={
                   ctx.default_therapy_session_fee_toman != null
                     ? Number(ctx.default_therapy_session_fee_toman).toLocaleString('fa-IR')
-                    : null
-                }
-              />
-              <Row
-                label="جلسه کلاس (تومان)"
-                value={
-                  ctx.class_session_fee_toman != null && Number(ctx.class_session_fee_toman) > 0
-                    ? Number(ctx.class_session_fee_toman).toLocaleString('fa-IR')
-                    : null
-                }
-              />
-              <Row
-                label="جلسه دوره (تومان)"
-                value={
-                  ctx.course_session_fee_toman != null && Number(ctx.course_session_fee_toman) > 0
-                    ? Number(ctx.course_session_fee_toman).toLocaleString('fa-IR')
                     : null
                 }
               />

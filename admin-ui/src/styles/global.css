@@ -276,7 +276,7 @@ input, select, textarea { font-family: inherit; }
 .notification-bell-dropdown {
   display: flex;
   flex-direction: column;
-  max-height: min(70vh, 420px);
+  max-height: min(78vh, 520px);
   background: var(--surface, #fff);
   color: var(--text, #0f172a);
   border: 1px solid var(--border);
@@ -287,16 +287,94 @@ input, select, textarea { font-family: inherit; }
 
 /* خارج از گرهٔ والد؛ موقعیت با JS + fixed تا overflow-x/layout بریده نکند */
 .notification-bell-dropdown--portal {
-  max-height: min(75vh, 440px);
+  max-height: min(82vh, 540px);
   box-sizing: border-box;
 }
 
 .notification-bell-dropdown-head {
-  padding: 0.65rem 1rem;
+  padding: 0.65rem 1rem 0.45rem;
   font-weight: 700;
   font-size: 0.88rem;
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.notification-bell-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem 0.55rem;
   border-bottom: 1px solid var(--border);
   background: rgba(59, 130, 246, 0.06);
+}
+
+.notification-bell-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: inherit;
+  line-height: 1.3;
+}
+
+.notification-bell-tab--active {
+  background: var(--primary, #2563eb);
+  border-color: var(--primary, #2563eb);
+  color: #fff;
+}
+
+.notification-bell-tab--actions.notification-bell-tab--active {
+  background: #d97706;
+  border-color: #d97706;
+}
+
+.notification-bell-tab--popup.notification-bell-tab--active {
+  background: var(--primary, #2563eb);
+  border-color: var(--primary, #2563eb);
+}
+
+.notification-bell-tab--system.notification-bell-tab--active {
+  background: #0f766e;
+  border-color: #0f766e;
+}
+
+.notification-bell-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.notification-bell-tab--active .notification-bell-tab-count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.notification-bell-section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  margin-right: 0.35rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  background: rgba(15, 23, 42, 0.08);
+  color: inherit;
+  vertical-align: middle;
 }
 
 .notification-bell-dropdown-foot {
@@ -346,8 +424,36 @@ input, select, textarea { font-family: inherit; }
   letter-spacing: 0.01em;
 }
 
+.notification-bell-section--actions .notification-bell-section {
+  background: transparent;
+}
+
+.notification-bell-section--actions > .notification-bell-section {
+  border-top: 1px dashed rgba(148, 163, 184, 0.45);
+}
+
+.notification-bell-section--actions > .notification-bell-section:first-of-type {
+  border-top: none;
+}
+
 .notification-bell-section--actions .notification-bell-section-title {
   color: #b45309;
+}
+
+.notification-bell-section--group-interview .notification-bell-section-title {
+  color: #7c3aed;
+}
+
+.notification-bell-section--group-assignment .notification-bell-section-title {
+  color: #4338ca;
+}
+
+.notification-bell-section--group-semester .notification-bell-section-title {
+  color: #c2410c;
+}
+
+.notification-bell-section--group-alert .notification-bell-section-title {
+  color: #b91c1c;
 }
 
 .notification-bell-section--messages .notification-bell-section-title,
@@ -430,6 +536,26 @@ button.notification-bell-item {
 .notification-bell-action-badge {
   background: rgba(245, 158, 11, 0.18);
   color: #b45309;
+}
+
+.notification-bell-action-badge--interview {
+  background: rgba(124, 58, 237, 0.14);
+  color: #7c3aed;
+}
+
+.notification-bell-action-badge--assignment {
+  background: rgba(67, 56, 202, 0.12);
+  color: #4338ca;
+}
+
+.notification-bell-action-badge--semester {
+  background: rgba(194, 65, 12, 0.12);
+  color: #c2410c;
+}
+
+.notification-bell-action-badge--alert {
+  background: rgba(185, 28, 28, 0.12);
+  color: #b91c1c;
 }
 
 .notification-bell-flash-badge,
@@ -7252,6 +7378,19 @@ button.link-like {
   color: #1e293b;
 }
 
+/* دکمه outline روی پنل سفید فرم — غلبه بر .quest-card .btn-outline (متن روشن) */
+.quest-card .quest-forms-wrap .psf-card .btn-outline {
+  color: #3730a3 !important;
+  border-color: #a5b4fc !important;
+  background: #ffffff !important;
+}
+
+.quest-card .quest-forms-wrap .psf-card .btn-outline:hover:not(:disabled) {
+  background: #eef2ff !important;
+  border-color: #818cf8 !important;
+  color: #312e81 !important;
+}
+
 .quest-forms-wrap .psf-card .psf-note,
 .quest-forms-wrap .psf-card .psf-hint {
   color: #475569;
@@ -8547,6 +8686,43 @@ select.psf-input:focus {
   .doc-review-card {
     grid-template-columns: 1fr;
   }
+}
+
+.doc-review-done-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.15rem;
+  border-radius: 12px;
+  border-right: 4px solid #15803d;
+  background: #ecfdf5;
+  color: #14532d;
+}
+
+.doc-review-done-banner.is-rejected {
+  border-right-color: #b45309;
+  background: #fffbeb;
+  color: #78350f;
+}
+
+.doc-review-done-banner__body {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.doc-review-done-banner__title {
+  font-weight: 700;
+  font-size: 0.98rem;
+  margin-bottom: 0.3rem;
+}
+
+.doc-review-done-banner p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.7;
 }
 
 /* Lightbox */

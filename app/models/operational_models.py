@@ -272,6 +272,10 @@ class FinancialRecord(Base):
     description_fa = Column(String(500), nullable=True)
     reference_id = Column(UUID, nullable=True)  # linked therapy_session or process_instance
     shamsi_year = Column(Integer, nullable=True)
+    # therapy | supervision | tuition | other — SOP wallet separation
+    ledger_category = Column(String(30), nullable=False, default="other", server_default="other")
+    # pending | posted | null — دفتر رسمی خارجی (نمایشی)
+    accounting_status = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     created_by = Column(UUID, ForeignKey("users.id"), nullable=True)
 

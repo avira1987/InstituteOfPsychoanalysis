@@ -1,64 +1,536 @@
 {
-  "version": "1.0",
-  "description_fa": "فهرست دروس قابل انتخاب در آماده‌سازی ترم",
+  "version": "1.1",
+  "description_fa": "کاتالوگ دروس برنامه آموزشی — واحد، ترم، پیش‌نیاز و ساعت کلاس از جداول SOP «درس‌های ترم‌ها». شهریه = تعداد واحد × هزینه هر واحد.",
   "courses": [
-    {
-      "value": "theory_inheritance",
-      "label_fa": "تئوری وراثت",
-      "track": "analytic_psychotherapy"
-    },
     {
       "value": "theory_psychoanalysis_1",
       "label_fa": "تئوری روانکاوی ۱",
-      "track": "film_observation_1_3_continuous"
-    },
-    {
-      "value": "theory_psychoanalysis_2",
-      "label_fa": "تئوری روانکاوی ۲",
-      "track": "analytic_psychotherapy"
-    },
-    {
-      "value": "theory_psychoanalysis_3",
-      "label_fa": "تئوری روانکاوی ۳",
-      "track": "analytic_psychotherapy"
-    },
-    {
-      "value": "theory_psychoanalysis_4",
-      "label_fa": "تئوری روانکاوی ۴",
-      "track": "analytic_psychotherapy"
-    },
-    {
-      "value": "theory_psychoanalysis_5",
-      "label_fa": "تئوری روانکاوی ۵",
-      "track": "technique_theory_1_3"
+      "subtitle_fa": "اصول بنیادین در روانکاوی",
+      "aliases": [
+        "تئوری روانکاوی (1)",
+        "تئوری روانکاوی (1): اصول بنیادین در روانکاوی"
+      ],
+      "track": "analytic_psychotherapy",
+      "program_kind": "introductory",
+      "curriculum_term": 1,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
     },
     {
       "value": "theory_technique_1",
       "label_fa": "تئوری تکنیک‌ها ۱",
-      "track": "technique_theory_1_3"
+      "aliases": [
+        "تئوری تکنیک (1)",
+        "تئوری تکنیک 1"
+      ],
+      "track": "technique_theory_1_3",
+      "program_kind": "introductory",
+      "curriculum_term": 1,
+      "units": 3,
+      "class_hours": "2:15",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
+    },
+    {
+      "value": "skills_practice_1",
+      "label_fa": "تکنیک (1): تمرین مهارت‌های اولیه",
+      "aliases": [
+        "تکنیک (1): تمرین مهارتهای اولیه",
+        "تکنیک 1"
+      ],
+      "track": "skills_practice",
+      "program_kind": "introductory",
+      "curriculum_term": 1,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": false,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال (۳۲ تستی-مفهومی و ۵۰ عملی)",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
+    },
+    {
+      "value": "film_observation_continuous",
+      "label_fa": "مشاهده فیلم‌های مستمر یک درمان تحلیلی",
+      "aliases": [
+        "مشاهده فیلمهای مستمر یک درمان تحلیلی"
+      ],
+      "track": "film_observation_1_3_continuous",
+      "program_kind": "introductory",
+      "curriculum_term": 1,
+      "units": 3,
+      "class_hours": "2:15",
+      "retake_exam": false,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره گزارش",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
+    },
+    {
+      "value": "film_observation_1",
+      "label_fa": "مشاهده فیلم‌های درمانی (1)",
+      "aliases": [
+        "مشاهده فیلم های درمانی (1)",
+        "مشاهده فیلمهای درمانی (1)"
+      ],
+      "track": "film_observation_1_3_continuous",
+      "program_kind": "introductory",
+      "curriculum_term": 1,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره گزارش",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
+    },
+    {
+      "value": "theory_psychoanalysis_2",
+      "label_fa": "تئوری روانکاوی ۲",
+      "subtitle_fa": "رشد عاطفی و تئوری‌های دلبستگی",
+      "aliases": [
+        "تئوری روانکاوی (2)",
+        "تئوری روانکاوی (2): رشد عاطفی و تئوری های دلبستگی"
+      ],
+      "track": "analytic_psychotherapy",
+      "program_kind": "introductory",
+      "curriculum_term": 2,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
     },
     {
       "value": "theory_technique_2",
       "label_fa": "تئوری تکنیک‌ها ۲",
-      "track": "technique_theory_1_3"
+      "aliases": [
+        "تئوری تکنیک (2)"
+      ],
+      "track": "technique_theory_1_3",
+      "program_kind": "introductory",
+      "curriculum_term": 2,
+      "units": 3,
+      "class_hours": "2:15",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
+    },
+    {
+      "value": "skills_practice_2",
+      "label_fa": "تکنیک (2): تمرین مهارت‌های اولیه",
+      "aliases": [
+        "تکنیک (2): تمرین مهارتهای اولیه"
+      ],
+      "track": "skills_practice",
+      "program_kind": "introductory",
+      "curriculum_term": 2,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": false,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال (۳۲ تستی-مفهومی و ۵۰ عملی)",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
+    },
+    {
+      "value": "clinical_case_conference",
+      "label_fa": "کنفرانس کیس بالینی",
+      "track": "practical_applied",
+      "program_kind": "introductory",
+      "curriculum_term": 2,
+      "units": 3,
+      "class_hours": "2:15",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره گزارش",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
+    },
+    {
+      "value": "film_observation_2",
+      "label_fa": "مشاهده فیلم‌های درمانی (2)",
+      "aliases": [
+        "مشاهده فیلم های درمانی (2)"
+      ],
+      "track": "film_observation_1_3_continuous",
+      "program_kind": "introductory",
+      "curriculum_term": 2,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره گزارش",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
+    },
+    {
+      "value": "theory_psychoanalysis_3",
+      "label_fa": "تئوری روانکاوی ۳",
+      "subtitle_fa": "کلاین و وینیکات",
+      "aliases": [
+        "تئوری روانکاوی (3)",
+        "تئوری روانکاوی (3): کلاین و وینیکات"
+      ],
+      "track": "analytic_psychotherapy",
+      "program_kind": "comprehensive",
+      "curriculum_term": 3,
+      "units": 3,
+      "class_hours": "2:15",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
     },
     {
       "value": "theory_technique_3",
       "label_fa": "تئوری تکنیک‌ها ۳",
-      "track": "technique_theory_1_3"
+      "aliases": [
+        "تئوری تکنیک (3)",
+        "تئوری تکنیک3)"
+      ],
+      "track": "technique_theory_1_3",
+      "program_kind": "comprehensive",
+      "curriculum_term": 3,
+      "units": 4,
+      "class_hours": "",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
+      "prerequisite_codes": [
+        "theory_technique_1",
+        "theory_technique_2",
+        "skills_practice_1",
+        "skills_practice_2"
+      ],
+      "prerequisite_notes": "تئوری تکنیک (1) و (2) / تکنیک (1) و (2): تمرین مهارت‌های اولیه"
     },
     {
-      "value": "course_تست",
-      "label_fa": "تست",
-      "track": "film_observation_1_3_continuous"
+      "value": "professional_ethics_heal",
+      "label_fa": "اخلاق و قوانین حرفه‌ای و HEAL",
+      "aliases": [
+        "اخلاق و قوانین حرفه ای و HEAL"
+      ],
+      "track": "analytic_psychotherapy",
+      "program_kind": "comprehensive",
+      "curriculum_term": 3,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": false,
+      "evaluation_fa": "۸ نمره حضور و غیاب، امتحان فاینال",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "ندارد"
     },
     {
-      "value": "course_درس_آزمایشی",
-      "label_fa": "درس آزمایشی"
+      "value": "film_observation_3",
+      "label_fa": "مشاهده فیلم‌های درمانی (3)",
+      "aliases": [
+        "مشاهده فیلمهای درمانی (3)"
+      ],
+      "track": "film_observation_1_3_continuous",
+      "program_kind": "comprehensive",
+      "curriculum_term": 4,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره گزارش",
+      "prerequisite_codes": [
+        "theory_technique_1",
+        "theory_technique_2",
+        "theory_technique_3",
+        "skills_practice_1",
+        "skills_practice_2",
+        "skills_practice_3"
+      ],
+      "prerequisite_notes": "تئوری تکنیک (1) تا (3) / تکنیک (1) تا (3)"
     },
     {
-      "value": "course_درس_تستی_جدید",
-      "label_fa": "درس تستی جدید"
+      "value": "skills_practice_3",
+      "label_fa": "تکنیک (3): تمرین مهارت‌های پیشرفته 1",
+      "aliases": [
+        "تکنیک3): تمرین مهارتهای پیشرفته 1",
+        "تکنیک (3): تمرین مهارتهای پیشرفته 1"
+      ],
+      "track": "skills_practice",
+      "program_kind": "comprehensive",
+      "curriculum_term": 4,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": false,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال (۳۲ تستی-مفهومی و ۵۰ عملی)",
+      "prerequisite_codes": [
+        "skills_practice_1",
+        "skills_practice_2"
+      ],
+      "prerequisite_notes": "تمرین مهارت‌های اولیه 1 و تکنیک (2)"
+    },
+    {
+      "value": "theory_psychoanalysis_4",
+      "label_fa": "تئوری روانکاوی ۴",
+      "subtitle_fa": "کوهات و روانشناسی خویشتن",
+      "aliases": [
+        "تئوری روانکاوی (4)",
+        "تئوری روانکاوی (4): کوهات و روانشناسی خویشتن"
+      ],
+      "track": "analytic_psychotherapy",
+      "program_kind": "comprehensive",
+      "curriculum_term": 5,
+      "units": 3,
+      "class_hours": "",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
+      "prerequisite_codes": [
+        "theory_psychoanalysis_1",
+        "theory_psychoanalysis_2",
+        "theory_psychoanalysis_3"
+      ],
+      "prerequisite_notes": "تئوری روانکاوی (1) تا (3)، شروع انترنی"
+    },
+    {
+      "value": "group_supervision_1",
+      "label_fa": "سوپرویژن گروهی (1)",
+      "track": "group_supervision",
+      "program_kind": "comprehensive",
+      "curriculum_term": 5,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": false,
+      "evaluation_fa": "تکمیل ۱۴ جلسه کلاس یا ۲۷ ساعت کلاس",
+      "prerequisite_codes": [
+        "theory_technique_1",
+        "theory_technique_2",
+        "theory_technique_3",
+        "skills_practice_1",
+        "skills_practice_2",
+        "skills_practice_3",
+        "film_observation_continuous"
+      ],
+      "prerequisite_notes": "شروع انترنی، تئوری تکنیک (1) تا (3) / تکنیک (1) تا (3)، مشاهده فیلم‌های مستمر"
+    },
+    {
+      "value": "theory_psychoanalysis_5",
+      "label_fa": "تئوری روانکاوی ۵",
+      "subtitle_fa": "مقالات معاصر",
+      "aliases": [
+        "تئوری روانکاوی (5)",
+        "تئوری روانکاوی5): مقالات معاصر"
+      ],
+      "track": "analytic_psychotherapy",
+      "program_kind": "comprehensive",
+      "curriculum_term": 6,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
+      "prerequisite_codes": [
+        "theory_psychoanalysis_1",
+        "theory_psychoanalysis_2",
+        "theory_psychoanalysis_3",
+        "theory_psychoanalysis_4"
+      ],
+      "prerequisite_notes": "تئوری روانکاوی (1) تا (4)"
+    },
+    {
+      "value": "group_supervision_2",
+      "label_fa": "سوپرویژن گروهی (2)",
+      "track": "group_supervision",
+      "program_kind": "comprehensive",
+      "curriculum_term": 6,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": true,
+      "evaluation_fa": "تکمیل ۱۴ جلسه کلاس یا ۲۷ ساعت کلاس",
+      "prerequisite_codes": [
+        "group_supervision_1",
+        "theory_technique_1",
+        "theory_technique_2",
+        "theory_technique_3",
+        "theory_psychoanalysis_4",
+        "skills_practice_1",
+        "skills_practice_2",
+        "skills_practice_3",
+        "film_observation_continuous"
+      ],
+      "prerequisite_notes": "سوپرویژن گروهی (1)، تئوری تکنیک (1) تا (3)، تئوری روانکاوی (4)، تکنیک (1) تا (3)، خاتمه ۵۰ ساعت سوپرویژن فردی، مشاهده فیلم‌های مستمر"
+    },
+    {
+      "value": "skills_practice_4",
+      "label_fa": "تکنیک (4): تمرین مهارت‌های پیشرفته 2",
+      "aliases": [
+        "تکنیک4): تمرین مهارتهای پیشرفته 2"
+      ],
+      "track": "skills_practice",
+      "program_kind": "comprehensive",
+      "curriculum_term": 6,
+      "units": 3,
+      "class_hours": "2:15",
+      "retake_exam": false,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال (۵۰ تستی-مفهومی و ۳۲ عملی)",
+      "prerequisite_codes": [
+        "theory_psychoanalysis_4",
+        "skills_practice_1",
+        "skills_practice_2",
+        "skills_practice_3"
+      ],
+      "prerequisite_notes": "تئوری روانکاوی (4)، تکنیک (1) تا (3)"
+    },
+    {
+      "value": "early_termination_of_treatment",
+      "label_fa": "خاتمه زودرس درمان",
+      "track": "practical_applied",
+      "program_kind": "comprehensive",
+      "curriculum_term": 7,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره گزارش",
+      "prerequisite_codes": [
+        "skills_practice_1",
+        "skills_practice_2",
+        "skills_practice_3",
+        "skills_practice_4",
+        "theory_technique_1",
+        "theory_technique_2",
+        "theory_technique_3",
+        "film_observation_continuous",
+        "theory_psychoanalysis_4"
+      ],
+      "prerequisite_notes": "تکنیک (1) تا (4)، تئوری تکنیک (1) تا (3)، مشاهده فیلم‌های مستمر، خاتمه ۵۰ ساعت سوپرویژن فردی، تئوری روانکاوی (4)"
+    },
+    {
+      "value": "live_supervision",
+      "label_fa": "سوپرویژن زنده / بررسی جزئیات تکنیک تحلیلی",
+      "aliases": [
+        "سوپرویژن زنده/بررسی جزئیات تکنیک تحلیلی"
+      ],
+      "track": "live_supervision",
+      "program_kind": "comprehensive",
+      "curriculum_term": 7,
+      "units": 4,
+      "class_hours": "",
+      "retake_exam": true,
+      "evaluation_fa": "تکمیل ۳ جلسه درمانی تحت سوپرویژن زنده با نمره حداقل B و پیاده‌سازی؛ مشاهده ۳/۶/۹ جلسه سوپرویژن زنده دیگر دانش‌پژوهان",
+      "prerequisite_codes": [
+        "skills_practice_1",
+        "skills_practice_2",
+        "skills_practice_3",
+        "skills_practice_4",
+        "theory_technique_1",
+        "theory_technique_2",
+        "theory_technique_3",
+        "film_observation_1",
+        "film_observation_2",
+        "film_observation_3",
+        "film_observation_continuous"
+      ],
+      "prerequisite_notes": "تکنیک (1) تا (4)، تئوری تکنیک (1) تا (3)، انتقال، مشاهده فیلم‌های درمانی 1 تا 3 و مستمر، ۵۰۰ ساعت تجربه بالینی"
+    },
+    {
+      "value": "case_report_writing",
+      "label_fa": "مقاله‌نویسی",
+      "aliases": [
+        "مقاله نویسی",
+        "مقاله نویسی جهت گزارش موردی"
+      ],
+      "track": "thesis_writing",
+      "program_kind": "comprehensive",
+      "curriculum_term": 7,
+      "units": 3,
+      "class_hours": "2:15",
+      "retake_exam": true,
+      "evaluation_fa": "در صورت عدم تکمیل گزارش یک ترم دیگر وقت دارد؛ پس از ۲ ترم اخطار آموزشی",
+      "prerequisite_codes": [],
+      "prerequisite_notes": "۵۰۰ ساعت تجربه بالینی + انتخاب بیماری که حداقل ۵۰ جلسه درمانی گذرانده باشد"
+    },
+    {
+      "value": "borderline_difficult_patients",
+      "label_fa": "اختلالات مرزی و بیماران سخت: تشخیص و درمان",
+      "track": "analytic_psychotherapy",
+      "program_kind": "comprehensive",
+      "curriculum_term": 7,
+      "units": 3,
+      "class_hours": "2:15",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
+      "prerequisite_codes": [
+        "theory_psychoanalysis_1",
+        "theory_psychoanalysis_2"
+      ],
+      "prerequisite_notes": "تئوری روانکاوی (1) و (2)، شروع انترنی"
+    },
+    {
+      "value": "countertransference",
+      "label_fa": "انتقال متقابل",
+      "track": "practical_applied",
+      "program_kind": "comprehensive",
+      "curriculum_term": 8,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره گزارش",
+      "prerequisite_codes": [
+        "skills_practice_1",
+        "skills_practice_2",
+        "skills_practice_3",
+        "skills_practice_4",
+        "theory_technique_1",
+        "theory_technique_2",
+        "theory_technique_3",
+        "film_observation_continuous",
+        "theory_psychoanalysis_4"
+      ],
+      "prerequisite_notes": "تکنیک (1) تا (4)، تئوری تکنیک (1) تا (3)، انتقال مشاهده فیلم‌های مستمر، ۵۰۰ ساعت تجربه بالینی، تئوری روانکاوی (4)"
+    },
+    {
+      "value": "group_supervision_3",
+      "label_fa": "سوپرویژن گروهی (3)",
+      "track": "group_supervision",
+      "program_kind": "comprehensive",
+      "curriculum_term": 8,
+      "units": 2,
+      "class_hours": "1:30",
+      "retake_exam": true,
+      "evaluation_fa": "تکمیل ۱۸ جلسه کلاس یا ۲۷ ساعت کلاس",
+      "prerequisite_codes": [
+        "group_supervision_1",
+        "group_supervision_2",
+        "theory_technique_1",
+        "theory_technique_2",
+        "theory_technique_3",
+        "theory_psychoanalysis_4"
+      ],
+      "prerequisite_notes": "سوپرویژن گروهی (1) و (2)، تئوری تکنیک (1) تا (3)، تئوری روانکاوی (4)، تکنیک (1) تا (3)، خاتمه ۵۰ ساعت سوپرویژن فردی"
+    },
+    {
+      "value": "live_therapy_observation",
+      "label_fa": "مشاهده زنده درمان",
+      "track": "live_therapy_observation",
+      "program_kind": "comprehensive",
+      "curriculum_term": 8,
+      "units": 3,
+      "class_hours": "2:15",
+      "retake_exam": true,
+      "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره گزارش",
+      "prerequisite_codes": [
+        "group_supervision_1",
+        "group_supervision_2",
+        "theory_technique_1",
+        "theory_technique_2",
+        "theory_technique_3",
+        "theory_psychoanalysis_4",
+        "countertransference",
+        "skills_practice_1",
+        "skills_practice_2",
+        "skills_practice_3",
+        "skills_practice_4"
+      ],
+      "prerequisite_notes": "سوپرویژن گروهی (1) و (2)، تئوری تکنیک (1) تا (3)، تئوری روانکاوی (4)، انتقال، تکنیک (1) تا (4)، ۵۰۰ ساعت تجربه بالینی و ۱۰۰ ساعت سوپرویژن فردی"
+    },
+    {
+      "value": "theory_inheritance",
+      "label_fa": "تئوری وراثت",
+      "track": "analytic_psychotherapy"
     }
   ]
 }

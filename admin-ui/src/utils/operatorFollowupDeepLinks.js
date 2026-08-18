@@ -127,12 +127,21 @@ export function getOperatorFollowupDestination(item) {
       }
     }
     if (
-      ['tuition_entry', 'license_check', 'interviewer_assignment'].includes(stateCode) &&
+      ['tuition_entry', 'license_check'].includes(stateCode) &&
       DEPUTY_PREP_ROLES.has(code)
     ) {
       return {
         href: workbenchHref(processCode),
         hintFa: 'مرحلهٔ آماده‌سازی — معاون آموزش',
+      }
+    }
+    if (
+      ['interviewer_assignment', 'interview_scheduling'].includes(stateCode) &&
+      (code === 'staff' || code === 'internal_manager')
+    ) {
+      return {
+        href: workbenchHref(processCode),
+        hintFa: 'مصاحبه‌ها — مدیر داخلی',
       }
     }
     if (
@@ -144,16 +153,13 @@ export function getOperatorFollowupDestination(item) {
         hintFa: 'مرحلهٔ آماده‌سازی — کمیته دروس',
       }
     }
-    if (stateCode === 'marketing_campaign' && (code === 'admissions_officer' || code === 'admission_officer')) {
+    if (
+      stateCode === 'marketing_campaign' &&
+      (code === 'admissions_officer' || code === 'admission_officer' || code === 'staff' || code === 'internal_manager')
+    ) {
       return {
         href: workbenchHref(processCode),
         hintFa: 'شروع کمپین بازاریابی پذیرش',
-      }
-    }
-    if (stateCode === 'interview_scheduling' && code === 'staff' && SEMESTER_PREP_CODES.has(processCode)) {
-      return {
-        href: workbenchHref(processCode),
-        hintFa: 'زمان‌بندی و ثبت اسلات‌های مصاحبه — مدیر داخلی',
       }
     }
     if (SEMESTER_PREP_CODES.has(processCode) && stateCode && stateCode !== 'published') {

@@ -13,12 +13,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_password_hash
+from app.core.user_roles import apply_roles_to_user
 from app.models.operational_models import Student, User
+from app.operator_named_users_seed import ensure_operator_named_users
 from app.website_staff_seed import ensure_staff_employees
 
 ADMIN_PASSWORD = "admin123"
 DEFAULT_PASSWORD = "demo123"
 
+# نقش‌هایی که حساب {role}1 می‌گیرند (به‌جز admin)
 SUPPORTED_ROLES: list[str] = [
     "admin",
     "student",
@@ -35,7 +38,29 @@ SUPPORTED_ROLES: list[str] = [
     "therapy_committee_chair",
     "deputy_education",
     "course_committee",
+    "instructor",
+    "educational_instructor",
+    "teaching_assistant",
+    "assistant_faculty",
+    "therapy_education_coordinator",
+    "reference_center",
+    "marketing",
 ]
+
+# نقش‌هایی که فقط از طریق alias / حساب واحد پوشش داده می‌شوند (بدون {role}1 جدا)
+_MERGED_ROLE_ALIASES_FOR_LOGIN = frozenset({
+    "monitoring_committee_officer",
+    "progress_committee_project",
+    "progress_committee_scientific",
+    "therapy_committee_executor",
+    "course_committee_executive",
+    "course_committee_scientific",
+    "scientific_officer_course_committee",
+    "deputy_education_director",
+    "admissions_officer",
+    "internal_manager",
+    "faculty_1",
+})
 
 # نام کاربری قدیمی / نام نقش → حساب واحد
 _LOGIN_USERNAME_ALIASES: dict[str, str] = {
@@ -53,6 +78,14 @@ _LOGIN_USERNAME_ALIASES: dict[str, str] = {
     "scientific_officer_course_committee1": "course_committee1",
     "course_committee_scientific": "course_committee1",
     "course_committee_scientific1": "course_committee1",
+    "staf1": "staff1",
+    "dakheli": "dakheli1",
+    "internal_manager": "dakheli1",
+    "internal_manager1": "dakheli1",
+    "admissions_officer": "demo_admissions",
+    "admissions_officer1": "demo_admissions",
+    "deputy_education_director": "deputy_education1",
+    "deputy_education_director1": "deputy_education1",
 }
 
 _LEGACY_UNIFIED_USERNAMES: tuple[str, ...] = (
@@ -85,14 +118,32 @@ _MULTI_ROLES_BY_PRIMARY: dict[str, list[str]] = {
         "scientific_officer_course_committee",
         "course_committee_scientific",
     ],
+    "deputy_education": [
+        "deputy_education",
+        "deputy_education_director",
+    ],
 }
 
-# کاربران اضافه فقط برای actor_id در ترنزیشن‌های مصاحبه/پذیرش (نقش User = staff)
-EXTRA_SCENARIO_USERS: list[tuple[str, str]] = [
-    ("demo_interviewer", "مصاحبه‌گر دمو (سناریوها)"),
-    ("demo_admissions", "مسئول پذیرش دمو (سناریوها)"),
-    ("demo_applicant", "متقاضی دمو — سناریوهای ثبت‌نام آشنایی"),
+# کاربران اضافهٔ سناریو: (username, full_name_fa, primary_role, extra_roles)
+EXTRA_SCENARIO_USERS: list[tuple[str, str, str, tuple[str, ...]]] = [
+    ("demo_interviewer", "مصاحبه‌گر دمو (سناریوها)", "interviewer", ()),
+    (
+        "demo_admissions",
+        "مسئول پذیرش دمو (سناریوها)",
+        "staff",
+        ("admissions_officer",),
+    ),
+    ("demo_applicant", "متقاضی دمو — سناریوهای ثبت‌نام آشنایی", "staff", ()),
 ]
+
+# موبایل ثابت برای ورود/اعلان دمو (با seed آماده‌سازی ترم هم‌خوان است)
+_DEMO_OPERATOR_PHONES: dict[str, str] = {
+    "deputy_education1": "09121000001",
+    "staff1": "09121000002",
+    "site_manager1": "09121000003",
+    "demo_admissions": "09121000004",
+    "course_committee1": "09121000005",
+}
 
 
 def _username_for_role(role: str) -> str:
@@ -127,45 +178,84 @@ class DemoActors(NamedTuple):
 
 DEMO_ROLE_NAMES_FA: dict[str, str] = {
     "deputy_education": "معاون آموزش (دمو)",
+    "instructor": "مدرس (دمو)",
+    "educational_instructor": "مدرس آموزشی (دمو)",
+    "teaching_assistant": "کمک‌مدرس (دمو)",
+    "assistant_faculty": "دستیار آموزشی (دمو)",
+    "therapy_education_coordinator": "هماهنگ‌کننده آموزش درمان (دمو)",
+    "reference_center": "مرکز مرجع (دمو)",
+    "marketing": "مارکتینگ (دمو)",
 }
+
+
+async def _email_taken_by_other(
+    db: AsyncSession, email: str, user_id: uuid.UUID | None
+) -> bool:
+    result = await db.execute(select(User).where(User.email == email))
+    owner = result.scalars().first()
+    if not owner:
+        return False
+    return user_id is None or owner.id != user_id
+
+
+async def _upsert_demo_user(
+    db: AsyncSession,
+    *,
+    username: str,
+    full_name_fa: str,
+    role: str,
+    roles_list: list[str],
+    password: str,
+) -> User:
+    """ایجاد یا بازنشانی حساب دمو با نقش و رمز مشخص."""
+    desired_email = _email_for_username(username)
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalars().first()
+    hashed = get_password_hash(password)
+    phone = _DEMO_OPERATOR_PHONES.get(username)
+    if user:
+        apply_roles_to_user(user, roles_list, primary=role)
+        user.full_name_fa = full_name_fa
+        user.hashed_password = hashed
+        user.portal_password_plain = None
+        user.is_active = True
+        if not await _email_taken_by_other(db, desired_email, user.id):
+            user.email = desired_email
+        if phone:
+            user.phone = phone
+        return user
+    email = None if await _email_taken_by_other(db, desired_email, None) else desired_email
+    user = User(
+        id=uuid.uuid4(),
+        username=username,
+        email=email,
+        hashed_password=hashed,
+        portal_password_plain=None,
+        full_name_fa=full_name_fa,
+        is_active=True,
+        phone=phone,
+    )
+    apply_roles_to_user(user, roles_list, primary=role)
+    db.add(user)
+    await db.flush()
+    return user
 
 
 async def ensure_demo_role_users(db: AsyncSession) -> None:
     """ایجاد/به‌روزرسانی کاربران دمو برای همهٔ نقش‌ها + سه کاربر سناریو."""
     for role in SUPPORTED_ROLES:
         username = _username_for_role(role)
-        email = _email_for_username(username)
         full_name_fa = DEMO_ROLE_NAMES_FA.get(role, f"کاربر دمو ({role})")
         password = ADMIN_PASSWORD if role == "admin" else DEFAULT_PASSWORD
-
-        result = await db.execute(select(User).where(User.username == username))
-        user = result.scalars().first()
-
-        # کمیته پیشرفت / نظارت: نقش‌های ادغام‌شده روی همان حساب واحد
         roles_list = _MULTI_ROLES_BY_PRIMARY.get(role, [role])
-
-        if user:
-            user.email = email
-            user.full_name_fa = full_name_fa
-            user.role = role
-            user.roles = roles_list
-            user.hashed_password = get_password_hash(password)
-            user.portal_password_plain = None
-            user.is_active = True
-        else:
-            user = User(
-                id=uuid.uuid4(),
-                username=username,
-                email=email,
-                hashed_password=get_password_hash(password),
-                portal_password_plain=None,
-                full_name_fa=full_name_fa,
-                role=role,
-                roles=roles_list,
-                is_active=True,
-            )
-            db.add(user)
-            await db.flush()
+        user = await _upsert_demo_user(
+            db,
+            username=username,
+            full_name_fa=full_name_fa,
+            role=role,
+            roles_list=roles_list,
+            password=password,
+        )
 
         if role == "student":
             r2 = await db.execute(select(Student).where(Student.user_id == user.id))
@@ -184,29 +274,16 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
                 )
                 db.add(student)
 
-    for username, full_name_fa in EXTRA_SCENARIO_USERS:
-        email = _email_for_username(username)
-        result = await db.execute(select(User).where(User.username == username))
-        user = result.scalars().first()
-        if user:
-            user.email = email
-            user.full_name_fa = full_name_fa
-            user.role = "staff"
-            user.hashed_password = get_password_hash(DEFAULT_PASSWORD)
-            user.portal_password_plain = None
-            user.is_active = True
-        else:
-            user = User(
-                id=uuid.uuid4(),
-                username=username,
-                email=email,
-                hashed_password=get_password_hash(DEFAULT_PASSWORD),
-                portal_password_plain=None,
-                full_name_fa=full_name_fa,
-                role="staff",
-                is_active=True,
-            )
-            db.add(user)
+    for username, full_name_fa, primary_role, extra_roles in EXTRA_SCENARIO_USERS:
+        roles_list = [primary_role, *extra_roles]
+        await _upsert_demo_user(
+            db,
+            username=username,
+            full_name_fa=full_name_fa,
+            role=primary_role,
+            roles_list=roles_list,
+            password=DEFAULT_PASSWORD,
+        )
 
     for legacy_username in _LEGACY_UNIFIED_USERNAMES:
         result = await db.execute(select(User).where(User.username == legacy_username))
@@ -215,6 +292,7 @@ async def ensure_demo_role_users(db: AsyncSession) -> None:
             legacy.is_active = False
 
     await ensure_staff_employees(db, password=DEFAULT_PASSWORD)
+    await ensure_operator_named_users(db, password=DEFAULT_PASSWORD)
 
     await db.commit()
 

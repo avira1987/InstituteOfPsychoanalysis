@@ -4,22 +4,28 @@ export function semesterPrepStepReadinessHint(currentState, readiness) {
   const byKey = Object.fromEntries((readiness.items || []).map((i) => [i.key, i]))
 
   if (
-    (currentState === 'course_list_creation' || currentState === 'course_list_review' || currentState === 'course_finalization') &&
+    (currentState === 'course_list_creation' || currentState === 'course_list_review') &&
     !byKey.course_catalog?.complete
   ) {
-    return 'کاتالوگ دروس هنوز خالی است — می‌توانید از همین فرم درس جدید بسازید یا از صفحهٔ آمادگی پیش‌نیازها کاتالوگ را پر کنید.'
+    return 'کاتالوگ دروس هنوز خالی است — می‌توانید در همین جدول درس جدید بسازید، یا از صفحهٔ آمادگی پیش‌نیازها کاتالوگ را پر کنید.'
   }
   if (
-    (currentState === 'course_list_creation' || currentState === 'course_list_review' || currentState === 'course_finalization') &&
+    (currentState === 'course_list_creation' || currentState === 'course_list_review') &&
     !byKey.course_roster?.complete
   ) {
-    return 'روستر مدرسین ناقص است — می‌توانید نام مدرس/کمک‌مدرس را در جدول تایپ کنید یا از صفحهٔ آمادگی پیش‌نیازها چارت را تکمیل کنید.'
+    return 'روستر مدرسین ناقص است — می‌توانید در همین جدول مدرس یا کمک‌مدرس جدید بسازید، یا از صفحهٔ آمادگی پیش‌نیازها چارت را تکمیل کنید.'
+  }
+  if (currentState === 'course_finalization' && !byKey.course_catalog?.complete) {
+    return 'کاتالوگ دروس هنوز خالی است — ابتدا از صفحهٔ آمادگی پیش‌نیازها یا مرحلهٔ لیست دروس کاتالوگ را پر کنید.'
+  }
+  if (currentState === 'course_finalization' && !byKey.course_roster?.complete) {
+    return 'روستر مدرسین ناقص است — ابتدا از صفحهٔ آمادگی پیش‌نیازها یا مرحلهٔ لیست دروس چارت را تکمیل کنید.'
   }
   if (currentState === 'interviewer_assignment' && !byKey.interviewers?.complete) {
-    return 'مصاحبه‌گرها از میان کارمندان اتوماسیون انتخاب می‌شوند — اگر کارمند موردنظر در فهرست نیست، ابتدا کاربر او را در مدیریت کاربران بسازید.'
+    return 'مصاحبه‌گر فعالی در استخر پیش‌آماده‌سازی نیست — ابتدا در صفحهٔ آمادگی پیش‌نیازها مصاحبه‌گر اضافه کنید.'
   }
   if (currentState === 'license_check' && !byKey.license?.complete) {
-    return 'وضعیت پروانه هنوز ثبت نشده — وضعیت را بررسی و در همین مرحله ثبت کنید تا در فرم پذیرش منعکس شود.'
+    return 'وضعیت پروانه هنوز ثبت نشده — وضعیت را بررسی و در همین مرحله ثبت کنید تا در فرم پذیرش منعکس شود. ویرایش بعدی شماره از صفحهٔ پیش‌نیازها هم ممکن است.'
   }
   return null
 }

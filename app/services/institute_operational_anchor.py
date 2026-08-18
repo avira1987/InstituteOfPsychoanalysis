@@ -52,12 +52,15 @@ def is_institute_operational_student_payload(
 
 def anchor_public_info(student: Student) -> dict[str, Any]:
     """Compact descriptor for admin semester-prep UI."""
+    from app.services.institute_activity_license_service import activity_license_from_extra
+
     return {
         "student_id": str(student.id),
         "student_code": student.student_code,
         "label_fa": ANCHOR_LABEL_FA,
         "description_fa": ANCHOR_DESCRIPTION_FA,
         "is_system": True,
+        "activity_license_number": activity_license_from_extra(student.extra_data),
     }
 
 

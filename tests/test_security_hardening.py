@@ -55,6 +55,26 @@ def test_production_guards_pass_safe_config():
     validate_production_settings(s)
 
 
+def test_production_guards_allow_intentional_public_otp_signup():
+    s = Settings(
+        DEBUG=False,
+        SECRET_KEY="x" * 40,
+        PAYMENT_PROVIDER="zibal",
+        ZIBAL_MERCHANT="merchant",
+        SMS_PROVIDER="mellipayamak",
+        CORS_ALLOW_ORIGINS="https://lms.psychoanalysis.ir",
+        OTP_RESTRICT_TO_STUDENT_PHONES=False,
+        ALLOW_PUBLIC_OTP_SIGNUP=True,
+        SMS_SIMULATION_UI=False,
+        SEED_DEMO_ON_STARTUP=False,
+        ALLOW_DEMO_SEED=False,
+        FLOW_THROUGH_SEED_ENABLED=False,
+        OTP_SHOW_CODE_IN_UI=False,
+        PAYMENT_TEST_BYPASS=False,
+    )
+    validate_production_settings(s)
+
+
 def test_sanitize_blog_strips_script():
     dirty = '<p>ok</p><script>alert(1)</script><a href="javascript:alert(1)">x</a>'
     clean = sanitize_blog_html(dirty)

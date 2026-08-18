@@ -318,6 +318,17 @@ async def load_fall_prep_context_field(
     return None
 
 
+def _resolve_operator_or_roster_course_table(existing: Any, roster_rows: list) -> list:
+    """اگر اپراتور جدول را ذخیره کرده، همان را نگه دار تا افزودن/حذف پایدار بماند."""
+    from app.services.course_committee_roster_service import merge_course_table_rows_with_roster
+
+    if isinstance(existing, list):
+        return _humanize_course_table_tracks(existing)
+    return _humanize_course_table_tracks(
+        merge_course_table_rows_with_roster(existing, roster_rows)
+    )
+
+
 def _is_effectively_empty_course_table(rows: Any) -> bool:
     """جدول دروس خالی است یا فقط ردیف placeholder (بدون نام درس) دارد."""
     if not isinstance(rows, list) or not rows:
@@ -328,27 +339,299 @@ def _is_effectively_empty_course_table(rows: Any) -> bool:
     return True
 
 
+def _course_row_match_key(row: dict[str, Any]) -> tuple[str, str, str]:
+    code = str(row.get("course_code") or "").strip().lower()
+    name = str(row.get("course_name") or "").strip().lower()
+    track = str(row.get("track_code") or row.get("track") or "").strip().lower()
+    return (code, name, track)
+
+
+def _find_matching_finalized_row(
+    new_row: dict[str, Any],
+    existing_rows: list[dict[str, Any]],
+    used: set[int],
+) -> Optional[int]:
+    code, name, track = _course_row_match_key(new_row)
+    if code:
+        for i, old in enumerate(existing_rows):
+            if i in used:
+                continue
+            old_code = str(old.get("course_code") or "").strip().lower()
+            if old_code and old_code == code:
+                return i
+    if name:
+        for i, old in enumerate(existing_rows):
+            if i in used:
+                continue
+            old_name = str(old.get("course_name") or "").strip().lower()
+            if not old_name or old_name != name:
+                continue
+            old_track = str(old.get("track_code") or old.get("track") or "").strip().lower()
+            if track and old_track and track != old_track:
+                continue
+            return i
+    return None
+
+
+def _overlay_step5_fields(
+    built_row: dict[str, Any],
+    existing_row: dict[str, Any],
+) -> dict[str, Any]:
+    """مکان کلاس و هماهنگی با مدرس را از ردیف قبلی مرحلهٔ ۵ نگه می‌دارد."""
+    out = dict(built_row)
+    loc = existing_row.get("classroom_location")
+    if loc not in (None, ""):
+        out["classroom_location"] = loc
+    if existing_row.get("instructor_coordinated"):
+        out["instructor_coordinated"] = True
+    return out
+
+
+def _apply_submitted_day_time_to_finalized(
+    synced_rows: Any,
+    submitted_rows: Any,
+) -> list[dict[str, Any]]:
+    """روز/ساعت ارسال‌شده در فرم مرحلهٔ ۵ را روی ردیف‌های هم‌تراز جدول نهایی نگه می‌دارد."""
+    base = [dict(r) for r in (synced_rows or []) if isinstance(r, dict)]
+    submitted = [r for r in (submitted_rows or []) if isinstance(r, dict)]
+    if not base or not submitted:
+        return base
+    used: set[int] = set()
+    out: list[dict[str, Any]] = []
+    for row in base:
+        idx = _find_matching_finalized_row(row, submitted, used)
+        if idx is None:
+            out.append(row)
+            continue
+        used.add(idx)
+        src = submitted[idx]
+        merged = dict(row)
+        if src.get("day") not in (None, ""):
+            merged["day"] = src.get("day")
+        if src.get("time") not in (None, ""):
+            merged["time"] = src.get("time")
+        # مکان و تیک هماهنگی هم از فرم ارسال‌شده اولویت دارند
+        if "classroom_location" in src:
+            merged["classroom_location"] = src.get("classroom_location") or ""
+        if "instructor_coordinated" in src:
+            merged["instructor_coordinated"] = bool(src.get("instructor_coordinated"))
+        out.append(merged)
+    return out
+
+
+def _write_finalized_hours_back_to_draft(
+    draft_rows: Any,
+    finalized_rows: Any,
+) -> Optional[list[dict[str, Any]]]:
+    """روز/ساعت نهایی مرحلهٔ ۵ را به proposed_day/proposed_time پیش‌نویس مرحلهٔ ۴ برمی‌گرداند."""
+    if not isinstance(draft_rows, list) or not draft_rows:
+        return None
+    finals = [r for r in (finalized_rows or []) if isinstance(r, dict)]
+    if not finals:
+        return None
+    used: set[int] = set()
+    out: list[dict[str, Any]] = []
+    changed = False
+    for row in draft_rows:
+        if not isinstance(row, dict):
+            out.append(row)
+            continue
+        next_row = dict(row)
+        idx = _find_matching_finalized_row(next_row, finals, used)
+        if idx is not None:
+            used.add(idx)
+            fin = finals[idx]
+            day = fin.get("day")
+            time_val = fin.get("time")
+            if day not in (None, "") and next_row.get("proposed_day") != day:
+                next_row["proposed_day"] = day
+                changed = True
+            if time_val not in (None, "") and next_row.get("proposed_time") != time_val:
+                next_row["proposed_time"] = time_val
+                changed = True
+            # همگام‌سازی فیلدهای day/time اگر در پیش‌نویس هم وجود داشته باشند
+            if day not in (None, "") and next_row.get("day") not in (None, "") and next_row.get("day") != day:
+                next_row["day"] = day
+                changed = True
+            if time_val not in (None, "") and next_row.get("time") not in (None, "") and next_row.get("time") != time_val:
+                next_row["time"] = time_val
+                changed = True
+        out.append(next_row)
+    return out if changed else None
+
+
+def apply_course_finalization_form_save(
+    process_code: str,
+    context_data: dict[str, Any],
+    form_values: dict[str, Any],
+) -> dict[str, Any]:
+    """پس از prefill مرحلهٔ ۵: روز/ساعت فرم را نگه دار و به پیش‌نویس مرحلهٔ ۴ بنویس.
+
+    ورود به مرحلهٔ ۵ همچنان از پیش‌نویس ۴ می‌خواند؛ این تابع فقط مسیر *ذخیره* است
+    تا ویرایش روز/ساعت در مرحلهٔ ۵ از بین نرود و در برگشت به ۴ دیده شود.
+    """
+    out = dict(form_values or {})
+    ctx = dict(context_data or {})
+
+    if process_code == FALL_PREP:
+        pairs = (
+            ("courses_finalized_fall", "courses_fall"),
+            ("courses_finalized_winter", "courses_winter"),
+        )
+        for final_name, draft_name in pairs:
+            submitted = out.get(final_name)
+            synced = ctx.get(final_name)
+            if isinstance(submitted, list) and isinstance(synced, list):
+                out[final_name] = _apply_submitted_day_time_to_finalized(synced, submitted)
+            elif isinstance(submitted, list):
+                out[final_name] = submitted
+            draft_key = draft_name
+            draft = ctx.get(draft_name)
+            if not isinstance(draft, list) and draft_name == "courses_fall":
+                legacy = ctx.get("courses")
+                if isinstance(legacy, list):
+                    draft = legacy
+                    draft_key = "courses"
+            written = _write_finalized_hours_back_to_draft(draft, out.get(final_name))
+            if written is not None:
+                out[draft_key] = written
+        return out
+
+    if process_code == WINTER_PREP:
+        submitted = out.get("courses_finalized")
+        synced = ctx.get("courses_finalized")
+        if isinstance(submitted, list) and isinstance(synced, list):
+            out["courses_finalized"] = _apply_submitted_day_time_to_finalized(synced, submitted)
+        elif isinstance(submitted, list):
+            out["courses_finalized"] = submitted
+        written = _write_finalized_hours_back_to_draft(ctx.get("courses"), out.get("courses_finalized"))
+        if written is not None:
+            out["courses"] = written
+    return out
+
+
+COURSE_FINALIZATION_DRAFT_KEYS = ("courses_fall", "courses_winter", "courses")
+
+
+def merge_course_finalization_draft_writeback(
+    sanitized: dict[str, Any],
+    form_values: dict[str, Any],
+) -> dict[str, Any]:
+    """کلیدهای پیش‌نویس مرحلهٔ ۴ را بعد از sanitize فرم مرحلهٔ ۵ برگردان.
+
+    فرم مرحلهٔ ۵ فقط جدول نهایی دارد؛ بدون این ادغام، نوشتن روز/ساعت به
+    ``courses_fall`` / ``courses_winter`` هنگام ثبت از بین می‌رود.
+    """
+    out = dict(sanitized or {})
+    for key in COURSE_FINALIZATION_DRAFT_KEYS:
+        rows = (form_values or {}).get(key)
+        if isinstance(rows, list):
+            out[key] = rows
+    return out
+
+
+def _sync_courses_finalized_from_draft(
+    draft: Any,
+    existing: Any,
+) -> Optional[list[dict[str, Any]]]:
+    """جدول نهایی را از لیست/ساعات مرحلهٔ ۴ می‌سازد و فیلدهای اختصاصی مرحلهٔ ۵ را حفظ می‌کند."""
+    built = _build_courses_finalized_from_draft(draft)
+    if not built:
+        return None
+    existing_rows = [r for r in (existing or []) if isinstance(r, dict)]
+    if not existing_rows:
+        return built
+    used: set[int] = set()
+    out: list[dict[str, Any]] = []
+    for new_row in built:
+        idx = _find_matching_finalized_row(new_row, existing_rows, used)
+        if idx is None:
+            out.append(new_row)
+            continue
+        used.add(idx)
+        out.append(_overlay_step5_fields(new_row, existing_rows[idx]))
+    return out
+
+
 def _build_courses_finalized_from_draft(courses: Any) -> Optional[list[dict[str, Any]]]:
     """لیست دروس مرحلهٔ ۴ را برای جدول نهایی‌سازی (مرحلهٔ ۵) نگاشت می‌کند."""
+    from app.services.course_committee_roster_service import (
+        catalog_units_for_course,
+        resolve_track_display_fa,
+    )
+
     if not isinstance(courses, list) or not courses:
         return None
     rows: list[dict[str, Any]] = []
     for row in courses:
         if not isinstance(row, dict):
             continue
-        rows.append(
-            {
-                "course_name": row.get("course_name") or "",
-                "track": row.get("track") or "",
-                "day": row.get("proposed_day") or row.get("day") or "",
-                "time": row.get("proposed_time") or row.get("time") or "",
-                "instructor": row.get("instructor") or "",
-                "teaching_assistant": row.get("teaching_assistant") or "",
-                "classroom_location": row.get("classroom_location") or "",
-                "instructor_coordinated": bool(row.get("instructor_coordinated")),
-            }
-        )
+        course_name = str(row.get("course_name") or "").strip()
+        if not course_name:
+            continue
+        raw_track = str(row.get("track") or "").strip()
+        track_fa = resolve_track_display_fa(raw_track) if raw_track else ""
+        out_row: dict[str, Any] = {
+            "course_name": course_name,
+            "track": track_fa or raw_track,
+            "day": row.get("proposed_day") or row.get("day") or "",
+            "time": row.get("proposed_time") or row.get("time") or "",
+            "instructor": row.get("instructor") or "",
+            "teaching_assistant": row.get("teaching_assistant") or "",
+            "classroom_location": row.get("classroom_location") or "",
+            "instructor_coordinated": bool(row.get("instructor_coordinated")),
+        }
+        if row.get("track_code"):
+            out_row["track_code"] = row.get("track_code")
+        elif raw_track and track_fa and track_fa != raw_track:
+            out_row["track_code"] = raw_track
+        if row.get("course_code"):
+            out_row["course_code"] = row.get("course_code")
+        if row.get("instructor_id"):
+            out_row["instructor_id"] = row.get("instructor_id")
+        if row.get("teaching_assistant_id"):
+            out_row["teaching_assistant_id"] = row.get("teaching_assistant_id")
+        raw_units = row.get("units")
+        units = None
+        if raw_units not in (None, ""):
+            try:
+                units = int(raw_units)
+            except (TypeError, ValueError):
+                units = None
+        if not units or units < 1:
+            units = catalog_units_for_course(
+                str(row.get("course_code") or course_name or ""),
+                default=1,
+            )
+        if units and units > 0:
+            out_row["units"] = units
+        rows.append(out_row)
     return rows or None
+
+
+def _humanize_course_table_tracks(rows: Any) -> Any:
+    """تبدیل کد فنی رسته به برچسب فارسی در ردیف‌های جدول (نمایش اپراتور)."""
+    from app.services.course_committee_roster_service import resolve_track_display_fa
+
+    if not isinstance(rows, list):
+        return rows
+    out: list[Any] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            out.append(row)
+            continue
+        r = dict(row)
+        raw_track = str(r.get("track") or "").strip()
+        if raw_track:
+            track_fa = resolve_track_display_fa(raw_track)
+            if track_fa and track_fa != raw_track:
+                if not r.get("track_code"):
+                    r["track_code"] = raw_track
+                r["track"] = track_fa
+            elif track_fa:
+                r["track"] = track_fa
+        out.append(r)
+    return out
 
 
 def _apply_course_finalization_prefill(
@@ -356,7 +639,12 @@ def _apply_course_finalization_prefill(
     state_code: str,
     context_data: dict[str, Any],
 ) -> dict[str, Any]:
-    """پیش‌پر جدول نهایی از لیست دروس همان نمونه (مرحلهٔ ۴ → ۵)."""
+    """جدول نهایی مرحلهٔ ۵ را همیشه از لیست دروس و ساعات مرحلهٔ ۴ می‌خواند.
+
+    اگر جدول نهایی از قبل پر باشد (مثلاً پس از ویرایش مجدد مرحلهٔ ۴)، باز هم
+    نام درس/روز/ساعت/مدرس از پیش‌نویس به‌روز می‌شود؛ فقط مکان کلاس و هماهنگی
+    با مدرس برای ردیف‌های منطبق حفظ می‌گردد.
+    """
     out = dict(context_data or {})
     if process_code == FALL_PREP and state_code == "course_finalization":
         pairs = (
@@ -364,20 +652,103 @@ def _apply_course_finalization_prefill(
             ("courses_finalized_winter", "courses_winter"),
         )
         for final_name, draft_name in pairs:
-            if not _is_effectively_empty_course_table(out.get(final_name)):
-                continue
             draft = out.get(draft_name)
             if not draft and draft_name == "courses_fall":
                 draft = out.get("courses")
-            built = _build_courses_finalized_from_draft(draft)
-            if built:
-                out[final_name] = built
+            if _is_effectively_empty_course_table(draft):
+                if not _is_effectively_empty_course_table(out.get(final_name)):
+                    out[final_name] = _humanize_course_table_tracks(out.get(final_name))
+                continue
+            synced = _sync_courses_finalized_from_draft(draft, out.get(final_name))
+            if synced:
+                out[final_name] = synced
     if process_code == WINTER_PREP and state_code == "course_finalization":
-        if _is_effectively_empty_course_table(out.get("courses_finalized")):
-            draft = out.get("courses")
-            built = _build_courses_finalized_from_draft(draft)
-            if built:
-                out["courses_finalized"] = built
+        draft = out.get("courses")
+        if _is_effectively_empty_course_table(draft):
+            if not _is_effectively_empty_course_table(out.get("courses_finalized")):
+                out["courses_finalized"] = _humanize_course_table_tracks(
+                    out.get("courses_finalized")
+                )
+        else:
+            synced = _sync_courses_finalized_from_draft(draft, out.get("courses_finalized"))
+            if synced:
+                out["courses_finalized"] = synced
+    return out
+
+
+def _prefill_course_table_from_sop_or_roster(
+    existing: Any,
+    roster_rows: list,
+    *,
+    curriculum_term: int,
+) -> list:
+    """اگر جدول هنوز ذخیره نشده از برنامه SOP ترم پر کن؛ لیست ذخیره‌شدهٔ اپراتور بماند."""
+    from app.services.course_committee_roster_service import build_sop_curriculum_draft_rows
+
+    if isinstance(existing, list):
+        return _humanize_course_table_tracks(existing)
+    sop_rows = build_sop_curriculum_draft_rows(curriculum_term)
+    if sop_rows:
+        # مدرس/کمک‌مدرس را در صورت وجود در چارت روی ردیف‌های SOP بنشان
+        by_course: dict[str, dict[str, Any]] = {}
+        for r in roster_rows:
+            if not isinstance(r, dict):
+                continue
+            key = str(r.get("course_code") or r.get("course_name") or "").strip()
+            if key and key not in by_course:
+                by_course[key] = r
+            lab = str(r.get("course_name") or "").strip()
+            if lab and lab not in by_course:
+                by_course[lab] = r
+        enriched: list[dict[str, Any]] = []
+        for row in sop_rows:
+            merged = dict(row)
+            hit = by_course.get(str(row.get("course_code") or "").strip()) or by_course.get(
+                str(row.get("course_name") or "").strip()
+            )
+            if hit:
+                for k in (
+                    "instructor",
+                    "instructor_id",
+                    "teaching_assistant",
+                    "teaching_assistant_id",
+                    "proposed_day",
+                    "proposed_time",
+                ):
+                    if hit.get(k) not in (None, "") and merged.get(k) in (None, ""):
+                        merged[k] = hit.get(k)
+            enriched.append(merged)
+        return _humanize_course_table_tracks(enriched)
+    return _resolve_operator_or_roster_course_table(existing, roster_rows)
+
+
+async def _sync_course_tables_from_roster(
+    db: AsyncSession,
+    process_code: str,
+    state_code: str,
+    out: dict[str, Any],
+) -> dict[str, Any]:
+    """جدول لیست دروس: اگر اپراتور ذخیره کرده همان بماند؛ وگرنه از SOP/چارت پیش‌پر شود."""
+    from app.services.course_committee_roster_service import (
+        build_course_table_rows_from_roster,
+    )
+
+    roster_states = {"course_list_creation", "course_list_review"}
+    if state_code not in roster_states:
+        return out
+
+    roster_rows = await build_course_table_rows_from_roster(db)
+    if process_code == FALL_PREP and state_code == "course_list_creation":
+        out["courses_fall"] = _prefill_course_table_from_sop_or_roster(
+            out.get("courses_fall"), roster_rows, curriculum_term=1
+        )
+        out["courses_winter"] = _prefill_course_table_from_sop_or_roster(
+            out.get("courses_winter"), roster_rows, curriculum_term=2
+        )
+    elif process_code == WINTER_PREP and state_code == "course_list_review":
+        out["courses"] = _prefill_course_table_from_sop_or_roster(
+            out.get("courses"), roster_rows, curriculum_term=2
+        )
     return out
 
 
@@ -390,8 +761,8 @@ async def apply_pre_filled_fields(
     """Merge pre_filled_from field values into context for operator forms."""
     from app.meta.process_forms import get_process_forms
     from app.services.financial_program_defaults_service import (
-        OTHER_PAYMENT_DEFAULT_KEYS,
         PREP_FINANCIAL_FORM_KEYS,
+        PREP_OTHER_PAYMENT_KEYS,
         TERM_TUITION_KEYS,
         get_effective_financial_program_defaults,
     )
@@ -410,12 +781,13 @@ async def apply_pre_filled_fields(
             if value is not None:
                 out[name] = value
 
+    out = await _sync_course_tables_from_roster(db, process_code, state_code, out)
+
     # پیش‌پر شهریه و سایر پیش‌فرض‌های پرداخت از داشبورد مالی (منبع مشترک)
     if process_code == FALL_PREP and state_code == "tuition_entry":
         needs = [k for k in PREP_FINANCIAL_FORM_KEYS if out.get(k) in (None, "", [])]
         if needs:
             fd = await get_effective_financial_program_defaults(db)
-            optional_zero = {"class_session_fee_toman", "course_session_fee_toman"}
             for key in needs:
                 raw = fd.get(key)
                 if raw is None:
@@ -423,10 +795,6 @@ async def apply_pre_filled_fields(
                 try:
                     num = float(raw)
                 except (TypeError, ValueError):
-                    continue
-                if key in optional_zero:
-                    if num > 0:
-                        out[key] = num
                     continue
                 if key in TERM_TUITION_KEYS or key in (
                     "registration_interview_fee_rial",
@@ -436,8 +804,15 @@ async def apply_pre_filled_fields(
                     if int(num) >= 1000:
                         out[key] = int(round(num))
                     continue
-                if key in OTHER_PAYMENT_DEFAULT_KEYS and num > 0:
+                if key in PREP_OTHER_PAYMENT_KEYS and num > 0:
                     out[key] = num
+
+    # شماره پروانه فعلی انستیتو — منبع مشترک با فرم پذیرش
+    if process_code in PREP_PROCESS_CODES and state_code == "license_check":
+        from app.services.institute_activity_license_service import get_activity_license_number
+
+        current = await get_activity_license_number(db)
+        out["current_license_number"] = current or ""
     return out
 
 

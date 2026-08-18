@@ -428,3 +428,99 @@ async def test_student_instances_hide_institute_semester_prep(
     codes = {item["process_code"] for item in r.json().get("instances") or []}
     assert "fall_semester_preparation" not in codes
     assert "session_payment" in codes
+
+
+@pytest.mark.asyncio
+async def test_admin_student_instances_hide_institute_semester_prep(
+    db_session: AsyncSession,
+    sample_student,
+    sample_student_user,
+    sample_user,
+    process_api_client: AsyncClient,
+):
+    """ادمین هم نباید آماده‌سازی ترم را در لیست نمونه‌های دانشجو ببیند."""
+    from app.services.institute_operational_anchor import ensure_institute_operational_student
+
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+    await load_process(db_session, processes_dir / "session_payment.json")
+    await db_session.commit()
+
+    anchor = await ensure_institute_operational_student(db_session)
+    engine = StateMachineEngine(db_session)
+    await engine.start_process(
+        process_code="fall_semester_preparation",
+        student_id=anchor.id,
+        actor_id=sample_user.id,
+        actor_role="admin",
+    )
+    await engine.start_process(
+        process_code="session_payment",
+        student_id=sample_student.id,
+        actor_id=sample_student_user.id,
+        actor_role="student",
+    )
+    await db_session.commit()
+
+    r_anchor = await process_api_client.get(
+        f"/api/process/instances/student/{anchor.id}"
+    )
+    assert r_anchor.status_code == 200
+    anchor_codes = {item["process_code"] for item in r_anchor.json().get("instances") or []}
+    assert "fall_semester_preparation" not in anchor_codes
+
+    r_student = await process_api_client.get(
+        f"/api/process/instances/student/{sample_student.id}"
+    )
+    assert r_student.status_code == 200
+    student_codes = {item["process_code"] for item in r_student.json().get("instances") or []}
+    assert "fall_semester_preparation" not in student_codes
+    assert "session_payment" in student_codes
+
+
+@pytest.mark.asyncio
+async def test_admin_student_instances_include_institute_prep_flag(
+    db_session: AsyncSession,
+    sample_student,
+    sample_user,
+    process_api_client: AsyncClient,
+):
+    """با include_institute_prep=true فقط نمونه‌های آماده‌سازی ترم برگردانده می‌شوند."""
+    from app.services.institute_operational_anchor import ensure_institute_operational_student
+
+    processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+    await load_process(db_session, processes_dir / "session_payment.json")
+    await db_session.commit()
+
+    anchor = await ensure_institute_operational_student(db_session)
+    engine = StateMachineEngine(db_session)
+    await engine.start_process(
+        process_code="fall_semester_preparation",
+        student_id=anchor.id,
+        actor_id=sample_user.id,
+        actor_role="admin",
+    )
+    await engine.start_process(
+        process_code="session_payment",
+        student_id=sample_student.id,
+        actor_id=sample_user.id,
+        actor_role="admin",
+    )
+    await db_session.commit()
+
+    r = await process_api_client.get(
+        f"/api/process/instances/student/{anchor.id}",
+        params={"include_institute_prep": True},
+    )
+    assert r.status_code == 200
+    items = r.json().get("instances") or []
+    assert items
+    assert all(item["process_code"] == "fall_semester_preparation" for item in items)
+
+    r_student = await process_api_client.get(
+        f"/api/process/instances/student/{sample_student.id}",
+        params={"include_institute_prep": True},
+    )
+    assert r_student.status_code == 200
+    assert r_student.json().get("instances") == []

@@ -7,6 +7,7 @@
   "labels": {
     "admin": "مدیر سیستم",
     "staff": "کارمند دفتر",
+    "internal_manager": "مدیر داخلی",
     "finance": "اپراتور مالی",
     "therapist": "درمانگر",
     "supervisor": "سوپروایزر",

@@ -16,10 +16,16 @@ STAFF_LANE_IDS = ("admissions", "instruction", "content-ops", "therapy-coord", "
 
 STAFF_LANE_ROLES: dict[str, frozenset[str]] = {
     "admissions": frozenset({"admin", "staff", "interviewer"}),
-    "instruction": frozenset({"admin", "staff"}),
-    "content-ops": frozenset({"admin", "staff"}),
-    "therapy-coord": frozenset({"admin", "staff"}),
-    "course-committee": frozenset({"admin", "staff"}),
+    "instruction": frozenset({
+        "admin",
+        "staff",
+        "instructor",
+        "educational_instructor",
+        "teaching_assistant",
+    }),
+    "content-ops": frozenset({"admin", "staff", "reference_center", "marketing"}),
+    "therapy-coord": frozenset({"admin", "staff", "therapy_education_coordinator"}),
+    "course-committee": frozenset({"admin", "staff", "course_committee"}),
 }
 
 COMMITTEE_KIND_ROLES: dict[str, frozenset[str]] = {
@@ -65,8 +71,11 @@ _SHARED_PATH_ROLES: dict[str, frozenset[str]] = {
 
 
 def user_sees_nav_path(user_role: str, path: str) -> bool:
+    from app.core.user_roles import canonical_portal_role
+
     if not user_role:
         return False
+    user_role = canonical_portal_role(user_role) or user_role
     if user_role == "admin":
         return True
     if path in ADMIN_ONLY_PATHS:

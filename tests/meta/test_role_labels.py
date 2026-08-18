@@ -60,6 +60,7 @@ def test_all_process_assigned_roles_have_labels():
 
 def test_label_without_code():
     assert label_role_fa("staff", include_code=False) == "کارمند دفتر"
+    assert label_role_fa("internal_manager", include_code=False) == "مدیر داخلی"
 
 
 def test_format_role_forbidden_message():

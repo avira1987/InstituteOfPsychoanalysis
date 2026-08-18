@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { processExecApi } from '../services/api'
 import { resolveDeclineFollowupRows } from '../utils/termEndTranscriptRows'
+import { userHasAnyRole } from '../utils/userRoles'
 
 /**
  * Checklist پیگیری افت تحصیلی — فرایند ۳۲، state followup_in_progress.
@@ -118,7 +119,7 @@ export default function AcademicDeclineFollowupForm({
                   type="checkbox"
                   checked={!!row.followup_done}
                   onChange={() => toggleRow(idx)}
-                  disabled={busy || (user?.role !== 'admissions_officer' && user?.role !== 'admin' && user?.role !== 'staff')}
+                  disabled={busy || !userHasAnyRole(user, ['admissions_officer', 'admin', 'staff'])}
                   data-testid={`followup-done-${idx}`}
                 />
               </td>

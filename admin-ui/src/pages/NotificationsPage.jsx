@@ -8,31 +8,29 @@ import {
   PANEL_NOTIFICATIONS_CHANGED_EVENT,
   dispatchPanelNotificationsChanged,
 } from '../utils/panelNotifications'
+import {
+  ACTION_GROUPS,
+  BELL_TABS,
+  actionGroupMeta,
+  classifyNotifications,
+  flashCategory,
+  isFlashItem,
+  itemsForTab,
+  tabCount,
+} from '../utils/notificationCategories'
 
 const PAGE = 20
 
-const TABS = [
-  { id: 'all', label: 'همه' },
-  { id: 'actions', label: 'اعلان‌ها' },
-  { id: 'popup', label: 'پاپ‌آپ' },
-  { id: 'system', label: 'سیستم' },
-]
-
-function isFlashItem(it) {
-  return it?.kind === 'flash_message'
-}
-
-function flashCategory(it) {
-  return it?.category === 'system' ? 'system' : 'popup'
-}
-
 function ActionRow({ it, onDismiss }) {
+  const group = actionGroupMeta(it)
   return (
     <li className="notifications-page-row notifications-page-row--action">
       <div className="notifications-page-row-inner">
         <Link className="notifications-page-link" to={appendNotificationFollow(it.action_path || '/panel')}>
           <span className="notifications-page-title">
-            <span className="notification-bell-action-badge">اعلان</span>
+            <span className={`notification-bell-action-badge notification-bell-action-badge--${group.id}`}>
+              {group.label}
+            </span>
             {it.title_fa}
           </span>
           {it.summary_fa ? (
@@ -175,25 +173,13 @@ export default function NotificationsPage() {
     }
   }
 
-  const { actions, popups, systems } = useMemo(() => {
-    const acts = []
-    const pops = []
-    const sys = []
-    for (const it of items) {
-      if (!isFlashItem(it)) acts.push(it)
-      else if (flashCategory(it) === 'system') sys.push(it)
-      else pops.push(it)
-    }
-    return { actions: acts, popups: pops, systems: sys }
-  }, [items])
+  const classified = useMemo(() => classifyNotifications(items), [items])
+  const { actions, popups, systems, actionGroups } = classified
 
   const filteredItems = useMemo(() => {
-    if (tab === 'popup') return popups
-    if (tab === 'system') return systems
-    if (tab === 'actions') return actions
     if (tab === 'messages') return [...popups, ...systems]
-    return items
-  }, [items, tab, actions, popups, systems])
+    return itemsForTab(tab, classified, items)
+  }, [items, tab, classified, popups, systems])
 
   const setTab = (id) => {
     const next = new URLSearchParams(searchParams)
@@ -231,14 +217,28 @@ export default function NotificationsPage() {
     }
     return (
       <div className="notifications-page-sections">
-        <SectionBlock
-          ariaLabel="اعلان‌ها"
-          title="اعلان‌ها"
-          hint="کارهای نیازمند اقدام در کارتابل"
-          emptyText="اعلانی نیست."
-          items={actions}
-          renderRow={(it) => <ActionRow key={rowKey(it)} it={it} onDismiss={dismissItem} />}
-        />
+        {actions.length === 0 ? (
+          <SectionBlock
+            ariaLabel="اعلان‌ها"
+            title="اعلان‌ها"
+            hint="کارهای نیازمند اقدام در کارتابل"
+            emptyText="اعلانی نیست."
+            items={actions}
+            renderRow={(it) => <ActionRow key={rowKey(it)} it={it} onDismiss={dismissItem} />}
+          />
+        ) : (
+          ACTION_GROUPS.filter((g) => (actionGroups[g.id] || []).length > 0).map((g) => (
+            <SectionBlock
+              key={g.id}
+              ariaLabel={g.label}
+              title={g.label}
+              hint={g.hint}
+              emptyText=""
+              items={actionGroups[g.id]}
+              renderRow={(it) => <ActionRow key={rowKey(it)} it={it} onDismiss={dismissItem} />}
+            />
+          ))
+        )}
         <SectionBlock
           ariaLabel="پیام‌های پاپ‌آپ"
           title="پاپ‌آپ"
@@ -259,11 +259,9 @@ export default function NotificationsPage() {
     )
   }
 
-  const tabCount = (id) => {
-    if (id === 'actions' && actions.length > 0) return actions.length
-    if (id === 'popup' && popups.length > 0) return popups.length
-    if (id === 'system' && systems.length > 0) return systems.length
-    return null
+  const countForTab = (id) => {
+    const n = tabCount(id, classified)
+    return n > 0 ? n : null
   }
 
   return (
@@ -279,8 +277,8 @@ export default function NotificationsPage() {
       </div>
 
       <div className="notifications-page-tabs" role="tablist">
-        {TABS.map((t) => {
-          const count = tabCount(t.id)
+        {BELL_TABS.map((t) => {
+          const count = countForTab(t.id)
           return (
             <button
               key={t.id}
@@ -305,6 +303,26 @@ export default function NotificationsPage() {
 
       {tab === 'all' ? (
         renderAllSeparated()
+      ) : tab === 'actions' ? (
+        actions.length === 0 ? (
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <p className="muted" style={{ margin: 0 }}>{emptyMessage}</p>
+          </div>
+        ) : (
+          <div className="notifications-page-sections">
+            {ACTION_GROUPS.filter((g) => (actionGroups[g.id] || []).length > 0).map((g) => (
+              <SectionBlock
+                key={g.id}
+                ariaLabel={g.label}
+                title={g.label}
+                hint={g.hint}
+                emptyText=""
+                items={actionGroups[g.id]}
+                renderRow={(it) => <ActionRow key={rowKey(it)} it={it} onDismiss={dismissItem} />}
+              />
+            ))}
+          </div>
+        )
       ) : filteredItems.length === 0 ? (
         <div className="card" style={{ padding: '1.5rem' }}>
           <p className="muted" style={{ margin: 0 }}>{emptyMessage}</p>

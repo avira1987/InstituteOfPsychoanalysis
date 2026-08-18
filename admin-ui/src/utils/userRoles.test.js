@@ -18,3 +18,10 @@ test('userHasAnyRole matches membership', () => {
   assert.equal(userHasAnyRole(u, ['supervisor', 'finance']), true)
   assert.equal(userHasRole(u, 'finance', { adminBypass: false }), false)
 })
+
+test('faculty_1 implies interviewer and supervisor', () => {
+  const u = { role: 'faculty_1', roles: ['faculty_1'] }
+  assert.equal(userHasRole(u, 'interviewer', { adminBypass: false }), true)
+  assert.equal(userHasRole(u, 'supervisor', { adminBypass: false }), true)
+  assert.equal(userHasAnyRole(u, ['interviewer', 'staff'], { adminBypass: false }), true)
+})

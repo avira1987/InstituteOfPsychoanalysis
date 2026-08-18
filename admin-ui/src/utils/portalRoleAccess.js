@@ -1,4 +1,5 @@
 import portalRoleMap from '../../../metadata/portal_role_assigned_role_map.json' with { type: 'json' }
+import { canonicalPortalRole } from './userRoles'
 
 const TYPO_MAP = portalRoleMap.normalize_assigned_role_typo || {}
 
@@ -14,7 +15,8 @@ export function normalizeAssignedRole(code) {
  */
 export function resolveAssignedRolesForPortalRole(portalRole) {
   if (!portalRole) return []
-  const cfg = portalRoleMap.portal_roles?.[portalRole]
+  const lookup = canonicalPortalRole(portalRole) || portalRole
+  const cfg = portalRoleMap.portal_roles?.[lookup] || portalRoleMap.portal_roles?.[portalRole]
   if (!cfg) return []
   if (cfg.include_all_operator_assigned_roles) return null
   return (cfg.assigned_roles || []).map(normalizeAssignedRole)

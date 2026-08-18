@@ -5,10 +5,11 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import case, func, or_, select
@@ -202,6 +203,9 @@ async def finance_transactions(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     record_type: Optional[str] = Query(None, description="payment|credit|debt|absence_fee"),
+    ledger_category: Optional[str] = Query(
+        None, description="therapy|supervision|tuition|other"
+    ),
     q: Optional[str] = Query(None, description="کد دانشجو، نام، شرح"),
 ):
     """فهرست تراکنش‌ها با صفحه‌بندی و فیلتر برای بررسی روزمره."""
@@ -212,6 +216,8 @@ async def finance_transactions(
     )
     if record_type:
         base = base.where(FinancialRecord.record_type == record_type)
+    if ledger_category:
+        base = base.where(FinancialRecord.ledger_category == ledger_category)
     if q and q.strip():
         term = f"%{q.strip()}%"
         base = base.where(
@@ -244,6 +250,8 @@ async def finance_transactions(
                 "record_type": rec.record_type,
                 "amount": float(rec.amount),
                 "description_fa": rec.description_fa,
+                "ledger_category": getattr(rec, "ledger_category", None) or "other",
+                "accounting_status": getattr(rec, "accounting_status", None),
                 "shamsi_year": rec.shamsi_year,
                 "created_at": rec.created_at.isoformat() if rec.created_at else None,
             }
@@ -374,6 +382,93 @@ async def finance_student_balances(
         "pages": pages,
         "sort": sort,
         "only_debtors": only_debtors,
+    }
+
+
+@router.get("/tuition-vouchers")
+async def finance_tuition_vouchers(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("finance")),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    status: Optional[str] = Query(None, description="pending|posted"),
+):
+    """اسناد شهریه برای تطبیق با دفتر حسابداری (SOP)."""
+    base = (
+        select(FinancialRecord, Student.student_code, User.full_name_fa)
+        .join(Student, Student.id == FinancialRecord.student_id)
+        .join(User, User.id == Student.user_id)
+        .where(
+            or_(
+                FinancialRecord.ledger_category == "tuition",
+                FinancialRecord.description_fa.ilike("%شهریه ترم%"),
+            )
+        )
+    )
+    if status in ("pending", "posted"):
+        base = base.where(FinancialRecord.accounting_status == status)
+
+    count_stmt = select(func.count()).select_from(base.subquery())
+    total = int((await db.execute(count_stmt)).scalar() or 0)
+    offset = (page - 1) * page_size
+    stmt = base.order_by(FinancialRecord.created_at.desc()).offset(offset).limit(page_size)
+    rows = (await db.execute(stmt)).all()
+    items = []
+    for rec, code, name_fa in rows:
+        items.append(
+            {
+                "id": str(rec.id),
+                "student_code": code,
+                "student_name_fa": name_fa,
+                "amount": float(rec.amount),
+                "description_fa": rec.description_fa,
+                "ledger_category": getattr(rec, "ledger_category", None) or "tuition",
+                "accounting_status": getattr(rec, "accounting_status", None) or "pending",
+                "created_at": rec.created_at.isoformat() if rec.created_at else None,
+            }
+        )
+    pages = max(1, (total + page_size - 1) // page_size) if page_size else 1
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": pages,
+    }
+
+
+class TuitionVoucherStatusPatch(BaseModel):
+    accounting_status: str = Field(..., pattern="^(pending|posted)$")
+
+
+@router.patch("/tuition-vouchers/{record_id}")
+async def finance_patch_tuition_voucher(
+    record_id: str,
+    body: TuitionVoucherStatusPatch,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("finance")),
+):
+    """علامت نمایشی «ثبت شد در حسابداری» برای سند شهریه."""
+    try:
+        rid = uuid.UUID(str(record_id))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="شناسهٔ سند نامعتبر است.")
+    rec = await db.get(FinancialRecord, rid)
+    if not rec:
+        raise HTTPException(status_code=404, detail="سند یافت نشد.")
+    cat = getattr(rec, "ledger_category", None) or "other"
+    desc = rec.description_fa or ""
+    if cat != "tuition" and "شهریه ترم" not in desc:
+        raise HTTPException(status_code=400, detail="این رکورد سند شهریه نیست.")
+    rec.accounting_status = body.accounting_status
+    if cat != "tuition":
+        rec.ledger_category = "tuition"
+    await db.commit()
+    await db.refresh(rec)
+    return {
+        "id": str(rec.id),
+        "accounting_status": rec.accounting_status,
+        "ledger_category": rec.ledger_category,
     }
 
 

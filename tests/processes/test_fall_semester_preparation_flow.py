@@ -360,6 +360,140 @@ class TestFallSemesterPreparationFlow:
         assert out["courses_finalized_fall"][0]["day"] == "شنبه"
         assert out["courses_finalized_winter"][0]["course_name"] == "عملی ۲"
 
+    async def test_course_finalization_resyncs_after_course_list_edit(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        """بازگشت به مرحلهٔ ۴، ویرایش لیست دروس، و ورود مجدد به مرحلهٔ ۵ باید جدول نهایی را به‌روز کند."""
+        from sqlalchemy.orm.attributes import flag_modified
+
+        processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+        await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+        await db_session.commit()
+
+        engine = StateMachineEngine(db_session)
+        instance = await engine.start_process(
+            process_code="fall_semester_preparation",
+            student_id=sample_student.id,
+            actor_id=sample_user.id,
+            actor_role="admin",
+        )
+        await db_session.commit()
+
+        for trigger, role in (
+            ("calendar_submitted", "course_committee"),
+            ("tuition_submitted", "deputy_education"),
+            ("license_reviewed", "deputy_education"),
+        ):
+            result = await engine.execute_transition(
+                instance_id=instance.id,
+                trigger_event=trigger,
+                actor_id=sample_user.id,
+                actor_role=role,
+            )
+            await db_session.commit()
+            assert result.success is True, f"{trigger} failed: {result.error}"
+
+        instance = await engine.get_process_instance(instance.id)
+        ctx = dict(instance.context_data or {})
+        ctx["courses_fall"] = [
+            {
+                "course_name": "تئوری ۱",
+                "course_code": "theory_1",
+                "track": "آشنایی",
+                "proposed_day": "شنبه",
+                "proposed_time": "18:00",
+                "instructor": "دکتر الف",
+            }
+        ]
+        ctx["courses_winter"] = [
+            {
+                "course_name": "عملی ۲",
+                "track": "جامع",
+                "proposed_day": "دوشنبه",
+                "proposed_time": "17:30",
+                "instructor": "دکتر ب",
+            }
+        ]
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        await db_session.commit()
+
+        result = await engine.execute_transition(
+            instance_id=instance.id,
+            trigger_event="course_list_submitted",
+            actor_id=sample_user.id,
+            actor_role="course_committee",
+        )
+        await db_session.commit()
+        assert result.success is True, result.error
+
+        instance = await engine.get_process_instance(instance.id)
+        assert instance.current_state_code == "course_finalization"
+        assert instance.context_data["courses_finalized_fall"][0]["course_name"] == "تئوری ۱"
+
+        rollback = await engine.rollback_to_previous_state(
+            instance_id=instance.id,
+            actor_id=sample_user.id,
+            actor_role="admin",
+            reason="ویرایش لیست دروس مرحله ۴",
+        )
+        await db_session.commit()
+        assert rollback.success is True
+        assert rollback.to_state == "course_list_creation"
+
+        instance = await engine.get_process_instance(instance.id)
+        ctx = dict(instance.context_data or {})
+        ctx["courses_fall"] = [
+            {
+                "course_name": "تئوری ۱ ویرایش‌شده",
+                "course_code": "theory_1",
+                "track": "آشنایی",
+                "proposed_day": "یکشنبه",
+                "proposed_time": "19:00",
+                "instructor": "دکتر جدید",
+            },
+            {
+                "course_name": "درس تازه‌اضافه‌شده",
+                "track": "آشنایی",
+                "proposed_day": "سه‌شنبه",
+                "proposed_time": "16:00",
+                "instructor": "دکتر ج",
+            },
+        ]
+        ctx["courses_winter"] = [
+            {
+                "course_name": "عملی ۲ جدید",
+                "track": "جامع",
+                "proposed_day": "چهارشنبه",
+                "proposed_time": "18:30",
+                "instructor": "دکتر د",
+            }
+        ]
+        instance.context_data = ctx
+        flag_modified(instance, "context_data")
+        await db_session.commit()
+
+        result = await engine.execute_transition(
+            instance_id=instance.id,
+            trigger_event="course_list_submitted",
+            actor_id=sample_user.id,
+            actor_role="course_committee",
+        )
+        await db_session.commit()
+        assert result.success is True, result.error
+
+        instance = await engine.get_process_instance(instance.id)
+        assert instance.current_state_code == "course_finalization"
+        fall_rows = instance.context_data["courses_finalized_fall"]
+        winter_rows = instance.context_data["courses_finalized_winter"]
+        assert [r["course_name"] for r in fall_rows] == ["تئوری ۱ ویرایش‌شده", "درس تازه‌اضافه‌شده"]
+        assert fall_rows[0]["day"] == "یکشنبه"
+        assert fall_rows[0]["time"] == "19:00"
+        assert fall_rows[0]["instructor"] == "دکتر جدید"
+        assert winter_rows[0]["course_name"] == "عملی ۲ جدید"
+        assert winter_rows[0]["day"] == "چهارشنبه"
+        assert winter_rows[0]["time"] == "18:30"
+
     async def test_sla_expired_records_warning_for_education_director(
         self, db_session: AsyncSession, sample_student, sample_user
     ):
@@ -555,7 +689,7 @@ class TestFallSemesterPreparationFlow:
             ("course_list_submitted", "course_committee"),
             ("courses_finalized", "course_committee"),
             ("marketing_started", "staff"),
-            ("interviewers_assigned", "deputy_education"),
+            ("interviewers_assigned", "staff"),
         ):
             result = await engine.execute_transition(
                 instance_id=instance.id,
@@ -620,7 +754,7 @@ class TestFallSemesterPreparationFlow:
             ("course_list_submitted", "course_committee"),
             ("courses_finalized", "course_committee"),
             ("marketing_started", "staff"),
-            ("interviewers_assigned", "deputy_education"),
+            ("interviewers_assigned", "staff"),
         ):
             result = await engine.execute_transition(
                 instance_id=instance.id,

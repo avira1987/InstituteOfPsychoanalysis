@@ -98,6 +98,8 @@ def validate_table_field(field: dict, val: Any) -> Optional[str]:
         for col in columns:
             if not isinstance(col, dict) or col.get("auto_fill"):
                 continue
+            if col.get("required") is False:
+                continue
             ct = (col.get("type") or "text").lower()
             col_label = col.get("label_fa") or col.get("name") or "ستون"
             cell_val = row.get(col.get("name"))

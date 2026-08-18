@@ -11,7 +11,7 @@
     "test:e2e:ci": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:unit": "node --test src/utils/operatorContextFilter.test.js src/utils/userRoles.test.js src/utils/stepOtpVerified.test.js",
+    "test:unit": "node --test src/utils/operatorContextFilter.test.js src/utils/userRoles.test.js src/utils/stepOtpVerified.test.js src/utils/resolveFormOptionsSource.test.js src/utils/courseTableRowNormalize.test.js src/utils/semesterPrepCourseFinalization.test.js src/utils/interviewResultAccess.test.js src/utils/documentReviewStates.test.js",
     "test:flow-through": "playwright test e2e/flow-through/matrix.spec.ts",
     "test:onboarding": "playwright test e2e/flow-through/onboarding.spec.ts"
   },

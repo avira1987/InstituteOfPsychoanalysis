@@ -3,6 +3,7 @@
  */
 import { committeeKindForPortalRole, getCommitteeKindPath } from './portalCommitteeKinds'
 import { getStaffLanePath } from './portalStaffLanes'
+import { canonicalPortalRole } from './userRoles'
 
 const STAFF_DEFAULT_LANE = 'admissions'
 
@@ -68,13 +69,15 @@ const PORTAL_ICONS = {
 
 /** @param {string | null | undefined} role */
 export function getPortalHomePath(role) {
-  const entry = role ? PORTAL_ROLE_HOME[role] : null
+  const key = role ? (canonicalPortalRole(role) || role) : null
+  const entry = key ? PORTAL_ROLE_HOME[key] : null
   return entry?.path ?? null
 }
 
 /** @param {string | null | undefined} role @returns {'pending' | 'reviews' | null} */
 export function getPortalDefaultTasksTab(role) {
-  const entry = role ? PORTAL_ROLE_HOME[role] : null
+  const key = role ? (canonicalPortalRole(role) || role) : null
+  const entry = key ? PORTAL_ROLE_HOME[key] : null
   return entry?.tasksTab ?? null
 }
 
@@ -93,10 +96,11 @@ export function getPortalHomeHref(role) {
 export function getPortalQuickLink(role) {
   const path = getPortalHomePath(role)
   if (!path || role === 'admin') return null
+  const key = canonicalPortalRole(role) || role
   return {
     path: getPortalHomeHref(role),
-    label: PORTAL_LABELS_FA[role] || 'پنل نقش',
-    icon: PORTAL_ICONS[role] || '📋',
+    label: PORTAL_LABELS_FA[key] || PORTAL_LABELS_FA[role] || 'پنل نقش',
+    icon: PORTAL_ICONS[key] || PORTAL_ICONS[role] || '📋',
   }
 }
 

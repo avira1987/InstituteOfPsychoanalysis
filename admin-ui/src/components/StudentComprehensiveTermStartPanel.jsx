@@ -13,6 +13,8 @@ import {
   PAYMENT_METHOD_LABELS,
   fmtIsoDate,
 } from '../utils/comprehensiveTermStartDisplay'
+import TuitionQuoteSummary from './TuitionQuoteSummary'
+import InstituteActivityLicenseNotice from './InstituteActivityLicenseNotice'
 
 const PROCESS_TITLE_FA = 'آغاز ترم‌های دوره جامع (فرایند ۴۰)'
 const PROC_CODE = 'comprehensive_term_start'
@@ -134,6 +136,8 @@ export default function StudentComprehensiveTermStartPanel({
       <div style={{ padding: compact ? '0 0.75rem 0.75rem' : '0 1rem 1rem' }}>
         <CompTermStartFlowStepper currentState={currentState} compact={compact} />
 
+        <InstituteActivityLicenseNotice compact={compact} />
+
         {isStop && (
           <div
             role="status"
@@ -202,6 +206,10 @@ export default function StudentComprehensiveTermStartPanel({
               <InfoTile label="اقساط باقی‌مانده" value={remaining} tone="#2563eb" bg="#eff6ff" />
             )}
           </div>
+        )}
+
+        {['course_display', 'payment_choice', 'payment_processing', 'installment_overdue'].includes(currentState) && (
+          <TuitionQuoteSummary contextData={ctx} compact={compact} />
         )}
 
         {showCourses && (

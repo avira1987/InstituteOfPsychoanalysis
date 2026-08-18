@@ -3,6 +3,16 @@
  */
 import { userApi } from '../services/api'
 import api from '../services/api'
+import { visibleRosterMembersForCourse } from './rosterCourseSelectability'
+
+export {
+  catalogSelectValueFromRow,
+  isRosterSelectColumn,
+  normalizeCourseTableInitialRows,
+  rosterSelectValueFromRow,
+  shouldReplaceRowTrackFromCatalog,
+  tracksAreEquivalent,
+} from './courseTableRowNormalize'
 
 export async function resolveCourseClassRoster(courseCode) {
   const code = (courseCode || '').trim()
@@ -124,12 +134,16 @@ export async function createCourseCommitteeTrack(nameFa) {
   return res.data?.track
 }
 
-export async function createCourseCommitteeMember({ track, kind, nameFa }) {
-  const res = await api.post('admin/course-committee-roster/members', {
+export async function createCourseCommitteeMember({ track, kind, nameFa, authorizedCourses }) {
+  const payload = {
     track,
     kind,
     name_fa: nameFa,
-  })
+  }
+  if (Array.isArray(authorizedCourses) && authorizedCourses.length) {
+    payload.authorized_courses = authorizedCourses
+  }
+  const res = await api.post('admin/course-committee-roster/members', payload)
   invalidateFormOptionsCaches()
   return res.data?.member
 }
@@ -275,6 +289,24 @@ export function resolveTrackForCourse(courseValue, catalogOptions) {
   return ''
 }
 
+/** تعداد واحد درس از گزینه‌های کاتالوگ */
+export function resolveUnitsForCourse(courseValue, catalogOptions) {
+  const raw = String(courseValue || '').trim()
+  if (!raw || !Array.isArray(catalogOptions)) return ''
+  for (const opt of catalogOptions) {
+    if (typeof opt !== 'object') continue
+    const val = String(opt.value || '').trim()
+    const lab = String(opt.label_fa || '').trim()
+    if (val === raw || lab === raw) {
+      const units = opt.units
+      if (units == null || units === '') return ''
+      const n = Number(units)
+      return Number.isFinite(n) && n > 0 ? n : ''
+    }
+  }
+  return ''
+}
+
 export async function resolveTraitCatalogOptions(kind) {
   const k = (kind || 'positive').trim().toLowerCase()
   try {
@@ -366,6 +398,16 @@ export async function resolveFormOptionsSource(source, contextData = null) {
   return { options: [], optionsByTrack: null, optionsByCourse: null }
 }
 
+export {
+  courseValueRefs,
+  grantsIncludeCourse,
+  isRosterOptionSelectableForCourse,
+  markRosterOptionsForCourse,
+  mergeRosterOptionLists,
+  rosterOptionDisplayLabel,
+  visibleRosterMembersForCourse,
+} from './rosterCourseSelectability'
+
 function lookupMapEntry(map, key) {
   if (!map || key == null || key === '') return []
   const raw = String(key).trim()
@@ -378,19 +420,18 @@ function lookupMapEntry(map, key) {
   return []
 }
 
-/** گزینه‌های مدرس/کمک‌مدرس برای یک ردیف جدول — با fallback رسته و کاتالوگ درس */
-export function lookupRosterOptionsForRow(col, row, columns = []) {
+function lookupTrackRosterOptions(col, row, columns = []) {
   if (!col || !row) return []
 
   const filterCol = col.filter_by_column || col.options_source?.filter_by_column
-
-  if (col._optionsByCourse && row.course_name) {
-    const byCourse = lookupMapEntry(col._optionsByCourse, row.course_name)
-    if (byCourse.length) return byCourse
-  }
-
   const trackKeys = []
+  if (row.track_code) trackKeys.push(String(row.track_code).trim())
   if (row.track) trackKeys.push(String(row.track).trim())
+  const trackCol = (columns || []).find((c) => c.name === 'track')
+  if (row.track) {
+    const keyed = resolveRosterTrackStorageKey(row.track, trackCol, col._optionsByTrack)
+    if (keyed) trackKeys.push(keyed)
+  }
   const courseCol = (columns || []).find((c) => c.name === 'course_name')
   if (row.course_name && courseCol) {
     const derived = resolveTrackForCourse(row.course_name, courseCol.options || [])
@@ -413,9 +454,65 @@ export function lookupRosterOptionsForRow(col, row, columns = []) {
   return Array.isArray(col.options) ? col.options : []
 }
 
+function optionMatchesRosterValue(opt, raw) {
+  const v = String(raw ?? '')
+  if (!v) return false
+  if (typeof opt !== 'object' || opt == null) return String(opt) === v
+  return String(opt.value ?? '') === v || String(opt.label_fa ?? '') === v
+}
+
+function columnHasRosterData(col) {
+  const byTrack = col?._optionsByTrack
+  if (byTrack && typeof byTrack === 'object') {
+    if (Object.values(byTrack).some((opts) => Array.isArray(opts) && opts.length)) return true
+  }
+  const byCourse = col?._optionsByCourse
+  if (byCourse && typeof byCourse === 'object') {
+    if (Object.values(byCourse).some((opts) => Array.isArray(opts) && opts.length)) return true
+  }
+  return Array.isArray(col?.options) && col.options.length > 0
+}
+
+/** گزینه‌های مدرس/کمک‌مدرس برای یک ردیف — افراد چارت همان رسته پس از انتخاب درس */
+export function lookupRosterOptionsForRow(col, row, columns = []) {
+  if (!col || !row) return []
+
+  const kind = col.options_source?.kind || 'instructor'
+  const courseCol = (columns || []).find((c) => c.name === 'course_name')
+  const catalogOptions = courseCol?.options || []
+  const courseValue = String(row.course_name || '').trim()
+  if (!courseValue) return []
+
+  const trackOptions = lookupTrackRosterOptions(col, row, columns)
+  const courseOptions = col._optionsByCourse
+    ? lookupMapEntry(col._optionsByCourse, courseValue)
+    : []
+
+  return visibleRosterMembersForCourse(trackOptions, courseValue, {
+    kind,
+    catalogOptions,
+    courseOptions,
+    hideUnauthorized: true,
+  })
+}
+
+export function rosterValueIsAuthorizedForRow(col, row, columns = []) {
+  const raw = row?.[col?.name]
+  if (raw == null || String(raw).trim() === '') return true
+  if (!String(row?.course_name || '').trim()) return true
+  if (!columnHasRosterData(col)) return true
+  const options = lookupRosterOptionsForRow(col, row, columns)
+  return options.some((opt) => optionMatchesRosterValue(opt, raw))
+}
+
 /** آیا پیش‌نیاز فیلتر ستون مدرس/کمک‌مدرس برآورده شده است؟ */
 export function rowMeetsRosterPrerequisite(col, row, columns = []) {
-  const filterCol = col?.filter_by_column || col?.options_source?.filter_by_column
+  const src = col?.options_source || {}
+  if (src.type === 'course_committee_roster') {
+    const hasCourseCol = (columns || []).some((c) => c.name === 'course_name')
+    if (hasCourseCol && !String(row?.course_name ?? '').trim()) return false
+  }
+  const filterCol = col?.filter_by_column || src.filter_by_column
   if (!filterCol) return true
   if (String(row?.[filterCol] ?? '').trim()) return true
   if (filterCol === 'course_name') {
@@ -427,8 +524,16 @@ export function rowMeetsRosterPrerequisite(col, row, columns = []) {
 /** کد رستهٔ مؤثر برای افزودن مدرس/کمک‌مدرس جدید */
 export function resolveRosterTrackForRow(col, row, columns = []) {
   if (!row) return ''
-  const track = String(row.track || '').trim()
-  if (track) return track
+  const trackCol = (columns || []).find((c) => c.name === 'track')
+  const raw = String(row.track_code || row.track || '').trim()
+  if (raw) {
+    const keyed = resolveRosterTrackStorageKey(
+      raw,
+      trackCol,
+      col?._optionsByTrack,
+    )
+    if (keyed) return keyed
+  }
   const courseCol = (columns || []).find((c) => c.name === 'course_name')
   if (row.course_name && courseCol) {
     const derived = resolveTrackForCourse(row.course_name, courseCol.options || [])
@@ -436,18 +541,12 @@ export function resolveRosterTrackForRow(col, row, columns = []) {
   }
   const filterCol = col?.options_source?.filter_by_column || col?.filter_by_column
   if (filterCol && filterCol !== 'course_name') {
-    return String(row[filterCol] || '').trim()
+    const fromFilter = String(row[filterCol] || '').trim()
+    if (fromFilter) {
+      return resolveRosterTrackStorageKey(fromFilter, trackCol, col?._optionsByTrack) || fromFilter
+    }
   }
   return ''
-}
-
-/** نرمال‌سازی مقدار ذخیره‌شده ردیف جدول برای select مدرس/کمک‌مدرس */
-export function rosterSelectValueFromRow(row, idKey, nameKey) {
-  if (!row || typeof row !== 'object') return ''
-  const id = row[idKey]
-  if (id != null && String(id).trim() !== '') return String(id)
-  const name = row[nameKey]
-  return name != null ? String(name) : ''
 }
 
 /** قبل از ارسال به API: پر کردن نام نمایشی و شناسه کاربر */
@@ -492,6 +591,16 @@ export function denormalizeCourseRosterTableRows(tableField, rows) {
       const hit = catalogOpts.find((o) => String(typeof o === 'object' ? o.value : o) === raw)
       if (hit) next.course_name = typeof hit === 'object' ? hit.label_fa || raw : hit
     }
+    const trackCol = colByName.track
+    if (next.track != null && next.track !== '') {
+      const raw = String(next.track).trim()
+      const trackOpts = trackCol?.options || []
+      const byCode = trackOpts.find((o) => String(typeof o === 'object' ? o.value : o) === raw)
+      if (byCode && typeof byCode === 'object' && byCode.label_fa) {
+        if (!next.track_code) next.track_code = raw
+        next.track = byCode.label_fa
+      }
+    }
     if (instructorCol && next.instructor != null && next.instructor !== '') {
       const raw = String(next.instructor)
       const label = findLabel(instructorCol, raw)
@@ -506,24 +615,9 @@ export function denormalizeCourseRosterTableRows(tableField, rows) {
       if (isUuid(raw)) {
         next.teaching_assistant_id = raw
         next.teaching_assistant = label || raw
+      } else if (label) {
+        next.teaching_assistant = label
       }
-    }
-    return next
-  })
-}
-
-/** مقدار اولیه select از دادهٔ ذخیره‌شده (نام یا شناسه) */
-export function normalizeCourseTableInitialRows(tableField, rows) {
-  if (!Array.isArray(rows) || !tableField?.columns) return rows
-  const names = new Set((tableField.columns || []).map((c) => c.name))
-  return rows.map((row) => {
-    if (!row || typeof row !== 'object') return row
-    const next = { ...row }
-    if (names.has('instructor')) {
-      next.instructor = rosterSelectValueFromRow(row, 'instructor_id', 'instructor')
-    }
-    if (names.has('teaching_assistant')) {
-      next.teaching_assistant = rosterSelectValueFromRow(row, 'teaching_assistant_id', 'teaching_assistant')
     }
     return next
   })

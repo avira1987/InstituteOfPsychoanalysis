@@ -27,18 +27,24 @@ TERM_TUITION_KEYS = (
     "interview_fee_comprehensive",
 )
 
-# سایر پیش‌فرض‌های پرداخت (همان بخش داشبورد مالی) — مشترک با آماده‌سازی ترم
-OTHER_PAYMENT_DEFAULT_KEYS = (
+# سایر پیش‌فرض‌های پرداخت که هنوز در فرم tuition_entry آماده‌سازی ترم هستند
+PREP_OTHER_PAYMENT_KEYS = (
     "registration_interview_fee_rial",
-    "registration_tuition_invoice_toman",
     "start_therapy_first_session_fee_rial",
     "extra_session_fee_rial",
     "default_therapy_session_fee_toman",
+)
+
+# فقط داشبورد مالی — در گام شهریهٔ آماده‌سازی ترم نمایش و همگام نمی‌شوند
+FINANCE_PANEL_ONLY_KEYS = (
+    "registration_tuition_invoice_toman",
     "class_session_fee_toman",
     "course_session_fee_toman",
 )
 
-PREP_FINANCIAL_FORM_KEYS = TERM_TUITION_KEYS + OTHER_PAYMENT_DEFAULT_KEYS
+OTHER_PAYMENT_DEFAULT_KEYS = PREP_OTHER_PAYMENT_KEYS + FINANCE_PANEL_ONLY_KEYS
+
+PREP_FINANCIAL_FORM_KEYS = TERM_TUITION_KEYS + PREP_OTHER_PAYMENT_KEYS
 
 _RIAL_PREP_KEYS = frozenset(
     {
@@ -53,10 +59,7 @@ _RIAL_PREP_KEYS = frozenset(
 )
 _TOMAN_PREP_KEYS = frozenset(
     {
-        "registration_tuition_invoice_toman",
         "default_therapy_session_fee_toman",
-        "class_session_fee_toman",
-        "course_session_fee_toman",
     }
 )
 _OPTIONAL_ZERO_TOMAN_KEYS = frozenset({"class_session_fee_toman", "course_session_fee_toman"})
@@ -154,7 +157,7 @@ def normalize_financial_program_payload(raw: dict[str, Any] | None) -> dict[str,
 
 
 def extract_term_tuition_patch_from_context(ctx: dict[str, Any] | None) -> dict[str, Any]:
-    """از context آماده‌سازی ترم فیلدهای شهریه و سایر پیش‌فرض‌های پرداخت را بردار."""
+    """از context آماده‌سازی ترم فیلدهای شهریه و سایر پیش‌فرض‌های پرداخت فرم را بردار."""
     if not isinstance(ctx, dict):
         return {}
     patch: dict[str, Any] = {}
@@ -169,18 +172,13 @@ def extract_term_tuition_patch_from_context(ctx: dict[str, Any] | None) -> dict[
         if n >= 1000:
             patch[key] = n
 
-    for key in OTHER_PAYMENT_DEFAULT_KEYS:
+    for key in PREP_OTHER_PAYMENT_KEYS:
         val = ctx.get(key)
         if val is None or str(val).strip() == "":
             continue
         try:
             num = float(val)
         except (TypeError, ValueError):
-            continue
-        if key in _OPTIONAL_ZERO_TOMAN_KEYS:
-            if num < 0:
-                continue
-            patch[key] = float(num)
             continue
         if key in _RIAL_PREP_KEYS:
             n = int(round(num))
@@ -255,8 +253,8 @@ async def get_effective_financial_program_defaults(db: AsyncSession) -> dict[str
         "extra_session_fee_toman": float(extra_toman_rounded),
         "updated_at": updated_at,
         "sources_note": (
-            "شهریه، هزینهٔ مصاحبه و سایر پیش‌فرض‌های پرداخت با فرم «آماده‌سازی ترم پاییز» "
-            "یک منبع دارند. پس از ثبت در آماده‌سازی، ویرایش بعدی از همین داشبورد مالی نیز ممکن است."
+            "شهریه، هزینهٔ مصاحبه و پیش‌فرض‌های درمان با فرم «آماده‌سازی ترم پاییز» "
+            "یک منبع دارند. فاکتور پشتیبان ثبت‌نام و پیش‌فرض جلسهٔ کلاس/دوره فقط از همین داشبورد مالی ویرایش می‌شوند."
         ),
     }
 

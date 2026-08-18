@@ -566,10 +566,22 @@
           "description_fa": "اجاد ک کاس آا"
         },
         {
+          "type": "record_accounting",
+          "kind": "tuition"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "tuition_payment_to_accounting",
+          "recipients": [
+            "accounting"
+          ]
+        },
+        {
           "type": "schedule_installment_reminders",
           "condition": "payment_method == 'installment'",
-          "reminder_days_before": 1,
-          "description_fa": "برنامه‌ریزی یادآوری اقساط: ۱ روز قبل از سررسید هر قسط"
+          "reminder_days_before": 7,
+          "description_fa": "برنامه‌ریزی یادآوری اقساط: ۷ روز قبل از سررسید هر قسط"
         },
         {
           "type": "merge_instance_context",

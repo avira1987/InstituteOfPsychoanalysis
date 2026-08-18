@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_role
 from app.config import get_settings
+from app.core.user_roles import user_has_role, user_matches_role_sql
 from app.database import get_db
 from app.models.operational_models import (
     InterviewSlot,
@@ -96,7 +97,12 @@ def _user_sees_slot_in_result_queue(user: User, slot: InterviewSlot) -> bool:
 
 
 def _can_define_interview_slots(user: User) -> bool:
-    return user.role in SLOT_DEFINE_ROLES
+    return user_has_role(user, *SLOT_DEFINE_ROLES, admin_bypass=False)
+
+
+def _is_interviewer_candidate(user: User) -> bool:
+    """نقش اصلی یا نقش‌های چندگانه (و معادل‌هایی مثل faculty_1 → interviewer)."""
+    return bool(user and user_has_role(user, *INTERVIEWER_CANDIDATE_ROLES, admin_bypass=False))
 
 
 def _can_reschedule_booked_slot(user: User, slot: InterviewSlot) -> bool:
@@ -383,7 +389,7 @@ async def _resolve_interviewer_user_id(
     tgt = await db.get(User, uid)
     if not tgt or not tgt.is_active:
         raise HTTPException(status_code=400, detail="مصاحبه‌گر انتخاب‌شده یافت نشد یا غیرفعال است.")
-    if (tgt.role or "").strip() not in INTERVIEWER_CANDIDATE_ROLES:
+    if not _is_interviewer_candidate(tgt):
         raise HTTPException(
             status_code=400,
             detail="کاربر انتخاب‌شده جزو کارمندان قابل انتخاب برای مصاحبه نیست.",
@@ -446,8 +452,7 @@ async def _resolve_recurring_owner_for_create(
     tgt = await db.get(User, oid)
     if not tgt or not tgt.is_active:
         raise HTTPException(status_code=400, detail="کاربر انتخاب‌شده یافت نشد یا غیرفعال است.")
-    role_n = (tgt.role or "").strip()
-    if role_n not in RECURRING_RULE_OWNER_ROLES:
+    if not _is_interviewer_candidate(tgt):
         raise HTTPException(
             status_code=400,
             detail="مالک الگو باید مصاحبه‌گر یا کارمند دفتر باشد.",
@@ -506,7 +511,9 @@ async def list_recurring_rule_candidate_owners(
         select(User)
         .where(
             User.is_active == True,
-            User.role.in_(tuple(RECURRING_RULE_OWNER_ROLES)),
+            or_(
+                *[user_matches_role_sql(code) for code in sorted(RECURRING_RULE_OWNER_ROLES)]
+            ),
         )
         .order_by(User.role.asc(), User.full_name_fa.asc().nulls_last(), User.username.asc())
     )

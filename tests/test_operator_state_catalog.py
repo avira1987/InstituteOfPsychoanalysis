@@ -32,6 +32,13 @@ def test_staff_includes_admissions_officer_states():
     assert "admissions_officer" in assigned
 
 
+def test_internal_manager_catalog_matches_staff():
+    staff_assigned = {r.get("assigned_role") for r in osc.get_state_catalog_for_portal_role("staff")}
+    mgr_assigned = {r.get("assigned_role") for r in osc.get_state_catalog_for_portal_role("internal_manager")}
+    assert mgr_assigned == staff_assigned
+    assert "admissions_officer" in mgr_assigned
+
+
 def test_finance_catalog_empty():
     assert osc.get_state_catalog_for_portal_role("finance") == []
 

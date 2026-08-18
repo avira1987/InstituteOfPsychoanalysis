@@ -126,3 +126,82 @@ class TestClassAttendanceService:
         assert entry.get("article_violation_pending") is True
         enrolled = (sample_student.extra_data or {})["lms"]["enrolled_courses"][0]
         assert enrolled.get("incomplete") is not True
+
+    async def test_present_forced_absent_when_tuition_blocked(
+        self, db_session: AsyncSession, sample_student: Student
+    ):
+        sid = str(sample_student.id)
+        extra = dict(sample_student.extra_data or {})
+        extra["class_present_blocked"] = {
+            "active": True,
+            "reason_fa": "هشدار: امکان ثبت حضور برای این دانشجو به دلیل عدم تسویه بدهی شهریه وجود ندارد. لطفاً گزینه غیبت را ثبت نمایید.",
+        }
+        extra["lms"] = {
+            "enrolled_courses": ["theory_1"],
+            "lesson_attendance": {"theory_1": {"absence_count": 0, "sessions": []}},
+        }
+        sample_student.extra_data = extra
+        flag_modified(sample_student, "extra_data")
+        await db_session.commit()
+
+        summary = await apply_session_attendance(
+            db_session,
+            "theory_1",
+            "2026-03-04",
+            [{"student_id": sid, "status": "present"}],
+        )
+        await db_session.commit()
+        await db_session.refresh(sample_student)
+
+        assert summary["absent"] == 1
+        assert summary["present"] == 0
+        assert sid in summary["forced_absent_tuition_block"]
+        entry = (sample_student.extra_data or {})["lms"]["lesson_attendance"]["theory_1"]
+        assert entry["sessions"][0]["status"] == "absent"
+        assert entry["absence_count"] == 1
+        assert entry["sessions"][0].get("tuition_present_blocked") is True
+
+
+@pytest.mark.asyncio
+class TestTuitionPresentBlockActions:
+    async def test_block_and_unblock_class_present(
+        self, db_session: AsyncSession, sample_student: Student
+    ):
+        import uuid
+
+        from app.models.operational_models import ProcessInstance
+        from app.services.action_handler import ActionHandler
+        from app.services.class_attendance_service import student_class_present_blocked
+
+        instance = ProcessInstance(
+            id=uuid.uuid4(),
+            process_code="intro_second_semester_registration",
+            student_id=sample_student.id,
+            current_state_code="installment_overdue",
+        )
+        db_session.add(instance)
+        await db_session.flush()
+
+        handler = ActionHandler(db_session)
+        results = await handler.handle_actions(
+            [{"type": "block_attendance_registration"}],
+            instance,
+            {},
+        )
+        await db_session.commit()
+        await db_session.refresh(sample_student)
+
+        assert results[0]["success"] is True
+        assert student_class_present_blocked(sample_student) is True
+
+        results2 = await handler.handle_actions(
+            [{"type": "unblock_attendance_registration"}],
+            instance,
+            {},
+        )
+        await db_session.commit()
+        await db_session.refresh(sample_student)
+
+        assert results2[0]["success"] is True
+        assert student_class_present_blocked(sample_student) is False
+        assert sample_student.extra_data.get("attendance_registration_unlocked") is True

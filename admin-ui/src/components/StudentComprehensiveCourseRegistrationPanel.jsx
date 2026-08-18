@@ -12,6 +12,8 @@ import {
   PROCESS_STUDENT_TASK_LABELS_FA,
   PROCESS_STATE_LABELS_FA,
 } from '../utils/processMetadataLabels'
+import TuitionQuoteSummary from './TuitionQuoteSummary'
+import InstituteActivityLicenseNotice from './InstituteActivityLicenseNotice'
 
 const PROCESS_TITLE_FA = 'ثبت‌نام دوره جامع (فرایند ۳۵)'
 const PROC_CODE = 'comprehensive_course_registration'
@@ -97,6 +99,8 @@ export default function StudentComprehensiveCourseRegistrationPanel({
       <div style={{ padding: compact ? '0 0.75rem 0.75rem' : '0 1rem 1rem' }}>
         <CompRegFlowStepper currentState={currentState} compact={compact} />
 
+        <InstituteActivityLicenseNotice compact={compact} />
+
         {hint && (
           <div
             data-testid="comp-reg-state-hint"
@@ -137,6 +141,10 @@ export default function StudentComprehensiveCourseRegistrationPanel({
               <InfoTile label="شهریه دوره" value={tuitionToman} tone="#b45309" bg="#fffbeb" />
             )}
           </div>
+        )}
+
+        {['course_display', 'payment'].includes(currentState) && (
+          <TuitionQuoteSummary contextData={ctx} compact={compact} />
         )}
 
         <div

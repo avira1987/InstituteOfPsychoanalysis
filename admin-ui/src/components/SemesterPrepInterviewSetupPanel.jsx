@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { semesterPrepApi } from '../services/api'
+import { interviewerApi, semesterPrepApi } from '../services/api'
 import ShamsiDatePicker from './ShamsiDatePicker'
 import {
   INTERVIEW_COURSE_TYPES,
@@ -22,8 +22,32 @@ import {
   formatShamsiTehran,
 } from '../utils/shamsiDateTime'
 
-/** نقش‌هایی که می‌توانند مرحلهٔ مصاحبه‌ها را ثبت کنند */
-const EDITOR_ROLES = new Set(['admin', 'deputy_education', 'staff', 'site_manager'])
+/** نقش‌هایی که می‌توانند مرحلهٔ مصاحبه‌ها را ثبت کنند (مدیر داخلی / کارمند دفتر) */
+const EDITOR_ROLES = new Set([
+  'admin',
+  'staff',
+  'internal_manager',
+])
+
+function mapInterviewerPoolRows(rows) {
+  if (!Array.isArray(rows)) return []
+  return rows.map((row) => ({
+    id: String(row.id),
+    full_name_fa: String(row.full_name_fa || '').trim() || row.username || '',
+    username: row.username,
+    role: row.role,
+  }))
+}
+
+async function loadInterviewerPoolCandidates() {
+  try {
+    const res = await interviewerApi.list({ limit: 200 })
+    return mapInterviewerPoolRows(res.data?.interviewers)
+  } catch {
+    const res = await semesterPrepApi.getInterviewCandidates()
+    return mapInterviewerPoolRows(res.data?.candidates)
+  }
+}
 
 export function canEditInterviewSetup(role) {
   return EDITOR_ROLES.has(String(role || '').trim())
@@ -201,11 +225,11 @@ function CourseTypeCard({ courseType, group, candidates, disabled, onChange, onC
 
       <div style={{ marginBottom: '0.8rem' }}>
         <div style={{ fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-          مصاحبه‌گرها (از کارمندان اتوماسیون)
+          مصاحبه‌گرها (از استخر پیش‌آماده‌سازی)
         </div>
         {candidates.length === 0 ? (
           <p className="muted" style={{ fontSize: '0.8rem', margin: 0 }}>
-            کارمند فعالی برای انتخاب یافت نشد.
+            مصاحبه‌گر فعالی در استخر پیش‌آماده‌سازی نیست — ابتدا در صفحهٔ آمادگی پیش‌نیازها اضافه کنید.
           </p>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
@@ -302,20 +326,20 @@ export default function SemesterPrepInterviewSetupPanel({
 
   useEffect(() => {
     let cancelled = false
-    semesterPrepApi
-      .getInterviewCandidates()
-      .then((res) => {
-        if (cancelled) return
-        const list = Array.isArray(res.data?.candidates) ? res.data.candidates : []
-        setCandidates(list)
+    loadInterviewerPoolCandidates()
+      .then((list) => {
+        if (!cancelled) setCandidates(list)
       })
       .catch(() => {
-        if (!cancelled) setCandidates([])
+        if (!cancelled) {
+          setCandidates([])
+          showToast?.('خطا در بارگذاری استخر مصاحبه‌کنندگان پیش‌آماده‌سازی', 'error')
+        }
       })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [showToast])
 
   useEffect(() => {
     setSetup(interviewSetupFromContext(contextData))
@@ -361,9 +385,9 @@ export default function SemesterPrepInterviewSetupPanel({
   return (
     <div data-testid="semester-prep-interview-setup">
       <p style={{ fontSize: '0.82rem', color: '#334155', margin: '0 0 0.85rem', lineHeight: 1.7 }}>
-        مصاحبه‌گرها را از میان کارمندان اتوماسیون انتخاب کنید. برای هر نفر می‌توانید روزها و
+        مصاحبه‌گرها را فقط از استخر پیش‌آماده‌سازی انتخاب کنید. برای هر نفر می‌توانید روزها و
         ساعات جداگانه بگذارید؛ نوبت‌های قابل رزرو خودکار ساخته می‌شوند و با ثبت همین فرم، تقویم
-        منتشر می‌شود.
+        منتشر می‌شود. افزودن مصاحبه‌گر جدید در این مرحله ممکن نیست.
       </p>
 
       <section

@@ -11,6 +11,7 @@ from app.models.meta_models import TransitionDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance, StateHistory
 from app.core.interview_result_access import is_interview_result_trigger
 from app.core.rule_engine import RuleEvaluator, RuleResult
+from app.core.user_roles import role_grants
 
 
 # گام‌های ۷ و ۸ آماده‌سازی ترم در رابط کاربری یک مرحلهٔ واحد («مصاحبه‌ها») هستند
@@ -48,13 +49,21 @@ def is_payment_gateway_trigger(trigger_event: str | None) -> bool:
     return bool(trigger_event) and trigger_event in PAYMENT_GATEWAY_TRIGGER_EVENTS
 
 
+def actor_may_fire_interview_operator_action(actor_role: str | None) -> bool:
+    """مصاحبه‌گر، هیئت علمی (faculty_1)، کارمند دفتر، و نقش‌های اداری مرتبط."""
+    role = (actor_role or "").strip()
+    if role in _INTERVIEW_TIME_REACHED_OPERATOR_ROLES:
+        return True
+    return role_grants(role, "interviewer", "staff")
+
+
 def human_may_list_system_transition(trigger_event: str | None, actor_role: str) -> bool:
     """آیا transition با required_role=system برای نقش انسانی در لیست اقدامات دیده شود؟"""
     if actor_role == "system":
         return True
     return (
         trigger_event == "interview_time_reached"
-        and actor_role in _INTERVIEW_TIME_REACHED_OPERATOR_ROLES
+        and actor_may_fire_interview_operator_action(actor_role)
     )
 
 
@@ -146,8 +155,21 @@ class TransitionManager:
         transition: TransitionDefinition,
         actor_role: str,
         trigger_event: str | None = None,
+        *,
+        process_code: str | None = None,
+        from_state: str | None = None,
     ) -> bool:
         """Check if the actor's role is authorized for this transition."""
+        from app.core.user_roles import canonical_portal_role
+        from app.services.semester_prep_rbac import (
+            is_prep_process,
+            portal_role_can_fire_prep_trigger,
+        )
+
+        actor_role = canonical_portal_role(actor_role) or (actor_role or "")
+        # internal_manager برای آماده‌سازی معادل staff است
+        if actor_role == "internal_manager":
+            actor_role = "staff"
         required = transition.required_role
         te = trigger_event or transition.trigger_event
         # نتیجهٔ درگاه: فقط system — حتی ادمین نباید دستی بزند
@@ -156,9 +178,21 @@ class TransitionManager:
         # Allow admin to do everything else
         if actor_role == "admin":
             return True
-        # ثبت نتیجهٔ مصاحبه: فقط مصاحبه‌گر (مالکیت در engine بررسی می‌شود) یا ادمین
+        # ثبت نتیجهٔ مصاحبه: مصاحبه‌گر / هیئت علمی / کارمند دفتر (مالکیت در engine)
         if is_interview_result_trigger(te):
-            return actor_role == "interviewer"
+            return actor_may_fire_interview_operator_action(actor_role)
+
+        # RBAC سخت‌گیرانهٔ آماده‌سازی ترم — قبل از aliasهای سراسری
+        if is_prep_process(process_code):
+            prep_ok = portal_role_can_fire_prep_trigger(
+                actor_role,
+                process_code,
+                te,
+                from_state=from_state or getattr(transition, "from_state_code", None),
+            )
+            if prep_ok is not None:
+                return prep_ok
+
         # Legacy metadata: missing required_role used to mean «everyone» — that exposed
         # system/webhook transitions (e.g. payment_successful) to the student portal.
         if not required:
@@ -169,16 +203,19 @@ class TransitionManager:
         if required == "system":
             if actor_role == "system":
                 return True
-            if te == "interview_time_reached" and actor_role in _INTERVIEW_TIME_REACHED_OPERATOR_ROLES:
+            if te == "interview_time_reached" and actor_may_fire_interview_operator_action(actor_role):
                 return True
             return False
         if actor_role == required:
             return True
-        if required == "interviewer" and actor_role in (
-            "interviewer",
-            "staff",
-            "site_manager",
-            "deputy_education",
+        if required == "interviewer" and (
+            actor_role in (
+                "interviewer",
+                "staff",
+                "site_manager",
+                "deputy_education",
+            )
+            or role_grants(actor_role, "interviewer")
         ):
             return True
         # متادیتای ثبت‌نام: «applicant» همان نقش دانشجو در پنل است
@@ -220,17 +257,8 @@ class TransitionManager:
             "deputy_education",
         ):
             return True
-        # آماده‌سازی ترم پاییز/زمستان (فرایند ۲۹ و ۳۰):
-        # معاون آموزش: شهریه، پروانه، مصاحبه‌گران — نه مراحل کمیته دروس.
+        # معاون آموزش ↔ deputy_education_director در متادیتا
         if required == "deputy_education_director" and actor_role == "deputy_education":
-            return True
-        # مرحلهٔ یکپارچهٔ «مصاحبه‌ها»: تعیین مصاحبه‌گر و زمان‌بندی در یک اقدام ثبت
-        # می‌شود، پس معاون آموزش و مدیر داخلی هر دو ترنزیشن را می‌زنند.
-        if te in SEMESTER_PREP_INTERVIEW_SETUP_TRIGGERS and actor_role in (
-            "staff",
-            "site_manager",
-            "deputy_education",
-        ):
             return True
         # کمیته دروس — اجرایی + علمی روی حساب واحد
         _COURSE = (
@@ -260,7 +288,7 @@ class TransitionManager:
             "staff",
         ):
             return True
-        # مدیر داخلی (staff): زمان‌بندی مصاحبه آماده‌سازی ترم و سایر مراحل site_manager در SOP
+        # مدیر داخلی (staff): مراحل site_manager در SOP
         if required == "site_manager" and actor_role in ("staff", "site_manager"):
             return True
         return False

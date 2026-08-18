@@ -119,6 +119,7 @@ export function validateTableField(field, val) {
     const row = filledRows[i]
     for (const col of columns) {
       if (col.auto_fill) continue
+      if (col.required === false) continue
       const ct = (col.type || 'text').toLowerCase()
       const colLabel = col.label_fa || col.name
       const v = row[col.name]

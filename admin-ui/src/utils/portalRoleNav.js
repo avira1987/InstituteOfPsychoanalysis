@@ -1,5 +1,6 @@
 import { STAFF_LANES, staffLanesForPortalRole } from './portalStaffLanes'
 import { COMMITTEE_KINDS, committeeKindsForPortalRole } from './portalCommitteeKinds'
+import { canonicalPortalRole } from './userRoles'
 
 /** ابزارهای فنی — فقط admin (به‌جز automation-scheduler که staff/deputy هم می‌بینند) */
 export const ADMIN_ONLY_PATHS = new Set([
@@ -91,11 +92,12 @@ const SHARED_NAV = [
 export const SCHEDULER_AUTOMATION_ROLES = ['admin', 'staff', 'deputy_education']
 
 export function canViewSchedulerAutomation(portalRoleOrRoles) {
-  const roles = Array.isArray(portalRoleOrRoles)
+  const raw = Array.isArray(portalRoleOrRoles)
     ? portalRoleOrRoles
     : portalRoleOrRoles
       ? [portalRoleOrRoles]
       : []
+  const roles = raw.map((r) => canonicalPortalRole(r) || r)
   if (roles.includes('admin')) return true
   return SCHEDULER_AUTOMATION_ROLES.some((r) => roles.includes(r))
 }
@@ -162,7 +164,7 @@ function itemVisibleForRole(item, portalRole) {
 }
 
 function itemVisibleForRoles(item, portalRoles) {
-  const roles = (portalRoles || []).filter(Boolean)
+  const roles = (portalRoles || []).filter(Boolean).map((r) => canonicalPortalRole(r) || r)
   if (!roles.length) return false
   if (roles.includes('admin')) {
     if (item.strictRoles && item.roles) {
@@ -190,7 +192,7 @@ export function isNavPathVisibleForRole(path, portalRole) {
 }
 
 export function isNavPathVisibleForRoles(path, portalRoles) {
-  const roles = (portalRoles || []).filter(Boolean)
+  const roles = (portalRoles || []).filter(Boolean).map((r) => canonicalPortalRole(r) || r)
   if (!path || !roles.length) return false
   if (roles.includes('admin')) return true
   if (ADMIN_ONLY_PATHS.has(path)) return false
@@ -229,8 +231,9 @@ export function navItemsForRole(portalRole) {
 export function navItemsForRoles(portalRoles) {
   const roles = (portalRoles || []).filter(Boolean)
   if (!roles.length) return []
-  const base = buildBaseNavItems().filter((item) => itemVisibleForRoles(item, roles))
-  const portals = buildPortalLaneNavItemsForRoles(roles)
+  const visibilityRoles = roles.map((r) => canonicalPortalRole(r) || r)
+  const base = buildBaseNavItems().filter((item) => itemVisibleForRoles(item, visibilityRoles))
+  const portals = buildPortalLaneNavItemsForRoles(visibilityRoles)
   const merged = [...base]
   for (const p of portals) {
     if (!merged.some((m) => m.path === p.path)) merged.push(p)

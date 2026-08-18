@@ -221,7 +221,7 @@ export default function StudentSessionPaymentPanel({
         />
         {stats.credit != null && stats.credit > 0 && (
           <StatTile
-            label="اعتبار باقی‌مانده (تومان)"
+            label="اعتبار درمان (تومان)"
             value={fmtMoney(stats.credit)}
             tone="#0d9488"
             bg="#f0fdfa"

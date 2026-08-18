@@ -66,9 +66,9 @@ services:
       SKIP_ALEMBIC_UPGRADE: ${SKIP_ALEMBIC_UPGRADE:-0}
       # مسیر داخل کانتینر برای فهرست بکاپ‌های روزانه (bind-mount فقط‌خواندنی زیر)
       BACKUP_DIR: ${BACKUP_DIR:-/backups}
-      # پرداخت سپ: در فایل .env کنار همین compose تنظیم کنید؛
-      # PAYMENT_PROVIDER=saman، SEP_TERMINAL_ID، SEP_PASSWORD (در صورت نیاز)،
-      # PAYMENT_CALLBACK_URL=<همان دامنهٔ عمومی>/api/payment/callback، APP_BASE_URL برای ریدایرکت پس از کال‌بک
+      # پرداخت: در .env → PAYMENT_PROVIDER=zibal و PAYMENT_ZIBAL_ONLY=false
+      # (زیبال اول؛ اگر شکست خورد سپ). SEP_TERMINAL_ID، ZIBAL_MERCHANT،
+      # PAYMENT_CALLBACK_URL=<دامنهٔ عمومی>/api/payment/callback، APP_BASE_URL
     ports:
       # OpenResty لبه به IP داخلی VM (گاهی .9، گاهی .20 پس از DHCP) روی :3000 پروکسی می‌کند.
       # 0.0.0.0 فقط روی LAN داخلی دیده می‌شود؛ پورت 3000 به اینترنت DNAT نمی‌شود (از بیرون timeout).

@@ -83,12 +83,15 @@ async def panel_my_process_inbox(
         }
     pl = min(process_limit, 200)
     sc = min(max(scan_cap, pl), 2000)
+    from app.core.user_roles import canonical_portal_role, user_has_role
+
+    portal_role = canonical_portal_role(user.role) or user.role
     return await build_portal_role_process_inbox(
         db,
-        portal_role=user.role,
+        portal_role=portal_role,
         process_limit=pl,
         scan_cap=sc,
-        include_assignments_for_staff=(user.role in ("staff", "admin")),
+        include_assignments_for_staff=user_has_role(user, "staff", admin_bypass=True),
     )
 
 
@@ -115,12 +118,15 @@ async def panel_my_operator_followup(
         }
     pl = min(process_limit, 200)
     sc = min(max(scan_cap, pl), 2000)
+    from app.core.user_roles import canonical_portal_role, user_has_role
+
+    portal_role = canonical_portal_role(user.role) or user.role
     core = await build_portal_role_process_inbox(
         db,
-        portal_role=user.role,
+        portal_role=portal_role,
         process_limit=pl,
         scan_cap=sc,
-        include_assignments_for_staff=(user.role in ("staff", "admin")),
+        include_assignments_for_staff=user_has_role(user, "staff", admin_bypass=True),
     )
     alerts = await compute_operator_readiness_alerts(db, user)
     summary = dict(core.get("summary") or {})

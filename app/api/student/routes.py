@@ -645,6 +645,7 @@ async def get_registration_profile_by_user(
     return {
         "student_id": str(student.id),
         "user_id": user_id,
+        "student_code": student.student_code,
         "course_type": student.course_type,
         "email": user.email if user else None,
         "education_level": extra.get("education_level"),

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { userHasRole } from '../utils/userRoles'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
 import { processExecApi, studentApi, panelApi, assignmentApi, interviewSlotsApi } from '../services/api'
@@ -422,7 +423,7 @@ export default function StudentPortal() {
         if (e.response?.status === 404) {
           myProfile = null
           setAdmissionRequired(true)
-        } else if (user?.role === 'admin' || user?.role === 'staff') {
+        } else if (userHasRole(user, 'staff')) {
           const listRes = await studentApi.list().catch(() => ({ data: [] }))
           myProfile = listRes.data?.find(s => s.user_id === user?.id)
           setAdmissionRequired(false)

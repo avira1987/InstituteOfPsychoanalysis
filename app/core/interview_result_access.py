@@ -7,6 +7,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.user_roles import user_has_role
 from app.models.operational_models import InterviewSlot, ProcessInstance, User
 
 INTERVIEW_RESULT_TRIGGER_EVENTS = frozenset(
@@ -42,16 +43,17 @@ def user_may_submit_for_slot(user: User, slot: InterviewSlot) -> bool:
     if assigned is not None and assigned == uid:
         return True
     if slot.created_by == uid:
-        role = (user.role or "").strip()
-        if role == "interviewer":
+        staff_like = user_has_role(user, "staff", admin_bypass=False)
+        interviewer_like = user_has_role(user, "interviewer", admin_bypass=False)
+        if interviewer_like and not staff_like:
             return assigned is None
         return True
     return False
 
 
 def interviewer_owns_booked_slot(user: User, slot: InterviewSlot) -> bool:
-    """Backward-compatible alias — interviewer role + slot ownership."""
-    if user.role != "interviewer":
+    """Backward-compatible alias — interviewer capability + slot ownership."""
+    if not user_has_role(user, "interviewer", admin_bypass=False):
         return False
     return user_may_submit_for_slot(user, slot)
 
@@ -82,15 +84,33 @@ async def can_submit_interview_result(
 ) -> bool:
     if not is_interview_result_trigger(trigger_event):
         return True
-    role = (user.role or "").strip()
-    if role == "admin":
+    if user_has_role(user, "admin", admin_bypass=False):
         return True
-    if role not in _RESULT_SUBMIT_ROLES:
+    if not user_has_role(user, *_RESULT_SUBMIT_ROLES, admin_bypass=False):
         return False
     slot = await get_booked_slot_for_instance(db, instance)
     if slot is None:
         return False
     return user_may_submit_for_slot(user, slot)
+
+
+async def overlay_slot_ownership_on_context(
+    db: AsyncSession,
+    instance: ProcessInstance,
+    ctx: dict[str, Any],
+) -> dict[str, Any]:
+    """شناسهٔ مصاحبه‌گر/ایجادکننده را از اسلات زنده روی context داشبورد می‌گذارد."""
+    slot = await get_booked_slot_for_instance(db, instance)
+    if slot is None:
+        return ctx
+    out = dict(ctx)
+    assigned = getattr(slot, "interviewer_user_id", None)
+    if assigned is not None:
+        out["interviewer_user_id"] = str(assigned)
+    created = getattr(slot, "created_by", None)
+    if created is not None:
+        out["slot_created_by"] = str(created)
+    return out
 
 
 async def assert_can_submit_interview_result(

@@ -34,6 +34,15 @@ def test_resolve_portal_login_username_accepts_role_without_suffix():
     assert resolve_portal_login_username("deputy_education") == "deputy_education1"
     assert resolve_portal_login_username("deputy_education1") == "deputy_education1"
     assert resolve_portal_login_username("admin") == "admin"
+    assert resolve_portal_login_username("staff") == "staff1"
+    assert resolve_portal_login_username("staf1") == "staff1"
+    assert resolve_portal_login_username("dakheli") == "dakheli1"
+    assert resolve_portal_login_username("dakheli1") == "dakheli1"
+    assert resolve_portal_login_username("admissions_officer") == "demo_admissions"
+    assert resolve_portal_login_username("admissions_officer1") == "demo_admissions"
+    assert resolve_portal_login_username("demo_admissions") == "demo_admissions"
+    assert resolve_portal_login_username("deputy_education_director") == "deputy_education1"
+    assert resolve_portal_login_username("deputy_education_director1") == "deputy_education1"
 
 
 def test_login_password_and_access_panel(client: TestClient):

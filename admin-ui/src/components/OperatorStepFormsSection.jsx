@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { processExecApi } from '../services/api'
+import { processExecApi, courseCommitteeRosterApi } from '../services/api'
 import UnifiedFormRenderer from './UnifiedFormRenderer'
 import FallSemesterPrepReadonlySummary from './FallSemesterPrepReadonlySummary'
 import MarketingCampaignHandoffPanel, { isMarketingHandoffField } from './MarketingCampaignHandoffPanel'
@@ -9,6 +9,11 @@ import SemesterPrepInterviewSetupPanel from './SemesterPrepInterviewSetupPanel'
 import DecisionNotesBlock from './DecisionNotesBlock'
 import { validateUnifiedAnswers, isEffectivelyEmptyCourseTable, validateSemesterPrepInterviewDateRanges } from '../utils/unifiedFormValidation'
 import { validateSemesterPrepCalendarDates } from '../utils/semesterPrepCalendarValidation'
+import {
+  applyCourseFinalizationPrefill,
+  hasCourseFinalizationDraftSource,
+  isSemesterPrepStepFormSubmitted,
+} from '../utils/semesterPrepCourseFinalization'
 import {
   denormalizeCourseRosterTableRows,
   normalizeCourseTableInitialRows,
@@ -28,8 +33,6 @@ import {
   shamsiDateToIsoDate,
   shamsiDateTimeToUtcIso,
 } from '../utils/shamsiDateTime'
-
-const CTX_SUBMITTED = '__student_forms_submitted_states'
 
 /** گام‌های ۷ و ۸ آماده‌سازی ترم که در یک مرحلهٔ واحد «مصاحبه‌ها» ادغام شده‌اند */
 const SEMESTER_PREP_INTERVIEW_STATES = new Set([
@@ -60,53 +63,6 @@ function collectFieldNames(forms) {
     }
   }
   return names
-}
-
-function buildCoursesFinalizedFromDraft(courses) {
-  if (!Array.isArray(courses) || !courses.length) return []
-  return courses.map((row) => ({
-    course_name: row.course_name || '',
-    track: row.track || '',
-    day: row.proposed_day || row.day || '',
-    time: row.proposed_time || row.time || '',
-    instructor: row.instructor || '',
-    teaching_assistant: row.teaching_assistant || '',
-    classroom_location: row.classroom_location || '',
-    instructor_coordinated: Boolean(row.instructor_coordinated),
-  }))
-}
-
-function applyCourseFinalizationPrefill(init, ctx, processCode) {
-  if (processCode === 'fall_semester_preparation') {
-    const draftPairs = [
-      ['courses_finalized_fall', 'courses_fall'],
-      ['courses_finalized_winter', 'courses_winter'],
-    ]
-    for (const [finalName, draftName] of draftPairs) {
-      if (!isEffectivelyEmptyCourseTable(init[finalName])) continue
-      let draft = ctx[draftName]
-      if ((!draft || !draft.length) && draftName === 'courses_fall') {
-        draft = ctx.courses
-      }
-      if (Array.isArray(draft) && draft.length) {
-        init[finalName] = buildCoursesFinalizedFromDraft(draft)
-      }
-    }
-  }
-  if (processCode === 'winter_semester_preparation') {
-    if (isEffectivelyEmptyCourseTable(init.courses_finalized) && Array.isArray(ctx.courses) && ctx.courses.length) {
-      init.courses_finalized = buildCoursesFinalizedFromDraft(ctx.courses)
-    }
-  }
-}
-
-function hasCourseFinalizationDraftSource(ctx) {
-  if (!ctx || typeof ctx !== 'object') return false
-  return (
-    (Array.isArray(ctx.courses_fall) && ctx.courses_fall.length > 0)
-    || (Array.isArray(ctx.courses_winter) && ctx.courses_winter.length > 0)
-    || (Array.isArray(ctx.courses) && ctx.courses.length > 0)
-  )
 }
 
 function buildInitialValues(forms, contextData, processCode, currentState, suggestedContext) {
@@ -422,7 +378,9 @@ export default function OperatorStepFormsSection({
   const effectiveStateAssignedRole = fetchedStateAssignedRole ?? stateAssignedRole
   const [busy, setBusy] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
+  const [locallySubmittedState, setLocallySubmittedState] = useState(null)
   const contextDataRef = useRef(contextData)
+  contextDataRef.current = contextData
 
   const handleRosterMemberCreated = useCallback((member, { kind, track }) => {
     setForms((prev) => {
@@ -500,42 +458,96 @@ export default function OperatorStepFormsSection({
             ? res.data
             : []
         const suggested = res.data?.suggested_context || {}
-        const enriched = await enrichFormsWithDynamicOptions(list, contextData)
+        const enriched = await enrichFormsWithDynamicOptions(list, contextDataRef.current)
         if (!active) return
         setSuggestedContext(suggested)
         setForms(enriched)
         setCanActOnState(res.data?.can_act_on_state !== false)
         setFetchedStateAssignedRole(res.data?.state_assigned_role || null)
-        setValues(buildInitialValues(enriched, contextData, processCode, currentState, suggested))
+        setValues(buildInitialValues(enriched, contextDataRef.current, processCode, currentState, suggested))
       })
       .catch(() => active && setForms([]))
       .finally(() => active && setLoading(false))
     return () => {
       active = false
     }
-  }, [visible, processCode, currentState, instanceId, contextData])
+  }, [visible, processCode, currentState, instanceId])
 
   useEffect(() => {
     if (!forms.length || !visible) return
-    const contextChanged = contextDataRef.current !== contextData
-    contextDataRef.current = contextData
     setValues((prev) => {
       const next = buildInitialValues(forms, contextData, processCode, currentState, suggestedContext)
-      if (contextChanged || !prev || Object.keys(prev).length === 0) {
-        return JSON.stringify(prev) === JSON.stringify(next) ? prev : next
-      }
+      if (!prev || Object.keys(prev).length === 0) return next
       return mergeFormValuesPreservingEdits(prev, next, forms)
     })
   }, [forms, contextData, suggestedContext, processCode, currentState, visible])
 
   useEffect(() => {
     setFieldErrors({})
+    setLocallySubmittedState(null)
   }, [processCode, currentState, instanceId])
 
   const onChange = useCallback((next) => {
     setValues(next)
     setFieldErrors({})
   }, [])
+
+  const courseTableFieldNames = useMemo(() => {
+    const names = []
+    for (const form of forms) {
+      for (const field of form?.fields || []) {
+        if ((field.type || '').toLowerCase() !== 'table') continue
+        const n = field.name
+        if (n === 'courses_fall' || n === 'courses_winter' || n === 'courses') names.push(n)
+      }
+    }
+    return names
+  }, [forms])
+
+  const loadSopCurriculumIntoTables = useCallback(async () => {
+    if (!canEditForms || !courseTableFieldNames.length) return
+    setBusy(true)
+    try {
+      const res = await courseCommitteeRosterApi.listCourses()
+      const catalog = Array.isArray(res.data?.courses)
+        ? res.data.courses
+        : Array.isArray(res.data)
+          ? res.data
+          : []
+      const toRows = (term) =>
+        catalog
+          .filter((c) => Number(c.curriculum_term) === term)
+          .map((c) => ({
+            course_name: c.label_fa || c.value,
+            course_code: c.value,
+            track: c.track || '',
+            units: c.units,
+            proposed_day: '',
+            proposed_time: '',
+            instructor: '',
+            teaching_assistant: '',
+          }))
+      const fallRows = toRows(1)
+      const winterRows = toRows(2)
+      setValues((prev) => {
+        const next = { ...prev }
+        for (const name of courseTableFieldNames) {
+          const existing = next[name]
+          if (!isEffectivelyEmptyCourseTable(existing)) continue
+          if (name === 'courses_fall') next[name] = fallRows
+          else if (name === 'courses_winter' || (name === 'courses' && isWinter)) next[name] = winterRows
+          else if (name === 'courses') next[name] = fallRows
+        }
+        return next
+      })
+      showToast?.('برنامه SOP در جدول‌های خالی بارگذاری شد.')
+    } catch (e) {
+      const d = e?.response?.data?.detail
+      showToast?.(typeof d === 'string' ? d : 'خطا در بارگذاری برنامه SOP', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }, [canEditForms, courseTableFieldNames, isWinter, showToast])
 
   const hasInlineActions = actionTransitions.length > 0 && typeof onActionTrigger === 'function'
   const canAdvanceOnSave = !!(
@@ -546,10 +558,8 @@ export default function OperatorStepFormsSection({
 
   const stepFormSubmitted = useMemo(() => {
     if (!isSemesterPrep || !currentState) return true
-    const submitted = contextData?.[CTX_SUBMITTED]
-    if (!submitted || typeof submitted !== 'object') return false
-    return !!submitted[currentState]
-  }, [isSemesterPrep, currentState, contextData])
+    return isSemesterPrepStepFormSubmitted(contextData, currentState, locallySubmittedState)
+  }, [isSemesterPrep, currentState, contextData, locallySubmittedState])
 
   const showSeparateActionButtons = hasInlineActions && !canAdvanceOnSave
   const actionButtonsDisabled = busy || actionBusy || (isSemesterPrep && !stepFormSubmitted)
@@ -619,6 +629,9 @@ export default function OperatorStepFormsSection({
         form_values: payloadValues,
         state_code: currentState,
       })
+      if (isSemesterPrep && currentState) {
+        setLocallySubmittedState(currentState)
+      }
       if (canAdvanceOnSave) {
         const advanceResult = await onAdvanceAfterSave(primaryTransition)
         if (advanceResult?.ok) {
@@ -742,6 +755,20 @@ export default function OperatorStepFormsSection({
             : 'اطلاعات این مرحله را پر و ثبت کنید؛ سپس دکمهٔ اقدام را برای پیشروی فرایند بزنید.'}
       </p>
 
+      {courseTableFieldNames.length > 0 && canEditForms && (
+        <div style={{ marginBottom: '0.85rem' }}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            data-testid="load-sop-into-course-tables"
+            disabled={busy}
+            onClick={loadSopCurriculumIntoTables}
+          >
+            بارگذاری برنامه SOP در جدول دروس
+          </button>
+        </div>
+      )}
+
       {(isFall || isWinter) && (
         <FallSemesterPrepReadonlySummary
           currentState={currentState}
@@ -781,9 +808,9 @@ export default function OperatorStepFormsSection({
             یکپارچگی با داشبورد مالی
           </div>
           <p style={{ margin: '0 0 0.5rem' }}>
-            با ثبت این فرم، مبالغ شهریه، هزینهٔ مصاحبه و <strong>سایر پیش‌فرض‌های پرداخت</strong>{' '}
-            (درمان، کلاس، فاکتور پشتیبان، …) در <strong>داشبورد مالی</strong> نیز ذخیره می‌شوند (یک منبع
-            داده). هزینهٔ مصاحبه ورود باید همخوان با شأن علمی انستیتو باشد.
+            با ثبت این فرم، مبالغ شهریه، هزینهٔ مصاحبه و پیش‌فرض‌های درمان در{' '}
+            <strong>داشبورد مالی</strong> نیز ذخیره می‌شوند. فاکتور پشتیبان ثبت‌نام و پیش‌فرض هر جلسهٔ
+            کلاس/دوره را فقط از پنل مالی ویرایش کنید. هزینهٔ مصاحبه ورود باید همخوان با شأن علمی انستیتو باشد.
           </p>
           <p style={{ margin: 0 }}>
             پس از به‌روزرسانی، برای ویرایش بعدی همین مبالغ یا تنظیمات اقساط به{' '}
@@ -827,7 +854,7 @@ export default function OperatorStepFormsSection({
             lineHeight: 1.6,
           }}
         >
-          جدول از لیست دروس مرحلهٔ قبل پر شده است — فقط «مکان کلاس» و «هماهنگی با مدرس» را تکمیل کنید.
+          جدول از لیست دروس مرحلهٔ قبل پر شده است — روز و ساعت را نهایی کنید؛ «هماهنگی با مدرس» الزامی و «مکان کلاس» اختیاری است.
         </div>
       )}
 

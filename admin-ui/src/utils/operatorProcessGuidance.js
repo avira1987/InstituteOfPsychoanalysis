@@ -24,9 +24,16 @@ export function assignedRoleLabelFa(roleCode) {
 export function buildWaitingForRoleTaskFa(assignedRole) {
   const label = assignedRoleLabelFa(assignedRole)
   if (label) {
-    return `در این مرحله فرایند منتظر «${label}» است — شما فقط می‌توانید مشاهده کنید.`
+    return (
+      `در این مرحله فرایند منتظر «${label}» است — شما فقط می‌توانید مشاهده کنید. `
+      + 'تکمیل و پاس به نقش بعدی فقط با مسئول همین مرحله است؛ '
+      + 'بازگشت به مرحلهٔ قبل یا شروع دوباره فقط برای مدیر سامانه و معاون آموزش مجاز است.'
+    )
   }
-  return 'این مرحله در انتظار نقش دیگر است؛ فقط مشاهده.'
+  return (
+    'این مرحله در انتظار نقش دیگر است؛ فقط مشاهده. '
+    + 'بازگشت/شروع دوباره فقط مدیر سامانه و معاون آموزش.'
+  )
 }
 
 const OPERATOR_FALLBACK_BY_ROLE = {

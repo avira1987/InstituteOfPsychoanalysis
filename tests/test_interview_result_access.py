@@ -17,8 +17,11 @@ from app.core.engine import UnauthorizedError
 from app.models.operational_models import InterviewSlot, ProcessInstance, User
 
 
-async def _make_user(db: AsyncSession, *, role: str, prefix: str) -> User:
+async def _make_user(
+    db: AsyncSession, *, role: str, prefix: str, roles: list[str] | None = None
+) -> User:
     uid = uuid.uuid4()
+    role_list = list(roles) if roles is not None else [role]
     user = User(
         id=uid,
         username=f"{prefix}_{uuid.uuid4().hex[:10]}",
@@ -26,6 +29,8 @@ async def _make_user(db: AsyncSession, *, role: str, prefix: str) -> User:
         hashed_password=get_password_hash("x"),
         full_name_fa=prefix,
         role=role,
+        roles=role_list,
+        is_active=True,
     )
     db.add(user)
     await db.flush()
@@ -204,4 +209,86 @@ async def test_assert_rejects_staff_non_creator_interview_result_trigger(
             instance=inst,
             user=staff,
             trigger_event="interview_result_submitted",
+        )
+
+
+@pytest.mark.asyncio
+async def test_faculty_1_assigned_like_sara_can_submit_result(
+    db_session: AsyncSession, sample_student
+) -> None:
+    """سارا طراوتی: نقش اصلی faculty_1 بدون interviewer در آرایهٔ roles."""
+    sara = await _make_user(
+        db_session,
+        role="faculty_1",
+        prefix="sara_taravati",
+        roles=["faculty_1"],
+    )
+    staff = await _make_user(db_session, role="staff", prefix="staff")
+    inst, _slot = await _make_instance_with_slot(
+        db_session,
+        sample_student=sample_student,
+        interviewer_user_id=sara.id,
+        slot_created_by=staff.id,
+    )
+    assert await can_submit_interview_result(
+        db_session,
+        instance=inst,
+        user=sara,
+        trigger_event="interview_result_submitted",
+    )
+    await assert_can_submit_interview_result(
+        db_session,
+        instance=inst,
+        user=sara,
+        trigger_event="interview_result_submitted",
+    )
+
+
+@pytest.mark.asyncio
+async def test_faculty_1_cannot_submit_other_interviewers_result(
+    db_session: AsyncSession, sample_student
+) -> None:
+    assigned = await _make_user(db_session, role="interviewer", prefix="iv")
+    sara = await _make_user(
+        db_session, role="faculty_1", prefix="sara_other", roles=["faculty_1"]
+    )
+    inst, _slot = await _make_instance_with_slot(
+        db_session,
+        sample_student=sample_student,
+        interviewer_user_id=assigned.id,
+        slot_created_by=assigned.id,
+    )
+    assert not await can_submit_interview_result(
+        db_session,
+        instance=inst,
+        user=sara,
+        trigger_event="interview_result_submitted",
+    )
+
+
+@pytest.mark.asyncio
+async def test_faculty_1_can_submit_comprehensive_eval_triggers(
+    db_session: AsyncSession, sample_student
+) -> None:
+    sara = await _make_user(
+        db_session, role="faculty_1", prefix="sara_comp", roles=["faculty_1"]
+    )
+    inst, _slot = await _make_instance_with_slot(
+        db_session,
+        sample_student=sample_student,
+        interviewer_user_id=sara.id,
+        slot_created_by=sara.id,
+    )
+    inst.process_code = "comprehensive_course_registration"
+    await db_session.flush()
+    for trigger in (
+        "interview_result_accepted",
+        "interview_result_rejected",
+        "interview_result_rejected_with_suggestion",
+    ):
+        assert await can_submit_interview_result(
+            db_session,
+            instance=inst,
+            user=sara,
+            trigger_event=trigger,
         )

@@ -595,6 +595,18 @@
           "type": "create_lms_course_links"
         },
         {
+          "type": "record_accounting",
+          "kind": "tuition"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "tuition_payment_to_accounting",
+          "recipients": [
+            "accounting"
+          ]
+        },
+        {
           "type": "notification",
           "notification_type": "sms",
           "template": "registration_complete",
@@ -613,7 +625,7 @@
         {
           "type": "schedule_installment_reminders",
           "condition": "payment_method == 'installment'",
-          "reminder_days_before": 1,
+          "reminder_days_before": 7,
           "description_fa": "برنامه‌ریزی یادآوری اقساط"
         },
         {
@@ -637,6 +649,10 @@
         },
         {
           "type": "set_installment_portal_lock"
+        },
+        {
+          "type": "notify_instructor",
+          "message_fa": "هشدار: امکان ثبت حضور برای این دانشجو به دلیل عدم تسویه بدهی شهریه وجود ندارد. لطفاً گزینه غیبت را ثبت نمایید."
         }
       ],
       "required_role": "system"

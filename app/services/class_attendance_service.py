@@ -14,6 +14,19 @@ from app.models.operational_models import Student
 
 _ABSENT_STATUSES = frozenset({"absent", "غایب", "absent_unexcused"})
 
+# فرایندهایی که قسط معوق → قفل «حاضر» کلاس (SOP شهریه)
+TUITION_PRESENT_BLOCK_PROCESS_CODES = frozenset({
+    "introductory_course_registration",
+    "intro_second_semester_registration",
+    "comprehensive_course_registration",
+    "comprehensive_term_start",
+})
+
+CLASS_PRESENT_BLOCK_REASON_FA = (
+    "هشدار: امکان ثبت حضور برای این دانشجو به دلیل عدم تسویه بدهی شهریه وجود ندارد. "
+    "لطفاً گزینه غیبت را ثبت نمایید."
+)
+
 
 def _as_mapping(data: Any) -> dict[str, Any]:
     if isinstance(data, dict):
@@ -27,6 +40,26 @@ def _utcnow_iso() -> str:
 
 def is_absent_status(status: Any) -> bool:
     return str(status or "").lower() in _ABSENT_STATUSES
+
+
+def student_class_present_blocked(student: Any) -> bool:
+    """آیا ثبت «حاضر» کلاس به‌خاطر قسط معوق برای این دانشجو قفل است؟"""
+    if student is None:
+        return False
+    extra = _as_mapping(getattr(student, "extra_data", None))
+    flag = extra.get("class_present_blocked")
+    if isinstance(flag, dict):
+        return bool(flag.get("active"))
+    return bool(flag)
+
+
+def class_present_block_reason_fa(student: Any = None) -> str:
+    if student is not None:
+        extra = _as_mapping(getattr(student, "extra_data", None))
+        flag = extra.get("class_present_blocked")
+        if isinstance(flag, dict) and flag.get("reason_fa"):
+            return str(flag["reason_fa"])
+    return CLASS_PRESENT_BLOCK_REASON_FA
 
 
 def infer_course_type(course_code: str, course_type: Optional[str] = None) -> str:
@@ -98,6 +131,7 @@ async def apply_session_attendance(
         "updated": 0,
         "present": 0,
         "absent": 0,
+        "forced_absent_tuition_block": [],
         "incomplete_triggered": [],
         "article_violation_triggered": [],
         "per_student": {},
@@ -123,6 +157,11 @@ async def apply_session_attendance(
             continue
 
         absent = is_absent_status(row.get("status")) or row.get("absent") is True
+        forced_tuition_block = False
+        if not absent and student_class_present_blocked(student):
+            absent = True
+            forced_tuition_block = True
+            summary["forced_absent_tuition_block"].append(str(sid))
 
         extra = _as_mapping(student.extra_data)
         lms = _as_mapping(extra.get("lms"))
@@ -143,6 +182,7 @@ async def apply_session_attendance(
             "date": session_date,
             "status": "absent" if absent else "present",
             "recorded_at": now_iso,
+            **({"tuition_present_blocked": True} if forced_tuition_block else {}),
         })
         entry["sessions"] = sessions
 
@@ -175,6 +215,7 @@ async def apply_session_attendance(
             "absence_count": absence_count,
             "status": "absent" if absent else "present",
             "student_absence_count": absence_count,
+            **({"tuition_present_blocked": True} if forced_tuition_block else {}),
         }
 
     return summary

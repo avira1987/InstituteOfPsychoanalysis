@@ -57,6 +57,7 @@ export default function StudentFinancialPlanPanel({ studentId, active = true }) 
   if (!active) return null
 
   const balance = data?.balance || {}
+  const wallets = data?.wallets || {}
   const installments = data?.installments || []
   const ledger = data?.ledger || []
   const openPayments = data?.open_payments || []
@@ -85,11 +86,40 @@ export default function StudentFinancialPlanPanel({ studentId, active = true }) 
                 marginBottom: '1rem',
               }}
             >
-              <SummaryTile label="بدهی" value={`${Number(balance.total_debt || 0).toLocaleString('fa-IR')} تومان`} tone="#b45309" />
-              <SummaryTile label="پرداخت‌شده" value={`${Number(balance.total_paid || 0).toLocaleString('fa-IR')} تومان`} tone="#16a34a" />
-              <SummaryTile label="اعتبار" value={`${Number(balance.total_credit || 0).toLocaleString('fa-IR')} تومان`} tone="#2563eb" />
-              <SummaryTile label="مانده" value={`${Number(balance.net_balance || 0).toLocaleString('fa-IR')} تومان`} tone="#7c3aed" />
+              <SummaryTile label="بدهی (کل)" value={`${Number(balance.total_debt || 0).toLocaleString('fa-IR')} تومان`} tone="#b45309" />
+              <SummaryTile label="پرداخت‌شده (کل)" value={`${Number(balance.total_paid || 0).toLocaleString('fa-IR')} تومان`} tone="#16a34a" />
+              <SummaryTile label="اعتبار (کل)" value={`${Number(balance.total_credit || 0).toLocaleString('fa-IR')} تومان`} tone="#2563eb" />
+              <SummaryTile label="مانده (کل)" value={`${Number(balance.net_balance || 0).toLocaleString('fa-IR')} تومان`} tone="#7c3aed" />
             </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: '0.65rem',
+                marginBottom: '1rem',
+              }}
+              data-testid="student-finance-wallets"
+            >
+              <SummaryTile
+                label="مانده درمان آموزشی"
+                value={`${Number(wallets.therapy?.net_balance || 0).toLocaleString('fa-IR')} تومان`}
+                tone="#0d9488"
+              />
+              <SummaryTile
+                label="مانده سوپرویژن"
+                value={`${Number(wallets.supervision?.net_balance || 0).toLocaleString('fa-IR')} تومان`}
+                tone="#7c3aed"
+              />
+              <SummaryTile
+                label="مانده شهریه"
+                value={`${Number(wallets.tuition?.net_balance || 0).toLocaleString('fa-IR')} تومان`}
+                tone="#b45309"
+              />
+            </div>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.78rem', color: '#64748b', lineHeight: 1.6 }}>
+              بستانکاری درمان و سوپرویژن جدا هستند و قابل جابه‌جایی بین این دو نیستند.
+            </p>
 
             {openPayments.length > 0 && (
               <section style={{ marginBottom: '1rem' }}>

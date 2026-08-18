@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-06-10",
+  "last_updated": "2026-08-15",
   "description": "فرست فرادا ثبتشد  بع حت برا ضعت  تکا",
   "processes": [
     {
@@ -659,9 +659,9 @@
         "system"
       ],
       "sub_process_refs": [],
-      "last_converted": "2026-02-14",
+      "last_converted": "2026-08-15",
       "sop_order": 29,
-      "notes": "رح ۲۹ (SOP برز). فر ۱  ۲ پاز+زستا شدار بد ف درس د رحا پذرشارکتگ صاحب عا+در داخ ت  SMS. processes/fall_semester_preparation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code fall_semester_preparation"
+      "notes": "رح ۲۹. گام ۵ (course_finalization): مکان کلاس اختیاری است. گام شهریه: فاکتور پشتیبان ثبت‌نام و پیش‌فرض جلسه کلاس/دوره فقط در پنل مالی. SOP: processes/fall_semester_preparation/SOP_document.txt"
     },
     {
       "code": "winter_semester_preparation",

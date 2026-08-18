@@ -1,7 +1,7 @@
 /**
  * حل کردن گزینه‌های checkbox_list از روی source و context_data نمونه فرایند.
  */
-import { NO_OFFERINGS_HINT_FA, optionsFromContext } from './introCourseCatalog'
+import { NO_OFFERINGS_HINT_FA, formatCourseOptionLabel, optionsFromContext } from './introCourseCatalog'
 
 /** نرمال‌سازی نوع پذیرش از پرونده */
 function resolveAdmissionKind(contextData) {
@@ -91,12 +91,18 @@ export function resolveCheckboxListOptions(field, contextData) {
   const ctx = contextData && typeof contextData === 'object' ? contextData : {}
 
   if (src === 'available_courses_by_admission_type') {
-    const options = optionsFromContext(ctx)
+    const options = optionsFromContext(ctx).map((o) => ({
+      ...o,
+      label_fa: o.display_label_fa || formatCourseOptionLabel(o) || o.label_fa,
+    }))
     return applyAdmissionFilter(options, ctx, 1)
   }
 
   if (src === 'filtered_courses_by_admission_type_and_prerequisites') {
-    let options = optionsFromContext(ctx)
+    let options = optionsFromContext(ctx).map((o) => ({
+      ...o,
+      label_fa: o.display_label_fa || formatCourseOptionLabel(o) || o.label_fa,
+    }))
     const completed = completedCourseCodes(ctx)
     options = filterByPrerequisites(options, completed)
     return applyAdmissionFilter(options, ctx, 2)

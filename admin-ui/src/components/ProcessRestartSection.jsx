@@ -2,11 +2,11 @@ import React, { useState } from 'react'
 import { labelProcess } from '../utils/processDisplay'
 import {
   canShowProcessRestart,
-  studentRestartReasonRequired,
+  restartReasonRequired,
 } from '../utils/processRestartUtils'
 
 /**
- * شروع دوباره از ابتدا — بایگانی پروندهٔ فعلی و ساخت نمونهٔ جدید (برای پرسنل و دانشجو).
+ * شروع دوباره از ابتدا — مدیر/معاون (override) یا دانشجو برای پروندهٔ خود.
  */
 export default function ProcessRestartSection({
   user,
@@ -21,7 +21,7 @@ export default function ProcessRestartSection({
 
   if (!canShowProcessRestart(instanceDetail, user)) return null
 
-  const reasonRequired = studentRestartReasonRequired(user)
+  const reasonRequired = restartReasonRequired(user)
   const processLabel = labelProcess(instanceDetail.process_code)
   const canSubmit = acknowledged && (!reasonRequired || reason.trim().length >= 3)
 
@@ -57,6 +57,7 @@ export default function ProcessRestartSection({
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', lineHeight: 1.65 }}>
           اگر می‌خواهید این فرایند را از مرحلهٔ اول و با پروندهٔ تازه شروع کنید، از این گزینه استفاده کنید.
           تمام اطلاعات ثبت‌شده در پروندهٔ فعلی بایگانی می‌شود.
+          برای پرسنل فقط مدیر سامانه و معاون آموزش مجازند؛ تکمیل عادی هر مرحله همچنان فقط با نقش مسئول همان مرحله است.
         </p>
         <button
           type="button"

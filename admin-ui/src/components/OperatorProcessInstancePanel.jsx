@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { processExecApi } from '../services/api'
 import { notesPayload } from '../utils/decisionPayload'
-import { labelProcess, labelState } from '../utils/processDisplay'
+import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { operatorDocumentReviewToastFa } from '../utils/documentReviewStates'
 import OperatorInstanceContextSummary from './OperatorInstanceContextSummary'
 import DecisionNotesBlock from './DecisionNotesBlock'
 import OperatorInstanceGuidanceBlock from './OperatorInstanceGuidanceBlock'
@@ -69,12 +70,18 @@ export default function OperatorProcessInstancePanel({
     setTriggerBusy(true)
     try {
       const payload = { ...notesPayload(decisionNotes), ...(toState ? { to_state: toState } : {}) }
-      await processExecApi.trigger(instanceId, {
+      const res = await processExecApi.trigger(instanceId, {
         trigger_event: triggerEvent,
         payload,
         ...(toState ? { to_state: toState } : {}),
       })
-      showToast?.('اقدام ثبت شد')
+      const nextState = res.data?.to_state || toState
+      showToast?.(
+        operatorDocumentReviewToastFa(triggerEvent, {
+          studentCodeDisplay: formatStudentCodeDisplay(instanceDetail?.student_code),
+          toStateLabel: nextState ? labelState(nextState) : '',
+        }) || 'اقدام ثبت شد',
+      )
       onRefreshInstance?.()
     } catch (e) {
       const d = e?.response?.data?.detail

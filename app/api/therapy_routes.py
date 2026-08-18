@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.auth import get_current_user, require_role
+from app.core.user_roles import user_has_role
 from app.models.operational_models import User, Student, TherapySession, AttendanceRecord, ProcessInstance
 from app.services.alocom_provision import (
     ensure_therapy_session_alocom_links,
@@ -70,7 +71,7 @@ router = APIRouter(prefix="/api/therapy-sessions", tags=["TherapySessions"])
 
 
 def _can_write_session(user: User, session: TherapySession) -> bool:
-    if user.role in ("admin", "staff"):
+    if user_has_role(user, "staff", admin_bypass=True):
         return True
     if user.role == "therapist" and session.therapist_id == user.id:
         return True

@@ -12,7 +12,7 @@
 - `PAYMENT_PROVIDER=` واقعی (`zibal` / `saman` / `zarinpal`) و کلیدهای درگاه
 - `PAYMENT_TEST_BYPASS=false`
 - `OTP_SHOW_CODE_IN_UI=false`
-- `OTP_RESTRICT_TO_STUDENT_PHONES=true` (مگر عمداً `ALLOW_PUBLIC_OTP_SIGNUP=true`)
+- ثبت‌نام عمومی از صفحهٔ ورود باز است: `ALLOW_PUBLIC_OTP_SIGNUP=true` (شمارهٔ جدید → OTP → فرم ثبت‌نام). برای بستن: `ALLOW_PUBLIC_OTP_SIGNUP=false` و `OTP_RESTRICT_TO_STUDENT_PHONES=true`
 - `SEED_DEMO_ON_STARTUP=false`
 - `ALLOW_DEMO_SEED=false`
 - `FLOW_THROUGH_SEED_ENABLED=false`

@@ -28,6 +28,7 @@ from app.models.operational_models import (
 from app.services.payment_gateway import (
     PaymentRequest,
     create_payment,
+    sep_pay_get_url,
     verify_payment,
 )
 from app.services.payment_service import PaymentService
@@ -555,6 +556,26 @@ def _effective_payment_provider(req: CreatePaymentRequest) -> str:
     return base
 
 
+def _sep_fallback_allowed(settings) -> bool:
+    if getattr(settings, "PAYMENT_ZIBAL_ONLY", False):
+        return False
+    return bool((getattr(settings, "SEP_TERMINAL_ID", "") or "").strip())
+
+
+def _should_try_sep_after_zibal(requested_provider: str, settings) -> bool:
+    """After a failed Zibal create, try SEP once (primary=zibal, backup=saman)."""
+    return (requested_provider or "").strip().lower() == "zibal" and _sep_fallback_allowed(settings)
+
+
+@router.get("/sep/start")
+async def sep_start_redirect(token: str = "") -> Response:
+    """302 to official SEP GET URL. Kept for old bookmarks; create() no longer uses this hop."""
+    tok = (token or "").strip()
+    if not tok or len(tok) > 256:
+        raise HTTPException(status_code=400, detail="توکن سپ نامعتبر است")
+    return RedirectResponse(url=sep_pay_get_url(tok), status_code=302)
+
+
 @router.post("/create")
 async def create_payment_endpoint(
     req: CreatePaymentRequest,
@@ -599,6 +620,21 @@ async def create_payment_endpoint(
         provider=effective_provider,
     )
     result = await create_payment(payment_req)
+    used_provider = effective_provider
+    fallback_from = None
+    if (
+        not result.success
+        and _should_try_sep_after_zibal(effective_provider, settings)
+    ):
+        logger.warning(
+            "[PAYMENT] Zibal create failed (%s); falling back to SEP",
+            result.error,
+        )
+        payment_req.provider = "saman"
+        result = await create_payment(payment_req)
+        if result.success:
+            used_provider = "saman"
+            fallback_from = "zibal"
 
     if result.success:
         if req.instance_id and _is_uuid(req.instance_id) and req.student_id and _is_uuid(req.student_id):
@@ -606,19 +642,23 @@ async def create_payment_endpoint(
                 id=uuid.uuid4(),
                 authority=correlation_id,
                 gateway_track_id=(result.authority or None),
-                gateway_provider=effective_provider,
+                gateway_provider=used_provider,
                 instance_id=uuid.UUID(req.instance_id),
                 student_id=uuid.UUID(req.student_id),
                 amount=req.amount,
             )
             db.add(pending)
             await db.flush()
-        return {
+        payload = {
             "success": True,
             "payment_url": result.payment_url,
             "authority": result.authority,
             "reference_id": correlation_id,
+            "provider": used_provider,
         }
+        if fallback_from:
+            payload["fallback_from"] = fallback_from
+        return payload
     else:
         raise HTTPException(status_code=400, detail=result.error)
 

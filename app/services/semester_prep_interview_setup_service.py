@@ -1,8 +1,8 @@
 """مرحلهٔ یکپارچهٔ «مصاحبه‌ها» در آماده‌سازی ترم (ادغام گام‌های ۷ و ۸).
 
-کاربر مصاحبه‌گرها (از میان کارمندان اتوماسیون) را انتخاب می‌کند و برای هر نفر
-می‌تواند روزها و بازهٔ ساعت مستقل بگذارد؛ این سرویس از همان ورودی، مقادیر فرم
-دو مرحله و فهرست اسلات‌های قابل رزرو را می‌سازد. فرمت قدیمی (روز/ساعت مشترک)
+کاربر مصاحبه‌گرها را فقط از استخر پیش‌آماده‌سازی (نقش interviewer) انتخاب می‌کند
+و برای هر نفر می‌تواند روزها و بازهٔ ساعت مستقل بگذارد؛ این سرویس از همان ورودی،
+مقادیر فرم دو مرحله و فهرست اسلات‌های قابل رزرو را می‌سازد. فرمت قدیمی (روز/ساعت مشترک)
 همچنان پذیرفته می‌شود.
 """
 
@@ -383,8 +383,56 @@ INTERVIEW_SETUP_STATES: tuple[str, ...] = (
     "interview_scheduling",
 )
 
-# مصاحبه‌گرها از میان کارمندان اتوماسیون انتخاب می‌شوند
-INTERVIEWER_CANDIDATE_ROLES: tuple[str, ...] = ("interviewer", "staff")
+# نقش قابلیت استخر پیش‌آماده‌سازی (شامل نقش اصلی، roles، و معادل‌هایی مثل faculty_1)
+INTERVIEWER_POOL_ROLE = "interviewer"
+INTERVIEWER_CANDIDATE_ROLES: tuple[str, ...] = (INTERVIEWER_POOL_ROLE,)
+
+
+def is_interviewer_pool_member(user: Any) -> bool:
+    """همان تعریف استخر پیش‌آماده‌سازی: فعال و دارای قابلیت interviewer."""
+    from app.core.user_roles import user_has_role
+
+    if user is None or not getattr(user, "is_active", False):
+        return False
+    return user_has_role(user, INTERVIEWER_POOL_ROLE, admin_bypass=False)
+
+
+async def list_interviewer_pool_users(
+    db,
+    *,
+    search: str | None = None,
+    limit: int | None = None,
+) -> list[Any]:
+    """فهرست مصاحبه‌کنندگان فعال استخر — منبع مشترک صفحهٔ پیش‌آماده‌سازی و مرحلهٔ ۷."""
+    from sqlalchemy import or_, select
+
+    from app.core.user_roles import user_matches_role_sql
+    from app.models.operational_models import User
+
+    stmt = select(User).where(
+        User.is_active.is_(True),
+        user_matches_role_sql(INTERVIEWER_POOL_ROLE),
+    )
+    q = (search or "").strip()
+    if q:
+        term = f"%{q}%"
+        stmt = stmt.where(or_(User.full_name_fa.ilike(term), User.username.ilike(term)))
+    stmt = stmt.order_by(User.full_name_fa.asc(), User.username.asc())
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list((await db.execute(stmt)).scalars().all())
+
+
+def interviewer_candidate_dict(user: Any) -> dict[str, Any]:
+    return {
+        "id": str(user.id),
+        "full_name_fa": (getattr(user, "full_name_fa", None) or "").strip()
+        or getattr(user, "username", "")
+        or "",
+        "username": getattr(user, "username", None),
+        "role": getattr(user, "role", None),
+    }
+
 
 # برچسب نوبت‌های ساخته‌شده در این مرحله — مبنای پاک‌سازی هنگام ثبت مجدد
 GENERATED_SLOT_LABEL_FA = "مصاحبهٔ آماده‌سازی ترم"
@@ -411,7 +459,7 @@ async def _resolve_interviewers(db, interviewer_ids: Iterable[str]) -> dict[str,
             wanted.append(_uuid.UUID(str(raw)))
         except ValueError:
             raise SemesterPrepInterviewSetupError(
-                "فهرست مصاحبه‌گرها معتبر نیست؛ لطفاً از فهرست کارمندان انتخاب کنید."
+                "فهرست مصاحبه‌گرها معتبر نیست؛ لطفاً از استخر پیش‌آماده‌سازی انتخاب کنید."
             )
     if not wanted:
         return {}
@@ -423,10 +471,10 @@ async def _resolve_interviewers(db, interviewer_ids: Iterable[str]) -> dict[str,
             raise SemesterPrepInterviewSetupError(
                 "یکی از مصاحبه‌گرهای انتخاب‌شده یافت نشد یا غیرفعال است."
             )
-        if (user.role or "").strip() not in INTERVIEWER_CANDIDATE_ROLES:
+        if not is_interviewer_pool_member(user):
             name = (user.full_name_fa or user.username or "").strip()
             raise SemesterPrepInterviewSetupError(
-                f"«{name}» جزو کارمندان قابل انتخاب برای مصاحبه نیست."
+                f"«{name}» در استخر مصاحبه‌کنندگان پیش‌آماده‌سازی نیست."
             )
     return by_id
 
@@ -483,6 +531,14 @@ async def apply_semester_prep_interview_setup(
             "مرحلهٔ فعلی فرایند «مصاحبه‌ها» نیست؛ صفحه را تازه کنید."
         )
 
+    from app.services.semester_prep_rbac import can_edit_prep_interview_setup
+
+    if not can_edit_prep_interview_setup(getattr(actor, "role", None)):
+        raise SemesterPrepInterviewSetupError(
+            "فقط مدیر داخلی / کارمند دفتر می‌تواند مرحلهٔ مصاحبه‌ها را ثبت کند.",
+            status_code=403,
+        )
+
     normalized = normalize_interview_setup_payload(payload)
     errors = interview_setup_errors(normalized)
     if errors:
@@ -533,19 +589,30 @@ async def apply_semester_prep_interview_setup(
 
     engine = StateMachineEngine(db)
     actor_role = (actor.role or "").strip()
+    # internal_manager برای ترنزیشن معادل staff
+    from app.core.user_roles import canonical_portal_role
+
+    fire_role = canonical_portal_role(actor_role) or actor_role
+    if fire_role == "internal_manager":
+        fire_role = "staff"
     triggers = (
         ["interviewers_assigned", "interview_times_set"]
         if state == "interviewer_assignment"
         else ["interview_times_set"]
     )
+    from app.core.engine import UnauthorizedError
+
     for trigger in triggers:
-        result = await engine.execute_transition(
-            instance_id=instance.id,
-            trigger_event=trigger,
-            actor_id=actor.id,
-            actor_role=actor_role,
-            payload=None,
-        )
+        try:
+            result = await engine.execute_transition(
+                instance_id=instance.id,
+                trigger_event=trigger,
+                actor_id=actor.id,
+                actor_role=fire_role,
+                payload=None,
+            )
+        except UnauthorizedError as exc:
+            raise SemesterPrepInterviewSetupError(str(exc), status_code=403) from exc
         if not result.success:
             raise SemesterPrepInterviewSetupError(
                 result.error or "پیشروی مرحلهٔ مصاحبه‌ها انجام نشد."

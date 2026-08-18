@@ -19,6 +19,22 @@ def test_staff_sees_interviewer_portal_nav() -> None:
     assert user_sees_nav_path("staff", "/panel/portal/interviewer") is True
 
 
+def test_internal_manager_sees_staff_lanes() -> None:
+    assert user_sees_nav_path("internal_manager", staff_lane_path("admissions")) is True
+    assert user_sees_nav_path("internal_manager", "/panel/portal/interviewer") is True
+    assert user_sees_nav_path("internal_manager", "/panel/reports") is True
+
+
+def test_specialist_lanes_for_named_roles() -> None:
+    assert user_sees_nav_path("marketing", staff_lane_path("content-ops")) is True
+    assert user_sees_nav_path("reference_center", staff_lane_path("content-ops")) is True
+    assert user_sees_nav_path(
+        "therapy_education_coordinator", staff_lane_path("therapy-coord")
+    ) is True
+    assert user_sees_nav_path("instructor", staff_lane_path("instruction")) is True
+    assert user_sees_nav_path("marketing", staff_lane_path("admissions")) is False
+
+
 def test_admin_only_paths_frozen():
     assert "/panel/rules" in ADMIN_ONLY_PATHS
     assert "/panel/dynamic-forms" in ADMIN_ONLY_PATHS

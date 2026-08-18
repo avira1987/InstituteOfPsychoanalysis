@@ -8,6 +8,7 @@ import { getPortalHomeHref, getPortalQuickLink } from '../utils/portalRoleHome'
 import { staffLanesForPortalRole } from '../utils/portalStaffLanes'
 import { committeeKindsForPortalRole } from '../utils/portalCommitteeKinds'
 import { canViewSchedulerAutomation } from '../utils/portalRoleNav'
+import { canonicalPortalRole, userHasRole } from '../utils/userRoles'
 
 function PortalQuickLink({ role, navigate }) {
   const portal = role ? getPortalQuickLink(role) : null
@@ -35,7 +36,7 @@ export default function Dashboard() {
   const loadAll = async () => {
     setLoadError(null)
     setDebugCount(null)
-    const isAdminOrStaff = user?.role === 'admin' || user?.role === 'staff'
+    const isAdminOrStaff = userHasRole(user, 'staff')
     try {
       // فقط برای ادمین/کارمند: آمار را بگیر؛ کاربر غیرادمین این API را ندارد
       if (!isAdminOrStaff) {
@@ -81,7 +82,7 @@ export default function Dashboard() {
   }
 
   const quickActions = useMemo(() => {
-    const u = user?.role
+    const u = canonicalPortalRole(user?.role) || user?.role
     const items = []
     if (u === 'student') {
       items.push({ key: 'student', icon: '🎓', label: 'پنل آموزشی', hint: 'مسیر، فرایندها و کلاس', onClick: () => navigate('/panel/portal/student') })
@@ -212,7 +213,7 @@ export default function Dashboard() {
       )}
 
       {/* کارت‌های آمار فقط برای ادمین و کارمند نمایش داده می‌شود */}
-      {(user?.role === 'admin' || user?.role === 'staff') && (
+      {(userHasRole(user, 'staff')) && (
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-icon primary">⚙️</div>

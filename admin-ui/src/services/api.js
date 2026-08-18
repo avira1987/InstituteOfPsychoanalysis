@@ -220,9 +220,11 @@ export const schedulerApi = {
 export const semesterPrepApi = {
   getStatus: () => api.get('admin/semester-prep/status'),
   getReadiness: () => api.get('admin/semester-prep/readiness'),
+  getActivityLicense: () => api.get('admin/semester-prep/activity-license'),
+  patchActivityLicense: (body) => api.patch('admin/semester-prep/activity-license', body),
   start: (processCode) => api.post('admin/semester-prep/start', { process_code: processCode }),
   getSlaWarnings: () => api.get('admin/semester-prep/sla-warnings'),
-  /** کارمندان اتوماسیون قابل انتخاب به‌عنوان مصاحبه‌گر */
+  /** استخر مصاحبه‌کنندگان پیش‌آماده‌سازی برای مرحلهٔ مصاحبه‌ها */
   getInterviewCandidates: () =>
     api.get('admin/semester-prep/interview-candidates', {
       params: { _ts: Date.now() },
@@ -309,7 +311,7 @@ export const processExecApi = {
     }
     return res
   },
-  /** بازگشت به مرحلهٔ قبل (ادمین، معاون آموزش، کارمند) */
+  /** بازگشت به مرحلهٔ قبل (فقط مدیر سامانه / معاون آموزش) */
   rollback: (instanceId, body) => api.post(`process/${instanceId}/rollback`, body || {}),
   restart: (instanceId, body) => api.post(`process/${instanceId}/restart`, body || {}),
   status: (instanceId) => api.get(`process/${instanceId}/status`),
@@ -489,6 +491,8 @@ export const financeApi = {
   patchProgramFinancialDefaults: (body) => api.patch('finance/program-defaults', body),
   transactions: (params) => api.get('finance/transactions', { params }),
   studentBalances: (params) => api.get('finance/student-balances', { params }),
+  tuitionVouchers: (params) => api.get('finance/tuition-vouchers', { params }),
+  patchTuitionVoucher: (id, body) => api.patch(`finance/tuition-vouchers/${id}`, body),
   async exportCsv() {
     const token = localStorage.getItem('token')
     const base = getApiBase()
@@ -538,6 +542,7 @@ export const userApi = {
   },
   create: (data) => api.post('auth/register', data),
   update: (id, data) => api.patch(`admin/users/${id}`, data),
+  setPassword: (id, password) => api.post(`admin/users/${id}/password`, { password }),
   /** بدون params: غیرفعال‌سازی. با `{ params: { permanent: true } }`: حذف دائمی از پایگاه. */
   delete: (id, config) => api.delete(`admin/users/${id}`, config),
 }
@@ -655,6 +660,7 @@ export const publicApi = {
   smsSimulationStatus: () => api.get('public/sms-simulation-status'),
   /** مسیر تحصیلی و نقش‌ها؛ دریافت عمومی بدون ورود */
   studentLifecycleMatrix: () => api.get('public/student-lifecycle-matrix'),
+  instituteInfo: () => api.get('public/institute-info'),
   register: (data) => api.post('public/register', data),
 }
 
@@ -743,7 +749,8 @@ export const courseCommitteeRosterApi = {
     api.patch('admin/course-committee-roster/members/courses', body),
   updateMemberKind: (body) =>
     api.patch('admin/course-committee-roster/members/kind', body),
-  deleteMember: (body) => api.delete('admin/course-committee-roster/members', { data: body }),
+  deleteMember: (body) =>
+    api.delete('admin/course-committee-roster/members', { params: body, data: body }),
 }
 
 export default api

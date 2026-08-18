@@ -64,7 +64,7 @@ DEMO_USERS = [
     ("supervisor1", "دکتر زهرا سوپروایزر", "supervisor", "supervisor1@anistito.ir"),
     ("site_manager1", "فاطمه مسئول سایت", "site_manager", "site_manager1@anistito.ir"),
     ("progress_committee1", "حسین کمیته پیشرفت", "progress_committee", "committee1@anistito.ir"),
-    *[(u, name, "staff", email) for u, name, email in STAFF_EMPLOYEES],
+    *[(u, name, role, email) for u, name, email, role, _roles in STAFF_EMPLOYEES],
 ]
 
 # نقش‌های چندگانه برای حساب‌های واحد
@@ -112,21 +112,28 @@ async def main():
             return 1
 
         from app.models.operational_models import User, Student
+        from app.core.user_roles import apply_roles_to_user
 
         created = 0
         updated = 0
+
+        staff_roles_by_user = {u: (role, roles) for u, _n, _e, role, roles in STAFF_EMPLOYEES}
 
         for username, full_name_fa, role, email in DEMO_USERS:
             result = await db.execute(select(User).where(User.username == username))
             user = result.scalars().first()
 
             password = "admin123" if username == "admin" else DEMO_PASSWORD
+            if username in staff_roles_by_user:
+                primary, roles_list = staff_roles_by_user[username]
+            else:
+                primary = role
+                roles_list = MULTI_ROLES.get(username, [role])
 
             if user:
                 user.full_name_fa = full_name_fa
                 user.email = email
-                user.role = role
-                user.roles = MULTI_ROLES.get(username, [role])
+                apply_roles_to_user(user, roles_list, primary=primary)
                 user.hashed_password = get_password_hash(password)
                 user.is_active = True
                 updated += 1
@@ -138,10 +145,9 @@ async def main():
                     email=email,
                     hashed_password=get_password_hash(password),
                     full_name_fa=full_name_fa,
-                    role=role,
-                    roles=MULTI_ROLES.get(username, [role]),
                     is_active=True,
                 )
+                apply_roles_to_user(user, roles_list, primary=primary)
                 db.add(user)
                 await db.flush()
                 created += 1
@@ -191,8 +197,8 @@ async def main():
     print("  student3 / demo123        - Student (STU-003)")
     print("  therapist1 / demo123      - Therapist")
     print("  supervisor1 / demo123     - Supervisor")
-    for u, name, _ in STAFF_EMPLOYEES:
-        print(f"  {u} / demo123          - Staff ({name})")
+    for u, name, _email, role, _roles in STAFF_EMPLOYEES:
+        print(f"  {u} / demo123          - {role} ({name})")
     print("  site_manager1 / demo123   - Site Manager")
     print("  progress_committee1 / demo123 - Progress Committee")
     print("=" * 50)

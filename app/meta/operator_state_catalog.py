@@ -89,7 +89,12 @@ def resolve_portal_role_to_assigned_roles(portal_role: str) -> list[str] | None:
     لیست خالی یعنی هیچ نگاشت stateای نیست (مثلاً مالی).
     """
     raw = _load_portal_role_map_raw()
-    pr = (raw.get("portal_roles") or {}).get(portal_role)
+    from app.core.user_roles import canonical_portal_role
+
+    lookup = canonical_portal_role(portal_role) or (portal_role or "").strip()
+    pr = (raw.get("portal_roles") or {}).get(lookup)
+    if not pr and lookup != portal_role:
+        pr = (raw.get("portal_roles") or {}).get(portal_role)
     if not pr:
         return []
     if pr.get("include_all_operator_assigned_roles"):

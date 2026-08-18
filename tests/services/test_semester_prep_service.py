@@ -200,7 +200,16 @@ async def test_apply_pre_filled_from_fall_courses(db_session: AsyncSession, samp
     fall, _ = await get_or_start_prep_instance(
         db_session, FALL_PREP, actor_id=sample_user.id, actor_role="admin"
     )
-    sample_courses = [{"code": "PSY101", "title_fa": "روانشناسی"}]
+    sample_courses = [
+        {
+            "course_name": "تئوری روانکاوی ۲",
+            "track": "analytic_psychotherapy",
+            "proposed_day": "شنبه",
+            "proposed_time": "18:00",
+            "instructor": "علي علوي",
+            "teaching_assistant": "",
+        }
+    ]
     ctx = dict(fall.context_data or {})
     ctx["courses_winter"] = sample_courses
     fall.context_data = ctx
@@ -216,8 +225,19 @@ async def test_apply_pre_filled_from_fall_courses(db_session: AsyncSession, samp
         "course_list_review",
         {},
     )
-    assert merged.get("courses") == sample_courses
-
+    courses = merged.get("courses") or []
+    assert isinstance(courses, list)
+    assert courses, "جداول باید از چارت پیش‌آماده‌سازی پر شوند"
+    # روز/ساعت ردیف همگام با پاییز برای جفت درس↔مدرس حفظ شده باشد
+    matched = [
+        r
+        for r in courses
+        if (r.get("course_name") or "").strip() in ("تئوری روانکاوی ۲", "theory_psychoanalysis_2")
+        and "علو" in (r.get("instructor") or "")
+    ]
+    assert matched, courses
+    assert matched[0].get("proposed_day") == "شنبه"
+    assert matched[0].get("proposed_time") == "18:00"
 
 def test_apply_course_finalization_prefill_from_fall_course_lists():
     from app.services.semester_prep_service import (
@@ -228,7 +248,7 @@ def test_apply_course_finalization_prefill_from_fall_course_lists():
     draft_fall = [
         {
             "course_name": "تئوری ۱",
-            "track": "آشنایی",
+            "track": "analytic_psychotherapy",
             "proposed_day": "شنبه",
             "proposed_time": "18:00",
             "instructor": "دکتر الف",
@@ -238,7 +258,7 @@ def test_apply_course_finalization_prefill_from_fall_course_lists():
     draft_winter = [
         {
             "course_name": "عملی ۲",
-            "track": "جامع",
+            "track": "analytic_psychotherapy",
             "day": "دوشنبه",
             "time": "17:30",
             "instructor": "دکتر ج",
@@ -249,8 +269,12 @@ def test_apply_course_finalization_prefill_from_fall_course_lists():
     assert merged["courses_finalized_fall"][0]["course_name"] == "تئوری ۱"
     assert merged["courses_finalized_fall"][0]["day"] == "شنبه"
     assert merged["courses_finalized_fall"][0]["time"] == "18:00"
+    # رسته فارسی برای نمایش اپراتور
+    assert merged["courses_finalized_fall"][0]["track"] != "analytic_psychotherapy"
+    assert "روان" in merged["courses_finalized_fall"][0]["track"]
     assert merged["courses_finalized_winter"][0]["course_name"] == "عملی ۲"
     assert merged["courses_finalized_winter"][0]["day"] == "دوشنبه"
+    assert merged["courses_finalized_winter"][0]["track"] != "analytic_psychotherapy"
 
 
 def test_apply_course_finalization_prefill_over_placeholder_rows():
@@ -286,6 +310,346 @@ def test_apply_course_finalization_prefill_over_placeholder_rows():
     merged = _apply_course_finalization_prefill(FALL_PREP, "course_finalization", ctx)
     assert merged["courses_finalized_fall"][0]["course_name"] == "تئوری ۱"
     assert merged["courses_finalized_fall"][0]["day"] == "شنبه"
+
+
+def test_apply_course_finalization_prefill_skips_blank_draft_rows():
+    from app.services.semester_prep_service import (
+        FALL_PREP,
+        _apply_course_finalization_prefill,
+    )
+
+    ctx = {
+        "courses_fall": [
+            {
+                "course_name": "تئوری ۱",
+                "track": "آشنایی",
+                "proposed_day": "شنبه",
+                "instructor": "دکتر الف",
+            },
+            {"course_name": "", "proposed_day": "", "instructor": ""},
+        ],
+        "courses_winter": [
+            {
+                "course_name": "عملی ۲",
+                "proposed_day": "دوشنبه",
+                "instructor": "دکتر ب",
+            }
+        ],
+    }
+    merged = _apply_course_finalization_prefill(FALL_PREP, "course_finalization", ctx)
+    assert [r["course_name"] for r in merged["courses_finalized_fall"]] == ["تئوری ۱"]
+    assert merged["courses_finalized_fall"][0]["instructor"] == "دکتر الف"
+    assert [r["course_name"] for r in merged["courses_finalized_winter"]] == ["عملی ۲"]
+
+
+def test_apply_course_finalization_prefill_resyncs_after_step4_edit():
+    """ویرایش لیست/ساعات مرحلهٔ ۴ باید جدول مرحلهٔ ۵ را جایگزین کند، نه دادهٔ قدیمی را نگه دارد."""
+    from app.services.semester_prep_service import (
+        FALL_PREP,
+        WINTER_PREP,
+        _apply_course_finalization_prefill,
+    )
+
+    ctx = {
+        "courses_fall": [
+            {
+                "course_name": "تئوری ۱ ویرایش‌شده",
+                "course_code": "theory_1",
+                "track": "آشنایی",
+                "proposed_day": "یکشنبه",
+                "proposed_time": "19:00",
+                "instructor": "دکتر جدید",
+            },
+            {
+                "course_name": "درس تازه‌اضافه‌شده",
+                "track": "آشنایی",
+                "proposed_day": "سه‌شنبه",
+                "proposed_time": "16:00",
+                "instructor": "دکتر ج",
+            },
+        ],
+        "courses_winter": [
+            {
+                "course_name": "عملی ۲ جدید",
+                "track": "جامع",
+                "proposed_day": "چهارشنبه",
+                "proposed_time": "18:30",
+                "instructor": "دکتر د",
+            }
+        ],
+        "courses_finalized_fall": [
+            {
+                "course_name": "تئوری ۱",
+                "course_code": "theory_1",
+                "track": "آشنایی",
+                "day": "شنبه",
+                "time": "18:00",
+                "instructor": "دکتر الف",
+                "classroom_location": "کلاس ۱",
+                "instructor_coordinated": True,
+            },
+            {
+                "course_name": "درس حذف‌شده",
+                "track": "آشنایی",
+                "day": "دوشنبه",
+                "time": "10:00",
+                "instructor": "دکتر قدیم",
+                "classroom_location": "کلاس قدیم",
+                "instructor_coordinated": True,
+            },
+        ],
+        "courses_finalized_winter": [
+            {
+                "course_name": "عملی ۲",
+                "track": "جامع",
+                "day": "دوشنبه",
+                "time": "17:30",
+                "instructor": "دکتر ب",
+                "classroom_location": "کلاس زمستان",
+                "instructor_coordinated": True,
+            }
+        ],
+    }
+    merged = _apply_course_finalization_prefill(FALL_PREP, "course_finalization", ctx)
+    fall_rows = merged["courses_finalized_fall"]
+    assert [r["course_name"] for r in fall_rows] == ["تئوری ۱ ویرایش‌شده", "درس تازه‌اضافه‌شده"]
+    assert fall_rows[0]["day"] == "یکشنبه"
+    assert fall_rows[0]["time"] == "19:00"
+    assert fall_rows[0]["instructor"] == "دکتر جدید"
+    assert fall_rows[0]["classroom_location"] == "کلاس ۱"
+    assert fall_rows[0]["instructor_coordinated"] is True
+    assert fall_rows[1]["day"] == "سه‌شنبه"
+    assert fall_rows[1]["classroom_location"] == ""
+    assert fall_rows[1]["instructor_coordinated"] is False
+
+    winter_rows = merged["courses_finalized_winter"]
+    assert len(winter_rows) == 1
+    assert winter_rows[0]["course_name"] == "عملی ۲ جدید"
+    assert winter_rows[0]["day"] == "چهارشنبه"
+    assert winter_rows[0]["time"] == "18:30"
+    assert winter_rows[0]["instructor"] == "دکتر د"
+
+    winter_ctx = {
+        "courses": [
+            {
+                "course_name": "عملی زمستان ویرایش",
+                "course_code": "winter_prac",
+                "proposed_day": "پنجشنبه",
+                "proposed_time": "11:00",
+                "instructor": "دکتر و",
+            }
+        ],
+        "courses_finalized": [
+            {
+                "course_name": "عملی زمستان",
+                "course_code": "winter_prac",
+                "day": "دوشنبه",
+                "time": "09:00",
+                "instructor": "دکتر قدیم",
+                "classroom_location": "سالن ۲",
+                "instructor_coordinated": True,
+            }
+        ],
+    }
+    winter_merged = _apply_course_finalization_prefill(
+        WINTER_PREP, "course_finalization", winter_ctx
+    )
+    wrow = winter_merged["courses_finalized"][0]
+    assert wrow["course_name"] == "عملی زمستان ویرایش"
+    assert wrow["day"] == "پنجشنبه"
+    assert wrow["time"] == "11:00"
+    assert wrow["instructor"] == "دکتر و"
+    assert wrow["classroom_location"] == "سالن ۲"
+    assert wrow["instructor_coordinated"] is True
+
+
+def test_apply_course_finalization_form_save_keeps_edited_hours_and_writes_back():
+    """ذخیرهٔ مرحلهٔ ۵ باید روز/ساعت ویرایش‌شده را نگه دارد و به پیش‌نویس ۴ برگرداند."""
+    from app.services.semester_prep_service import (
+        FALL_PREP,
+        WINTER_PREP,
+        apply_course_finalization_form_save,
+    )
+
+    ctx = {
+        "courses_fall": [
+            {
+                "course_name": "تئوری ۱",
+                "course_code": "theory_1",
+                "track": "آشنایی",
+                "proposed_day": "شنبه",
+                "proposed_time": "18:00",
+                "instructor": "دکتر الف",
+            }
+        ],
+        "courses_winter": [
+            {
+                "course_name": "عملی ۲",
+                "proposed_day": "دوشنبه",
+                "proposed_time": "17:30",
+                "instructor": "دکتر ب",
+            }
+        ],
+        # جدول نهایی پس از prefill از مرحلهٔ ۴ (ساعت قدیم)
+        "courses_finalized_fall": [
+            {
+                "course_name": "تئوری ۱",
+                "course_code": "theory_1",
+                "track": "آشنایی",
+                "day": "شنبه",
+                "time": "18:00",
+                "instructor": "دکتر الف",
+                "classroom_location": "",
+                "instructor_coordinated": False,
+            }
+        ],
+        "courses_finalized_winter": [
+            {
+                "course_name": "عملی ۲",
+                "day": "دوشنبه",
+                "time": "17:30",
+                "instructor": "دکتر ب",
+                "classroom_location": "",
+                "instructor_coordinated": False,
+            }
+        ],
+    }
+    submitted = {
+        "courses_finalized_fall": [
+            {
+                "course_name": "تئوری ۱",
+                "course_code": "theory_1",
+                "track": "آشنایی",
+                "day": "یکشنبه",
+                "time": "19:30",
+                "instructor": "دکتر الف",
+                "classroom_location": "کلاس ۱",
+                "instructor_coordinated": True,
+            }
+        ],
+        "courses_finalized_winter": [
+            {
+                "course_name": "عملی ۲",
+                "day": "سه‌شنبه",
+                "time": "16:00",
+                "instructor": "دکتر ب",
+                "classroom_location": "",
+                "instructor_coordinated": True,
+            }
+        ],
+    }
+    saved = apply_course_finalization_form_save(FALL_PREP, ctx, submitted)
+    assert saved["courses_finalized_fall"][0]["day"] == "یکشنبه"
+    assert saved["courses_finalized_fall"][0]["time"] == "19:30"
+    assert saved["courses_finalized_fall"][0]["classroom_location"] == "کلاس ۱"
+    assert saved["courses_finalized_fall"][0]["instructor_coordinated"] is True
+    assert saved["courses_fall"][0]["proposed_day"] == "یکشنبه"
+    assert saved["courses_fall"][0]["proposed_time"] == "19:30"
+    assert saved["courses_winter"][0]["proposed_day"] == "سه‌شنبه"
+    assert saved["courses_winter"][0]["proposed_time"] == "16:00"
+
+    winter_ctx = {
+        "courses": [
+            {
+                "course_name": "عملی زمستان",
+                "course_code": "winter_prac",
+                "proposed_day": "دوشنبه",
+                "proposed_time": "09:00",
+                "instructor": "دکتر و",
+            }
+        ],
+        "courses_finalized": [
+            {
+                "course_name": "عملی زمستان",
+                "course_code": "winter_prac",
+                "day": "دوشنبه",
+                "time": "09:00",
+                "instructor": "دکتر و",
+            }
+        ],
+    }
+    winter_saved = apply_course_finalization_form_save(
+        WINTER_PREP,
+        winter_ctx,
+        {
+            "courses_finalized": [
+                {
+                    "course_name": "عملی زمستان",
+                    "course_code": "winter_prac",
+                    "day": "چهارشنبه",
+                    "time": "14:00",
+                    "instructor": "دکتر و",
+                    "classroom_location": "سالن ۲",
+                    "instructor_coordinated": True,
+                }
+            ]
+        },
+    )
+    assert winter_saved["courses_finalized"][0]["day"] == "چهارشنبه"
+    assert winter_saved["courses_finalized"][0]["time"] == "14:00"
+    assert winter_saved["courses"][0]["proposed_day"] == "چهارشنبه"
+    assert winter_saved["courses"][0]["proposed_time"] == "14:00"
+
+
+def test_merge_course_finalization_draft_writeback_survives_form_sanitize():
+    """پس از sanitize فرم مرحلهٔ ۵، پیش‌نویس مرحلهٔ ۴ باید دوباره به payload برگردد."""
+    from app.meta.process_forms import get_process_forms
+    from app.meta.student_step_forms import sanitize_operator_form_values
+    from app.services.semester_prep_service import merge_course_finalization_draft_writeback
+
+    forms = get_process_forms("fall_semester_preparation", state_code="course_finalization")
+    form_values = {
+        "courses_finalized_fall": [{"course_name": "تئوری ۱", "day": "یکشنبه"}],
+        "courses_finalized_winter": [{"course_name": "عملی ۲", "day": "سه‌شنبه"}],
+        "courses_fall": [{"course_name": "تئوری ۱", "proposed_day": "یکشنبه"}],
+        "courses_winter": [{"course_name": "عملی ۲", "proposed_day": "سه‌شنبه"}],
+    }
+    sanitized = sanitize_operator_form_values(forms, form_values)
+    assert "courses_fall" not in sanitized
+    assert "courses_winter" not in sanitized
+    merged = merge_course_finalization_draft_writeback(sanitized, form_values)
+    assert merged["courses_fall"][0]["proposed_day"] == "یکشنبه"
+    assert merged["courses_winter"][0]["proposed_day"] == "سه‌شنبه"
+    assert merged["courses_finalized_fall"][0]["course_name"] == "تئوری ۱"
+
+
+def test_course_finalization_prefill_still_takes_hours_from_step4_after_step5_edit():
+    """ورود مجدد به مرحلهٔ ۵ بعد از ویرایش مرحلهٔ ۴ باید ساعت جدید ۴ را بیاورد."""
+    from app.services.semester_prep_service import (
+        FALL_PREP,
+        _apply_course_finalization_prefill,
+    )
+
+    ctx = {
+        "courses_fall": [
+            {
+                "course_name": "تئوری ۱",
+                "course_code": "theory_1",
+                "proposed_day": "پنجشنبه",
+                "proposed_time": "12:00",
+                "instructor": "دکتر جدید",
+            }
+        ],
+        "courses_winter": [],
+        "courses_finalized_fall": [
+            {
+                "course_name": "تئوری ۱",
+                "course_code": "theory_1",
+                "day": "یکشنبه",
+                "time": "19:30",
+                "instructor": "دکتر الف",
+                "classroom_location": "کلاس ۱",
+                "instructor_coordinated": True,
+            }
+        ],
+    }
+    merged = _apply_course_finalization_prefill(FALL_PREP, "course_finalization", ctx)
+    row = merged["courses_finalized_fall"][0]
+    assert row["day"] == "پنجشنبه"
+    assert row["time"] == "12:00"
+    assert row["instructor"] == "دکتر جدید"
+    assert row["classroom_location"] == "کلاس ۱"
+    assert row["instructor_coordinated"] is True
 
 
 @pytest.mark.asyncio

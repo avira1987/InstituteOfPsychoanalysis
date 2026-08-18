@@ -16,15 +16,26 @@ import { getUserRoles, userHasRole } from '../utils/userRoles'
 import { getManualStartScope } from '../utils/processStartScope'
 import { sortProcessNavItems } from '../utils/processNavOrder'
 import { groupProcessNavItemsByCategory } from '../utils/processNavCategories'
-import { labelProcess } from '../utils/processDisplay'
+import { formatStudentCodeDisplay, labelProcess } from '../utils/processDisplay'
 
-const portalRoleOptions = Object.keys(ROLE_LABELS_FA_MAP).sort()
+const ROLE_PICKER_EXCLUDE = new Set(['system'])
+const ROLE_PICKER_PIN = ['admin', 'internal_manager', 'staff', 'student', 'deputy_education', 'finance']
+const portalRoleOptions = [
+  ...ROLE_PICKER_PIN.filter((r) => ROLE_LABELS_FA_MAP[r]),
+  ...Object.keys(ROLE_LABELS_FA_MAP)
+    .filter((r) => !ROLE_PICKER_EXCLUDE.has(r) && !ROLE_PICKER_PIN.includes(r))
+    .sort((a, b) => labelRoleFa(a, { includeCode: false }).localeCompare(
+      labelRoleFa(b, { includeCode: false }),
+      'fa',
+    )),
+]
 
 const USER_TABLE_COLS_STORAGE_KEY = 'anistito.user-mgmt.col-widths.v1'
 const USER_TABLE_COLS = [
   { key: 'username', label: 'کاربری', defaultWidth: 120, minWidth: 72 },
   { key: 'name', label: 'نام', defaultWidth: 150, minWidth: 80 },
   { key: 'role', label: 'نقش', defaultWidth: 110, minWidth: 72 },
+  { key: 'student_code', label: 'شماره دانشجویی', defaultWidth: 130, minWidth: 90 },
   { key: 'national_code', label: 'کد ملی', defaultWidth: 110, minWidth: 80 },
   { key: 'status', label: 'وضعیت', defaultWidth: 80, minWidth: 64 },
   { key: 'date', label: 'تاریخ', defaultWidth: 100, minWidth: 72 },
@@ -62,6 +73,15 @@ const emptyCreate = () => ({
   email: '',
   phone: '',
 })
+
+function apiErrorMessage(err) {
+  const d = err?.response?.data?.detail
+  if (typeof d === 'string' && d.trim()) return d
+  if (Array.isArray(d)) {
+    return d.map((x) => (typeof x === 'string' ? x : x?.msg || x?.detail || '')).filter(Boolean).join(' ')
+  }
+  return err?.message || 'خطای ناشناخته'
+}
 
 function toggleRoleInList(roles, code) {
   const set = new Set(roles || [])
@@ -139,10 +159,12 @@ export default function UserManagement() {
   const [hasStudentProfile, setHasStudentProfile] = useState(false)
   const [studentCourseType, setStudentCourseType] = useState('introductory')
   const [studentProfileId, setStudentProfileId] = useState(null)
+  const [studentCode, setStudentCode] = useState('')
 
   const [setPasswordUser, setSetPasswordUser] = useState(null)
   const [setPasswordValue, setSetPasswordValue] = useState('')
   const [setPasswordConfirm, setSetPasswordConfirm] = useState('')
+  const [setPasswordSaving, setSetPasswordSaving] = useState(false)
 
   /** تأیید حذف دائمی از DB (فقط ادمین) */
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -325,6 +347,7 @@ export default function UserManagement() {
     setHasStudentProfile(false)
     setStudentCourseType('introductory')
     setStudentProfileId(null)
+    setStudentCode(u.student_code || '')
     if (getUserRoles(u).includes('student')) {
       setRegProfileLoading(true)
       try {
@@ -332,6 +355,7 @@ export default function UserManagement() {
         setHasStudentProfile(true)
         setStudentProfileId(res.data?.student_id || null)
         setStudentCourseType(res.data?.course_type || 'introductory')
+        setStudentCode(res.data?.student_code || u.student_code || '')
         setRegProfileForm(extendedFieldsFromExtra(res.data))
         if (res.data?.email) {
           setEditForm((prev) => ({ ...prev, email: res.data.email }))
@@ -380,7 +404,7 @@ export default function UserManagement() {
       setEditingUser(null)
       loadUsers()
     } catch (err) {
-      showToast('خطا: ' + (err.response?.data?.detail || err.message), 'error')
+      showToast('خطا: ' + apiErrorMessage(err), 'error')
     }
   }
 
@@ -390,24 +414,35 @@ export default function UserManagement() {
 
   const handleSetPassword = async (e) => {
     e.preventDefault()
-    if (!setPasswordUser) return
-    if (setPasswordValue.length < 4) {
+    if (!setPasswordUser || setPasswordSaving) return
+    const form = e.currentTarget
+    const fd = form instanceof HTMLFormElement ? new FormData(form) : null
+    const typed = String(fd?.get('new_user_password') || setPasswordValue || '')
+    const typedConfirm = String(fd?.get('new_user_password_confirm') || setPasswordConfirm || '')
+    if (typed.length < 4) {
       showToast('رمز عبور باید حداقل ۴ کاراکتر باشد', 'error')
       return
     }
-    if (setPasswordValue !== setPasswordConfirm) {
+    if (typed !== typedConfirm) {
       showToast('رمز عبور و تکرار آن یکسان نیستند', 'error')
       return
     }
+    setSetPasswordSaving(true)
     try {
-      await userApi.update(setPasswordUser.id, { password: setPasswordValue })
+      const res = await userApi.setPassword(setPasswordUser.id, typed)
+      if (res?.data && res.data.password_set !== true) {
+        showToast('سرور رمز را تأیید نکرد. دوباره تلاش کنید.', 'error')
+        return
+      }
       showToast(`رمز عبور برای «${setPasswordUser.full_name_fa || setPasswordUser.username}» تنظیم شد`)
       setSetPasswordUser(null)
       setSetPasswordValue('')
       setSetPasswordConfirm('')
       loadUsers()
     } catch (err) {
-      showToast('خطا: ' + (err.response?.data?.detail || err.message), 'error')
+      showToast('خطا: ' + apiErrorMessage(err), 'error')
+    } finally {
+      setSetPasswordSaving(false)
     }
   }
 
@@ -469,10 +504,12 @@ export default function UserManagement() {
     if (search) {
       const q = search.toLowerCase()
       const nc = (u.national_code || '').toString()
+      const sc = (u.student_code || '').toString().toLowerCase()
       return (
         u.username.toLowerCase().includes(q) ||
         (u.full_name_fa || '').includes(search) ||
-        nc.includes(search.replace(/\s/g, ''))
+        nc.includes(search.replace(/\s/g, '')) ||
+        sc.includes(q.replace(/\s/g, ''))
       )
     }
     return true
@@ -575,6 +612,18 @@ export default function UserManagement() {
                 </div>
                 {(editForm.roles || []).includes('student') && (
                   <div className="form-group">
+                    <label className="form-label">شماره دانشجویی</label>
+                    <input
+                      className="form-input"
+                      value={studentCode ? formatStudentCodeDisplay(studentCode) : '—'}
+                      readOnly
+                      disabled
+                      style={{ direction: 'ltr' }}
+                    />
+                  </div>
+                )}
+                {(editForm.roles || []).includes('student') && (
+                  <div className="form-group">
                     <label className="form-label">ایمیل</label>
                     <input
                       className="form-input"
@@ -663,17 +712,24 @@ export default function UserManagement() {
                 برای <strong>{setPasswordUser.full_name_fa || setPasswordUser.username}</strong>
                 <span className="user-mgmt-modal-meta" dir="ltr">({setPasswordUser.username})</span>
               </p>
-              <form onSubmit={handleSetPassword}>
+              <p className="user-mgmt-modal-meta" style={{ marginBottom: '0.75rem' }}>
+                ورود با این رمز از مسیر «ورود پرسنل و مدیران» با همین نام کاربری است، نه تب پیامک.
+              </p>
+              <form onSubmit={handleSetPassword} autoComplete="off">
+                <input type="text" name="username" value={setPasswordUser.username || ''} readOnly tabIndex={-1} aria-hidden="true" autoComplete="username" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, pointerEvents: 'none' }} />
                 <div className="form-group">
                   <label className="form-label">رمز عبور جدید *</label>
                   <input
                     className="form-input"
                     type="password"
+                    name="new_user_password"
                     value={setPasswordValue}
                     onChange={(e) => setSetPasswordValue(e.target.value)}
                     placeholder="حداقل ۴ کاراکتر"
                     minLength={4}
+                    required
                     autoComplete="new-password"
+                    disabled={setPasswordSaving}
                   />
                 </div>
                 <div className="form-group">
@@ -681,15 +737,21 @@ export default function UserManagement() {
                   <input
                     className="form-input"
                     type="password"
+                    name="new_user_password_confirm"
                     value={setPasswordConfirm}
                     onChange={(e) => setSetPasswordConfirm(e.target.value)}
                     placeholder="همان رمز را دوباره وارد کنید"
+                    minLength={4}
+                    required
                     autoComplete="new-password"
+                    disabled={setPasswordSaving}
                   />
                 </div>
                 <div className="user-mgmt-modal-actions">
-                  <button className="btn btn-primary" type="submit">ذخیره رمز</button>
-                  <button className="btn btn-outline" type="button" onClick={() => { setSetPasswordUser(null); setSetPasswordValue(''); setSetPasswordConfirm('') }}>انصراف</button>
+                  <button className="btn btn-primary" type="submit" disabled={setPasswordSaving}>
+                    {setPasswordSaving ? 'در حال ذخیره...' : 'ذخیره رمز'}
+                  </button>
+                  <button className="btn btn-outline" type="button" disabled={setPasswordSaving} onClick={() => { setSetPasswordUser(null); setSetPasswordValue(''); setSetPasswordConfirm('') }}>انصراف</button>
                 </div>
               </form>
             </div>
@@ -777,7 +839,7 @@ export default function UserManagement() {
             className="form-input user-mgmt-search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="جستجو: نام کاربری، نام یا کد ملی..."
+            placeholder="جستجو: نام کاربری، نام، شماره دانشجویی یا کد ملی..."
           />
           <div className="user-mgmt-role-chips">
             <button type="button" className={`btn ${roleFilter === '' ? 'btn-primary' : 'btn-outline'} btn-sm`} onClick={() => setRoleFilter('')}>همه</button>
@@ -819,9 +881,9 @@ export default function UserManagement() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="7" className="table-users-empty">در حال بارگذاری...</td></tr>
+                <tr><td colSpan={USER_TABLE_COLS.length} className="table-users-empty">در حال بارگذاری...</td></tr>
               ) : filteredUsers.length === 0 ? (
-                <tr><td colSpan="7" className="table-users-empty">کاربری یافت نشد</td></tr>
+                <tr><td colSpan={USER_TABLE_COLS.length} className="table-users-empty">کاربری یافت نشد</td></tr>
               ) : (
                 filteredUsers.map((u) => (
                   <tr key={u.id} className="table-users-row" style={{ opacity: u.is_active ? 1 : 0.55 }}>
@@ -835,6 +897,9 @@ export default function UserManagement() {
                           </span>
                         ))}
                       </div>
+                    </td>
+                    <td className="table-users-cell table-users-cell-ltr table-users-cell-ellipsis" title={u.student_code || ''}>
+                      {u.student_code ? formatStudentCodeDisplay(u.student_code) : '-'}
                     </td>
                     <td className="table-users-cell table-users-cell-ltr table-users-cell-ellipsis" title={u.national_code || ''}>{u.national_code || '-'}</td>
                     <td className="table-users-cell">

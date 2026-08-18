@@ -95,9 +95,9 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
             ic = C.instance_ctx(instance)
             merged_ic = {**ic, **ctx}
             plan = merged_ic.get("installment_plan") or []
-            reminder_days = 1
+            reminder_days = 7
             try:
-                reminder_days = max(1, int(action.get("reminder_days_before") or 1))
+                reminder_days = max(1, int(action.get("reminder_days_before") or 7))
             except (TypeError, ValueError):
                 pass
             gap_days = 30

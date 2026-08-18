@@ -257,6 +257,7 @@ export const CONTEXT_KEY_LABELS = {
   class_session_fee_toman: 'پیش‌فرض هر جلسه کلاس آموزشی (تومان)',
   course_session_fee_toman: 'پیش‌فرض هر جلسه دوره جلسه‌ای (تومان)',
   license_status: 'وضعیت پروانه',
+  current_license_number: 'شماره پروانه فعلی',
   new_license_number: 'شماره پروانه جدید',
   license_notes: 'توضیحات پروانه',
   winter_license_notes: 'توضیحات پروانه (ترم زمستان)',

@@ -13,8 +13,9 @@ def test_deputy_education_can_edit_fall_tuition_form():
     assert "start_therapy_first_session_fee_rial" in names
     assert "extra_session_fee_rial" in names
     assert "default_therapy_session_fee_toman" in names
-    assert "class_session_fee_toman" in names
-    assert "course_session_fee_toman" in names
+    assert "registration_tuition_invoice_toman" not in names
+    assert "class_session_fee_toman" not in names
+    assert "course_session_fee_toman" not in names
 
 
 def test_deputy_education_cannot_edit_fall_course_list_form():
@@ -65,26 +66,28 @@ def test_deputy_education_can_edit_winter_license_form():
     assert "license_status" in names
 
 
-def test_staff_cannot_edit_interviewer_assignment_form():
+def test_staff_can_edit_interviewer_assignment_form():
     forms = get_process_forms("fall_semester_preparation", state_code="interviewer_assignment")
     names = editable_field_names(forms, "staff")
-    assert "comprehensive_interviewers" not in names
-    assert not names
+    assert "comprehensive_interviewers" in names
+    assert "introductory_interviewers" in names
+    assert editable_field_names(forms, "internal_manager") == names
 
 
-def test_staff_cannot_see_interviewer_assignment_form_fields():
+def test_staff_can_see_interviewer_assignment_form_fields():
     from app.meta.process_data_access import visible_forms_for_role
 
     forms = get_process_forms("fall_semester_preparation", state_code="interviewer_assignment")
     vis = visible_forms_for_role(forms, "staff")
-    assert vis == []
+    assert vis
+    assert any(f.get("code") == "interviewer_assignment_form" for f in vis)
 
 
-def test_deputy_education_can_edit_interviewer_assignment_form():
+def test_deputy_education_cannot_edit_interviewer_assignment_form():
     forms = get_process_forms("fall_semester_preparation", state_code="interviewer_assignment")
     names = editable_field_names(forms, "deputy_education")
-    assert "comprehensive_interviewers" in names
-    assert "introductory_interviewers" in names
+    assert "comprehensive_interviewers" not in names
+    assert not names
 
 
 def test_deputy_education_cannot_edit_marketing_campaign_form():
@@ -103,6 +106,7 @@ def test_staff_can_edit_marketing_campaign_form():
 
 def test_portal_role_can_act_on_marketing_campaign_state():
     from app.meta.operator_state_catalog import portal_role_can_act_on_assigned_role
+    from app.services.semester_prep_rbac import portal_role_can_act_on_prep_state
 
     assert portal_role_can_act_on_assigned_role("staff", "admissions_officer")
     assert portal_role_can_act_on_assigned_role("admissions_officer", "admissions_officer")
@@ -111,8 +115,16 @@ def test_portal_role_can_act_on_marketing_campaign_state():
     assert portal_role_can_act_on_assigned_role("admin", "admissions_officer")
     assert portal_role_can_act_on_assigned_role("staff", "staff")
     assert portal_role_can_act_on_assigned_role("staff", "site_manager")
+    # نگاشت سراسری هنوز staff→کمیته را دارد؛ RBAC آماده‌سازی جدا قفل می‌کند
     assert portal_role_can_act_on_assigned_role("staff", "scientific_officer_course_committee")
     assert portal_role_can_act_on_assigned_role("staff", "course_committee_executive")
+    assert portal_role_can_act_on_prep_state("staff", "fall_semester_preparation", "course_list_creation") is False
+    assert portal_role_can_act_on_prep_state("staff", "fall_semester_preparation", "calendar_entry") is False
+    assert portal_role_can_act_on_prep_state("staff", "fall_semester_preparation", "marketing_campaign") is True
+    assert portal_role_can_act_on_prep_state("staff", "fall_semester_preparation", "interviewer_assignment") is True
+    assert portal_role_can_act_on_prep_state("deputy_education", "fall_semester_preparation", "interviewer_assignment") is False
+    assert portal_role_can_act_on_assigned_role("internal_manager", "admissions_officer")
+    assert portal_role_can_act_on_assigned_role("internal_manager", "site_manager")
 
 
 def test_staff_can_edit_interview_scheduling_form():
@@ -120,6 +132,7 @@ def test_staff_can_edit_interview_scheduling_form():
     names = editable_field_names(forms, "staff")
     assert "interview_mode" in names
     assert "interview_location_fa" in names
+    assert editable_field_names(forms, "internal_manager") == names
 
 
 def test_site_manager_cannot_edit_interview_scheduling_form():

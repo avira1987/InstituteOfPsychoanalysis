@@ -27,7 +27,23 @@
         "course_committee_executive",
         "scientific_officer_course_committee"
       ],
-      "note_fa": "مدیر داخلی / کارمند دفتر: پذیرش، زمان‌بندی مصاحبه (مرحله ۸ آماده‌سازی ترم و تعریف وقت مصاحبه دوره آشنایی/جامع)، مراحل کمیته دروس در lane مربوط، و مراحل site_manager در SOP."
+      "note_fa": "مدیر داخلی / کارمند دفتر: پذیرش، زمان‌بندی مصاحبه آماده‌سازی ترم (گام ۷ و ۸)، و مراحل site_manager در SOP. برای آماده‌سازی ترم، مراحل کمیته/معاون با semester_prep_rbac جدا قفل می‌شوند."
+    },
+    "internal_manager": {
+      "assigned_roles": [
+        "staff",
+        "admissions_officer",
+        "site_manager",
+        "instructor",
+        "teaching_assistant",
+        "teaching_assistant_or_instructor",
+        "therapy_education_coordinator",
+        "course_committee",
+        "course_committee_scientific",
+        "course_committee_executive",
+        "scientific_officer_course_committee"
+      ],
+      "note_fa": "مدیر داخلی: مصاحبه‌های آماده‌سازی ترم (گام ۷ و ۸) و دسترسی‌های کارمند دفتر؛ RBAC آماده‌سازی ترم مراحل کمیته/معاون را جدا قفل می‌کند."
     },
     "finance": {
       "assigned_roles": [],
@@ -54,7 +70,7 @@
         "deputy_education",
         "deputy_education_director"
       ],
-      "note_fa": "معاون آموزش: شهریه، پروانه، مصاحبه‌گران — مراحل کمیته دروس در پنل course_committee."
+      "note_fa": "معاون آموزش: شهریه و پروانه در آماده‌سازی ترم — مصاحبه‌ها با مدیر داخلی؛ مراحل کمیته دروس در پنل course_committee."
     },
     "course_committee": {
       "assigned_roles": [
@@ -116,6 +132,34 @@
     "therapy_committee_executor": {
       "assigned_roles": ["therapy_committee_chair", "therapy_committee_executor"],
       "note_fa": "با حساب واحد کمیته درمان ادغام شده؛ نگاشت دوطرفه برای سازگاری."
+    },
+    "faculty_1": {
+      "assigned_roles": ["interviewer", "supervisor"],
+      "note_fa": "هیئت علمی: مصاحبه و سوپرویژن (implied در user_roles)."
+    },
+    "instructor": {
+      "assigned_roles": ["instructor", "teaching_assistant_or_instructor"],
+      "note_fa": "مدرس: حضور کلاس و مراحل مدرس در فرایندها."
+    },
+    "educational_instructor": {
+      "assigned_roles": ["instructor", "teaching_assistant_or_instructor", "educational_instructor"],
+      "note_fa": "مدرس آموزشی: همان مراحل مدرس + برچسب چارت."
+    },
+    "teaching_assistant": {
+      "assigned_roles": ["teaching_assistant", "teaching_assistant_or_instructor"],
+      "note_fa": "کمک‌مدرس: تکالیف و هماهنگی با مدرس."
+    },
+    "therapy_education_coordinator": {
+      "assigned_roles": ["therapy_education_coordinator"],
+      "note_fa": "هماهنگ‌کننده آموزش درمان؛ شیت وقت درمانگر آموزشی."
+    },
+    "reference_center": {
+      "assigned_roles": ["reference_center"],
+      "note_fa": "مرکز مرجع / تولید محتوا."
+    },
+    "marketing": {
+      "assigned_roles": ["marketing"],
+      "note_fa": "مارکتینگ؛ کمپین اطلاع‌رسانی ترم."
     },
     "student": {
       "assigned_roles": []

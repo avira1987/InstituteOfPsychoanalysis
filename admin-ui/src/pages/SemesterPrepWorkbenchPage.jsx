@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
 import ProcessRollbackSection from '../components/ProcessRollbackSection'
+import ProcessRestartSection from '../components/ProcessRestartSection'
 import ProcessDataManager from '../components/ProcessDataManager'
 import { useToast } from '../contexts/ToastContext'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
@@ -15,6 +16,8 @@ import {
   useSemesterPrepWorkbench,
 } from '../hooks/useSemesterPrepWorkbench'
 import { portalRoleCanActOnState } from '../utils/portalRoleAccess'
+import { userHasAnyRole, userHasRole } from '../utils/userRoles'
+import { OVERRIDE_ROLES } from '../utils/processRollbackUtils'
 import { contextHasOutlierCalendarDates } from '../utils/semesterPrepCalendarValidation'
 import { semesterPrepStepReadinessHint } from '../utils/semesterPrepReadinessHints'
 import SemesterPrepReadinessPanel from '../components/SemesterPrepReadinessPanel'
@@ -26,16 +29,17 @@ const PROCESS_LABELS = {
 
 /** گام‌های ۷ و ۸ در یک مرحلهٔ واحد ادغام شده‌اند */
 const MERGED_INTERVIEW_HINT =
-  'مصاحبه‌گرها را از کارمندان اتوماسیون انتخاب کنید و روز و ساعت مصاحبه را تعیین کنید؛ نوبت‌ها خودکار ساخته و تقویم منتشر می‌شود.'
+  'مصاحبه‌گرها را فقط از استخر پیش‌آماده‌سازی انتخاب کنید و روز و ساعت مصاحبه را تعیین کنید؛ نوبت‌ها خودکار ساخته و تقویم منتشر می‌شود.'
 
 const STATE_HINTS = {
   fall_semester_preparation: {
     calendar_entry:
       'ثبت تاریخ‌های ترم پاییز و زمستان، پنجرهٔ ثبت‌نام، مهلت مصاحبه‌ها و تعطیلات نوروز.',
     tuition_entry:
-      'تعیین شهریه، هزینه مصاحبه و سایر پیش‌فرض‌های پرداخت (درمان، کلاس، فاکتور پشتیبان). پس از ثبت، ویرایش بعدی از داشبورد مالی هم ممکن است.',
+      'تعیین شهریه، هزینه مصاحبه و پیش‌فرض‌های درمان. فاکتور پشتیبان ثبت‌نام و پیش‌فرض جلسهٔ کلاس/دوره در پنل مالی تنظیم می‌شوند.',
     license_check: 'بررسی و به‌روزرسانی شماره پروانه فعالیت انستیتو.',
-    course_list_creation: 'تدوین لیست دروس، روز و ساعت، مدرسین و کمک‌مدرسین برای دو ترم.',
+    course_list_creation:
+      'ردیف‌های درس، مدرس و کمک‌مدرس را اضافه یا حذف کنید؛ در صورت نیاز مورد جدید بسازید و روز و ساعت را تکمیل کنید.',
     course_finalization: 'نهایی‌سازی مکان کلاس‌ها و هماهنگی با مدرسین.',
     marketing_campaign:
       'خروجی فعالیت‌های ۱، ۲ و ۵ را به‌صورت PDF برای مدیر مارکتینگ ارسال کنید و تأیید ارسال را ثبت کنید.',
@@ -44,7 +48,8 @@ const STATE_HINTS = {
   },
   winter_semester_preparation: {
     license_check: 'بررسی پروانه فعالیت برای ترم زمستان.',
-    course_list_review: 'بازبینی و ویرایش لیست دروس زمستان (پیش‌پر از پاییز).',
+    course_list_review:
+      'لیست دروس زمستان را بازبینی کنید؛ ردیف درس، مدرس و کمک‌مدرس را می‌توانید اضافه یا حذف کنید.',
     course_finalization: 'نهایی‌سازی مکان کلاس‌ها و تأییدیه مدرسین.',
     marketing_campaign:
       'خروجی فعالیت‌های ۲ و ۳ را به‌صورت PDF برای مدیر مارکتینگ ارسال کنید و تأیید ارسال را ثبت کنید.',
@@ -61,6 +66,7 @@ export default function SemesterPrepWorkbenchPage() {
   const { showToast } = useToast()
   const [decisionNotes, setDecisionNotes] = useState('')
   const [rollbackBusy, setRollbackBusy] = useState(false)
+  const [restartBusy, setRestartBusy] = useState(false)
 
   const {
     status,
@@ -77,6 +83,7 @@ export default function SemesterPrepWorkbenchPage() {
     busy,
     load,
     loadInstance,
+    applyInstanceContext,
     reloadReadiness,
     startProcess,
     triggerTransition,
@@ -84,12 +91,9 @@ export default function SemesterPrepWorkbenchPage() {
 
   const fallPublished = Boolean(status?.processes?.fall_semester_preparation?.last_completed_at)
   const canStart =
-    user?.role === 'admin' ||
-    user?.role === 'deputy_education' ||
-    user?.role === 'course_committee' ||
-    (user?.role === 'staff' &&
-      (resolvedCode === 'fall_semester_preparation' ||
-        (resolvedCode === 'winter_semester_preparation' && fallPublished)))
+    userHasRole(user, 'admin', { adminBypass: false }) ||
+    userHasRole(user, 'deputy_education', { adminBypass: false }) ||
+    userHasRole(user, 'course_committee', { adminBypass: false })
 
   const winterBlocked =
     resolvedCode === 'winter_semester_preparation' &&
@@ -180,6 +184,17 @@ export default function SemesterPrepWorkbenchPage() {
     [triggerTransition, decisionNotes, goToAcademicCalendar],
   )
 
+  const handleFormsUpdated = useCallback(
+    (ctx) => {
+      if (ctx && typeof ctx === 'object') {
+        applyInstanceContext(ctx)
+        return
+      }
+      if (instanceId) loadInstance(instanceId)
+    },
+    [applyInstanceContext, instanceId, loadInstance],
+  )
+
   const handleRollback = async (reason) => {
     if (!instanceId) return
     setRollbackBusy(true)
@@ -197,6 +212,30 @@ export default function SemesterPrepWorkbenchPage() {
       showToast(typeof d === 'string' ? d : 'خطا در بازگشت فرایند', 'error')
     } finally {
       setRollbackBusy(false)
+    }
+  }
+
+  const handleProcessRestart = async (reason) => {
+    if (!instanceId) return false
+    setRestartBusy(true)
+    try {
+      const res = await processExecApi.restart(instanceId, {
+        reason: reason || undefined,
+        confirm: true,
+      })
+      if (res.data?.success) {
+        showToast('فرایند از ابتدا با پروندهٔ جدید باز شد')
+        await load()
+        return true
+      }
+      showToast(res.data?.error || 'شروع دوباره انجام نشد', 'error')
+      return false
+    } catch (e) {
+      const d = e?.response?.data?.detail
+      showToast(typeof d === 'string' ? d : 'خطا در شروع دوباره', 'error')
+      return false
+    } finally {
+      setRestartBusy(false)
     }
   }
 
@@ -292,7 +331,20 @@ export default function SemesterPrepWorkbenchPage() {
             <p style={{ margin: 0, fontWeight: 600 }}>این فرایند برای ترم فعلی منتشر شده است.</p>
             <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: '#475569' }}>
               فرم‌های مراحل به‌صورت فقط‌خواندنی نمایش داده می‌شوند. برای اصلاح تقویم از بخش «ویرایش
-              تقویم آموزشی» استفاده کنید؛ برای سایر مراحل از «بازگشت به مرحلهٔ قبلی» در انتهای صفحه.
+              تقویم آموزشی» استفاده کنید.
+              {userHasAnyRole(user, OVERRIDE_ROLES) ? (
+                <>
+                  {' '}
+                  برای سایر مراحل، مدیر سامانه یا معاون آموزش می‌توانند از «بازگشت به مرحلهٔ قبلی» در
+                  انتهای صفحه استفاده کنند.
+                </>
+              ) : (
+                <>
+                  {' '}
+                  اصلاح مراحل قبلی (بازگشت یا شروع دوباره) فقط توسط مدیر سامانه یا معاون آموزش انجام
+                  می‌شود؛ هر نقش فقط مرحلهٔ خودش را طبق SOP تکمیل و پاس می‌دهد.
+                </>
+              )}
             </p>
             {isPublished ? (
               <div style={{ marginTop: '0.85rem' }}>
@@ -302,6 +354,15 @@ export default function SemesterPrepWorkbenchPage() {
               </div>
             ) : null}
           </div>
+
+          <OperatorInstanceGuidanceBlock
+            instanceDetail={instanceDetail}
+            portalRole={user?.role}
+            availableTransitions={actionTransitions}
+            stepFormLocked={
+              !!(user?.role && entry?.assigned_role && !portalRoleCanActOnState(user.role, entry.assigned_role))
+            }
+          />
 
           {showCalendarCorrection ? (
             <>
@@ -328,7 +389,7 @@ export default function SemesterPrepWorkbenchPage() {
                 stateCode="calendar_entry"
                 title="ویرایش تقویم آموزشی (پاییز و زمستان)"
                 showToast={showToast}
-                onUpdated={() => loadInstance(instanceId)}
+                onUpdated={handleFormsUpdated}
               />
             </>
           ) : null}
@@ -343,7 +404,7 @@ export default function SemesterPrepWorkbenchPage() {
             role={user?.role}
             stateAssignedRole={entry?.assigned_role}
             showToast={showToast}
-            onUpdated={() => loadInstance(instanceId)}
+            onUpdated={handleFormsUpdated}
             primaryTransition={primaryTransition}
             onAdvanceAfterSave={handleAdvanceAfterSave}
             advanceBusy={busy}
@@ -353,6 +414,13 @@ export default function SemesterPrepWorkbenchPage() {
             onActionTrigger={handleTrigger}
             onSemesterPrepPublished={goToAcademicCalendar}
             actionBusy={busy}
+          />
+
+          <ProcessRestartSection
+            user={user}
+            instanceDetail={instanceDetail}
+            onRestart={handleProcessRestart}
+            busy={restartBusy}
           />
 
           <ProcessRollbackSection
@@ -408,7 +476,7 @@ export default function SemesterPrepWorkbenchPage() {
             role={user?.role}
             stateAssignedRole={entry?.assigned_role}
             showToast={showToast}
-            onUpdated={() => loadInstance(instanceId)}
+            onUpdated={handleFormsUpdated}
             stepSla={stepSla}
             actionTransitions={actionTransitions}
             decisionNotes={decisionNotes}
@@ -416,6 +484,13 @@ export default function SemesterPrepWorkbenchPage() {
             onActionTrigger={handleTrigger}
             onSemesterPrepPublished={goToAcademicCalendar}
             actionBusy={busy}
+          />
+
+          <ProcessRestartSection
+            user={user}
+            instanceDetail={instanceDetail}
+            onRestart={handleProcessRestart}
+            busy={restartBusy}
           />
 
           <ProcessRollbackSection

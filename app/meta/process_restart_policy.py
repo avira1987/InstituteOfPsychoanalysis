@@ -1,17 +1,17 @@
-"""سیاست ریست (شروع دوباره از ابتدا) — هم‌تراز admin-ui/src/utils/instituteProcesses.js."""
+"""سیاست ریست (شروع دوباره از ابتدا) — هم‌تراز admin-ui processRestartUtils."""
 
 from __future__ import annotations
 
 from typing import Any, Optional
 
-from app.meta.process_start_scope import INSTITUTE_PROCESS_CODES
+from app.meta.process_override_policy import OVERRIDE_ROLES, actor_role_can_override
 
-# نقش‌های پرسنل مجاز (هم‌سطح rollback)
-RESTART_STAFF_ROLES = frozenset({"admin", "deputy_education", "staff"})
+# نام قدیمی برای سازگاری؛ پرسنل مجاز به ریست = همان نقش‌های override
+RESTART_STAFF_ROLES = OVERRIDE_ROLES
 
 # فرایندهایی که به‌دلیل ماهیت مالی همچنان قابل شروع دوباره نیستند.
-# توجه: فرایندهای آماده‌سازی ترم (INSTITUTE_PROCESS_CODES) دیگر مسدود نیستند
-# تا اپراتور بتواند آن‌ها را برای تنظیم دوباره از ابتدا شروع کند.
+# توجه: فرایندهای آماده‌سازی ترم دیگر مسدود نیستند تا مدیر/معاون بتوانند
+# آن‌ها را برای تنظیم دوباره از ابتدا شروع کنند.
 RESTART_BLOCKED_PROCESS_CODES = frozenset({
     "fee_determination",
     "session_payment",
@@ -44,6 +44,7 @@ def can_actor_restart_process(
 ) -> tuple[bool, str]:
     """
     بررسی مجوز ریست. خروجی: (مجاز؟, پیام خطای فارسی در صورت عدم مجوز).
+    پرسنل: فقط admin / معاون آموزش. دانشجو: فقط پروندهٔ خود.
     """
     role = (actor_role or "").strip().lower()
     code = (process_code or "").strip()
@@ -54,7 +55,7 @@ def can_actor_restart_process(
     if _config_blocks_restart(process_config):
         return False, "این فرایند قابل شروع دوباره نیست."
 
-    if role in RESTART_STAFF_ROLES:
+    if actor_role_can_override(role):
         return True, ""
 
     if role == "student":

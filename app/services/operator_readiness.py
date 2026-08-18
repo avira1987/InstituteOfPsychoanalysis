@@ -299,7 +299,9 @@ async def compute_operator_readiness_alerts(
     هشدارهای آمادگی برای نقش ورود.
     برای admin: تجمیع برای همهٔ مصاحبه‌گران و درمانگران (طبق قواعد JSON).
     """
-    role = (user.role or "").strip()
+    from app.core.user_roles import canonical_portal_role
+
+    role = canonical_portal_role(user.role) or (user.role or "").strip()
     if role == "student" or not role:
         return []
 

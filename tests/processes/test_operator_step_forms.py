@@ -198,6 +198,32 @@ def test_winter_license_visible_if_field_not_required_when_hidden():
     assert ok is True
 
 
+def test_fall_license_new_number_required_when_changed():
+    forms = get_process_forms("fall_semester_preparation", state_code="license_check")
+    ok, missing = validate_operator_step_forms(forms, {"license_status": "تغییر کرده"}, {})
+    assert ok is False
+    assert missing
+    ok2, _ = validate_operator_step_forms(
+        forms,
+        {"license_status": "تغییر کرده", "new_license_number": "۱۲۳۴۵"},
+        {},
+    )
+    assert ok2 is True
+
+
+def test_winter_license_new_number_required_when_changed():
+    forms = get_process_forms("winter_semester_preparation", state_code="license_check")
+    ok, missing = validate_operator_step_forms(forms, {"license_status": "تغییر کرده"}, {})
+    assert ok is False
+    assert missing
+    ok2, _ = validate_operator_step_forms(
+        forms,
+        {"license_status": "تغییر کرده", "new_license_number": "ABC-99"},
+        {},
+    )
+    assert ok2 is True
+
+
 def _interview_scheduling_base_values():
     return {}
 
@@ -261,8 +287,8 @@ def test_interviewer_assignment_options_source_metadata():
         field = next(fld for fld in assignment_form.get("fields") or [] if fld.get("name") == name)
         src = field.get("options_source") or {}
         assert src.get("type") == "users"
-        # مصاحبه‌گرها از میان کارمندان اتوماسیون انتخاب می‌شوند، نه نام آزاد
-        assert src.get("roles") == ["interviewer", "staff"]
+        # فقط استخر پیش‌آماده‌سازی (interviewer)
+        assert src.get("roles") == ["interviewer"]
         assert src.get("is_active") is True
         assert field.get("creatable") is False
 
@@ -275,38 +301,47 @@ def test_course_list_form_roster_select_columns():
     assert "courses_winter" in fields
     assert fields["courses_fall"].get("label_fa") == "جدول دروس ترم پاییز"
     assert fields["courses_winter"].get("label_fa") == "جدول دروس ترم زمستان"
+    assert fields["courses_fall"].get("allow_add_rows") is True
+    assert fields["courses_fall"].get("allow_remove_rows") is True
+    assert fields["courses_winter"].get("allow_add_rows") is True
+    assert fields["courses_winter"].get("allow_remove_rows") is True
 
     courses_field = fields["courses_fall"]
     columns = {c.get("name"): c for c in courses_field.get("columns") or []}
 
-    track_src = (columns["track"].get("options_source") or {})
-    assert track_src.get("type") == "course_committee_tracks"
-    assert columns["track"].get("type") == "creatable_select"
+    assert columns["course_name"].get("creatable") is True
+    assert columns["course_name"].get("type") == "select"
+    assert not columns["course_name"].get("auto_fill")
+    assert columns["track"].get("creatable") is True
     assert columns["track"].get("auto_fill_from") == "course_name"
-
+    assert not columns["instructor"].get("auto_fill")
+    assert columns["instructor"].get("type") == "select"
+    assert columns["instructor"].get("creatable") is True
     inst_src = columns["instructor"].get("options_source") or {}
-    assert inst_src.get("type") == "course_committee_roster"
     assert inst_src.get("kind") == "instructor"
     assert inst_src.get("filter_by_column") == "track"
-    assert columns["instructor"].get("type") == "creatable_select"
-
-    course_src = (columns["course_name"].get("options_source") or {})
-    assert course_src.get("type") == "course_catalog"
-    assert columns["course_name"].get("type") == "creatable_select"
 
     ta_src = columns["teaching_assistant"].get("options_source") or {}
     assert ta_src.get("kind") == "teaching_assistant"
-    assert columns["teaching_assistant"].get("type") == "creatable_select"
+    assert ta_src.get("filter_by_column") == "track"
+    assert columns["teaching_assistant"].get("creatable") is True
+    assert columns["teaching_assistant"].get("type") == "select"
 
 
 def test_winter_course_list_review_roster_columns():
     forms = get_process_forms("winter_semester_preparation", state_code="course_list_review")
     review_form = next(f for f in forms if f.get("code") == "winter_course_list_review_form")
     courses_field = next(fld for fld in review_form.get("fields") or [] if fld.get("name") == "courses")
+    assert courses_field.get("allow_add_rows") is True
+    assert courses_field.get("allow_remove_rows") is True
     columns = {c.get("name"): c for c in courses_field.get("columns") or []}
-    assert columns["track"].get("type") == "creatable_select"
-    assert columns["instructor"].get("type") == "creatable_select"
-    assert columns["teaching_assistant"].get("type") == "creatable_select"
+    assert columns["course_name"].get("creatable") is True
+    assert not columns["course_name"].get("auto_fill")
+    assert columns["instructor"].get("type") == "select"
+    assert columns["instructor"].get("creatable") is True
+    assert columns["teaching_assistant"].get("type") == "select"
+    assert columns["teaching_assistant"].get("creatable") is True
+    assert (columns["teaching_assistant"].get("options_source") or {}).get("filter_by_column") == "track"
 
 
 def test_educational_leave_committee_meeting_form_requires_datetime_and_mode():
@@ -370,7 +405,41 @@ def _course_finalization_row(*, coordinated: bool = False, location: str = ""):
     }
 
 
-def test_fall_course_finalization_requires_location_and_coordination():
+def test_fall_course_finalization_requires_day_and_time():
+    forms = get_process_forms("fall_semester_preparation", state_code="course_finalization")
+    fall_form = next(f for f in forms if f.get("code") == "course_finalization_form")
+    day_col = next(
+        c
+        for f in fall_form["fields"]
+        if f["name"] == "courses_finalized_fall"
+        for c in f["columns"]
+        if c["name"] == "day"
+    )
+    time_col = next(
+        c
+        for f in fall_form["fields"]
+        if f["name"] == "courses_finalized_fall"
+        for c in f["columns"]
+        if c["name"] == "time"
+    )
+    assert day_col.get("auto_fill") is not True
+    assert day_col.get("type") == "select"
+    assert time_col.get("auto_fill") is not True
+
+    row = _course_finalization_row(coordinated=True, location="")
+    row["day"] = ""
+    row["time"] = ""
+    values = {
+        "courses_finalized_fall": [row],
+        "courses_finalized_winter": [_course_finalization_row(coordinated=True)],
+    }
+    ok, missing = validate_operator_step_forms(forms, values, {})
+    assert ok is False
+    assert any("روز" in m for m in missing)
+    assert any("ساعت" in m for m in missing)
+
+
+def test_fall_course_finalization_requires_coordination_not_location():
     forms = get_process_forms("fall_semester_preparation", state_code="course_finalization")
     assert forms
     row = _course_finalization_row()
@@ -380,8 +449,19 @@ def test_fall_course_finalization_requires_location_and_coordination():
     }
     ok, missing = validate_operator_step_forms(forms, values, {})
     assert ok is False
-    assert any("مکان کلاس" in m for m in missing)
+    assert not any("مکان کلاس" in m for m in missing)
     assert any("هماهنگی با مدرس" in m for m in missing)
+
+
+def test_fall_course_finalization_passes_without_location():
+    forms = get_process_forms("fall_semester_preparation", state_code="course_finalization")
+    row = _course_finalization_row(coordinated=True, location="")
+    values = {
+        "courses_finalized_fall": [row],
+        "courses_finalized_winter": [row],
+    }
+    ok, missing = validate_operator_step_forms(forms, values, {})
+    assert ok is True, missing
 
 
 def test_fall_course_finalization_passes_when_complete():

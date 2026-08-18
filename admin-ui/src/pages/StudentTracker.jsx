@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { studentApi, processExecApi, processApi, userApi } from '../services/api'
+import { studentApi, processExecApi, processApi, userApi, semesterPrepApi } from '../services/api'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { notesPayload } from '../utils/decisionPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
@@ -21,16 +21,28 @@ import {
 import { sortProcessNavItems } from '../utils/processNavOrder'
 import { groupProcessNavItemsByCategory } from '../utils/processNavCategories'
 
+const TRACKER_TABS = [
+  { id: 'students', label: 'دانشجویان' },
+  { id: 'institute', label: 'آماده‌سازی ترم' },
+]
+
+const PREP_PROCESS_LABELS = {
+  fall_semester_preparation: 'آماده‌سازی ترم پاییز',
+  winter_semester_preparation: 'آماده‌سازی ترم زمستان',
+}
+
 export default function StudentTracker() {
   const { user } = useAuth()
-  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab') === 'institute' ? 'institute' : 'students'
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [restartBusy, setRestartBusy] = useState(false)
 
-  // Selected student
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [selectedStudentMeta, setSelectedStudentMeta] = useState(null)
   const [instances, setInstances] = useState([])
@@ -38,24 +50,42 @@ export default function StudentTracker() {
   const [availableTransitions, setAvailableTransitions] = useState([])
   const [decisionNotes, setDecisionNotes] = useState('')
 
-  // Create student form
+  const [anchorMeta, setAnchorMeta] = useState(null)
+  const [prepStatus, setPrepStatus] = useState(null)
+  const [prepLoading, setPrepLoading] = useState(false)
+  const [prepError, setPrepError] = useState(null)
+
   const [showCreate, setShowCreate] = useState(false)
   const [createForm, setCreateForm] = useState({
     user_id: '', student_code: '', course_type: 'comprehensive', is_intern: false, term_count: 1, current_term: 1, weekly_sessions: 1,
   })
 
-  // Start process form
   const [showStartProcess, setShowStartProcess] = useState(false)
   const [processDefinitions, setProcessDefinitions] = useState([])
   const [startForm, setStartForm] = useState({ process_code: '', student_id: '' })
 
-  // Users for user_id selection
   const [users, setUsers] = useState([])
   const { showToast } = useToast()
 
-  useEffect(() => {
-    loadStudents()
+  const closeStudentDetail = useCallback(() => {
+    setSelectedStudent(null)
+    setSelectedStudentMeta(null)
+    setInstances([])
+    setInstanceStatus(null)
+    setAvailableTransitions([])
+    setDecisionNotes('')
   }, [])
+
+  const switchTab = useCallback((tabId) => {
+    setActiveTab(tabId)
+    closeStudentDetail()
+    const next = new URLSearchParams(searchParams)
+    if (tabId === 'institute') next.set('tab', 'institute')
+    else next.delete('tab')
+    next.delete('student_id')
+    next.delete('instance_id')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams, closeStudentDetail])
 
   const loadStudents = async () => {
     try {
@@ -72,19 +102,64 @@ export default function StudentTracker() {
     }
   }
 
+  const loadPrepStatus = useCallback(async () => {
+    setPrepLoading(true)
+    setPrepError(null)
+    try {
+      const statusRes = await semesterPrepApi.getStatus()
+      const data = statusRes.data || {}
+      const sid = data.anchor_student_id
+      const code = data.anchor_student_code || data.anchor?.student_code
+      setPrepStatus(data)
+      setAnchorMeta({
+        id: sid,
+        student_code: code,
+        extra_data: { institute_operational_anchor: true },
+        ...(data.anchor || {}),
+      })
+      return sid
+    } catch (err) {
+      console.error('Failed to load institute prep status:', err)
+      setPrepError(err.response?.data?.detail || err.message || 'خطا در بارگذاری وضعیت آماده‌سازی ترم')
+      setPrepStatus(null)
+      return null
+    } finally {
+      setPrepLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadStudents()
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'institute') {
+      loadPrepStatus()
+    }
+  }, [activeTab, loadPrepStatus])
+
   const loadStudentInstances = async (studentId) => {
     try {
       const [instRes, studentRes] = await Promise.all([
         processExecApi.studentInstances(studentId),
         studentApi.get(studentId).catch(() => null),
       ])
-      setInstances(instRes.data.instances || [])
+      const meta = studentRes?.data || null
+      if (isInstituteOperationalStudent(meta)) {
+        switchTab('institute')
+        await loadPrepStatus()
+        return false
+      }
+      const rows = Array.isArray(instRes.data?.instances) ? instRes.data.instances : []
+      setInstances(rows.filter((i) => !isInstituteLevelProcess(i.process_code)))
       setSelectedStudent(studentId)
-      setSelectedStudentMeta(studentRes?.data || null)
+      setSelectedStudentMeta(meta)
       setInstanceStatus(null)
       setAvailableTransitions([])
+      return true
     } catch (err) {
       console.error('Failed to load instances:', err)
+      return false
     }
   }
 
@@ -94,6 +169,13 @@ export default function StudentTracker() {
         processExecApi.status(instanceId),
         processExecApi.transitions(instanceId),
       ])
+      if (isInstituteLevelProcess(statusRes.data?.process_code)) {
+        const code = statusRes.data.process_code
+        switchTab('institute')
+        await loadPrepStatus()
+        navigate(`/panel/semester-prep/workbench?process_code=${encodeURIComponent(code)}`)
+        return
+      }
       setInstanceStatus(statusRes.data)
       setAvailableTransitions(transRes.data.transitions || [])
       setDecisionNotes('')
@@ -102,20 +184,46 @@ export default function StudentTracker() {
     }
   }
 
-  /** لینک عمیق از داشبورد مدیر اصلی: ?student_id=&instance_id= */
   useEffect(() => {
+    const tab = searchParams.get('tab')
     const sid = searchParams.get('student_id')
     const iid = searchParams.get('instance_id')
+    if (tab === 'institute' && !sid) {
+      setActiveTab('institute')
+      return
+    }
     if (!sid) return
     let cancelled = false
     ;(async () => {
-      await loadStudentInstances(sid)
-      if (cancelled || !iid) return
-      await loadInstanceStatus(iid)
+      try {
+        const studentRes = await studentApi.get(sid).catch(() => null)
+        if (cancelled) return
+        if (isInstituteOperationalStudent(studentRes?.data)) {
+          setActiveTab('institute')
+          await loadPrepStatus()
+          if (cancelled) return
+          closeStudentDetail()
+          if (iid) {
+            const statusRes = await processExecApi.status(iid).catch(() => null)
+            const code = statusRes?.data?.process_code
+            if (code && isInstituteLevelProcess(code)) {
+              navigate(`/panel/semester-prep/workbench?process_code=${encodeURIComponent(code)}`)
+            }
+          }
+          return
+        }
+        setActiveTab('students')
+        const opened = await loadStudentInstances(sid)
+        if (cancelled || !opened || !iid) return
+        await loadInstanceStatus(iid)
+      } catch (err) {
+        console.error(err)
+      }
     })()
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   const handleTrigger = async (instanceId, transition) => {
@@ -133,7 +241,9 @@ export default function StudentTracker() {
       if (res.data.success) {
         showToast(`انتقال موفق: ${labelState(res.data.from_state)} → ${labelState(res.data.to_state)}`)
         await loadInstanceStatus(instanceId)
-        await loadStudentInstances(selectedStudent)
+        if (selectedStudent) {
+          await loadStudentInstances(selectedStudent)
+        }
       } else {
         showToast('خطا: ' + (res.data.error || 'انتقال انجام نشد'), 'error')
       }
@@ -154,7 +264,9 @@ export default function StudentTracker() {
       if (res.data?.success) {
         const newId = res.data.new_instance_id
         showToast('فرایند از ابتدا با پروندهٔ جدید باز شد')
-        await loadStudentInstances(selectedStudent)
+        if (selectedStudent) {
+          await loadStudentInstances(selectedStudent)
+        }
         await loadInstanceStatus(newId)
         return true
       }
@@ -184,7 +296,7 @@ export default function StudentTracker() {
   const handleStartProcess = async (e) => {
     e.preventDefault()
     try {
-      const res = await processExecApi.start(startForm)
+      await processExecApi.start(startForm)
       showToast(`فرایند «${labelProcess(startForm.process_code)}» شروع شد`)
       setShowStartProcess(false)
       if (selectedStudent) {
@@ -202,7 +314,6 @@ export default function StudentTracker() {
       const active = (Array.isArray(res.data) ? res.data : []).filter(
         (p) => p.is_active && getManualStartScope(p.code) === 'student',
       )
-      // همان ترتیب/دسته‌بندی سایدبار پنل ادمین (موج ۱، موج ۲، SOP، سایر)
       setProcessDefinitions(
         sortProcessNavItems(
           active.map((p) => ({
@@ -234,15 +345,6 @@ export default function StudentTracker() {
     setShowCreate(true)
   }
 
-  const closeStudentDetail = () => {
-    setSelectedStudent(null)
-    setSelectedStudentMeta(null)
-    setInstances([])
-    setInstanceStatus(null)
-    setAvailableTransitions([])
-    setDecisionNotes('')
-  }
-
   const courseTypeLabel = (type) => {
     switch (type) {
       case 'comprehensive': return 'جامع'
@@ -258,27 +360,30 @@ export default function StudentTracker() {
     return (s.student_code || '').toLowerCase().includes(q)
   })
 
-  const viewingOperationalAnchor = isInstituteOperationalStudent(
-    selectedStudentMeta || students.find((s) => s.id === selectedStudent),
-  )
+  const prepProcessEntries = useMemo(() => {
+    const processes = prepStatus?.processes || {}
+    return ['fall_semester_preparation', 'winter_semester_preparation'].map((code) => {
+      const entry = processes[code] || {}
+      return { code, entry }
+    })
+  }, [prepStatus])
+
+  const detailOpen = Boolean(selectedStudent)
 
   return (
     <div>
-
       <ResolvedProcessHistoryBanner
         instanceDetail={instanceStatus}
         availableTransitions={availableTransitions}
       />
 
-      {/* Error display */}
-      {error && (
+      {error && activeTab === 'students' && (
         <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem', color: '#991b1b' }}>
           <strong>خطا: </strong>{error}
           <button onClick={loadStudents} style={{ marginRight: '1rem', padding: '0.25rem 0.75rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>تلاش مجدد</button>
         </div>
       )}
 
-      {/* Start Process Modal */}
       {showStartProcess && (
         <div className="modal-overlay" onClick={() => setShowStartProcess(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -314,20 +419,38 @@ export default function StudentTracker() {
         <div>
           <h1 className="page-title">ردیابی دانشجو</h1>
           <p className="page-subtitle">
-            نمایش وضعیت هر دانشجو در تمام فرایندها | مجموع: {students.length} دانشجو
+            دانشجویان واقعی و آماده‌سازی ترم در تب‌های جدا
+            {activeTab === 'students' ? ` | مجموع: ${students.length} دانشجو` : ''}
             {' · '}
-            پرونده عملیاتی انستیتو در{' '}
-            <Link to="/panel/semester-prep">آماده‌سازی ترم</Link>
+            کار روزمرهٔ ترم در{' '}
+            <Link to="/panel/semester-prep">هاب آماده‌سازی ترم</Link>
             {' '}است.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={openCreateStudent}>
-          + دانشجوی جدید
-        </button>
+        {activeTab === 'students' && (
+          <button className="btn btn-primary" onClick={openCreateStudent}>
+            + دانشجوی جدید
+          </button>
+        )}
       </div>
 
-      {/* Create Student Form */}
-      {showCreate && (
+      <div className="tabs" style={{ marginBottom: '1.25rem' }} role="tablist">
+        {TRACKER_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={`tab-item ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => switchTab(tab.id)}
+            data-testid={`tracker-tab-${tab.id}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {showCreate && activeTab === 'students' && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
           <div className="card-header">
             <h3 className="card-title">ایجاد پروفایل دانشجو</h3>
@@ -375,118 +498,211 @@ export default function StudentTracker() {
         </div>
       )}
 
-      {/* Search */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <input
-          className="form-input"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="جستجو با کد دانشجویی..."
-          style={{ maxWidth: '350px' }}
-        />
-      </div>
-
-      <div>
-        {/* Students List */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">لیست دانشجویان</h3>
+      {activeTab === 'students' && (
+        <>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <input
+              className="form-input"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="جستجو با کد دانشجویی..."
+              style={{ maxWidth: '350px' }}
+            />
           </div>
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>کد</th>
-                  <th>دوره</th>
-                  <th>ترم</th>
-                  <th>پیشرفت مسیر</th>
-                  <th>اقدام معلق (از دید دانشجو)</th>
-                  <th>انترن</th>
-                  <th>درمان</th>
-                  <th>عملیات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>در حال بارگذاری...</td></tr>
-                ) : filteredStudents.length === 0 ? (
-                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>دانشجویی یافت نشد</td></tr>
-                ) : (
-                  filteredStudents.map((s) => (
-                    <tr key={s.id} style={{ background: selectedStudent === s.id ? 'var(--primary-light)' : '' }}>
-                      <td><strong>{formatStudentCodeDisplay(s.student_code)}</strong></td>
-                      <td>{courseTypeLabel(s.course_type)}</td>
-                      <td>{s.current_term}/{s.term_count}</td>
-                      <td style={{ minWidth: '120px' }}>
-                        {s.graduation_progress_pct != null ? (
-                          <div>
-                            <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{s.graduation_progress_pct}%</div>
-                            <div
-                              style={{
-                                height: '6px',
-                                borderRadius: '4px',
-                                background: '#e5e7eb',
-                                overflow: 'hidden',
-                              }}
-                              title={s.primary_process_name_fa || ''}
-                            >
+
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">لیست دانشجویان</h3>
+            </div>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>کد</th>
+                    <th>دوره</th>
+                    <th>ترم</th>
+                    <th>پیشرفت مسیر</th>
+                    <th>اقدام معلق (از دید دانشجو)</th>
+                    <th>انترن</th>
+                    <th>درمان</th>
+                    <th>عملیات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>در حال بارگذاری...</td></tr>
+                  ) : filteredStudents.length === 0 ? (
+                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>دانشجویی یافت نشد</td></tr>
+                  ) : (
+                    filteredStudents.map((s) => (
+                      <tr key={s.id} style={{ background: selectedStudent === s.id ? 'var(--primary-light)' : '' }}>
+                        <td><strong>{formatStudentCodeDisplay(s.student_code)}</strong></td>
+                        <td>{courseTypeLabel(s.course_type)}</td>
+                        <td>{s.current_term}/{s.term_count}</td>
+                        <td style={{ minWidth: '120px' }}>
+                          {s.graduation_progress_pct != null ? (
+                            <div>
+                              <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{s.graduation_progress_pct}%</div>
                               <div
                                 style={{
-                                  height: '100%',
-                                  width: `${Math.min(100, s.graduation_progress_pct)}%`,
-                                  background: 'var(--primary)',
+                                  height: '6px',
                                   borderRadius: '4px',
+                                  background: '#e5e7eb',
+                                  overflow: 'hidden',
                                 }}
-                              />
-                            </div>
-                            {s.primary_process_name_fa && (
-                              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }} title={s.primary_current_state ? labelState(s.primary_current_state) : ''}>
-                                {s.primary_process_name_fa}
+                                title={s.primary_process_name_fa || ''}
+                              >
+                                <div
+                                  style={{
+                                    height: '100%',
+                                    width: `${Math.min(100, s.graduation_progress_pct)}%`,
+                                    background: 'var(--primary)',
+                                    borderRadius: '4px',
+                                  }}
+                                />
                               </div>
-                            )}
+                              {s.primary_process_name_fa && (
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }} title={s.primary_current_state ? labelState(s.primary_current_state) : ''}>
+                                  {s.primary_process_name_fa}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ maxWidth: '280px', fontSize: '0.85rem', lineHeight: 1.45 }}>
+                          {s.pending_action_fa ? (
+                            <span title={s.pending_action_fa}>{s.pending_action_fa}</span>
+                          ) : (
+                            <span style={{ color: 'var(--text-secondary)' }}>—</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`badge ${s.is_intern ? 'badge-success' : 'badge-info'}`}>
+                            {s.is_intern ? 'بله' : 'خیر'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`badge ${s.therapy_started ? 'badge-success' : 'badge-warning'}`}>
+                            {s.therapy_started ? 'شروع شده' : 'شروع نشده'}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn btn-outline btn-sm" onClick={() => loadStudentInstances(s.id)}>
+                              مشاهده
+                            </button>
+                            <button className="btn btn-primary btn-sm" onClick={() => openStartProcess(s.id)}>
+                              شروع فرایند
+                            </button>
                           </div>
-                        ) : (
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ maxWidth: '280px', fontSize: '0.85rem', lineHeight: 1.45 }}>
-                        {s.pending_action_fa ? (
-                          <span title={s.pending_action_fa}>{s.pending_action_fa}</span>
-                        ) : (
-                          <span style={{ color: 'var(--text-secondary)' }}>—</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`badge ${s.is_intern ? 'badge-success' : 'badge-info'}`}>
-                          {s.is_intern ? 'بله' : 'خیر'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge ${s.therapy_started ? 'badge-success' : 'badge-warning'}`}>
-                          {s.therapy_started ? 'شروع شده' : 'شروع نشده'}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button className="btn btn-outline btn-sm" onClick={() => loadStudentInstances(s.id)}>
-                            مشاهده
-                          </button>
-                          <button className="btn btn-primary btn-sm" onClick={() => openStartProcess(s.id)}>
-                            شروع فرایند
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
-      {/* Student processes + detail — modal popup */}
-      {selectedStudent && (
+      {activeTab === 'institute' && (
+        <div className="card" data-testid="tracker-institute-tab">
+          <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div>
+              <h3 className="card-title" style={{ marginBottom: '0.25rem' }}>
+                {INSTITUTE_OPS_LABEL_FA}
+              </h3>
+              <p className="muted" style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.6 }}>
+                خلاصهٔ وضعیت آماده‌سازی ترم روی رکورد سیستمی
+                {anchorMeta?.student_code ? (
+                  <>
+                    {' '}
+                    <code style={{ direction: 'ltr' }}>{anchorMeta.student_code}</code>
+                  </>
+                ) : null}
+                .
+                {' '}
+                نمونه‌های خام فرایند (شامل بایگانی ریست) اینجا لیست نمی‌شوند؛ کار روی میزکار انجام می‌شود.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <Link className="btn btn-primary btn-sm" to="/panel/semester-prep">
+                هاب آماده‌سازی ترم
+              </Link>
+              <button type="button" className="btn btn-outline btn-sm" onClick={loadPrepStatus} disabled={prepLoading}>
+                تازه‌سازی
+              </button>
+            </div>
+          </div>
+
+          {prepError && (
+            <div style={{ margin: '1rem', padding: '0.85rem 1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#991b1b' }}>
+              {String(prepError)}
+            </div>
+          )}
+
+          {prepLoading ? (
+            <div className="empty-state" style={{ padding: '2rem' }}>در حال بارگذاری...</div>
+          ) : (
+            <div style={{ padding: '0.75rem 1rem 1.25rem', display: 'grid', gap: '0.85rem' }}>
+              {prepProcessEntries.map(({ code, entry }) => {
+                const active = Boolean(entry.active && entry.instance_id)
+                const completed = Boolean(!active && entry.completed_instance_id)
+                const stateLabel = active
+                  ? (entry.state_name_fa || labelState(entry.current_state))
+                  : completed
+                    ? (entry.completed_state_name_fa || labelState(entry.completed_current_state) || 'تکمیل‌شده')
+                    : 'شروع نشده'
+                return (
+                  <div
+                    key={code}
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '0.9rem 1rem',
+                      background: '#fff',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div>
+                        <strong>{PREP_PROCESS_LABELS[code] || labelProcess(code)}</strong>
+                        <div style={{ marginTop: '0.35rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          وضعیت:
+                          {' '}
+                          <span className={`badge ${active ? 'badge-warning' : completed ? 'badge-success' : 'badge-info'}`}>
+                            {active ? 'در جریان' : completed ? 'تکمیل' : 'بدون نمونه فعال'}
+                          </span>
+                          {' · '}
+                          {stateLabel}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                        {(active || completed) ? (
+                          <Link
+                            className="btn btn-primary btn-sm"
+                            to={`/panel/semester-prep/workbench?process_code=${encodeURIComponent(code)}`}
+                          >
+                            {active ? 'ادامه در میزکار' : 'مشاهده در میزکار'}
+                          </Link>
+                        ) : (
+                          <Link className="btn btn-secondary btn-sm" to="/panel/semester-prep">
+                            شروع از هاب
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {detailOpen && activeTab === 'students' && (
         <div className="modal-overlay" onClick={closeStudentDetail}>
           <div
             className="modal modal-wide"
@@ -494,42 +710,19 @@ export default function StudentTracker() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h3>{viewingOperationalAnchor ? INSTITUTE_OPS_LABEL_FA : 'فرایندهای دانشجو'}</h3>
+              <h3>فرایندهای دانشجو</h3>
               <button type="button" className="modal-close" onClick={closeStudentDetail} aria-label="بستن">&times;</button>
             </div>
             <div className="modal-body" style={{ paddingTop: 0 }}>
-              {viewingOperationalAnchor && (
-                <div
-                  data-testid="institute-ops-tracker-banner"
-                  style={{
-                    margin: '0.75rem 0 1rem',
-                    padding: '0.85rem 1rem',
-                    borderRadius: '10px',
-                    border: '1px solid #c7d2fe',
-                    background: '#eef2ff',
-                    fontSize: '0.88rem',
-                    lineHeight: 1.7,
-                    color: '#312e81',
-                  }}
-                >
-                  <strong>رکورد سیستمی:</strong>
-                  {' '}
-                  این پرونده دانشجوی واقعی نیست؛ برای فرایندهای سطح مؤسسه (آماده‌سازی ترم) است.
-                  کار روزمره را از{' '}
-                  <Link to="/panel/semester-prep" style={{ fontWeight: 700 }}>
-                    هاب آماده‌سازی ترم
-                  </Link>
-                  {' '}ادامه دهید. اینجا فقط برای جزئیات فنی، ریست یا انتقال دستی است.
-                </div>
-              )}
               {selectedStudent
-                && !viewingOperationalAnchor
                 && !isInstituteLevelProcess(instanceStatus?.process_code)
                 && !(instances.length > 0 && instances.every((i) => isInstituteLevelProcess(i.process_code))) && (
                 <RegistrationCourseTypeEditor
                   studentId={selectedStudent}
                   initialCourseType={
-                    students.find((s) => s.id === selectedStudent)?.course_type || 'introductory'
+                    selectedStudentMeta?.course_type
+                    || students.find((s) => s.id === selectedStudent)?.course_type
+                    || 'introductory'
                   }
                   showToast={showToast}
                   compact
@@ -551,12 +744,16 @@ export default function StudentTracker() {
                   </div>
                 ) : (
                   instances.map((inst) => (
-                    <div key={inst.instance_id} className="instance-card" onClick={() => loadInstanceStatus(inst.instance_id)}
+                    <div
+                      key={inst.instance_id}
+                      className="instance-card"
+                      onClick={() => loadInstanceStatus(inst.instance_id)}
                       style={{
                         cursor: 'pointer',
                         border: `2px solid ${inst.is_completed ? 'var(--success)' : inst.is_cancelled ? 'var(--danger)' : 'var(--info)'}`,
                         background: instanceStatus?.instance_id === inst.instance_id ? 'var(--primary-light)' : 'var(--bg)',
-                      }}>
+                      }}
+                    >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <strong>{labelProcess(inst.process_code)}</strong>
                         <span className={`badge ${inst.is_completed ? 'badge-success' : inst.is_cancelled ? 'badge-danger' : 'badge-warning'}`}>

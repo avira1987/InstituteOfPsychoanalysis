@@ -13,8 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.engine import StateMachineEngine
 from app.models.operational_models import ProcessInstance, TermCourseOffering
 from app.services.course_committee_roster_service import (
-    _load_catalog_file,
     _slug_code,
+    catalog_units_for_course,
+    get_catalog_course,
     resolve_track_for_course,
 )
 from app.services.institute_calendar_service import get_active_calendar
@@ -63,15 +64,10 @@ def resolve_course_code_from_name(course_name: str) -> str:
         return _slug_code("course", "unknown")
     if raw in LEGACY_COURSE_CODE_MAP:
         return LEGACY_COURSE_CODE_MAP[raw]
-    # exact catalog match
-    norm = _normalize_name(raw)
-    for row in _load_catalog_file().get("courses") or []:
-        if not isinstance(row, dict):
-            continue
-        val = (row.get("value") or "").strip()
-        lab = _normalize_name(row.get("label_fa") or "")
-        if raw == val or norm == lab:
-            return val or _slug_code("course", raw)
+    # exact catalog match (value, label, SOP alias)
+    catalog = get_catalog_course(raw)
+    if catalog:
+        return str(catalog.get("value") or _slug_code("course", raw))
     return _slug_code("course", raw)
 
 
@@ -97,6 +93,19 @@ def _row_from_prep(
         return None
     code = resolve_course_code_from_name(name)
     track = (row.get("track") or resolve_track_for_course(name) or "").strip() or None
+    catalog = get_catalog_course(code) or get_catalog_course(name)
+    units = catalog_units_for_course(code)
+    raw_units = row.get("units")
+    if raw_units not in (None, ""):
+        try:
+            parsed = int(raw_units)
+            if parsed > 0:
+                units = parsed
+        except (TypeError, ValueError):
+            pass
+    catalog_prereqs = []
+    if catalog and isinstance(catalog.get("prerequisite_codes"), list):
+        catalog_prereqs = [str(c).strip() for c in catalog["prerequisite_codes"] if str(c).strip()]
     return {
         "term_code": term_code,
         "course_code": code,
@@ -109,9 +118,9 @@ def _row_from_prep(
         "classroom_location": str(row.get("classroom_location") or "").strip() or None,
         "instructor_name": str(row.get("instructor") or "").strip() or None,
         "teaching_assistant_name": str(row.get("teaching_assistant") or "").strip() or None,
-        "units": 1,
+        "units": units,
         "per_unit_cost_rial": per_unit_cost_rial,
-        "prerequisite_codes": prerequisite_codes or [],
+        "prerequisite_codes": prerequisite_codes or catalog_prereqs,
     }
 
 
@@ -313,7 +322,7 @@ async def list_offerings(
 
 
 def offering_to_option(row: TermCourseOffering) -> dict[str, Any]:
-    return {
+    opt: dict[str, Any] = {
         "value": row.course_code,
         "label_fa": row.course_name_fa,
         "day": row.day,
@@ -325,6 +334,13 @@ def offering_to_option(row: TermCourseOffering) -> dict[str, Any]:
         "prerequisite_codes": row.prerequisite_codes or [],
         "track": row.track,
     }
+    try:
+        if row.per_unit_cost_rial and row.units:
+            opt["line_amount_rial"] = int(row.units) * int(row.per_unit_cost_rial)
+            opt["per_unit_cost_rial"] = int(row.per_unit_cost_rial)
+    except (TypeError, ValueError):
+        pass
+    return opt
 
 
 async def get_offering_options(
@@ -634,33 +650,77 @@ async def resolve_registration_fees(
     selected_codes = [normalize_legacy_course_code(str(c)) for c in selected if c]
 
     tuition_toman: Optional[float] = None
-    if per_unit_rial and per_unit_rial > 0 and selected_codes and cal:
-        spec = _PROCESS_PROGRAM_TERM.get(process_code, (program_kind, 1))
-        _, term_number = spec
-        offerings = await list_offerings(
-            db,
-            term_code=cal.term_code,
-            program_kind=program_kind,
-            term_number=term_number,
+    tuition_total_rial: Optional[int] = None
+    tuition_lines: list[dict[str, Any]] = []
+    if per_unit_rial and per_unit_rial > 0 and selected_codes:
+        from app.services.course_committee_roster_service import (
+            catalog_units_for_course,
+            get_catalog_course,
         )
-        by_code = {o.course_code: o for o in offerings}
+
+        by_code: dict[str, Any] = {}
+        if cal:
+            spec = _PROCESS_PROGRAM_TERM.get(process_code, (program_kind, 1))
+            _, term_number = spec
+            offerings = await list_offerings(
+                db,
+                term_code=cal.term_code,
+                program_kind=program_kind,
+                term_number=term_number,
+            )
+            by_code = {o.course_code: o for o in offerings}
         total_rial = 0
         for code in selected_codes:
             off = by_code.get(code)
-            units = off.units if off else 1
-            unit_cost = (off.per_unit_cost_rial if off and off.per_unit_cost_rial else per_unit_rial)
-            total_rial += units * int(unit_cost)
+            if off is not None:
+                try:
+                    units = int(off.units) if off.units else 0
+                except (TypeError, ValueError):
+                    units = 0
+                unit_cost = (
+                    int(off.per_unit_cost_rial)
+                    if off.per_unit_cost_rial
+                    else int(per_unit_rial)
+                )
+                name_fa = off.course_name_fa or code
+            else:
+                units = catalog_units_for_course(code, default=1)
+                unit_cost = int(per_unit_rial)
+                catalog = get_catalog_course(code)
+                name_fa = (
+                    str((catalog or {}).get("label_fa") or code).strip() or code
+                )
+            if units < 1:
+                units = 1
+            line_rial = units * unit_cost
+            total_rial += line_rial
+            tuition_lines.append(
+                {
+                    "course_code": code,
+                    "course_name_fa": name_fa,
+                    "units": units,
+                    "per_unit_cost_rial": unit_cost,
+                    "line_amount_rial": line_rial,
+                }
+            )
         if total_rial > 0:
+            tuition_total_rial = total_rial
             tuition_toman = total_rial / 10.0
             fee_source = "term_prep"
     if tuition_toman is None:
         tuition_toman = float(fd["registration_tuition_invoice_toman"])
         if not per_unit_rial:
             fee_source = "site_defaults"
+        try:
+            tuition_total_rial = int(round(float(tuition_toman) * 10))
+        except (TypeError, ValueError):
+            tuition_total_rial = None
 
     return {
         "registration_interview_fee_rial": interview_rial or int(fd["registration_interview_fee_rial"]),
         "registration_tuition_invoice_toman": tuition_toman,
+        "tuition_total_rial": tuition_total_rial,
+        "tuition_lines": tuition_lines,
         "fee_source": fee_source,
         "tuition_missing": not per_unit_rial and fee_source == "site_defaults",
         "tuition_reason_fa": NO_TUITION_REASON_FA if not per_unit_rial else "",

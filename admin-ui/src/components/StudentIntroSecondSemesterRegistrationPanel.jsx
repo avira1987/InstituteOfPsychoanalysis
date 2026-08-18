@@ -13,6 +13,8 @@ import {
   PROCESS_STUDENT_TASK_LABELS_FA,
   PROCESS_STATE_LABELS_FA,
 } from '../utils/processMetadataLabels'
+import TuitionQuoteSummary from './TuitionQuoteSummary'
+import InstituteActivityLicenseNotice from './InstituteActivityLicenseNotice'
 
 const PROCESS_TITLE_FA = 'ثبت‌نام ترم دوم دوره آشنایی (فرایند ۳۳)'
 const PROC_CODE = 'intro_second_semester_registration'
@@ -81,7 +83,7 @@ export default function StudentIntroSecondSemesterRegistrationPanel({
     'registration_complete', 'installment_overdue', 'term2_registration_closed',
   ].includes(currentState)
 
-  const showTuition = ['payment_method', 'payment_processing', 'registration_complete', 'installment_overdue'].includes(currentState)
+  const showTuition = ['course_selection', 'payment_method', 'payment_processing', 'registration_complete', 'installment_overdue'].includes(currentState)
     && term2.tuitionToman
 
   const paymentLabel = term2.paymentMethod ? (PAYMENT_METHOD_LABELS[term2.paymentMethod] || term2.paymentMethod) : null
@@ -114,6 +116,8 @@ export default function StudentIntroSecondSemesterRegistrationPanel({
 
       <div style={{ padding: compact ? '0 0.75rem 0.75rem' : '0 1rem 1rem' }}>
         <Intro2FlowStepper currentState={currentState} compact={compact} />
+
+        <InstituteActivityLicenseNotice compact={compact} />
 
         {isStop && (
           <div
@@ -183,6 +187,10 @@ export default function StudentIntroSecondSemesterRegistrationPanel({
               <InfoTile label="اقساط باقی‌مانده" value={remaining} tone="#2563eb" bg="#eff6ff" />
             )}
           </div>
+        )}
+
+        {['course_selection', 'payment_method', 'payment_processing', 'installment_overdue'].includes(currentState) && (
+          <TuitionQuoteSummary contextData={detail?.context_data || {}} compact={compact} />
         )}
 
         {currentState === 'installment_overdue' && (

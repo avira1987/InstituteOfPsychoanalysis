@@ -112,16 +112,66 @@ def _mock_verify(authority: str, amount: int) -> PaymentResponse:
 
 # ─── Saman (SEP) ────────────────────────────────────────────────
 
+SEP_TOKEN_URLS = (
+    "https://sep.shaparak.ir/onlinepg/onlinepg",
+    "https://sep.shaparak.ir/OnlinePG/SendToken",
+)
+SEP_PAY_POST_URL = "https://sep.shaparak.ir/OnlinePG/OnlinePG"
+SEP_PAY_GET_URL = "https://sep.shaparak.ir/OnlinePG/SendToken"
+
+
+def normalize_sep_cell_number(mobile: Optional[str]) -> str:
+    """SEP sample uses 10 digits without leading 0 (9120000000)."""
+    digits = "".join(c for c in (mobile or "") if c.isdigit())
+    if digits.startswith("98") and len(digits) >= 12:
+        digits = digits[2:]
+    if digits.startswith("0") and len(digits) == 11:
+        digits = digits[1:]
+    if len(digits) == 10 and digits.startswith("9"):
+        return digits
+    return ""
+
+
+def sep_pay_get_url(token: str) -> str:
+    """Official GET redirect (merchant doc 3.3 / SEP SDKs). Do not use OnlinePG?Token=."""
+    from urllib.parse import quote
+
+    tok = str(token or "").strip()
+    return f"{SEP_PAY_GET_URL}?token={quote(tok, safe='')}"
+
+
+def sep_browser_start_url(token: str) -> str:
+    """Send the browser straight to SEP. An extra hop on our domain often drops the token
+    (query string stripped by proxy, APP_BASE_URL pointing at another host) →
+    «توکن ارسالی یافت نشد».
+    """
+    return sep_pay_get_url(token)
+
+
+def _sep_token_payload(request: PaymentRequest, terminal_id: str) -> dict:
+    payload = {
+        "action": "token",
+        "TerminalId": str(terminal_id).strip(),
+        "Amount": int(request.amount),
+        "ResNum": request.reference_id or str(uuid.uuid4().hex[:16]),
+        "RedirectUrl": request.callback_url,
+    }
+    cell = normalize_sep_cell_number(request.mobile)
+    if cell:
+        payload["CellNumber"] = cell
+    return payload
+
+
 async def _saman_create(request: PaymentRequest) -> PaymentResponse:
     """Saman SEP: GetToken then redirect to payment page.
 
-    Flow:
-    1. POST to /OnlinePG/SendToken → get Token
-    2. Redirect user to /OnlinePG/OnlinePG with Token
-    3. User pays, gets redirected to callback_url
+    Official flow (merchant doc 3.3):
+    1. POST JSON to /onlinepg/onlinepg → token
+    2. Browser POST Token to /OnlinePG/OnlinePG (or GET /OnlinePG/SendToken?token=)
+    3. User pays, redirected to RedirectUrl
     4. Verify via /verifyTxnRandomSessionkey/ipg/VerifyTransaction
     """
-    terminal_id = settings.SEP_TERMINAL_ID
+    terminal_id = (settings.SEP_TERMINAL_ID or "").strip()
     if not terminal_id:
         if settings.DEBUG:
             logger.warning("SEP_TERMINAL_ID not set, falling back to mock (DEBUG only)")
@@ -130,43 +180,45 @@ async def _saman_create(request: PaymentRequest) -> PaymentResponse:
 
     try:
         import httpx
-        token_url = "https://sep.shaparak.ir/OnlinePG/SendToken"
 
-        payload = {
-            "Action": "Token",
-            "TerminalId": terminal_id,
-            "Amount": request.amount,
-            "ResNum": request.reference_id or str(uuid.uuid4().hex[:16]),
-            "RedirectUrl": request.callback_url,
-            "CellNumber": request.mobile or "",
-        }
-        pw = (getattr(settings, "SEP_PASSWORD", None) or "").strip()
-        if pw:
-            payload["Password"] = pw
-
+        payload = _sep_token_payload(request, terminal_id)
+        last_error = "پاسخ نامعتبر از سپ"
         async with httpx.AsyncClient(timeout=20) as client:
-            resp = await client.post(token_url, json=payload)
-            try:
-                data = resp.json()
-            except Exception:
-                body = (resp.text or "")[:800]
-                logger.error(f"[SEP] Non-JSON from SendToken: status={resp.status_code} body={body!r}")
-                return PaymentResponse(
-                    success=False,
-                    error=f"پاسخ غیرمنتظره از سپ (کد {resp.status_code})",
-                )
+            for token_url in SEP_TOKEN_URLS:
+                resp = await client.post(token_url, json=payload)
+                try:
+                    data = resp.json()
+                except Exception:
+                    body = (resp.text or "")[:800]
+                    logger.error(
+                        "[SEP] Non-JSON from %s: status=%s body=%r",
+                        token_url,
+                        resp.status_code,
+                        body,
+                    )
+                    last_error = f"پاسخ غیرمنتظره از سپ (کد {resp.status_code})"
+                    continue
 
-            status = data.get("status")
-            token = str(data.get("token") or data.get("Token") or "").strip()
-            ok = bool(token) and (status == 1 or str(status) == "1")
-            if ok:
-                payment_url = f"https://sep.shaparak.ir/OnlinePG/OnlinePG?Token={token}"
-                logger.info(f"[SEP] Token obtained: {token[:20]}...")
-                return PaymentResponse(success=True, authority=token, payment_url=payment_url)
-            else:
-                error_msg = data.get("errorDesc", f"status={status}")
-                logger.error(f"[SEP] Token error: {error_msg}")
-                return PaymentResponse(success=False, error=error_msg)
+                status = data.get("status")
+                token = str(data.get("token") or data.get("Token") or "").strip()
+                ok = bool(token) and (status == 1 or str(status) == "1")
+                if ok:
+                    payment_url = sep_browser_start_url(token)
+                    logger.info(
+                        "[SEP] Token obtained via %s callback=%s amount=%s",
+                        token_url,
+                        request.callback_url,
+                        payload.get("Amount"),
+                    )
+                    return PaymentResponse(success=True, authority=token, payment_url=payment_url)
+
+                error_msg = data.get("errorDesc") or data.get("errorCode") or f"status={status}"
+                logger.error("[SEP] Token error from %s: %s data=%s", token_url, error_msg, data)
+                last_error = str(error_msg)
+                if status == -1:
+                    break
+
+        return PaymentResponse(success=False, error=str(last_error))
 
     except ImportError:
         logger.error("httpx not installed. Run: pip install httpx")

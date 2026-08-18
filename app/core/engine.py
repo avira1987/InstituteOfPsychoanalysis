@@ -681,7 +681,11 @@ class StateMachineEngine:
 
         # 4. Check RBAC
         if not self.transition_manager.validate_role(
-            transition, actor_role, trigger_event=trigger_event
+            transition,
+            actor_role,
+            trigger_event=trigger_event,
+            process_code=instance.process_code,
+            from_state=current_state,
         ):
             from app.meta.role_labels import role_label_fa_only
 
@@ -1384,7 +1388,11 @@ class StateMachineEngine:
             ):
                 continue
             if not self.transition_manager.validate_role(
-                t, actor_role, trigger_event=t.trigger_event
+                t,
+                actor_role,
+                trigger_event=t.trigger_event,
+                process_code=instance.process_code,
+                from_state=instance.current_state_code,
             ):
                 continue
             if actor_user and is_interview_result_trigger(t.trigger_event):
@@ -1427,6 +1435,13 @@ class StateMachineEngine:
             "comprehensive_course_registration",
         ):
             ctx_out = await self._merge_registration_payment_context_for_status(instance, ctx_out)
+            if instance.process_code in (
+                "introductory_course_registration",
+                "comprehensive_course_registration",
+            ):
+                from app.core.interview_result_access import overlay_slot_ownership_on_context
+
+                ctx_out = await overlay_slot_ownership_on_context(self.db, instance, ctx_out)
             try:
                 from app.services.term_course_offering_service import (
                     merge_offerings_into_instance_context,
@@ -1627,7 +1642,21 @@ class StateMachineEngine:
         """
         بازگرداندن نمونه به وضعیت قبلی بر اساس آخرین رکورد تاریخچه (اصلاح اشتباه کلیک / تصمیم).
         رکورد جدید در state_history با trigger manual_rollback ثبت می‌شود.
+        فقط نقش‌های override (مدیر / معاون آموزش).
         """
+        from app.meta.process_override_policy import (
+            can_actor_rollback_process,
+            validate_override_reason,
+        )
+
+        allowed, deny_msg = can_actor_rollback_process(actor_role=actor_role)
+        if not allowed:
+            raise UnauthorizedError(deny_msg)
+
+        reason_ok, reason_msg = validate_override_reason(reason, actor_role=actor_role)
+        if not reason_ok:
+            raise InvalidTransitionError(reason_msg)
+
         instance = await self.get_process_instance(instance_id)
         if instance.is_cancelled:
             raise InvalidTransitionError("فرایند لغوشده قابل بازگشت نیست.")
@@ -1838,6 +1867,7 @@ class StateMachineEngine:
         """
         بایگانی نمونهٔ فعلی و ساخت نمونهٔ جدید از مرحلهٔ اول (شروع دوباره).
         """
+        from app.meta.process_override_policy import validate_override_reason
         from app.meta.process_restart_policy import (
             build_restart_initial_context,
             can_actor_restart_process,
@@ -1859,16 +1889,20 @@ class StateMachineEngine:
         )
         if not allowed:
             role_norm = (actor_role or "").strip().lower()
-            from app.meta.process_restart_policy import RESTART_STAFF_ROLES
+            from app.meta.process_override_policy import OVERRIDE_ROLES
 
             if role_norm == "student" and not is_own_instance:
                 raise UnauthorizedError(deny_msg)
-            if role_norm not in RESTART_STAFF_ROLES and role_norm != "student":
+            if role_norm not in OVERRIDE_ROLES and role_norm != "student":
                 raise UnauthorizedError(deny_msg)
             raise InvalidTransitionError(deny_msg)
 
         if student_restart_reason_required(actor_role) and not (reason or "").strip():
             raise InvalidTransitionError("لطفاً دلیل شروع دوباره را بنویسید.")
+
+        reason_ok, reason_msg = validate_override_reason(reason, actor_role=actor_role)
+        if not reason_ok:
+            raise InvalidTransitionError(reason_msg)
 
         now = datetime.now(timezone.utc)
         from_state = instance.current_state_code
@@ -2068,6 +2102,8 @@ class StateMachineEngine:
             "payment_choice",
             "installment_overdue",
             "registration_complete",
+            "course_selection",
+            "course_display",
         ):
             return ctx, False
 
@@ -2092,15 +2128,17 @@ class StateMachineEngine:
             "payment_choice",
             "installment_overdue",
             "registration_complete",
+            "course_selection",
+            "course_display",
         ):
-            if not _valid_rial(out.get("tuition_total_rial")):
-                tom = float(registration_tuition_invoice_toman)
-                out["invoice_amount"] = tom
-                total_rial = int(round(tom * 10))
-                out["tuition_total_rial"] = total_rial
-                out["tuition_amount_rial"] = total_rial
-                out["tuition_amount"] = tom
-                changed = True
+            # همیشه از انتخاب فعلی دوباره حساب شود تا تغییر درس مبلغ درگاه را عوض کند
+            tom = float(registration_tuition_invoice_toman)
+            out["invoice_amount"] = tom
+            total_rial = int(round(tom * 10))
+            out["tuition_total_rial"] = total_rial
+            out["tuition_amount_rial"] = total_rial
+            out["tuition_amount"] = tom
+            changed = True
             from app.services.tuition_installment_service import apply_tuition_payment_context
 
             updated = apply_tuition_payment_context(out)
@@ -2131,6 +2169,8 @@ class StateMachineEngine:
             new_ctx["fee_source"] = fees["fee_source"]
         if fees.get("tuition_reason_fa"):
             new_ctx["tuition_reason_fa"] = fees["tuition_reason_fa"]
+        if fees.get("tuition_lines") is not None:
+            new_ctx["tuition_lines"] = fees["tuition_lines"]
         from app.services.tuition_installment_service import refresh_instance_tuition_context
 
         new_ctx = await refresh_instance_tuition_context(
@@ -2168,6 +2208,8 @@ class StateMachineEngine:
             out["fee_source"] = fees["fee_source"]
         if fees.get("tuition_reason_fa"):
             out["tuition_reason_fa"] = fees["tuition_reason_fa"]
+        if fees.get("tuition_lines") is not None:
+            out["tuition_lines"] = fees["tuition_lines"]
         from app.services.tuition_installment_service import refresh_instance_tuition_context
 
         return await refresh_instance_tuition_context(

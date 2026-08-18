@@ -12,6 +12,7 @@ from sqlalchemy.orm import aliased
 
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance, Student, User, InterviewSlot
+from app.core.user_roles import canonical_portal_role, user_has_role
 from app.services.panel_task_reminders import load_active_panel_reminders
 from app.services.panel_flash_messages import load_panel_flash_messages
 from app.services.panel_notification_dismiss import (
@@ -146,9 +147,14 @@ def notification_action_path(item: dict[str, Any]) -> str:
             {**base, "tab": "processes", "process_code": process_code or None},
         )
 
+    # آماده‌سازی ترم — همیشه میز کار (نه lane پذیرش/کمیته)
+    if process_code in ("fall_semester_preparation", "winter_semester_preparation"):
+        return _path_query(
+            "/panel/semester-prep/workbench",
+            {"process_code": process_code},
+        )
+
     if not instance_id or not student_id:
-        if process_code in ("fall_semester_preparation", "winter_semester_preparation"):
-            return "/panel/semester-prep"
         return _path_query("/panel/students", {"student_id": student_id, "instance_id": instance_id})
 
     if (
@@ -267,6 +273,7 @@ def _normalize_raw_to_notification(raw: dict[str, Any]) -> dict[str, Any] | None
         return {
             "notification_id": f"process:{iid}",
             "kind": "process",
+            "process_code": (raw.get("process_code") or "").strip().lower() or None,
             "title_fa": title,
             "summary_fa": _summary_fa_for_operator_process(raw),
             "action_path": notification_action_path(raw),
@@ -341,6 +348,7 @@ def _student_notification_record(
     return {
         "notification_id": f"process:{pi.id}",
         "kind": "process",
+        "process_code": (proc_def.code or "").strip().lower() or None,
         "title_fa": title,
         "summary_fa": summary,
         "action_path": action_path,
@@ -357,7 +365,7 @@ async def _upcoming_paid_interview_slot_notifications(
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
     """اسلات‌های مصاحبهٔ پرداخت‌تأییدشدهٔ آینده برای مصاحبه‌گر/کارمند."""
-    role = (user.role or "").strip().lower()
+    role = canonical_portal_role(user.role)
     if role not in ("interviewer", "staff", "admin", "site_manager", "deputy_education"):
         return []
     now = now or datetime.now(timezone.utc)
@@ -511,10 +519,10 @@ async def build_action_notifications(
         sc = min(max(scan_cap, pl), 2000)
         core = await build_portal_role_process_inbox(
             db,
-            portal_role=user.role or "",
+            portal_role=canonical_portal_role(user.role) or (user.role or ""),
             process_limit=pl,
             scan_cap=sc,
-            include_assignments_for_staff=(user.role in ("staff", "admin")),
+            include_assignments_for_staff=user_has_role(user, "staff", admin_bypass=True),
         )
         alerts = await compute_operator_readiness_alerts(db, user)
         merged = _merge_readiness_into_inbox_items(core.get("items") or [], alerts)

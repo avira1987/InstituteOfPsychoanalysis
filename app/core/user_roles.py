@@ -49,7 +49,39 @@ _ROLE_IMPLIES: dict[str, frozenset[str]] = {
     "faculty_1": frozenset({"supervisor", "interviewer"}),
     # مدرس آموزشی — همان قابلیت‌های مدرس
     "educational_instructor": frozenset({"instructor"}),
+    # مدیر داخلی — همان دسترسی‌های کارمند دفتر
+    "internal_manager": frozenset({"staff"}),
 }
+
+# نقش ورود که برای خانه/کارتابل/ترنزیشن معادل نقش دیگری است
+_PORTAL_ROLE_CANONICAL: dict[str, str] = {
+    "internal_manager": "staff",
+}
+
+# فقط این impliedها هنگام ذخیره روی User.roles نوشته می‌شوند
+_ROLE_PORTAL_GRANTS: dict[str, frozenset[str]] = {
+    "internal_manager": frozenset({"staff"}),
+    "faculty_1": frozenset({"interviewer", "supervisor"}),
+    "educational_instructor": frozenset({"instructor"}),
+}
+
+
+def canonical_portal_role(code: str | None) -> str:
+    """نقش ذخیره‌شده را به نقش پورتال معادل برای دسترسی/خانه تبدیل می‌کند."""
+    normalized = normalize_role_code(code)
+    if not normalized:
+        return ""
+    return _PORTAL_ROLE_CANONICAL.get(normalized, normalized)
+
+
+def role_grants(code: str | None, *targets: str) -> bool:
+    """آیا این کد نقش، خودِ هدف است یا آن را implied می‌کند (مثلاً faculty_1 → interviewer)."""
+    code_n = canonical_portal_role(code) or normalize_role_code(code)
+    needed = {normalize_role_code(t) for t in targets if t}
+    needed.discard("")
+    if not code_n or not needed:
+        return False
+    return bool(_expanded_roles({code_n}) & needed)
 
 
 def _expanded_roles(have: set[str]) -> set[str]:
@@ -101,6 +133,16 @@ def sync_primary_and_roles(
     unknown = [r for r in cleaned if r not in known]
     if unknown:
         raise ValueError(f"نقش نامعتبر: {', '.join(unknown)}")
+    # مدیر داخلی: staff را هم روی حساب بنویس تا منو و بررسی‌های آرایهٔ نقش برقرار بماند
+    granted: list[str] = []
+    seen = set(cleaned)
+    for code in list(cleaned):
+        for implied in _ROLE_PORTAL_GRANTS.get(code, frozenset()):
+            if implied in known and implied not in seen:
+                seen.add(implied)
+                granted.append(implied)
+    if granted:
+        cleaned = cleaned + granted
     prim = normalize_role_code(primary) if primary else cleaned[0]
     if not prim or prim not in cleaned:
         prim = cleaned[0]

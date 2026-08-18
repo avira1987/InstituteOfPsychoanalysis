@@ -19,6 +19,7 @@ from app.services.term_course_offering_service import (
 
 def test_resolve_course_code_maps_catalog_label():
     assert resolve_course_code_from_name("تئوری روانکاوی ۱") == "theory_psychoanalysis_1"
+    assert resolve_course_code_from_name("تئوری روانکاوی (1)") == "theory_psychoanalysis_1"
 
 
 @pytest.mark.asyncio
@@ -71,6 +72,7 @@ async def test_publish_offerings_from_fall_prep(db_session: AsyncSession):
     assert len(options) == 1
     assert options[0]["value"] == "theory_psychoanalysis_1"
     assert options[0]["classroom_location"] == "A1"
+    assert options[0]["units"] == 2
 
 
 @pytest.mark.asyncio

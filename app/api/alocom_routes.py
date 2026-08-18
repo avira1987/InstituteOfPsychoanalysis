@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user, require_role
+from app.core.user_roles import user_has_role
 from app.config import get_settings
 from app.database import get_db
 from app.models.operational_models import InterviewSlot, TherapySession, User
@@ -23,7 +24,7 @@ router = APIRouter(prefix="/api/integrations/alocom", tags=["Alocom"])
 
 
 def _can_access_session(user: User, session: TherapySession) -> bool:
-    if user.role in ("admin", "staff"):
+    if user_has_role(user, "staff", admin_bypass=True):
         return True
     if user.role == "therapist" and session.therapist_id == user.id:
         return True

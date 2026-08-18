@@ -38,7 +38,7 @@ KNOWN_WALK_SEQUENCES: dict[str, list[tuple[str, str]]] = {
         ("course_list_submitted", "course_committee"),
         ("courses_finalized", "course_committee"),
         ("marketing_started", "staff"),
-        ("interviewers_assigned", "deputy_education"),
+        ("interviewers_assigned", "staff"),
         ("interview_times_set", "staff"),
     ],
     "winter_semester_preparation": [
@@ -46,7 +46,7 @@ KNOWN_WALK_SEQUENCES: dict[str, list[tuple[str, str]]] = {
         ("course_list_submitted", "course_committee"),
         ("courses_finalized", "course_committee"),
         ("marketing_started", "staff"),
-        ("interviewers_assigned", "deputy_education"),
+        ("interviewers_assigned", "staff"),
         ("interview_times_set", "staff"),
     ],
 }

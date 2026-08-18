@@ -7,16 +7,45 @@
       "name_fa": "رواندرمانی تحلیلی",
       "educational_instructor": {
         "roster_key": "educational_instructor",
-        "name_fa": "ادريس صالحي",
+        "name_fa": "فاطمه مجتهد زاده",
         "tier": 0,
-        "member_kind": "instructor"
+        "member_kind": "instructor",
+        "instructor_authorized_courses": [
+          "theory_psychoanalysis_3",
+          "theory_psychoanalysis_4"
+        ],
+        "authorized_courses": [
+          "theory_psychoanalysis_3",
+          "theory_psychoanalysis_4"
+        ]
       },
       "instructors": [
         {
           "roster_key": "inst_t1_01",
           "name_fa": "اسرا شريفي",
           "tier": 1,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "professional_ethics_heal",
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_2",
+            "theory_psychoanalysis_3",
+            "theory_psychoanalysis_4",
+            "theory_psychoanalysis_5",
+            "borderline_difficult_patients",
+            "theory_inheritance"
+          ],
+          "authorized_courses": [
+            "professional_ethics_heal",
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_2",
+            "theory_psychoanalysis_3",
+            "theory_psychoanalysis_4",
+            "theory_psychoanalysis_5",
+            "borderline_difficult_patients",
+            "theory_inheritance"
+          ]
         },
         {
           "roster_key": "inst_t1_02",
@@ -40,21 +69,6 @@
           "member_kind": "instructor"
         },
         {
-          "roster_key": "inst_t1_04",
-          "name_fa": "فاطمه مجتهد زاده",
-          "tier": 1,
-          "member_kind": "instructor",
-          "roster_legacy": false,
-          "instructor_authorized_courses": [
-            "theory_psychoanalysis_3",
-            "theory_psychoanalysis_4"
-          ],
-          "authorized_courses": [
-            "theory_psychoanalysis_3",
-            "theory_psychoanalysis_4"
-          ]
-        },
-        {
           "roster_key": "inst_t1_05",
           "name_fa": "فريبا حاتمي",
           "tier": 1,
@@ -64,7 +78,28 @@
           "roster_key": "inst_t1_06",
           "name_fa": "سارا خسروي",
           "tier": 1,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_psychoanalysis_4",
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_2",
+            "professional_ethics_heal",
+            "theory_psychoanalysis_3",
+            "theory_psychoanalysis_5",
+            "borderline_difficult_patients",
+            "theory_inheritance"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_4",
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_2",
+            "professional_ethics_heal",
+            "theory_psychoanalysis_3",
+            "theory_psychoanalysis_5",
+            "borderline_difficult_patients",
+            "theory_inheritance"
+          ]
         },
         {
           "roster_key": "inst_t1_07",
@@ -127,8 +162,14 @@
           "member_kind": "instructor"
         },
         {
-          "roster_key": "ta_کمک_مدرس_تست",
-          "name_fa": "کمک‌مدرس تست",
+          "roster_key": "inst_علی_علوی",
+          "name_fa": "علی علوی",
+          "tier": 2,
+          "member_kind": "instructor"
+        },
+        {
+          "roster_key": "inst_ادريس_صالحي",
+          "name_fa": "ادريس صالحي",
           "tier": 2,
           "member_kind": "instructor"
         }
@@ -153,18 +194,21 @@
           "member_kind": "teaching_assistant"
         },
         {
-          "roster_key": "ta_دانشجوی_تست",
-          "name_fa": "دانشجوی تست",
-          "tier": 3,
-          "member_kind": "teaching_assistant"
-        },
-        {
           "roster_key": "ta_دانشجوی_کمک_مدرس",
           "name_fa": "دانشجوی کمک‌مدرس",
           "tier": 3,
           "member_kind": "teaching_assistant",
-          "roster_legacy": true,
-          "ta_authorized_courses": []
+          "roster_legacy": false,
+          "ta_authorized_courses": [
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_2",
+            "professional_ethics_heal"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_2",
+            "professional_ethics_heal"
+          ]
         }
       ]
     },
@@ -202,6 +246,15 @@
           "name_fa": "مرادی",
           "tier": 2,
           "member_kind": "instructor"
+        },
+        {
+          "roster_key": "inst_تست_مدرس",
+          "name_fa": "تست مدرس",
+          "tier": 2,
+          "member_kind": "instructor",
+          "instructor_authorized_courses": [
+            "theory_technique_2"
+          ]
         }
       ],
       "teaching_assistants": [
@@ -228,8 +281,63 @@
           "name_fa": "علینیا",
           "tier": 3,
           "member_kind": "teaching_assistant"
+        },
+        {
+          "roster_key": "ta_کمک_تست",
+          "name_fa": "کمک تست",
+          "tier": 3,
+          "member_kind": "teaching_assistant",
+          "ta_authorized_courses": [
+            "theory_technique_2"
+          ]
         }
       ]
+    },
+    {
+      "code": "skills_practice",
+      "name_fa": "تکنیک: تمرین مهارت‌ها",
+      "instructors": [
+        {
+          "roster_key": "inst_تستی",
+          "name_fa": "تستی",
+          "tier": 2,
+          "member_kind": "instructor",
+          "instructor_authorized_courses": [
+            "skills_practice_1"
+          ]
+        }
+      ],
+      "teaching_assistants": []
+    },
+    {
+      "code": "practical_applied",
+      "name_fa": "عملی-کاربردی",
+      "instructors": [],
+      "teaching_assistants": []
+    },
+    {
+      "code": "group_supervision",
+      "name_fa": "سوپرویژن گروهی",
+      "instructors": [],
+      "teaching_assistants": []
+    },
+    {
+      "code": "live_supervision",
+      "name_fa": "سوپرویژن زنده",
+      "instructors": [],
+      "teaching_assistants": []
+    },
+    {
+      "code": "live_therapy_observation",
+      "name_fa": "مشاهده زنده درمان",
+      "instructors": [],
+      "teaching_assistants": []
+    },
+    {
+      "code": "thesis_writing",
+      "name_fa": "مقاله‌نویسی",
+      "instructors": [],
+      "teaching_assistants": []
     },
     {
       "code": "track_رسته_آزمایشی",

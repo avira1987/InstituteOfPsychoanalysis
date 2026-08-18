@@ -27,7 +27,7 @@ function formatRial(n) {
 }
 
 /**
- * پرداخت آنلاین — درگاه زیبال. مبلغ به ریال.
+ * پرداخت آنلاین — اولویت زیبال؛ اگر زیبال در دسترس نباشد سپ.
  */
 export default function SepPaymentPanel({
   instanceId,
@@ -53,16 +53,25 @@ export default function SepPaymentPanel({
           ? crypto.randomUUID().replace(/-/g, '').slice(0, 16)
           : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`.slice(0, 16)
       setLoading(true)
+      const body = {
+        amount: Math.round(Number(amountRial)),
+        description,
+        student_id: studentId,
+        instance_id: instanceId,
+        reference_id: referenceId,
+        mobile: mobile || undefined,
+      }
       try {
-        const { data } = await paymentApi.create({
-          amount: Math.round(Number(amountRial)),
-          description,
-          student_id: studentId,
-          instance_id: instanceId,
-          reference_id: referenceId,
-          mobile: mobile || undefined,
-          gateway,
-        })
+        let data
+        try {
+          ;({ data } = await paymentApi.create({ ...body, gateway }))
+        } catch (firstErr) {
+          if (gateway === 'zibal') {
+            ;({ data } = await paymentApi.create({ ...body, gateway: 'saman' }))
+          } else {
+            throw firstErr
+          }
+        }
         if (data?.success && data.payment_url) {
           const url = resolvePaymentUrl(data.payment_url)
           setLoading(false)
@@ -127,7 +136,7 @@ export default function SepPaymentPanel({
         <div style={{ flex: '1 1 12rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>پرداخت آنلاین (زیبال)</h3>
           <p className="sep-payment-desc" style={{ margin: '0.35rem 0 0', fontSize: '0.88rem', lineHeight: 1.6 }}>
-            پس از زدن دکمه، به صفحهٔ امن <strong>درگاه زیبال</strong> هدایت می‌شوید.
+            ابتدا به درگاه امن <strong>زیبال</strong> می‌روید. اگر زیبال در دسترس نباشد، سامانه خودش درگاه سپ را امتحان می‌کند.
           </p>
           <p className="sep-payment-amount" style={{ margin: '0.5rem 0 0', fontSize: '0.95rem', fontWeight: 600 }}>
             مبلغ قابل پرداخت:{' '}
@@ -160,6 +169,15 @@ export default function SepPaymentPanel({
           data-testid="sep-payment-submit-zibal"
         >
           {loading ? 'در حال اتصال…' : 'پرداخت با درگاه زیبال'}
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={loading}
+          onClick={() => goPay('saman')}
+          data-testid="sep-payment-submit-saman"
+        >
+          {loading ? 'در حال اتصال…' : 'پرداخت با سپ (اگر زیبال کار نکرد)'}
         </button>
       </div>
     </div>

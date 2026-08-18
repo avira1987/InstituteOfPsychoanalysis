@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -17,7 +19,7 @@ from app.main import app
 from app.meta.seed import load_process
 from app.meta.student_step_forms import CTX_STEP_OTP_VERIFIED_STATE
 from app.models.operational_models import ProcessInstance, Student, User
-from app.services.otp_service import request_otp
+from app.services.otp_service import STEP_OTP_EXPIRY_SECONDS, request_otp
 
 
 PROCESSES_DIR = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
@@ -52,11 +54,12 @@ async def api_client(db_session: AsyncSession):
 async def _seed_docs_upload(db_session: AsyncSession):
     await load_process(db_session, PROCESSES_DIR / "introductory_course_registration.json")
     await db_session.commit()
+    suffix = f"{uuid.uuid4().int % 10_000_000:07d}"
     seed = await seed_instance_at_state(
         db_session,
         "introductory_course_registration",
         "documents_upload",
-        student_code=f"OTP-DOC-{Path(__file__).stem}"[:50],
+        student_code=f"OTP-DOC-{suffix}"[:50],
     )
     await db_session.commit()
     assert seed.current_state == "documents_upload", (
@@ -66,7 +69,7 @@ async def _seed_docs_upload(db_session: AsyncSession):
         await db_session.execute(select(Student).where(Student.id == seed.student_id))
     ).scalar_one()
     user = (await db_session.execute(select(User).where(User.id == st.user_id))).scalar_one()
-    user.phone = "09123334455"
+    user.phone = f"0912{suffix}"
     await db_session.commit()
     token = create_access_token(
         {"sub": str(user.id), "username": user.username, "role": user.role}
@@ -144,3 +147,111 @@ async def test_documents_upload_register_after_step_otp_verify_advances(
     assert inst.current_state_code == "documents_review"
     assert CTX_STEP_OTP_VERIFIED_STATE not in (inst.context_data or {})
     assert (inst.context_data or {}).get("step_otp_verified") is True
+
+
+def _aware(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+@pytest.mark.asyncio
+async def test_documents_upload_step_otp_request_is_valid_three_minutes(
+    db_session: AsyncSession, api_client: AsyncClient
+):
+    seed, user, headers = await _seed_docs_upload(db_session)
+    iid = str(seed.instance_id)
+
+    req = await api_client.post(
+        f"/api/process/{iid}/student-step-forms/step-otp/request",
+        headers=headers,
+    )
+    assert req.status_code == 200, req.text
+    body = req.json()
+    assert body.get("success") is True
+    assert body.get("expires_in") == STEP_OTP_EXPIRY_SECONDS == 180
+
+    from app.models.operational_models import OTPCode
+    from sqlalchemy import desc
+
+    row = (
+        await db_session.execute(
+            select(OTPCode)
+            .where(OTPCode.phone == user.phone, OTPCode.is_used.is_(False))
+            .order_by(desc(OTPCode.created_at))
+        )
+    ).scalars().first()
+    assert row is not None
+    ttl = (_aware(row.expires_at) - _aware(row.created_at)).total_seconds()
+    assert 179 <= ttl <= 181
+
+
+@pytest.mark.asyncio
+async def test_documents_upload_step_otp_rejected_after_three_minutes(
+    db_session: AsyncSession, api_client: AsyncClient
+):
+    seed, user, headers = await _seed_docs_upload(db_session)
+    iid = str(seed.instance_id)
+
+    req = await request_otp(db_session, user.phone, expiry_seconds=STEP_OTP_EXPIRY_SECONDS)
+    assert req.get("success") is True, req
+    code = req.get("dev_code")
+    assert code
+
+    from app.models.operational_models import OTPCode
+    from sqlalchemy import desc
+
+    row = (
+        await db_session.execute(
+            select(OTPCode)
+            .where(OTPCode.phone == user.phone, OTPCode.is_used.is_(False))
+            .order_by(desc(OTPCode.created_at))
+        )
+    ).scalars().first()
+    assert row is not None
+    row.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    await db_session.commit()
+
+    verify = await api_client.post(
+        f"/api/process/{iid}/student-step-forms/step-otp/verify",
+        json={"code": code},
+        headers=headers,
+    )
+    assert verify.status_code == 400, verify.text
+    detail = str(verify.json().get("detail") or "")
+    assert "منقضی" in detail or "نامعتبر" in detail
+
+
+@pytest.mark.asyncio
+async def test_documents_upload_step_otp_still_valid_before_three_minutes(
+    db_session: AsyncSession, api_client: AsyncClient
+):
+    seed, user, headers = await _seed_docs_upload(db_session)
+    iid = str(seed.instance_id)
+
+    req = await request_otp(db_session, user.phone, expiry_seconds=STEP_OTP_EXPIRY_SECONDS)
+    assert req.get("success") is True, req
+    code = req.get("dev_code")
+    assert code
+
+    from app.models.operational_models import OTPCode
+    from sqlalchemy import desc
+
+    row = (
+        await db_session.execute(
+            select(OTPCode)
+            .where(OTPCode.phone == user.phone, OTPCode.is_used.is_(False))
+            .order_by(desc(OTPCode.created_at))
+        )
+    ).scalars().first()
+    assert row is not None
+    row.expires_at = datetime.now(timezone.utc) + timedelta(seconds=5)
+    await db_session.commit()
+
+    verify = await api_client.post(
+        f"/api/process/{iid}/student-step-forms/step-otp/verify",
+        json={"code": code},
+        headers=headers,
+    )
+    assert verify.status_code == 200, verify.text
+    assert verify.json().get("success") is True

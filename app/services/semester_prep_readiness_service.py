@@ -7,12 +7,14 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.user_roles import user_matches_role_sql
 from app.models.operational_models import ProcessInstance, User
 from app.services.course_committee_roster_service import (
     list_course_catalog_options,
     list_track_options,
     list_track_roster_detail,
 )
+from app.services.institute_activity_license_service import get_activity_license_number
 from app.services.institute_operational_anchor import ensure_institute_operational_student
 from app.services.semester_prep_service import (
     FALL_PREP,
@@ -87,12 +89,13 @@ async def compute_semester_prep_readiness(db: AsyncSession) -> dict[str, Any]:
             tracks_with_instructor += 1
 
     interviewer_stmt = select(func.count()).select_from(User).where(
-        User.role == "interviewer",
         User.is_active.is_(True),
+        user_matches_role_sql("interviewer"),
     )
     interviewer_count = int((await db.execute(interviewer_stmt)).scalar() or 0)
 
     license_ok, license_status = await _license_reviewed_in_context(db)
+    stored_license = await get_activity_license_number(db)
 
     catalog_complete = course_count > 0
     roster_complete = track_count > 0 and tracks_with_instructor > 0
@@ -148,12 +151,15 @@ async def compute_semester_prep_readiness(db: AsyncSession) -> dict[str, Any]:
             complete=license_ok,
             count=1 if license_ok else 0,
             message_fa=(
-                f"وضعیت پروانه ثبت شده: {license_status}"
+                (
+                    f"وضعیت پروانه ثبت شده: {license_status}"
+                    + (f" — شماره: {stored_license}" if stored_license else "")
+                )
                 if license_ok
                 else "هنوز وضعیت پروانه در فرایند آماده‌سازی ثبت نشده — در مرحلهٔ «بررسی پروانه» ثبت کنید."
             ),
-            action_route="/panel/semester-prep/workbench",
-            action_anchor=None,
+            action_route="/panel/semester-prep/readiness",
+            action_anchor="license",
         ),
     ]
 

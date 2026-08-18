@@ -14,6 +14,8 @@ import {
   PROCESS_STUDENT_TASK_LABELS_FA,
   PROCESS_STATE_LABELS_FA,
 } from '../utils/processMetadataLabels'
+import TuitionQuoteSummary from './TuitionQuoteSummary'
+import InstituteActivityLicenseNotice from './InstituteActivityLicenseNotice'
 
 const PROCESS_TITLE_FA = 'ثبت‌نام دوره آشنایی (فرایند ۳۱)'
 const PROC_CODE = 'introductory_course_registration'
@@ -103,6 +105,8 @@ export default function StudentIntroductoryCourseRegistrationPanel({
       <div style={{ padding: compact ? '0 0.75rem 0.75rem' : '0 1rem 1rem' }}>
         <IntroRegFlowStepper currentState={currentState} compact={compact} />
 
+        <InstituteActivityLicenseNotice compact={compact} />
+
         {!isRejected && hint && (
           <div
             data-testid="intro-reg-state-hint"
@@ -146,6 +150,10 @@ export default function StudentIntroductoryCourseRegistrationPanel({
               <InfoTile label="نتیجه پذیرش" value={admissionLabel} tone="#16a34a" bg="#f0fdf4" />
             )}
           </div>
+        )}
+
+        {['course_selection', 'payment', 'installment_overdue'].includes(currentState) && (
+          <TuitionQuoteSummary contextData={ctx} compact={compact} />
         )}
 
         <div

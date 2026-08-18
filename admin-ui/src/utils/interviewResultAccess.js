@@ -1,4 +1,5 @@
-import { COMPREHENSIVE_EVAL_TRIGGERS } from './interviewEvaluationPayload'
+import { COMPREHENSIVE_EVAL_TRIGGERS } from './interviewEvaluationPayload.js'
+import { userHasAnyRole, userHasRole } from './userRoles.js'
 
 export const INTERVIEW_RESULT_TRIGGERS = [
   'interview_result_submitted',
@@ -12,11 +13,12 @@ export function isInterviewResultTrigger(triggerEvent) {
 /**
  * آیا کاربر جاری مجاز به ثبت نتیجهٔ مصاحبه برای این پرونده است؟
  * هم‌راستا با app/core/interview_result_access.py
+ * faculty_1 (هیئت علمی) معادل interviewer است.
  */
 export function canSubmitInterviewResult(user, contextData) {
   if (!user) return false
-  if (user.role === 'admin') return true
-  if (!['interviewer', 'staff'].includes(user.role)) return false
+  if (userHasRole(user, 'admin', { adminBypass: false })) return true
+  if (!userHasAnyRole(user, ['interviewer', 'staff'], { adminBypass: false })) return false
 
   const uid = String(user.id)
   const assigned = contextData?.interviewer_user_id
@@ -24,10 +26,8 @@ export function canSubmitInterviewResult(user, contextData) {
 
   const creator = contextData?.slot_created_by
   if (creator && String(creator) === uid) {
-    if (user.role === 'interviewer') {
-      return !assigned
-    }
-    return true
+    if (userHasRole(user, 'staff', { adminBypass: false })) return true
+    return !assigned
   }
 
   return false

@@ -70,13 +70,13 @@
       "code": "interviewer_assignment",
       "name_fa": "تعیین مصاحبه‌کنندگان زمستان",
       "type": "intermediate",
-      "assigned_role": "deputy_education_director",
+      "assigned_role": "staff",
       "sla_days": 3,
       "sla_warning_recipients": [
         "education_director"
       ],
       "metadata": {
-        "operator_task_fa": "بررسی پرونده و ثبت تصمیم مدیریتی.",
+        "operator_task_fa": "مصاحبه‌گرها و زمان‌بندی را ثبت کنید.",
         "operator_short_fa": "تعیین مصاحبه‌کنندگان زمستان"
       }
     },
@@ -110,6 +110,9 @@
       "required_role": "deputy_education_director",
       "description_fa": "وضعیت پروانه فعالیت بررسی شد",
       "actions": [
+        {
+          "type": "sync_institute_license_from_prep"
+        },
         {
           "type": "notification",
           "notification_type": "in_app",
@@ -210,7 +213,7 @@
           "notification_type": "in_app",
           "template": "winter_marketing_started_set_interviewers",
           "recipients": [
-            "deputy_education_director"
+            "staff"
           ]
         }
       ]
@@ -236,18 +239,9 @@
       "from": "interviewer_assignment",
       "to": "interview_scheduling",
       "trigger": "interviewers_assigned",
-      "required_role": "deputy_education_director",
+      "required_role": "staff",
       "description_fa": "مصاحبه‌کنندگان زمستان تعیین شدند",
-      "actions": [
-        {
-          "type": "notification",
-          "notification_type": "in_app",
-          "template": "winter_interviewers_set_schedule_times",
-          "recipients": [
-            "staff"
-          ]
-        }
-      ]
+      "actions": []
     },
     {
       "from": "interviewer_assignment",
@@ -318,8 +312,15 @@
       "code": "winter_license_check_form",
       "name_fa": "فرم بررسی پروانه فعالیت (زمستان)",
       "used_in_state": "license_check",
-      "editable_by": ["admin", "staff", "deputy_education", "deputy_education_director"],
+      "editable_by": ["admin", "deputy_education", "deputy_education_director"],
+      "note_fa": "شماره پروانه فعلی انستیتو در فرم پذیرش دانشجو نمایش داده می‌شود. اگر شماره تغییر کرده یا هنوز ثبت نشده، وضعیت «تغییر کرده» را انتخاب و شماره را وارد کنید. ویرایش بعدی از صفحهٔ پیش‌نیازها هم ممکن است و نیازی به بازگشت فرایند نیست.",
       "fields": [
+        {
+          "name": "current_license_number",
+          "label_fa": "شماره پروانه فعلی",
+          "type": "readonly",
+          "required": false
+        },
         {
           "name": "license_status",
           "label_fa": "وضعیت پروانه",
@@ -334,7 +335,7 @@
           "name": "new_license_number",
           "label_fa": "شماره پروانه جدید",
           "type": "text",
-          "required": false,
+          "required": true,
           "visible_if": {
             "license_status": "تغییر کرده"
           }
@@ -351,20 +352,22 @@
       "code": "winter_course_list_review_form",
       "name_fa": "فرم بازبینی لیست دروس زمستان",
       "used_in_state": "course_list_review",
-      "editable_by": ["admin", "staff", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
-      "note": "فرم از داده‌های ترم پاییز پر شده و قابل ویرایش است",
+      "editable_by": ["admin", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
+      "note_fa": "ردیف‌ها از پاییز و چارت پیش‌پر می‌شوند. می‌توانید ردیف درس اضافه یا حذف کنید و مدرس یا کمک‌مدرس را انتخاب یا بسازید. پس از انتخاب درس، مدرسین و کمک‌مدرسین همان رسته از چارت پیش‌آماده‌سازی در فهرست می‌آیند (اگر برای درس دیگری تیک خورده باشند دیده نمی‌شوند).",
       "fields": [
         {
           "name": "courses",
           "label_fa": "جدول دروس زمستان",
           "type": "table",
           "required": true,
+          "allow_add_rows": true,
+          "allow_remove_rows": true,
           "pre_filled_from": "fall_semester_preparation.courses_winter",
           "columns": [
             {
               "name": "course_name",
               "label_fa": "نام درس",
-              "type": "creatable_select",
+              "type": "select",
               "creatable": true,
               "searchable": true,
               "options_source": {
@@ -374,13 +377,21 @@
             {
               "name": "track",
               "label_fa": "رسته",
-              "type": "creatable_select",
+              "type": "select",
               "creatable": true,
               "searchable": true,
               "auto_fill_from": "course_name",
               "options_source": {
                 "type": "course_committee_tracks"
               }
+            },
+            {
+              "name": "units",
+              "label_fa": "واحد",
+              "type": "number",
+              "auto_fill_from": "course_name",
+              "min": 1,
+              "max": 20
             },
             {
               "name": "proposed_day",
@@ -404,7 +415,7 @@
             {
               "name": "instructor",
               "label_fa": "مدرس",
-              "type": "creatable_select",
+              "type": "select",
               "creatable": true,
               "searchable": true,
               "options_source": {
@@ -415,10 +426,11 @@
             },
             {
               "name": "teaching_assistant",
-              "label_fa": "دستیار آموزشی",
-              "type": "creatable_select",
+              "label_fa": "کمک‌مدرس",
+              "type": "select",
               "creatable": true,
               "searchable": true,
+              "required": false,
               "options_source": {
                 "type": "course_committee_roster",
                 "kind": "teaching_assistant",
@@ -433,13 +445,16 @@
       "code": "winter_course_finalization_form",
       "name_fa": "فرم نهایی‌سازی دروس زمستان",
       "used_in_state": "course_finalization",
-      "editable_by": ["admin", "staff", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
+      "note_fa": "اطلاعات دروس از مرحلهٔ قبل پر می‌شود. روز و ساعت را نهایی کنید؛ «هماهنگی با مدرس» و «مکان کلاس» الزامی‌اند.",
+      "editable_by": ["admin", "course_committee", "course_committee_scientific", "scientific_officer_course_committee"],
       "fields": [
         {
           "name": "courses_finalized",
           "label_fa": "جدول نهایی دروس زمستان",
           "type": "table",
           "required": true,
+          "allow_add_rows": false,
+          "allow_remove_rows": false,
           "columns": [
             {
               "name": "course_name",
@@ -448,16 +463,29 @@
               "auto_fill": true
             },
             {
+              "name": "units",
+              "label_fa": "واحد",
+              "type": "number",
+              "auto_fill": true
+            },
+            {
               "name": "day",
               "label_fa": "روز",
-              "type": "text",
-              "auto_fill": true
+              "type": "select",
+              "options": [
+                "شنبه",
+                "یکشنبه",
+                "دوشنبه",
+                "سه‌شنبه",
+                "چهارشنبه",
+                "پنجشنبه",
+                "جمعه"
+              ]
             },
             {
               "name": "time",
               "label_fa": "ساعت",
-              "type": "time",
-              "auto_fill": true
+              "type": "time"
             },
             {
               "name": "instructor",
@@ -504,8 +532,8 @@
       "code": "winter_interviewer_assignment_form",
       "name_fa": "فرم تعیین مصاحبه‌کنندگان زمستان",
       "used_in_state": "interviewer_assignment",
-      "visible_to": ["admin", "deputy_education", "deputy_education_director"],
-      "editable_by": ["admin", "deputy_education", "deputy_education_director"],
+      "visible_to": ["admin", "staff", "internal_manager"],
+      "editable_by": ["admin", "staff", "internal_manager"],
       "fields": [
         {
           "name": "comprehensive_interviewers",
@@ -513,10 +541,10 @@
           "type": "multi_select",
           "required": true,
           "creatable": false,
-          "note_fa": "از میان کارمندان اتوماسیون انتخاب کنید.",
+          "note_fa": "فقط از استخر مصاحبه‌کنندگان پیش‌آماده‌سازی انتخاب کنید.",
           "options_source": {
             "type": "users",
-            "roles": ["interviewer", "staff"],
+            "roles": ["interviewer"],
             "is_active": true
           }
         },
@@ -538,10 +566,10 @@
           "type": "multi_select",
           "required": true,
           "creatable": false,
-          "note_fa": "از میان کارمندان اتوماسیون انتخاب کنید.",
+          "note_fa": "فقط از استخر مصاحبه‌کنندگان پیش‌آماده‌سازی انتخاب کنید.",
           "options_source": {
             "type": "users",
-            "roles": ["interviewer", "staff"],
+            "roles": ["interviewer"],
             "is_active": true
           }
         },
@@ -563,7 +591,7 @@
       "code": "winter_interview_scheduling_form",
       "name_fa": "تنظیمات برگزاری مصاحبه",
       "used_in_state": "interview_scheduling",
-      "editable_by": ["admin", "staff", "deputy_education"],
+      "editable_by": ["admin", "staff", "internal_manager"],
       "editable_anytime": true,
       "note_fa": "برای مصاحبهٔ آنلاین، لینک جلسه پس از پرداخت هزینهٔ مصاحبه توسط دانشجو به‌صورت خودکار ساخته می‌شود و دکمهٔ «ورود به جلسه» در پروفایل دانشجو و مصاحبه‌گر نمایش داده می‌شود.",
       "fields": [

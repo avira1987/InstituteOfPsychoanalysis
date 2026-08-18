@@ -236,3 +236,63 @@ async def test_update_booked_slot_other_fields_rejected(
             user=staff,
         )
     assert exc_info.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_create_slot_accepts_secondary_interviewer_role(
+    db_session: AsyncSession,
+) -> None:
+    """نقش مصاحبه‌گر به‌عنوان نقش دوم باید برای تعریف وقت قبول شود."""
+    from fastapi import HTTPException
+
+    staff = _staff_user()
+    sara = User(
+        id=uuid.uuid4(),
+        username=f"sara_{uuid.uuid4().hex[:8]}",
+        email=f"sara_{uuid.uuid4().hex[:8]}@test.com",
+        hashed_password=get_password_hash("x"),
+        full_name_fa="سارا طراوتی",
+        role="faculty_1",
+        roles=["faculty_1", "interviewer"],
+        is_active=True,
+    )
+    other = User(
+        id=uuid.uuid4(),
+        username=f"th_{uuid.uuid4().hex[:8]}",
+        email=f"th_{uuid.uuid4().hex[:8]}@test.com",
+        hashed_password=get_password_hash("x"),
+        full_name_fa="درمانگر بدون نقش مصاحبه",
+        role="therapist",
+        roles=["therapist"],
+        is_active=True,
+    )
+    db_session.add_all([staff, sara, other])
+    await db_session.flush()
+
+    t0 = datetime.now(timezone.utc) + timedelta(days=8)
+    out = await create_slot(
+        body=CreateInterviewSlotBody(
+            starts_at=t0,
+            ends_at=t0 + timedelta(hours=1),
+            course_type="introductory",
+            mode="online",
+            interviewer_user_id=str(sara.id),
+        ),
+        db=db_session,
+        user=staff,
+    )
+    assert out["interviewer_user_id"] == str(sara.id)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await create_slot(
+            body=CreateInterviewSlotBody(
+                starts_at=t0 + timedelta(hours=2),
+                ends_at=t0 + timedelta(hours=3),
+                mode="online",
+                interviewer_user_id=str(other.id),
+            ),
+            db=db_session,
+            user=staff,
+        )
+    assert exc_info.value.status_code == 400
+    assert "قابل انتخاب" in (exc_info.value.detail or "")

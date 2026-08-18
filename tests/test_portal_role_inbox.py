@@ -47,10 +47,10 @@ def test_my_process_inbox_admin_returns_items_key(client: TestClient):
 
 
 @pytest.mark.asyncio
-async def test_deputy_inbox_shows_interviewer_assignment_after_marketing(
+async def test_staff_inbox_shows_interviewer_assignment_after_marketing(
     db_session, sample_user
 ):
-    """پس از مرحلهٔ بازاریابی، معاون آموزش باید مرحلهٔ تعیین مصاحبه‌گران را در کارتابل ببیند."""
+    """پس از مرحلهٔ بازاریابی، مدیر داخلی باید مرحلهٔ مصاحبه‌ها را در کارتابل ببیند."""
     processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
     await load_process(db_session, processes_dir / "fall_semester_preparation.json")
     await db_session.commit()
@@ -81,7 +81,7 @@ async def test_deputy_inbox_shows_interviewer_assignment_after_marketing(
         await db_session.commit()
         assert result.success is True, result.error
 
-    out = await build_portal_role_process_inbox(db_session, portal_role="deputy_education")
+    out = await build_portal_role_process_inbox(db_session, portal_role="staff")
     process_items = [i for i in out["items"] if i.get("kind") == "process"]
     matching = [
         i
@@ -89,15 +89,25 @@ async def test_deputy_inbox_shows_interviewer_assignment_after_marketing(
         if i.get("process_code") == "fall_semester_preparation"
         and i.get("state_code") == "interviewer_assignment"
     ]
-    assert matching, "deputy_education inbox should list interviewer_assignment after marketing_started"
-    assert matching[0].get("responsible_role_code") == "deputy_education_director"
+    assert matching, "staff inbox should list interviewer_assignment after marketing_started"
+    assert matching[0].get("responsible_role_code") == "staff"
+
+    deputy_out = await build_portal_role_process_inbox(db_session, portal_role="deputy_education")
+    deputy_matching = [
+        i
+        for i in deputy_out["items"]
+        if i.get("kind") == "process"
+        and i.get("process_code") == "fall_semester_preparation"
+        and i.get("state_code") == "interviewer_assignment"
+    ]
+    assert not deputy_matching, "deputy must not see interviewer_assignment after policy change"
 
 
 @pytest.mark.asyncio
-async def test_deputy_inbox_shows_winter_interviewer_assignment_after_marketing(
+async def test_staff_inbox_shows_winter_interviewer_assignment_after_marketing(
     db_session, sample_user
 ):
-    """پس از بازاریابی زمستان، معاون آموزش باید مرحلهٔ تعیین مصاحبه‌گران را در کارتابل ببیند."""
+    """پس از بازاریابی زمستان، مدیر داخلی باید مرحلهٔ مصاحبه‌ها را در کارتابل ببیند."""
     processes_dir = Path(__file__).resolve().parent.parent / "metadata" / "processes"
     await load_process(db_session, processes_dir / "fall_semester_preparation.json")
     await load_process(db_session, processes_dir / "winter_semester_preparation.json")
@@ -138,7 +148,7 @@ async def test_deputy_inbox_shows_winter_interviewer_assignment_after_marketing(
         await db_session.commit()
         assert result.success is True, result.error
 
-    out = await build_portal_role_process_inbox(db_session, portal_role="deputy_education")
+    out = await build_portal_role_process_inbox(db_session, portal_role="staff")
     process_items = [i for i in out["items"] if i.get("kind") == "process"]
     matching = [
         i
@@ -146,5 +156,5 @@ async def test_deputy_inbox_shows_winter_interviewer_assignment_after_marketing(
         if i.get("process_code") == "winter_semester_preparation"
         and i.get("state_code") == "interviewer_assignment"
     ]
-    assert matching, "deputy_education inbox should list winter interviewer_assignment after marketing_started"
-    assert matching[0].get("responsible_role_code") == "deputy_education_director"
+    assert matching, "staff inbox should list winter interviewer_assignment after marketing_started"
+    assert matching[0].get("responsible_role_code") == "staff"

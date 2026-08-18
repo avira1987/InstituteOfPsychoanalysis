@@ -23,9 +23,6 @@ function actionHref(item) {
   if (anchor && base.includes('/readiness')) {
     return `${base}#${anchor}`
   }
-  if (item?.key === 'license') {
-    return '/panel/semester-prep/workbench?process_code=fall_semester_preparation'
-  }
   return base
 }
 

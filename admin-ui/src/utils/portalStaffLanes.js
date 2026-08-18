@@ -39,7 +39,7 @@ export const STAFF_LANES = {
     icon: '📝',
     tabIds: ['pending', 'dashboard'],
     assignedRoles: ['reference_center', 'marketing', 'admissions_officer'],
-    allowedPortalRoles: ['admin', 'staff'],
+    allowedPortalRoles: ['admin', 'staff', 'reference_center', 'marketing'],
     priority: 23.15,
     groupId: 'operations',
   },
@@ -52,7 +52,7 @@ export const STAFF_LANES = {
     icon: '💊',
     tabIds: ['pending', 'dashboard', 'students', 'processes', 'etTherapistSlots'],
     assignedRoles: ['therapy_education_coordinator'],
-    allowedPortalRoles: ['admin', 'staff'],
+    allowedPortalRoles: ['admin', 'staff', 'therapy_education_coordinator'],
     priority: 23.2,
     groupId: 'operations',
   },
@@ -92,20 +92,24 @@ export function getStaffLanePath(laneId) {
   return STAFF_LANES[laneId]?.path || '/panel/portal/staff/admissions'
 }
 
+import { canonicalPortalRole } from './userRoles'
+
 export function canAccessStaffLane(portalRole, laneId) {
   if (!portalRole || !laneId) return false
-  if (portalRole === 'admin') return true
+  const role = canonicalPortalRole(portalRole) || portalRole
+  if (role === 'admin') return true
   const lane = STAFF_LANES[laneId]
   if (!lane) return false
-  return lane.allowedPortalRoles.includes(portalRole)
+  return lane.allowedPortalRoles.includes(role)
 }
 
 export function staffLanesForPortalRole(portalRole) {
   if (!portalRole) return []
-  if (portalRole === 'admin') return STAFF_LANE_IDS.map((id) => STAFF_LANES[id])
+  const role = canonicalPortalRole(portalRole) || portalRole
+  if (role === 'admin') return STAFF_LANE_IDS.map((id) => STAFF_LANES[id])
   return STAFF_LANE_IDS
     .map((id) => STAFF_LANES[id])
-    .filter((lane) => lane.allowedPortalRoles.includes(portalRole))
+    .filter((lane) => lane.allowedPortalRoles.includes(role))
 }
 
 export function buildStaffTabsForLane(laneId, counts = {}) {

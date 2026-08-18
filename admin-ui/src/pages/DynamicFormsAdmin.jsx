@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { userHasRole } from '../utils/userRoles'
 import { useNavigate } from 'react-router-dom'
 import { dynamicFormsApi } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
@@ -21,7 +22,7 @@ export default function DynamicFormsAdmin() {
   const [assignments, setAssignments] = useState([])
   const { showToast } = useToast()
 
-  const canManage = user?.role === 'admin' || user?.role === 'staff'
+  const canManage = userHasRole(user, 'staff')
 
   const loadList = useCallback(async () => {
     const res = await dynamicFormsApi.listTemplates()

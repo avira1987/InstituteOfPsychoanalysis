@@ -16,7 +16,10 @@ from app.services.sms_gateway import normalize_ir_mobile
 logger = logging.getLogger(__name__)
 
 # Automated / chain-driven processes: no "process started" SMS noise.
-_SKIP_START_SMS_PROCESS_CODES = frozenset({"lesson_start_per_term"})
+_SKIP_START_SMS_PROCESS_CODES = frozenset({
+    "lesson_start_per_term",
+    "introductory_course_registration",
+})
 
 
 async def _student_phone(db: AsyncSession, student_id) -> Optional[str]:

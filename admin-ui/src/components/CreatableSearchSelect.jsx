@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-const DROPDOWN_MAX_H = 220
-const DROPDOWN_Z = 10050
+const DROPDOWN_MAX_H = 260
+const DROPDOWN_Z = 12050
 
 function norm(s) {
   return String(s || '').trim().toLowerCase()
@@ -13,8 +13,17 @@ function optionValue(opt) {
 }
 
 function optionLabel(opt) {
-  if (typeof opt === 'object') return opt.label_fa || opt.value || ''
+  if (typeof opt === 'object') {
+    const base = opt.label_fa || opt.value || ''
+    if (opt.disabled && opt.disabled_reason_fa) return `${base} — ${opt.disabled_reason_fa}`
+    if (opt.disabled) return `${base} — غیرقابل انتخاب`
+    return base
+  }
   return String(opt)
+}
+
+function optionDisabled(opt) {
+  return typeof opt === 'object' && Boolean(opt.disabled)
 }
 
 /**
@@ -68,7 +77,9 @@ export default function CreatableSearchSelect({
   const selectedLabel = useMemo(() => {
     if (!value) return ''
     const hit = allOptions.find((o) => String(optionValue(o)) === String(value))
-    return hit ? optionLabel(hit) : String(value)
+    if (!hit) return String(value)
+    if (typeof hit === 'object') return hit.label_fa || hit.value || String(value)
+    return String(hit)
   }, [allOptions, value])
 
   useEffect(() => {
@@ -116,7 +127,7 @@ export default function CreatableSearchSelect({
   }, [open, updatePanelPosition, filtered.length])
 
   useLayoutEffect(() => {
-    if (!open || !dropdownRef.current) return
+    if (!open || !dropdownRef.current || openUp) return
     dropdownRef.current.scrollTop = 0
   }, [open, openUp, filtered.length])
 
@@ -195,6 +206,7 @@ export default function CreatableSearchSelect({
       {filtered.map((opt) => {
         const v = optionValue(opt)
         const lab = optionLabel(opt)
+        const blocked = optionDisabled(opt)
         const active = String(value) === String(v)
         return (
           <button
@@ -202,8 +214,19 @@ export default function CreatableSearchSelect({
             type="button"
             role="option"
             aria-selected={active}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => pick(String(v))}
+            aria-disabled={blocked || undefined}
+            disabled={blocked}
+            title={blocked ? (opt.disabled_reason_fa || 'غیرقابل انتخاب') : undefined}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (blocked) return
+              pick(String(v))
+            }}
             style={{
               display: 'block',
               width: '100%',
@@ -211,9 +234,11 @@ export default function CreatableSearchSelect({
               padding: '0.45rem 0.65rem',
               border: 'none',
               background: active ? '#eff6ff' : 'transparent',
-              cursor: 'pointer',
+              cursor: blocked ? 'not-allowed' : 'pointer',
               fontSize: '0.85rem',
-              color: '#1e293b',
+              color: blocked ? '#94a3b8' : '#1e293b',
+              position: 'relative',
+              zIndex: 1,
             }}
           >
             {lab}
@@ -306,14 +331,13 @@ export default function CreatableSearchSelect({
               width: `${panelPos.width}px`,
               maxHeight: `${panelPos.maxHeight}px`,
               overflowY: 'auto',
+              overscrollBehavior: 'contain',
               zIndex: DROPDOWN_Z,
               background: '#fff',
               border: '1px solid #d1d5db',
               borderRadius: '8px',
               boxShadow: '0 8px 20px rgba(15,23,42,0.12)',
               boxSizing: 'border-box',
-              display: 'flex',
-              flexDirection: openUp ? 'column-reverse' : 'column',
             }}
           >
             {dropdownList}

@@ -81,10 +81,11 @@ class Settings(BaseSettings):
     SMS_OTP_PATTERN_BODY_ID: int = 449667
 
     # ورود با پیامک (دانشجو) — کد OTP فقط برای مسیر /api/auth/otp/*
-    # در production (DEBUG=false) production_guards اجبار می‌کند true باشد مگر ALLOW_PUBLIC_OTP_SIGNUP=true.
+    # اگر ALLOW_PUBLIC_OTP_SIGNUP=true باشد، شمارهٔ ناشناس هم OTP می‌گیرد و پس از تأیید به فرم ثبت‌نام می‌رود.
+    # در غیر این صورت OTP_RESTRICT_TO_STUDENT_PHONES باید true بماند (و production_guards آن را اجبار می‌کند).
     OTP_RESTRICT_TO_STUDENT_PHONES: bool = True
-    # اگر true باشد حتی در DEBUG=false، OTP می‌تواند حساب دانشجو برای شمارهٔ ناشناس بسازد (عمداً باز کردن ثبت‌نام عمومی).
-    ALLOW_PUBLIC_OTP_SIGNUP: bool = False
+    # ثبت‌نام عمومی از صفحهٔ ورود: شماره → کد پیامک → ساخت حساب دانشجو → تکمیل فرم.
+    ALLOW_PUBLIC_OTP_SIGNUP: bool = True
     # اگر true باشد، پاسخ request OTP فیلدهای dev_code/dev_hint می‌گیرد — در production معمولاً false.
     OTP_SHOW_CODE_IN_UI: bool = False
     # پس از اولین ورود موفق دانشجو با OTP: تولید رمز ساده، ذخیره در portal_password_plain و ارسال پیامک خوش‌آمد
@@ -99,8 +100,9 @@ class Settings(BaseSettings):
     # Payment (مبلغ API پرداخت به ریال برای سپ/زیبال/زرین‌پال؛ دفتر کل داخلی به تومان)
     PAYMENT_PROVIDER: str = "mock"  # "mock" | "saman" | "zibal" | "zarinpal"
     PAYMENT_CALLBACK_URL: str = "http://localhost:3000/api/payment/callback"
-    # اگر True: فقط درگاه زیبال (و mock برای توسعه) — سپ/زرین‌پال در API غیرفعال
-    PAYMENT_ZIBAL_ONLY: bool = True
+    # اگر True: درخواست صریح سپ/زرین‌پال رد می‌شود و پشتیبان سپ هم غیرفعال است.
+    # برای اولویت زیبال + پشتیبان سپ باید false باشد.
+    PAYMENT_ZIBAL_ONLY: bool = False
     # حالت تست: اگر True، اتصال به درگاه واقعی به‌طور موقت غیرفعال می‌شود و پرداخت
     # بلافاصله «موفق» فرض شده تا کل جریان فرایند در سامانه قابل تست باشد.
     # هیچ کدِ درگاهی حذف نمی‌شود؛ برای بازگرداندن درگاه واقعی فقط این مقدار را False کنید

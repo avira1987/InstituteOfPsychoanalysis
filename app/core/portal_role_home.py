@@ -109,17 +109,23 @@ PORTAL_ROLE_HOME: dict[str, tuple[str, str | None]] = {
 
 def portal_home_path(role: str | None) -> str | None:
     """مسیر پایه پنل؛ None اگر نقش در نقشه نیست."""
+    from app.core.user_roles import canonical_portal_role
+
     if not role:
         return None
-    entry = PORTAL_ROLE_HOME.get(role.strip())
+    key = canonical_portal_role(role) or role.strip()
+    entry = PORTAL_ROLE_HOME.get(key)
     return entry[0] if entry else None
 
 
 def default_tasks_tab_for_role(role: str | None) -> str | None:
     """تب کارتابل پیش‌فرض: pending | reviews | None."""
+    from app.core.user_roles import canonical_portal_role
+
     if not role:
         return None
-    entry = PORTAL_ROLE_HOME.get(role.strip())
+    key = canonical_portal_role(role) or role.strip()
+    entry = PORTAL_ROLE_HOME.get(key)
     return entry[1] if entry else None
 
 
@@ -128,9 +134,12 @@ def redirect_url_for_role(role: str | None) -> str:
     URL کامل برای redirect بعد از login یا /panel.
     نقش ناشناخته → /panel (داشبورد عمومی).
     """
+    from app.core.user_roles import canonical_portal_role
+
     if not role:
         return "/panel"
-    entry = PORTAL_ROLE_HOME.get(role.strip())
+    key = canonical_portal_role(role) or role.strip()
+    entry = PORTAL_ROLE_HOME.get(key)
     if not entry:
         return "/panel"
     path, tab = entry

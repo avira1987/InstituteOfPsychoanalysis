@@ -18,6 +18,8 @@ from app.services import sms_simulation_service as sms_simulation
 from app.services.sms_gateway import _otp_login_sms_body_fa, normalize_ir_mobile, send_otp_sms, send_sms
 
 OTP_EXPIRY_SECONDS = 120
+# اعتبار کد تأیید قوانین در مرحلهٔ آپلود مدارک (و سایر step_otp)
+STEP_OTP_EXPIRY_SECONDS = 180
 OTP_MAX_ATTEMPTS = 5
 OTP_RATE_LIMIT_WINDOW = 600  # 10 minutes
 OTP_RATE_LIMIT_COUNT = 3
@@ -58,6 +60,9 @@ async def _issue_student_portal_password_if_needed(
 ) -> tuple[bool, str | None]:
     """Issue portal password for student if needed. Returns (issued, plain_password_for_sms)."""
     if (user.role or "").strip() != "student":
+        return False, None
+    meta = user.profile_meta if isinstance(user.profile_meta, dict) else {}
+    if meta.get("admin_password_set"):
         return False, None
     if user.hashed_password and (user.username or "").strip() == phone:
         return False, None
@@ -223,14 +228,30 @@ async def _fetch_active_otps(db: AsyncSession, phone: str, now: datetime) -> lis
     return list(result.scalars().all())
 
 
-async def request_otp(db: AsyncSession, phone: str) -> dict:
+def _public_otp_signup_open(settings) -> bool:
+    """ثبت‌نام عمومی: شمارهٔ ناشناس می‌تواند OTP بگیرد و پس از تأیید حساب دانشجو ساخته شود."""
+    return bool(getattr(settings, "ALLOW_PUBLIC_OTP_SIGNUP", False))
+
+
+def _otp_restricted_to_known_students(settings) -> bool:
+    if _public_otp_signup_open(settings):
+        return False
+    return bool(getattr(settings, "OTP_RESTRICT_TO_STUDENT_PHONES", False))
+
+
+async def request_otp(
+    db: AsyncSession, phone: str, expiry_seconds: int | None = None
+) -> dict:
     """Generate and send an OTP code to the given phone number (ورود دانشجو با موبایل)."""
+    ttl = int(expiry_seconds) if expiry_seconds is not None else OTP_EXPIRY_SECONDS
+    if ttl <= 0:
+        ttl = OTP_EXPIRY_SECONDS
     phone = normalize_ir_mobile(phone)
     if not re.fullmatch(r"09\d{9}", phone):
         return {"success": False, "error": "شماره موبایل نامعتبر است. فرمت صحیح: 09xxxxxxxxx"}
 
     settings = get_settings()
-    if getattr(settings, "OTP_RESTRICT_TO_STUDENT_PHONES", False):
+    if _otp_restricted_to_known_students(settings):
         u = await find_user_by_login_phone(db, phone)
         if not u or not u.is_active or (u.role or "").strip() != "student":
             return {
@@ -264,7 +285,7 @@ async def request_otp(db: AsyncSession, phone: str) -> dict:
         id=uuid.uuid4(),
         phone=phone,
         code=hash_otp_code(code),
-        expires_at=now + timedelta(seconds=OTP_EXPIRY_SECONDS),
+        expires_at=now + timedelta(seconds=ttl),
     )
     db.add(otp)
     await db.commit()
@@ -295,7 +316,7 @@ async def request_otp(db: AsyncSession, phone: str) -> dict:
             return {
                 "success": True,
                 "message": "پیامک ارسال نشد؛ کد فقط برای تست روی همین صفحه نمایش داده شد.",
-                "expires_in": OTP_EXPIRY_SECONDS,
+                "expires_in": ttl,
                 "sms_failed": True,
                 "dev_code": code,
                 "dev_hint": (
@@ -319,7 +340,7 @@ async def request_otp(db: AsyncSession, phone: str) -> dict:
             "کد تأیید ارسال شد. اگر چند پیامک دارید، فقط **آخرین** کد را وارد کنید؛ "
             "پیامک‌های قبلی دیگر معتبر نیستند."
         ),
-        "expires_in": OTP_EXPIRY_SECONDS,
+        "expires_in": ttl,
     }
     # پاپ‌آپ تست: log (درخواست) یا mirror پس از ملی‌پیامک
     if getattr(settings, "SMS_SIMULATION_UI", False):
@@ -419,7 +440,7 @@ async def verify_otp(db: AsyncSession, phone: str, code: str) -> dict:
             "success": False,
             "error": "حساب کاربری این شماره غیرفعال است. لطفاً با واحد آموزش تماس بگیرید.",
         }
-    if user is None and getattr(settings, "OTP_RESTRICT_TO_STUDENT_PHONES", False):
+    if user is None and _otp_restricted_to_known_students(settings):
         return {
             "success": False,
             "error": "حساب دانشجویی با این شماره ثبت نشده است.",

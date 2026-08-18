@@ -4,6 +4,7 @@ import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
 import { processExecApi, studentApi, panelApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { operatorDocumentReviewToastFa } from '../utils/documentReviewStates'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { useToast } from '../contexts/ToastContext'
@@ -140,7 +141,12 @@ export default function SiteManagerPortal() {
         ...(toState ? { to_state: toState } : {}),
       })
       if (res.data.success) {
-        showToast(`عملیات انجام شد: ${labelState(res.data.to_state)}`)
+        showToast(
+          operatorDocumentReviewToastFa(triggerEvent, {
+            studentCodeDisplay: formatStudentCodeDisplay(instanceDetail?.student_code),
+            toStateLabel: labelState(res.data.to_state),
+          }) || `عملیات انجام شد: ${labelState(res.data.to_state)}`,
+        )
         viewInstance(selectedInstance)
         loadData()
       } else {

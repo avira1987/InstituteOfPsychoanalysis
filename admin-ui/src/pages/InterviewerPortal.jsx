@@ -10,6 +10,7 @@ import InterviewResultQueuePanel from '../components/InterviewResultQueuePanel'
 import { useToast } from '../contexts/ToastContext'
 import { panelApi } from '../services/api'
 import { canManageInterviewSlots } from '../utils/interviewSlotAccess'
+import { userHasRole } from '../utils/userRoles'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 
 const DEEP_LINK_TABS = ['dashboard', 'result']
@@ -88,8 +89,8 @@ export default function InterviewerPortal() {
     if (id) setSelectedInstance(id)
   }, [searchParams])
 
-  const canManageSlots = canManageInterviewSlots(user?.role)
-  const isStaffCreator = user?.role === 'staff'
+  const canManageSlots = canManageInterviewSlots(user)
+  const isStaffCreator = userHasRole(user, 'staff', { adminBypass: false })
 
   return (
     <div>

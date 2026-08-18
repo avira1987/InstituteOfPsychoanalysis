@@ -50,7 +50,6 @@ export default function SemesterPrepPage() {
     }
   }
 
-  const anchorId = status?.anchor_student_id
   const processes = status?.processes || {}
 
   return (
@@ -204,13 +203,6 @@ export default function SemesterPrepPage() {
                         >
                           ویرایش (بازگشت به مراحل قبلی)
                         </Link>
-                        <Link
-                          className="btn btn-secondary"
-                          to={`/panel/students?student_id=${anchorId}&instance_id=${entry.completed_instance_id}`}
-                          title="مشاهدهٔ خام نمونه، ریست و انتقال دستی"
-                        >
-                          جزئیات فنی نمونه
-                        </Link>
                         {canStartNewTerm && (
                           <button
                             type="button"
@@ -230,13 +222,6 @@ export default function SemesterPrepPage() {
                           to={`/panel/semester-prep/workbench?process_code=${code}`}
                         >
                           ادامه مرحله فعلی
-                        </Link>
-                        <Link
-                          className="btn btn-secondary"
-                          to={`/panel/students?student_id=${anchorId}&instance_id=${entry.instance_id}`}
-                          title="مشاهدهٔ خام نمونه، ریست و انتقال دستی"
-                        >
-                          جزئیات فنی نمونه
                         </Link>
                       </>
                     )}

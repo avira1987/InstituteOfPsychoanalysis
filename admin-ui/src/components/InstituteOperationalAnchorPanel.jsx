@@ -26,9 +26,6 @@ export default function InstituteOperationalAnchorPanel({ status }) {
 
   const primaryActive = activeCodes[0]
   const primaryEntry = primaryActive ? processes[primaryActive] : null
-  const technicalHref = primaryEntry?.instance_id
-    ? `/panel/students?student_id=${anchor.student_id || status.anchor_student_id}&instance_id=${primaryEntry.instance_id}`
-    : null
 
   return (
     <section
@@ -77,6 +74,17 @@ export default function InstituteOperationalAnchorPanel({ status }) {
             {anchor.description_fa
               || 'رکورد سیستمی برای فرایندهای سطح مؤسسه. دانشجوی واقعی نیست.'}
           </p>
+          {anchor.activity_license_number ? (
+            <p
+              data-testid="institute-ops-activity-license"
+              style={{ margin: '0 0 0.65rem', fontSize: '0.84rem', color: '#334155', lineHeight: 1.7 }}
+            >
+              شماره پروانه فعالیت:{' '}
+              <strong style={{ direction: 'ltr', display: 'inline-block' }}>
+                {anchor.activity_license_number}
+              </strong>
+            </p>
+          ) : null}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
             <span
               className={`badge ${activeCount ? 'badge-warning' : 'badge-success'}`}
@@ -159,16 +167,6 @@ export default function InstituteOperationalAnchorPanel({ status }) {
           >
             تقویم آموزشی
           </Link>
-          {technicalHref ? (
-            <Link
-              className="btn btn-outline btn-sm"
-              to={technicalHref}
-              style={{ textAlign: 'center', textDecoration: 'none', fontSize: '0.78rem' }}
-              title="مشاهدهٔ خام نمونهٔ فرایند، ریست و انتقال دستی"
-            >
-              جزئیات فنی نمونه
-            </Link>
-          ) : null}
         </div>
       </div>
     </section>

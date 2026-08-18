@@ -205,10 +205,22 @@
           "description_fa": "ایجاد لینک کلاس آنلاین در LMS"
         },
         {
+          "type": "record_accounting",
+          "kind": "tuition"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "tuition_payment_to_accounting",
+          "recipients": [
+            "accounting"
+          ]
+        },
+        {
           "type": "schedule_installment_reminders",
           "condition": "payment_method == 'installment'",
-          "reminder_days_before": 1,
-          "description_fa": "برنامه‌ریزی یادآوری اقساط: پیامک ۱ روز قبل از سررسید هر قسط"
+          "reminder_days_before": 7,
+          "description_fa": "برنامه‌ریزی یادآوری اقساط: پیامک ۷ روز قبل از سررسید هر قسط"
         },
         {
           "type": "notification",
@@ -241,6 +253,18 @@
         {
           "type": "create_online_class_links",
           "description_fa": "ایجاد لینک کلاس آنلاین در LMS"
+        },
+        {
+          "type": "record_accounting",
+          "kind": "tuition"
+        },
+        {
+          "type": "notification",
+          "notification_type": "sms",
+          "template": "tuition_payment_to_accounting",
+          "recipients": [
+            "accounting"
+          ]
         },
         {
           "type": "notification",

@@ -53,8 +53,10 @@ def test_staff_and_admin_can_define_interview_slots() -> None:
     interviewer = SimpleNamespace(id=uuid.uuid4(), role="interviewer")
     admin = SimpleNamespace(id=uuid.uuid4(), role="admin")
     site_manager = SimpleNamespace(id=uuid.uuid4(), role="site_manager")
+    internal_manager = SimpleNamespace(id=uuid.uuid4(), role="internal_manager")
     assert _can_define_interview_slots(staff) is True
     assert _can_define_interview_slots(admin) is True
+    assert _can_define_interview_slots(internal_manager) is True
     assert _can_define_interview_slots(site_manager) is False
     assert _can_define_interview_slots(interviewer) is False
     assert SLOT_DEFINE_ROLES == ("staff", "admin")

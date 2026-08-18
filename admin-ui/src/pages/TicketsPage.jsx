@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import { labelRoleFa } from '../utils/roleLabels'
+import { labelProcess, resolveStateDisplayLabel } from '../utils/processDisplay'
+import { resolveContextRowLabel } from '../utils/contextInstanceDisplay'
 
 const CATEGORY_LABELS = {
   profile_edit_unlock: 'باز کردن پروفایل / ویرایش مرحلهٔ ثبت‌شده',
@@ -32,6 +34,53 @@ function formatUser(u) {
 function formatDateTime(iso) {
   if (!iso) return ''
   return formatShamsiTehran(iso)
+}
+
+/** خلاصهٔ فارسی درخواست — بدون JSON، UUID و مسیر ارجاع فنی. */
+function TicketRequestSummary({ extra }) {
+  if (!extra || typeof extra !== 'object') return null
+  const processCode = typeof extra.process_code === 'string' ? extra.process_code.trim() : ''
+  const stateCode = typeof extra.state_code === 'string' ? extra.state_code.trim() : ''
+  const fieldNames = Array.isArray(extra.field_names)
+    ? extra.field_names.map((x) => String(x || '').trim()).filter(Boolean)
+    : []
+  const rows = []
+  if (extra.no_student_profile_at_create) {
+    rows.push(['وضعیت پرونده', 'بدون پروفایل دانشجویی ثبت شده است'])
+  }
+  if (processCode) {
+    rows.push(['فرایند', labelProcess(processCode)])
+  }
+  if (stateCode) {
+    rows.push(['مرحله', resolveStateDisplayLabel(stateCode, null, processCode || undefined)])
+  }
+  if (fieldNames.length) {
+    const labels = fieldNames.map((key) => resolveContextRowLabel(key) || key)
+    rows.push(['موارد درخواستی', labels.join('، ')])
+  }
+  if (!rows.length) return null
+  return (
+    <div
+      style={{
+        marginBottom: '1rem',
+        background: '#f8fafc',
+        border: '1px solid #e2e8f0',
+        borderRadius: '10px',
+        padding: '0.75rem 0.9rem',
+        fontSize: '0.88rem',
+      }}
+    >
+      <strong style={{ display: 'block', marginBottom: '0.5rem' }}>خلاصهٔ درخواست</strong>
+      <dl style={{ margin: 0, display: 'grid', gap: '0.4rem' }}>
+        {rows.map(([label, value]) => (
+          <div key={label} style={{ display: 'grid', gridTemplateColumns: '7.5rem 1fr', gap: '0.5rem' }}>
+            <dt className="muted" style={{ margin: 0 }}>{label}</dt>
+            <dd style={{ margin: 0 }}>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
 }
 
 export default function TicketsPage() {
@@ -625,23 +674,7 @@ export default function TicketsPage() {
                       {detail.description}
                     </div>
                   )}
-                  {detail.extra_context && (
-                    <div
-                      style={{
-                        marginBottom: '1rem',
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '10px',
-                        padding: '0.75rem 0.9rem',
-                        fontSize: '0.85rem',
-                      }}
-                    >
-                      <strong style={{ display: 'block', marginBottom: '0.35rem' }}>جزئیات ساختاری درخواست</strong>
-                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', direction: 'ltr' }}>
-                        {JSON.stringify(detail.extra_context, null, 2)}
-                      </pre>
-                    </div>
-                  )}
+                  <TicketRequestSummary extra={detail.extra_context} />
 
                   <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '0.75rem' }}>پیگیری و سوابق</h3>
                   <p className="muted" style={{ fontSize: '0.82rem', marginBottom: '1rem' }}>

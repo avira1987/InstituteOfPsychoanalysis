@@ -251,19 +251,47 @@ class TestApplyInterviewSetup:
             assert result.success is True, result.error
         return await engine.get_process_instance(instance.id)
 
-    async def _employee(self, db_session: AsyncSession, *, role: str = "staff") -> User:
+    async def _employee(self, db_session: AsyncSession, *, role: str = "interviewer") -> User:
         user = User(
             id=uuid.uuid4(),
             username=f"emp-{uuid.uuid4().hex[:8]}",
             email=f"{uuid.uuid4().hex[:8]}@example.com",
             hashed_password="x",
-            full_name_fa="کارمند نمونه",
+            full_name_fa="مصاحبه‌گر نمونه",
             role=role,
             is_active=True,
         )
         db_session.add(user)
         await db_session.flush()
         return user
+
+    async def test_rejects_staff_outside_interviewer_pool(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        instance = await self._instance_at_interview_step(db_session, sample_student, sample_user)
+        staff = await self._employee(db_session, role="staff")
+        with pytest.raises(SemesterPrepInterviewSetupError) as exc:
+            await apply_semester_prep_interview_setup(
+                db_session,
+                instance_id=str(instance.id),
+                payload=_payload([str(staff.id)], dates=_future_dates(1)),
+                actor=sample_user,
+            )
+        assert "استخر" in str(exc.value.detail) or "مصاحبه" in str(exc.value.detail)
+
+    async def test_accepts_faculty_implied_interviewer(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        instance = await self._instance_at_interview_step(db_session, sample_student, sample_user)
+        faculty = await self._employee(db_session, role="faculty_1")
+        result = await apply_semester_prep_interview_setup(
+            db_session,
+            instance_id=str(instance.id),
+            payload=_payload([str(faculty.id)], dates=_future_dates(1)),
+            actor=sample_user,
+        )
+        await db_session.commit()
+        assert result["created_slots"]["total"] == 8
 
     async def test_single_submit_creates_slots_and_publishes(
         self, db_session: AsyncSession, sample_student, sample_user
@@ -384,21 +412,38 @@ class TestApplyInterviewSetup:
         assert "نوبت دستی کارمند دفتر" in labels
         assert labels.count(GENERATED_SLOT_LABEL_FA) == 8
 
-    async def test_deputy_can_complete_both_merged_steps_alone(
+    async def test_staff_can_complete_both_merged_steps_alone(
         self, db_session: AsyncSession, sample_student, sample_user
     ):
         instance = await self._instance_at_interview_step(db_session, sample_student, sample_user)
-        deputy = await self._employee(db_session, role="deputy_education")
+        staff_user = await self._employee(db_session, role="staff")
         employee = await self._employee(db_session)
 
         result = await apply_semester_prep_interview_setup(
             db_session,
             instance_id=str(instance.id),
             payload=_payload([str(employee.id)], dates=_future_dates(1)),
-            actor=deputy,
+            actor=staff_user,
         )
         await db_session.commit()
         assert result["current_state"] == "published"
+
+    async def test_deputy_cannot_complete_merged_interview_steps(
+        self, db_session: AsyncSession, sample_student, sample_user
+    ):
+        instance = await self._instance_at_interview_step(db_session, sample_student, sample_user)
+        deputy = await self._employee(db_session, role="deputy_education")
+        employee = await self._employee(db_session)
+
+        with pytest.raises(SemesterPrepInterviewSetupError):
+            await apply_semester_prep_interview_setup(
+                db_session,
+                instance_id=str(instance.id),
+                payload=_payload([str(employee.id)], dates=_future_dates(1)),
+                actor=deputy,
+            )
+        refreshed = await StateMachineEngine(db_session).get_process_instance(instance.id)
+        assert refreshed.current_state_code == "interviewer_assignment"
 
     async def test_non_employee_cannot_be_selected(
         self, db_session: AsyncSession, sample_student, sample_user
@@ -456,7 +501,7 @@ async def prep_api_client(db_session: AsyncSession, sample_user):
 
 @pytest.mark.asyncio
 class TestInterviewSetupApi:
-    async def test_candidates_endpoint_lists_only_employees(
+    async def test_candidates_endpoint_lists_only_interviewers(
         self, db_session: AsyncSession, prep_api_client, sample_user
     ):
         keep = User(
@@ -468,7 +513,27 @@ class TestInterviewSetupApi:
             role="interviewer",
             is_active=True,
         )
-        skip = User(
+        keep_faculty = User(
+            id=uuid.uuid4(),
+            username=f"fac-{uuid.uuid4().hex[:8]}",
+            email=f"{uuid.uuid4().hex[:8]}@example.com",
+            hashed_password="x",
+            full_name_fa="هیئت علمی",
+            role="faculty_1",
+            roles=["faculty_1"],
+            is_active=True,
+        )
+        keep_secondary = User(
+            id=uuid.uuid4(),
+            username=f"sec-{uuid.uuid4().hex[:8]}",
+            email=f"{uuid.uuid4().hex[:8]}@example.com",
+            hashed_password="x",
+            full_name_fa="کارمند با نقش مصاحبه‌گر",
+            role="staff",
+            roles=["staff", "interviewer"],
+            is_active=True,
+        )
+        skip_committee = User(
             id=uuid.uuid4(),
             username=f"cc-{uuid.uuid4().hex[:8]}",
             email=f"{uuid.uuid4().hex[:8]}@example.com",
@@ -477,14 +542,26 @@ class TestInterviewSetupApi:
             role="course_committee",
             is_active=True,
         )
-        db_session.add_all([keep, skip])
+        skip_staff = User(
+            id=uuid.uuid4(),
+            username=f"st-{uuid.uuid4().hex[:8]}",
+            email=f"{uuid.uuid4().hex[:8]}@example.com",
+            hashed_password="x",
+            full_name_fa="کارمند اتوماسیون",
+            role="staff",
+            is_active=True,
+        )
+        db_session.add_all([keep, keep_faculty, keep_secondary, skip_committee, skip_staff])
         await db_session.flush()
 
         res = await prep_api_client.get("/api/admin/semester-prep/interview-candidates")
         assert res.status_code == 200
         ids = {c["id"] for c in res.json()["candidates"]}
         assert str(keep.id) in ids
-        assert str(skip.id) not in ids
+        assert str(keep_faculty.id) in ids
+        assert str(keep_secondary.id) in ids
+        assert str(skip_committee.id) not in ids
+        assert str(skip_staff.id) not in ids
 
     async def test_setup_endpoint_returns_validation_errors(
         self, db_session: AsyncSession, prep_api_client, sample_student, sample_user

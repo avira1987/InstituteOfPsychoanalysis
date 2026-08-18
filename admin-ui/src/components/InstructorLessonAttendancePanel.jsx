@@ -60,12 +60,19 @@ export default function InstructorLessonAttendancePanel({
           prefilled.forEach((r) => {
             if (r?.student_id) statusById[r.student_id] = r.status || 'present'
           })
+          setRoster(rows.map((r) => {
+            const blocked = Boolean(r.present_blocked)
+            const pref = statusById[r.student_id]
+            return {
+              ...r,
+              status: blocked ? 'absent' : (pref || r.status || 'present'),
+            }
+          }))
+        } else {
           setRoster(rows.map((r) => ({
             ...r,
-            status: statusById[r.student_id] || r.status || 'present',
+            status: r.present_blocked ? 'absent' : (r.status || 'present'),
           })))
-        } else {
-          setRoster(rows.map((r) => ({ ...r, status: r.status || 'present' })))
         }
       })
       .catch((e) => {
@@ -101,13 +108,18 @@ export default function InstructorLessonAttendancePanel({
   ).length
 
   const setStatus = (studentId, status) => {
-    setRoster((prev) => prev.map((r) => (
-      r.student_id === studentId ? { ...r, status } : r
-    )))
+    setRoster((prev) => prev.map((r) => {
+      if (r.student_id !== studentId) return r
+      if (status === 'present' && r.present_blocked) return { ...r, status: 'absent' }
+      return { ...r, status }
+    }))
   }
 
   const setAllStatus = (status) => {
-    setRoster((prev) => prev.map((r) => ({ ...r, status })))
+    setRoster((prev) => prev.map((r) => {
+      if (status === 'present' && r.present_blocked) return { ...r, status: 'absent' }
+      return { ...r, status }
+    }))
   }
 
   const handleSubmit = async () => {
@@ -126,7 +138,7 @@ export default function InstructorLessonAttendancePanel({
         student_name: r.name_fa || r.student_code,
         person_name: r.name_fa || r.student_code,
         role: r.role || 'student',
-        status: r.status || 'present',
+        status: r.present_blocked ? 'absent' : (r.status || 'present'),
       }))
       const res = await processExecApi.trigger(instanceId, {
         trigger_event: submitTransition.trigger_event,
@@ -291,6 +303,24 @@ export default function InstructorLessonAttendancePanel({
               </p>
             ) : (
               <div style={{ overflowX: 'auto', marginBottom: '0.85rem' }}>
+                {roster.some((r) => r.present_blocked) && (
+                  <div
+                    data-testid="instructor-attendance-tuition-block-banner"
+                    role="status"
+                    style={{
+                      marginBottom: '0.75rem',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: '8px',
+                      background: '#fef2f2',
+                      borderRight: '4px solid #dc2626',
+                      fontSize: '0.82rem',
+                      lineHeight: 1.65,
+                      color: '#991b1b',
+                    }}
+                  >
+                    برای برخی دانشجویان به‌دلیل بدهی شهریه، ثبت «حاضر» غیرفعال است؛ فقط «غایب» مجاز است.
+                  </div>
+                )}
                 <table className="data-table" style={{ width: '100%', fontSize: '0.86rem' }}>
                   <thead>
                     <tr>
@@ -304,13 +334,27 @@ export default function InstructorLessonAttendancePanel({
                   </thead>
                   <tbody>
                     {roster.map((row, idx) => {
-                      const isPresent = (row.status || 'present') === 'present'
+                      const blocked = Boolean(row.present_blocked)
+                      const isPresent = !blocked && (row.status || 'present') === 'present'
                       const prevAbs = Number(row.absence_count ?? 0)
                       const warnAbs = prevAbs >= 4
+                      const blockReason = row.present_block_reason_fa
+                        || 'هشدار: امکان ثبت حضور برای این دانشجو به دلیل عدم تسویه بدهی شهریه وجود ندارد. لطفاً گزینه غیبت را ثبت نمایید.'
                       return (
-                        <tr key={row.student_id || idx}>
+                        <tr
+                          key={row.student_id || idx}
+                          style={blocked ? { background: '#fef2f2' } : undefined}
+                          title={blocked ? blockReason : undefined}
+                        >
                           <td>{(idx + 1).toLocaleString('fa-IR')}</td>
-                          <td>{row.name_fa || row.student_code || '—'}</td>
+                          <td>
+                            {row.name_fa || row.student_code || '—'}
+                            {blocked && (
+                              <div style={{ fontSize: '0.72rem', color: '#b91c1c', marginTop: '0.2rem', lineHeight: 1.5 }}>
+                                {blockReason}
+                              </div>
+                            )}
+                          </td>
                           <td>{row.role === 'teaching_assistant' ? 'کمک‌مدرس' : 'دانشجو'}</td>
                           <td style={{ color: warnAbs ? '#b91c1c' : '#334155', fontWeight: warnAbs ? 700 : 400 }}>
                             {prevAbs.toLocaleString('fa-IR')}
@@ -320,8 +364,10 @@ export default function InstructorLessonAttendancePanel({
                               type="radio"
                               name={`att-${row.student_id}`}
                               checked={isPresent}
+                              disabled={blocked}
                               onChange={() => setStatus(row.student_id, 'present')}
                               aria-label={`حاضر — ${row.name_fa || row.student_code}`}
+                              title={blocked ? blockReason : undefined}
                             />
                           </td>
                           <td>

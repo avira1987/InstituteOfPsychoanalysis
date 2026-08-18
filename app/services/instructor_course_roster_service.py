@@ -8,12 +8,26 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.operational_models import Student, User
+from app.services.class_attendance_service import (
+    class_present_block_reason_fa,
+    student_class_present_blocked,
+)
 
 
 def _as_mapping(data: Any) -> dict[str, Any]:
     if isinstance(data, dict):
         return dict(data)
     return {}
+
+
+def _present_block_fields(student: Student) -> dict[str, Any]:
+    blocked = student_class_present_blocked(student)
+    if not blocked:
+        return {"present_blocked": False, "present_block_reason_fa": None}
+    return {
+        "present_blocked": True,
+        "present_block_reason_fa": class_present_block_reason_fa(student),
+    }
 
 
 def assigned_course_codes_for_user(user: User) -> set[str]:
@@ -102,13 +116,15 @@ async def get_course_roster(
             if sid in seen:
                 continue
             seen.add(sid)
+            block = _present_block_fields(student)
             roster.append({
                 "student_id": sid,
                 "student_code": student.student_code or sid,
                 "name_fa": student.student_code or sid,
                 "role": "student",
-                "status": "present",
+                "status": "absent" if block["present_blocked"] else "present",
                 "absence_count": 0,
+                **block,
             })
             continue
 
@@ -121,26 +137,30 @@ async def get_course_roster(
                 if sid in seen:
                     continue
                 seen.add(sid)
+                block = _present_block_fields(student)
                 roster.append({
                     "student_id": sid,
                     "student_code": row.get("student_code") or student.student_code or sid,
                     "name_fa": row.get("name_fa") or row.get("student_name") or student.student_code or sid,
                     "role": row.get("role") or "student",
-                    "status": row.get("status") or "present",
+                    "status": "absent" if block["present_blocked"] else (row.get("status") or "present"),
                     "absence_count": _absence_count_for_student(entry, sid),
+                    **block,
                 })
         else:
             sid = str(student.id)
             if sid in seen:
                 continue
             seen.add(sid)
+            block = _present_block_fields(student)
             roster.append({
                 "student_id": sid,
                 "student_code": student.student_code or sid,
                 "name_fa": entry.get("name_fa") or student.student_code or sid,
                 "role": "student",
-                "status": "present",
+                "status": "absent" if block["present_blocked"] else "present",
                 "absence_count": _absence_count_for_student(entry, sid),
+                **block,
             })
 
     for ta_name in sorted(ta_names):
@@ -155,6 +175,8 @@ async def get_course_roster(
             "role": "teaching_assistant",
             "status": "present",
             "absence_count": 0,
+            "present_blocked": False,
+            "present_block_reason_fa": None,
         })
 
     roster.sort(key=lambda r: (0 if r.get("role") == "student" else 1, r.get("student_code") or ""))

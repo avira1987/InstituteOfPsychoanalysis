@@ -12,14 +12,23 @@
 
 1. در `audit_logs` رویدادهای `payment_transition_failed` را جستجو کنید.
 2. جدول `payment_gateway_receipts` را با `payment_pending` و `financial_records` مقایسه کنید.
-3. اگر رسید وجود دارد ولی `payment_pending` هنوز هست: از پنل ادمین ترنزیشن دستی یا `POST /api/process/{id}/rollback` (فقط admin/staff/deputy_education).
+3. اگر رسید وجود دارد ولی `payment_pending` هنوز هست: از پنل ادمین ترنزیشن دستی یا `POST /api/process/{id}/rollback` (فقط admin / deputy_education).
 4. **هرگز** رکورد مالی تکراری بدون بررسی رسید درگاه ایجاد نکنید.
 
 ## بازگردانی دستی فرایند (Rollback)
 
-- `POST /api/process/{instance_id}/rollback` — فقط نقش‌های admin، deputy_education، staff.
+- `POST /api/process/{instance_id}/rollback` — فقط نقش‌های **admin** و **deputy_education** (override SOP؛ کارمند مجاز نیست).
 - Rollback **فقط وضعیت** را برمی‌گرداند؛ سوابق مالی، جلسات درمان و یکپارچه‌سازی‌های خارجی را خنثی نمی‌کند.
+- دلیل بازگشت برای این نقش‌ها الزامی است و تلاش غیرمجاز در `audit_logs` با `override_denied` ثبت می‌شود.
 
+## شروع دوباره از ابتدا (Restart)
+
+- `POST /api/process/{instance_id}/restart` — پرسنل: فقط admin / معاون آموزش؛ دانشجو فقط پروندهٔ خودش.
+- کارمند، کمیته و پذیرش برای restart پرسنلی `403` می‌گیرند.
+
+## نکتهٔ SOP
+
+تکمیل و پاس هر مرحله فقط با نقش مسئول همان مرحله است. Rollback/Restart اقدام‌های اصلاحی مدیر/معاون‌اند، نه کار روزمرهٔ اپراتور.
 ## پیامک و notification outbox
 
 - جدول `notification_outbox`: وضعیت `pending` / `failed` / `sent`.

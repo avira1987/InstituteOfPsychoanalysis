@@ -44,11 +44,11 @@ TUITION_VALUES = {
 }
 
 COURSE_ROW = {
-    "course_name": "روانکاوی ۱",
-    "track": "",
+    "course_name": "تئوری روانکاوی ۲",
+    "track": "analytic_psychotherapy",
     "proposed_day": "دوشنبه",
     "proposed_time": "18:00",
-    "instructor": "",
+    "instructor": "علي علوي",
     "teaching_assistant": "",
 }
 
@@ -214,7 +214,7 @@ async def test_fall_prep_reaches_marketing_with_context_via_form_register(
     flat = " ".join(str(c) for r in rows for c in r)
     assert "فعالیت ۱" in flat
     assert "فعالیت ۵" in flat
-    assert "روانکاوی ۱" in flat
+    assert "روانکاوی ۲" in flat or "تئوری روانکاوی ۲" in flat
 
 
 @pytest_asyncio.fixture
@@ -326,7 +326,7 @@ async def test_winter_prep_reaches_marketing_with_context_via_form_register(
     flat = " ".join(str(c) for r in rows for c in r)
     assert "فعالیت ۲" in flat
     assert "فعالیت ۳" in flat
-    assert "روانکاوی ۱" in flat
+    assert "روانکاوی ۲" in flat or "تئوری روانکاوی ۲" in flat
 
 
 async def _advance_winter_to_marketing(process_api_client, instance, engine, db_session):

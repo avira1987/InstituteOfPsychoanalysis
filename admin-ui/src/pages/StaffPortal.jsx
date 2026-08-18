@@ -25,6 +25,7 @@ import TaUpgradeCourseCommitteePanel from '../components/TaUpgradeCourseCommitte
 import StudentTaTrackChangePanel from '../components/StudentTaTrackChangePanel'
 import TaTrackChangeCommitteePanel from '../components/TaTrackChangeCommitteePanel'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { operatorDocumentReviewToastFa } from '../utils/documentReviewStates'
 import { useToast } from '../contexts/ToastContext'
 import InterviewSlotsManageSection from '../components/InterviewSlotsManageSection'
 import EducationalTherapistSlotsAdmin from '../components/EducationalTherapistSlotsAdmin'
@@ -457,7 +458,12 @@ export default function StaffPortal() {
         ...(effectiveToState ? { to_state: effectiveToState } : {}),
       })
       if (res.data.success) {
-        showToast(`عملیات انجام شد: ${labelState(res.data.to_state)}`)
+        showToast(
+          operatorDocumentReviewToastFa(triggerEvent, {
+            studentCodeDisplay: formatStudentCodeDisplay(instanceDetail?.student_code),
+            toStateLabel: labelState(res.data.to_state),
+          }) || `عملیات انجام شد: ${labelState(res.data.to_state)}`,
+        )
         viewInstance(selectedInstance)
         loadData()
       } else {

@@ -56,6 +56,11 @@ export function useSemesterPrepWorkbench(processCode) {
     setTransitions(transRes.data?.transitions || [])
   }, [])
 
+  const applyInstanceContext = useCallback((ctx) => {
+    if (!ctx || typeof ctx !== 'object') return
+    setInstanceDetail((prev) => (prev ? { ...prev, context_data: ctx } : prev))
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -165,6 +170,7 @@ export function useSemesterPrepWorkbench(processCode) {
     busy,
     load,
     loadInstance,
+    applyInstanceContext,
     reloadReadiness,
     startProcess,
     triggerTransition,

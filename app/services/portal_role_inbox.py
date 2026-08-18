@@ -129,6 +129,19 @@ async def build_portal_role_process_inbox(
         if not _portal_role_matches_item(portal_role, ar_raw, st_code, resolved_code, target_roles):
             continue
 
+        # آماده‌سازی ترم: فقط نقش مجاز همان مرحله در کارتابل دیده شود
+        from app.services.semester_prep_rbac import (
+            is_prep_process,
+            portal_role_can_act_on_prep_state,
+        )
+
+        if is_prep_process(pi.process_code):
+            prep_ok = portal_role_can_act_on_prep_state(
+                portal_role, pi.process_code, st_code
+            )
+            if prep_ok is False:
+                continue
+
         process_items.append(
             {
                 "kind": "process",

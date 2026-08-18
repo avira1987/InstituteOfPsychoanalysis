@@ -100,13 +100,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not plain_password or not hashed_password:
         return False
     try:
-        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+        normalized = normalize_login_field(plain_password)
+        if not normalized:
+            return False
+        return bcrypt.checkpw(normalized.encode("utf-8"), hashed_password.encode("utf-8"))
     except (ValueError, TypeError, Exception):
         return False
 
 
 def get_password_hash(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    normalized = normalize_login_field(password)
+    if not normalized:
+        raise ValueError("رمز عبور خالی است")
+    return bcrypt.hashpw(normalized.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

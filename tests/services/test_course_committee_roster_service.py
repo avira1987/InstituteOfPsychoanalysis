@@ -10,10 +10,14 @@ from sqlalchemy import select
 from app.api.auth import get_password_hash
 from app.models.operational_models import User
 from app.services.course_committee_roster_service import (
+    _combined_member_grants,
+    _course_refs,
+    _grants_include_course,
     enrich_course_table_rows,
     link_user_to_roster,
     list_members,
     list_track_options,
+    option_authorized_for_course,
     reload_roster_cache,
 )
 
@@ -29,6 +33,115 @@ def test_list_track_options_includes_analytic_track():
     opts = list_track_options()
     codes = [o["value"] for o in opts]
     assert "analytic_psychotherapy" in codes
+
+
+def test_option_authorized_for_course_keeps_unticked_chart_members():
+    allowed = {"value": "i1", "authorized_courses": ["theory_inheritance"]}
+    blocked = {
+        "value": "i2",
+        "authorized_courses": ["theory_psychoanalysis_2"],
+        "tier": 0,
+        "roster_legacy": True,
+    }
+    empty = {"value": "i3", "authorized_courses": [], "tier": 1}
+    assert option_authorized_for_course(allowed, "instructor", "theory_inheritance")
+    assert not option_authorized_for_course(blocked, "instructor", "theory_inheritance")
+    assert option_authorized_for_course(empty, "instructor", "theory_inheritance")
+
+
+def test_combined_member_grants_unions_json_and_profile():
+    class _User:
+        profile_meta = {"instructor_authorized_courses": ["theory_2"]}
+
+    entry = {
+        "instructor_authorized_courses": ["theory_1"],
+        "authorized_courses": ["theory_1"],
+    }
+    merged = _combined_member_grants(entry, _User(), "instructor")
+    assert "theory_1" in merged
+    assert "theory_2" in merged
+
+
+def test_course_refs_include_catalog_aliases():
+    refs = _course_refs("تئوری روانکاوی (1)")
+    assert "theory_psychoanalysis_1" in refs
+    assert _grants_include_course(["theory_psychoanalysis_1"], "تئوری روانکاوی (1)")
+
+
+def test_add_member_writes_both_grant_keys(tmp_path, monkeypatch):
+    from app.services import course_committee_roster_service as svc
+
+    catalog_file = tmp_path / "course_catalog.json"
+    catalog_file.write_text(
+        '{"courses": [{"value": "c1", "label_fa": "درس یک", "track": "t1"}]}',
+        encoding="utf-8",
+    )
+    roster_file = tmp_path / "course_committee_roster.json"
+    roster_file.write_text(
+        '{"tracks": [{"code": "t1", "name_fa": "رسته تست",'
+        ' "instructors": [], "teaching_assistants": []}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(svc, "_CATALOG_PATH", catalog_file)
+    monkeypatch.setattr(svc, "_ROSTER_PATH", roster_file)
+    svc.reload_catalog_cache()
+    svc.reload_roster_cache()
+
+    svc.add_member_to_roster(
+        track="t1",
+        kind="instructor",
+        name_fa="مدرس جدید تست",
+        authorized_courses=["c1"],
+    )
+    data = svc._load_roster_file()
+    row = data["tracks"][0]["instructors"][0]
+    assert row["instructor_authorized_courses"] == ["c1"]
+    assert row["authorized_courses"] == ["c1"]
+
+
+@pytest.mark.asyncio
+async def test_list_members_includes_unticked_json_roster_member(db_session):
+    members = await list_members(
+        db_session,
+        track="analytic_psychotherapy",
+        kind="instructor",
+        course="theory_inheritance",
+    )
+    names = {m["label_fa"] for m in members}
+    assert "پيمانه بهرامي" in names
+
+
+@pytest.mark.asyncio
+async def test_list_members_unions_profile_and_json_grants(db_session):
+    db_session.add(
+        User(
+            id=uuid.uuid4(),
+            username="union_grants_inst",
+            email="union_grants@test.local",
+            hashed_password=get_password_hash("demo123"),
+            full_name_fa="علي علوي",
+            role="instructor",
+            is_active=True,
+            profile_meta={
+                "course_committee_tracks": ["analytic_psychotherapy"],
+                "member_kind": "instructor",
+                "instructor_authorized_courses": ["theory_inheritance"],
+            },
+        )
+    )
+    await db_session.commit()
+
+    members = await list_members(
+        db_session,
+        track="analytic_psychotherapy",
+        kind="instructor",
+        course="theory_inheritance",
+    )
+    hit = next((m for m in members if m["label_fa"] == "علي علوي"), None)
+    assert hit is not None
+    grants = hit.get("authorized_courses") or []
+    assert "theory_inheritance" in grants
+    assert "theory_psychoanalysis_2" in grants
 
 
 @pytest.mark.asyncio
@@ -173,6 +286,10 @@ def test_list_course_catalog_options():
     assert resolve_track_for_course("theory_inheritance") == "analytic_psychotherapy"
     assert resolve_track_for_course("تئوری وراثت") == "analytic_psychotherapy"
     assert resolve_track_for_course("theory_technique_1") == "technique_theory_1_3"
+    theory1 = next(o for o in opts if o["value"] == "theory_psychoanalysis_1")
+    assert theory1.get("units") == 2
+    assert theory1.get("curriculum_term") == 1
+    assert theory1.get("program_kind") == "introductory"
 
 
 def test_add_course_to_catalog(tmp_path, monkeypatch):
@@ -201,6 +318,20 @@ def test_add_course_to_catalog(tmp_path, monkeypatch):
     assert created["label_fa"] == "درس آزمایشی جدید"
     assert created["value"]
     assert created["track"] == "analytic_psychotherapy"
+
+    with_units = svc.add_course_to_catalog(
+        "درس دو واحدی SOP",
+        track="analytic_psychotherapy",
+        units=2,
+        curriculum_term=1,
+        program_kind="introductory",
+        class_hours="1:30",
+        retake_exam=True,
+    )
+    assert with_units["units"] == 2
+    assert with_units["curriculum_term"] == 1
+    assert with_units["class_hours"] == "1:30"
+    assert with_units["retake_exam"] is True
 
     opts = svc.list_course_catalog_options()
     assert any(o["label_fa"] == "درس آزمایشی جدید" and o.get("track") == "analytic_psychotherapy" for o in opts)
@@ -231,7 +362,12 @@ def test_update_and_remove_course_and_track(tmp_path, monkeypatch):
         created["value"],
         name_fa="درس موقت ویرایش‌شده",
         track="analytic_psychotherapy",
+        units=3,
+        curriculum_term=2,
+        program_kind="introductory",
     )
+    assert updated["units"] == 3
+    assert updated["curriculum_term"] == 2
     assert updated["label_fa"] == "درس موقت ویرایش‌شده"
 
     assert svc.remove_course_from_catalog(created["value"]) is True
@@ -349,6 +485,44 @@ async def test_change_member_kind_to_educational_instructor(tmp_path, monkeypatc
     edu = next(m for m in detail["instructors"] if m.get("role_code") == "educational_instructor")
     assert edu["label_fa"] == "مدرس جدید"
     # مدرس آموزشی قبلی باید به لیست مدرسین عادی برود
+    assert any(m["label_fa"] == "مدرس آموزشی قبلی" for m in detail["instructors"])
+
+
+@pytest.mark.asyncio
+async def test_add_member_as_educational_instructor(tmp_path, monkeypatch, db_session):
+    from app.services import course_committee_roster_service as svc
+
+    catalog_file = tmp_path / "course_catalog.json"
+    catalog_file.write_text(
+        '{"courses": [{"value": "c1", "label_fa": "درس یک", "track": "t1"}]}',
+        encoding="utf-8",
+    )
+    roster_file = tmp_path / "course_committee_roster.json"
+    roster_file.write_text(
+        '{"tracks": [{"code": "t1", "name_fa": "رسته تست",'
+        ' "educational_instructor": {"roster_key": "educational_instructor",'
+        ' "name_fa": "مدرس آموزشی قبلی", "tier": 0},'
+        ' "instructors": [], "teaching_assistants": []}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(svc, "_CATALOG_PATH", catalog_file)
+    monkeypatch.setattr(svc, "_ROSTER_PATH", roster_file)
+    svc.reload_catalog_cache()
+    svc.reload_roster_cache()
+
+    added = svc.add_member_to_roster(
+        track="t1",
+        kind="educational_instructor",
+        name_fa="عضو جدید آموزشی",
+        authorized_courses=["c1"],
+    )
+    assert added["label_fa"] == "عضو جدید آموزشی"
+    assert added["value"] == "educational_instructor"
+
+    detail = await svc.list_track_roster_detail(db_session, track="t1")
+    edu = next(m for m in detail["instructors"] if m.get("role_code") == "educational_instructor")
+    assert edu["label_fa"] == "عضو جدید آموزشی"
+    assert "c1" in (edu.get("authorized_courses") or [])
     assert any(m["label_fa"] == "مدرس آموزشی قبلی" for m in detail["instructors"])
 
 
@@ -480,7 +654,7 @@ async def test_list_members_filters_instructor_by_authorized_course(db_session):
 
 
 @pytest.mark.asyncio
-async def test_list_members_legacy_ta_visible_for_any_course(db_session):
+async def test_list_members_legacy_ta_hidden_without_course_grant(db_session):
     uid = uuid.uuid4()
     db_session.add(
         User(
@@ -507,7 +681,7 @@ async def test_list_members_legacy_ta_visible_for_any_course(db_session):
         course="theory_inheritance",
     )
     labels = {m["label_fa"] for m in filtered}
-    assert "کمک‌مدرس قدیمی" in labels
+    assert "کمک‌مدرس قدیمی" not in labels
 
 
 @pytest.mark.asyncio
@@ -592,3 +766,122 @@ async def test_link_user_to_roster_sets_role_and_legacy(db_session):
     assert "analytic_psychotherapy" in (linked.profile_meta or {}).get("course_committee_tracks", [])
     assert (student.extra_data or {}).get("is_teaching_assistant") is True
     assert (student.extra_data or {}).get("ta_registered") is True
+
+
+def _write_tmp_roster(tmp_path, monkeypatch, payload: str):
+    from app.services import course_committee_roster_service as svc
+
+    roster_file = tmp_path / "course_committee_roster.json"
+    roster_file.write_text(payload, encoding="utf-8")
+    monkeypatch.setattr(svc, "_ROSTER_PATH", roster_file)
+    svc.reload_roster_cache()
+    return svc
+
+
+def test_remove_last_instructor_and_last_ta(tmp_path, monkeypatch):
+    svc = _write_tmp_roster(
+        tmp_path,
+        monkeypatch,
+        '{"tracks": [{"code": "t1", "name_fa": "رسته تست",'
+        ' "educational_instructor": {"roster_key": "educational_instructor",'
+        ' "name_fa": "مدرس آموزشی", "tier": 0},'
+        ' "instructors": [{"roster_key": "i1", "name_fa": "تنها مدرس"}],'
+        ' "teaching_assistants": [{"roster_key": "ta1", "name_fa": "تنها کمک‌مدرس"}]}]}',
+    )
+
+    assert svc.remove_member_from_roster(track="t1", kind="instructor", name_fa="تنها مدرس") is True
+    assert svc.remove_member_from_roster(track="t1", kind="teaching_assistant", name_fa="تنها کمک‌مدرس") is True
+    assert svc.remove_member_from_roster(track="t1", kind="instructor", name_fa="مدرس آموزشی") is True
+    track = svc.get_track_by_code("t1")
+    assert track.get("instructors") == []
+    assert track.get("teaching_assistants") == []
+    assert track.get("educational_instructor") is None
+
+
+def test_remove_last_member_arabic_yeh_mismatch(tmp_path, monkeypatch):
+    svc = _write_tmp_roster(
+        tmp_path,
+        monkeypatch,
+        '{"tracks": [{"code": "t1", "name_fa": "رسته تست",'
+        ' "instructors": [{"roster_key": "i1", "name_fa": "ادريس صالحي"}],'
+        ' "teaching_assistants": []}]}',
+    )
+
+    assert svc.remove_member_from_roster(track="t1", kind="instructor", name_fa="ادریس صالحی") is True
+    assert svc.get_track_by_code("t1").get("instructors") == []
+
+
+@pytest.mark.asyncio
+async def test_delete_last_db_only_member_unlinks_user(tmp_path, monkeypatch, db_session):
+    svc = _write_tmp_roster(
+        tmp_path,
+        monkeypatch,
+        '{"tracks": [{"code": "t1", "name_fa": "رسته تست",'
+        ' "instructors": [], "teaching_assistants": []}]}',
+    )
+    uid = uuid.uuid4()
+    user = User(
+        id=uid,
+        username="cc_last_member_del",
+        email="cc_last_member_del@test.local",
+        hashed_password=get_password_hash("demo123"),
+        full_name_fa="مدرس فقط دیتابیس",
+        role="instructor",
+        is_active=True,
+        profile_meta={
+            "course_committee_tracks": ["t1"],
+            "member_kind": "instructor",
+            "tier": 2,
+        },
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    detail = await svc.list_track_roster_detail(db_session, track="t1")
+    assert any(m["label_fa"] == "مدرس فقط دیتابیس" for m in detail["instructors"])
+
+    removed = await svc.delete_roster_member(
+        db_session,
+        track="t1",
+        kind="instructor",
+        name_fa="مدرس فقط دیتابیس",
+        user_id=uid,
+    )
+    assert removed is True
+    await db_session.commit()
+    await db_session.refresh(user)
+    assert "t1" not in (user.profile_meta or {}).get("course_committee_tracks", [])
+    detail = await svc.list_track_roster_detail(db_session, track="t1")
+    assert detail["instructors"] == []
+
+
+@pytest.mark.asyncio
+async def test_list_detail_merges_arabic_persian_duplicate_names(tmp_path, monkeypatch, db_session):
+    svc = _write_tmp_roster(
+        tmp_path,
+        monkeypatch,
+        '{"tracks": [{"code": "t1", "name_fa": "رسته تست",'
+        ' "instructors": [{"roster_key": "i1", "name_fa": "ادريس صالحي", "tier": 1}],'
+        ' "teaching_assistants": []}]}',
+    )
+    uid = uuid.uuid4()
+    user = User(
+        id=uid,
+        username="cc_dup_name",
+        email="cc_dup_name@test.local",
+        hashed_password=get_password_hash("demo123"),
+        full_name_fa="ادریس صالحی",
+        role="instructor",
+        is_active=True,
+        profile_meta={
+            "course_committee_tracks": ["t1"],
+            "member_kind": "instructor",
+        },
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    detail = await svc.list_track_roster_detail(db_session, track="t1")
+    names = [m["label_fa"] for m in detail["instructors"]]
+    assert len(names) == 1
+    assert names[0] in {"ادريس صالحي", "ادریس صالحی"}

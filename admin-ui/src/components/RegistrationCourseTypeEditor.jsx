@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { studentApi } from '../services/api'
 
 const COURSE_OPTIONS = [
-  { value: 'introductory', label: 'دوره مقدماتی (آشنایی)' },
+  { value: 'introductory', label: 'دوره آشنایی' },
   { value: 'comprehensive', label: 'دوره جامع' },
 ]
 
@@ -76,7 +76,7 @@ export default function RegistrationCourseTypeEditor({
       </h4>
       {!compact && (
         <p style={{ fontSize: '0.8rem', color: '#0369a1', margin: '0 0 0.65rem', lineHeight: 1.6 }}>
-          همان انتخابی که دانشجو در فرم اولیهٔ ثبت‌نام (مقدماتی یا جامع) انجام داده است.
+          همان انتخابی که دانشجو در فرم اولیهٔ ثبت‌نام (آشنایی یا جامع) انجام داده است.
           با تغییر، فرایند ثبت‌نام نادرستِ در جریان لغو و مسیر دورهٔ جدید فعال می‌شود.
         </p>
       )}

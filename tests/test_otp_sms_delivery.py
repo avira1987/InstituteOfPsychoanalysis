@@ -196,6 +196,61 @@ async def test_request_otp_stores_same_code_sent_to_sms_gateway():
 
 
 @pytest.mark.asyncio
+async def test_request_otp_blocks_unknown_phone_when_public_signup_closed():
+    mock_db = AsyncMock()
+    settings = MagicMock()
+    settings.OTP_RESTRICT_TO_STUDENT_PHONES = True
+    settings.ALLOW_PUBLIC_OTP_SIGNUP = False
+    with patch.object(otp_service, "get_settings", return_value=settings):
+        with patch.object(
+            otp_service, "find_user_by_login_phone", new_callable=AsyncMock, return_value=None
+        ):
+            result = await otp_service.request_otp(mock_db, REPORTED_PHONE)
+    assert result["success"] is False
+    assert "ثبت نشده" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_request_otp_allows_unknown_phone_when_public_signup_open():
+    from app.models.operational_models import OTPCode
+
+    mock_db = AsyncMock()
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_db.execute = AsyncMock(
+        return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))))
+    )
+    settings = MagicMock()
+    settings.OTP_RESTRICT_TO_STUDENT_PHONES = True
+    settings.ALLOW_PUBLIC_OTP_SIGNUP = True
+    settings.SMS_PROVIDER = "log"
+    settings.SMS_SIMULATION_UI = False
+    settings.OTP_SHOW_CODE_IN_UI = False
+    settings.SECRET_KEY = "test-secret-key-for-otp-hmac"
+
+    with patch.object(otp_service, "get_settings", return_value=settings):
+        with patch.object(
+            otp_service, "find_user_by_login_phone", new_callable=AsyncMock, return_value=None
+        ):
+            with patch.object(
+                otp_service, "send_otp_sms", new_callable=AsyncMock, return_value={"success": True, "provider": "log"}
+            ):
+                with patch.object(
+                    otp_service.sms_simulation,
+                    "record_simulated_sms_in_request_session",
+                    new_callable=AsyncMock,
+                    return_value=None,
+                ):
+                    result = await otp_service.request_otp(mock_db, REPORTED_PHONE)
+
+    assert result["success"] is True
+    added = mock_db.add.call_args[0][0]
+    assert isinstance(added, OTPCode)
+    assert added.phone == REPORTED_PHONE_NORMALIZED
+
+
+@pytest.mark.asyncio
 async def test_request_otp_does_not_send_welcome_sms_on_request():
     mock_db = AsyncMock()
     mock_db.commit = AsyncMock()

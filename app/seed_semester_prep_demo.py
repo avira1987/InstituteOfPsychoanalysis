@@ -44,7 +44,7 @@ FALL_TRIGGERS: list[tuple[str, str]] = [
     ("course_list_submitted", "course_committee"),
     ("courses_finalized", "course_committee"),
     ("marketing_started", "staff"),
-    ("interviewers_assigned", "deputy_education"),
+    ("interviewers_assigned", "staff"),
     ("interview_times_set", "staff"),
 ]
 
@@ -53,7 +53,7 @@ WINTER_TRIGGERS_TO_SCHEDULING: list[tuple[str, str]] = [
     ("course_list_reviewed", "course_committee"),
     ("courses_finalized", "course_committee"),
     ("marketing_started", "staff"),
-    ("interviewers_assigned", "deputy_education"),
+    ("interviewers_assigned", "staff"),
 ]
 
 _PREP_STAFF_PHONES: dict[str, str] = {
@@ -108,12 +108,9 @@ def _demo_tuition_context() -> dict[str, Any]:
         "interview_fee_introductory": 3_500_000,
         "interview_fee_comprehensive": 4_500_000,
         "registration_interview_fee_rial": 3_500_000,
-        "registration_tuition_invoice_toman": 120_000_000,
         "start_therapy_first_session_fee_rial": 10_000_000,
         "extra_session_fee_rial": 7_500_000,
         "default_therapy_session_fee_toman": 500_000,
-        "class_session_fee_toman": 0,
-        "course_session_fee_toman": 0,
     }
 
 

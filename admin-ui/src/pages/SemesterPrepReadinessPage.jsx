@@ -5,6 +5,7 @@ import SemesterPrepReadinessPanel from '../components/SemesterPrepReadinessPanel
 import SemesterPrepCatalogPanel from '../components/SemesterPrepCatalogPanel'
 import CourseCommitteeRosterPanel from '../components/CourseCommitteeRosterPanel'
 import InterviewerPoolPanel from '../components/InterviewerPoolPanel'
+import InstituteActivityLicensePanel from '../components/InstituteActivityLicensePanel'
 import { semesterPrepApi } from '../services/api'
 
 function scrollToHash() {
@@ -56,8 +57,9 @@ export default function SemesterPrepReadinessPage() {
 
       <h1 style={{ fontSize: '1.35rem', marginBottom: '0.35rem' }}>آمادگی پیش‌نیازهای آماده‌سازی ترم</h1>
       <p className="muted" style={{ marginBottom: '1.25rem', lineHeight: 1.7 }}>
-        داده‌های زیر در فرم‌های فرایند آماده‌سازی پاییز و زمستان استفاده می‌شوند. تکمیل آن‌ها اختیاری
-        است اما از خطاهای تایپی و انتخاب‌های ناقص جلوگیری می‌کند.
+        داده‌های زیر منبع پیش‌فرض فرم‌های فرایند آماده‌سازی پاییز و زمستان هستند.
+        درس، رسته، مدرس و کمک‌مدرس را می‌توانید اینجا یا در مرحلهٔ «لیست دروس، مدرسین، کمک‌مدرسین»
+        اضافه و حذف کنید. مصاحبه‌گر از استخر همین صفحه انتخاب می‌شود.
       </p>
 
       <SemesterPrepReadinessPanel readiness={readiness} onReload={setReadiness} showTitle={false} />
@@ -69,6 +71,10 @@ export default function SemesterPrepReadinessPage() {
 
         <div id="roster" className="card" style={{ padding: '1rem 1.15rem' }}>
           <CourseCommitteeRosterPanel showToast={showToast} embedded onUpdated={handleDataUpdated} />
+        </div>
+
+        <div className="card" style={{ padding: '1rem 1.15rem' }}>
+          <InstituteActivityLicensePanel showToast={showToast} onUpdated={handleDataUpdated} />
         </div>
 
         <div className="card" style={{ padding: '1rem 1.15rem' }}>

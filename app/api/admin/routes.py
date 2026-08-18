@@ -5,17 +5,18 @@ import os
 import uuid
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.config import get_settings
 from app.database import get_db
-from app.api.auth import get_current_user, require_role, get_password_hash
+from app.api.auth import get_current_user, require_role, get_password_hash, normalize_login_field
 from app.core.user_roles import (
     normalize_user_roles,
     primary_role,
@@ -1025,6 +1026,27 @@ def _national_code_from_extra_data(extra_data: Optional[dict]) -> Optional[str]:
     return s or None
 
 
+def _user_mgmt_dict(u: User, student: Optional[Student] = None, *, include_created_at: bool = False) -> dict:
+    # هرگز به u.student_profile دست نزن — در نشست async بدون greenlet → MissingGreenlet و rollback نقش/رمز
+    st = student
+    out = {
+        "id": str(u.id),
+        "username": u.username,
+        "email": u.email,
+        "full_name_fa": u.full_name_fa,
+        "full_name_en": u.full_name_en,
+        "role": primary_role(u),
+        "roles": normalize_user_roles(u),
+        "phone": u.phone,
+        "national_code": _national_code_from_extra_data(st.extra_data if st else None),
+        "student_code": (st.student_code if st else None),
+        "is_active": u.is_active,
+    }
+    if include_created_at:
+        out["created_at"] = u.created_at.isoformat() if u.created_at else None
+    return out
+
+
 async def _nullify_references_to_user(db: AsyncSession, user_id: uuid.UUID) -> None:
     """پیش از حذف فیزیکی کاربر، FKهای بدون CASCADE را خالی می‌کند."""
     from app.models.dynamic_forms import FormApprovalStep, FormResponse, FormTemplate
@@ -1073,7 +1095,7 @@ class RosterTrackCreate(BaseModel):
 
 class RosterMemberCreate(BaseModel):
     track: str = Field(..., min_length=1)
-    kind: Literal["instructor", "teaching_assistant"]
+    kind: Literal["instructor", "teaching_assistant", "educational_instructor"]
     name_fa: str = Field(..., min_length=1)
     roster_legacy: Optional[bool] = None
     authorized_courses: Optional[list[str]] = None
@@ -1082,7 +1104,7 @@ class RosterMemberCreate(BaseModel):
 class RosterMemberLink(BaseModel):
     user_id: uuid.UUID
     track: str = Field(..., min_length=1)
-    kind: Literal["instructor", "teaching_assistant"]
+    kind: Literal["instructor", "teaching_assistant", "educational_instructor"]
     roster_legacy: Optional[bool] = None
     authorized_courses: Optional[list[str]] = None
 
@@ -1097,7 +1119,9 @@ class RosterMemberUpdate(BaseModel):
 class RosterMemberDelete(BaseModel):
     track: str = Field(..., min_length=1)
     kind: Literal["instructor", "teaching_assistant"]
-    name_fa: str = Field(..., min_length=1)
+    name_fa: str = ""
+    user_id: Optional[uuid.UUID] = None
+    roster_key: Optional[str] = None
 
 
 class RosterMemberCoursesUpdate(BaseModel):
@@ -1120,11 +1144,29 @@ class RosterMemberKindUpdate(BaseModel):
 class CourseCatalogCreate(BaseModel):
     name_fa: str = Field(..., min_length=1)
     track: str = Field(..., min_length=1, description="کد رسته از فهرست رسته‌های موجود")
+    units: Optional[int] = Field(None, ge=1, le=20)
+    curriculum_term: Optional[int] = Field(None, ge=1, le=8)
+    program_kind: Optional[str] = None
+    class_hours: Optional[str] = None
+    retake_exam: Optional[bool] = None
+    evaluation_fa: Optional[str] = None
+    prerequisite_codes: Optional[list[str]] = None
+    prerequisite_notes: Optional[str] = None
+    subtitle_fa: Optional[str] = None
 
 
 class CourseCatalogUpdate(BaseModel):
     name_fa: Optional[str] = Field(None, min_length=1)
     track: Optional[str] = Field(None, min_length=1, description="کد رسته از فهرست رسته‌های موجود")
+    units: Optional[int] = Field(None, ge=1, le=20)
+    curriculum_term: Optional[int] = Field(None, ge=1, le=8)
+    program_kind: Optional[str] = None
+    class_hours: Optional[str] = None
+    retake_exam: Optional[bool] = None
+    evaluation_fa: Optional[str] = None
+    prerequisite_codes: Optional[list[str]] = None
+    prerequisite_notes: Optional[str] = None
+    subtitle_fa: Optional[str] = None
 
 
 @router.post("/course-committee-roster/tracks")
@@ -1321,14 +1363,73 @@ async def update_course_committee_member(
 
 @router.delete("/course-committee-roster/members")
 async def delete_course_committee_member(
-    body: RosterMemberDelete,
+    track: Optional[str] = Query(None),
+    kind: Optional[Literal["instructor", "teaching_assistant"]] = Query(None),
+    name_fa: Optional[str] = Query(None),
+    user_id: Optional[uuid.UUID] = Query(None),
+    roster_key: Optional[str] = Query(None),
+    body: Optional[RosterMemberDelete] = Body(default=None),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
 ):
-    from app.services.course_committee_roster_service import remove_member_from_roster
+    from app.services.course_committee_roster_service import delete_roster_member
 
-    removed = remove_member_from_roster(track=body.track, kind=body.kind, name_fa=body.name_fa)
+    track_val = (track or (body.track if body else "") or "").strip()
+    kind_val = kind or (body.kind if body else None)
+    name_val = (name_fa if name_fa is not None else (body.name_fa if body else "")) or ""
+    uid = user_id or (body.user_id if body else None)
+    key_val = roster_key or (body.roster_key if body else None)
+    if not track_val or kind_val not in ("instructor", "teaching_assistant"):
+        raise HTTPException(status_code=400, detail="رسته و نوع عضو الزامی است")
+    removed = await delete_roster_member(
+        db,
+        track=track_val,
+        kind=kind_val,
+        name_fa=name_val,
+        user_id=uid,
+        roster_key=key_val,
+    )
     if not removed:
         raise HTTPException(status_code=404, detail="عضو در چارت یافت نشد")
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/course-committee-roster/members/{user_id}")
+async def delete_course_committee_member_by_user(
+    user_id: uuid.UUID,
+    track: Optional[str] = Query(None),
+    kind: Optional[Literal["instructor", "teaching_assistant"]] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    """حذف با شناسهٔ کاربر — مسیر جایگزین برای کلاینت‌هایی که DELETE با body نمی‌فرستند."""
+    from app.services.course_committee_roster_service import delete_roster_member
+
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="کاربر یافت نشد")
+    meta = user.profile_meta if isinstance(user.profile_meta, dict) else {}
+    track_val = (track or "").strip()
+    if not track_val:
+        tracks = meta.get("course_committee_tracks") or []
+        track_val = str(tracks[0]).strip() if tracks else ""
+    kind_val = kind or meta.get("member_kind")
+    if kind_val not in ("instructor", "teaching_assistant"):
+        kind_val = "teaching_assistant" if user.role == "teaching_assistant" else "instructor"
+    if not track_val:
+        raise HTTPException(status_code=400, detail="رسته مشخص نیست")
+    removed = await delete_roster_member(
+        db,
+        track=track_val,
+        kind=kind_val,
+        name_fa=user.full_name_fa or "",
+        user_id=user_id,
+        roster_key=str(meta.get("roster_key") or "") or None,
+    )
+    if not removed:
+        raise HTTPException(status_code=404, detail="عضو در چارت یافت نشد")
+    await db.commit()
     return {"ok": True}
 
 
@@ -1363,7 +1464,19 @@ async def create_course_catalog_entry(
     from app.services.course_committee_roster_service import add_course_to_catalog
 
     try:
-        course = add_course_to_catalog(body.name_fa, track=body.track)
+        course = add_course_to_catalog(
+            body.name_fa,
+            track=body.track,
+            units=body.units,
+            curriculum_term=body.curriculum_term,
+            program_kind=body.program_kind,
+            class_hours=body.class_hours,
+            retake_exam=body.retake_exam,
+            evaluation_fa=body.evaluation_fa,
+            prerequisite_codes=body.prerequisite_codes,
+            prerequisite_notes=body.prerequisite_notes,
+            subtitle_fa=body.subtitle_fa,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"course": course}
@@ -1382,6 +1495,15 @@ async def update_course_catalog_entry(
             course_value,
             name_fa=body.name_fa,
             track=body.track,
+            units=body.units,
+            curriculum_term=body.curriculum_term,
+            program_kind=body.program_kind,
+            class_hours=body.class_hours,
+            retake_exam=body.retake_exam,
+            evaluation_fa=body.evaluation_fa,
+            prerequisite_codes=body.prerequisite_codes,
+            prerequisite_notes=body.prerequisite_notes,
+            subtitle_fa=body.subtitle_fa,
         )
     except ValueError as e:
         detail = str(e)
@@ -1435,7 +1557,7 @@ async def list_course_committee_roster(
 async def list_users(
     role: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
-    search: Optional[str] = Query(None, description="جست‌وجو در نام فارسی یا نام کاربری"),
+    search: Optional[str] = Query(None, description="جست‌وجو در نام فارسی، نام کاربری یا شماره دانشجویی"),
     limit: int = Query(2000, ge=1, le=10000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -1456,6 +1578,7 @@ async def list_users(
             or_(
                 User.full_name_fa.ilike(term),
                 User.username.ilike(term),
+                User.student_profile.has(Student.student_code.ilike(term)),
             )
         )
     stmt = (
@@ -1466,35 +1589,92 @@ async def list_users(
     )
     result = await db.execute(stmt)
     users = result.scalars().unique().all()
-    return [
-        {
-            "id": str(u.id),
-            "username": u.username,
-            "email": u.email,
-            "full_name_fa": u.full_name_fa,
-            "full_name_en": u.full_name_en,
-            "role": primary_role(u),
-            "roles": normalize_user_roles(u),
-            "phone": u.phone,
-            "national_code": _national_code_from_extra_data(
-                u.student_profile.extra_data if u.student_profile else None
-            ),
-            "is_active": u.is_active,
-            "created_at": u.created_at.isoformat() if u.created_at else None,
-        }
-        for u in users
-    ]
+    return [_user_mgmt_dict(u, u.student_profile, include_created_at=True) for u in users]
+
+
+class UserUpdateBody(BaseModel):
+    """بدنهٔ PATCH کاربر؛ extra اجازه می‌دهد فیلدهای قدیمی کلاینت گم نشوند."""
+
+    model_config = {"extra": "allow"}
+
+    full_name_fa: Optional[str] = None
+    full_name_en: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    is_active: Optional[bool] = None
+    role: Optional[str] = None
+    roles: Optional[list[str]] = None
+    profile_meta: Optional[dict] = None
+    password: Optional[str] = None
+    new_password: Optional[str] = None
+
+
+class SetUserPasswordBody(BaseModel):
+    password: str = Field(..., min_length=1)
+    new_password: Optional[str] = None
+
+
+def _plain_password_from_payload(data: dict) -> str:
+    raw = data.get("password")
+    if raw is None or (isinstance(raw, str) and not str(raw).strip()):
+        raw = data.get("new_password")
+    if raw is None:
+        return ""
+    return normalize_login_field(str(raw))
+
+
+def _assign_user_password(
+    *,
+    user: User,
+    plain: str,
+    is_admin: bool,
+    is_primary_admin: bool,
+) -> None:
+    if len(plain) < 4:
+        raise HTTPException(status_code=400, detail="رمز عبور باید حداقل ۴ کاراکتر باشد")
+    target_roles = normalize_user_roles(user)
+    if is_admin:
+        if "admin" in target_roles and not is_primary_admin:
+            raise HTTPException(
+                status_code=403,
+                detail="فقط مدیر اصلی سامانه می‌تواند رمز حساب مدیر را تغییر دهد.",
+            )
+    else:
+        if "student" not in target_roles or any(
+            r in target_roles for r in ("admin", "staff", "finance", "deputy_education", "site_manager")
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="کارمند فقط می‌تواند رمز حساب دانشجو را تنظیم کند.",
+            )
+    try:
+        user.hashed_password = get_password_hash(plain)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    user.portal_password_plain = None
+    current_meta = user.__dict__.get("profile_meta")
+    meta = dict(current_meta) if isinstance(current_meta, dict) else {}
+    meta["admin_password_set"] = True
+    user.profile_meta = meta
+    flag_modified(user, "profile_meta")
+
+
+async def _user_mgmt_response(db: AsyncSession, user: User) -> dict:
+    st_res = await db.execute(select(Student).where(Student.user_id == user.id))
+    st = st_res.scalars().first()
+    return _user_mgmt_dict(user, st)
 
 
 @router.patch("/users/{user_id}")
 async def update_user(
     user_id: str,
-    data: dict,
+    body: UserUpdateBody,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin", "staff")),
 ):
     """Update a user. Admin can change any field; staff can only set password and edit name/email/phone."""
-    stmt = select(User).where(User.id == uuid.UUID(user_id))
+    data = body.model_dump(exclude_unset=True)
+    stmt = select(User).where(User.id == uuid.UUID(user_id)).options(selectinload(User.student_profile))
     result = await db.execute(stmt)
     user = result.scalars().first()
     if not user:
@@ -1529,53 +1709,68 @@ async def update_user(
             raise HTTPException(status_code=400, detail=str(e)) from e
         user.role = prim
         user.roles = ordered
+        flag_modified(user, "roles")
 
     for key, value in data.items():
-        if key in ("role", "roles"):
-            continue  # بالا اعمال شد
+        if key in ("role", "roles", "password", "new_password"):
+            continue
         if key in allowed_fields:
             # empty string must not be stored for unique nullable email
             if key in ("email", "phone") and isinstance(value, str):
                 value = value.strip() or None
             setattr(user, key, value)
-    if "password" in data and data.get("password"):
-        target_roles = normalize_user_roles(user)
-        if is_admin:
-            # فقط مدیر اصلی می‌تواند رمز حساب‌های admin را عوض کند؛ سایر ادمین‌ها نه adminها
-            if "admin" in target_roles and not is_primary_admin:
-                raise HTTPException(
-                    status_code=403,
-                    detail="فقط مدیر اصلی سامانه می‌تواند رمز حساب مدیر را تغییر دهد.",
-                )
-        else:
-            # staff: فقط دانشجویان
-            if "student" not in target_roles or any(
-                r in target_roles for r in ("admin", "staff", "finance", "deputy_education", "site_manager")
-            ):
-                raise HTTPException(
-                    status_code=403,
-                    detail="کارمند فقط می‌تواند رمز حساب دانشجو را تنظیم کند.",
-                )
-        user.hashed_password = get_password_hash(data["password"])
-        user.portal_password_plain = None
+    if "password" in data or "new_password" in data:
+        plain = _plain_password_from_payload(data)
+        if not plain:
+            raise HTTPException(status_code=400, detail="رمز عبور نامعتبر است")
+        _assign_user_password(
+            user=user,
+            plain=plain,
+            is_admin=is_admin,
+            is_primary_admin=is_primary_admin,
+        )
+    try:
+        await db.flush()
+        return await _user_mgmt_response(db, user)
+    except IntegrityError as e:
+        raise HTTPException(
+            status_code=400,
+            detail="نام کاربری یا ایمیل تکراری است",
+        ) from e
+
+
+@router.post("/users/{user_id}/password")
+async def set_user_password(
+    user_id: str,
+    body: SetUserPasswordBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "staff")),
+):
+    """تنظیم رمز عبور حساب (دکمهٔ «رمز» در مدیریت کاربران)."""
+    stmt = select(User).where(User.id == uuid.UUID(user_id)).options(selectinload(User.student_profile))
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    is_admin = user_has_role(current_user, "admin", admin_bypass=False)
+    is_primary_admin = (
+        is_admin and current_user.username == get_settings().PRIMARY_SITE_ADMIN_USERNAME
+    )
+    data = body.model_dump(exclude_unset=True)
+    plain = _plain_password_from_payload(data)
+    if not plain:
+        raise HTTPException(status_code=400, detail="رمز عبور نامعتبر است")
+    _assign_user_password(
+        user=user,
+        plain=plain,
+        is_admin=is_admin,
+        is_primary_admin=is_primary_admin,
+    )
     await db.flush()
-    national_code = None
-    if "student" in normalize_user_roles(user):
-        st_res = await db.execute(select(Student).where(Student.user_id == user.id))
-        st = st_res.scalars().first()
-        national_code = _national_code_from_extra_data(st.extra_data if st else None)
-    return {
-        "id": str(user.id),
-        "username": user.username,
-        "email": user.email,
-        "full_name_fa": user.full_name_fa,
-        "full_name_en": user.full_name_en,
-        "role": primary_role(user),
-        "roles": normalize_user_roles(user),
-        "phone": user.phone,
-        "national_code": national_code,
-        "is_active": user.is_active,
-    }
+    out = await _user_mgmt_response(db, user)
+    out["password_set"] = True
+    return out
 
 
 @router.post("/process-instances/{instance_id}/cancel")
@@ -1915,6 +2110,40 @@ async def get_semester_prep_readiness(
     return await compute_semester_prep_readiness(db)
 
 
+class ActivityLicensePatch(BaseModel):
+    activity_license_number: str = Field(..., min_length=1)
+
+
+_LICENSE_EDITOR_ROLES = ("admin", "deputy_education", "staff", "course_committee", "admissions_officer")
+
+
+@router.get("/semester-prep/activity-license")
+async def get_semester_prep_activity_license(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(*_LICENSE_EDITOR_ROLES)),
+):
+    """شماره پروانه فعالیت انستیتو — قابل ویرایش بدون بازگشت فرایند آماده‌سازی."""
+    from app.services.institute_activity_license_service import get_activity_license_record
+
+    return await get_activity_license_record(db)
+
+
+@router.patch("/semester-prep/activity-license")
+async def patch_semester_prep_activity_license(
+    body: ActivityLicensePatch,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "deputy_education", "staff")),
+):
+    """به‌روزرسانی شماره پروانه روی پرونده عملیاتی انستیتو (بدون rollback فرایند)."""
+    from app.services.institute_activity_license_service import set_activity_license_number
+
+    rec = await set_activity_license_number(
+        db, body.activity_license_number, source="manual"
+    )
+    await db.commit()
+    return rec
+
+
 class InterviewerCreate(BaseModel):
     full_name_fa: str = Field(..., min_length=1)
     username: Optional[str] = None
@@ -1929,6 +2158,14 @@ class InterviewerUpdate(BaseModel):
     phone: Optional[str] = None
 
 
+_INTERVIEWER_VIEW_ROLES = (
+    "admin",
+    "deputy_education",
+    "deputy_education_director",
+    "staff",
+    "site_manager",
+    "admissions_officer",
+)
 _INTERVIEWER_MANAGE_ROLES = ("admin", "deputy_education", "staff", "admissions_officer")
 
 
@@ -1963,15 +2200,9 @@ async def list_interviewers(
     current_user: User = Depends(require_role(*_INTERVIEWER_MANAGE_ROLES)),
 ):
     """فهرست مصاحبه‌کنندگان فعال."""
-    from sqlalchemy import or_
+    from app.services.semester_prep_interview_setup_service import list_interviewer_pool_users
 
-    stmt = select(User).where(user_matches_role_sql("interviewer"), User.is_active.is_(True))
-    q = (search or "").strip()
-    if q:
-        term = f"%{q}%"
-        stmt = stmt.where(or_(User.full_name_fa.ilike(term), User.username.ilike(term)))
-    stmt = stmt.order_by(User.full_name_fa.asc(), User.username.asc()).limit(limit)
-    users = (await db.execute(stmt)).scalars().all()
+    users = await list_interviewer_pool_users(db, search=search, limit=limit)
     return {
         "interviewers": [_interviewer_dict(u) for u in users],
         "count": len(users),
@@ -2182,31 +2413,24 @@ class SemesterPrepInterviewSetupBody(BaseModel):
 async def list_semester_prep_interview_candidates(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(
-        require_role("admin", "deputy_education", "staff", "site_manager")
+        require_role(
+            "admin",
+            "deputy_education",
+            "deputy_education_director",
+            "staff",
+            "site_manager",
+            "admissions_officer",
+        )
     ),
 ):
-    """کارمندان اتوماسیون که می‌توانند مصاحبه‌گر مرحلهٔ مصاحبه‌ها باشند."""
+    """مصاحبه‌کنندگان فعال استخر پیش‌آماده‌سازی — همان منبع GET /interviewers."""
     from app.services.semester_prep_interview_setup_service import (
-        INTERVIEWER_CANDIDATE_ROLES,
+        interviewer_candidate_dict,
+        list_interviewer_pool_users,
     )
 
-    stmt = (
-        select(User)
-        .where(User.is_active.is_(True), User.role.in_(INTERVIEWER_CANDIDATE_ROLES))
-        .order_by(User.full_name_fa.asc(), User.username.asc())
-    )
-    users = (await db.execute(stmt)).scalars().all()
-    return {
-        "candidates": [
-            {
-                "id": str(u.id),
-                "full_name_fa": (u.full_name_fa or "").strip() or u.username,
-                "username": u.username,
-                "role": u.role,
-            }
-            for u in users
-        ]
-    }
+    users = await list_interviewer_pool_users(db)
+    return {"candidates": [interviewer_candidate_dict(u) for u in users]}
 
 
 @router.post("/semester-prep/interview-setup")
@@ -2214,13 +2438,16 @@ async def save_semester_prep_interview_setup(
     body: SemesterPrepInterviewSetupBody,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(
-        require_role("admin", "deputy_education", "staff", "site_manager")
+        require_role(
+            "admin",
+            "staff",
+            "internal_manager",
+        )
     ),
 ):
     """مرحلهٔ یکپارچهٔ «مصاحبه‌ها»: مصاحبه‌گرها + روز و ساعت، در یک ثبت.
 
-    فرم هر دو گام متادیتا را پر می‌کند، نوبت‌های قابل رزرو را می‌سازد و
-    فرایند را تا انتشار تقویم جلو می‌برد.
+    فقط مدیر داخلی / کارمند دفتر (و ادمین). معاون آموزش این مرحله را انجام نمی‌دهد.
     """
     from app.services.semester_prep_interview_setup_service import (
         apply_semester_prep_interview_setup,

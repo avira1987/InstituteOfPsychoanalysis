@@ -191,7 +191,7 @@ async def test_engine_restart_completed_instance(
     result = await engine.restart_process_instance(
         instance_id=test_process_instance.id,
         actor_id=sample_user.id,
-        actor_role="staff",
+        actor_role="deputy_education",
         reason="شروع مجدد پس از تکمیل",
         is_own_instance=False,
     )
@@ -201,6 +201,55 @@ async def test_engine_restart_completed_instance(
     old_row = await db_session.get(ProcessInstance, test_process_instance.id)
     assert old_row.is_cancelled is True
     assert old_row.is_completed is False
+
+
+@pytest.mark.asyncio
+async def test_engine_restart_staff_forbidden(
+    db_session: AsyncSession,
+    sample_user,
+    extra_session_instance: ProcessInstance,
+):
+    engine = StateMachineEngine(db_session)
+    with pytest.raises(UnauthorizedError, match="مجوز"):
+        await engine.restart_process_instance(
+            instance_id=extra_session_instance.id,
+            actor_id=sample_user.id,
+            actor_role="staff",
+            reason="تلاش کارمند",
+            is_own_instance=False,
+        )
+
+
+@pytest.mark.asyncio
+async def test_engine_rollback_staff_forbidden(
+    db_session: AsyncSession,
+    sample_user,
+    test_process_instance: ProcessInstance,
+):
+    engine = StateMachineEngine(db_session)
+    with pytest.raises(UnauthorizedError, match="مجوز"):
+        await engine.rollback_to_previous_state(
+            instance_id=test_process_instance.id,
+            actor_id=sample_user.id,
+            actor_role="staff",
+            reason="تلاش کارمند",
+        )
+
+
+@pytest.mark.asyncio
+async def test_engine_rollback_requires_reason_for_override(
+    db_session: AsyncSession,
+    sample_user,
+    test_process_instance: ProcessInstance,
+):
+    engine = StateMachineEngine(db_session)
+    with pytest.raises(InvalidTransitionError, match="دلیل"):
+        await engine.rollback_to_previous_state(
+            instance_id=test_process_instance.id,
+            actor_id=sample_user.id,
+            actor_role="admin",
+            reason="  ",
+        )
 
 
 @pytest.mark.asyncio
@@ -256,7 +305,7 @@ async def test_engine_restart_student_not_own_raises(
 
 
 @pytest.mark.asyncio
-async def test_api_restart_staff_success(
+async def test_api_restart_admin_success(
     db_session: AsyncSession,
     sample_user,
     extra_session_instance: ProcessInstance,
@@ -265,7 +314,7 @@ async def test_api_restart_staff_success(
         async with _client_for_user(db_session, sample_user) as client:
             r = await client.post(
                 f"/api/process/{extra_session_instance.id}/restart",
-                json={"reason": "از API", "confirm": True},
+                json={"reason": "از API مدیر", "confirm": True},
             )
         assert r.status_code == 200
         body = r.json()
@@ -273,6 +322,71 @@ async def test_api_restart_staff_success(
         assert body["old_instance_id"] == str(extra_session_instance.id)
         assert body["new_instance_id"] != body["old_instance_id"]
         assert body["current_state"] == "extra_request"
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.mark.asyncio
+async def test_api_restart_staff_forbidden(
+    db_session: AsyncSession,
+    sample_user,
+    extra_session_instance: ProcessInstance,
+):
+    sample_user.role = "staff"
+    sample_user.roles = ["staff"]
+    await db_session.commit()
+    try:
+        async with _client_for_user(db_session, sample_user) as client:
+            r = await client.post(
+                f"/api/process/{extra_session_instance.id}/restart",
+                json={"reason": "تلاش کارمند", "confirm": True},
+            )
+        assert r.status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.mark.asyncio
+async def test_api_rollback_staff_forbidden(
+    db_session: AsyncSession,
+    sample_user,
+    test_process_instance: ProcessInstance,
+):
+    sample_user.role = "staff"
+    sample_user.roles = ["staff"]
+    await db_session.commit()
+    try:
+        async with _client_for_user(db_session, sample_user) as client:
+            r = await client.post(
+                f"/api/process/{test_process_instance.id}/rollback",
+                json={"reason": "تلاش کارمند"},
+            )
+        assert r.status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.mark.asyncio
+async def test_api_rollback_deputy_success(
+    db_session: AsyncSession,
+    sample_user,
+    test_process_instance: ProcessInstance,
+):
+    sample_user.role = "deputy_education"
+    sample_user.roles = ["deputy_education"]
+    await db_session.commit()
+    try:
+        async with _client_for_user(db_session, sample_user) as client:
+            r = await client.post(
+                f"/api/process/{test_process_instance.id}/rollback",
+                json={"reason": "اصلاح اشتباه معاون"},
+            )
+        assert r.status_code == 200
+        assert r.json()["success"] is True
+        assert r.json()["trigger_event"] == "manual_rollback"
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)

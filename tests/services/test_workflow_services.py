@@ -45,12 +45,24 @@ class TestServiceAPortalNotifications:
         assert msgs and msgs[-1]["kind"] == "error" and msgs[-1]["text_fa"] == "خطا"
 
     async def test_schedule_installment_reminders_creates_records(self, db_session, sample_student):
+        from datetime import date, datetime
+
         instance = await _make_instance(db_session, sample_student)
         await _run(db_session, instance, [{"type": "schedule_installment_reminders", "installments": 4}])
         await db_session.refresh(sample_student)
         rems = [r for r in (sample_student.extra_data or {}).get("scheduled_reminders", []) if r["type"] == "installment"]
         assert len(rems) == 4
         assert all(r.get("installment_due_at") for r in rems)
+        # SOP: یک هفته قبل از سررسید
+        for r in rems:
+            due_raw = r["installment_due_at"]
+            remind_raw = r["due_at"]
+            if len(due_raw) <= 10:
+                due_d = date.fromisoformat(due_raw[:10])
+            else:
+                due_d = datetime.fromisoformat(due_raw.replace("Z", "+00:00")).date()
+            remind_d = datetime.fromisoformat(remind_raw.replace("Z", "+00:00")).date()
+            assert abs((due_d - remind_d).days - 7) <= 1
 
     async def test_send_to_dashboard_appends_feed(self, db_session, sample_student):
         instance = await _make_instance(db_session, sample_student)

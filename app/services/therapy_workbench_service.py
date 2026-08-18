@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.operational_models import AttendanceRecord, ProcessInstance, Student, TherapySession, User
+from app.core.user_roles import user_has_role
 from app.services.alocom_provision import (
     is_stub_therapy_meeting_url,
     is_tokenized_alocom_join_url,
@@ -475,6 +476,6 @@ async def assert_can_repair_student(
     if user.role == "therapist":
         if student.therapist_id != user.id:
             raise PermissionError("این دانشجو به شما منتسب نیست.")
-    elif user.role not in ("admin", "site_manager", "staff"):
+    elif not user_has_role(user, "staff", "site_manager", admin_bypass=True):
         raise PermissionError("مجوز تعمیر تقویم ندارید.")
     return student

@@ -364,7 +364,7 @@ class TestWinterSemesterPreparationFlow:
             ("course_list_reviewed", "course_committee"),
             ("courses_finalized", "course_committee"),
             ("marketing_started", "staff"),
-            ("interviewers_assigned", "deputy_education"),
+            ("interviewers_assigned", "staff"),
         ):
             result = await engine.execute_transition(
                 instance_id=instance.id,
@@ -406,7 +406,7 @@ class TestWinterSemesterPreparationFlow:
             ("course_list_reviewed", "course_committee"),
             ("courses_finalized", "course_committee"),
             ("marketing_started", "staff"),
-            ("interviewers_assigned", "deputy_education"),
+            ("interviewers_assigned", "staff"),
         ):
             result = await engine.execute_transition(
                 instance_id=instance.id,

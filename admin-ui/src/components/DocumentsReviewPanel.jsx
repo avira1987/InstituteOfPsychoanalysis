@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { processExecApi } from '../services/api'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { documentReviewDecisionMessageFa } from '../utils/documentReviewStates'
 import { useAuth } from '../contexts/AuthContext'
 import OperatorInstanceContextSummary from './OperatorInstanceContextSummary'
 import DecisionNotesBlock from './DecisionNotesBlock'
@@ -41,6 +42,7 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
   const [fieldDecision, setFieldDecision] = useState({})
   const [fieldNotes, setFieldNotes] = useState({})
   const [lightboxIndex, setLightboxIndex] = useState(null)
+  const [completionNotice, setCompletionNotice] = useState(null)
 
   const loadDetail = useCallback(
     async (instanceId) => {
@@ -70,8 +72,10 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
   )
 
   useEffect(() => {
-    if (selectedInstance) loadDetail(selectedInstance)
-    else {
+    if (selectedInstance) {
+      setCompletionNotice(null)
+      loadDetail(selectedInstance)
+    } else {
       setDetail(null)
       setTransitions([])
       setForms([])
@@ -131,6 +135,10 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
     if (!selectedInstance) return
     const triggerEvent = typeof transition === 'string' ? transition : transition.trigger_event
     const toState = typeof transition === 'object' ? transition.to_state : undefined
+    const queueRow = queue.find((q) => q.instance_id === selectedInstance)
+    const studentCodeDisplay = formatStudentCodeDisplay(
+      queueRow?.student_code || detail?.student_code,
+    )
     setActing(true)
     try {
       let payload = { ...notesPayload(decisionNotes), ...extraPayload }
@@ -142,7 +150,20 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
         ...(toState ? { to_state: toState } : {}),
       })
       if (res.data.success) {
-        showToast?.(`ثبت شد — وضعیت جدید: ${labelState(res.data.to_state)}`)
+        const message = documentReviewDecisionMessageFa({
+          triggerEvent,
+          studentCodeDisplay,
+          toStateLabel: labelState(res.data.to_state),
+        })
+        showToast?.(message)
+        setCompletionNotice({
+          kind: triggerEvent === 'documents_rejected' ? 'rejected' : 'approved',
+          title:
+            triggerEvent === 'documents_rejected'
+              ? 'نواقص مدارک ثبت شد'
+              : 'کار تأیید مدارک این دانشجو تمام شد',
+          message,
+        })
         setDecisionNotes('')
         setSelectedInstance(null)
         await onRefresh?.()
@@ -257,6 +278,26 @@ export default function DocumentsReviewPanel({ queue, onRefresh, showToast }) {
           </p>
         </div>
       </div>
+
+      {completionNotice && (
+        <div
+          className={`doc-review-done-banner ${completionNotice.kind === 'rejected' ? 'is-rejected' : 'is-approved'}`}
+          role="status"
+          data-testid="document-review-complete-banner"
+        >
+          <div className="doc-review-done-banner__body">
+            <div className="doc-review-done-banner__title">{completionNotice.title}</div>
+            <p>{completionNotice.message}</p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => setCompletionNotice(null)}
+          >
+            متوجه شدم
+          </button>
+        </div>
+      )}
 
       <div className="stats-grid" style={{ marginBottom: '1.25rem' }}>
         <div className="stat-card">

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { publicApi, studentApi } from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
 import StudentRegistrationExtendedFields from '../../components/StudentRegistrationExtendedFields'
+import InstituteActivityLicenseNotice from '../../components/InstituteActivityLicenseNotice'
 import {
   REGISTRATION_FIELD_LABELS,
   buildRegistrationProfilePayload,
@@ -282,6 +283,8 @@ export default function StudentRegistration({ mode = 'public', embedded = false,
         <form className="pub-register-form" onSubmit={handleSubmit} data-testid="register-form">
           <h2>اطلاعات ثبت‌نام</h2>
 
+          <InstituteActivityLicenseNotice />
+
           <div className="pub-form-row">
             <div className="pub-form-group">
               <label>شماره تماس *</label>
@@ -342,7 +345,7 @@ export default function StudentRegistration({ mode = 'public', embedded = false,
             <div className="pub-form-group">
               <label>نوع دوره *</label>
               <select name="course_type" value={form.course_type} onChange={handleChange} required>
-                <option value="introductory">دوره مقدماتی</option>
+                <option value="introductory">دوره آشنایی</option>
                 <option value="comprehensive">دوره جامع</option>
               </select>
             </div>

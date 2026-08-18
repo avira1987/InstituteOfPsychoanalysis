@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { courseCommitteeRosterApi, userApi } from '../services/api'
 
 const KIND_LABELS = {
@@ -8,7 +8,7 @@ const KIND_LABELS = {
 }
 
 function courseLabel(courseOptions, code) {
-  const hit = (courseOptions || []).find((c) => c.value === code)
+  const hit = (courseOptions || []).find((c) => String(c.value) === String(code))
   return hit?.label_fa || code
 }
 
@@ -21,58 +21,176 @@ function memberCourseCount(row) {
   return Array.isArray(row.authorized_courses) ? row.authorized_courses.length : 0
 }
 
+function courseOptionValue(opt) {
+  return String(typeof opt === 'object' ? (opt?.value ?? '') : opt)
+}
+
+function courseOptionLabel(opt) {
+  if (typeof opt === 'object') return opt.label_fa || opt.value || ''
+  return String(opt || '')
+}
+
+/**
+ * انتخاب چنددرس — نباید داخل <label> بیرونی قرار گیرد (باگ فقط‌گزینهٔ‌اول).
+ */
 function CourseCheckboxEditor({ courseOptions, selected, onChange }) {
-  if (!courseOptions.length) {
+  const uid = useId()
+  const [filter, setFilter] = useState('')
+
+  const selectedSet = useMemo(
+    () => new Set((selected || []).map((v) => String(v))),
+    [selected],
+  )
+
+  const uniqueOptions = useMemo(() => {
+    const seen = new Set()
+    const out = []
+    for (const opt of courseOptions || []) {
+      const v = courseOptionValue(opt)
+      if (!v || seen.has(v)) continue
+      seen.add(v)
+      out.push(opt)
+    }
+    return out
+  }, [courseOptions])
+
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    if (!q) return uniqueOptions
+    return uniqueOptions.filter((opt) =>
+      courseOptionLabel(opt).toLowerCase().includes(q),
+    )
+  }, [uniqueOptions, filter])
+
+  const toggle = useCallback(
+    (rawValue) => {
+      const v = String(rawValue)
+      if (!v) return
+      if (selectedSet.has(v)) {
+        onChange((selected || []).filter((x) => String(x) !== v))
+      } else {
+        onChange([...(selected || []), v])
+      }
+    },
+    [onChange, selected, selectedSet],
+  )
+
+  const selectAllFiltered = () => {
+    const next = new Set(selectedSet)
+    for (const opt of filtered) next.add(courseOptionValue(opt))
+    onChange([...next])
+  }
+
+  const clearFiltered = () => {
+    const drop = new Set(filtered.map(courseOptionValue))
+    onChange((selected || []).filter((x) => !drop.has(String(x))))
+  }
+
+  if (!uniqueOptions.length) {
     return (
       <p className="muted" style={{ margin: 0, fontSize: '0.8rem' }}>
         درسی برای این رسته در کاتالوگ نیست.
       </p>
     )
   }
+
   return (
     <div
+      role="group"
+      aria-label="انتخاب دروس مجاز"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '0.28rem',
-        maxHeight: 160,
-        overflowY: 'auto',
-        padding: '0.35rem 0.45rem',
-        border: '1px solid #e2e8f0',
-        borderRadius: 6,
-        background: '#fff',
-        minWidth: 200,
+        gap: '0.35rem',
+        minWidth: 220,
+        maxWidth: 420,
       }}
       data-testid="roster-course-checkbox-editor"
     >
-      {courseOptions.map((c) => {
-        const checked = selected.includes(c.value)
-        return (
-          <label
-            key={c.value}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              fontSize: '0.8rem',
-              cursor: 'pointer',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={() => {
-                if (checked) {
-                  onChange(selected.filter((v) => v !== c.value))
-                } else {
-                  onChange([...selected, c.value])
-                }
+      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          type="search"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="جست‌وجوی درس…"
+          aria-label="جست‌وجوی درس"
+          data-testid="roster-course-filter"
+          style={{
+            flex: '1 1 8rem',
+            minWidth: 0,
+            fontSize: '0.8rem',
+            padding: '0.28rem 0.45rem',
+            border: '1px solid #cbd5e1',
+            borderRadius: 6,
+          }}
+        />
+        <button type="button" className="btn btn-sm btn-outline" onClick={selectAllFiltered}>
+          همه
+        </button>
+        <button type="button" className="btn btn-sm btn-outline" onClick={clearFiltered}>
+          پاک کردن
+        </button>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.2rem',
+          maxHeight: 220,
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          padding: '0.35rem 0.45rem',
+          border: '1px solid #e2e8f0',
+          borderRadius: 6,
+          background: '#fff',
+          position: 'relative',
+          zIndex: 2,
+        }}
+      >
+        {filtered.map((c, idx) => {
+          const v = courseOptionValue(c)
+          const checked = selectedSet.has(v)
+          const inputId = `${uid}-course-${idx}-${v}`
+          return (
+            <label
+              key={v}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontSize: '0.8rem',
+                padding: '0.12rem 0',
+                cursor: 'pointer',
+                userSelect: 'none',
+                margin: 0,
+                lineHeight: 1.4,
               }}
-            />
-            <span>{c.label_fa}</span>
-          </label>
-        )
-      })}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <input
+                id={inputId}
+                type="checkbox"
+                checked={checked}
+                onChange={() => toggle(v)}
+                onClick={(e) => e.stopPropagation()}
+                style={{ flexShrink: 0, cursor: 'pointer' }}
+              />
+              <span>{courseOptionLabel(c)}</span>
+            </label>
+          )
+        })}
+        {!filtered.length && (
+          <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>
+            درسی با این جست‌وجو نیست.
+          </p>
+        )}
+      </div>
+      <p className="muted" style={{ margin: 0, fontSize: '0.72rem' }}>
+        {selectedSet.size.toLocaleString('fa-IR')} از {uniqueOptions.length.toLocaleString('fa-IR')} درس انتخاب شده
+      </p>
     </div>
   )
 }
@@ -174,10 +292,17 @@ function MemberTable({
 
   const remove = async (row) => {
     const name = memberName(row)
-    if (!name) return
-    if (!window.confirm(`«${name}» از چارت این رسته حذف شود؟`)) return
+    if (!name && !row.user_id && !row.roster_key) return
+    const label = name || row.label_fa || 'این عضو'
+    if (!window.confirm(`«${label}» از چارت این رسته حذف شود؟`)) return
     try {
-      await courseCommitteeRosterApi.deleteMember({ track, kind, name_fa: name })
+      await courseCommitteeRosterApi.deleteMember({
+        track,
+        kind,
+        name_fa: name || '',
+        ...(row.user_id ? { user_id: row.user_id } : {}),
+        ...(row.roster_key ? { roster_key: row.roster_key } : {}),
+      })
       showToast?.('عضو از چارت حذف شد.')
       onDeleted?.()
     } catch (e) {
@@ -216,7 +341,14 @@ function MemberTable({
                 return (
                   <tr key={`${kind}-${key}`}>
                     <td>{row.label_fa || row.name_fa}</td>
-                    <td style={{ minWidth: 260 }}>
+                    <td
+                      style={{
+                        minWidth: 280,
+                        position: isEditing ? 'relative' : undefined,
+                        zIndex: isEditing ? 5 : undefined,
+                        background: isEditing ? '#fff' : undefined,
+                      }}
+                    >
                       {isEditing ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                           <CourseCheckboxEditor
@@ -608,6 +740,7 @@ export default function CourseCommitteeRosterPanel({ showToast, embedded = true,
             <select value={addKind} onChange={(e) => setAddKind(e.target.value)}>
               <option value="teaching_assistant">{KIND_LABELS.teaching_assistant}</option>
               <option value="instructor">{KIND_LABELS.instructor}</option>
+              <option value="educational_instructor">{KIND_LABELS.educational_instructor}</option>
             </select>
           </label>
         </div>
@@ -665,16 +798,16 @@ export default function CourseCommitteeRosterPanel({ showToast, embedded = true,
           </div>
         )}
 
-        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.55rem' }}>
-          دروس مجاز
-          <div style={{ marginTop: '0.35rem', maxWidth: 420 }}>
+        <div style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.55rem' }}>
+          <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>دروس مجاز</div>
+          <div style={{ maxWidth: 420 }}>
             <CourseCheckboxEditor
               courseOptions={addTrackCourses}
               selected={addCourses}
               onChange={setAddCourses}
             />
           </div>
-        </label>
+        </div>
 
         <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy ? 'در حال ثبت…' : 'ثبت در چارت'}

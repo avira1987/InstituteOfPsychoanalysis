@@ -73,9 +73,16 @@ export default function FinancialDashboard() {
   const [txData, setTxData] = useState(null)
   const [txPage, setTxPage] = useState(1)
   const [txType, setTxType] = useState('')
+  const [txCategory, setTxCategory] = useState('')
   const [txQ, setTxQ] = useState('')
   const [txQDebounced, setTxQDebounced] = useState('')
   const [txLoading, setTxLoading] = useState(false)
+
+  const [voucherData, setVoucherData] = useState(null)
+  const [voucherPage, setVoucherPage] = useState(1)
+  const [voucherStatus, setVoucherStatus] = useState('')
+  const [voucherLoading, setVoucherLoading] = useState(false)
+  const [voucherBusyId, setVoucherBusyId] = useState(null)
 
   const [gapDays, setGapDays] = useState('25')
   const [countOptsStr, setCountOptsStr] = useState('2, 3, 4')
@@ -326,12 +333,44 @@ export default function FinancialDashboard() {
         page: txPage,
         page_size: 20,
         record_type: txType || undefined,
+        ledger_category: txCategory || undefined,
         q: txQDebounced || undefined,
       })
       .then((r) => setTxData(r.data))
       .catch((e) => setErr(e.response?.data?.detail || e.message))
       .finally(() => setTxLoading(false))
-  }, [txPage, txType, txQDebounced])
+  }, [txPage, txType, txCategory, txQDebounced])
+
+  useEffect(() => {
+    setVoucherLoading(true)
+    financeApi
+      .tuitionVouchers({
+        page: voucherPage,
+        page_size: 20,
+        status: voucherStatus || undefined,
+      })
+      .then((r) => setVoucherData(r.data))
+      .catch((e) => setErr(e.response?.data?.detail || e.message))
+      .finally(() => setVoucherLoading(false))
+  }, [voucherPage, voucherStatus])
+
+  const markVoucherPosted = async (id) => {
+    setVoucherBusyId(id)
+    setErr(null)
+    try {
+      await financeApi.patchTuitionVoucher(id, { accounting_status: 'posted' })
+      const r = await financeApi.tuitionVouchers({
+        page: voucherPage,
+        page_size: 20,
+        status: voucherStatus || undefined,
+      })
+      setVoucherData(r.data)
+    } catch (e) {
+      setErr(e.response?.data?.detail || e.message)
+    } finally {
+      setVoucherBusyId(null)
+    }
+  }
 
   const handleExport = async () => {
     setExporting(true)
@@ -456,10 +495,11 @@ export default function FinancialDashboard() {
             </p>
           ) : null}
           <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.75 }}>
-            فیلدهای <strong>شهریه و مصاحبهٔ ترم</strong> و <strong>سایر پیش‌فرض‌های پرداخت</strong> با فرم
-            آماده‌سازی ترم پاییز یکسان‌اند. مبالغ پیش‌فرض هر جلسهٔ <strong>کلاس</strong> و{' '}
-            <strong>دورهٔ جلسه‌ای</strong> در زمینهٔ پرداخت جلسات درمان به‌صورت مرجع (راهنما) به پنل دانشجو
-            اضافه می‌شود؛ مبلغ واقعی هر فرایند ممکن است در همان فرایند ست شود.
+            فیلدهای <strong>شهریه و مصاحبهٔ ترم</strong> و پیش‌فرض‌های درمان با فرم آماده‌سازی ترم پاییز
+            یکسان‌اند. <strong>فاکتور پشتیبان ثبت‌نام</strong> و پیش‌فرض هر جلسهٔ <strong>کلاس</strong> و{' '}
+            <strong>دورهٔ جلسه‌ای</strong> فقط از همین پنل مالی ویرایش می‌شوند؛ مبلغ کلاس/دوره در زمینهٔ
+            پرداخت جلسات درمان به‌صورت مرجع (راهنما) به پنل دانشجو اضافه می‌شود و مبلغ واقعی هر فرایند ممکن است
+            در همان فرایند ست شود.
             {extraSessionTomanHint != null && (
               <span>
                 {' '}
@@ -865,6 +905,23 @@ export default function FinancialDashboard() {
               ))}
             </select>
           </div>
+          <div className="form-group" style={{ marginBottom: 0, minWidth: '160px' }}>
+            <label className="form-label">کیف‌پول / دسته</label>
+            <select
+              className="form-input"
+              value={txCategory}
+              onChange={(e) => {
+                setTxPage(1)
+                setTxCategory(e.target.value)
+              }}
+            >
+              <option value="">همه</option>
+              <option value="therapy">درمان آموزشی</option>
+              <option value="supervision">سوپرویژن</option>
+              <option value="tuition">شهریه</option>
+              <option value="other">سایر</option>
+            </select>
+          </div>
           <div className="form-group" style={{ marginBottom: 0, flex: '1 1 220px' }}>
             <label className="form-label">جستجو (کد، نام، شرح)</label>
             <input
@@ -913,6 +970,85 @@ export default function FinancialDashboard() {
             {paginate(txData.page, txData.pages, setTxPage)}
             <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               مجموع {txData.total?.toLocaleString('fa-IR')} تراکنش مطابق فیلتر
+            </p>
+          </>
+        )}
+      </FinancePanel>
+
+      <FinancePanel title="اسناد شهریه (حسابداری)" defaultOpen>
+        <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.7 }}>
+          پرداخت‌های شهریه که پس از ثبت‌نام ترم در سیستم ثبت شده‌اند. دکمه «ثبت شد در حسابداری» فقط وضعیت نمایشی برای تطبیق با دفتر رسمی است؛ خروجی CSV همچنان برای انتقال به نرم‌افزار حسابداری در دسترس است.
+        </p>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }}>
+          <label style={{ fontSize: '0.85rem' }}>
+            وضعیت:{' '}
+            <select
+              className="form-input"
+              style={{ display: 'inline-block', width: 'auto', minWidth: '8rem' }}
+              value={voucherStatus}
+              onChange={(e) => { setVoucherStatus(e.target.value); setVoucherPage(1) }}
+            >
+              <option value="">همه</option>
+              <option value="pending">در انتظار ثبت دفتر</option>
+              <option value="posted">ثبت‌شده در حسابداری</option>
+            </select>
+          </label>
+        </div>
+        {voucherLoading && <div className="loading-spinner" style={{ margin: '1rem auto' }} />}
+        {!voucherLoading && voucherData && (
+          <>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>تاریخ</th>
+                    <th>کد</th>
+                    <th>نام</th>
+                    <th style={{ textAlign: 'left' }}>مبلغ</th>
+                    <th>بابت</th>
+                    <th>وضعیت</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {(voucherData.items || []).length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ color: 'var(--text-secondary)' }}>سندی یافت نشد.</td>
+                    </tr>
+                  ) : (
+                    (voucherData.items || []).map((row) => (
+                      <tr key={row.id}>
+                        <td style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{fmtDate(row.created_at)}</td>
+                        <td style={{ direction: 'ltr', fontSize: '0.85rem' }}>{row.student_code}</td>
+                        <td>{row.student_name_fa || '—'}</td>
+                        <td style={{ textAlign: 'left', fontWeight: 600 }}>{fmtMoney(row.amount)}</td>
+                        <td style={{ maxWidth: '280px', fontSize: '0.85rem' }}>{row.description_fa || '—'}</td>
+                        <td>
+                          <span className={`badge badge-tight ${row.accounting_status === 'posted' ? 'badge-success' : 'badge-warning'}`}>
+                            {row.accounting_status === 'posted' ? 'ثبت‌شده' : 'در انتظار'}
+                          </span>
+                        </td>
+                        <td>
+                          {row.accounting_status !== 'posted' && (
+                            <button
+                              type="button"
+                              className="btn btn-outline btn-sm"
+                              disabled={voucherBusyId === row.id}
+                              onClick={() => markVoucherPosted(row.id)}
+                            >
+                              {voucherBusyId === row.id ? '…' : 'ثبت شد در حسابداری'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {paginate(voucherData.page, voucherData.pages, setVoucherPage)}
+            <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              مجموع {(voucherData.total || 0).toLocaleString('fa-IR')} سند شهریه
             </p>
           </>
         )}

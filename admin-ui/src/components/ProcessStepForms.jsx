@@ -23,9 +23,6 @@ import {
   formatShamsiTehran,
 } from '../utils/shamsiDateTime'
 
-/** جلوگیری از ارسال دوبارهٔ OTP خودکار پس از remount همان پرونده */
-const autoOtpSentInstanceIds = new Set()
-
 /** پیش‌نمایش کوچک آپلود فایل مرحله با لایت‌باکس بزرگ‌نمایی */
 function StepFilePreviewThumb({ label, src, mime, fileName }) {
   const [open, setOpen] = useState(false)
@@ -158,7 +155,7 @@ function TherapistSelectField({ id, field, value, onChange, disabled }) {
   )
 }
 
-function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUploadError, contextData, lockedInPartialMode, fileUploadBlocked }) {
+function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUploadError, contextData, lockedInPartialMode, fileUploadBlocked, autoRequestOtp = false }) {
   const t = field.type || 'text'
   const name = field.name
   const id = `pf-${name}`
@@ -578,6 +575,7 @@ function FieldRow({ field, values, onFieldChange, disabled, instanceId, onUpload
         required={!!field.required}
         verified={!!values.step_otp_verified}
         onVerifiedChange={(v) => onFieldChange('step_otp_verified', v)}
+        autoRequest={!!autoRequestOtp}
       />
     )
   }
@@ -720,7 +718,6 @@ export default function ProcessStepForms({
   currentState = null,
 }) {
   const [uploadErr, setUploadErr] = useState(null)
-  const autoOtpSentRef = useRef(false)
   const onFieldChangeRef = useRef(onFieldChange)
   onFieldChangeRef.current = onFieldChange
 
@@ -754,40 +751,13 @@ export default function ProcessStepForms({
     if (typeof setField === 'function') setField('step_otp_verified', true)
   }, [hasStepOtpField, otpAlreadyVerified, values?.step_otp_verified])
 
-  // با تیک تأیید قوانین، یک‌بار OTP خودکار ارسال شود (نه بعد از تأیید یا آپلود)
+  // برداشتن تیک قوانین، تأیید OTP همین مرحله را هم باطل می‌کند
   useEffect(() => {
-    if (!instanceId || !hasStepOtpField || !gateKeyEarly) return
-    if (!rulesAccepted) {
-      autoOtpSentRef.current = false
-      autoOtpSentInstanceIds.delete(instanceId)
-      if (values?.step_otp_verified && typeof onFieldChangeRef.current === 'function') {
-        onFieldChangeRef.current('step_otp_verified', false)
-      }
-      return
+    if (!hasStepOtpField || !gateKeyEarly || rulesAccepted) return
+    if (values?.step_otp_verified && typeof onFieldChangeRef.current === 'function') {
+      onFieldChangeRef.current('step_otp_verified', false)
     }
-    if (otpAlreadyVerified || values?.step_otp_verified) {
-      autoOtpSentRef.current = true
-      autoOtpSentInstanceIds.add(instanceId)
-      return
-    }
-    if (autoOtpSentRef.current || autoOtpSentInstanceIds.has(instanceId)) return
-    if (disabled) return
-    autoOtpSentRef.current = true
-    autoOtpSentInstanceIds.add(instanceId)
-    processExecApi.requestStudentStepOtp(instanceId).catch(() => {
-      // کاربر می‌تواند از دکمه «ارسال کد» دوباره بفرستد
-      autoOtpSentRef.current = false
-      autoOtpSentInstanceIds.delete(instanceId)
-    })
-  }, [
-    instanceId,
-    hasStepOtpField,
-    gateKeyEarly,
-    rulesAccepted,
-    disabled,
-    otpAlreadyVerified,
-    values?.step_otp_verified,
-  ])
+  }, [hasStepOtpField, gateKeyEarly, rulesAccepted, values?.step_otp_verified])
 
   if (list.length === 0) return null
 
@@ -877,6 +847,7 @@ export default function ProcessStepForms({
                   contextData={contextData}
                   lockedInPartialMode={lockedInPartial(field)}
                   fileUploadBlocked={uploadsBlockedByRules}
+                  autoRequestOtp={rulesAccepted}
                 />
               ))}
             </div>

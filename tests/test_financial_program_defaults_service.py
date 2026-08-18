@@ -54,9 +54,9 @@ def test_extract_term_tuition_patch_from_context():
     assert patch["interview_fee_introductory"] == 6_000_000
     assert patch["registration_interview_fee_rial"] == 6_000_000
     assert "interview_fee_comprehensive" not in patch
-    assert patch["registration_tuition_invoice_toman"] == 95_000_000.0
+    assert "registration_tuition_invoice_toman" not in patch
     assert patch["start_therapy_first_session_fee_rial"] == 11_000_000
     assert patch["extra_session_fee_rial"] == 8_000_000
     assert patch["default_therapy_session_fee_toman"] == 550_000.0
-    assert patch["class_session_fee_toman"] == 0.0
-    assert patch["course_session_fee_toman"] == 120_000.0
+    assert "class_session_fee_toman" not in patch
+    assert "course_session_fee_toman" not in patch
