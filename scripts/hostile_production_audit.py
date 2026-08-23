@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.audit_process_implementation import (  # noqa: E402
+    action_registry,
     audit_process,
     build_covered_roles,
     load_defined_rules,
@@ -20,7 +21,6 @@ from scripts.audit_process_implementation import (  # noqa: E402
 
 PROCESSES_DIR = ROOT / "metadata" / "processes"
 PORTAL_MAP = ROOT / "metadata" / "portal_role_assigned_role_map.json"
-ACTION_HANDLER = ROOT / "app" / "services" / "action_handler.py"
 
 # Daily-critical for an educational institute (hostile prioritization)
 CRITICAL = frozenset({
@@ -58,14 +58,28 @@ NOOP_ACTION_PATTERNS = re.compile(
 
 
 def load_noop_actions() -> set[str]:
-    text = ACTION_HANDLER.read_text(encoding="utf-8")
+    """Handler names whose body only reports a no-op instead of doing work.
+
+    Reads each handler's source through `inspect`, so it stays correct however
+    ActionHandler is split across modules.
+    """
+    import inspect
+
+    from app.services.action_handler import ActionHandler
+
     noops: set[str] = set()
-    for m in re.finditer(r"async def (_handle_\w+).*?(?=async def _handle_|\n    _registry)", text, re.S):
-        body = m.group(0)
-        if NOOP_ACTION_PATTERNS.search(body) or 'return f"lms_noop' in body or 'return "skip"' in body:
-            hm = re.match(r"async def (_handle_\w+)", body)
-            if hm:
-                noops.add(hm.group(1))
+    for handler in set(ActionHandler._registry.values()):
+        try:
+            body = inspect.getsource(handler)
+        except (OSError, TypeError):
+            continue
+        if (
+            NOOP_ACTION_PATTERNS.search(body)
+            or 'return f"lms_noop' in body
+            or 'return "skip"' in body
+        ):
+            noops.add(getattr(handler, "__name__", ""))
+    noops.discard("")
     return noops
 
 
@@ -74,15 +88,7 @@ def handler_for_action(action_type: str, registry: dict[str, str]) -> str:
 
 
 def build_registry() -> dict[str, str]:
-    text = ACTION_HANDLER.read_text(encoding="utf-8")
-    m = re.search(r"_registry\s*=\s*\{(.*?)\n    \}", text, re.S)
-    reg: dict[str, str] = {}
-    if m:
-        for line in m.group(1).splitlines():
-            lm = re.match(r'\s*"([^"]+)"\s*:\s*(_handle_\w+)\s*,?', line)
-            if lm:
-                reg[lm.group(1)] = lm.group(2)
-    return reg
+    return action_registry()
 
 
 def stuck_states(pj: dict) -> list[str]:
@@ -183,7 +189,7 @@ def classify(pj: dict, impl: dict, stuck: list[str], reg: dict[str, str], noop_h
 
 
 def main() -> int:
-    real, stub = parse_action_registry(ACTION_HANDLER)
+    real, stub = parse_action_registry()
     defined = load_defined_rules(ROOT / "metadata" / "rules" / "all_rules.json")
     covered = build_covered_roles(PORTAL_MAP)
     norm = json.loads(PORTAL_MAP.read_text(encoding="utf-8")).get("normalize_assigned_role_typo") or {}

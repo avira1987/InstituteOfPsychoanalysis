@@ -1,0 +1,247 @@
+{
+  "version": 1,
+  "description": "Declarative inter-process wiring. Each link is one directed edge of the process graph. The engine never hardcodes these; it calls app.core.chaining.dispatch_chaining and this file decides what runs. Array order is execution order within a phase.",
+  "schema": {
+    "id": "unique link id",
+    "phase": "on_start | after_transition",
+    "from_process": "process code or list of codes that triggers this link",
+    "from_state": "optional source state matcher (after_transition only)",
+    "to_state": "optional destination state matcher (after_transition only)",
+    "trigger": "optional trigger_event matcher (after_transition only)",
+    "requires_completed": "when true, only fires if the instance is now completed",
+    "to_process": "process code(s) this edge feeds; documentation and graph analysis only",
+    "mode": "start | advance | complete | propagate | sync (documentation only)",
+    "handler": "name registered via @chaining_handler in app.services.chaining.handlers",
+    "flush_before": "flush the DB session before invoking the handler",
+    "refetch_instance": "reload the instance after the handler so later links see fresh state",
+    "enabled": "set false to disable a link without deleting it"
+  },
+  "links": [
+    {
+      "id": "therapy_changes.on_start.propagate_to_parent",
+      "phase": "on_start",
+      "from_process": "therapy_changes",
+      "to_process": ["start_therapy", "session_payment"],
+      "mode": "propagate",
+      "handler": "therapy_changes.propagate_on_start",
+      "flush_before": true,
+      "description": "Mark the parent therapy process as having a pending change request."
+    },
+    {
+      "id": "leave.on_start.advance_non_registration",
+      "phase": "on_start",
+      "from_process": ["educational_leave", "full_education_leave"],
+      "to_process": ["student_non_registration"],
+      "mode": "advance",
+      "handler": "student_non_registration.advance_on_leave_start",
+      "flush_before": true,
+      "description": "Taking leave resolves an open non-registration follow-up."
+    },
+    {
+      "id": "therapy_completion.on_start.snapshot",
+      "phase": "on_start",
+      "from_process": "therapy_completion",
+      "mode": "sync",
+      "handler": "therapy_completion.persist_snapshot",
+      "flush_before": true,
+      "description": "Freeze session/hour counters at completion-request time."
+    },
+    {
+      "id": "ta_to_assistant_faculty.on_start.propagate",
+      "phase": "on_start",
+      "from_process": "ta_to_assistant_faculty",
+      "mode": "sync",
+      "handler": "ta_to_assistant_faculty.propagate_on_start",
+      "flush_before": true,
+      "description": "Seed the instance context from the TA's course-completion record."
+    },
+    {
+      "id": "return_to_full_education.on_start.propagate",
+      "phase": "on_start",
+      "from_process": "return_to_full_education",
+      "to_process": ["full_education_leave"],
+      "mode": "propagate",
+      "handler": "return_to_full_education.propagate_on_start",
+      "flush_before": true,
+      "description": "Link the return request back to the originating full-education leave."
+    },
+    {
+      "id": "full_education_leave.on_start.propagate",
+      "phase": "on_start",
+      "from_process": "full_education_leave",
+      "mode": "sync",
+      "handler": "full_education_leave.propagate_on_start",
+      "flush_before": true,
+      "description": "Seed leave context from the student's active therapy/supervision records."
+    },
+    {
+      "id": "introductory_term_end.on_start.auto_advance",
+      "phase": "on_start",
+      "from_process": "introductory_term_end",
+      "mode": "advance",
+      "handler": "introductory_term_end.advance_on_start",
+      "flush_before": true,
+      "refetch_instance": true,
+      "description": "Scheduler-started term end auto-advances past states that need no human input."
+    },
+
+    {
+      "id": "introductory_course_registration.after.chain",
+      "phase": "after_transition",
+      "from_process": "introductory_course_registration",
+      "to_process": ["session_payment", "start_therapy", "lesson_start_per_term"],
+      "mode": "advance",
+      "handler": "introductory_registration.chain",
+      "refetch_instance": true,
+      "description": "Per-state fan-out for the registration funnel (interview, documents, payment)."
+    },
+    {
+      "id": "lesson_start_per_term.after.chain",
+      "phase": "after_transition",
+      "from_process": "lesson_start_per_term",
+      "to_process": ["class_attendance", "attendance_tracking"],
+      "mode": "advance",
+      "handler": "lesson_start.chain",
+      "refetch_instance": true,
+      "description": "Roll term lesson start forward and open attendance tracking."
+    },
+    {
+      "id": "ta_track_change.after.chain",
+      "phase": "after_transition",
+      "from_process": "ta_track_change",
+      "to_process": ["ta_track_completion"],
+      "mode": "advance",
+      "handler": "ta_track_change.chain",
+      "refetch_instance": true,
+      "description": "Apply track switch side effects and re-point the TA's track record."
+    },
+    {
+      "id": "introductory_course_registration.complete.start_followup",
+      "phase": "after_transition",
+      "from_process": "introductory_course_registration",
+      "to_state": "registration_complete",
+      "requires_completed": true,
+      "to_process": ["start_therapy", "lesson_start_per_term"],
+      "mode": "start",
+      "handler": "student_service.followup_after_intro_registration",
+      "description": "Registration complete opens the student's next actionable process."
+    },
+    {
+      "id": "start_therapy.active.start_session_payment",
+      "phase": "after_transition",
+      "from_process": "start_therapy",
+      "to_state": "therapy_active",
+      "requires_completed": true,
+      "to_process": ["session_payment"],
+      "mode": "start",
+      "handler": "student_service.session_payment_after_start_therapy",
+      "description": "Active therapy opens the recurring session payment process."
+    },
+    {
+      "id": "return_to_full_education.therapy_completed.branch",
+      "phase": "after_transition",
+      "from_process": "return_to_full_education",
+      "to_state": "therapy_completed",
+      "to_process": ["session_payment"],
+      "mode": "advance",
+      "handler": "return_to_full_education.branch_after_therapy_payment",
+      "refetch_instance": true,
+      "description": "Choose the post-therapy branch once the return payment settles."
+    },
+    {
+      "id": "return_to_full_education.registration_unlocked.finalize",
+      "phase": "after_transition",
+      "from_process": "return_to_full_education",
+      "to_state": "registration_unlocked",
+      "mode": "complete",
+      "handler": "return_to_full_education.finalize_registration_unlock",
+      "refetch_instance": true,
+      "description": "Clear the registration gate and close the return process."
+    },
+    {
+      "id": "full_education_leave.therapist_assignment.maybe_skip",
+      "phase": "after_transition",
+      "from_process": "full_education_leave",
+      "to_state": "therapist_assignment",
+      "mode": "advance",
+      "handler": "full_education_leave.maybe_skip_therapist_assignment",
+      "refetch_instance": true,
+      "description": "Skip therapist assignment when the student has no active therapist."
+    },
+    {
+      "id": "session_payment.confirmed.repoint_primary",
+      "phase": "after_transition",
+      "from_process": "session_payment",
+      "to_state": "payment_confirmed",
+      "requires_completed": true,
+      "mode": "sync",
+      "handler": "student_service.repoint_primary_after_session_payment",
+      "description": "Move the student's primary instance pointer off the finished payment."
+    },
+    {
+      "id": "therapy_completion.terminal.repoint_primary",
+      "phase": "after_transition",
+      "from_process": "therapy_completion",
+      "to_state": ["therapy_completed", "conditions_not_met"],
+      "requires_completed": true,
+      "mode": "sync",
+      "handler": "student_service.repoint_primary_after_therapy_completion",
+      "description": "Move the student's primary instance pointer off the finished therapy."
+    },
+    {
+      "id": "therapy_changes.after.propagate_to_parent",
+      "phase": "after_transition",
+      "from_process": "therapy_changes",
+      "to_process": ["start_therapy", "session_payment", "attendance_tracking"],
+      "mode": "propagate",
+      "handler": "therapy_changes.propagate_completed",
+      "description": "Push approved schedule/therapist changes back into the parent therapy records."
+    },
+    {
+      "id": "student_non_registration.after.chain",
+      "phase": "after_transition",
+      "from_process": "student_non_registration",
+      "to_process": ["educational_leave", "violation_registration"],
+      "mode": "advance",
+      "handler": "student_non_registration.chain",
+      "refetch_instance": true,
+      "description": "Route the non-registration outcome to leave or violation."
+    },
+    {
+      "id": "intern_bulk_patient_referral.after.chain",
+      "phase": "after_transition",
+      "from_process": "intern_bulk_patient_referral",
+      "to_process": ["patient_referral"],
+      "mode": "start",
+      "handler": "intern_bulk_patient_referral.chain",
+      "refetch_instance": true,
+      "description": "Fan a bulk referral batch out into individual patient referrals."
+    },
+    {
+      "id": "ta_to_assistant_faculty.after.chain",
+      "phase": "after_transition",
+      "from_process": "ta_to_assistant_faculty",
+      "mode": "sync",
+      "handler": "ta_to_assistant_faculty.chain",
+      "description": "Apply role promotion and record updates per state."
+    },
+    {
+      "id": "upgrade_to_ta.after.chain",
+      "phase": "after_transition",
+      "from_process": "upgrade_to_ta",
+      "to_process": ["ta_track_completion"],
+      "mode": "sync",
+      "handler": "upgrade_to_ta.chain",
+      "description": "Grant the TA role and open the track record on approval."
+    },
+    {
+      "id": "term_registration.after.advance_non_registration",
+      "phase": "after_transition",
+      "from_process": ["comprehensive_term_start", "intro_second_semester_registration"],
+      "to_process": ["student_non_registration"],
+      "mode": "advance",
+      "handler": "student_non_registration.advance_on_term_registration",
+      "description": "Registering for a term resolves an open non-registration follow-up."
+    }
+  ]
+}

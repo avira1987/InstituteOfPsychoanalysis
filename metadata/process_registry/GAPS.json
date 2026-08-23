@@ -1,9 +1,11 @@
 {
-  "version": "2.3",
-  "last_updated": "2026-08-09",
+  "version": "2.4",
+  "last_updated": "2026-08-23",
   "description": "وضعیت فنی نسبت به اتوماسیون — هم‌خوان با کد (ActionHandler، SLA، calendar_triggers، process_scheduler، موتور)",
   "architecture_notes": {
-    "transition_actions": "اکشن‌های تعریف‌شده روی ترنزیشن‌ها توسط app/services/action_handler.py اجرا می‌شوند (مستقیم از StateMachineEngine پس از apply_transition).",
+    "transition_actions": "اکشن‌های تعریف‌شده روی ترنزیشن‌ها توسط ActionHandler اجرا می‌شوند (مستقیم از StateMachineEngine پس از apply_transition). پیاده‌سازی‌ها در app/services/actions/ به تفکیک دامنه‌اند (notifications، process_control، sessions، therapy، attendance، payments، supervision، records)؛ هر ماژول یک mixin و یک REGISTRY می‌دهد و app/services/action_handler.py فقط حلقهٔ dispatch و ترکیب رجیستری است (۱۴۳ خط).",
+    "inter_process_wiring": "سیم‌کشی بین فرایندها دیگر در engine.py کد نشده است. هر یال در metadata/wiring/process_links.json تعریف می‌شود و app/core/chaining.py آن را به هندلر نام‌دار در app/services/chaining/handlers.py می‌سپارد. افزودن یال جدید نیازی به ویرایش هستهٔ موتور ندارد. هر یال جدا ایزوله است؛ خطای یک یال ترنزیشن موفق را برنمی‌گرداند.",
+    "ci_metadata_guards": "سه اعتبارسنج ساختاری در CI (job metadata-integrity) بدون نیاز به DB: scripts/validate_action_coverage.py (هر action.type باید هندلر داشته باشد؛ به seed_all هم وصل است)، scripts/validate_process_graph.py (بن‌بست، دسترسی‌ناپذیری، نبود state پایانی)، و تست‌های tests/core/test_chaining_wiring.py + tests/meta/. استثناهای پذیرفته‌شده با دلیل نوشتاری در ALLOWED_DEAD_ENDS / ALLOWED_UNREACHABLE و در هر اجرا چاپ می‌شوند.",
     "workflow_services": "۶۹ اکشنی که پیش‌تر به استاب لاگ‌محور _handle_external_integration می‌رفتند، اکنون به سرویس‌های واقعی در app/services/workflow/ واگذار می‌شوند (A: portal_notifications, B: lms_service, C: document_service, D: evaluation_records, E: capacity_service, F: calendar_service, G: registration_gate, H: role_promotion, I: termination_records). این سرویس‌ها حالت واقعی را روی Student.extra_data / ProcessInstance.context_data و ستون‌های واقعی (مثل User.role, is_active) می‌نویسند؛ نیازی به مهاجرت اسکیما نیست. ممیزی در context_data.integration_events حفظ شده است.",
     "lms_actions": "اکشن‌های «LMS» اکنون توسط app/services/workflow/lms_service.py روی Student.extra_data['lms'] (enrolled_courses, course_links, track_progress, access_flags, supervision_blocks, attendance_enabled, online_links, pause_dates) اعمال می‌شوند؛ POST به LMS_INTEGRATION_WEBHOOK_URL همچنان اختیاری و افزایه است.",
     "multi_branch_triggers": "اگر چند ترنزیشن با یک trigger_event وجود دارد، موتور اولین شاخه‌ای را اجرا می‌کند که قوانینش pass شود (به‌ترتیب priority).",
@@ -61,10 +63,26 @@
     "SMS conditional_therapy_deadline_after_registration پس از registration_complete.",
     "POST /students/me/conditional-therapy/ensure-start + فیلدهای admission در /students/me.",
     "کارت UI مشروط در داشبورد دانشجو + بنر در StudentStartTherapyPanel.",
+    "پس از نتیجهٔ مصاحبه پذیرش مشروط (۱ تا ۵ درس): متن ثابت «امکان ثبت نام در ترم دوم پس از آغاز درمان آموزشی» در پنل دانشجو.",
+    "تک‌درس: start_therapy ساخته/نمایش/ثبت نمی‌شود؛ reconcile نمونهٔ سرگردان را لغو می‌کند.",
+    "مشروط: تا قبل از ترم دوم اختیاری است؛ گیت intro_second + API در صورت نبود درمانگر فعال.",
     "introductory_term_end auto-advance تا therapy_condition_check؛ گیت next_term_registration_blocked روی شروع intro_second.",
     "tests/services/test_conditional_therapy_admission.py"
   ],
+  "resolved_foundation_2026_08": [
+    "سیم‌کشی داده‌محور: ۲۳ قلاب chaining که در app/core/engine.py کد شده بودند (۷ در start_process و ۱۶ پس از ترنزیشن) به metadata/wiring/process_links.json منتقل شدند. موتور فقط dispatch_on_start و dispatch_after_transition را صدا می‌زند؛ ترتیب اجرا و شرط‌های تطبیق (to_state، trigger، requires_completed) و flush/refetch در همان فایل اعلانی است.",
+    "start_sub_process: این اکشن در ۴ فرایند تکمیل دوره (theory، skills، group_supervision، live_supervision) استفاده می‌شد ولی در ActionHandler._registry ثبت نبود؛ _dispatch آن را با warning رد می‌کرد و ترنزیشن «موفق» گزارش می‌شد. اکنون ثبت شده و sub_process_code را به start_process می‌سپارد.",
+    "گارد پوشش اکشن: scripts/validate_action_coverage.py به seed_all و pytest وصل شد؛ از این پس اکشن بدون هندلر مانع seed و مانع merge می‌شود. تست tests/processes/test_metadata_actions_coverage.py::test_all_metadata_action_types_are_registered که پیش‌تر رد می‌شد، سبز شد.",
+    "تحلیل گراف: scripts/validate_process_graph.py هر ۷۴ فرایند را بررسی می‌کند. رفع شد — grades_computed (theory و skills): state یتیم بدون ورودی و خروجی؛ محاسبهٔ نمره اکشن compute_*_final_grades روی ترنزیشن‌های واقعی است، پس state حذف شد. therapy_frequency_escalation (upgrade_to_educational_therapist): دو خروجی frequency_confirmed → personal_therapy_hours و escalation_rejected → eligibility_failed اضافه شد. process_merged_to_one: استاب با حلقهٔ noop و بدون state پایانی بود؛ اکنون merged → redirected_to_educational_leave با اکشن start_process روی educational_leave (SOP ۵۸ در SOP ۱ ادغام شده است).",
+    "استثناهای مستند (در هر اجرای اعتبارسنج چاپ می‌شوند): introductory_course_registration/interview_scheduled عمداً از 2026-05-07 دور زده می‌شود ولی engine و interview_slot_service هنوز نمونه‌های ماندهٔ آن را هندل می‌کنند؛ return_to_full_education/return_rejected ترمینال است ولی هنوز state بازبینی‌کننده‌ای برای رد کردن وجود ندارد (در فاز مرخصی/بازگشت سیم‌کشی شود).",
+    "پذیرش مشتری: با رفع start_sub_process و سه بن‌بست، ممیزی خودکار از ۹۱.۸٪ (۶۷ از ۷۳، Section C = ۶) به ۱۰۰٪ (۷۳ از ۷۳، Section C = ۰) رسید. تأیید با اجرای scripts/audit_customer_acceptance.py قبل و بعد از تغییرات.",
+    "شکستن ActionHandler: فایل ۵۰۱۴ خطی به ۹ ماژول دامنه در app/services/actions/ تقسیم شد (بزرگ‌ترین therapy.py با ۱۲۸۹ خط)؛ action_handler.py به ۱۴۳ خط رسید. رجیستری بایت‌به‌بایت یکسان (۲۲۳ ورودی) و خروجی ممیزی پذیرش یکسان است. سه اسکریپت ممیزی (audit_customer_acceptance، hostile_production_audit، audit_process_implementation) از regex روی فایل به خواندن مستقیم ActionHandler._registry تغییر کردند تا به ساختار فایل وابسته نباشند. گارد جدید: tests/services/test_action_registry_composition.py."
+  ],
   "remaining_gaps": [
+    {
+      "area": "سیم‌کشی و صحت گراف",
+      "detail": "return_to_full_education/return_rejected هنوز از هیچ state ای قابل رسیدن نیست — نیاز به یک مرحلهٔ بازبینی و یال رد. تا آن زمان در ALLOWED_UNREACHABLE با دلیل ثبت است."
+    },
     {
       "area": "LMS / سامانه بیرونی",
       "detail": "حالت داخلی LMS اکنون روی Student.extra_data['lms'] به‌صورت واقعی نوشته می‌شود. همگام‌سازی دوطرفه با یک LMS بیرونی واقعی (کلاس/تقویم/لینک زنده) همچنان به قرارداد API و وب‌هوک پرشده نیاز دارد؛ POST به LMS_INTEGRATION_WEBHOOK_URL افزایهٔ اختیاری است."

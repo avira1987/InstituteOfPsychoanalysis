@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-15",
-  "description": "فرست فرادا ثبتشد  بع حت برا ضعت  تکا",
+  "last_updated": "2026-08-23",
+  "description": "فهرست ماشین‌خوان فرایندها و وضعیت آن‌ها",
   "processes": [
     {
       "code": "educational_leave",
@@ -27,7 +27,8 @@
         "patient_referral"
       ],
       "last_converted": "2026-02-14",
-      "notes": "بر اساس فارت  ت ۸ گا. اص: فرادا فرع  اجرا اکشا. SOP کا: processes/educational_leave/SOP_document.txt + SOP_flowchart.png گاساز با DB: scripts/sync_sop_doc_from_registry_files.py"
+      "sop_order": 1,
+      "notes": "مرحله 1 (SOP). مدیریت ساختارمند وقفه‌های تحصیلی دانشجویان با هدف حفظ تعادل میان نیازهای شخصی دانشجو و الزامات آموزش روانکاوی. شامل: ثبت درخواست (۱ یا ۲ ترم)، هشدار انترن+۲ترم، تعیین جلسه ظرف ۷ روز، هشدار به معاون در صورت تاخیر، اطلاع‌رسانی جلسه، تصمیم‌گیری کمیته، رد/تایید با اقدامات متمایز برای انترن (۱ یا ۲ ترم)، بازگشت و پایش ثبت‌نام مجدد. یادآوری بازگشت و مهلت ثبت‌نام پس از فعال‌سازی مرخصی به‌صورت خودکار از روی تنظیمات سامانه (فاصلهٔ روز از زمان فعال‌سازی) محاسبه می‌شود نه تاریخ ثابت تقویمی. SOP: processes/educational_leave/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code educational_leave"
     },
     {
       "code": "start_therapy",
@@ -52,6 +53,7 @@
       ],
       "sub_process_refs": [],
       "last_converted": "2026-08-04",
+      "sop_order": 2,
       "notes": "بدون تأیید درمانگر: therapist_selected → book اسلات‌های شیت کمیته + apply_start_therapy_session_schedule (قانون ۲۴ ساعت) → payment_pending → therapy_active. week_interval روی اسلات (هفتگی/هفته‌درمیان). SOP: processes/start_therapy/SOP_document.txt"
     },
     {
@@ -70,7 +72,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 3,
-      "notes": "آغاز جدد تغر دراگر تغر ساعت. ا ۲۴ ساعت. SOP: processes/therapy_changes/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code therapy_changes"
+      "notes": "مرحله 3 (SOP). مدیریت تغییرات درمان آموزشی شامل آغاز مجدد، تغییر درمانگر و تغییر ساعت جلسات. SOP: processes/therapy_changes/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code therapy_changes"
     },
     {
       "code": "extra_session",
@@ -90,7 +92,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 4,
-      "notes": "سک ذاکر دراگر-داشج. ثبت ساعات طاب SOP attendance_tracking. SOP کا: processes/extra_session/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code extra_session"
+      "notes": "مرحله 4 (SOP). انعطاف‌پذیری کنترل‌شده برای جلسات فوق‌العاده. توافق دوجانبه پیش از پرداخت. شامل: ثبت درخواست (تاریخ/ساعت هفته جاری یا آتی)، ارجاع به درمانگر با SMS، تصمیم درمانگر (تایید / رد+پیشنهاد جایگزین با سیکل مذاکره / عدم امکان)، پرداخت، ثبت در تقویم، لینک آنلاین، SMS تایید و ثبت در SOP پر شدن ساعات. SOP: processes/extra_session/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code extra_session"
     },
     {
       "code": "session_payment",
@@ -143,7 +145,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 6,
-      "notes": "پشبررس ف/کس/پرداخت. اسکش ۲ رز. س فد ساعات. SOP کا: processes/attendance_tracking/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code attendance_tracking"
+      "notes": "مرحله 6 (SOP). ثبت و پیگیری حضور/غیاب جلسات. پیش‌بررسی: وقفه، کنسلی، پرداخت. اولویت حضور بر پرداخت. تفکیک ساعات دوره جامع/آشنایی در سه فیلد (۱x/هفته، ۲x/هفته، مجموع). قانون ویرایش تا ۲۴:۰۰. اسکیلیشن: مسئول سایت (۲ روز) → معاون مدیر آموزش. SOP: processes/attendance_tracking/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code attendance_tracking"
     },
     {
       "code": "fee_determination",
@@ -169,7 +171,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 7,
-      "notes": "۴ سار. س ۳فتگ. سا شس. پششرط ف  کس دراگر. SOP کا: processes/fee_determination/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code fee_determination"
+      "notes": "مرحله 7 (SOP). مدیریت مالی غیبت/کنسلی بر اساس سهمیه ۳×جلسات هفتگی. چهار سناریو: بازگشت اعتبار، بدون اقدام، مصادره، ایجاد بدهی. سهمیه سال شمسی، پویا با تغییر برنامه. SOP: processes/fee_determination/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code fee_determination"
     },
     {
       "code": "therapy_completion",
@@ -192,7 +194,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 8,
-      "notes": "اعتبارسج ۲۵۰/۷۵۰/۱۵۰. override کت. حذف تا آزادساز دراگر. SOP کا: processes/therapy_completion/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code therapy_completion"
+      "notes": "مرحله 8 (SOP). ایست بازرسی نهایی. اعتبارسنجی ۲۵۰/۷۵۰/۱۵۰ ساعت (با امکان override کمیته). حذف تعهدات آینده، آزادسازی ظرفیت درمانگر، تغییر وضعیت به تکمیل‌شده. SOP: processes/therapy_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code therapy_completion"
     },
     {
       "code": "therapy_session_increase",
@@ -212,7 +214,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 9,
-      "notes": "فط در جاع. سک ذاکر دراگر-داشج. جس Recurring ش attendance. SOP کا: processes/therapy_session_increase/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code therapy_session_increase"
+      "notes": "مرحله 9 (SOP). مختص دوره جامع. دانشجو روز و ساعت جلسه جدید را درخواست می‌کند. درمانگر: تایید / رد+پیشنهاد جایگزین (مذاکره) / رد کامل. جلسه اضافه‌شده Recurring و مشمول قوانین attendance، کنسلی، مالی. SOP: processes/therapy_session_increase/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code therapy_session_increase"
     },
     {
       "code": "therapy_session_reduction",
@@ -241,7 +243,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 10,
-      "notes": "Tapering. شرط ۲ جس. کاش ب ۱ بد تک = تخف + violation_registration. SOP کا: processes/therapy_session_reduction/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code therapy_session_reduction"
+      "notes": "مرحله 10 (SOP). مدیریت Tapering. شرط ورود: حداقل ۲ جلسه در هفته. کاهش به ۱ جلسه پیش از تکمیل ۲۵۰/۷۵۰/۱۵۰ = تخلف آموزشی با هشدار و ثبت در کمیته نظارت. حذف جلسات، آزادسازی وقت درمانگر، ثبت تاریخچه. SOP: processes/therapy_session_reduction/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code therapy_session_reduction"
     },
     {
       "code": "therapy_early_termination",
@@ -290,7 +292,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 12,
-      "notes": "زرفراد اف طع زدرس. تاد  Unlock ۵ رز. رد  ارجاع ب زرفراد ب. SOP بخش ۲: processes/specialized_commission_review/SOP_document.txt (+ SOP_flowchart.png اختار) گاساز: scripts/sync_sop_doc_from_registry_files.py --code specialized_commission_review"
+      "notes": "مرحله 12 (SOP). زیرفرایند الف قطع زودرس. کمیسیون تخصصی پرونده را بررسی کرده و با دانشجو جلسه می‌گذارد. تایید صلاحیت → Unlock LMS، مهلت ۵ روز. رد صلاحیت → ارجاع به زیرفرایند ب با برچسب عدم صلاحیت تخصصی. SOP: processes/specialized_commission_review/SOP_document.txt"
     },
     {
       "code": "committees_review",
@@ -316,7 +318,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 13,
-      "notes": "ظارت ۳ رز آزش ۶ رز. ادا ا طع. اتر  patient_referral. SOP بخش ۳: processes/committees_review/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code committees_review"
+      "notes": "مرحله 13 (SOP). زیرفرایند ب قطع زودرس. کمیته نظارت (۳ روز) پیشنهاد، کمیته آموزش (۶ روز) حکم نهایی. ادامه → Unlock و ۵ روز. قطع → اخراج کامل، نامه رسمی، انترن → patient_referral. SOP: processes/committees_review/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code committees_review"
     },
     {
       "code": "therapist_session_cancellation",
@@ -339,7 +341,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 14,
-      "notes": "۱ جس/بت. عد جبرا ا جبرا. سک ذاکر. بستاکار ا پرداخت. SOP: processes/therapist_session_cancellation/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code therapist_session_cancellation"
+      "notes": "مرحله 14 (SOP). حداکثر ۱ جلسه در هر اجرا. دو مسیر: عدم جبرانی (اطلاع، اگر پرداخت کرده +۱ بستانکار) یا قصد جبرانی (پیشنهاد تاریخ/ساعت، پاسخ دانشجو: تایید/رد+پیشنهاد/نمی‌خواهم). تایید → بستانکار یا پرداخت، ثبت جبرانی، لینک آنلاین، attendance. قوانین درمان آموزشی حاکم. SOP: processes/therapist_session_cancellation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code therapist_session_cancellation"
     },
     {
       "code": "unannounced_absence_reaction",
@@ -364,7 +366,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 15,
-      "notes": "No-Show. ۳ حات در داخ. کت درا. تار ۳ فت برا ب. SOP: processes/unannounced_absence_reaction/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code unannounced_absence_reaction"
+      "notes": "مرحله 15 (SOP). پاسخ به No-Show. فاز ۱: وقفه؟ متوقف. هر غیبت: SMS. ۲+ پیوسته: هشدار به مسئول سایت. فاز ۲: مسئول سایت انتخاب ۱ (قصد غیبت)، ۲ (قطع قطعی)، ۳ (مبهم). ۲ و ۳ → کمیته درمان. تایمر ۳ هفته برای ۳. violation_registration در اکثر شاخه‌ها. SOP: processes/unannounced_absence_reaction/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code unannounced_absence_reaction"
     },
     {
       "code": "unannounced_supervision_absence_reaction",
@@ -392,7 +394,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 27,
-      "notes": "رح ۲۷. No-Show سپر ف تف. fee_determination+SMS ۲+ پست در داخ ۳ رز ۳ حات کت ۳ فت ب جر ارجاع اتر. processes/unannounced_supervision_absence_reaction/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code unannounced_supervision_absence_reaction"
+      "notes": "مرحله 27 (SOP). پاسخ به No-Show سوپرویژن. فاز ۱: وقفه سوپرویژن؟ متوقف. هر غیبت: fee_determination + SMS. ۲+ پیوسته: اعلان مدیر داخلی، مهلت ۳ روز، هشدار معاون. سه حالت: ۱ تخلف+SMS، ۲ قطع+کمیته، ۳ مبهم+تایمر ۳ هفته+کمیته. مجری: تخلف/ارجاع انترن در صورت قطع. زیرفرایندها: fee_determination، violation_registration، patient_referral (انترن). SOP: processes/unannounced_supervision_absence_reaction/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code unannounced_supervision_absence_reaction"
     },
     {
       "code": "therapy_interruption",
@@ -416,7 +418,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 16,
-      "notes": "رح ۱۶. رد  violation_registration. تاد < ۴۲ رز: حفظ دراگر/سپرازر در پاا بررس بازگشت.  ۴۲ رز: آزادساز فر  patient_referral. SOP: processes/therapy_interruption/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code therapy_interruption"
+      "notes": "مرحله 16 (SOP). درخواست وقفه با تاریخ شروع و پایان. کمیته پیشرفت جلسه تعیین و تصمیم می‌گیرد. رد → violation. تایید: < ۴۲ روز حفظ درمانگر/سوپروایزر، در پایان بررسی بازگشت؛ ≥ ۴۲ روز بلافاصله آزادسازی و patient_referral (انترن). SOP: processes/therapy_interruption/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code therapy_interruption"
     },
     {
       "code": "student_session_cancellation",
@@ -442,7 +444,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 17,
-      "notes": "رح ۱۷. ا ۳ فت تا. ا ۱۲٪. ۱۰۱۲٪ شدار >۱۲٪ تخف. ر جس  fee_determination. SOP: processes/student_session_cancellation/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code student_session_cancellation"
+      "notes": "مرحله 17 (SOP). دانشجو جلسات را از تقویم ۳ هفته آینده انتخاب و کنسل می‌کند. قانون پیوستگی: حداکثر ۳ هفته متوالی. قانون ۱۲٪: سقف کنسلی. ۱۰–۱۲٪ هشدار، >۱۲٪ تخلف. هر جلسه → fee_determination. SOP: processes/student_session_cancellation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code student_session_cancellation"
     },
     {
       "code": "supervision_block_transition",
@@ -465,7 +467,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 18,
-      "notes": "SOP د بخش در ک فا: بخش ۱ رح ۱۸ (درت تغرات سپر) بخش ۲ رح ۱۹ (آغاز بک ۲۵ ف پرداخت جس ۵۰). ف ط ا ۲۴ ساعت حداکثر ۱ جس/فت. processes/supervision_block_transition/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_block_transition"
+      "notes": "مرحله 18 (SOP). انتقال بین بلوک‌های ۵۰ ساعته سوپرویژن. قفل منطقی: دانشجو باید ابتدا سوپروایزر و زمان دوره بعدی را انتخاب و جلسه اول آن را پرداخت کند، سپس امکان پرداخت جلسه ۵۰ام فعلی باز می‌شود. قانون ۲۴ ساعت. حداکثر ۱ جلسه در هفته. SOP: processes/supervision_block_transition/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_block_transition"
     },
     {
       "code": "supervision_50h_completion",
@@ -495,7 +497,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 20,
-      "notes": "رح ۲۰. SMS ۴۵  ۴۸. ف پرداخت ۵۰ تا ثبت ۴۹. ارزاب ۳ رز. تفکک بستاکار. SOP: processes/supervision_50h_completion/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code supervision_50h_completion"
+      "notes": "مرحله 20 (SOP). چرخه جلسات سوپرویژن: پرداخت پیش از جلسه، فعال‌سازی لینک، ثبت حضور/غیاب توسط سوپروایزر. بستانکاری سوپرویژن جدا از درمان. SMS ساعات ۴۵ و ۴۸ (جز دوره پنجم). قفل پرداخت جلسه ۵۰ تا ثبت ۴۹. ارزیابی اجباری پس از ۵۰ ساعت (۳ روز). عدم ثبت → مسئول سایت (۲ روز) → معاون. SOP: processes/supervision_50h_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_50h_completion"
     },
     {
       "code": "supervision_session_increase",
@@ -517,7 +519,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 21,
-      "notes": "رح ۲۱. فط در جاع. ذاکر سپرازر-داشج. اتصا ب supervision_50h_completion. SOP: processes/supervision_session_increase/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code supervision_session_increase"
+      "notes": "مرحله 21 (SOP). مختص دوره جامع. دانشجو روز و ساعت جلسه سوپرویژن جدید را درخواست می‌کند. سوپروایزر: تایید / رد+پیشنهاد جایگزین (مذاکره) / رد کامل. جلسه اضافه مشمول فرایند تکمیل دوره‌های ۵۰ ساعته. SOP: processes/supervision_session_increase/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_session_increase"
     },
     {
       "code": "extra_supervision_session",
@@ -538,7 +540,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 22,
-      "notes": "رح ۲۲. جس Ad-hoc تکفت. تاد/رد+پشاد/عد اکا. پرداخت ب از جس. SOP: processes/extra_supervision_session/SOP_document.txt + SOP_flowchart.png گاساز: scripts/sync_sop_doc_from_registry_files.py --code extra_supervision_session"
+      "notes": "مرحله 22 (SOP). جلسه تکمیلی (Ad-hoc) در یک هفته خاص. توافق دوجانبه پیش از پرداخت. شامل: ثبت درخواست (تاریخ/ساعت)، ارجاع به سوپروایزر با SMS، تصمیم سوپروایزر (تایید / رد+پیشنهاد / عدم امکان)، پرداخت، ثبت، لینک آنلاین، SMS تایید. ساعات مطابق فرایند تکمیل دوره‌های ۵۰ ساعته. SOP: processes/extra_supervision_session/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code extra_supervision_session"
     },
     {
       "code": "supervision_session_reduction",
@@ -564,7 +566,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 24,
-      "notes": "رح ۲۴ (سخ برز SOP). سر اف: ک جس در فت  کاش تاتر پس از ۱۵۰/۲۵۰/۷۵۰ + فر + تاد سپرازر. سر ب: بش از ک جس در فت  حذف اتخاب جسات + شت ت آزاد + SMS ب سپرازر. processes/supervision_session_reduction/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_session_reduction"
+      "notes": "مرحله 24 (SOP). دو مسیر: الف) ۲+ جلسه در هفته → انتخاب جلسات برای حذف (حداقل ۱ باقی)، حذف، آزادسازی وقت، SMS. ب) ۱ جلسه در هفته → احراز ۱۵۰/۲۵۰/۷۵۰، انتخاب توالی (۲/۳/۴ هفته یک‌بار)، تایید سوپروایزر، ثبت، آزادسازی، SMS. SOP: processes/supervision_session_reduction/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_session_reduction"
     },
     {
       "code": "student_supervision_cancellation",
@@ -591,7 +593,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 25,
-      "notes": "رح ۲۵. ۳ فت آد د سپرازر فعا. ا ۳ فت تا با ۱۲٪ از ساعات گذرادشد در  درا ۵۰ ساعت Round Up. ۱۰٪ گزارش پشگرا >۱۲٪ تخف ف حضر سپرازر. processes/student_supervision_cancellation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code student_supervision_cancellation"
+      "notes": "مرحله 25 (SOP). دانشجو جلسات سوپرویژن را از تقویم ۳ هفته آینده انتخاب و کنسل می‌کند؛ با پشتیبانی از دو سوپروایزر فعال. قانون پیوستگی: حداکثر ۳ هفته متوالی. قانون ۱۲٪ بر مبنای ساعات گذرانده‌شده در همه دوره‌های ۵۰ ساعتی. ۱۰٪ هشدار، >۱۲٪ تخلف. قفل حضور سوپروایزر. هر جلسه → fee_determination. SOP: processes/student_supervision_cancellation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code student_supervision_cancellation"
     },
     {
       "code": "supervisor_session_cancellation",
@@ -616,7 +618,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 26,
-      "notes": "رح ۲۶ (SOP برز). تکجس در ر اجرا ۴ فت آد. سر اف: بد جبرا + بستاکار اگر پرداخت شد. سر ب: جبرا ح ذاکر با داشج پرداخت/اعتبار ک آا supervision_50h_completion. processes/supervisor_session_cancellation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code supervisor_session_cancellation"
+      "notes": "مرحله 26 (SOP). حداکثر ۱ جلسه در هر اجرا. دو مسیر: عدم جبرانی (اطلاع دانشجو + بستانکار اگر پرداخت شده) یا قصد جبرانی (پیشنهاد تاریخ/ساعت، پاسخ دانشجو: تایید/رد+پیشنهاد/نمی‌خواهم). تایید → بررسی پرداخت، ثبت جبرانی، لینک آنلاین، حضور و غیاب. تفکیک کنسلی موردی از مرخصی سوپروایزر (چندین جلسه = مرخصی). قوانین سوپرویژن فردی حاکم. ساعات مطابق فرایند تکمیل دوره‌های ۵۰ ساعته. SOP: processes/supervisor_session_cancellation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code supervisor_session_cancellation"
     },
     {
       "code": "supervision_interruption",
@@ -640,7 +642,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 28,
-      "notes": "رح ۲۸ (SOP برز). کت پشرفت جس حضر/آا رد  تخف. تاد: <۲۱ رز حفظ سپرازر+بارا بازگشت ا جس. ۲۱ رز آزادساز فر+ارجاع بارا. processes/supervision_interruption/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_interruption"
+      "notes": "مرحله 28 (SOP). دانشجو در هر زمان درخواست وقفه در جلسات سوپرویژن فردی می‌دهد. در دوره وقفه بدهی مالی ندارد. کمیته پیشرفت جلسه بررسی تعیین و تصمیم می‌گیرد. رد → violation. تایید: < ۲۱ روز حفظ سوپروایزر و مراجعان، بررسی بازگشت؛ ≥ ۲۱ روز آزادسازی فوری سوپروایزر و ارجاع مراجعان. SOP: processes/supervision_interruption/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code supervision_interruption"
     },
     {
       "code": "fall_semester_preparation",
@@ -661,7 +663,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-08-15",
       "sop_order": 29,
-      "notes": "رح ۲۹. گام ۵ (course_finalization): مکان کلاس اختیاری است. گام شهریه: فاکتور پشتیبان ثبت‌نام و پیش‌فرض جلسه کلاس/دوره فقط در پنل مالی. SOP: processes/fall_semester_preparation/SOP_document.txt"
+      "notes": "مرحله ۲۹. گام ۵ (course_finalization): مکان کلاس اختیاری است. گام شهریه: فاکتور پشتیبان ثبت‌نام و پیش‌فرض جلسه کلاس/دوره فقط در پنل مالی. SOP: processes/fall_semester_preparation/SOP_document.txt"
     },
     {
       "code": "winter_semester_preparation",
@@ -683,7 +685,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 30,
-      "notes": "رح ۳۰ (SOP برز). بازگر پاز برا زستا پرا درس+کا پذرشارکتگ صاحب ت  SMS. شدار بد ف. processes/winter_semester_preparation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code winter_semester_preparation"
+      "notes": "مرحله 30 (SOP). نسخه سبک‌تر فرایند ترم پاییز — بازبینی و به‌روزرسانی برنامه‌ها برای ترم زمستان. شامل بررسی پروانه، ویرایش لیست دروس، نهایی‌سازی، بازاریابی، تعیین مصاحبه‌کنندگان و زمان‌بندی مصاحبه‌ها. مهلت‌ها فقط هشدار مدیریتی ایجاد می‌کنند و سیستم را قفل نمی‌کنند. SOP: processes/winter_semester_preparation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code winter_semester_preparation"
     },
     {
       "code": "introductory_course_registration",
@@ -702,7 +704,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-06-01",
       "sop_order": 31,
-      "notes": "مرحله ۳۱ (SOP به‌روز). ۴ فاز؛ ۴ حالت پذیرش+SMS؛ یادآوری ۲ ساعته؛ مدارک+تعهدنامه؛ LMS اقساط؛ حضور وابسته به تسویه. از 2026-05-07: پس از انتخاب زمان مصاحبه (timeslot_selected) ورود مستقیم به interview_payment. متادیتای student_task_fa روی stateها برای راهنمای پنل دانشجو. از 2026-06-01: آرتیفکت‌های registry تکمیل شد (01_input.md، 02_flowchart.md، 03_output.json، 04_status.md). processes/introductory_course_registration/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code introductory_course_registration"
+      "notes": "مرحله ۳۱ (SOP به‌روز). ۴ فاز؛ ۴ حالت پذیرش+SMS؛ یادآوری ۲ ساعته؛ مدارک+تعهدنامه؛ LMS اقساط؛ حضور وابسته به تسویه. از 2026-05-07: پس از انتخاب زمان مصاحبه (timeslot_selected) ورود مستقیم به interview_payment. متادیتای student_task_fa روی stateها برای راهنمای پنل دانشجو. از 2026-06-01: آرتیفکت‌های registry تکمیل شد (01_input.md، 02_flowchart.md، 03_output.json، 04_status.md). از 2026-08-20: پس از نتیجهٔ مصاحبه «پذیرش مشروط به شروع درمان شخصی (۱ تا ۵ درس)» متن ثابت ترم دوم به دانشجو نمایش داده می‌شود. processes/introductory_course_registration/SOP_document.txt + SOP_flowchart.png؛ sync: scripts/sync_sop_doc_from_registry_files.py --code introductory_course_registration"
     },
     {
       "code": "introductory_term_end",
@@ -720,7 +722,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 32,
-      "notes": "رح ۳۲ (SOP برز). پس از رات: کارا تر+ک (اب صاح). جبرا جاگز ر. شرط دراسدد+SMS. SMS ت تر بعد. ست افت تحص ۷ رز. processes/introductory_term_end/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code introductory_term_end"
+      "notes": "مرحله 32 (SOP). فرایند خودکار پایان ترم دوره آشنایی. تریگر: ثبت تمام نمرات توسط اساتید. شامل: تولید کارنامه ترمی (درس، واحد، نمره عددی، نمره حرفی، وضعیت قبولی)، تولید کارنامه کلی تجمیعی (تمام ترم‌ها + بخش‌های درمان/سوپرویژن/کمیته — فرمت آقای صالحی)، بررسی شرط درمان برای دانشجویان مشروط، مسدودیت ثبت‌نام ترم ۲ در صورت عدم ثبت درمانگر، اطلاع‌رسانی ثبت‌نام ترم بعد، شناسایی دانشجویان افت تحصیلی و پیگیری توسط مسئول پذیرش. مردودی: واحد=۰ اما در معدل حساب می‌شود. SOP: processes/introductory_term_end/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code introductory_term_end"
     },
     {
       "code": "intro_second_semester_registration",
@@ -739,7 +741,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 33,
-      "notes": "رح ۳۳ (SOP برز). پ تر ۱۲ شرط درا (Pop-up) + تع تکدرس فط تئر ۲  فط د جبرا/ات/حداکثر ۳ پشازاز اساط ۱۴  SMS ک فت ب ثبت ا  ک کاس. processes/intro_second_semester_registration/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code intro_second_semester_registration"
+      "notes": "مرحله 33 (SOP). ثبت‌نام دانشجو برای ترم دوم دوره آشنایی. شامل: بررسی صلاحیت (شرط درمان و تعلیق انضباطی)، نمایش دروس مجاز بر اساس نوع پذیرش (تک‌درس: فقط تئوری روانکاوی ۲ / کامل و مشروط: تمام دروس ترم ۲)، منطق پیش‌نیاز-هم‌نیاز (درس مردودی ترم ۱ به هم‌نیاز تبدیل شده و همزمان قابل اخذ)، انتخاب روش پرداخت (نقدی یا اقساط حداکثر ۴ — تک‌درس فقط نقدی)، پرداخت، ثبت‌نام نهایی و ایجاد لینک کلاس آنلاین. SOP: processes/intro_second_semester_registration/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code intro_second_semester_registration"
     },
     {
       "code": "introductory_course_completion",
@@ -756,7 +758,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 34,
-      "notes": "رح ۳۴ (SOP برز). ترگر: پاس ۱۰ درس. SMS ت جاع پشس گا (۱۳٫۵ ساعت/احد) تاد+ر/اضا کت ظارت بارگذار LMS SMS داد گا. processes/introductory_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code introductory_course_completion"
+      "notes": "مرحله 34 (SOP). پس از قبولی دانشجو در هر ۱۰ درس دوره آشنایی، سیستم دعوتنامه ثبت‌نام دوره جامع ارسال می‌کند و گواهی پایان دوره آشنایی صادر می‌شود. گواهی پس از بررسی و تایید کمیته نظارت و امضای الکترونیکی در پورتال دانشجو قرار می‌گیرد. SOP: processes/introductory_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code introductory_course_completion"
     },
     {
       "code": "comprehensive_course_registration",
@@ -778,7 +780,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 35,
-      "notes": "رح ۳۵ (SOP برز). ۱۰ درس آشا ظارت ۲رز+شدار عا اجرا/ع پشرفت ۲رز+SMS اب راد صاحب حضر/آا+SMS+۲ساعت ۳ تج تر س جاع اجبار+درا ۲ اساط ۱۴+SMS فت ب ثبت  ک کاس. processes/comprehensive_course_registration/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_course_registration"
+      "notes": "مرحله 35 (SOP). فرایند چندمرحله‌ای ثبت‌نام در دوره جامع شامل: بررسی پرونده توسط کمیته نظارت، بررسی معدل توسط مسئول اجرایی و تصمیم مسئول علمی کمیته پیشرفت، بارگذاری گزارش تجربه شخصی، زمان‌بندی و پرداخت مصاحبه، برگزاری مصاحبه و اعلام نتیجه (پذیرش / رد قطعی / رد با پیشنهاد)، و نهایتاً ثبت‌نام و پرداخت دروس ترم ۳ برای پذیرفته‌شدگان. دلایل رد محرمانه و فقط در پورتال پذیرش ثبت می‌شود. SOP: processes/comprehensive_course_registration/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_course_registration"
     },
     {
       "code": "comprehensive_term_end",
@@ -794,7 +796,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 36,
-      "notes": "رح ۳۶ (SOP برز). ترگر: رات تر جار کا. کارا تر+ک (اب صاح جبرا جاگز ر PDF). بخش با/ظارت. در صرت اتا  درس جاع: بد SMS گر SMS ت تر بعد. processes/comprehensive_term_end/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_term_end"
+      "notes": "مرحله 36 (SOP). فرایند خودکار پایان ترم دوره جامع. پس از ورود تمام نمرات دانشجو، کارنامه ترمی و کارنامه کلی (شامل بخش آکادمیک، بالینی و نظارتی) تولید و به صورت PDF قابل دانلود می‌شود. سپس سیستم بررسی می‌کند آیا دانشجو تمام دروس جامع را پاس کرده یا خیر. در صورت باقی‌ماندن دروس، پیامک مهلت ثبت‌نام ترم بعدی ارسال می‌شود. SOP: processes/comprehensive_term_end/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_term_end"
     },
     {
       "code": "internship_readiness_consultation",
@@ -816,7 +818,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 37,
-      "notes": "رح ۳۷ (SOP برز). ترگر: پاس تئر تکک ۳+پا راد. ظارت ۲رز صاحب ۷رز+SMS ۳ تج (۳ساعت/۱ساعت/۳۰ساعت درا) راردادا+سفت بار Pending سپرازر در ۵۰ساعت (ئت ع ۱۵) ا ۲۴ساعت پرداخت+SMS. processes/internship_readiness_consultation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code internship_readiness_consultation"
+      "notes": "مرحله 37 (SOP). شرط: پاس شدن تئوری تکنیک ۳. کمیته نظارت مجوز/رد. مصاحبه کمیته پیشرفت. ۳ نتیجه: قبولی بدون شرط (۳ ساعت)، قبولی مشروط (۱ ساعت)، درخواست دوباره پس از ۳۰ ساعت درمان. قراردادها و سفته. انتخاب سوپروایزر (اعضای هیئت علمی ۱-۵). پرداخت جلسه اول. قانون ۲۴ ساعت. SOP: processes/internship_readiness_consultation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code internship_readiness_consultation"
     },
     {
       "code": "internship_12month_conditional_review",
@@ -837,7 +839,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 38,
-      "notes": "رح ۳۸ (SOP برز). ا ۱۲ شرط شدار سئ پر ظارت جز/ارجاع تخفات صاحب+SMS حات ۱ اگ استادارد (۱۶+: ۳۳۴۵۳۳) حات ۲ حدد (۱۶+: ۲۲۳۳۲۲۴۲+:۳۴۸+:۴) UI ۲۵ بار+ا سف. فرم internship_12month_schedule (تاریخ/ساعت/لینک مصاحبه) در interview_scheduling. processes/internship_12month_conditional_review/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code internship_12month_conditional_review"
+      "notes": "مرحله 38 (SOP). خودکار در ماه ۱۲ انترنی مشروط. هشدار به مسئول پروژه. کمیته نظارت مجوز ارزیابی مجدد. مصاحبه. دو نتیجه: رفع کامل محدودیت (الگوی استاندارد) یا ادامه مشروط (الگوی محدود). الگوی افزایش ساعات ماه ۱۶، ۲۰، ۲۴، ۲۸، ۳۲، ۳۶ و ... SOP: processes/internship_12month_conditional_review/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code internship_12month_conditional_review"
     },
     {
       "code": "intern_hours_increase",
@@ -857,7 +859,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 39,
-      "notes": "رح ۳۹ (SOP برز). پاش رزا سررسد اشار اگ استادارد (۴+۲۲۸+۵)  شرط (۴/۷/۱۲ ر+۱) ارتباط با رح ۳۸ پس از ا ۱۲ شدار کت ظارت تاد/ردتخفات+SMS تع ثبت زا در شت آزاد+افزاش خدکار ظرفت+SMS. processes/intern_hours_increase/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code intern_hours_increase"
+      "notes": "مرحله 39 (SOP). پایش روزانه سررسیدها. الگوی بدون شرط: ماه ۴+۲، ۷+۲، ۱۲+۳، ۱۶+۳، ۲۰+۳، ۲۴+۴، ۲۸+۵. الگوی مشروط: ماه ۴+۱، ۷+۱، ۱۲+۱. کمیته نظارت تایید/رد. در صورت رد → violation_registration. در صورت تایید: ثبت زمان‌ها در شیت وقت‌های آزاد، افزایش ظرفیت خودکار. SOP: processes/intern_hours_increase/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code intern_hours_increase"
     },
     {
       "code": "comprehensive_term_start",
@@ -876,7 +878,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 40,
-      "notes": "مرحله ۴۰ (SOP برز). تعلیق/مرخصی+بازگشت؛ دروس ثابت+جبرانی؛ اقساط ۲–۴؛ حسابداری+SMS؛ بلاک حضور اگر قسط عقب افتاد. UI: StudentComprehensiveTermStartPanel + comprehensiveTermStartDisplay.jsx در admin-ui. processes/comprehensive_term_start/SOP_document.txt + SOP_flowchart.png + 04_status.md sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_term_start"
+      "notes": "مرحله ۴۰ (SOP به‌روز). تعلیق/مرخصی+بازگشت؛ دروس ثابت+جبرانی؛ اقساط ۲–۴؛ حسابداری+SMS؛ بلاک حضور اگر قسط عقب افتاد. UI: StudentComprehensiveTermStartPanel + comprehensiveTermStartDisplay.jsx در admin-ui. processes/comprehensive_term_start/SOP_document.txt + SOP_flowchart.png + 04_status.md sync: scripts/sync_sop_doc_from_registry_files.py --code comprehensive_term_start"
     },
     {
       "code": "lesson_start_per_term",
@@ -899,7 +901,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 41,
-      "notes": "مرحله ۴۱ (SOP برز). ثبت حضور فقط مدرس؛ TA از پاییز/زمستان+حضور TA. UI: StudentLessonStartPerTermPanel + lessonStartPerTermDisplay.jsx + InstructorLessonAttendancePanel در admin-ui. processes/lesson_start_per_term/SOP_document.txt + SOP_flowchart.png + 04_status.md sync: scripts/sync_sop_doc_from_registry_files.py --code lesson_start_per_term"
+      "notes": "مرحله ۴۱ (SOP به‌روز). ثبت حضور فقط مدرس؛ TA از پاییز/زمستان+حضور TA. UI: StudentLessonStartPerTermPanel + lessonStartPerTermDisplay.jsx + InstructorLessonAttendancePanel در admin-ui. processes/lesson_start_per_term/SOP_document.txt + SOP_flowchart.png + 04_status.md sync: scripts/sync_sop_doc_from_registry_files.py --code lesson_start_per_term"
     },
     {
       "code": "student_non_registration",
@@ -920,7 +922,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 42,
-      "notes": "رح ۴۲ (SOP برز). ست بد ثبتا استثا رخصا جس+ا/SMS راد تخفات ۳ شاخ (۲رز/۳رز/اصراف) ۴فت غبت جسات ۵رز+اصراف. processes/student_non_registration/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code student_non_registration"
+      "notes": "مرحله 42 (SOP). لیست دانشجویان بدون ثبت‌نام و پرداخت. استثنا: مرخصی موقت از کل آموزش، مرخصی آموزشی موقت از ثبت‌نام. جلسه کمیته نظارت. ۳ گزینه: ثبت‌نام (حداکثر ۴ هفته)، مرخصی/وقفه، انصراف. مهلت ۲ و ۳ و ۵ روزه. در صورت عدم اقدام → انصراف از آموزش. SOP: processes/student_non_registration/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code student_non_registration"
     },
     {
       "code": "ta_conceptual_questions",
@@ -941,7 +943,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 43,
-      "notes": "رح ۴۳ (SOP برز). تئر+تکک اب صاح ۳ PDF ۲۴ساعت TA + تخف درس ۴رز رد۲۴ساعت اصاح رکز رجع ۲ ر/جس حداکثر ۳۴. processes/ta_conceptual_questions/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_conceptual_questions"
+      "notes": "مرحله 43 (SOP). دروس تئوری و تکنیک تمرین مهارت‌ها. کمک‌مدرس ۳ سوال PDF آپلود می‌کند. مهلت ۲۴ ساعت. تاخیر → violation_registration + هشدار معاون. مدرس ۴ روز بررسی. رد → اصلاح ۲۴ ساعته. تایید → بانک سوال + ۲ نمره. حداکثر ۳۴ نمره (۱۷ جلسه). SOP: processes/ta_conceptual_questions/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_conceptual_questions"
     },
     {
       "code": "ta_student_consultation",
@@ -959,7 +961,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 44,
-      "notes": "رح ۴۴ (SOP برز). جسات ۵/۱۰/۱۵ SMS فر پا ت ۴رز ف=صفر ۲ر حداکثر ۶ گزارش کت پشرفت. processes/ta_student_consultation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_student_consultation"
+      "notes": "مرحله 44 (SOP). اجرا در جلسات ۵، ۱۰، ۱۵. فرم لیست پویا (نام دانشجو، علت انتخاب، محتوای مداخله). مهلت ۴ روز. قفل بعد از مهلت — نمره صفر. ۲ نمره در صورت ثبت موفق. حداکثر ۶ نمره. ارسال به کمیته پیشرفت. SOP: processes/ta_student_consultation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_student_consultation"
     },
     {
       "code": "ta_essay_upload",
@@ -982,7 +984,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 45,
-      "notes": "رح ۴۵ (SOP برز). ر جس Word+PDF ۲۴س TA + تخف+شدار عا درس ۴رز رد۲۴س اصاح ۱/۲ ر رست رکز رجع ارکتگ ۷رز+شدار. processes/ta_essay_upload/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_essay_upload"
+      "notes": "مرحله 45 (SOP). پس از هر جلسه. کمک‌مدرس جستار و دقایق منتخب را آپلود می‌کند (Word + PDF). مهلت ۲۴ ساعت. تاخیر → violation_registration. مدرس ۴ روز بررسی. رد → اصلاح. تایید → مرکز مرجع. مارکتینگ. SOP: processes/ta_essay_upload/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_essay_upload"
     },
     {
       "code": "ta_blog_content",
@@ -1004,7 +1006,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 46,
-      "notes": "رح ۴۶ (SOP برز). فد ت  صفح A4 بد آپد ۲۴س TA درس ۴رز read-only رد۲۴س ۲/۳ ر رست پشس ارکتگ. processes/ta_blog_content/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_blog_content"
+      "notes": "مرحله 46 (SOP). پس از هر جلسه. کمک‌مدرس خلاصه کاربردی مباحث را در فیلد متنی می‌نویسد (حدود نیم صفحه A4). مهلت ۲۴ ساعت. تاخیر → violation_registration. مدرس ۴ روز بررسی. رد → اصلاح. تایید → پیش‌نویس مارکتینگ و امتیازدهی. SOP: processes/ta_blog_content/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_blog_content"
     },
     {
       "code": "upgrade_to_ta",
@@ -1024,7 +1026,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 47,
-      "notes": "رح ۴۷ (SOP برز). ۴ شرط سست ظارت تأد/رد+SMS کت درس ت صاحب+SMS سفر صاحب رد/تأد+رستا تعدا OTP ست TA. processes/upgrade_to_ta/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code upgrade_to_ta"
+      "notes": "مرحله 47 (SOP). شرط: معدل B، ۵۰ ساعت درمان آموزشی، شروع انترنی. کلیک دانشجو. بررسی خودکار ۴ شرط. کمیته نظارت تایید/رد. کمیته دروس: تنظیم وقت مصاحبه، مصاحبه، تعیین رسته. تعهدنامه با OTP. اضافه به لیست کمک‌مدرسین. SOP: processes/upgrade_to_ta/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code upgrade_to_ta"
     },
     {
       "code": "mentor_private_sessions",
@@ -1046,7 +1048,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 48,
-      "notes": "رح ۴۸ (SOP برز). فط درس با TA ت ب جس۲ حظ شرع جس۲ بد ثبتتخف+شدار کت درس+SMS سئ ع فر read-only پا د TA پرتا TA SMS د رح+۲۴س ب. processes/mentor_private_sessions/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code mentor_private_sessions"
+      "notes": "مرحله 48 (SOP). مدرسین دارای کمک‌مدرس. مهلت: قبل از جلسه دوم کلاس. در لحظه شروع جلسه دوم اگر پر نشده: violation_registration، هشدار کمیته دروس، SMS به مسئول علمی کمیته دروس. پس از ثبت: نمایش در پورتال کمک‌مدرس، SMS به هر دو، یادآوری ۲۴ ساعت قبل از هر جلسه. SOP: processes/mentor_private_sessions/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code mentor_private_sessions"
     },
     {
       "code": "ta_to_assistant_faculty",
@@ -1065,7 +1067,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 49,
-      "notes": "رح ۴۹ (SOP برز). ۲ TA ف خدکار/دست با دستارپاا ظارت تأد/رد+جعفرا+ک ش درس ا درس رتب کبار SMS ثابت unlock درس بعد رست. processes/ta_to_assistant_faculty/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_to_assistant_faculty"
+      "notes": "مرحله 49 (SOP). شرط: ۲ بار کمک‌مدرس موفق در یک درس. آغاز خودکار (بار اول) یا دستی (در صورت رد قبلی). کمیته نظارت تایید/رد. تایید: حذف از لیست کمک‌مدرسین، اضافه به لیست مدرسین، ارتقا رتبه به دستیار هیئت علمی، SMS. تفکیک رتبه و نقش. Unlock درس بعدی در رسته. SOP: processes/ta_to_assistant_faculty/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_to_assistant_faculty"
     },
     {
       "code": "ta_to_instructor_auto",
@@ -1083,7 +1085,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 50,
-      "notes": "رح ۵۰ (SOP برز). ۱۰۰٪ خدکار پاا تر دستار ئت ع + ۲ TA ف حذف/اضاف ست SMS ثابت unlock درس بعد رست گزارش log. processes/ta_to_instructor_auto/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_to_instructor_auto"
+      "notes": "مرحله 50 (SOP). ۱۰۰٪ خودکار. شرط: رتبه دستیار هیئت علمی + ۲ بار کمک‌مدرس موفق در یک درس. بدون تایید کمیته. حذف از لیست کمک‌مدرسین، اضافه به لیست مدرسین. SMS تبریک. Unlock درس بعدی در رسته. SOP: processes/ta_to_instructor_auto/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_to_instructor_auto"
     },
     {
       "code": "ta_track_change",
@@ -1101,7 +1103,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 51,
-      "notes": "رح ۵۱ (SOP برز). پششرط upgrade_to_ta radio اضاف/تغر کت درس جس+SMS صب اف/عد فرست ۵ رست ط جاگز ا افزد+ا درس. processes/ta_track_change/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_track_change"
+      "notes": "مرحله 51 (SOP). فلسفه و هدف: انعطاف‌پذیری در مسیر توسعه آموزشی کمک‌مدرسین. پس از ورود به کمک‌مدرسی، امکان تدریس در رسته‌های جدید بر اساس علاقه یا نیاز انستیتو. دو شاخه: «جایگزینی رسته فعلی (تغییر)» و «حفظ رسته فعلی + رسته جدید (اضافه کردن)». تغییرات به‌صورت خودکار انجام نمی‌شود؛ هماهنگی خارج از سیستم، جلسه با کمیته دروس و اعمال دسترسی توسط مسئول علمی. پیش‌شرط سیستمی: دانشجو تنها در صورت طی موفق «فرایند ارتقا به کمک‌مدرس» و شناخته‌شدن به‌عنوان کمک‌مدرس می‌تواند این فرایند را اجرا کند. (تبصره: کمک‌مدرسی که برای یکی از دروس به رتبه دستیار هیئت علمی رسیده، در مابقی دروس همچنان نقش کمک‌مدرس را دارد و می‌تواند این فرایند را اجرا کند.). SOP: processes/ta_track_change/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_track_change"
     },
     {
       "code": "ta_track_completion",
@@ -1119,7 +1121,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 52,
-      "notes": "مرحله ۵۲ (SOP برز). ۱۰۰٪ خودکار پس از ۲ بار TA هر درس رسته → خاتمه رسته + داشبورد پرونده TA در UI + ۲ SMS (دانشجو+کمیته). UI: TaTrackPortfolioPanel در همه پورتال‌ها. processes/ta_track_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_track_completion"
+      "notes": "مرحله ۵۲ (SOP به‌روز). ۱۰۰٪ خودکار پس از ۲ بار TA هر درس رسته → خاتمه رسته + داشبورد پرونده TA در UI + ۲ SMS (دانشجو+کمیته). UI: TaTrackPortfolioPanel در همه پورتال‌ها. processes/ta_track_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_track_completion"
     },
     {
       "code": "ta_instructor_leave",
@@ -1138,7 +1140,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-02-14",
       "sop_order": 53,
-      "notes": "رح ۵۳ (SOP برز). ۱فت تا ثبتا ۱ رخص/رست TA تاس ب ثبت اف/عد سر TA جاگز/بد دستار سر درس جاگز/غ کاس ثبت پرد. processes/ta_instructor_leave/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_instructor_leave"
+      "notes": "مرحله 53 (SOP). کمک‌مدرس یا مدرس درخواست مرخصی می‌دهد. کمیته دروس تایید/رد. در صورت تایید: جایگزین موقت (کمک‌مدرس/مدرس) یا لغو کلاس‌ها. اطلاع‌رسانی به دانشجویان. SOP: processes/ta_instructor_leave/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code ta_instructor_leave"
     },
     {
       "code": "class_attendance",
@@ -1160,7 +1162,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 54,
-      "notes": "رح ۵۴ (SOP برز). ست جس شارد ۵ غبتعاد I+ف استخف+گزارش سپر زد فط ساب. processes/class_attendance/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code class_attendance"
+      "notes": "مرحله 54 (SOP). نظارت بر حضور فیزیکی و آنلاین دانشجویان و کمک‌مدرسین. شمارنده غیبت؛ ۵ غیبت منجر به Incomplete و قفل نمره. استثنا: درس مقاله‌نویسی گزارش به کمیته؛ درس سوپرویژن زنده فقط ثبت. SOP: processes/class_attendance/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code class_attendance"
     },
     {
       "code": "violation_registration",
@@ -1202,7 +1204,7 @@
       ],
       "last_converted": "2026-02-14",
       "sop_order": 56,
-      "notes": "رح ۵۶ (SOP برز). ۲ساعت بد حضرغابتخف کس+جبرا اجبار جع فت۱۵/۱۶ ف ست ست جبرا SMS د رح ساب درس. processes/class_session_cancellation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code class_session_cancellation"
+      "notes": "مرحله 56 (SOP). مدیریت عدم برگزاری کالس. قانون نظارت ۲ ساعته: عدم ثبت حضور تا ۲ ساعت پس از زمان کالس ثبت تخلف و ارسال به کمیته. تایید همزمان کنسلی و زمان جبرانی اجباری؛ محاسبه جمعه‌های هفته ۱۵ و ۱۶؛ پیامک به دانشجویان و مدرس. SOP: processes/class_session_cancellation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code class_session_cancellation"
     },
     {
       "code": "student_instructor_evaluation",
@@ -1221,7 +1223,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-04-09",
       "sop_order": 57,
-      "notes": "رح ۵۷ (SOP). Trigger: ۱۴ رز ب پاا تر LMS SMS با ک اختصاص فر اختار اشاسساز اگ  Pie Chart پرتا درس کت درس کت پش (در صرت فعاساز). processes/student_instructor_evaluation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code student_instructor_evaluation"
+      "notes": "مرحله 57 (SOP). ارزیابی مستمر اساتید با حفظ گمنامی دانشجویان. Trigger: دقیقاً دو هفته قبل از پایان ترم، ارسال پیامک با لینک فرم. پر کردن فرم اختیاری. جداسازی هویت و ذخیره پاسخ‌ها به‌صورت ناشناس. داشبورد مدیریتی با نمودار دایره‌ای و میانگین در پورتال مدرس، کمیته دروس و کمیته پژوهش. SOP: processes/student_instructor_evaluation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code student_instructor_evaluation"
     },
     {
       "code": "process_merged_to_one",
@@ -1237,9 +1239,9 @@
       "sub_process_refs": [
         "educational_leave"
       ],
-      "last_converted": "2026-04-09",
+      "last_converted": "2026-08-23",
       "sop_order": 58,
-      "notes": "رح ۵۸  Stub: حتا عات ب فراد شار ک (educational_leave) ت شد. processes/process_merged_to_one/SOP_document.txt فارت دارد sync: scripts/sync_sop_doc_from_registry_files.py --code process_merged_to_one"
+      "notes": "مرحله 58 (SOP). این فرایند به فرایند شماره یک منتقل شد. SOP: processes/process_merged_to_one/SOP_document.txt از 2026-08-23 (تثبیت فاندیشن): استاب حلقهٔ noop و بدون state پایانی بود. اکنون merged → redirected_to_educational_leave (ترمینال) با اکشن start_process روی educational_leave؛ SOP ۵۸ در SOP ۱ ادغام شده است."
     },
     {
       "code": "full_education_leave",
@@ -1266,7 +1268,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 59,
-      "notes": "رح ۵۹ (SOP). ف ۱/۲ تر جس کت پشرفت ۷رز عا آزش اترسپرازر+ارجاع بار دراگر ۳رز SMS + ت ۴رز اگ بازگشت+تخف. processes/full_education_leave/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code full_education_leave"
+      "notes": "مرحله 59 (SOP). درخواست مرخصی موقت از کل دوره آموزش. تعیین تکلیف درمانگر آموزشی و پرونده‌های بالینی. شامل: ثبت درخواست (۱ یا ۲ ترم)، جلسه کمیته پیشرفت ظرف ۷ روز، تصمیم کمیته، تعیین تکلیف درمانگر (۴ روز)، یادآوری بازگشت و فرایند ۶۰. SOP: processes/full_education_leave/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code full_education_leave"
     },
     {
       "code": "return_to_full_education",
@@ -1285,7 +1287,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 60,
-      "notes": "رح ۶۰ (SOP). UI: StudentReturnToFullEducationPanel + SEP payment. دراگر+پرداخت+۲۴ساعت+سوپروایزر انترن+بازگشایی ثبت‌نام. processes/return_to_full_education/SOP_document.txt + 04_status.md"
+      "notes": "مرحله 60 (SOP). بازگشت دانشجو به دوره پس از مرخصی از کل آموزش. انتخاب درمانگر آموزشی، پرداخت جلسه اول، قانون ۲۴ ساعت؛ برای انترن انتخاب سوپروایزر و پرداخت؛ بازگشایی ثبت‌نام دروس. SOP: processes/return_to_full_education/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code return_to_full_education"
     },
     {
       "code": "theory_course_completion",
@@ -1306,9 +1308,9 @@
       "sub_process_refs": [
         "violation_registration"
       ],
-      "last_converted": "2026-04-09",
+      "last_converted": "2026-08-23",
       "sop_order": 61,
-      "notes": "رح ۶۱ (SOP). جس۱۸ شارکت ۰۱۰ تا ۲۴:۰۰ حضر ۰۸ TA74 آز ۸۲ رز ۶۴۷۳ اتحا جدد+۴رز ارزاب کف ۴رزظارت. processes/theory_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code theory_course_completion"
+      "notes": "مرحله 61 (SOP). خاتمه هر درس تئوری: جلسه ۱۸ مشارکت، آزمون تستی ۸۲ نمره‌ای، نمرات مرزی، ارزیابی کیفی. قفل نمره پس از مهلت. SOP: processes/theory_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code theory_course_completion از 2026-08-23 (تثبیت فاندیشن): state یتیم grades_computed حذف شد — نه ورودی داشت نه خروجی؛ محاسبهٔ نمره با اکشن compute_theory_final_grades روی ترنزیشن‌های واقعی انجام می‌شود. اکشن start_sub_process اکنون در ActionHandler هندلر دارد."
     },
     {
       "code": "group_supervision_course_completion",
@@ -1331,7 +1333,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 62,
-      "notes": "رح ۶۲ (SOP). جس۱۸ Pass/Fail تا ۲۴:۰۰ حضر ۰۸ Pass+۳۳.۳۳۳۳ ساعت (UI ۳۳.۳) TA س ظف+74 ارزاب کف ۴رز سا۷۸ظارت. processes/group_supervision_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code group_supervision_course_completion"
+      "notes": "مرحله 62 (SOP). خاتمه درس سوپرویژن گروهی: Pass/Fail جلسه ۱۸، ساعات بالینی (+۳۳.۳۳۳۳)، ارزیابی TA، ارزیابی کیفی Q7/Q8. SOP: processes/group_supervision_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code group_supervision_course_completion"
     },
     {
       "code": "skills_course_completion",
@@ -1352,9 +1354,9 @@
       "sub_process_refs": [
         "violation_registration"
       ],
-      "last_converted": "2026-04-09",
+      "last_converted": "2026-08-23",
       "sop_order": 63,
-      "notes": "رح ۶۳ (SOP). جس۱۷ ع ۶۰/۴۲+شارکت تا۲۴ جس۱۸ تست ۲۲/۴۰+حضر۸ غبتI جع۱۰۰74 بد جدد TA۴ظف ارزاب۴رز. processes/skills_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code skills_course_completion"
+      "notes": "مرحله 63 (SOP). خاتمه درس تکنیک تمرین مهارت‌ها: جلسه ۱۷ عملی، جلسه ۱۸ تستی، حضور، TA، ارزیابی کیفی. قفل نمره پس از مهلت. SOP: processes/skills_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code skills_course_completion از 2026-08-23 (تثبیت فاندیشن): state یتیم grades_computed حذف شد — نه ورودی داشت نه خروجی؛ محاسبهٔ نمره با اکشن compute_skills_final_grades روی ترنزیشن‌های واقعی انجام می‌شود. اکشن start_sub_process اکنون در ActionHandler هندلر دارد."
     },
     {
       "code": "film_observation_course_completion",
@@ -1372,7 +1374,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-04-09",
       "sop_order": 64,
-      "notes": "رح ۶۴ (SOP). جس۱۷آپد گزارش پاا درس ر غبت اتحاI 74 PASS <63 FAIL ۶۲۷۴ اتحا جدد+پرداخت+آپد جدد. processes/film_observation_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code film_observation_course_completion"
+      "notes": "مرحله 64 (SOP). خاتمه درس عملی کاربردی و مشاهده فیلم‌ها: ثبت نمرات و ارزیابی نهایی. قفل نمره پس از مهلت. SOP: processes/film_observation_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code film_observation_course_completion"
     },
     {
       "code": "live_therapy_observation_course_completion",
@@ -1390,7 +1392,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-04-09",
       "sop_order": 65,
-      "notes": "رح ۶۵ (SOP). جس۱۷آپد گزارش درس ر 74 PASS <63 FAIL ۶۲۷۴ اتحا جدد+پرداخت+آپد جدد. processes/live_therapy_observation_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_course_completion"
+      "notes": "مرحله 65 (SOP). خاتمه درس مشاهده زنده درمان: ثبت نمرات و ارزیابی نهایی. قفل نمره پس از مهلت. SOP: processes/live_therapy_observation_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_course_completion"
     },
     {
       "code": "live_therapy_observation_session_prep",
@@ -1408,7 +1410,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-04-09",
       "sop_order": 66,
-      "notes": "رح ۶۶ (SOP). UI: LiveSessionPrepPanel + liveSessionPrepDisplay.jsx (مشترک با ۶۸). processes/live_therapy_observation_session_prep/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_session_prep"
+      "notes": "مرحله ۶۶ (SOP). UI: LiveSessionPrepPanel + liveSessionPrepDisplay.jsx (مشترک با ۶۸). processes/live_therapy_observation_session_prep/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_session_prep"
     },
     {
       "code": "live_supervision_course_completion",
@@ -1430,7 +1432,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 67,
-      "notes": "رح ۶۷ (SOP). ۱۵عاد+۳پشتآ بست۱۸جس غبتپرداخت جبرا پادساز۵رز ارزاب۳جس جس۱۸پاپآپ کف سا۷۸ظارت. processes/live_supervision_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_course_completion"
+      "notes": "مرحله 67 (SOP). ۱۵ عادی + ۳ پشت آینه؛ بسته ۱۸ جلسه؛ غیبت و پرداخت جبرانی؛ فرم پیاده‌سازی و ارزیابی؛ پایان شخصی‌سازی‌شده و ارزیابی کیفی سوال ۷ و ۸. SOP: processes/live_supervision_course_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_course_completion"
     },
     {
       "code": "live_supervision_session_prep",
@@ -1448,7 +1450,7 @@
       "sub_process_refs": [],
       "last_converted": "2026-04-09",
       "sop_order": 68,
-      "notes": "رح ۶۸ (SOP). UI: LiveSessionPrepPanel + liveSessionPrepDisplay.jsx (مشترک با ۶۶). processes/live_supervision_session_prep/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_session_prep"
+      "notes": "مرحله ۶۸ (SOP). UI: LiveSessionPrepPanel + liveSessionPrepDisplay.jsx (مشترک با ۶۶). processes/live_supervision_session_prep/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_session_prep"
     },
     {
       "code": "article_writing_completion",
@@ -1470,7 +1472,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 69,
-      "notes": "رح ۶۹ (SOP). حداکثر۲تر تر۳+ تخف تک تکبست کاس ۸رز دفاع+۴رز ارزاب سا۷۸ظارت. UI: ArticleWritingCompletionPanel + StudentArticleWritingCompletionPanel. processes/article_writing_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code article_writing_completion"
+      "notes": "مرحله 69 (SOP). ساختار آموزشی شناور و قانون‌مند. کلاس حداکثر ۲ ترم (یک سال)؛ ترم دوم مجاز اگر در ترم اول تیک تکمیل نخورده باشد. اخذ در ترم سوم و بعد برابر تخلف آموزشی، گزارش به کمیته نظارت. ماشه: تیک تکمیل توسط مدرس؛ بستن کلاس برای دانشجو؛ مهلت ۸ روزه درخواست دفاع و ۴ روزه فرم ارزیابی مدرس. پاسخ سوال ۷ و ۸ فرم در جدول گزارش عملکرد دانشجو ثبت می‌شود. SOP: processes/article_writing_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code article_writing_completion"
     },
     {
       "code": "thesis_defense_request",
@@ -1494,7 +1496,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 70,
-      "notes": "رح ۷۰ (SOP). ۴شرط+گزارش ساکتک کت پشرفت/ظارت/آزش حراگ دار A/B PASS C/D/F اصاح۲فت+دفاع جدد. processes/thesis_defense_request/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code thesis_defense_request"
+      "notes": "مرحله 70 (SOP). فاز نهایی مسیر تحصیلی. دروازه‌بان با ۴ شرط: ۶۷ واحد با معدل B، ۷۵۰ ساعت تجربه بالینی، ۱۵۰ ساعت سوپرویژن فردی، ۲۵۰ ساعت درمان آموزشی. پیش‌نیاز: تیک تکمیل پایان‌نامه توسط مدرس درس مقاله‌نویسی. غربالگری: کمیته پیشرفت (تایید/نیاز به اصلاح/رد گزارش سایکوتیک)، کمیته نظارت (مجوز دفاع)، کمیته آموزش (انتخاب داوران و زمان، محرمانگی نام داوران تا روز دفاع). A/B = PASS؛ C/D/F = نیاز به اصلاح و دفاع مجدد. مهلت اصلاحات ۲ هفته؛ دفاع مجدد با همان داوران. نمره نهایی A/B = PASS، C/D/F = FAIL. SOP: processes/thesis_defense_request/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code thesis_defense_request"
     },
     {
       "code": "upgrade_to_educational_therapist",
@@ -1513,9 +1515,9 @@
       "sub_process_refs": [
         "violation_registration"
       ],
-      "last_converted": "2026-04-09",
+      "last_converted": "2026-08-23",
       "sop_order": 71,
-      "notes": "رح ۷۱ (SOP). شرط ارتا کت ظارت صاحب کت درا آزش  سپر درا شخص  سپر  ۵۰ ساعت شت تا. processes/upgrade_to_educational_therapist/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code upgrade_to_educational_therapist"
+      "notes": "مرحله 71 (SOP). مسیر ارتقا به درمانگر آموزشی با شروط سختگیرانه؛ کمیته نظارت و کمیته درمان آموزشی و سوپرویژن؛ مصاحبه؛ هم‌ترازی درمان شخصی و سوپرویژن فردی؛ ۵۰ ساعت؛ شیت وقت‌های آزاد؛ پایان با ثبت دو زمان خالی در شیت درمانگران آموزشی. SOP: processes/upgrade_to_educational_therapist/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code upgrade_to_educational_therapist از 2026-08-23 (تثبیت فاندیشن): بن‌بست therapy_frequency_escalation رفع شد؛ دو خروجی برای کمیته آموزش اضافه شد: frequency_confirmed → personal_therapy_hours و escalation_rejected → eligibility_failed."
     },
     {
       "code": "intern_bulk_patient_referral",
@@ -1538,7 +1540,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 72,
-      "notes": "رح ۷۲ (SOP). جس ظارت شراط ارجاع تک داشج ۱۵ رز کت درا ع سئ اگا ت ۳ رز شدار عا در داخ. processes/intern_bulk_patient_referral/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code intern_bulk_patient_referral"
+      "notes": "مرحله 72 (SOP). مسیر ساختاریافته ارجاع همه بیماران انترن: جلسه کمیته نظارت، ثبت شرایط ارجاع در پورتال، تیک و توضیح دانشجو برای هر بیمار، هشدار ۱۵ روزه، نقش کمیته درمان عموم، ارسال به مسئول هماهنگی‌ها، پیگیری با مهلت ۳ روز و هشدار به معاون مدیر داخلی. SOP: processes/intern_bulk_patient_referral/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code intern_bulk_patient_referral"
     },
     {
       "code": "live_supervision_ta_evaluation",
@@ -1563,7 +1565,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 73,
-      "notes": "رح ۷۳ (SOP). شارشگر۱۸ TA ۳ظف+حضر۸ جع۱۰۰ 74 PASS / <74 FAIL. processes/live_supervision_ta_evaluation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_ta_evaluation"
+      "notes": "مرحله 73 (SOP). ارزیابی نهایی کمک‌مدرس در درس سوپرویژن زنده پس از پایان ۱۸ جلسه. بخش الف: حضور و غیاب (سقف ۸ نمره، کسر ۲ نمره به ازای هر غیبت). بخش ب: انجام وظایف سه‌گانه (سقف ۹۲ نمره): شناسایی و مشورت آموزشی، آپلود جستار و دقایق فیلم، ثبت محتوای وبلاگ. بخش ج: نمره کل از ۱۰۰. حالت الف (قبولی): نمره ≥ ۷۴ → PASS در پورتال. حالت ب (مردودی): نمره < ۷۴ → FAIL در پورتال. داشبورد در پورتال کمیته دروس و کمک‌مدرس قابل مشاهده است. SOP: processes/live_supervision_ta_evaluation/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_supervision_ta_evaluation"
     },
     {
       "code": "live_therapy_observation_ta_attendance_completion",
@@ -1587,7 +1589,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 74,
-      "notes": "رح ۷۴ (SOP). جس۱۸ شارکت+حضر+TA PDF تا۲۴/جس۱۸ تصحح ۵/۳رز جع۱۰۰ ۶۴۷۳+SMS۲۴ساعت عد تر/ک ارزاب۴رز. processes/live_therapy_observation_ta_attendance_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_ta_attendance_completion"
+      "notes": "مرحله 74 (SOP). جلسه ۱۸: مشارکت، حضور، TA؛ گزارش PDF تا ۲۴ جلسه ۱۸؛ تصحیح ۵/۳ روز؛ مرزی ۶۴–۷۳ و SMS ۲۴ ساعت؛ معدل ترم/کل؛ ارزیابی کیفی. SOP: processes/live_therapy_observation_ta_attendance_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code live_therapy_observation_ta_attendance_completion"
     },
     {
       "code": "film_observation_ta_attendance_completion",
@@ -1611,7 +1613,7 @@
       ],
       "last_converted": "2026-04-09",
       "sop_order": 75,
-      "notes": "رح ۷۵ (SOP). جس۱۸ شارکت+حضر+TA PDF تا۲۴/جس۱۸ تصحح ۵رز جع۱۰۰ ۶۴۷۳+SMS۲۴ساعت عد تر/ک ارزاب۴رز. processes/film_observation_ta_attendance_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code film_observation_ta_attendance_completion"
+      "notes": "مرحله 75 (SOP). جلسه ۱۸: مشارکت، حضور، TA؛ گزارش PDF تا ۲۴ جلسه ۱۸؛ مهلت تصحیح و امتحان مجدد؛ ارزیابی کیفی؛ معدل ترم/کل. SOP: processes/film_observation_ta_attendance_completion/SOP_document.txt + SOP_flowchart.png sync: scripts/sync_sop_doc_from_registry_files.py --code film_observation_ta_attendance_completion"
     }
   ],
   "all_processes_in_metadata": [

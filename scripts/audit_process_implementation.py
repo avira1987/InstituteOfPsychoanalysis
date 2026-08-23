@@ -30,23 +30,38 @@ WEIGHTS = {"actions": 0.40, "rules": 0.20, "forms": 0.25, "portals": 0.15}
 ALWAYS_OK_ACTION_TYPES: set[str] = set()
 
 
-def parse_action_registry(path: Path) -> tuple[set[str], set[str]]:
-    """استخراج (اکشن‌های با هندلر واقعی، اکشن‌های استاب) از دیکشنری _registry."""
-    text = path.read_text(encoding="utf-8")
-    m = re.search(r"_registry\s*=\s*\{(.*?)\n    \}", text, re.DOTALL)
-    if not m:
-        raise RuntimeError("نمی‌توان _registry را پیدا کرد")
-    body = m.group(1)
+STUB_HANDLER_NAME = "_handle_external_integration"
+
+
+def action_registry() -> dict[str, str]:
+    """action type -> handler function name, read from the live registry.
+
+    Imported rather than regex-parsed so the audit keeps working no matter how
+    ActionHandler is split across modules.
+    """
+    import sys
+
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from app.services.action_handler import ActionHandler
+
+    return {
+        action_type: getattr(handler, "__name__", str(handler))
+        for action_type, handler in ActionHandler._registry.items()
+    }
+
+
+def parse_action_registry(path: Path | None = None) -> tuple[set[str], set[str]]:
+    """(actions with a real handler, actions still on the integration stub).
+
+    `path` is accepted for backwards compatibility and ignored.
+    """
     real, stub = set(), set()
-    for line in body.splitlines():
-        lm = re.match(r"\s*\"([^\"]+)\"\s*:\s*(_handle_\w+)\s*,?", line)
-        if not lm:
-            continue
-        atype, handler = lm.group(1), lm.group(2)
-        if handler == "_handle_external_integration":
-            stub.add(atype)
+    for action_type, handler_name in action_registry().items():
+        if handler_name == STUB_HANDLER_NAME:
+            stub.add(action_type)
         else:
-            real.add(atype)
+            real.add(action_type)
     return real, stub
 
 

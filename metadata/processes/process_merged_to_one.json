@@ -1,25 +1,53 @@
 {
   "process": {
     "code": "process_merged_to_one",
-    "name_fa": "منتقل‌شده به فرایند شماره ۱",
-    "name_en": "Merged into Process 1",
+    "name_fa": "منتقل‌شده به فرایند شماره ۱ (مرخصی آموزشی)",
+    "name_en": "Merged into Process 1 (Educational Leave)",
     "number": 58,
-    "description": "این فرایند به فرایند شماره یک منتقل شد.",
+    "description": "SOP شماره ۵۸ در فرایند شماره ۱ (مرخصی آموزشی موقت) ادغام شد. هر نمونه‌ای که اینجا باز شود به educational_leave هدایت و بسته می‌شود.",
     "initial_state": "merged",
     "initial_role": "system",
     "requires_form": false
   },
   "states": [
-    {"code": "merged", "name_fa": "منتقل به فرایند ۱", "type": "initial", "assigned_role": "system"}
+    {
+      "code": "merged",
+      "name_fa": "منتقل به فرایند ۱",
+      "type": "initial",
+      "assigned_role": "system",
+      "metadata": {
+        "operator_task_fa": "این فرایند در «مرخصی آموزشی موقت» ادغام شده است. با ثبت مرحله، فرایند مرخصی آموزشی باز و این پرونده بسته می‌شود.",
+        "operator_short_fa": "هدایت به مرخصی آموزشی",
+        "student_short_fa": "منتقل به فرایند مرخصی آموزشی",
+        "student_task_fa": "درخواست شما در فرایند «مرخصی آموزشی موقت» پیگیری می‌شود.",
+        "student_why_fa": "این فرایند با فرایند مرخصی آموزشی یکی شده است."
+      }
+    },
+    {
+      "code": "redirected_to_educational_leave",
+      "name_fa": "هدایت به مرخصی آموزشی",
+      "type": "terminal",
+      "assigned_role": "system",
+      "metadata": {
+        "operator_short_fa": "هدایت شد",
+        "operator_task_fa": "فرایند مرخصی آموزشی باز شد؛ ادامهٔ کار در همان پرونده انجام می‌شود.",
+        "student_short_fa": "هدایت به مرخصی آموزشی",
+        "student_task_fa": "درخواست شما به فرایند «مرخصی آموزشی موقت» منتقل شد؛ ادامهٔ مراحل را در همان فرایند ببینید.",
+        "student_why_fa": "این فرایند با فرایند مرخصی آموزشی یکی شده است."
+      }
+    }
   ],
   "transitions": [
     {
       "from": "merged",
-      "to": "merged",
-      "trigger": "noop",
+      "to": "redirected_to_educational_leave",
+      "trigger": "redirect_to_educational_leave",
       "required_role": "system",
-      "description_fa": "فرایند ادغام‌شده — بدون گردش",
-      "actions": [{"type": "record_merged_stub"}]
+      "description_fa": "ادغام SOP ۵۸ در SOP ۱ — باز کردن فرایند مرخصی آموزشی و بستن این پرونده",
+      "actions": [
+        {"type": "record_merged_stub"},
+        {"type": "start_process", "process_code": "educational_leave"}
+      ]
     }
   ],
   "forms": []

@@ -403,6 +403,20 @@
       "description_fa": "مهلت ۱۰ روزه افزایش فرکانس درمان گذشت"
     },
     {
+      "from": "therapy_frequency_escalation",
+      "to": "personal_therapy_hours",
+      "trigger": "frequency_confirmed",
+      "required_role": "education_committee",
+      "description_fa": "پیگیری مسئول پروژه نتیجه داد — فرکانس هفتگی تأیید شد"
+    },
+    {
+      "from": "therapy_frequency_escalation",
+      "to": "eligibility_failed",
+      "trigger": "escalation_rejected",
+      "required_role": "education_committee",
+      "description_fa": "درمان هفتگی پس از پیگیری فعال نشد — درخواست ارتقا بسته شد"
+    },
+    {
       "from": "personal_therapy_hours",
       "to": "supervision_readiness_check",
       "trigger": "hours_complete",

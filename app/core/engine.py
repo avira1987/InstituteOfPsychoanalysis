@@ -24,6 +24,7 @@ from app.core.transition import (
     human_may_list_system_transition,
 )
 from app.core.event_bus import event_bus, Event
+from app.core.chaining import dispatch_after_transition, dispatch_on_start
 from app.core.audit import AuditLogger
 from app.services.attendance_service import AttendanceService
 from app.core.gamification import merge_gamification_into_extra
@@ -34,7 +35,9 @@ from app.core.interview_result_access import (
     is_interview_result_trigger,
 )
 from app.core.student_forbidden_triggers import STUDENT_FORBIDDEN_TRIGGER_EVENTS
+from app.core.user_roles import candidate_actor_roles, role_grants, user_has_role
 from app.models.operational_models import User
+from app.observability.context import bind_process_fields
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +127,24 @@ class StateMachineEngine:
         self.transition_manager = TransitionManager(db, self.rule_evaluator)
         self.audit_logger = AuditLogger(db)
 
+    async def _instance_history_state_codes(
+        self,
+        instance_id: uuid.UUID,
+        extra: Optional[list] = None,
+    ) -> list[str]:
+        rows = (
+            await self.db.execute(
+                select(StateHistory.to_state_code)
+                .where(StateHistory.instance_id == instance_id)
+                .order_by(StateHistory.entered_at)
+            )
+        ).scalars().all()
+        codes = [str(c) for c in rows if c]
+        for item in extra or []:
+            if item:
+                codes.append(str(item))
+        return codes
+
     # ─── Process Loading ────────────────────────────────────────────
 
     async def get_process_definition(self, process_code: str) -> ProcessDefinition:
@@ -186,6 +207,7 @@ class StateMachineEngine:
         initial_context: Optional[dict] = None,
     ) -> ProcessInstance:
         """Start a new process instance for a student."""
+        bind_process_fields(process_code=process_code)
         process_def = await self.get_process_definition(process_code)
 
         instance = ProcessInstance(
@@ -197,6 +219,7 @@ class StateMachineEngine:
             started_by=actor_id,
         )
         self.db.add(instance)
+        bind_process_fields(instance_id=str(instance.id))
 
         # Record initial state in history
         history = StateHistory(
@@ -232,92 +255,17 @@ class StateMachineEngine:
             source="state_machine_engine",
         ))
 
-        if process_code == "therapy_changes":
-            try:
-                await self.db.flush()
-                from app.services.therapy_changes_chaining import propagate_on_therapy_changes_started
-
-                await propagate_on_therapy_changes_started(self.db, instance)
-            except Exception:
-                logger.exception(
-                    "therapy_changes start propagation failed (instance=%s)",
-                    instance.id,
-                )
-
-        if process_code in ("educational_leave", "full_education_leave"):
-            try:
-                await self.db.flush()
-                from app.services.student_non_registration_chaining import (
-                    maybe_advance_non_registration_on_leave_start,
-                )
-
-                await maybe_advance_non_registration_on_leave_start(
-                    self.db, self, student_id, process_code, actor_id,
-                )
-            except Exception:
-                logger.exception(
-                    "student_non_registration leave chain on start failed (instance=%s)",
-                    instance.id,
-                )
-
-        if process_code == "therapy_completion":
-            try:
-                await self.db.flush()
-                await self._persist_therapy_completion_snapshot(instance)
-            except Exception:
-                logger.exception(
-                    "therapy_completion initial snapshot failed (instance=%s)",
-                    instance.id,
-                )
-
-        if process_code == "ta_to_assistant_faculty":
-            try:
-                await self.db.flush()
-                from app.services.ta_to_assistant_faculty_service import propagate_on_start
-
-                await propagate_on_start(self.db, instance, actor_id=actor_id)
-            except Exception:
-                logger.exception(
-                    "ta_to_assistant_faculty propagate on start failed (instance=%s)",
-                    instance.id,
-                )
-
-        if process_code == "return_to_full_education":
-            try:
-                await self.db.flush()
-                from app.services.return_to_full_education_service import propagate_on_start
-
-                await propagate_on_start(self.db, instance)
-            except Exception:
-                logger.exception(
-                    "return_to_full_education propagate on start failed (instance=%s)",
-                    instance.id,
-                )
-
-        if process_code == "full_education_leave":
-            try:
-                await self.db.flush()
-                from app.services.full_education_leave_service import propagate_on_start
-
-                await propagate_on_start(self.db, instance)
-            except Exception:
-                logger.exception(
-                    "full_education_leave propagate on start failed (instance=%s)",
-                    instance.id,
-                )
-
-        if process_code == "introductory_term_end":
-            try:
-                await self.db.flush()
-                from app.services.introductory_term_end_chaining import advance_introductory_term_end
-
-                await advance_introductory_term_end(self.db, self, instance, actor_id)
-                instance = await self.get_process_instance(instance.id)
-            except Exception:
-                logger.exception(
-                    "introductory_term_end auto-advance on start failed (instance=%s)",
-                    instance.id,
-                )
+        # Inter-process wiring: see metadata/wiring/process_links.json
+        refreshed = await dispatch_on_start(
+            db=self.db,
+            engine=self,
+            instance=instance,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            initial_context=initial_context,
+        )
+        if refreshed is not None:
+            instance = refreshed
 
         try:
             from app.services.manual_process_start_notification import notify_manual_process_started
@@ -332,6 +280,72 @@ class StateMachineEngine:
 
         logger.info(f"Started process '{process_code}' for student {student_id}, instance={instance.id}")
         return instance
+
+    def _pick_actor_role_for_transition(
+        self,
+        *,
+        transition: TransitionDefinition,
+        trigger_event: str,
+        process_code: str,
+        from_state: str,
+        actor_role: str,
+        actor_user: Optional[User],
+    ) -> Optional[str]:
+        """اولین نقش کاندید که validate_role را پاس کند."""
+        for role in candidate_actor_roles(actor_role, actor_user):
+            if self.transition_manager.validate_role(
+                transition,
+                role,
+                trigger_event=trigger_event,
+                process_code=process_code,
+                from_state=from_state,
+            ):
+                return role
+        return None
+
+    def _transition_listed_for_role(
+        self,
+        t: TransitionDefinition,
+        actor_role: str,
+        instance: ProcessInstance,
+        *,
+        has_booked_slot: bool,
+    ) -> bool:
+        """آیا این نقش می‌تواند ترنزیشن را در لیست اقدامات ببیند؟"""
+        portal_registration = actor_role in ("student", "applicant")
+        if actor_role == "student" and t.trigger_event in STUDENT_FORBIDDEN_TRIGGER_EVENTS:
+            return False
+        if actor_role != "system" and is_payment_gateway_trigger(t.trigger_event):
+            return False
+        if (
+            actor_role != "system"
+            and (t.required_role or "") == "system"
+            and not human_may_list_system_transition(t.trigger_event, actor_role)
+        ):
+            return False
+        if portal_registration and t.trigger_event in _REGISTRATION_INTERVIEW_BOOKING_TRIGGERS:
+            return False
+        if (
+            portal_registration
+            and t.trigger_event == "proceed_to_payment"
+            and instance.process_code == "introductory_course_registration"
+            and instance.current_state_code == "interview_scheduled"
+            and not has_booked_slot
+        ):
+            return False
+        return self.transition_manager.validate_role(
+            t,
+            actor_role,
+            trigger_event=t.trigger_event,
+            process_code=instance.process_code,
+            from_state=instance.current_state_code,
+        )
+
+    @staticmethod
+    def _skips_intro_registration_gate(actor_role: str, actor_user: Optional[User]) -> bool:
+        if actor_user is not None:
+            return user_has_role(actor_user, "interviewer", admin_bypass=False)
+        return role_grants(actor_role, "interviewer")
 
     # ─── Transition Execution ───────────────────────────────────────
 
@@ -358,21 +372,34 @@ class StateMachineEngine:
         """
         # 1. Load instance
         instance = await self.get_process_instance(instance_id)
+        bind_process_fields(process_code=instance.process_code, instance_id=str(instance.id))
         if instance.is_completed or instance.is_cancelled:
             raise InvalidTransitionError("Process instance is already completed or cancelled")
 
         process_def = await self.get_process_definition(instance.process_code)
         current_state = instance.current_state_code
+        actor_user = await self.db.get(User, actor_id) if actor_id else None
 
         if payload is None:
             payload = {}
         elif not isinstance(payload, dict):
             payload = {}
+        if isinstance(payload, dict) and payload.get("payment_method") == "installment":
+            from app.services.installment_settings_service import new_installment_disabled_reason
+
+            blocked = await new_installment_disabled_reason(
+                self.db, payload, instance.context_data
+            )
+            if blocked:
+                raise InvalidTransitionError(blocked)
         if trigger_event == "interview_result_submitted":
             ts = payload.get("to_state") or payload.get("target_to_state")
             # همیشه از to_state هم‌راستا کن — مقدار قدیمی در context_data یا payload ممکن است مانع pass شدن قوانین شود
             if ts and ts in _INTERVIEW_RESULT_BY_TO_STATE:
-                payload = {**payload, "interview_result": _INTERVIEW_RESULT_BY_TO_STATE[ts]}
+                ir = _INTERVIEW_RESULT_BY_TO_STATE[ts]
+                payload = {**payload, "interview_result": ir, "result": ir}
+                if ir != "rejected":
+                    payload = {**payload, "admission_type": ir}
 
         if instance.process_code in (
             "live_supervision_session_prep",
@@ -424,7 +451,7 @@ class StateMachineEngine:
                 "documents_rejected",
             }
             if (
-                actor_role != "interviewer"
+                not self._skips_intro_registration_gate(actor_role, actor_user)
                 and trigger_event not in _gate_exempt_triggers
             ):
                 from app.services.registration_readiness_service import check_intro_registration_gate
@@ -480,6 +507,39 @@ class StateMachineEngine:
                 rule_results=last_rule_results,
                 error=err,
             )
+
+        from app.meta.course_selection_validation import (
+            course_selection_config,
+            normalize_course_codes,
+            validate_selected_courses_for_process,
+        )
+
+        _course_cfg = course_selection_config(instance.process_code)
+        if _course_cfg and trigger_event in ("courses_selected", "courses_confirmed"):
+            merged_courses = {**self._as_mapping(instance.context_data), **(payload or {})}
+            field_name = _course_cfg.get("field_name") or "selected_courses"
+            selected_raw = merged_courses.get(field_name)
+            if selected_raw in (None, "", []):
+                selected_raw = merged_courses.get("selected_courses")
+            st_row = (
+                await self.db.execute(select(Student).where(Student.id == instance.student_id))
+            ).scalars().first()
+            ok_cs, err_cs = await validate_selected_courses_for_process(
+                self.db,
+                instance.process_code,
+                merged_courses,
+                normalize_course_codes(selected_raw),
+                student=st_row,
+                instance=instance,
+            )
+            if not ok_cs:
+                return TransitionResult(
+                    success=False,
+                    from_state=current_state,
+                    trigger_event=trigger_event,
+                    rule_results=rule_results,
+                    error=err_cs or "انتخاب درس برای این نوع پذیرش مجاز نیست.",
+                )
 
         if (
             instance.process_code == "therapy_session_reduction"
@@ -664,34 +724,35 @@ class StateMachineEngine:
                     error=serr,
                 )
 
+        picked_role = self._pick_actor_role_for_transition(
+            transition=transition,
+            trigger_event=trigger_event,
+            process_code=instance.process_code,
+            from_state=current_state,
+            actor_role=actor_role,
+            actor_user=actor_user,
+        )
+        if picked_role is None:
+            from app.meta.role_labels import role_label_fa_only
+
+            raise UnauthorizedError(
+                f"نقش «{role_label_fa_only(actor_role)}» مجاز به انجام این اقدام نیست "
+                f"(نیاز به نقش «{role_label_fa_only(transition.required_role)}»)."
+            )
+        actor_role = picked_role
+
         # 3b. DB ممکن است required_role قدیمی داشته باشد؛ لیست انحصاری «فقط system» در متادیتا را اعمال کن.
         if actor_role == "student" and trigger_event in STUDENT_FORBIDDEN_TRIGGER_EVENTS:
             raise UnauthorizedError(
                 "این اقدام برای دانشجو در دسترس نیست (فقط سیستم/فراخوانی خودکار)."
             )
 
-        actor_user = await self.db.get(User, actor_id)
         if actor_user and is_interview_result_trigger(trigger_event):
             await assert_can_submit_interview_result(
                 self.db,
                 instance=instance,
                 user=actor_user,
                 trigger_event=trigger_event,
-            )
-
-        # 4. Check RBAC
-        if not self.transition_manager.validate_role(
-            transition,
-            actor_role,
-            trigger_event=trigger_event,
-            process_code=instance.process_code,
-            from_state=current_state,
-        ):
-            from app.meta.role_labels import role_label_fa_only
-
-            raise UnauthorizedError(
-                f"نقش «{role_label_fa_only(actor_role)}» مجاز به انجام این اقدام نیست "
-                f"(نیاز به نقش «{role_label_fa_only(transition.required_role)}»)."
             )
 
         # 5. Apply transition
@@ -719,10 +780,39 @@ class StateMachineEngine:
             "documents_resubmitted",
             "documents_rejected",
         )
-        if (payload and isinstance(payload, dict)) or trigger_event in _doc_triggers:
+        if (
+            (payload and isinstance(payload, dict))
+            or trigger_event in _doc_triggers
+            or trigger_event == "interview_result_submitted"
+        ):
             ctx = dict(self._as_mapping(instance.context_data))
             if payload and isinstance(payload, dict):
                 ctx.update(payload)
+            if trigger_event == "interview_result_submitted":
+                from app.services.admission_type_service import persist_admission_type_on_student
+
+                ir = (
+                    ctx.get("interview_result")
+                    or ctx.get("result")
+                    or _INTERVIEW_RESULT_BY_TO_STATE.get(transition.to_state_code)
+                )
+                if ir:
+                    ctx["interview_result"] = ir
+                    ctx["result"] = ir
+                    if ir != "rejected":
+                        ctx["admission_type"] = ir
+                    st_row = (
+                        await self.db.execute(
+                            select(Student).where(Student.id == instance.student_id)
+                        )
+                    ).scalars().first()
+                    if st_row:
+                        persist_admission_type_on_student(
+                            st_row,
+                            admission_type=ctx.get("admission_type"),
+                            interview_result=ir,
+                            result_state=transition.to_state_code,
+                        )
             if payload and isinstance(payload, dict):
                 if instance.process_code == "educational_leave" and "leave_terms" in ctx:
                     try:
@@ -780,20 +870,16 @@ class StateMachineEngine:
             ):
                 from datetime import timedelta
                 from app.meta.process_forms import get_process_forms
+                from app.meta.student_step_forms import format_documents_deficiency_list
 
-                resubmit = ctx.get("__documents_resubmit_fields") or []
                 labels: dict[str, str] = {}
                 for form in get_process_forms(instance.process_code, "documents_upload"):
                     for field in form.get("fields") or []:
                         name = field.get("name")
                         if name:
                             labels[str(name)] = str(field.get("label_fa") or name)
-                lines = [
-                    f"{i}- {labels.get(str(fname), str(fname))}"
-                    for i, fname in enumerate(resubmit, 1)
-                ]
                 ctx["__document_field_labels_fa"] = labels
-                ctx["deficiency_list"] = "\n".join(lines) if lines else "—"
+                ctx["deficiency_list"] = format_documents_deficiency_list(ctx)
                 ctx["documents_correction_deadline"] = (
                     datetime.now(timezone.utc) + timedelta(hours=48)
                 ).date().isoformat()
@@ -910,11 +996,15 @@ class StateMachineEngine:
 
             st_stmt = select(Student).where(Student.id == instance.student_id)
             student = (await self.db.execute(st_stmt)).scalar_one_or_none()
+            hist_codes = await self._instance_history_state_codes(
+                instance.id, extra=[from_state, transition.to_state_code]
+            )
             ctx_cs = await merge_offerings_into_instance_context(
                 self.db,
                 instance.process_code,
                 self._as_mapping(instance.context_data),
                 student=student,
+                state_codes=hist_codes,
             )
             instance.context_data = ctx_cs
             flag_modified(instance, "context_data")
@@ -1005,266 +1095,20 @@ class StateMachineEngine:
 
         await self._update_hidden_progress(instance, transition.to_state_code)
 
-        if instance.process_code == "introductory_course_registration":
-            try:
-                from app.services.introductory_registration_chaining import (
-                    chain_introductory_registration_after_transition,
-                )
-
-                await chain_introductory_registration_after_transition(
-                    self.db,
-                    self,
-                    instance,
-                    transition.to_state_code,
-                    actor_id,
-                )
-                instance = await self.get_process_instance(instance_id)
-            except Exception:
-                logger.exception(
-                    "introductory registration chain failed (instance=%s)",
-                    instance.id,
-                )
-
-        if instance.process_code == "lesson_start_per_term":
-            try:
-                from app.services.lesson_start_chaining import chain_lesson_start_after_transition
-
-                await chain_lesson_start_after_transition(
-                    self.db,
-                    self,
-                    instance,
-                    transition.to_state_code,
-                    actor_id,
-                )
-                instance = await self.get_process_instance(instance_id)
-            except Exception:
-                logger.exception(
-                    "lesson_start chain failed (instance=%s)",
-                    instance.id,
-                )
-
-        if instance.process_code == "ta_track_change":
-            try:
-                from app.services.ta_track_change_chaining import chain_ta_track_change_after_transition
-
-                await chain_ta_track_change_after_transition(
-                    self.db,
-                    self,
-                    instance,
-                    transition.to_state_code,
-                    actor_id,
-                )
-                instance = await self.get_process_instance(instance_id)
-            except Exception:
-                logger.exception(
-                    "ta_track_change chain failed (instance=%s)",
-                    instance.id,
-                )
-
-        if (
-            transition.to_state_code == "registration_complete"
-            and instance.process_code == "introductory_course_registration"
-            and instance.is_completed
-        ):
-            try:
-                from app.services.student_service import StudentService
-
-                await StudentService(self.db).maybe_start_followup_after_intro_registration(instance)
-            except Exception:
-                logger.exception(
-                    "Follow-up after introductory registration_complete failed (instance=%s)",
-                    instance.id,
-                )
-
-        if (
-            transition.to_state_code == "therapy_active"
-            and instance.process_code == "start_therapy"
-            and instance.is_completed
-        ):
-            try:
-                from app.services.student_service import StudentService
-
-                await StudentService(self.db).maybe_start_session_payment_after_start_therapy(instance)
-            except Exception:
-                logger.exception(
-                    "Follow-up after start_therapy therapy_active failed (instance=%s)",
-                    instance.id,
-                )
-
-        if (
-            transition.to_state_code == "therapy_completed"
-            and instance.process_code == "return_to_full_education"
-        ):
-            try:
-                from app.services.return_to_full_education_service import branch_after_therapy_payment
-
-                actor = actor_id
-                await branch_after_therapy_payment(self.db, self, instance, actor)
-                instance = await self.get_process_instance(instance_id)
-            except Exception:
-                logger.exception(
-                    "return_to_full_education branch after therapy failed (instance=%s)",
-                    instance.id,
-                )
-
-        if (
-            transition.to_state_code == "registration_unlocked"
-            and instance.process_code == "return_to_full_education"
-        ):
-            try:
-                from app.services.return_to_full_education_service import finalize_registration_unlock
-
-                await finalize_registration_unlock(self.db, self, instance, actor_id)
-                instance = await self.get_process_instance(instance_id)
-            except Exception:
-                logger.exception(
-                    "return_to_full_education finalize failed (instance=%s)",
-                    instance.id,
-                )
-
-        if (
-            transition.to_state_code == "therapist_assignment"
-            and instance.process_code == "full_education_leave"
-        ):
-            try:
-                from app.services.full_education_leave_service import maybe_skip_therapist_assignment
-
-                await maybe_skip_therapist_assignment(self.db, self, instance, actor_id)
-                instance = await self.get_process_instance(instance_id)
-            except Exception:
-                logger.exception(
-                    "full_education_leave therapist skip failed (instance=%s)",
-                    instance.id,
-                )
-
-        if (
-            transition.to_state_code == "payment_confirmed"
-            and instance.process_code == "session_payment"
-            and instance.is_completed
-        ):
-            try:
-                from app.services.student_service import StudentService
-
-                await StudentService(self.db).repoint_primary_after_session_payment_completed(instance)
-            except Exception:
-                logger.exception(
-                    "repoint_primary_after_session_payment_completed failed (instance=%s)",
-                    instance.id,
-                )
-
-        if (
-            instance.process_code == "therapy_completion"
-            and instance.is_completed
-            and transition.to_state_code in ("therapy_completed", "conditions_not_met")
-        ):
-            try:
-                from app.services.student_service import StudentService
-
-                await StudentService(self.db).repoint_primary_after_therapy_completion_terminal(instance)
-            except Exception:
-                logger.exception(
-                    "repoint_primary_after_therapy_completion_terminal failed (instance=%s)",
-                    instance.id,
-                )
-
-        if instance.process_code == "therapy_changes":
-            try:
-                from app.services.therapy_changes_chaining import propagate_therapy_changes_completed
-
-                await propagate_therapy_changes_completed(
-                    self.db, instance, transition.to_state_code
-                )
-            except Exception:
-                logger.exception(
-                    "therapy_changes parent propagation failed (instance=%s)",
-                    instance.id,
-                )
-
-        if instance.process_code == "student_non_registration":
-            try:
-                from app.services.student_non_registration_chaining import (
-                    chain_student_non_registration_after_transition,
-                )
-
-                await chain_student_non_registration_after_transition(
-                    self.db,
-                    self,
-                    instance,
-                    transition.to_state_code,
-                    actor_id,
-                )
-                instance = await self.get_process_instance(instance_id)
-            except Exception:
-                logger.exception(
-                    "student_non_registration chain failed (instance=%s)",
-                    instance.id,
-                )
-
-        if instance.process_code == "intern_bulk_patient_referral":
-            try:
-                from app.services.intern_bulk_patient_referral_chaining import (
-                    chain_intern_bulk_referral_after_transition,
-                )
-
-                await chain_intern_bulk_referral_after_transition(
-                    self.db,
-                    self,
-                    instance,
-                    transition.to_state_code,
-                    actor_id,
-                    payload,
-                )
-                instance = await self.get_process_instance(instance_id)
-            except Exception:
-                logger.exception(
-                    "intern_bulk_patient_referral chain failed (instance=%s)",
-                    instance.id,
-                )
-
-        if instance.process_code == "ta_to_assistant_faculty":
-            try:
-                from app.services.ta_to_assistant_faculty_service import chain_after_transition
-
-                await chain_after_transition(
-                    self.db,
-                    instance,
-                    transition.to_state_code,
-                )
-            except Exception:
-                logger.exception(
-                    "ta_to_assistant_faculty chain failed (instance=%s)",
-                    instance.id,
-                )
-
-        if instance.process_code == "upgrade_to_ta":
-            try:
-                from app.services.ta_upgrade_service import chain_after_transition as ta_upgrade_chain
-
-                await ta_upgrade_chain(
-                    self.db,
-                    instance,
-                    transition.to_state_code,
-                )
-            except Exception:
-                logger.exception(
-                    "upgrade_to_ta chain failed (instance=%s)",
-                    instance.id,
-                )
-
-        if instance.process_code in ("comprehensive_term_start", "intro_second_semester_registration"):
-            try:
-                from app.services.student_non_registration_chaining import (
-                    maybe_advance_non_registration_on_term_registration,
-                )
-
-                await maybe_advance_non_registration_on_term_registration(
-                    self.db, self, instance, actor_id,
-                )
-            except Exception:
-                logger.exception(
-                    "student_non_registration registration chain failed (instance=%s)",
-                    instance.id,
-                )
+        # Inter-process wiring: see metadata/wiring/process_links.json
+        refreshed = await dispatch_after_transition(
+            db=self.db,
+            engine=self,
+            instance=instance,
+            from_state=from_state,
+            to_state=transition.to_state_code,
+            trigger_event=trigger_event,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            payload=payload,
+        )
+        if refreshed is not None:
+            instance = refreshed
 
         return TransitionResult(
             success=True,
@@ -1355,11 +1199,12 @@ class StateMachineEngine:
                     t for t in transitions if t.trigger_event in _gate_exempt_list_triggers
                 ]
 
-        portal_registration = actor_role in ("student", "applicant")
+        roles_to_try = candidate_actor_roles(actor_role, actor_user)
         has_booked_slot = False
-        if portal_registration and (
+        if (
             instance.process_code == "introductory_course_registration"
             and instance.current_state_code == "interview_scheduled"
+            and any(r in ("student", "applicant") for r in roles_to_try)
         ):
             has_booked_slot = await self._instance_has_registration_interview_booking(
                 instance.id, instance.student_id
@@ -1367,32 +1212,11 @@ class StateMachineEngine:
 
         available = []
         for t in transitions:
-            if actor_role == "student" and t.trigger_event in STUDENT_FORBIDDEN_TRIGGER_EVENTS:
-                continue
-            if actor_role != "system" and is_payment_gateway_trigger(t.trigger_event):
-                continue
-            if (
-                actor_role != "system"
-                and (t.required_role or "") == "system"
-                and not human_may_list_system_transition(t.trigger_event, actor_role)
-            ):
-                continue
-            if portal_registration and t.trigger_event in _REGISTRATION_INTERVIEW_BOOKING_TRIGGERS:
-                continue
-            if (
-                portal_registration
-                and t.trigger_event == "proceed_to_payment"
-                and instance.process_code == "introductory_course_registration"
-                and instance.current_state_code == "interview_scheduled"
-                and not has_booked_slot
-            ):
-                continue
-            if not self.transition_manager.validate_role(
-                t,
-                actor_role,
-                trigger_event=t.trigger_event,
-                process_code=instance.process_code,
-                from_state=instance.current_state_code,
+            if not any(
+                self._transition_listed_for_role(
+                    t, role, instance, has_booked_slot=has_booked_slot
+                )
+                for role in roles_to_try
             ):
                 continue
             if actor_user and is_interview_result_trigger(t.trigger_event):
@@ -1449,11 +1273,13 @@ class StateMachineEngine:
 
                 st_stmt = select(Student).where(Student.id == instance.student_id)
                 student = (await self.db.execute(st_stmt)).scalar_one_or_none()
+                hist_states = [h.to_state_code for h in history] + [instance.current_state_code]
                 ctx_out = await merge_offerings_into_instance_context(
                     self.db,
                     instance.process_code,
                     ctx_out,
                     student=student,
+                    state_codes=hist_states,
                 )
             except Exception:
                 logger.exception(
@@ -1790,11 +1616,15 @@ class StateMachineEngine:
 
                 st_stmt = select(Student).where(Student.id == instance.student_id)
                 student = (await self.db.execute(st_stmt)).scalar_one_or_none()
+                hist_codes = await self._instance_history_state_codes(
+                    instance.id, extra=[from_current, target_state]
+                )
                 ctx = await merge_offerings_into_instance_context(
                     self.db,
                     instance.process_code,
                     self._as_mapping(instance.context_data),
                     student=student,
+                    state_codes=hist_codes,
                 )
                 instance.context_data = ctx
                 flag_modified(instance, "context_data")
@@ -2509,6 +2339,7 @@ class StateMachineEngine:
             from app.services.admission_type_service import (
                 derive_has_active_therapist,
                 normalize_admission_type,
+                overlay_admission_on_context,
             )
 
             extra = self._as_mapping(student.extra_data)
@@ -2530,6 +2361,13 @@ class StateMachineEngine:
             }
             if admission_canonical:
                 context["student"]["admission_type"] = admission_canonical
+            overlaid = overlay_admission_on_context(
+                dict(context["instance"]),
+                student,
+            )
+            if overlaid.get("admission_type"):
+                context["student"]["admission_type"] = overlaid["admission_type"]
+                context["instance"]["admission_type"] = overlaid["admission_type"]
 
             # Enrich instance for rules: absence quota, absences this year, completed/required hours,
             # current_week (week_9_deadline), hours_until_first_slot (24_hour_rule) — BUILD_TODO § د
@@ -2695,6 +2533,9 @@ class StateMachineEngine:
                 sp = inst.get("supervision_session_paid")
                 if sp is not None:
                     inst["session_paid"] = bool(sp)
+            from app.services.fee_determination_runner import provider_cancel_flag
+
+            inst["session_cancelled_by_provider"] = provider_cancel_flag(inst.get("cancelled_by"))
 
         if instance.process_code == "upgrade_to_educational_therapist":
             from app.services.educational_therapist_upgrade_service import build_et_upgrade_context

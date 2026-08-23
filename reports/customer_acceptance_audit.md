@@ -1,7 +1,7 @@
 # Customer Acceptance Audit
 
-Generated: 2026-07-18T18:34:26.711320+00:00
-**Customer Acceptance Readiness: 91.8%** (67/73 processes)
+Generated: 2026-08-23T16:41:50.142210+00:00
+**Customer Acceptance Readiness: 100.0%** (73/73 processes)
 
 ## Main Table
 
@@ -23,7 +23,7 @@ Generated: 2026-07-18T18:34:26.711320+00:00
 | film_observation_course_completion | 1) باز شدن آپلود گزارش; 2) آپلود گزارش دانشجو; 3) بررسی و ثبت نمره مدرس; 4) تفسیر نمره و Pass/Fail (+1 more) | 5/5 SOP steps | — | YES |
 | film_observation_ta_attendance_completion | 1) اتوماسیون (آغازگر):; 2) مدرس (مشارکت):; 3) اتوماسیون (حضور و غیاب):; 4) اتوماسیون (نمره کمک‌مدرس): (+12 more) | 1/16 SOP steps | 15 SOP unmapped | YES |
 | full_education_leave | 1) دانشجو (آغاز فرایند):; 2) دانشجو و اتوماسیون (تعیین مدت مرخصی و نم; 3) اتوماسیون (ارجاع درخواست):; 4) کمیته پیشرفت (بررسی و تعیین وقت جلسه — م (+11 more) | 12/15 SOP steps | 3 SOP unmapped | YES |
-| group_supervision_course_completion | 1) اتوماسیون (آغازگر و یادآوری):; 2) مدرس (مشارکت کلاسی — کیفی):; 3) اتوماسیون (کارنامه و ساعات):; 4) اتوماسیون (نمره نهایی کمک‌مدرس): (+3 more) | 7/7 SOP steps | action_missing:Action type 'start_sub_process' has no handler | **NO** |
+| group_supervision_course_completion | 1) اتوماسیون (آغازگر و یادآوری):; 2) مدرس (مشارکت کلاسی — کیفی):; 3) اتوماسیون (کارنامه و ساعات):; 4) اتوماسیون (نمره نهایی کمک‌مدرس): (+3 more) | 7/7 SOP steps | — | YES |
 | intern_bulk_patient_referral | — | 0/0 SOP steps | — | YES |
 | intern_hours_increase | 1) اتوماسیون (پایش روزانه):; 2) اتوماسیون (ارسال هشدار به کمیته نظارت):; 3) کمیته نظارت:; 4) کمیته نظارت: دکمه «عدم تایید / ارجاع به  (+8 more) | 7/12 SOP steps | 5 SOP unmapped | YES |
 | internship_12month_conditional_review | 1) اتوماسیون (شروع فرایند):; 2) اتوماسیون (هشدار اولیه):; 3) کمیته نظارت (صدور مجوز):; 4) مسئول پروژه کمیته پیشرفت (پورتال کمیته پ (+7 more) | 5/11 SOP steps | 6 SOP unmapped | YES |
@@ -33,7 +33,7 @@ Generated: 2026-07-18T18:34:26.711320+00:00
 | introductory_course_registration | 1) مسئول پذیرش: به متقاضیان آموزش پاسخ داده; 2) متقاضی: وارد سایت ثبت‌نام شده و «فرم پذی; 3) متقاضی: وارد صفحه انتخاب زمان مصاحبه می‌; 4) متقاضی: هزینه مصاحبه را از طریق درگاه پر (+18 more) | 18/22 SOP steps | 4 SOP unmapped | YES |
 | introductory_term_end | 1) اتوماسیون (صدور کارنامه ترم):; 2) اتوماسیون (صدور کارنامه کلی):; 3) اتوماسیون (قابلیت خروجی):; 4) اتوماسیون (بررسی وضعیت درمان): (+5 more) | 5/9 SOP steps | 4 SOP unmapped | YES |
 | lesson_start_per_term | 1) دانشجو: در درس مورد نظر ثبت‌نام می‌کند.; 2) اتوماسیون (ساخت لینک):; 3) اتوماسیون (جای‌گذاری لینک):; 4) اتوماسیون (تشکیل لیست کلاس): (+3 more) | 6/7 SOP steps | 1 SOP unmapped | YES |
-| live_supervision_course_completion | 1) پیغام به پورتال کمیته نظارت و آغاز فراین; 1) پیغام به پورتال کمیته نظارت؛; 2) SMS به دانشجو.; 2) SMS به موبایل مدرس. (+3 more) | 7/7 SOP steps | action_missing:Action type 'start_sub_process' has no handler | **NO** |
+| live_supervision_course_completion | 1) پیغام به پورتال کمیته نظارت و آغاز فراین; 1) پیغام به پورتال کمیته نظارت؛; 2) SMS به دانشجو.; 2) SMS به موبایل مدرس. (+3 more) | 7/7 SOP steps | — | YES |
 | live_supervision_session_prep | 1) بیمار متقاضی; 2) درمانگر; 3) مدرس درس سوپرویژن زنده; 4) برنامه کلاسی تمامی دانشجویان درس سوپرویژ | 1/4 SOP steps | 3 SOP unmapped | YES |
 | live_supervision_ta_evaluation | 2) فرایند آپلود جستار هر جلسه و دقایق منتخب; 3) فرایند ثبت محتوای وبلاگ از محتوای درسی ت | 2/2 SOP steps | — | YES |
 | live_therapy_observation_course_completion | 1) باز شدن آپلود گزارش; 2) بارگذاری گزارش دانشجو; 3) بررسی و ثبت نمره مدرس; 4) تفسیر نمره PASS/FAIL (+1 more) | 5/5 SOP steps | — | YES |
@@ -44,7 +44,7 @@ Generated: 2026-07-18T18:34:26.711320+00:00
 | process_merged_to_one | — | 0/0 SOP steps | — | **NO** |
 | return_to_full_education | 1) دانشجو (شروع فرایند):; 2) اتوماسیون (تشخیص دوره و نمایش درمانگران); 3) دانشجو و اتوماسیون (محدودیت انتخاب):; 4) دانشجو (پرداخت جلسهٔ اول): (+10 more) | 11/14 SOP steps | 3 SOP unmapped | YES |
 | session_payment | 1) پیش‌شرط‌ها و قوانین سیستمی; 2) بررسی وضعیت مالی (داشبورد دانشجو); 3) اقدام به پرداخت; 4) پردازش تراکنش و به‌روزرسانی اعتبار (+2 more) | 1/6 SOP steps | 5 SOP unmapped | YES |
-| skills_course_completion | 1) اتوماسیون (بازگشایی فیلدها):; 2) مدرس (مشارکت و امتحان عملی):; 3) اتوماسیون (مهلت و هشدار):; 4) مدرس و اتوماسیون (آزمون تستی): (+9 more) | 13/13 SOP steps | action_missing:Action type 'start_sub_process' has no handler; stuck_state:Non-terminal state 'grades_computed' has no outgoi | **NO** |
+| skills_course_completion | 1) اتوماسیون (بازگشایی فیلدها):; 2) مدرس (مشارکت و امتحان عملی):; 3) اتوماسیون (مهلت و هشدار):; 4) مدرس و اتوماسیون (آزمون تستی): (+9 more) | 13/13 SOP steps | — | YES |
 | specialized_commission_review | 1) آغاز بررسی; 2) مختومه کردن رابطه درمانی (LMS); 3) برگزاری جلسه دانشجو با کمیسیون تخصصی و ت | 3/3 SOP steps | — | YES |
 | start_therapy | 1) دسترسی و بررسی اولیه; 2) انتخاب درمانگر و زمان‌بندی; 3) محاسبه هوشمند تاریخ شروع (قانون ۲۴ ساعت); 4) پرداخت هزینه (+3 more) | 4/7 SOP steps | 3 SOP unmapped | YES |
 | student_instructor_evaluation | 1) پایش تقویم آموزشی (LMS):; 2) ارسال پیامک دعوت به ارزیابی:; 3) ورود و تکمیل فرم (اختیاری):; 4) جداسازی هویت (اتوماسیون): (+3 more) | 5/7 SOP steps | 2 SOP unmapped | YES |
@@ -59,14 +59,14 @@ Generated: 2026-07-18T18:34:26.711320+00:00
 | supervisor_session_cancellation | 1) سوپروایزر: وارد پورتال شده و روی لینک «ف; 2) اتوماسیون: تقویم جلسات مربوط به ۴ هفته آ; 3) سوپروایزر: یکی از جلسات نمایش‌داده‌شده د; 4) اتوماسیون: پس از انتخاب جلسه، دو گزینه ز (+12 more) | 12/16 SOP steps | 4 SOP unmapped | YES |
 | ta_blog_content | 1) پیش‌شرط:; 2) کمک‌مدرس:; 3) قوانین سیستم:; 4) اتوماسیون (مهلت ۲۴ ساعته): (+9 more) | 8/13 SOP steps | 5 SOP unmapped | YES |
 | ta_conceptual_questions | 1) پیش‌شرط اجرایی:; 2) کمک‌مدرس (دریافت قالب):; 3) کمک‌مدرس (آپلود سوالات):; 4) اتوماسیون (کنترل مهلت آپلود): (+10 more) | 12/14 SOP steps | 2 SOP unmapped | YES |
-| ta_essay_upload | 1) پیش‌شرط:; 2) کمک‌مدرس (قالب و نگارش):; 3) فرمت بارگذاری:; 4) اتوماسیون (مهلت ۲۴ ساعته — کمک‌مدرس): (+18 more) | 14/22 SOP steps | portal_missing:Role 'marketing' has no portal mapping; portal_missing:Role 'reference_center' has no portal mapping; 8 SOP unmapped | **NO** |
+| ta_essay_upload | 1) پیش‌شرط:; 2) کمک‌مدرس (قالب و نگارش):; 3) فرمت بارگذاری:; 4) اتوماسیون (مهلت ۲۴ ساعته — کمک‌مدرس): (+18 more) | 14/22 SOP steps | 8 SOP unmapped | YES |
 | ta_instructor_leave | 1) اتوماسیون (دروازهٔ زمانی):; 2) مدرس یا کمک‌مدرس:; 3) اتوماسیون (سوابق — فقط کمک‌مدرس):; 4) اتوماسیون: (+8 more) | 3/12 SOP steps | 9 SOP unmapped | YES |
 | ta_student_consultation | 1) اتوماسیون (زمان‌بندی اجرا):; 2) اتوماسیون (ارسال پیامک یادآوری):; 3) کمک‌مدرس:; 4) اتوماسیون (فیلدهای فرم): (+5 more) | 5/9 SOP steps | 4 SOP unmapped | YES |
 | ta_to_assistant_faculty | 1) اتوماسیون (پایش):; 2) اتوماسیون (مسیر شروع):; 3) اتوماسیون (رتبهٔ تحلیلی قبلی):; 4) کمیته نظارت: (+5 more) | 3/9 SOP steps | 6 SOP unmapped | YES |
 | ta_to_instructor_auto | 1) اتوماسیون (پایان هر ترم):; 2) اتوماسیون (لیست‌های LMS):; 3) اتوماسیون (SMS — متن مصوب بدون تغییر):; 4) اتوماسیون (ترتیب رسته): (+4 more) | 2/8 SOP steps | 6 SOP unmapped | YES |
 | ta_track_change | 1) اتوماسیون (پیش‌شرط):; 2) کمک‌مدرس:; 3) اتوماسیون و کمک‌مدرس (انتخاب مسیر — فقط ; 4) اتوماسیون: (+8 more) | 7/12 SOP steps | 5 SOP unmapped | YES |
 | ta_track_completion | 1) اتوماسیون:; 2) اتوماسیون:; 3) اتوماسیون (SMS به دانشجو — متن مصوب بدون; 4) اتوماسیون (SMS به مسئول علمی کمیته دروس  (+1 more) | 0/5 SOP steps | 5 SOP unmapped | YES |
-| theory_course_completion | 1) اتوماسیون (آغازگر):; 2) مدرس (نمره مشارکت):; 3) اتوماسیون (حضور و غیاب):; 4) اتوماسیون (نمره نهایی کمک‌مدرس): (+11 more) | 15/15 SOP steps | action_missing:Action type 'start_sub_process' has no handler; stuck_state:Non-terminal state 'grades_computed' has no outgoi | **NO** |
+| theory_course_completion | 1) اتوماسیون (آغازگر):; 2) مدرس (نمره مشارکت):; 3) اتوماسیون (حضور و غیاب):; 4) اتوماسیون (نمره نهایی کمک‌مدرس): (+11 more) | 15/15 SOP steps | — | YES |
 | therapist_session_cancellation | 1) درمانگر آموزشی: جهت آغاز فرایند، روی لین; 2) نکته سیستمی: درمانگر در هر بار اجرای این; 3) سیستم LMS: لیست جلسات برنامه‌ریزی‌شده بر; 4) درمانگر آموزشی: یکی از جلسات نمایش‌داده‌ (+17 more) | 20/21 SOP steps | 1 SOP unmapped | YES |
 | therapy_changes | 1) ورود و انتخاب نوع درخواست; 2) انتخاب درمانگر و زمان‌بندی (با رعایت قوا; 3) محاسبه تاریخ شروع (قانون ۲۴ ساعت); 4) پرداخت هزینه (+2 more) | 4/6 SOP steps | 2 SOP unmapped | YES |
 | therapy_completion | 1) پیش‌نیازها و تنظیمات مدیریتی (Admin Conf; 2) آغاز فرایند (Initiation); 3) اعتبارسنجی سیستمی (System Validation); 4) انشعاب مسیر (Decision Making) (+1 more) | 1/5 SOP steps | 4 SOP unmapped | YES |
@@ -77,81 +77,14 @@ Generated: 2026-07-18T18:34:26.711320+00:00
 | thesis_defense_request | — | 0/0 SOP steps | — | YES |
 | unannounced_absence_reaction | 4) مدیر داخلی: موظف است با درمانگر آموزشی ت; 5) مدیر داخلی: پس از صحبت با درمانگر، وارد ; 6) سیستم اتوماسیون: پیامک زیر را برای دانشج; 8) سیستم اتوماسیون: اقدامات زیر را انجام می (+6 more) | 7/10 SOP steps | 3 SOP unmapped | YES |
 | unannounced_supervision_absence_reaction | 2) اتوماسیون (اقدام فوری): به محض ثبت هر غی; 3) اتوماسیون (شرط شروع): اگر دانشجو حداقل ۲; 4) اتوماسیون (تولید متن پیام مدیر داخلی): م; 5) مدیر داخلی: موظف است با سوپروایزر و دانش (+14 more) | 18/18 SOP steps | — | YES |
-| upgrade_to_educational_therapist | — | 0/0 SOP steps | stuck_state:Non-terminal state 'therapy_frequency_escalation'  | **NO** |
+| upgrade_to_educational_therapist | — | 0/0 SOP steps | — | YES |
 | upgrade_to_ta | 1) اتوماسیون (چهار شرط قبل از شروع):; 2) دانشجو:; 3) اتوماسیون (بررسی و ارسال):; 4) کمیته نظارت: (+8 more) | 10/12 SOP steps | 2 SOP unmapped | YES |
 | violation_registration | 1) گزارش‌دهنده:; 2) اتوماسیون:; 3) اتوماسیون (۳ روز):; 4) کمیته نظارت: (+20 more) | 14/24 SOP steps | 10 SOP unmapped | YES |
-| winter_semester_preparation | 1) معاون مدیر آموزش: وارد سیستم شده و وضعیت; 3) مسئول علمی کمیته دروس در پورتال کمیته در; 4) مسئول پذیرش: پیام شروع تبلیغات را در پور; 5) معاون مدیر آموزش: مصاحبه‌کنندگان و بازه  (+2 more) | 6/6 SOP steps | — | YES |
+| winter_semester_preparation | 1) معاون مدیر آموزش: وارد سیستم شده و وضعیت; 3) مسئول علمی کمیته دروس در پورتال کمیته در; 4) مسئول پذیرش: پیام شروع تبلیغات را در پور; 5) مدیر داخلی: مصاحبه‌کنندگان و بازه زمانی  (+2 more) | 6/6 SOP steps | — | YES |
 
 ## FAIL Details
 
-### group_supervision_course_completion
-- **Check:** action_missing
-  - Step: Action type 'start_sub_process' has no handler
-  - Backend: `app/services/action_handler.py`
-  - Frontend: ``
-  - Fix: Register handler for action 'start_sub_process' in ActionHandler._registry
-
-### live_supervision_course_completion
-- **Check:** action_missing
-  - Step: Action type 'start_sub_process' has no handler
-  - Backend: `app/services/action_handler.py`
-  - Frontend: ``
-  - Fix: Register handler for action 'start_sub_process' in ActionHandler._registry
-
 ### process_merged_to_one
-
-### skills_course_completion
-- **Check:** action_missing
-  - Step: Action type 'start_sub_process' has no handler
-  - Backend: `app/services/action_handler.py`
-  - Frontend: ``
-  - Fix: Register handler for action 'start_sub_process' in ActionHandler._registry
-- **Check:** stuck_state
-  - Step: Non-terminal state 'grades_computed' has no outgoing transitions
-  - Backend: `metadata/processes/skills_course_completion.json`
-  - Frontend: ``
-  - Fix: Add transition from 'grades_computed' or mark as terminal
-
-### ta_essay_upload
-- **Check:** portal_missing
-  - Step: Role 'marketing' has no portal mapping
-  - Backend: `C:\Users\393\Desktop\anistito (3)\anistito\metadata\portal_role_assigned_role_map.json`
-  - Frontend: `admin-ui/src/components/Layout.jsx`
-  - Fix: Add 'marketing' to portal_role_assigned_role_map.json and Layout.jsx navItems
-- **Check:** portal_missing
-  - Step: Role 'reference_center' has no portal mapping
-  - Backend: `C:\Users\393\Desktop\anistito (3)\anistito\metadata\portal_role_assigned_role_map.json`
-  - Frontend: `admin-ui/src/components/Layout.jsx`
-  - Fix: Add 'reference_center' to portal_role_assigned_role_map.json and Layout.jsx navItems
-- **Check:** stuck_state
-  - Step: State 'reference_center_editing' requires role 'reference_center' with no portal — process can stall
-  - Backend: `C:\Users\393\Desktop\anistito (3)\anistito\metadata\portal_role_assigned_role_map.json`
-  - Frontend: `admin-ui/src/components/Layout.jsx`
-  - Fix: Add portal for role 'reference_center'
-- **Check:** stuck_state
-  - Step: State 'marketing_publication' requires role 'marketing' with no portal — process can stall
-  - Backend: `C:\Users\393\Desktop\anistito (3)\anistito\metadata\portal_role_assigned_role_map.json`
-  - Frontend: `admin-ui/src/components/Layout.jsx`
-  - Fix: Add portal for role 'marketing'
-
-### theory_course_completion
-- **Check:** action_missing
-  - Step: Action type 'start_sub_process' has no handler
-  - Backend: `app/services/action_handler.py`
-  - Frontend: ``
-  - Fix: Register handler for action 'start_sub_process' in ActionHandler._registry
-- **Check:** stuck_state
-  - Step: Non-terminal state 'grades_computed' has no outgoing transitions
-  - Backend: `metadata/processes/theory_course_completion.json`
-  - Frontend: ``
-  - Fix: Add transition from 'grades_computed' or mark as terminal
-
-### upgrade_to_educational_therapist
-- **Check:** stuck_state
-  - Step: Non-terminal state 'therapy_frequency_escalation' has no outgoing transitions
-  - Backend: `metadata/processes/upgrade_to_educational_therapist.json`
-  - Frontend: ``
-  - Fix: Add transition from 'therapy_frequency_escalation' or mark as terminal
 
 ## SECTION A — Processes ready for customer delivery
 
@@ -159,14 +92,19 @@ Generated: 2026-07-18T18:34:26.711320+00:00
 - `extra_session`
 - `fall_semester_preparation`
 - `film_observation_course_completion`
+- `group_supervision_course_completion`
 - `intern_bulk_patient_referral`
+- `live_supervision_course_completion`
 - `live_supervision_ta_evaluation`
 - `live_therapy_observation_course_completion`
 - `live_therapy_observation_ta_attendance_completion`
 - `patient_referral`
+- `skills_course_completion`
 - `specialized_commission_review`
+- `theory_course_completion`
 - `thesis_defense_request`
 - `unannounced_supervision_absence_reaction`
+- `upgrade_to_educational_therapist`
 - `winter_semester_preparation`
 
 ## SECTION B — Processes requiring minor fixes
@@ -209,6 +147,7 @@ Generated: 2026-07-18T18:34:26.711320+00:00
 - `supervisor_session_cancellation`
 - `ta_blog_content`
 - `ta_conceptual_questions`
+- `ta_essay_upload`
 - `ta_instructor_leave`
 - `ta_student_consultation`
 - `ta_to_assistant_faculty`
@@ -228,18 +167,6 @@ Generated: 2026-07-18T18:34:26.711320+00:00
 
 ## SECTION C — Processes requiring major redesign
 
-- `group_supervision_course_completion`
-- `live_supervision_course_completion`
-- `skills_course_completion`
-- `ta_essay_upload`
-- `theory_course_completion`
-- `upgrade_to_educational_therapist`
+- _(none)_
 
 ## SECTION D — Top 20 blockers preventing customer acceptance
-
-1. **stuck_state** — affects 5 process(es): skills_course_completion, ta_essay_upload, ta_essay_upload, theory_course_completion, upgrade_to_educational_therapist
-   - Fix pattern: Add transition from 'grades_computed' or mark as terminal
-2. **action_missing** — affects 4 process(es): group_supervision_course_completion, live_supervision_course_completion, skills_course_completion, theory_course_completion
-   - Fix pattern: Register handler for action 'start_sub_process' in ActionHandler._registry
-3. **portal_missing** — affects 2 process(es): ta_essay_upload, ta_essay_upload
-   - Fix pattern: Add 'marketing' to portal_role_assigned_role_map.json and Layout.jsx navItems

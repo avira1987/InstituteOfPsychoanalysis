@@ -1,10 +1,10 @@
 {
   "meta": {
-    "generated_at": "2026-07-18T18:34:26.711320+00:00",
+    "generated_at": "2026-08-23T16:41:50.142210+00:00",
     "process_count": 74,
     "scored_process_count": 73,
-    "pass_count": 67,
-    "readiness_pct": 91.8,
+    "pass_count": 73,
+    "readiness_pct": 100.0,
     "excluded_from_score": [
       "process_merged_to_one"
     ],
@@ -16,14 +16,19 @@
       "extra_session",
       "fall_semester_preparation",
       "film_observation_course_completion",
+      "group_supervision_course_completion",
       "intern_bulk_patient_referral",
+      "live_supervision_course_completion",
       "live_supervision_ta_evaluation",
       "live_therapy_observation_course_completion",
       "live_therapy_observation_ta_attendance_completion",
       "patient_referral",
+      "skills_course_completion",
       "specialized_commission_review",
+      "theory_course_completion",
       "thesis_defense_request",
       "unannounced_supervision_absence_reaction",
+      "upgrade_to_educational_therapist",
       "winter_semester_preparation"
     ],
     "B": [
@@ -65,6 +70,7 @@
       "supervisor_session_cancellation",
       "ta_blog_content",
       "ta_conceptual_questions",
+      "ta_essay_upload",
       "ta_instructor_leave",
       "ta_student_consultation",
       "ta_to_assistant_faculty",
@@ -82,53 +88,13 @@
       "upgrade_to_ta",
       "violation_registration"
     ],
-    "C": [
-      "group_supervision_course_completion",
-      "live_supervision_course_completion",
-      "skills_course_completion",
-      "ta_essay_upload",
-      "theory_course_completion",
-      "upgrade_to_educational_therapist"
-    ]
+    "C": []
   },
-  "top_blockers": [
-    {
-      "check": "stuck_state",
-      "count": 5,
-      "processes": [
-        "skills_course_completion",
-        "ta_essay_upload",
-        "ta_essay_upload",
-        "theory_course_completion",
-        "upgrade_to_educational_therapist"
-      ],
-      "sample_fix": "Add transition from 'grades_computed' or mark as terminal"
-    },
-    {
-      "check": "action_missing",
-      "count": 4,
-      "processes": [
-        "group_supervision_course_completion",
-        "live_supervision_course_completion",
-        "skills_course_completion",
-        "theory_course_completion"
-      ],
-      "sample_fix": "Register handler for action 'start_sub_process' in ActionHandler._registry"
-    },
-    {
-      "check": "portal_missing",
-      "count": 2,
-      "processes": [
-        "ta_essay_upload",
-        "ta_essay_upload"
-      ],
-      "sample_fix": "Add 'marketing' to portal_role_assigned_role_map.json and Layout.jsx navItems"
-    }
-  ],
+  "top_blockers": [],
   "operator_visibility_summary": {
     "total_operator_states": 152,
-    "needs_review_count": 126,
-    "staff_center_needs_review": 58,
+    "needs_review_count": 88,
+    "staff_center_needs_review": 48,
     "prioritized_gap_count": 15
   },
   "processes": [
@@ -686,9 +652,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 78.1,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 12.5
+        "forms_pct": 100.0
       }
     },
     {
@@ -1211,11 +1177,11 @@
         },
         {
           "num": "7",
-          "title": "معاون مدیر آموزش: زیرساخت مصاحبه‌های ورودی را تعیین می‌کند."
+          "title": "مدیر داخلی: زیرساخت مصاحبه‌های ورودی را تعیین می‌کند و زمان‌بندی دقیق را ثبت می‌کند."
         },
         {
           "num": "8",
-          "title": "مدیر داخلی: زمان‌بندی دقیق مصاحبه‌ها را در سیستم پیاده‌سازی می‌کند."
+          "title": "(ادغام با گام ۷ در رابط کاربری) — همان اقدام مدیر داخلی در یک ثبت، اسلات‌ها را می‌سازد و به انتشار می‌رود."
         }
       ],
       "sop_mapped": [
@@ -1251,13 +1217,13 @@
         },
         {
           "num": "7",
-          "title": "معاون مدیر آموزش: زیرساخت مصاحبه‌های ورودی را تعیین می‌کند.",
+          "title": "مدیر داخلی: زیرساخت مصاحبه‌های ورودی را تعیین می‌کند و زمان‌بندی دقیق را ثبت می‌کند.",
           "matched_via": "state:tuition_entry"
         },
         {
           "num": "8",
-          "title": "مدیر داخلی: زمان‌بندی دقیق مصاحبه‌ها را در سیستم پیاده‌سازی می‌کند.",
-          "matched_via": "state:tuition_entry"
+          "title": "(ادغام با گام ۷ در رابط کاربری) — همان اقدام مدیر داخلی در یک ثبت، اسلات‌ها را می‌سازد و به انتشار می‌رود.",
+          "matched_via": "state:interview_scheduling"
         }
       ],
       "sop_unmapped": [],
@@ -1800,25 +1766,17 @@
       ],
       "sop_unmapped": [],
       "sop_fully_mapped": true,
-      "fails": [
-        {
-          "check": "action_missing",
-          "detail": "Action type 'start_sub_process' has no handler",
-          "backend": "app/services/action_handler.py",
-          "frontend": "",
-          "fix": "Register handler for action 'start_sub_process' in ActionHandler._registry"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 92.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
         "forms_pct": 100.0
       }
@@ -1970,9 +1928,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 87.5,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 50.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -2089,9 +2047,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 91.7,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 66.7
+        "forms_pct": 100.0
       }
     },
     {
@@ -2266,9 +2224,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 84.4,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 37.5
+        "forms_pct": 100.0
       }
     },
     {
@@ -2976,25 +2934,17 @@
       ],
       "sop_unmapped": [],
       "sop_fully_mapped": true,
-      "fails": [
-        {
-          "check": "action_missing",
-          "detail": "Action type 'start_sub_process' has no handler",
-          "backend": "app/services/action_handler.py",
-          "frontend": "",
-          "fix": "Register handler for action 'start_sub_process' in ActionHandler._registry"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 86.7,
+        "total_pct": 100.0,
         "uncovered_roles": [],
         "forms_pct": 100.0
       }
@@ -3366,14 +3316,14 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 91.7,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 66.7
       }
     },
     {
       "code": "process_merged_to_one",
-      "name_fa": "منتقل‌شده به فرایند شماره ۱",
+      "name_fa": "منتقل‌شده به فرایند شماره ۱ (مرخصی آموزشی)",
       "excluded_from_score": true,
       "sop_steps": [],
       "sop_mapped": [],
@@ -3745,32 +3695,17 @@
       ],
       "sop_unmapped": [],
       "sop_fully_mapped": true,
-      "fails": [
-        {
-          "check": "action_missing",
-          "detail": "Action type 'start_sub_process' has no handler",
-          "backend": "app/services/action_handler.py",
-          "frontend": "",
-          "fix": "Register handler for action 'start_sub_process' in ActionHandler._registry"
-        },
-        {
-          "check": "stuck_state",
-          "detail": "Non-terminal state 'grades_computed' has no outgoing transitions",
-          "backend": "metadata/processes/skills_course_completion.json",
-          "frontend": "",
-          "fix": "Add transition from 'grades_computed' or mark as terminal"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 94.3,
+        "total_pct": 100.0,
         "uncovered_roles": [],
         "forms_pct": 100.0
       }
@@ -3875,7 +3810,7 @@
         {
           "num": "3",
           "title": "محاسبه هوشمند تاریخ شروع (قانون ۲۴ ساعت)",
-          "matched_via": "state:schedule_first_session"
+          "matched_via": "state:first_session_24h_check"
         },
         {
           "num": "4",
@@ -4578,9 +4513,9 @@
         "level_c": null
       },
       "implementation": {
-        "total_pct": 75.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 0.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -5641,50 +5576,18 @@
         }
       ],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "portal_missing",
-          "detail": "Role 'marketing' has no portal mapping",
-          "backend": "C:\\Users\\393\\Desktop\\anistito (3)\\anistito\\metadata\\portal_role_assigned_role_map.json",
-          "frontend": "admin-ui/src/components/Layout.jsx",
-          "fix": "Add 'marketing' to portal_role_assigned_role_map.json and Layout.jsx navItems"
-        },
-        {
-          "check": "portal_missing",
-          "detail": "Role 'reference_center' has no portal mapping",
-          "backend": "C:\\Users\\393\\Desktop\\anistito (3)\\anistito\\metadata\\portal_role_assigned_role_map.json",
-          "frontend": "admin-ui/src/components/Layout.jsx",
-          "fix": "Add 'reference_center' to portal_role_assigned_role_map.json and Layout.jsx navItems"
-        },
-        {
-          "check": "stuck_state",
-          "detail": "State 'reference_center_editing' requires role 'reference_center' with no portal — process can stall",
-          "backend": "C:\\Users\\393\\Desktop\\anistito (3)\\anistito\\metadata\\portal_role_assigned_role_map.json",
-          "frontend": "admin-ui/src/components/Layout.jsx",
-          "fix": "Add portal for role 'reference_center'"
-        },
-        {
-          "check": "stuck_state",
-          "detail": "State 'marketing_publication' requires role 'marketing' with no portal — process can stall",
-          "backend": "C:\\Users\\393\\Desktop\\anistito (3)\\anistito\\metadata\\portal_role_assigned_role_map.json",
-          "frontend": "admin-ui/src/components/Layout.jsx",
-          "fix": "Add portal for role 'marketing'"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "B",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 92.5,
-        "uncovered_roles": [
-          "marketing",
-          "reference_center"
-        ],
+        "total_pct": 100.0,
+        "uncovered_roles": [],
         "forms_pct": 100.0
       }
     },
@@ -6448,34 +6351,19 @@
       ],
       "sop_unmapped": [],
       "sop_fully_mapped": true,
-      "fails": [
-        {
-          "check": "action_missing",
-          "detail": "Action type 'start_sub_process' has no handler",
-          "backend": "app/services/action_handler.py",
-          "frontend": "",
-          "fix": "Register handler for action 'start_sub_process' in ActionHandler._registry"
-        },
-        {
-          "check": "stuck_state",
-          "detail": "Non-terminal state 'grades_computed' has no outgoing transitions",
-          "backend": "metadata/processes/theory_course_completion.json",
-          "frontend": "",
-          "fix": "Add transition from 'grades_computed' or mark as terminal"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
         "level_c": null
       },
       "implementation": {
-        "total_pct": 80.0,
+        "total_pct": 100.0,
         "uncovered_roles": [],
-        "forms_pct": 40.0
+        "forms_pct": 100.0
       }
     },
     {
@@ -7444,18 +7332,10 @@
       "sop_mapped": [],
       "sop_unmapped": [],
       "sop_fully_mapped": false,
-      "fails": [
-        {
-          "check": "stuck_state",
-          "detail": "Non-terminal state 'therapy_frequency_escalation' has no outgoing transitions",
-          "backend": "metadata/processes/upgrade_to_educational_therapist.json",
-          "frontend": "",
-          "fix": "Add transition from 'therapy_frequency_escalation' or mark as terminal"
-        }
-      ],
+      "fails": [],
       "partial_ui": [],
-      "user_can_complete": false,
-      "section": "C",
+      "user_can_complete": true,
+      "section": "A",
       "pytest": {
         "level_a": null,
         "level_b": null,
@@ -7850,11 +7730,11 @@
         },
         {
           "num": "5",
-          "title": "معاون مدیر آموزش: مصاحبه‌کنندگان و بازه زمانی مصاحبه‌ها را تعیین می‌کند."
+          "title": "مدیر داخلی: مصاحبه‌کنندگان و بازه زمانی مصاحبه‌ها را تعیین و وقت‌های دقیق را ثبت می‌کند."
         },
         {
           "num": "6",
-          "title": "مدیر داخلی: وقت‌های دقیق مصاحبه را از مصاحبه‌کنندگان دریافت و در سایت پیاده‌سازی می‌کند."
+          "title": "(ادغام با گام ۵ در رابط کاربری) — همان ثبت مدیر داخلی تا انتشار جلو می‌رود."
         },
         {
           "num": "7",
@@ -7879,13 +7759,13 @@
         },
         {
           "num": "5",
-          "title": "معاون مدیر آموزش: مصاحبه‌کنندگان و بازه زمانی مصاحبه‌ها را تعیین می‌کند.",
+          "title": "مدیر داخلی: مصاحبه‌کنندگان و بازه زمانی مصاحبه‌ها را تعیین و وقت‌های دقیق را ثبت می‌کند.",
           "matched_via": "state:interviewer_assignment"
         },
         {
           "num": "6",
-          "title": "مدیر داخلی: وقت‌های دقیق مصاحبه را از مصاحبه‌کنندگان دریافت و در سایت پیاده‌سازی می‌کند.",
-          "matched_via": "state:course_finalization"
+          "title": "(ادغام با گام ۵ در رابط کاربری) — همان ثبت مدیر داخلی تا انتشار جلو می‌رود.",
+          "matched_via": "state:interview_scheduling"
         },
         {
           "num": "7",

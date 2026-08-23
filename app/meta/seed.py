@@ -306,6 +306,17 @@ async def load_process(db: AsyncSession, process_file: Path) -> None:
     await sync_process(db, process_file)
 
 
+def validate_action_handlers(processes_dir: Path) -> dict[str, list[str]]:
+    """Action types used in metadata that have no handler. Empty dict means OK.
+
+    An unregistered action type is not a loud failure at runtime — the dispatcher
+    logs a warning and reports success — so it must be caught before seeding.
+    """
+    from scripts.validate_action_coverage import find_unhandled
+
+    return find_unhandled(processes_dir)
+
+
 async def seed_all():
     """Seed all metadata into the database."""
     processes_dir = METADATA_DIR / "processes"
@@ -315,6 +326,15 @@ async def seed_all():
         msg = (
             "فرایند و قوانین همگام نیستند. هر condition در transitionها باید در metadata/rules/all_rules.json تعریف شود. "
             "قوانین گم‌شده: " + ", ".join(missing)
+        )
+        logger.error(msg)
+        raise ValueError(msg)
+
+    unhandled = validate_action_handlers(processes_dir)
+    if unhandled:
+        msg = (
+            "اکشن‌های بدون هندلر در متادیتا. هر action.type باید در ActionHandler._registry ثبت شود. "
+            "اکشن‌های گم‌شده: " + ", ".join(sorted(unhandled))
         )
         logger.error(msg)
         raise ValueError(msg)

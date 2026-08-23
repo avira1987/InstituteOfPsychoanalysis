@@ -51,19 +51,6 @@
       }
     },
     {
-      "code": "grades_computed",
-      "name_fa": "محاسبه نمرات نهایی",
-      "type": "intermediate",
-      "assigned_role": "system",
-      "metadata": {
-        "operator_task_fa": "سیستم در حال محاسبه جمع نمره و وضعیت PASS/FAIL/Incomplete.",
-        "operator_short_fa": "محاسبه نمرات",
-        "student_short_fa": "محاسبه نمرات نهایی",
-        "student_task_fa": "نمرات در حال نهایی‌سازی است.",
-        "student_why_fa": "نمرات در حال نهایی‌سازی است."
-      }
-    },
-    {
       "code": "borderline_student_choice",
       "name_fa": "انتخاب امتحان مجدد یا دوباره گذراندن",
       "type": "intermediate",

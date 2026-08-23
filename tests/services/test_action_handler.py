@@ -375,7 +375,7 @@ class TestActionHandlerTherapyLifecycle:
             ALOCOM_DEFAULT_AGENT_SERVICE_ID = 0
             ALOCOM_FALLBACK_TO_UI_HINTS = True
 
-        monkeypatch.setattr("app.services.action_handler.get_settings", lambda: _Cfg())
+        monkeypatch.setattr("app.services.actions.supervision.get_settings", lambda: _Cfg())
 
         async def fake_provision(db, session, **kwargs):
             session.meeting_url = "https://alocom.test/class/x"
@@ -385,7 +385,7 @@ class TestActionHandlerTherapyLifecycle:
             return {"meeting_url": session.meeting_url, "alocom_event_id": "ev42", "slug": "x"}
 
         monkeypatch.setattr(
-            "app.services.action_handler.provision_therapy_session_alocom",
+            "app.services.actions.supervision.provision_therapy_session_alocom",
             fake_provision,
         )
 
