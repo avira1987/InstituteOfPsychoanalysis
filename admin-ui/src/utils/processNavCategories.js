@@ -66,6 +66,19 @@ export function filterAndGroupProcessNavItems(items, query) {
 }
 
 /**
+ * گروه اصلی «فرایندها» در سایدبار — برای دانشجو پیش‌فرض جمع است.
+ * @param {Array<object>} items
+ * @param {{ collapseByDefault?: boolean }} [opts]
+ */
+export function defaultProcessNavSectionOpen(items, { collapseByDefault = false } = {}) {
+  if (collapseByDefault) return false
+  const list = Array.isArray(items) ? items : []
+  if (list.length === 0) return true
+  const hasPending = list.some((it) => Number(it.pendingCount || it.pending_count) > 0)
+  return hasPending || list.length <= 12
+}
+
+/**
  * @param {Array<{ id: string, tier: number, items: object[] }>} groups
  */
 export function defaultProcessNavCategoryOpen(groups) {

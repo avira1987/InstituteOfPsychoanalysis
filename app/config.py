@@ -26,6 +26,20 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     # لوکال: در .env مقدار true بگذارید. برای استقرار اینترنتی حتماً false.
     DEBUG: bool = False
+    # خالی = development وقتی DEBUG=true وگرنه production
+    ENVIRONMENT: str = ""
+
+    # Observability — structured logs + optional Sentry/GlitchTip
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"  # json | text
+    LOG_SERVICE_NAME: str = "anistito-api"
+    LOG_FILE: str = ""  # optional rotating file; empty = stdout only
+    LOG_ACCESS_SAMPLE_RATE: float = 1.0  # 5xx and slow requests always logged
+    SLOW_REQUEST_MS: float = 1000
+    SLOW_SQL_MS: float = 500
+    SENTRY_DSN: str = ""
+    SENTRY_DSN_FRONTEND: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
     # اگر false باشد در استارت API فقط Alembic اسکیما را مدیریت می‌کند (بدون create_all)
     INIT_DB_ON_STARTUP: bool = True
     APP_BASE_URL: str = "https://lms.psychoanalysis.ir/anistito"  # ریدایرکت بعد از کال‌بک پرداخت، لینک SMS، …

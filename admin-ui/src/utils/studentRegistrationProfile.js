@@ -1,5 +1,28 @@
 /** فیلدهای تکمیلی ثبت‌نام — هم‌خوان با app/services/student_registration_profile.py */
 
+import { toLatinDigits } from './persianDigits'
+
+export const AGE_MIN = 6
+export const AGE_MAX = 120
+
+/** هنگام تایپ: فقط رقم، حداکثر ۱۲۰؛ مقادیر ۱ تا ۵ برای ادامهٔ تایپ مجاز است. */
+export function sanitizeAgeDraft(raw) {
+  const digits = toLatinDigits(raw).replace(/\D/g, '')
+  if (!digits) return ''
+  for (let len = Math.min(3, digits.length); len >= 1; len -= 1) {
+    const n = parseInt(digits.slice(0, len), 10)
+    if (Number.isFinite(n) && n >= 1 && n <= AGE_MAX) return String(n)
+  }
+  return ''
+}
+
+/** هنگام خروج از فیلد: خارج از ۶ تا ۱۲۰ پذیرفته نمی‌شود. */
+export function commitAgeInput(raw) {
+  const n = parseInt(sanitizeAgeDraft(raw), 10)
+  if (!Number.isFinite(n) || n < AGE_MIN || n > AGE_MAX) return ''
+  return String(n)
+}
+
 export const REGISTRATION_FIELD_LABELS = {
   first_name_fa: 'نام',
   last_name_fa: 'نام خانوادگی',
@@ -123,9 +146,9 @@ export function validateExtendedRegistrationClient(form) {
   if (!(form.first_name_fa || '').trim()) errors.push('نام را وارد کنید.')
   if (!(form.last_name_fa || '').trim()) errors.push('نام خانوادگی را وارد کنید.')
 
-  const age = parseInt(String(form.age || '').replace(/\D/g, ''), 10)
-  if (!Number.isFinite(age) || age < 6 || age > 120) {
-    errors.push('لطفاً یک عدد مابین ۶ تا ۱۲۰ وارد کنید.')
+  const age = parseInt(toLatinDigits(String(form.age || '')).replace(/\D/g, ''), 10)
+  if (!Number.isFinite(age) || age < AGE_MIN || age > AGE_MAX) {
+    errors.push('سن را وارد کنید.')
   }
   if (!(form.birth_certificate_number || '').trim()) errors.push('شماره شناسنامه را وارد کنید.')
   if (!isBirthDateValid(form.birth_date)) {
@@ -193,7 +216,7 @@ export function validateExtendedRegistrationClient(form) {
 }
 
 export function buildRegistrationProfilePayload(form) {
-  const age = parseInt(String(form.age || '').replace(/\D/g, ''), 10)
+  const age = parseInt(toLatinDigits(String(form.age || '')).replace(/\D/g, ''), 10)
   const payload = {
     first_name_fa: (form.first_name_fa || '').trim(),
     last_name_fa: (form.last_name_fa || '').trim(),

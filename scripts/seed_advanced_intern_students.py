@@ -30,6 +30,11 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.api.auth import get_password_hash
 from app.database import async_session_factory
 from app.models.operational_models import Student, User
+from app.services.student_identity import (
+    find_user_for_password_login,
+    next_student_code,
+    unify_student_identity,
+)
 
 DEFAULT_PASSWORD = "demo123"
 ROLE = "student"
@@ -80,12 +85,14 @@ async def main() -> int:
         created_students = 0
         updated_students = 0
 
-        for username, full_name_fa, student_code in ADVANCED_INTERNS:
+        for username, full_name_fa, legacy_code in ADVANCED_INTERNS:
             name = _normalize_name(full_name_fa)
             email = f"{username}@student.anistito.local"
 
-            res = await db.execute(select(User).where(User.username == username))
-            user = res.scalars().first()
+            user = await find_user_for_password_login(db, username)
+            if user is None:
+                res = await db.execute(select(User).where(User.username == username))
+                user = res.scalars().first()
             if user:
                 user.full_name_fa = name
                 user.email = email
@@ -114,37 +121,43 @@ async def main() -> int:
             st_res = await db.execute(select(Student).where(Student.user_id == user.id))
             student = st_res.scalars().first()
             if student is None:
-                # اگر کد دانشجویی تکراری است، با همان کد رکورد قبلی را پیدا کن
-                by_code = await db.execute(select(Student).where(Student.student_code == student_code))
+                by_code = await db.execute(select(Student).where(Student.student_code == legacy_code))
                 student = by_code.scalars().first()
+
+            intern_extra = _intern_extra(
+                student.extra_data if student and isinstance(student.extra_data, dict) else {}
+            )
+            intern_extra.setdefault("legacy_username", username)
+            intern_extra.setdefault("legacy_student_code", legacy_code)
 
             if student:
                 student.user_id = user.id
-                student.student_code = student_code
                 student.course_type = "comprehensive"
                 student.is_intern = True
                 student.therapy_started = True
                 student.term_count = max(int(student.term_count or 1), 4)
                 student.current_term = max(int(student.current_term or 1), 4)
                 student.weekly_sessions = max(int(student.weekly_sessions or 1), 2)
-                student.extra_data = _intern_extra(student.extra_data if isinstance(student.extra_data, dict) else {})
+                student.extra_data = intern_extra
                 flag_modified(student, "extra_data")
+                await unify_student_identity(db, student, user)
                 updated_students += 1
             else:
-                db.add(
-                    Student(
-                        id=uuid.uuid4(),
-                        user_id=user.id,
-                        student_code=student_code,
-                        course_type="comprehensive",
-                        is_intern=True,
-                        therapy_started=True,
-                        term_count=4,
-                        current_term=4,
-                        weekly_sessions=2,
-                        extra_data=_intern_extra(),
-                    )
+                student = Student(
+                    id=uuid.uuid4(),
+                    user_id=user.id,
+                    student_code=await next_student_code(db),
+                    course_type="comprehensive",
+                    is_intern=True,
+                    therapy_started=True,
+                    term_count=4,
+                    current_term=4,
+                    weekly_sessions=2,
+                    extra_data=intern_extra,
                 )
+                db.add(student)
+                await db.flush()
+                await unify_student_identity(db, student, user)
                 created_students += 1
 
         await db.commit()

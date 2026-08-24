@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
 import { processExecApi, studentApi, therapyApi, panelApi } from '../services/api'
-import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { labelProcess, labelState, formatStudentCodeDisplay, formatStudentFullNameFa } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { isDocumentReviewState } from '../utils/documentReviewStates'
@@ -293,7 +293,7 @@ export default function TherapistPortal() {
 
   const filteredStudents = allStudents.filter(s => {
     if (!studentSearch) return true
-    return s.student_code?.includes(studentSearch) || s.course_type?.includes(studentSearch)
+    return s.student_code?.includes(studentSearch) || s.course_type?.includes(studentSearch) || (s.full_name_fa || '').includes(studentSearch)
   })
 
   const tabs = [
@@ -572,6 +572,7 @@ export default function TherapistPortal() {
               <thead>
                 <tr>
                   <th>کد دانشجویی</th>
+                  <th>نام</th>
                   <th>نوع دوره</th>
                   <th>ترم</th>
                   <th>جلسات هفتگی</th>
@@ -584,6 +585,7 @@ export default function TherapistPortal() {
                 {filteredStudents.map(s => (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600 }}>{formatStudentCodeDisplay(s.student_code)}</td>
+                    <td>{formatStudentFullNameFa(s.full_name_fa)}</td>
                     <td>
                       <span className={`badge ${s.course_type === 'comprehensive' ? 'badge-primary' : 'badge-info'}`}>
                         {s.course_type === 'comprehensive' ? 'جامع' : 'آشنایی'}
@@ -799,6 +801,7 @@ function InstanceDetailPanel({
 
       <OperatorInstanceGuidanceBlock
         instanceDetail={instanceDetail}
+        user={user}
         portalRole={portalRole}
         availableTransitions={availableTransitions}
       />
@@ -821,6 +824,7 @@ function InstanceDetailPanel({
         isCompleted={instanceDetail.is_completed}
         isCancelled={instanceDetail.is_cancelled}
         role={user?.role}
+        user={user}
         showToast={showToast}
         onUpdated={() => onRefreshInstance?.()}
       />

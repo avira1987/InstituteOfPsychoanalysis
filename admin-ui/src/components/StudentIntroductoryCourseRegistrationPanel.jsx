@@ -14,6 +14,10 @@ import {
   PROCESS_STUDENT_TASK_LABELS_FA,
   PROCESS_STATE_LABELS_FA,
 } from '../utils/processMetadataLabels'
+import {
+  CONDITIONAL_THERAPY_TERM2_NOTICE_FA,
+  shouldShowConditionalTherapyTerm2Notice,
+} from '../utils/studentProcessAccess'
 import TuitionQuoteSummary from './TuitionQuoteSummary'
 import InstituteActivityLicenseNotice from './InstituteActivityLicenseNotice'
 
@@ -128,6 +132,30 @@ export default function StudentIntroductoryCourseRegistrationPanel({
             )}
             <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>اقدام بعدی شما</div>
             {hint}
+          </div>
+        )}
+
+        {shouldShowConditionalTherapyTerm2Notice({
+          studentProfile: { extra_data: ctx, admission_type: ctx.admission_type },
+          contextData: ctx,
+          processCode: PROC_CODE,
+          currentState,
+        }) && (
+          <div
+            data-testid="intro-reg-conditional-therapy-term2-notice"
+            style={{
+              marginBottom: compact ? '0.65rem' : '0.85rem',
+              padding: '0.75rem 1rem',
+              borderRadius: '10px',
+              background: '#fffbeb',
+              borderRight: '4px solid #d97706',
+              fontSize: '0.86rem',
+              lineHeight: 1.75,
+              color: '#92400e',
+              fontWeight: 600,
+            }}
+          >
+            {CONDITIONAL_THERAPY_TERM2_NOTICE_FA}
           </div>
         )}
 

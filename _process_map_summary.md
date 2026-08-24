@@ -1,7 +1,7 @@
 ## Therapy lifecycle (SOP 2-17)
 
-### start_therapy (SOP None)
-- Name (fa): آغاز درا آزش
+### start_therapy (SOP 2)
+- Name (fa): آغاز درمان آموزشی
 - Status: complete_in_metadata
 - metadata: metadata/processes/start_therapy.json
 - registry: processes/start_therapy
@@ -12,20 +12,17 @@
   2. eligibility_check --(eligible)--> therapist_selection [system] [student_eligible_for_therapy, therapy_not_started]
   3. eligibility_check --(not_eligible)--> ineligible [system] [student_not_eligible]
   4. eligibility_check --(week9_deadline_exceeded)--> week9_blocked [system] [week_9_deadline]
-  5. therapist_selection --(therapist_selected)--> therapist_confirmation [student]
-  6. therapist_confirmation --(therapist_accepted)--> schedule_first_session [therapist]
-  7. therapist_confirmation --(therapist_declined)--> therapist_selection [therapist]
-  8. schedule_first_session --(session_time_selected)--> first_session_24h_check [student] [schedule_valid_for_course]
-  9. first_session_24h_check --(24h_check_passed)--> payment_pending [system] [24_hour_rule]
-  10. payment_pending --(payment_failed)--> payment_pending [system]
-  ... +1 transitions
+  5. therapist_selection --(therapist_selected)--> first_session_24h_check [student] [schedule_valid_for_course]
+  6. first_session_24h_check --(24h_check_passed)--> payment_pending [system] [24_hour_rule]
+  7. payment_pending --(payment_failed)--> payment_pending [system]
+  8. payment_pending --(payment_confirmed)--> therapy_active [system]
 
 ### therapy_changes (SOP 3)
-- Name (fa): درت تغرات درا آزش
+- Name (fa): مدیریت تغییرات درمان آموزشی (آغاز مجدد، تغییر درمانگر، تغییر ساعت)
 - Status: complete_in_metadata
 - metadata: metadata/processes/therapy_changes.json
 - registry: processes/therapy_changes
-- Registry artifacts: SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, therapist, system
 - Workflow:
   1. change_request --(request_submitted)--> restart_review [student] [change_type_is_restart]
@@ -41,7 +38,7 @@
   ... +1 transitions
 
 ### extra_session (SOP 4)
-- Name (fa): برگزار جس اضاف درا آزش
+- Name (fa): برگزاری جلسه اضافی درمان آموزشی
 - Status: complete_in_metadata
 - metadata: metadata/processes/extra_session.json
 - registry: processes/extra_session
@@ -62,7 +59,7 @@
   ... +1 transitions
 
 ### session_payment (SOP 5)
-- Name (fa): پرداخت برا جسات آت درا آزش
+- Name (fa): پرداخت برای جلسات آتی درمان آموزشی
 - Status: complete_in_metadata
 - metadata: metadata/processes/session_payment.json
 - registry: processes/session_payment
@@ -79,14 +76,13 @@
   8. awaiting_payment --(payment_timeout)--> payment_failed [system]
 
 ### attendance_tracking (SOP 6)
-- Name (fa): تک شد ساعات درا آزش (حضر  غاب)
+- Name (fa): تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)
 - Status: complete_in_metadata
 - metadata: metadata/processes/attendance_tracking.json
 - registry: processes/attendance_tracking
 - Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: therapist, site_manager, deputy_education, system
 - INDEX sub_process_refs: fee_determination
-- Runtime chains: fee_determination
 - Workflow:
   1. session_scheduled --(session_time_reached)--> recording_closed [system] [student_on_leave]
   2. session_scheduled --(session_time_reached)--> recording_closed [system] [session_cancelled]
@@ -101,7 +97,7 @@
   ... +2 transitions
 
 ### fee_determination (SOP 7)
-- Name (fa): تع تکف ز جس درا آزش ا سپر فرد
+- Name (fa): تعیین تکلیف هزینه جلسه درمان آموزشی یا سوپرویژن فردی
 - Status: complete_in_metadata
 - metadata: metadata/processes/fee_determination.json
 - registry: processes/fee_determination
@@ -116,7 +112,7 @@
   6. triggered --(evaluate)--> scenario_4_debt_created [system] [session_not_paid, absence_quota_exceeded]
 
 ### therapy_completion (SOP 8)
-- Name (fa): تک  خات درا آزش
+- Name (fa): تکمیل و خاتمه درمان آموزشی
 - Status: complete_in_metadata
 - metadata: metadata/processes/therapy_completion.json
 - registry: processes/therapy_completion
@@ -127,7 +123,7 @@
   2. initiated --(process_link_clicked)--> therapy_completed [student] [therapy_threshold_met, clinical_threshold_met, supervision_threshold_met]
 
 ### therapy_session_increase (SOP 9)
-- Name (fa): درخاست داشج برا افزاش جسات فتگ درا آزش
+- Name (fa): درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی
 - Status: complete_in_metadata
 - metadata: metadata/processes/therapy_session_increase.json
 - registry: processes/therapy_session_increase
@@ -142,14 +138,13 @@
   6. student_response --(student_reentered_time)--> therapist_review [student]
 
 ### therapy_session_reduction (SOP 10)
-- Name (fa): درخاست داشج برا کاش جسات فتگ درا آزش
+- Name (fa): درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی
 - Status: complete_in_metadata
 - metadata: metadata/processes/therapy_session_reduction.json
 - registry: processes/therapy_session_reduction
 - Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, system, monitoring_committee_officer
 - INDEX sub_process_refs: violation_registration
-- Runtime chains: violation_registration
 - Workflow:
   1. initiated --(process_link_clicked)--> blocked [student] [fewer_than_2_weekly_sessions]
   2. initiated --(process_link_clicked)--> session_selection [student] [has_2_or_more_weekly_sessions]
@@ -159,14 +154,13 @@
   6. violation_warning --(student_confirmed_with_violation)--> reduction_with_violation [student]
 
 ### therapy_early_termination (SOP 11)
-- Name (fa): طع زدرس درا آزش تسط دراگر آزش
+- Name (fa): قطع زودرس درمان آموزشی توسط درمانگر آموزشی
 - Status: complete_in_metadata
 - metadata: metadata/processes/therapy_early_termination.json
 - registry: processes/therapy_early_termination
 - Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: therapist, student, system, monitoring_committee_officer
 - INDEX sub_process_refs: violation_registration, specialized_commission_review, committees_review
-- Runtime chains: violation_registration
 - Workflow:
   1. reason_selection --(reason_submitted)--> awaiting_student_restart [therapist] [termination_reason_1_or_2]
   2. awaiting_student_restart --(student_restarted_therapy)--> restart_completed [student]
@@ -175,14 +169,13 @@
   5. reason_selection --(reason_submitted)--> disciplinary_referred [therapist] [termination_reason_4]
 
 ### specialized_commission_review (SOP 12)
-- Name (fa): بررس کس تخصص (زرفراد اف)
+- Name (fa): بررسی کمیسیون تخصصی (زیرفرایند الف)
 - Status: complete_in_metadata
 - metadata: metadata/processes/specialized_commission_review.json
 - registry: processes/specialized_commission_review
 - Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt
 - Roles: specialized_commission, student, system, monitoring_committee_officer
 - INDEX sub_process_refs: violation_registration, committees_review
-- Runtime chains: committees_review, violation_registration
 - Workflow:
   1. commission_review --(commission_approved)--> awaiting_student_restart [specialized_commission]
   2. commission_review --(commission_rejected)--> referred_to_committees [specialized_commission]
@@ -190,14 +183,13 @@
   4. awaiting_student_restart --(sla_5days_breach)--> violation_no_restart [system]
 
 ### committees_review (SOP 13)
-- Name (fa): بررس کتا ظارت  آزش (زرفراد ب)
+- Name (fa): بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)
 - Status: complete_in_metadata
 - metadata: metadata/processes/committees_review.json
 - registry: processes/committees_review
 - Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: supervision_committee, education_committee, student, system, deputy_education, monitoring_committee_officer
 - INDEX sub_process_refs: violation_registration, patient_referral
-- Runtime chains: patient_referral, violation_registration
 - Workflow:
   1. supervision_review --(supervision_recommendation_submitted)--> education_review [supervision_committee]
   2. supervision_review --(supervision_sla_breach)--> supervision_review [system]
@@ -208,7 +200,7 @@
   7. awaiting_student_restart --(sla_5days_breach)--> violation_no_restart [system]
 
 ### therapist_session_cancellation (SOP 14)
-- Name (fa): کس کرد جس از س دراگر آزش
+- Name (fa): کنسل کردن جلسه از سوی درمانگر آموزشی
 - Status: complete_in_metadata
 - metadata: metadata/processes/therapist_session_cancellation.json
 - registry: processes/therapist_session_cancellation
@@ -228,14 +220,13 @@
   10. make_up_proposed --(student_declined_makeup)--> cancelled_student_declined [student]
 
 ### unannounced_absence_reaction (SOP 15)
-- Name (fa): اکش استت ب غبت بد اطاع در جس آد
+- Name (fa): واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده
 - Status: complete_in_metadata
 - metadata: metadata/processes/unannounced_absence_reaction.json
 - registry: processes/unannounced_absence_reaction
 - Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: site_manager, therapy_committee_chair, therapy_committee_executor, system
 - INDEX sub_process_refs: violation_registration
-- Runtime chains: violation_registration
 - Workflow:
   1. identified --(system_check)--> stopped_on_leave [system] [student_on_leave]
   2. identified --(system_check)--> first_absence_handled [system] [first_unannounced_absence]
@@ -250,14 +241,13 @@
   ... +1 transitions
 
 ### therapy_interruption (SOP 16)
-- Name (fa): ف در درا آزش تسط داشج
+- Name (fa): وقفه در درمان آموزشی توسط دانشجو
 - Status: complete_in_metadata
 - metadata: metadata/processes/therapy_interruption.json
 - registry: processes/therapy_interruption
 - Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, progress_committee, system
 - INDEX sub_process_refs: violation_registration, patient_referral
-- Runtime chains: patient_referral, violation_registration
 - Workflow:
   1. request_submitted --(dates_entered)--> committee_scheduling [student]
   2. committee_scheduling --(meeting_scheduled)--> meeting_held [progress_committee]
@@ -268,14 +258,13 @@
   7. awaiting_return --(student_did_not_return)--> no_return_resources_freed [system]
 
 ### student_session_cancellation (SOP 17)
-- Name (fa): کس کرد جسات درا آزش تسط داشج
+- Name (fa): ۱۷: کنسل کردن جلسات درمان آموزشی توسط دانشجو
 - Status: complete_in_metadata
 - metadata: metadata/processes/student_session_cancellation.json
 - registry: processes/student_session_cancellation
 - Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, system
 - INDEX sub_process_refs: violation_registration, fee_determination
-- Runtime chains: fee_determination, violation_registration
 - Workflow:
   1. calendar_displayed --(student_selects_sessions)--> consecutive_blocked [student] [would_exceed_3_consecutive_weeks]
   2. calendar_displayed --(student_selects_sessions)--> sessions_selected [student] [consecutive_weeks_valid]
@@ -286,14 +275,13 @@
 ## Supervision lifecycle (SOP 18-28)
 
 ### supervision_block_transition (SOP 18)
-- Name (fa): درت تغرات سپر فرد (آغاز جدد تغر سپرازر تغر ساعت)
+- Name (fa): مدیریت تغییرات سوپرویژن فردی (آغاز مجدد، تغییر سوپروایزر، تغییر ساعت)
 - Status: complete_in_metadata
 - metadata: metadata/processes/supervision_block_transition.json
 - registry: processes/supervision_block_transition
 - Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, system
 - INDEX sub_process_refs: session_payment
-- Runtime chains: session_payment
 - Workflow:
   1. payment_intent_50th --(check_attendance)--> not_at_50th [student] [not_at_50th_supervision_session]
   2. payment_intent_50th --(check_attendance)--> supervisor_slots_displayed [student] [at_50th_supervision_session]
@@ -302,14 +290,13 @@
   5. new_block_first_paid --(payment_success_50th)--> both_paid_completed [student]
 
 ### supervision_50h_completion (SOP 20)
-- Name (fa): تک درا ۵۰ ساعت سپر فرد
+- Name (fa): تکمیل کردن دوره‌های ۵۰ ساعته سوپرویژن فردی
 - Status: complete_in_metadata
 - metadata: metadata/processes/supervision_50h_completion.json
 - registry: processes/supervision_50h_completion
 - Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, supervisor, site_manager, system
 - INDEX sub_process_refs: fee_determination, violation_registration
-- Runtime chains: fee_determination, violation_registration
 - Workflow:
   1. session_scheduled --(session_time_reached)--> recording_closed [system] [session_cancelled]
   2. session_scheduled --(session_time_reached)--> recording_closed [system] [student_on_supervision_leave]
@@ -324,7 +311,7 @@
   ... +4 transitions
 
 ### supervision_session_increase (SOP 21)
-- Name (fa): درخاست داشج برا افزاش جسات فتگ سپر
+- Name (fa): ۲۱: درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن
 - Status: complete_in_metadata
 - metadata: metadata/processes/supervision_session_increase.json
 - registry: processes/supervision_session_increase
@@ -340,7 +327,7 @@
   6. student_response --(student_reentered_time)--> supervisor_review [student]
 
 ### extra_supervision_session (SOP 22)
-- Name (fa): درخاست داشج برا برگزار جس اضاف سپر
+- Name (fa): ۲۲: درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن
 - Status: complete_in_metadata
 - metadata: metadata/processes/extra_supervision_session.json
 - registry: processes/extra_supervision_session
@@ -359,7 +346,7 @@
   9. extra_session_confirmed --(session_held)--> extra_session_completed [supervisor]
 
 ### supervision_session_reduction (SOP 24)
-- Name (fa): درخاست داشج برا کاش جسات فتگ سپر
+- Name (fa): ۲۳: درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن
 - Status: complete_in_metadata
 - metadata: metadata/processes/supervision_session_reduction.json
 - registry: processes/supervision_session_reduction
@@ -375,14 +362,13 @@
   7. supervisor_review --(supervisor_rejected)--> structure_selection [supervisor]
 
 ### student_supervision_cancellation (SOP 25)
-- Name (fa): کس کرد جسات سپر تسط داشج  اکش استت
+- Name (fa): کنسل کردن جلسات سوپرویژن توسط دانشجو و واکنش انستیتو
 - Status: complete_in_metadata
 - metadata: metadata/processes/student_supervision_cancellation.json
 - registry: processes/student_supervision_cancellation
 - Registry artifacts: SOP_document.txt, SOP_flowchart.png
 - Roles: student, supervisor, system
 - INDEX sub_process_refs: violation_registration, fee_determination
-- Runtime chains: fee_determination, violation_registration
 - Workflow:
   1. calendar_displayed --(student_selects_sessions)--> consecutive_blocked [student] [would_exceed_3_consecutive_weeks]
   2. calendar_displayed --(student_selects_sessions)--> sessions_selected [student] [consecutive_weeks_valid]
@@ -391,7 +377,7 @@
   5. sessions_selected --(student_confirms)--> violation_and_applied [student] [cancellation_above_12_percent]
 
 ### supervisor_session_cancellation (SOP 26)
-- Name (fa): کس کرد جس از س سپرازر
+- Name (fa): کنسل کردن جلسه از سوی سوپروایزر
 - Status: complete_in_metadata
 - metadata: metadata/processes/supervisor_session_cancellation.json
 - registry: processes/supervisor_session_cancellation
@@ -411,14 +397,13 @@
   10. makeup_confirmed --(session_held)--> makeup_session_completed [supervisor]
 
 ### unannounced_supervision_absence_reaction (SOP 27)
-- Name (fa): اکش استت ب غبت بد اطاع در جس آد سپر فرد
+- Name (fa): واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی
 - Status: complete_in_metadata
 - metadata: metadata/processes/unannounced_supervision_absence_reaction.json
 - registry: processes/unannounced_supervision_absence_reaction
 - Registry artifacts: SOP_document.txt, SOP_flowchart.png
 - Roles: site_manager, therapy_committee_chair, therapy_committee_executor, deputy_education, system
 - INDEX sub_process_refs: fee_determination, violation_registration, patient_referral
-- Runtime chains: patient_referral, violation_registration
 - Workflow:
   1. identified --(system_check)--> stopped_on_leave [system] [student_on_supervision_leave]
   2. identified --(system_check)--> first_absence_handled [system] [first_unannounced_absence]
@@ -433,14 +418,13 @@
   ... +1 transitions
 
 ### supervision_interruption (SOP 28)
-- Name (fa): ف در سپر فرد تسط داشج
+- Name (fa): وقفه در سوپرویژن فردی توسط دانشجو
 - Status: complete_in_metadata
 - metadata: metadata/processes/supervision_interruption.json
 - registry: processes/supervision_interruption
 - Registry artifacts: SOP_document.txt, SOP_flowchart.png
 - Roles: student, progress_committee, system
 - INDEX sub_process_refs: violation_registration, patient_referral
-- Runtime chains: patient_referral, violation_registration
 - Workflow:
   1. request_submitted --(pause_dates_entered)--> committee_scheduling [student]
   2. committee_scheduling --(meeting_scheduled)--> meeting_held [progress_committee]
@@ -454,12 +438,12 @@
 ## Academic calendar and enrollment (SOP 29-42)
 
 ### fall_semester_preparation (SOP 29)
-- Name (fa): آادساز تر پاز
+- Name (fa): آماده‌سازی ترم پاییز
 - Status: complete_in_metadata
 - metadata: metadata/processes/fall_semester_preparation.json
 - registry: processes/fall_semester_preparation
 - Registry artifacts: SOP_document.txt, SOP_flowchart.png
-- Roles: course_committee_executive, deputy_education, course_committee_scientific, admissions_officer, site_manager, system
+- Roles: course_committee_executive, deputy_education, course_committee_scientific, admissions_officer, staff, system
 - Workflow:
   1. calendar_entry --(calendar_submitted)--> tuition_entry [course_committee_executive]
   2. calendar_entry --(sla_expired)--> calendar_entry [system]
@@ -474,12 +458,12 @@
   ... +6 transitions
 
 ### winter_semester_preparation (SOP 30)
-- Name (fa): آادساز تر زستا
+- Name (fa): آماده‌سازی ترم زمستان
 - Status: complete_in_metadata
 - metadata: metadata/processes/winter_semester_preparation.json
 - registry: processes/winter_semester_preparation
 - Registry artifacts: SOP_document.txt, SOP_flowchart.png
-- Roles: deputy_education, course_committee_scientific, admissions_officer, site_manager, system
+- Roles: deputy_education, course_committee_scientific, admissions_officer, staff, system
 - INDEX sub_process_refs: fall_semester_preparation
 - Workflow:
   1. license_check --(license_reviewed)--> course_list_review [deputy_education_director]
@@ -490,12 +474,12 @@
   6. course_finalization --(sla_expired)--> course_finalization [system]
   7. marketing_campaign --(marketing_started)--> interviewer_assignment [admissions_officer]
   8. marketing_campaign --(sla_expired)--> marketing_campaign [system]
-  9. interviewer_assignment --(interviewers_assigned)--> interview_scheduling [deputy_education_director]
+  9. interviewer_assignment --(interviewers_assigned)--> interview_scheduling [staff]
   10. interviewer_assignment --(sla_expired)--> interviewer_assignment [system]
   ... +2 transitions
 
 ### introductory_course_registration (SOP 31)
-- Name (fa): فرایند ثبت‌نام دوره آشنایی
+- Name (fa): ثبت‌نام دوره آشنایی
 - Status: complete_in_metadata
 - metadata: metadata/processes/introductory_course_registration.json
 - registry: processes/introductory_course_registration
@@ -515,11 +499,11 @@
   ... +12 transitions
 
 ### introductory_term_end (SOP 32)
-- Name (fa): پاا ترا در آشا
+- Name (fa): پایان ترم‌های دوره آشنایی
 - Status: complete_in_metadata
 - metadata: metadata/processes/introductory_term_end.json
 - registry: processes/introductory_term_end
-- Registry artifacts: SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, SOP_document.txt, SOP_flowchart.png
 - Roles: admissions_officer, deputy_education, system
 - Workflow:
   1. grades_submitted --(auto_generate_transcripts)--> transcript_generated [system]
@@ -533,11 +517,11 @@
   9. followup_in_progress --(sla_warning)--> followup_in_progress [system] [sla_approaching_168h]
 
 ### intro_second_semester_registration (SOP 33)
-- Name (fa): ثبتا داشج برا تر د در آشا
+- Name (fa): ثبت‌نام دانشجو برای ترم دوم دوره آشنایی
 - Status: complete_in_metadata
 - metadata: metadata/processes/intro_second_semester_registration.json
 - registry: processes/intro_second_semester_registration
-- Registry artifacts: SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, SOP_document.txt, SOP_flowchart.png
 - Roles: student, system
 - INDEX sub_process_refs: start_therapy
 - Workflow:
@@ -554,11 +538,11 @@
   ... +1 transitions
 
 ### introductory_course_completion (SOP 34)
-- Name (fa): خات در آشا
+- Name (fa): خاتمه دوره آشنایی
 - Status: complete_in_metadata
 - metadata: metadata/processes/introductory_course_completion.json
 - registry: processes/introductory_course_completion
-- Registry artifacts: SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, SOP_document.txt, SOP_flowchart.png
 - Roles: supervision_committee, system
 - Workflow:
   1. all_courses_passed --(all_10_courses_passed)--> invitation_sent [system]
@@ -569,11 +553,11 @@
   6. certificate_approved --(student_notified)--> process_complete [system]
 
 ### comprehensive_course_registration (SOP 35)
-- Name (fa): ثبتا در در جاع
+- Name (fa): ثبت‌نام در دوره جامع
 - Status: complete_in_metadata
 - metadata: metadata/processes/comprehensive_course_registration.json
 - registry: processes/comprehensive_course_registration
-- Registry artifacts: SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, SOP_document.txt, SOP_flowchart.png
 - Roles: student, supervision_committee, progress_committee_executive, progress_committee_scientific, admissions_officer, deputy_education, system
 - Workflow:
   1. application_submitted --(application_submitted)--> supervision_committee_review [student] [all_10_introductory_courses_passed]
@@ -586,14 +570,14 @@
   8. scientific_review --(scientific_rejected)--> scientific_rejected [progress_committee]
   9. scientific_review --(scientific_requested_proof)--> scientific_review [progress_committee]
   10. scientific_review --(scientific_sla_breach)--> scientific_review [system]
-  ... +11 transitions
+  ... +13 transitions
 
 ### comprehensive_term_end (SOP 36)
-- Name (fa): پاا ترا در جاع
+- Name (fa): پایان ترم‌های دوره جامع
 - Status: complete_in_metadata
 - metadata: metadata/processes/comprehensive_term_end.json
 - registry: processes/comprehensive_term_end
-- Registry artifacts: SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, SOP_document.txt, SOP_flowchart.png
 - Roles: system
 - Workflow:
   1. grades_submitted --(all_grades_entered)--> transcript_generated [system]
@@ -603,11 +587,11 @@
   5. registration_notification_sent --(notification_delivered)--> process_complete [system]
 
 ### internship_readiness_consultation (SOP 37)
-- Name (fa): شرت  تع آادگ برا آغاز اتر
+- Name (fa): مشورت و تعیین آمادگی برای آغاز انترنی
 - Status: complete_in_metadata
 - metadata: metadata/processes/internship_readiness_consultation.json
 - registry: processes/internship_readiness_consultation
-- Registry artifacts: SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, SOP_document.txt, SOP_flowchart.png
 - Roles: student, supervision_committee, progress_committee, deputy_education, system
 - INDEX sub_process_refs: violation_registration
 - Workflow:
@@ -624,11 +608,11 @@
   ... +8 transitions
 
 ### internship_12month_conditional_review (SOP 38)
-- Name (fa): ۱۲ ا پس از ب شرط در اتر
+- Name (fa): ۱۲ ماه پس از گذشت قبولی به صورت مشروط در انترنی
 - Status: complete_in_metadata
 - metadata: metadata/processes/internship_12month_conditional_review.json
 - registry: processes/internship_12month_conditional_review
-- Registry artifacts: SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, SOP_document.txt, SOP_flowchart.png
 - Roles: student, supervision_committee, progress_committee, system
 - INDEX sub_process_refs: violation_registration
 - Workflow:
@@ -640,11 +624,11 @@
   6. interview_held --(result_conditional)--> result_conditional [progress_committee_scientific]
 
 ### intern_hours_increase (SOP 39)
-- Name (fa): اضاف شد حداکثر ساعتا ارائ درا اتر
+- Name (fa): اضافه شدن حداکثر ساعت‌های ارائه درمان انترن
 - Status: complete_in_metadata
 - metadata: metadata/processes/intern_hours_increase.json
 - registry: processes/intern_hours_increase
-- Registry artifacts: SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, SOP_document.txt, SOP_flowchart.png
 - Roles: supervision_committee, student, system
 - INDEX sub_process_refs: violation_registration
 - Workflow:
@@ -658,7 +642,7 @@
 - Status: complete_in_metadata
 - metadata: metadata/processes/comprehensive_term_start.json
 - registry: processes/comprehensive_term_start
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, instructor, course_committee_executive, system
 - Workflow:
   1. eligibility_check --(suspended_or_on_leave)--> blocked [system]
@@ -666,13 +650,15 @@
   3. course_display --(courses_seen)--> payment_choice [student]
   4. payment_choice --(payment_initiated)--> payment_processing [student]
   5. payment_processing --(payment_confirmed)--> registration_complete [system]
+  6. registration_complete --(installment_due_date_passed)--> installment_overdue [system] [installment_not_paid]
+  7. installment_overdue --(overdue_installment_paid)--> registration_complete [system]
 
 ### lesson_start_per_term (SOP 41)
-- Name (fa): آغاز ر درس در ر تر
+- Name (fa): آغاز هر درس در هر ترم
 - Status: complete_in_metadata
 - metadata: metadata/processes/lesson_start_per_term.json
 - registry: processes/lesson_start_per_term
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, instructor, teaching_assistant, course_committee_executive, system
 - INDEX sub_process_refs: fall_semester_preparation, winter_semester_preparation
 - Workflow:
@@ -681,7 +667,7 @@
   3. attendance_list_ready --(ready)--> lesson_active [system]
 
 ### student_non_registration (SOP 42)
-- Name (fa): عد ثبتا داشج برا تر بعد
+- Name (fa): عدم ثبت‌نام دانشجو برای ترم بعد
 - Status: complete_in_metadata
 - metadata: metadata/processes/student_non_registration.json
 - registry: processes/student_non_registration
@@ -699,10 +685,10 @@
   8. branch_leave --(leave_process_started)--> leave_started [student]
   9. branch_leave --(no_action_3_days)--> withdrawal_triggered [system]
 
-## TA and instructor track (SOP 43-56)
+## TA and instructor track (SOP 43-57)
 
 ### ta_conceptual_questions (SOP 43)
-- Name (fa): ثبت ۳ سا تستف (ککدرس)
+- Name (fa): ثبت ۳ سوال تستی‌مفهومی پس از هر جلسه کلاس (کمک‌مدرس)
 - Status: complete_in_metadata
 - metadata: metadata/processes/ta_conceptual_questions.json
 - registry: processes/ta_conceptual_questions
@@ -719,7 +705,7 @@
   7. question_rejected --(corrected_and_uploaded)--> instructor_review [teaching_assistant]
 
 ### ta_student_consultation (SOP 44)
-- Name (fa): شاسا تش  شرت آزش (ککدرس)
+- Name (fa): شناسایی، تشویق و مشورت آموزشی به دانشجویان (کمک‌مدرس)
 - Status: complete_in_metadata
 - metadata: metadata/processes/ta_student_consultation.json
 - registry: processes/ta_student_consultation
@@ -731,7 +717,7 @@
   3. ta_form_fill --(form_submitted)--> form_submitted [teaching_assistant]
 
 ### ta_essay_upload (SOP 45)
-- Name (fa): آپد جستار  دا تخب ف (ککدرس)
+- Name (fa): آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس (کمک‌مدرس)
 - Status: complete_in_metadata
 - metadata: metadata/processes/ta_essay_upload.json
 - registry: processes/ta_essay_upload
@@ -748,7 +734,7 @@
   7. marketing_publication --(publication_recorded)--> content_published [marketing]
 
 ### ta_blog_content (SOP 46)
-- Name (fa): ثبت حتا باگ از حتا درس (ککدرس)
+- Name (fa): ثبت محتوای وبلاگ از محتوای درسی توسط کمک‌مدرس
 - Status: complete_in_metadata
 - metadata: metadata/processes/ta_blog_content.json
 - registry: processes/ta_blog_content
@@ -763,7 +749,7 @@
   5. rejected_revision --(revised_and_submitted)--> instructor_review [teaching_assistant]
 
 ### upgrade_to_ta (SOP 47)
-- Name (fa): ارتا ب ککدرس
+- Name (fa): ارتقا دانشجو به کمک‌مدرس
 - Status: complete_in_metadata
 - metadata: metadata/processes/upgrade_to_ta.json
 - registry: processes/upgrade_to_ta
@@ -781,7 +767,7 @@
   9. commitment_signature --(commitment_signed)--> ta_registered [student]
 
 ### mentor_private_sessions (SOP 48)
-- Name (fa): ثبت تارخ ۲ جس تدرس خصص درس ب ککدرس
+- Name (fa): ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس
 - Status: complete_in_metadata
 - metadata: metadata/processes/mentor_private_sessions.json
 - registry: processes/mentor_private_sessions
@@ -794,7 +780,7 @@
   3. sessions_registered --(registered)--> process_complete [system]
 
 ### ta_to_assistant_faculty (SOP 49)
-- Name (fa): ارتا رتب از ککدرس ب دستار ئت ع
+- Name (fa): ارتقا رتبهٔ تحلیل دانشجو از کمک‌مدرسی به دستیار هیئت علمی
 - Status: complete_in_metadata
 - metadata: metadata/processes/ta_to_assistant_faculty.json
 - registry: processes/ta_to_assistant_faculty
@@ -807,7 +793,7 @@
   4. supervision_review --(approved)--> upgrade_applied [supervision_committee]
 
 ### ta_to_instructor_auto (SOP 50)
-- Name (fa): تبد خدکار ککدرس ب درس در ر درس
+- Name (fa): تبدیل شدن کمک‌مدرس به مدرس در هر درس
 - Status: complete_in_metadata
 - metadata: metadata/processes/ta_to_instructor_auto.json
 - registry: processes/ta_to_instructor_auto
@@ -818,7 +804,7 @@
   2. end_of_term_check --(conditions_met)--> upgrade_applied [student]
 
 ### ta_track_change (SOP 51)
-- Name (fa): تغر ا اضاف کرد رست ککدرس
+- Name (fa): تغییر یا اضافه کردن رسته کمک‌مدرسی
 - Status: complete_in_metadata
 - metadata: metadata/processes/ta_track_change.json
 - registry: processes/ta_track_change
@@ -832,7 +818,7 @@
   5. meeting_scheduled --(approved)--> track_applied [course_committee_scientific]
 
 ### ta_track_completion (SOP 52)
-- Name (fa): خات ککدرس برا ر رست
+- Name (fa): خاتمه کمک‌مدرسی برای هر رسته
 - Status: complete_in_metadata
 - metadata: metadata/processes/ta_track_completion.json
 - registry: processes/ta_track_completion
@@ -842,7 +828,7 @@
   1. end_of_track_check --(conditions_met)--> track_completed [student]
 
 ### ta_instructor_leave (SOP 53)
-- Name (fa): رخص ککدرس  درس
+- Name (fa): مرخصی کمک‌مدرسی و مدرسین
 - Status: complete_in_metadata
 - metadata: metadata/processes/ta_instructor_leave.json
 - registry: processes/ta_instructor_leave
@@ -857,7 +843,7 @@
   6. classes_cancelled --(cancellation_confirmed)--> leave_approved [system]
 
 ### class_attendance (SOP 54)
-- Name (fa): حضر  غاب در تا کاسا
+- Name (fa): حضور و غیاب در تمامی کلاس‌ها
 - Status: complete_in_metadata
 - metadata: metadata/processes/class_attendance.json
 - registry: processes/class_attendance
@@ -870,7 +856,7 @@
   3. session_recorded --(absence_5_article_course)--> article_violation_reported [system] [attendance_absence_count_5, attendance_course_is_article_writing]
 
 ### violation_registration (SOP 55)
-- Name (fa): ثبت تخفات
+- Name (fa): ثبت تخلفات
 - Status: complete_in_metadata
 - metadata: metadata/processes/violation_registration.json
 - registry: processes/violation_registration
@@ -890,7 +876,7 @@
   ... +8 transitions
 
 ### class_session_cancellation (SOP 56)
-- Name (fa): کس کرد جسات کاسا درس
+- Name (fa): کنسل کردن جلسات کلاس‌های درسی
 - Status: complete_in_metadata
 - metadata: metadata/processes/class_session_cancellation.json
 - registry: processes/class_session_cancellation
@@ -901,7 +887,7 @@
   1. cancellation_request --(cancellation_confirmed)--> makeup_scheduled [instructor]
 
 ### student_instructor_evaluation (SOP 57)
-- Name (fa): ارزاب داشج از درس
+- Name (fa): ارزیابی دانشجو از مدرسین
 - Status: complete_in_metadata
 - metadata: metadata/processes/student_instructor_evaluation.json
 - registry: processes/student_instructor_evaluation
@@ -910,10 +896,31 @@
 - Workflow:
   1. evaluation_open --(deadline_reached)--> evaluation_closed [system]
 
-## Leave and return (SOP 58-60)
+## Leave and return (SOP 1, 58-60)
+
+### educational_leave (SOP 1)
+- Name (fa): مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها
+- Status: complete_in_metadata
+- metadata: metadata/processes/educational_leave.json
+- registry: processes/educational_leave
+- Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Roles: student, progress_committee, deputy_education, monitoring_committee_officer
+- INDEX sub_process_refs: violation_registration, patient_referral
+- Workflow:
+  1. request_form --(student_submitted)--> committee_review [student]
+  2. committee_review --(sla_breach_7days)--> deputy_alerted [system]
+  3. deputy_alerted --(committee_set_meeting)--> session_scheduled [progress_committee]
+  4. committee_review --(committee_set_meeting)--> session_scheduled [progress_committee]
+  5. session_scheduled --(meeting_held)--> committee_decision [progress_committee]
+  6. committee_decision --(committee_rejected)--> rejected [progress_committee]
+  7. committee_decision --(committee_approved)--> approved_non_intern [progress_committee] [is_not_intern]
+  8. committee_decision --(committee_approved)--> approved_intern_1term [progress_committee] [is_intern, leave_terms_eq_1]
+  9. committee_decision --(committee_approved)--> approved_intern_2term [progress_committee] [is_intern, leave_terms_eq_2]
+  10. approved_non_intern --(leave_activated)--> on_leave [student]
+  ... +5 transitions
 
 ### process_merged_to_one (SOP 58)
-- Name (fa): تشد ب فراد شار ۱
+- Name (fa): منتقل‌شده به فرایند شماره ۱
 - Status: complete_in_metadata
 - metadata: metadata/processes/process_merged_to_one.json
 - registry: processes/process_merged_to_one
@@ -924,14 +931,13 @@
   1. merged --(noop)--> merged [system]
 
 ### full_education_leave (SOP 59)
-- Name (fa): رخص ت از ک آزش
+- Name (fa): مرخصی موقت از کل آموزش
 - Status: complete_in_metadata
 - metadata: metadata/processes/full_education_leave.json
 - registry: processes/full_education_leave
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, progress_committee, deputy_education, therapy_education_coordinator, monitoring_committee_officer, system
 - INDEX sub_process_refs: return_to_full_education, patient_referral, violation_registration
-- Runtime chains: violation_registration
 - Workflow:
   1. leave_request --(student_submitted)--> committee_review [student]
   2. committee_review --(sla_breach_7days)--> deputy_alerted [system]
@@ -946,11 +952,11 @@
   ... +4 transitions
 
 ### return_to_full_education (SOP 60)
-- Name (fa): بازگشت دبار ب ک آزش پس از رخص از ک آزش
+- Name (fa): بازگشت دوباره به کل آموزش پس از مرخصی
 - Status: complete_in_metadata
 - metadata: metadata/processes/return_to_full_education.json
 - registry: processes/return_to_full_education
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, system
 - INDEX sub_process_refs: full_education_leave
 - Workflow:
@@ -966,39 +972,16 @@
   10. supervision_payment_pending --(supervision_payment_confirmed)--> registration_unlocked [system]
   ... +1 transitions
 
-### educational_leave (SOP None)
-- Name (fa): رخص آزش ت از ثبتا در کاسا
-- Status: complete_in_metadata
-- metadata: metadata/processes/educational_leave.json
-- registry: processes/educational_leave
-- Registry artifacts: 01_input.md, 02_flowchart.md, 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
-- Roles: student, progress_committee, deputy_education, monitoring_committee_officer
-- INDEX sub_process_refs: violation_registration, patient_referral
-- Runtime chains: patient_referral, violation_registration
-- Workflow:
-  1. request_form --(student_submitted)--> committee_review [student]
-  2. committee_review --(sla_breach_7days)--> deputy_alerted [system]
-  3. deputy_alerted --(committee_set_meeting)--> session_scheduled [progress_committee]
-  4. committee_review --(committee_set_meeting)--> session_scheduled [progress_committee]
-  5. session_scheduled --(meeting_held)--> committee_decision [progress_committee]
-  6. committee_decision --(committee_rejected)--> rejected [progress_committee]
-  7. committee_decision --(committee_approved)--> approved_non_intern [progress_committee] [is_not_intern]
-  8. committee_decision --(committee_approved)--> approved_intern_1term [progress_committee] [is_intern, leave_terms_eq_1]
-  9. committee_decision --(committee_approved)--> approved_intern_2term [progress_committee] [is_intern, leave_terms_eq_2]
-  10. approved_non_intern --(leave_activated)--> on_leave [student]
-  ... +5 transitions
-
 ## Course completion and graduation (SOP 61-75)
 
 ### theory_course_completion (SOP 61)
-- Name (fa): خات درس تئر
+- Name (fa): خاتمه دروس تئوری
 - Status: complete_in_metadata
 - metadata: metadata/processes/theory_course_completion.json
 - registry: processes/theory_course_completion
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, instructor, teaching_assistant, course_committee_scientific, monitoring_committee_officer, system
 - INDEX sub_process_refs: violation_registration
-- Runtime chains: violation_registration
 - Workflow:
   1. awaiting_session_18 --(calendar_session_18_reached)--> session_18_entry [system]
   2. session_18_entry --(session_18_submitted)--> final_exam_open [instructor] [theory_session_18_submitted_in_time]
@@ -1011,17 +994,15 @@
   9. borderline_student_choice --(retake_selected)--> retake_exam_open [student]
   10. retake_exam_open --(retake_exam_completed)--> qualitative_eval_pending [student]
   ... +3 transitions
-- SOP step mappings (15 steps): see sop_step_mappings.json
 
 ### group_supervision_course_completion (SOP 62)
-- Name (fa): خات ر درس سپر گر
+- Name (fa): خاتمه هر درس سوپرویژن گروهی
 - Status: complete_in_metadata
 - metadata: metadata/processes/group_supervision_course_completion.json
 - registry: processes/group_supervision_course_completion
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, instructor, teaching_assistant, course_committee_scientific, monitoring_committee_officer, system
 - INDEX sub_process_refs: violation_registration
-- Runtime chains: violation_registration
 - Workflow:
   1. awaiting_session_18 --(calendar_session_18_reached)--> session_18_pass_fail_entry [system]
   2. session_18_pass_fail_entry --(pass_fail_submitted)--> pass_fail_applied [instructor] [group_supervision_pass_fail_in_time]
@@ -1031,17 +1012,15 @@
   6. ta_evaluation_entry --(ta_grades_submitted)--> qualitative_eval_pending [instructor]
   7. qualitative_eval_pending --(qualitative_submitted)--> grades_locked [instructor] [group_supervision_qualitative_in_time]
   8. qualitative_eval_pending --(sla_breach)--> qualitative_eval_delay [system] [group_supervision_qualitative_sla_breach]
-- SOP step mappings (7 steps): see sop_step_mappings.json
 
 ### skills_course_completion (SOP 63)
-- Name (fa): خات درس تکک تر ارتا
+- Name (fa): خاتمه دروس تکنیک تمرین مهارت‌ها
 - Status: complete_in_metadata
 - metadata: metadata/processes/skills_course_completion.json
 - registry: processes/skills_course_completion
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, instructor, teaching_assistant, course_committee_scientific, monitoring_committee_officer, system
 - INDEX sub_process_refs: violation_registration
-- Runtime chains: violation_registration
 - Workflow:
   1. awaiting_session_17 --(calendar_session_17_reached)--> session_17_grades_entry [system]
   2. session_17_grades_entry --(session_17_submitted)--> awaiting_session_18 [instructor] [skills_session_17_submitted_in_time]
@@ -1052,34 +1031,31 @@
   7. ta_evaluation_entry --(ta_grades_submitted)--> qualitative_eval_pending [instructor]
   8. qualitative_eval_pending --(qualitative_submitted)--> grades_locked [instructor] [skills_qualitative_submitted_in_time]
   9. qualitative_eval_pending --(sla_breach)--> qualitative_eval_delay [system] [skills_qualitative_sla_breach]
-- SOP step mappings (13 steps): see sop_step_mappings.json
 
 ### film_observation_course_completion (SOP 64)
-- Name (fa): خات ر درس ع کاربرد شاد فا  بخش آپد گزارش پاا
+- Name (fa): خاتمه هر درس عملی کاربردی و مشاهده فیلم‌ها
 - Status: complete_in_metadata
 - metadata: metadata/processes/film_observation_course_completion.json
 - registry: processes/film_observation_course_completion
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, instructor, system
 - Workflow:
   1. grades_entry --(grades_submitted)--> grades_locked [instructor] [course_grades_submitted_in_time]
   2. grades_entry --(sla_breach)--> delay_reported [system] [course_grades_sla_breach]
-- SOP step mappings (5 steps): see sop_step_mappings.json
 
 ### live_therapy_observation_course_completion (SOP 65)
-- Name (fa): خات درس شاد زد درا  بخش آپد گزارش پاا
+- Name (fa): خاتمه درس مشاهده زنده درمان – بخش آپلود گزارش پایانی
 - Status: complete_in_metadata
 - metadata: metadata/processes/live_therapy_observation_course_completion.json
 - registry: processes/live_therapy_observation_course_completion
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, instructor, system
 - Workflow:
   1. grades_entry --(grades_submitted)--> grades_locked [instructor] [course_grades_submitted_in_time]
   2. grades_entry --(sla_breach)--> delay_reported [system] [course_grades_sla_breach]
-- SOP step mappings (5 steps): see sop_step_mappings.json
 
 ### live_therapy_observation_session_prep (SOP 66)
-- Name (fa): دات برگزار جسات شاد زد درا
+- Name (fa): مقدمات برگزاری جلسات مشاهده زنده درمان
 - Status: complete_in_metadata
 - metadata: metadata/processes/live_therapy_observation_session_prep.json
 - registry: processes/live_therapy_observation_session_prep
@@ -1091,14 +1067,13 @@
   3. coordination_pending --(no_time_agreed)--> coordination_closed [therapy_education_coordinator] [live_session_time_not_agreed]
 
 ### live_supervision_course_completion (SOP 67)
-- Name (fa): خات درس سپر زد
+- Name (fa): خاتمه درس سوپرویژن زنده
 - Status: complete_in_metadata
 - metadata: metadata/processes/live_supervision_course_completion.json
 - registry: processes/live_supervision_course_completion
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, instructor, course_committee_scientific, monitoring_committee_officer, system
 - INDEX sub_process_refs: violation_registration
-- Runtime chains: violation_registration
 - Workflow:
   1. sessions_in_progress --(mirror_attendance_recorded)--> mirror_implementation_pending [system]
   2. mirror_implementation_pending --(mirror_write_submitted)--> sessions_in_progress [student]
@@ -1111,10 +1086,9 @@
   9. mirror_eval_pending --(eighteenth_attendance_recorded)--> final_eval_pending [system]
   10. final_eval_pending --(final_eval_submitted)--> completed [instructor]
   ... +1 transitions
-- SOP step mappings (5 steps): see sop_step_mappings.json
 
 ### live_supervision_session_prep (SOP 68)
-- Name (fa): دات برگزار جسات سپر زد
+- Name (fa): مقدمات برگزاری جلسات سوپرویژن زنده
 - Status: complete_in_metadata
 - metadata: metadata/processes/live_supervision_session_prep.json
 - registry: processes/live_supervision_session_prep
@@ -1126,7 +1100,7 @@
   3. coordination_pending --(no_time_agreed)--> coordination_closed [therapy_education_coordinator] [live_session_time_not_agreed]
 
 ### article_writing_completion (SOP 69)
-- Name (fa): خات درس اس جت گزارش رد
+- Name (fa): خاتمه درس مقاله‌نویسی جهت گزارش موردی
 - Status: complete_in_metadata
 - metadata: metadata/processes/article_writing_completion.json
 - registry: processes/article_writing_completion
@@ -1142,11 +1116,11 @@
   6. course_active --(enrollment_term3_plus)--> term3_violation [system] [article_enrollment_term3_plus]
 
 ### thesis_defense_request (SOP 70)
-- Name (fa): درخاست ثبت دفاع پااا
+- Name (fa): درخواست ثبت دفاع پایان‌نامه
 - Status: complete_in_metadata
 - metadata: metadata/processes/thesis_defense_request.json
 - registry: processes/thesis_defense_request
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, progress_committee, supervision_committee, education_committee, instructor, system
 - INDEX sub_process_refs: article_writing_completion, violation_registration
 - Workflow:
@@ -1163,11 +1137,11 @@
   ... +7 transitions
 
 ### upgrade_to_educational_therapist (SOP 71)
-- Name (fa): ارتا ب دراگر آزش
+- Name (fa): ارتقا به درمانگر آموزشی
 - Status: complete_in_metadata
 - metadata: metadata/processes/upgrade_to_educational_therapist.json
 - registry: processes/upgrade_to_educational_therapist
-- Registry artifacts: 04_status.md, SOP_document.txt, SOP_flowchart.png
+- Registry artifacts: 03_output.json, 04_status.md, SOP_document.txt, SOP_flowchart.png
 - Roles: student, supervision_committee, education_committee, system
 - INDEX sub_process_refs: violation_registration
 - Workflow:
@@ -1184,7 +1158,7 @@
   ... +14 transitions
 
 ### intern_bulk_patient_referral (SOP 72)
-- Name (fa): ارجاع ک بارا اتر ب دراگرا دگر
+- Name (fa): ارجاع کلیه بیماران انترن به درمانگران دیگر
 - Status: complete_in_metadata
 - metadata: metadata/processes/intern_bulk_patient_referral.json
 - registry: processes/intern_bulk_patient_referral
@@ -1199,7 +1173,7 @@
   5. coordination_followup --(coordination_followup_complete)--> completed [therapy_education_coordinator]
 
 ### live_supervision_ta_evaluation (SOP 73)
-- Name (fa): ارزاب ککدرس درس سپر زد
+- Name (fa): ارزیابی کمک مدرس درس سوپرویژن زنده
 - Status: complete_in_metadata
 - metadata: metadata/processes/live_supervision_ta_evaluation.json
 - registry: processes/live_supervision_ta_evaluation
@@ -1212,7 +1186,7 @@
   3. evaluation_computed --(result_fail)--> failed [system] [live_supervision_ta_score_lt_74]
 
 ### live_therapy_observation_ta_attendance_completion (SOP 74)
-- Name (fa): خات درس شاد زد درا  بخش کک درس  ر حضر  غاب  شارکت
+- Name (fa): خاتمه درس مشاهده زنده درمان – بخش کمک مدرس و نمره حضور و غیاب و مشارکت
 - Status: complete_in_metadata
 - metadata: metadata/processes/live_therapy_observation_ta_attendance_completion.json
 - registry: processes/live_therapy_observation_ta_attendance_completion
@@ -1224,7 +1198,7 @@
   2. grades_entry --(sla_breach)--> delay_reported [system] [course_grades_sla_breach]
 
 ### film_observation_ta_attendance_completion (SOP 75)
-- Name (fa): خات ر درس ع کاربرد شاد فا  بخش کک درس  ر حضر  غاب  شارکت
+- Name (fa): خاتمه هر درس عملی کاربردی، مشاهده فیلم‌ها — بخش کمک مدرس و نمره حضور و غیاب و مشارکت
 - Status: complete_in_metadata
 - metadata: metadata/processes/film_observation_ta_attendance_completion.json
 - registry: processes/film_observation_ta_attendance_completion

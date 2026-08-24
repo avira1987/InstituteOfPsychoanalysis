@@ -6,6 +6,7 @@ import re
 from typing import Any, Optional
 
 from app.services.forms.condition import field_visible, field_required
+from app.meta.process_data_access import role_matches_allowed_list
 
 
 def _is_empty(v: Any) -> bool:
@@ -40,8 +41,7 @@ def filter_schema_for_role(schema: dict, role: Optional[str]) -> dict:
             continue
         visible_to = f.get("visible_to")
         if isinstance(visible_to, list) and visible_to:
-            allowed = {_norm_role(x) for x in visible_to}
-            if role_n and role_n not in allowed:
+            if role_n and not role_matches_allowed_list(role_n, [_norm_role(x) for x in visible_to]):
                 continue
         out_fields.append(f)
     merged = dict(schema)

@@ -4,6 +4,7 @@
  */
 import { committeeKindForAssignedRole, getCommitteeKindPath } from './portalCommitteeKinds'
 import { getStaffLanePath, staffLaneForAssignedRole } from './portalStaffLanes'
+import { HUB_VIOLATION, studentProcessInstanceHref, violationCommitteeHref, patientReferralCommitteeHref } from './hubProcessLinks'
 
 const FALLBACK_HINT = 'ردیابی دانشجو (همه نقش‌ها)'
 
@@ -245,6 +246,37 @@ export function getOperatorFollowupDestination(item) {
         href: staffHref({ ...base, tab: 'pending' }, 'therapy-coord'),
         hintFa: 'پنل هماهنگی درمان — تعیین زمان جلسه زنده',
       }
+    }
+  }
+
+  if (processCode === 'violation_registration') {
+    if (isStudentLikeRole(code)) {
+      return {
+        href: studentProcessInstanceHref({
+          processCode: HUB_VIOLATION,
+          instanceId,
+          studentId,
+        }),
+        hintFa: 'پرونده تخلف در پنل آموزشی',
+      }
+    }
+    return {
+      href: violationCommitteeHref({
+        instanceId,
+        studentId,
+        stateCode,
+        roleCode: code,
+      }),
+      hintFa: stateCode === 'referred_to_education_committee'
+        ? 'کمیته آموزش — حکم نهایی تخلف'
+        : 'کمیته نظارت — ثبت تخلفات',
+    }
+  }
+
+  if (processCode === 'patient_referral') {
+    return {
+      href: patientReferralCommitteeHref({ instanceId, studentId }),
+      hintFa: 'کمیته نظارت — ارجاع بیماران انترن',
     }
   }
 
@@ -547,6 +579,31 @@ export function getOperatorFollowupDestinationForProcess(opts) {
     return {
       href: workbenchHref(processCode),
       hintFa: 'میز کار آماده‌سازی ترم',
+    }
+  }
+
+  if (processCode === 'violation_registration') {
+    if (portalRole === 'student' || isStudentLikeRole(code)) {
+      return {
+        href: studentProcessInstanceHref({ processCode: HUB_VIOLATION }),
+        hintFa: 'پرونده تخلف در پنل آموزشی',
+      }
+    }
+    return {
+      href: violationCommitteeHref({
+        stateCode,
+        roleCode: code || 'monitoring_committee_officer',
+      }),
+      hintFa: 'کمیته نظارت — ثبت تخلفات',
+    }
+  }
+
+  if (processCode === 'patient_referral') {
+    return {
+      href: patientReferralCommitteeHref({
+        stateCode,
+      }),
+      hintFa: 'کمیته نظارت — ارجاع بیماران انترن',
     }
   }
 

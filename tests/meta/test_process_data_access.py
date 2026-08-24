@@ -142,6 +142,32 @@ def test_site_manager_cannot_edit_interview_scheduling_form():
     assert "interview_location_fa" not in names
 
 
+def test_faculty_1_can_see_and_edit_intro_interview_result_form():
+    from app.meta.process_data_access import (
+        role_matches_allowed_list,
+        visible_forms_for_role,
+    )
+
+    assert role_matches_allowed_list("faculty_1", ["interviewer", "admissions_officer", "admin"])
+    assert not role_matches_allowed_list("therapist", ["interviewer", "admissions_officer", "admin"])
+
+    forms = get_process_forms("introductory_course_registration", state_code="interview_completed")
+    vis = visible_forms_for_role(forms, "faculty_1")
+    assert any(f.get("code") == "interview_result_form" for f in vis)
+    names = editable_field_names(forms, "faculty_1")
+    assert "interview_result" in names
+    assert "interviewer_notes" in names
+    assert "interview_result" not in editable_field_names(forms, "therapist")
+
+
+def test_first_role_that_can_edit_forms_prefers_faculty_1_for_interview_result():
+    from app.meta.process_data_access import first_role_that_can_edit_forms
+
+    forms = get_process_forms("introductory_course_registration", state_code="interview_completed")
+    picked = first_role_that_can_edit_forms(["faculty_1", "educational_instructor"], forms)
+    assert picked == "faculty_1"
+
+
 def test_staff_can_act_on_interview_scheduling_state():
     from app.meta.operator_state_catalog import portal_role_can_act_on_assigned_role
 

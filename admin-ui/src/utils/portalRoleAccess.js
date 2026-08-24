@@ -1,5 +1,10 @@
 import portalRoleMap from '../../../metadata/portal_role_assigned_role_map.json' with { type: 'json' }
-import { canonicalPortalRole } from './userRoles'
+import {
+  canonicalPortalRole,
+  operatorPortalRoles,
+  orderedActorRoles,
+  primaryRole,
+} from './userRoles.js'
 
 const TYPO_MAP = portalRoleMap.normalize_assigned_role_typo || {}
 
@@ -28,4 +33,27 @@ export function portalRoleCanActOnState(portalRole, stateAssignedRole) {
   if (allowed === null) return true
   const normalized = normalizeAssignedRole(stateAssignedRole)
   return allowed.includes(normalized)
+}
+
+export function anyPortalRoleCanActOnState(roles, stateAssignedRole) {
+  if (!stateAssignedRole) return false
+  const list = (Array.isArray(roles) ? roles : []).filter(Boolean)
+  if (list.includes('admin')) return true
+  return list.some((r) => portalRoleCanActOnState(r, stateAssignedRole))
+}
+
+export function effectivePortalRole(user, stateAssignedRole) {
+  const ordered = orderedActorRoles(user)
+  if (stateAssignedRole) {
+    const hit = ordered.find((r) => portalRoleCanActOnState(r, stateAssignedRole))
+    if (hit) return hit
+  }
+  return primaryRole(user)
+}
+
+export function formRolesForUser(user, fallbackRole) {
+  const fromUser = operatorPortalRoles(user)
+  if (fromUser.length) return fromUser
+  const r = String(fallbackRole || primaryRole(user) || '').trim()
+  return r ? [r] : []
 }

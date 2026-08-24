@@ -1,0 +1,51 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-08-22",
+  "description_fa": "کلیدهای قفل‌شدهٔ هاب‌های برش ۱. پس از پذیرش این برش بدون الحاقیه عوض نشوند.",
+  "student_extra_data": {
+    "is_suspended": {
+      "type": "boolean",
+      "written_by": ["violation_registration suspension_immediate", "violation_registration suspension_next_term"],
+      "cleared_by": ["lift_suspension_restrictions"],
+      "read_by": ["engine._build_context student.is_suspended"]
+    },
+    "class_access_blocked": {
+      "type": "boolean",
+      "written_by": ["suspend_class_registration"]
+    },
+    "class_present_blocked": {
+      "type": "object",
+      "fields": ["active", "instance_id", "process_code", "locked_at", "reason_fa", "source"],
+      "written_by": ["block_attendance_registration on violation_registration", "tuition overdue"]
+    },
+    "gates.next_term_registration_blocked": {
+      "type": "boolean",
+      "written_by": ["block_next_term_registration"]
+    },
+    "access_revoked": {
+      "type": "boolean",
+      "written_by": ["revoke_student_access"]
+    },
+    "monitoring_performance_log": {
+      "type": "array",
+      "written_by": ["record_violation_performance_entry"]
+    }
+  },
+  "process_instance_context": {
+    "parent_instance_id": "uuid string on child hub instances",
+    "source_process_code": "parent process_code",
+    "source_reason": "stable reason code from parent payload.reason",
+    "description": "human-readable dossier text; seeded from title_fa when parent omits description",
+    "title_fa": "optional parent display title",
+    "referral_patients": "phase D patient_referral rows"
+  },
+  "financial_record": {
+    "record_type": ["payment", "debt", "credit", "absence_fee"],
+    "ledger_category": ["therapy", "supervision", "tuition", "other"]
+  },
+  "hub_process_codes": [
+    "violation_registration",
+    "fee_determination",
+    "patient_referral"
+  ]
+}

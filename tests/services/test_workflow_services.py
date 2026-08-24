@@ -47,7 +47,15 @@ class TestServiceAPortalNotifications:
     async def test_schedule_installment_reminders_creates_records(self, db_session, sample_student):
         from datetime import date, datetime
 
-        instance = await _make_instance(db_session, sample_student)
+        instance = await _make_instance(
+            db_session,
+            sample_student,
+            ctx={
+                "payment_method": "installment",
+                "installment_count": 4,
+                "pending_installments_remaining": 3,
+            },
+        )
         await _run(db_session, instance, [{"type": "schedule_installment_reminders", "installments": 4}])
         await db_session.refresh(sample_student)
         rems = [r for r in (sample_student.extra_data or {}).get("scheduled_reminders", []) if r["type"] == "installment"]
@@ -63,6 +71,45 @@ class TestServiceAPortalNotifications:
                 due_d = datetime.fromisoformat(due_raw.replace("Z", "+00:00")).date()
             remind_d = datetime.fromisoformat(remind_raw.replace("Z", "+00:00")).date()
             assert abs((due_d - remind_d).days - 7) <= 1
+
+    async def test_schedule_installment_reminders_skips_cash(self, db_session, sample_student):
+        from datetime import date
+
+        instance = await _make_instance(
+            db_session,
+            sample_student,
+            ctx={
+                "payment_method": "cash",
+                "pending_installments_remaining": 0,
+                "installment_plan": [
+                    {
+                        "index": 1,
+                        "amount_rial": 70000,
+                        "due_at": date.today().isoformat(),
+                        "status": "pending",
+                    }
+                ],
+            },
+        )
+        extra = dict(sample_student.extra_data or {})
+        extra["scheduled_reminders"] = [
+            {
+                "id": "old-cash",
+                "type": "installment",
+                "instance_id": str(instance.id),
+                "due_at": date.today().isoformat(),
+                "sent": False,
+            }
+        ]
+        sample_student.extra_data = extra
+        await db_session.flush()
+        results = await _run(db_session, instance, [{"type": "schedule_installment_reminders"}])
+        await db_session.refresh(sample_student)
+        assert results[0]["success"] is True
+        assert "skipped_not_installment" in (results[0].get("detail") or "")
+        rems = (sample_student.extra_data or {}).get("scheduled_reminders") or []
+        unsent = [r for r in rems if r.get("type") == "installment" and not r.get("sent")]
+        assert unsent == []
 
     async def test_send_to_dashboard_appends_feed(self, db_session, sample_student):
         instance = await _make_instance(db_session, sample_student)

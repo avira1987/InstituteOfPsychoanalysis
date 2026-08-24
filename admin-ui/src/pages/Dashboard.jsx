@@ -84,7 +84,7 @@ export default function Dashboard() {
   const quickActions = useMemo(() => {
     const u = canonicalPortalRole(user?.role) || user?.role
     const items = []
-    if (u === 'student') {
+    if (u === 'student' || u === 'admin') {
       items.push({ key: 'student', icon: '🎓', label: 'پنل آموزشی', hint: 'مسیر، فرایندها و کلاس', onClick: () => navigate('/panel/portal/student') })
     }
     if (u === 'therapist' || u === 'admin') {
@@ -103,6 +103,15 @@ export default function Dashboard() {
           onClick: () => navigate(`${lane.path}?tab=pending`),
         })
       }
+    }
+    if (u === 'interviewer' || u === 'admin') {
+      items.push({
+        key: 'staff-admissions-interviewer',
+        icon: '🎤',
+        label: 'پنل مصاحبه‌گر',
+        hint: 'ثبت نتیجهٔ مصاحبه و اسلات',
+        onClick: () => navigate('/panel/portal/interviewer'),
+      })
     }
     if (u === 'interviewer') {
       items.push({
@@ -139,7 +148,7 @@ export default function Dashboard() {
         })
       }
     }
-    if (canManageInterviewSlots(u)) {
+    if (canManageInterviewSlots(user)) {
       items.push({
         key: 'interview-slots',
         icon: '📅',

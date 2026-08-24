@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Literal, Optional
 
@@ -10,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.operational_models import User
+from app.core.user_roles import user_has_role
 
 MemberKind = Literal["instructor", "teaching_assistant"]
 # نقش نمایشی در ستون «نوع» (شامل مدرس آموزشی)
@@ -94,9 +96,9 @@ def _user_member_kind(user: User) -> str | None:
     mk = meta.get("member_kind")
     if mk in ("instructor", "teaching_assistant"):
         return mk
-    if user.role == "instructor":
+    if user_has_role(user, "instructor", admin_bypass=False):
         return "instructor"
-    if user.role == "teaching_assistant":
+    if user_has_role(user, "teaching_assistant", admin_bypass=False):
         return "teaching_assistant"
     return None
 
@@ -685,6 +687,47 @@ def _normalize_catalog_name(name: str) -> str:
     return (name or "").strip().replace("ي", "ی").replace("ك", "ک")
 
 
+_CATALOG_DIGIT_TABLE = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+_CATALOG_WORD_NUMBERS = (
+    (r"(?<!\S)یک(?!\S)", "1"),
+    (r"(?<!\S)دو(?!\S)", "2"),
+    (r"(?<!\S)سه(?!\S)", "3"),
+    (r"(?<!\S)چهار(?!\S)", "4"),
+    (r"(?<!\S)پنج(?!\S)", "5"),
+)
+
+
+def _fold_catalog_name(name: str) -> str:
+    """Normalize labels so «تئوری تکنیک یک» matches catalog «تئوری تکنیک‌ها ۱»."""
+    s = _normalize_catalog_name(name).translate(_CATALOG_DIGIT_TABLE)
+    s = s.replace("تکنیک‌ها", "تکنیک").replace("تکنیکها", "تکنیک")
+    s = s.replace("‌", " ").replace("ـ", " ")
+    s = re.sub(r"[()\[\]«»]", " ", s)
+    for pattern, repl in _CATALOG_WORD_NUMBERS:
+        s = re.sub(pattern, repl, s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def get_catalog_course(code_or_name: str) -> dict[str, Any] | None:
+    """Find a catalog row by value, Persian label, or SOP alias."""
+    raw = _normalize_catalog_name(code_or_name)
+    if not raw:
+        return None
+    folded = _fold_catalog_name(raw)
+    for row in _load_catalog_file().get("courses") or []:
+        if not isinstance(row, dict):
+            continue
+        val = _normalize_catalog_name(str(row.get("value") or ""))
+        lab = _normalize_catalog_name(str(row.get("label_fa") or ""))
+        names = [val, lab]
+        aliases = row.get("aliases") or []
+        if isinstance(aliases, list):
+            names.extend(_normalize_catalog_name(str(a)) for a in aliases if str(a).strip())
+        if raw in names or folded in {_fold_catalog_name(n) for n in names if n}:
+            return row
+    return None
+
+
 def list_course_catalog_options() -> list[dict[str, Any]]:
     data = _load_catalog_file()
     out: list[dict[str, Any]] = []
@@ -707,22 +750,41 @@ def list_course_catalog_options() -> list[dict[str, Any]]:
     return out
 
 
-def get_catalog_course(code_or_name: str) -> dict[str, Any] | None:
-    """Find a catalog row by value, Persian label, or SOP alias."""
-    raw = _normalize_catalog_name(code_or_name)
-    if not raw:
-        return None
-    for row in _load_catalog_file().get("courses") or []:
-        if not isinstance(row, dict):
-            continue
-        val = _normalize_catalog_name(str(row.get("value") or ""))
-        lab = _normalize_catalog_name(str(row.get("label_fa") or ""))
-        if raw in {val, lab}:
-            return row
-        aliases = row.get("aliases") or []
-        if isinstance(aliases, list) and any(_normalize_catalog_name(str(a)) == raw for a in aliases):
-            return row
-    return None
+KNOWN_SYSTEM_PREREQUISITE_CODES = (
+    "internship_started",
+    "clinical_hours_500",
+    "individual_supervision_50h",
+    "individual_supervision_100h",
+)
+
+
+def list_system_prerequisites() -> list[dict[str, Any]]:
+    """رجیستری پیش‌نیاز سیستمی کاتالوگ (یادآور؛ enforced فعلاً false است)."""
+    data = _load_catalog_file()
+    raw = data.get("system_prerequisites")
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    if isinstance(raw, list):
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            code = str(item.get("code") or "").strip()
+            if not code or code in seen:
+                continue
+            seen.add(code)
+            row: dict[str, Any] = {
+                "code": code,
+                "label_fa": str(item.get("label_fa") or code).strip() or code,
+                "enforced": bool(item.get("enforced")),
+            }
+            hint = str(item.get("activation_hint_fa") or "").strip()
+            if hint:
+                row["activation_hint_fa"] = hint
+            out.append(row)
+    if not out:
+        for code in KNOWN_SYSTEM_PREREQUISITE_CODES:
+            out.append({"code": code, "label_fa": code, "enforced": False})
+    return out
 
 
 def catalog_units_for_course(code_or_name: str, default: int = 1) -> int:
@@ -868,8 +930,15 @@ def _curriculum_payload(raw: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(codes, list):
             raise ValueError("پیش‌نیاز باید فهرست کد درس باشد")
         out["prerequisite_codes"] = [str(c).strip() for c in codes if str(c).strip()]
+    if "system_prerequisite_codes" in raw and raw["system_prerequisite_codes"] is not None:
+        codes = raw["system_prerequisite_codes"]
+        if not isinstance(codes, list):
+            raise ValueError("پیش‌نیاز سیستمی باید فهرست کد باشد")
+        out["system_prerequisite_codes"] = [str(c).strip() for c in codes if str(c).strip()]
     if "prerequisite_notes" in raw and raw["prerequisite_notes"] is not None:
         out["prerequisite_notes"] = str(raw["prerequisite_notes"]).strip()
+    if "single_course_allowed" in raw and raw["single_course_allowed"] is not None:
+        out["single_course_allowed"] = bool(raw["single_course_allowed"])
     if "subtitle_fa" in raw and raw["subtitle_fa"] is not None:
         out["subtitle_fa"] = str(raw["subtitle_fa"]).strip()
     return out
@@ -914,9 +983,16 @@ def _course_row_to_option(row: dict[str, Any]) -> dict[str, Any]:
     prereqs = row.get("prerequisite_codes")
     if isinstance(prereqs, list):
         out["prerequisite_codes"] = [str(c).strip() for c in prereqs if str(c).strip()]
+    sys_prereqs = row.get("system_prerequisite_codes")
+    if isinstance(sys_prereqs, list):
+        out["system_prerequisite_codes"] = [
+            str(c).strip() for c in sys_prereqs if str(c).strip()
+        ]
     notes = str(row.get("prerequisite_notes") or "").strip()
     if notes:
         out["prerequisite_notes"] = notes
+    if row.get("single_course_allowed") is not None:
+        out["single_course_allowed"] = bool(row.get("single_course_allowed"))
     aliases = row.get("aliases")
     if isinstance(aliases, list) and aliases:
         out["aliases"] = [str(a).strip() for a in aliases if str(a).strip()]
@@ -1055,6 +1131,36 @@ def add_track_to_roster(name_fa: str, code: str | None = None) -> dict[str, str]
     data["tracks"] = tracks
     _save_roster_file(data)
     return {"value": track_code, "label_fa": label}
+
+
+def update_track_in_roster(track_code: str, name_fa: str) -> dict[str, str]:
+    """تغییر نام رسته؛ کد ثابت می‌ماند تا درس‌ها و اعضای چارت قطع نشوند."""
+    code = (track_code or "").strip()
+    label = (name_fa or "").strip()
+    if not code:
+        raise ValueError("کد رسته خالی است")
+    if not label:
+        raise ValueError("نام رسته خالی است")
+    data = _load_roster_file()
+    tracks = list(data.get("tracks") or [])
+    target: dict[str, Any] | None = None
+    for t in tracks:
+        if isinstance(t, dict) and t.get("code") == code:
+            target = t
+            break
+    if target is None:
+        raise ValueError("رسته یافت نشد")
+    label_norm = _normalize_fa(label)
+    for t in tracks:
+        if not isinstance(t, dict) or t.get("code") == code:
+            continue
+        other = (t.get("name_fa") or "").strip()
+        if other == label or _normalize_fa(other) == label_norm:
+            raise ValueError("رسته‌ای با این نام از قبل وجود دارد")
+    target["name_fa"] = label
+    data["tracks"] = tracks
+    _save_roster_file(data)
+    return {"value": code, "label_fa": label}
 
 
 def remove_track_from_roster(track_code: str) -> bool:

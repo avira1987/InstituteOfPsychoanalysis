@@ -595,6 +595,12 @@
           "type": "create_lms_course_links"
         },
         {
+          "type": "record_lms_links_placed"
+        },
+        {
+          "type": "build_class_attendance_list"
+        },
+        {
           "type": "record_accounting",
           "kind": "tuition"
         },
@@ -623,14 +629,14 @@
           ]
         },
         {
+          "type": "merge_instance_context",
+          "mode": "initial_payment"
+        },
+        {
           "type": "schedule_installment_reminders",
           "condition": "payment_method == 'installment'",
           "reminder_days_before": 7,
           "description_fa": "برنامه‌ریزی یادآوری اقساط"
-        },
-        {
-          "type": "merge_instance_context",
-          "mode": "initial_payment"
         }
       ],
       "required_role": "system"

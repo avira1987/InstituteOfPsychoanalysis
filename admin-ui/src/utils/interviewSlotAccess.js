@@ -1,10 +1,11 @@
-import { canonicalPortalRole } from './userRoles'
+import { canonicalPortalRole, userHasRole } from './userRoles.js'
 
 /** نقش‌هایی که می‌توانند وقت مصاحبه تعریف و ویرایش کنند (مدیر داخلی و مدیر سیستم). */
 export function canManageInterviewSlots(roleOrUser) {
-  const role = typeof roleOrUser === 'string' || roleOrUser == null
-    ? canonicalPortalRole(roleOrUser) || roleOrUser
-    : canonicalPortalRole(roleOrUser.role) || roleOrUser.role
+  if (roleOrUser && typeof roleOrUser === 'object') {
+    return userHasRole(roleOrUser, 'staff') || userHasRole(roleOrUser, 'admin')
+  }
+  const role = canonicalPortalRole(roleOrUser) || roleOrUser
   return role === 'staff' || role === 'admin'
 }
 

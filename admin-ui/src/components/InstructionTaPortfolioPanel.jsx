@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { studentApi } from '../services/api'
 import TaTrackPortfolioPanel from './TaTrackPortfolioPanel'
+import { userHasAnyRole } from '../utils/userRoles'
 
 /**
  * نمای فشردهٔ پرونده کمک‌مدرسی برای مدرس/کمک‌مدرس در instruction lane.
@@ -8,8 +9,12 @@ import TaTrackPortfolioPanel from './TaTrackPortfolioPanel'
 export default function InstructionTaPortfolioPanel({ user }) {
   const [portfolio, setPortfolio] = useState(null)
   const [loading, setLoading] = useState(false)
-  const role = (user?.role || '').trim()
-  const isTaRole = role === 'teaching_assistant' || role === 'instructor' || role === 'assistant_faculty'
+  const isTaRole = userHasAnyRole(user, [
+    'teaching_assistant',
+    'instructor',
+    'assistant_faculty',
+    'educational_instructor',
+  ])
 
   useEffect(() => {
     if (!isTaRole) return
@@ -35,7 +40,7 @@ export default function InstructionTaPortfolioPanel({ user }) {
   return (
     <TaTrackPortfolioPanel
       portfolio={portfolio}
-      portalRole={role}
+      portalRole={user?.role}
       compact
       loading={loading}
       readOnlyNote="سوابق کمک‌مدرسی شما — برای برنامه‌ریزی رسته‌های بعدی از این نما استفاده کنید."

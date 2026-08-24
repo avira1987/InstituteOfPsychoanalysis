@@ -160,6 +160,7 @@ export default function UserManagement() {
   const [studentCourseType, setStudentCourseType] = useState('introductory')
   const [studentProfileId, setStudentProfileId] = useState(null)
   const [studentCode, setStudentCode] = useState('')
+  const [allowPreviousStepReview, setAllowPreviousStepReview] = useState(false)
 
   const [setPasswordUser, setSetPasswordUser] = useState(null)
   const [setPasswordValue, setSetPasswordValue] = useState('')
@@ -348,6 +349,7 @@ export default function UserManagement() {
     setStudentCourseType('introductory')
     setStudentProfileId(null)
     setStudentCode(u.student_code || '')
+    setAllowPreviousStepReview(false)
     if (getUserRoles(u).includes('student')) {
       setRegProfileLoading(true)
       try {
@@ -356,6 +358,7 @@ export default function UserManagement() {
         setStudentProfileId(res.data?.student_id || null)
         setStudentCourseType(res.data?.course_type || 'introductory')
         setStudentCode(res.data?.student_code || u.student_code || '')
+        setAllowPreviousStepReview(res.data?.allow_previous_step_review === true)
         setRegProfileForm(extendedFieldsFromExtra(res.data))
         if (res.data?.email) {
           setEditForm((prev) => ({ ...prev, email: res.data.email }))
@@ -397,7 +400,10 @@ export default function UserManagement() {
       if (rolesNow.includes('student') && hasStudentProfile) {
         await studentApi.updateRegistrationProfileByUser(
           editingUser.id,
-          buildRegistrationProfilePayload(regProfileForm),
+          {
+            ...buildRegistrationProfilePayload(regProfileForm),
+            allow_previous_step_review: allowPreviousStepReview,
+          },
         )
       }
       showToast('اطلاعات کاربر ویرایش شد')
@@ -646,6 +652,20 @@ export default function UserManagement() {
                         }}
                       />
                     )}
+                    <div className="form-group" style={{ gridColumn: '1 / -1', marginBottom: '1rem' }}>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={allowPreviousStepReview}
+                          onChange={(e) => setAllowPreviousStepReview(e.target.checked)}
+                          data-testid="user-mgmt-allow-previous-step-review"
+                        />
+                        نمایش دکمهٔ مرور مراحل قبلی در پروفایل دانشجو
+                      </label>
+                      <p className="muted" style={{ fontSize: '0.8rem', margin: '0.35rem 0 0' }}>
+                        به‌صورت پیش‌فرض مخفی است. با فعال‌کردن، دانشجو در پروفایل خود می‌تواند مراحل قبلی فرایند را فقط مشاهده کند.
+                      </p>
+                    </div>
                     <h4 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>اطلاعات تکمیلی ثبت‌نام</h4>
                     {regProfileLoading ? (
                       <p className="muted" style={{ fontSize: '0.88rem' }}>در حال بارگذاری…</p>
@@ -710,13 +730,24 @@ export default function UserManagement() {
             <div className="modal-body">
               <p className="user-mgmt-modal-lead">
                 برای <strong>{setPasswordUser.full_name_fa || setPasswordUser.username}</strong>
-                <span className="user-mgmt-modal-meta" dir="ltr">({setPasswordUser.username})</span>
               </p>
               <p className="user-mgmt-modal-meta" style={{ marginBottom: '0.75rem' }}>
                 ورود با این رمز از مسیر «ورود پرسنل و مدیران» با همین نام کاربری است، نه تب پیامک.
               </p>
               <form onSubmit={handleSetPassword} autoComplete="off">
-                <input type="text" name="username" value={setPasswordUser.username || ''} readOnly tabIndex={-1} aria-hidden="true" autoComplete="username" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, pointerEvents: 'none' }} />
+                <div className="form-group">
+                  <label className="form-label" htmlFor="set-password-username">نام کاربری</label>
+                  <input
+                    id="set-password-username"
+                    className="form-input"
+                    type="text"
+                    name="username"
+                    value={setPasswordUser.username || ''}
+                    readOnly
+                    autoComplete="username"
+                    dir="ltr"
+                  />
+                </div>
                 <div className="form-group">
                   <label className="form-label">رمز عبور جدید *</label>
                   <input

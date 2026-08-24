@@ -1,6 +1,10 @@
 import { filterFormsForStudent } from './processFormsStudent'
 import { labelState } from './processDisplay'
 import { STUDENT_TASK_LABELS_FA, PROCESS_STUDENT_TASK_LABELS_FA, PROCESS_STATE_LABELS_FA } from './processMetadataLabels'
+import {
+  CONDITIONAL_THERAPY_TERM2_NOTICE_FA,
+  shouldShowConditionalTherapyTerm2Notice,
+} from './studentProcessAccess'
 
 export const INTRO_REG_ADMISSION_RESULT_STATES = new Set([
   'result_conditional_therapy',
@@ -34,7 +38,15 @@ export function buildStudentGuidance({
   const shortFa = (meta.student_short_fa || meta.student_guidance_fa || '').trim()
     || (procCode && PROCESS_STATE_LABELS_FA[procCode]?.[detail?.current_state])
     || (st?.name_fa || detail?.current_state || '')
-  const whyFa = (meta.student_why_fa || '').trim()
+  const whyFaRaw = (meta.student_why_fa || '').trim()
+  const whyFa = shouldShowConditionalTherapyTerm2Notice({
+    studentProfile: { extra_data: ctx, admission_type: ctx?.admission_type },
+    contextData: ctx,
+    processCode: procCode,
+    currentState: detail?.current_state,
+  }) && ['result_conditional_therapy', 'registration_complete'].includes(detail?.current_state)
+    ? CONDITIONAL_THERAPY_TERM2_NOTICE_FA
+    : whyFaRaw
   const role = st?.assigned_role
   const done = detail?.is_completed || detail?.is_cancelled
 

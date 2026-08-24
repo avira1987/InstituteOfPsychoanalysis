@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { courseCommitteeRosterApi } from '../services/api'
+import {
+  curriculumFromCourse,
+  curriculumPayload,
+  emptyCurriculum,
+  SYSTEM_PREREQUISITES,
+  systemPrerequisiteLabel,
+  togglePrerequisiteCode,
+} from '../utils/catalogCurriculum'
 
 const PROGRAM_OPTIONS = [
   { value: 'introductory', label: 'آشنایی' },
@@ -12,18 +20,6 @@ function programLabel(kind) {
   if (kind === 'introductory') return 'آشنایی'
   if (kind === 'comprehensive') return 'جامع'
   return '—'
-}
-
-function emptyCurriculum() {
-  return {
-    units: '2',
-    curriculum_term: '',
-    program_kind: 'introductory',
-    class_hours: '',
-    retake_exam: false,
-    prerequisite_notes: '',
-    subtitle_fa: '',
-  }
 }
 
 function SopCurriculumPreview({ courses }) {
@@ -96,32 +92,6 @@ function SopCurriculumPreview({ courses }) {
   )
 }
 
-function curriculumFromCourse(course) {
-  return {
-    units: course?.units != null ? String(course.units) : '',
-    curriculum_term: course?.curriculum_term != null ? String(course.curriculum_term) : '',
-    program_kind: course?.program_kind || '',
-    class_hours: course?.class_hours || '',
-    retake_exam: Boolean(course?.retake_exam),
-    prerequisite_notes: course?.prerequisite_notes || '',
-    subtitle_fa: course?.subtitle_fa || '',
-  }
-}
-
-function curriculumPayload(fields) {
-  const body = {}
-  const units = Number(fields.units)
-  if (Number.isFinite(units) && units >= 1) body.units = units
-  const term = Number(fields.curriculum_term)
-  if (Number.isFinite(term) && term >= 1) body.curriculum_term = term
-  if (fields.program_kind) body.program_kind = fields.program_kind
-  if (fields.class_hours.trim()) body.class_hours = fields.class_hours.trim()
-  body.retake_exam = Boolean(fields.retake_exam)
-  if (fields.prerequisite_notes.trim()) body.prerequisite_notes = fields.prerequisite_notes.trim()
-  if (fields.subtitle_fa.trim()) body.subtitle_fa = fields.subtitle_fa.trim()
-  return body
-}
-
 const catalogFieldLabelStyle = {
   display: 'block',
   fontSize: '0.75rem',
@@ -138,7 +108,7 @@ function CatalogFieldLabel({ htmlFor, children }) {
   )
 }
 
-function CurriculumFields({ value, onChange, idPrefix }) {
+function CurriculumFields({ value, onChange, idPrefix, catalogCourses = [], excludeValue }) {
   const set = (key, next) => onChange({ ...value, [key]: next })
   const unitsId = `${idPrefix}-units`
   const termId = `${idPrefix}-term`
@@ -146,6 +116,15 @@ function CurriculumFields({ value, onChange, idPrefix }) {
   const hoursId = `${idPrefix}-hours`
   const subtitleId = `${idPrefix}-subtitle`
   const prereqId = `${idPrefix}-prereq`
+  const prereqCodesId = `${idPrefix}-prereq-codes`
+  const sysPrereqCodesId = `${idPrefix}-sys-prereq-codes`
+  const selectedCodes = Array.isArray(value.prerequisite_codes) ? value.prerequisite_codes : []
+  const selectedSystemCodes = Array.isArray(value.system_prerequisite_codes)
+    ? value.system_prerequisite_codes
+    : []
+  const prereqChoices = (Array.isArray(catalogCourses) ? catalogCourses : []).filter(
+    (c) => c?.value && c.value !== excludeValue,
+  )
   return (
     <div
       style={{
@@ -238,6 +217,15 @@ function CurriculumFields({ value, onChange, idPrefix }) {
         />
         امتحان مجدد دارد
       </label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem', margin: 0 }}>
+        <input
+          type="checkbox"
+          checked={Boolean(value.single_course_allowed)}
+          onChange={(e) => set('single_course_allowed', e.target.checked)}
+          data-testid={`${idPrefix}-single-course`}
+        />
+        مجاز برای پذیرش تک‌درس
+      </label>
       <label htmlFor={subtitleId} style={{ display: 'block', margin: 0, gridColumn: '1 / -1' }}>
         <CatalogFieldLabel htmlFor={subtitleId}>زیرعنوان درس</CatalogFieldLabel>
         <input
@@ -250,14 +238,101 @@ function CurriculumFields({ value, onChange, idPrefix }) {
           data-testid={subtitleId}
         />
       </label>
+      <label htmlFor={prereqCodesId} style={{ display: 'block', margin: 0, gridColumn: '1 / -1' }}>
+        <CatalogFieldLabel htmlFor={prereqCodesId}>پیش‌نیاز (دروس)</CatalogFieldLabel>
+        <div
+          id={prereqCodesId}
+          role="group"
+          aria-label="پیش‌نیاز دروس"
+          data-testid={prereqCodesId}
+          style={{
+            maxHeight: 160,
+            overflowY: 'auto',
+            border: '1px solid #cbd5e1',
+            borderRadius: 6,
+            padding: '0.4rem 0.5rem',
+            background: '#fff',
+          }}
+        >
+          {prereqChoices.length === 0 ? (
+            <span className="muted" style={{ fontSize: '0.78rem' }}>
+              درس دیگری در کاتالوگ نیست.
+            </span>
+          ) : (
+            prereqChoices.map((c) => {
+              const code = c.value
+              const checked = selectedCodes.includes(code)
+              return (
+                <label
+                  key={code}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', margin: '0.15rem 0' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => set('prerequisite_codes', togglePrerequisiteCode(selectedCodes, code))}
+                    data-testid={`${prereqCodesId}-${code}`}
+                  />
+                  <span>
+                    {c.label_fa || code}
+                    {c.curriculum_term ? (
+                      <span className="muted"> — ترم {c.curriculum_term}</span>
+                    ) : null}
+                  </span>
+                </label>
+              )
+            })
+          )}
+        </div>
+      </label>
+      <label htmlFor={sysPrereqCodesId} style={{ display: 'block', margin: 0, gridColumn: '1 / -1' }}>
+        <CatalogFieldLabel htmlFor={sysPrereqCodesId}>پیش‌نیاز سیستمی (هنوز فعال نیست)</CatalogFieldLabel>
+        <div
+          id={sysPrereqCodesId}
+          role="group"
+          aria-label="پیش‌نیاز سیستمی"
+          data-testid={sysPrereqCodesId}
+          style={{
+            maxHeight: 160,
+            overflowY: 'auto',
+            border: '1px solid #cbd5e1',
+            borderRadius: 6,
+            padding: '0.4rem 0.5rem',
+            background: '#fff',
+          }}
+        >
+          {SYSTEM_PREREQUISITES.map((item) => {
+            const checked = selectedSystemCodes.includes(item.code)
+            return (
+              <label
+                key={item.code}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', margin: '0.15rem 0' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() =>
+                    set('system_prerequisite_codes', togglePrerequisiteCode(selectedSystemCodes, item.code))
+                  }
+                  data-testid={`${sysPrereqCodesId}-${item.code}`}
+                />
+                <span>
+                  {item.label_fa}
+                  <span className="muted"> — غیرفعال</span>
+                </span>
+              </label>
+            )
+          })}
+        </div>
+      </label>
       <label htmlFor={prereqId} style={{ display: 'block', margin: 0, gridColumn: '1 / -1' }}>
-        <CatalogFieldLabel htmlFor={prereqId}>پیش‌نیاز</CatalogFieldLabel>
+        <CatalogFieldLabel htmlFor={prereqId}>یادداشت پیش‌نیاز</CatalogFieldLabel>
         <input
           id={prereqId}
           type="text"
           value={value.prerequisite_notes}
           onChange={(e) => set('prerequisite_notes', e.target.value)}
-          placeholder="توضیح پیش‌نیاز"
+          placeholder="توضیح اختیاری"
           style={{ width: '100%' }}
           data-testid={prereqId}
         />
@@ -275,6 +350,7 @@ export default function SemesterPrepCatalogPanel({ showToast, onUpdated }) {
   const [addCurriculum, setAddCurriculum] = useState(emptyCurriculum)
   const [trackName, setTrackName] = useState('')
   const [busy, setBusy] = useState(null)
+  const [editingTrack, setEditingTrack] = useState(null)
   const [editingCourse, setEditingCourse] = useState(null)
   const [editName, setEditName] = useState('')
   const [editTrack, setEditTrack] = useState('')
@@ -352,19 +428,47 @@ export default function SemesterPrepCatalogPanel({ showToast, onUpdated }) {
     }
   }
 
+  const cancelEditTrack = () => {
+    setEditingTrack(null)
+    setTrackName('')
+  }
+
+  const startEditTrack = (track) => {
+    setEditingTrack(track.value)
+    setTrackName(track.label_fa || '')
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        document.getElementById('catalog-track-name')?.focus?.()
+        document.getElementById('catalog-track-form')?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' })
+      })
+    }
+  }
+
   const addTrack = async (e) => {
     e.preventDefault()
     const name = trackName.trim()
-    if (!name) return
+    if (!name) {
+      showToast?.('نام رسته را وارد کنید.', 'error')
+      return
+    }
     setBusy('track')
     try {
-      await courseCommitteeRosterApi.createTrack({ name_fa: name })
-      showToast?.('رسته اضافه شد.')
-      setTrackName('')
+      if (editingTrack) {
+        await courseCommitteeRosterApi.updateTrack(editingTrack, { name_fa: name })
+        showToast?.('رسته به‌روز شد.')
+        cancelEditTrack()
+      } else {
+        await courseCommitteeRosterApi.createTrack({ name_fa: name })
+        showToast?.('رسته اضافه شد.')
+        setTrackName('')
+      }
       await notifyUpdated()
     } catch (err) {
       const d = err?.response?.data?.detail
-      showToast?.(typeof d === 'string' ? d : 'خطا در افزودن رسته', 'error')
+      showToast?.(
+        typeof d === 'string' ? d : editingTrack ? 'خطا در ویرایش رسته' : 'خطا در افزودن رسته',
+        'error',
+      )
     } finally {
       setBusy(null)
     }
@@ -440,6 +544,7 @@ export default function SemesterPrepCatalogPanel({ showToast, onUpdated }) {
       showToast?.('رسته حذف شد.')
       if (courseTrack === track.value) setCourseTrack('')
       if (editTrack === track.value) setEditTrack('')
+      if (editingTrack === track.value) cancelEditTrack()
       await notifyUpdated()
     } catch (err) {
       const d = err?.response?.data?.detail
@@ -512,6 +617,7 @@ export default function SemesterPrepCatalogPanel({ showToast, onUpdated }) {
             value={addCurriculum}
             onChange={setAddCurriculum}
             idPrefix="catalog-course"
+            catalogCourses={courses}
           />
           <button
             type="submit"
@@ -523,10 +629,23 @@ export default function SemesterPrepCatalogPanel({ showToast, onUpdated }) {
         </form>
 
         <form
+          id="catalog-track-form"
           onSubmit={addTrack}
-          style={{ padding: '0.85rem', border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc' }}
+          style={{
+            padding: '0.85rem',
+            border: editingTrack ? '1px solid #93c5fd' : '1px solid #e2e8f0',
+            borderRadius: 8,
+            background: editingTrack ? '#eff6ff' : '#f8fafc',
+          }}
         >
-          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.92rem' }}>افزودن رسته</h4>
+          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.92rem' }}>
+            {editingTrack ? 'ویرایش رسته' : 'افزودن رسته'}
+          </h4>
+          {editingTrack ? (
+            <p className="muted" style={{ margin: '0 0 0.5rem', fontSize: '0.78rem' }}>
+              کد رسته تغییر نمی‌کند؛ فقط نام نمایشی به‌روز می‌شود.
+            </p>
+          ) : null}
           <input
             type="text"
             value={trackName}
@@ -534,10 +653,19 @@ export default function SemesterPrepCatalogPanel({ showToast, onUpdated }) {
             placeholder="نام رسته"
             style={{ width: '100%', marginBottom: '0.5rem' }}
             data-testid="catalog-track-name"
+            id="catalog-track-name"
+            aria-label={editingTrack ? 'نام رسته برای ویرایش' : 'نام رسته جدید'}
           />
-          <button type="submit" className="btn btn-primary btn-sm" disabled={busy === 'track'}>
-            {busy === 'track' ? '…' : 'ثبت رسته'}
-          </button>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={busy === 'track'}>
+              {busy === 'track' ? '…' : editingTrack ? 'ذخیره تغییرات' : 'ثبت رسته'}
+            </button>
+            {editingTrack ? (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={cancelEditTrack}>
+                انصراف
+              </button>
+            ) : null}
+          </div>
         </form>
       </div>
 
@@ -612,6 +740,8 @@ export default function SemesterPrepCatalogPanel({ showToast, onUpdated }) {
                                   value={editCurriculum}
                                   onChange={setEditCurriculum}
                                   idPrefix="catalog-course-edit"
+                                  catalogCourses={courses}
+                                  excludeValue={c.value}
                                 />
                               </>
                             ) : (
@@ -620,6 +750,27 @@ export default function SemesterPrepCatalogPanel({ showToast, onUpdated }) {
                                 {c.subtitle_fa ? (
                                   <div className="muted" style={{ fontSize: '0.75rem' }}>
                                     {c.subtitle_fa}
+                                  </div>
+                                ) : null}
+                                {Array.isArray(c.prerequisite_codes) && c.prerequisite_codes.length > 0 ? (
+                                  <div className="muted" style={{ fontSize: '0.75rem' }} data-testid={`catalog-prereq-${c.value}`}>
+                                    پیش‌نیاز:{' '}
+                                    {c.prerequisite_codes
+                                      .map((code) => {
+                                        const found = courses.find((x) => x.value === code)
+                                        return found?.label_fa || code
+                                      })
+                                      .join('، ')}
+                                  </div>
+                                ) : null}
+                                {Array.isArray(c.system_prerequisite_codes) && c.system_prerequisite_codes.length > 0 ? (
+                                  <div
+                                    className="muted"
+                                    style={{ fontSize: '0.75rem' }}
+                                    data-testid={`catalog-sys-prereq-${c.value}`}
+                                  >
+                                    پیش‌نیاز سیستمی (غیرفعال):{' '}
+                                    {c.system_prerequisite_codes.map((code) => systemPrerequisiteLabel(code)).join('، ')}
                                   </div>
                                 ) : null}
                               </>
@@ -714,12 +865,16 @@ export default function SemesterPrepCatalogPanel({ showToast, onUpdated }) {
                     <tr>
                       <th>نام رسته</th>
                       <th>کد</th>
-                      <th style={{ width: 100 }}>عملیات</th>
+                      <th style={{ width: 160 }}>عملیات</th>
                     </tr>
                   </thead>
                   <tbody>
                     {tracks.map((t) => (
-                      <tr key={t.value} data-testid={`catalog-track-row-${t.value}`}>
+                      <tr
+                        key={t.value}
+                        data-testid={`catalog-track-row-${t.value}`}
+                        style={editingTrack === t.value ? { background: '#eff6ff' } : undefined}
+                      >
                         <td>{t.label_fa}</td>
                         <td>
                           <span className="muted" style={{ fontSize: '0.78rem' }}>
@@ -727,15 +882,25 @@ export default function SemesterPrepCatalogPanel({ showToast, onUpdated }) {
                           </span>
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            disabled={busy === `del-track:${t.value}`}
-                            onClick={() => deleteTrack(t)}
-                            data-testid={`catalog-track-delete-${t.value}`}
-                          >
-                            حذف
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => startEditTrack(t)}
+                              data-testid={`catalog-track-edit-${t.value}`}
+                            >
+                              ویرایش
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              disabled={busy === `del-track:${t.value}`}
+                              onClick={() => deleteTrack(t)}
+                              data-testid={`catalog-track-delete-${t.value}`}
+                            >
+                              حذف
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

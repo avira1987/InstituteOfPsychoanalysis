@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.auth import get_current_user, require_role
 from app.core.user_roles import user_has_role
-from app.models.operational_models import User, Student, TherapySession, AttendanceRecord, ProcessInstance
+from app.models.operational_models import User, Student, TherapySession, AttendanceRecord, ProcessInstance, FinancialRecord
 from app.services.alocom_provision import (
     ensure_therapy_session_alocom_links,
     is_stub_therapy_meeting_url,
@@ -73,7 +73,7 @@ router = APIRouter(prefix="/api/therapy-sessions", tags=["TherapySessions"])
 def _can_write_session(user: User, session: TherapySession) -> bool:
     if user_has_role(user, "staff", admin_bypass=True):
         return True
-    if user.role == "therapist" and session.therapist_id == user.id:
+    if user_has_role(user, "therapist", admin_bypass=False) and session.therapist_id == user.id:
         return True
     return False
 
@@ -239,10 +239,25 @@ async def list_for_therapist(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("therapist", "admin")),
 ):
-    """Therapist: sessions assigned to this user (upcoming-first order)."""
-    rows = await _list_therapy_sessions_for_therapist(
-        db, current_user.id, order_upcoming_first=True
-    )
+    """Therapist: sessions assigned to this user (upcoming-first order).
+
+    Admin sees all sessions of students with therapy started (oversight).
+    """
+    if user_has_role(current_user, "admin", admin_bypass=False):
+        q = (
+            select(TherapySession)
+            .join(Student, TherapySession.student_id == Student.id)
+            .where(Student.therapy_started.is_(True))
+            .order_by(
+                TherapySession.session_date.asc(),
+                TherapySession.session_starts_at.asc().nulls_last(),
+            )
+        )
+        rows = list((await db.execute(q)).scalars().unique().all())
+    else:
+        rows = await _list_therapy_sessions_for_therapist(
+            db, current_user.id, order_upcoming_first=True
+        )
     if not rows:
         return []
 
@@ -313,7 +328,7 @@ async def attendance_workbench(
     limit = min(max(1, limit), 200)
     offset = max(0, offset)
 
-    if current_user.role == "therapist":
+    if user_has_role(current_user, "therapist", admin_bypass=False):
         sessions = await _list_therapy_sessions_for_therapist(
             db, current_user.id, order_upcoming_first=False
         )
@@ -526,6 +541,11 @@ async def my_fee_determination_summary(
     att_svc = AttendanceService(db)
     quota_info = await att_svc.check_quota_exceeded(st.id)
 
+    from app.services.payment_service import LEDGER_THERAPY, PaymentService
+
+    pay = PaymentService(db)
+    therapy_wallet = await pay.get_student_balance(st.id, category=LEDGER_THERAPY)
+
     inst_stmt = (
         select(ProcessInstance)
         .where(
@@ -536,15 +556,43 @@ async def my_fee_determination_summary(
         .limit(50)
     )
     instances = list((await db.execute(inst_stmt)).scalars().all())
+    inst_ids = [inst.id for inst in instances]
+    ledger_by_ref: dict[str, list[FinancialRecord]] = {}
+    if inst_ids:
+        rec_rows = (
+            await db.execute(
+                select(FinancialRecord).where(
+                    FinancialRecord.student_id == st.id,
+                    FinancialRecord.reference_id.in_(inst_ids),
+                )
+            )
+        ).scalars().all()
+        for rec in rec_rows:
+            ledger_by_ref.setdefault(str(rec.reference_id), []).append(rec)
 
     scenario_counts: dict[str, int] = {}
     outcomes: list[dict] = []
     credit_returned = 0
     forfeited = 0
     debt_created = 0
+    last_fee_amount = None
+    last_fee_record_type = None
     for inst in instances:
         ctx = inst.context_data or {}
         state = inst.current_state_code
+        recs = ledger_by_ref.get(str(inst.id)) or []
+        rec = recs[0] if recs else None
+        amount = None
+        record_type = None
+        if rec is not None:
+            amount = float(rec.amount)
+            record_type = rec.record_type
+        elif ctx.get("fee_ledger_amount") is not None:
+            try:
+                amount = float(ctx.get("fee_ledger_amount"))
+            except (TypeError, ValueError):
+                amount = None
+            record_type = ctx.get("fee_ledger_record_type")
         if inst.is_completed:
             scenario_counts[state] = scenario_counts.get(state, 0) + 1
             if state == "scenario_1_credit_returned":
@@ -553,6 +601,9 @@ async def my_fee_determination_summary(
                 forfeited += 1
             elif state == "scenario_4_debt_created":
                 debt_created += 1
+            if last_fee_amount is None and amount is not None:
+                last_fee_amount = amount
+                last_fee_record_type = record_type
         outcomes.append({
             "instance_id": str(inst.id),
             "state": state,
@@ -562,6 +613,8 @@ async def my_fee_determination_summary(
             "session_date": ctx.get("session_date"),
             "session_paid": ctx.get("session_paid"),
             "summary_fa": ctx.get("ui_completion_summary_fa"),
+            "amount_toman": amount,
+            "record_type": record_type,
             "started_at": inst.started_at.isoformat() if inst.started_at else None,
             "completed_at": inst.completed_at.isoformat() if inst.completed_at else None,
         })
@@ -572,6 +625,9 @@ async def my_fee_determination_summary(
         "absences_used": quota_info["absences"],
         "remaining_quota": quota_info["remaining"],
         "quota_exceeded": quota_info["exceeded"],
+        "therapy_wallet_balance_toman": float(therapy_wallet.get("balance") or 0),
+        "last_fee_amount_toman": last_fee_amount,
+        "last_fee_record_type": last_fee_record_type,
         "credit_returned_count": credit_returned,
         "forfeited_count": forfeited,
         "debt_created_count": debt_created,

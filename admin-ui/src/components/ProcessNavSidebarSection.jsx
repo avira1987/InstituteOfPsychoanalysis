@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { normalizeNavPath } from '../utils/sidebarNavActive'
 import {
   defaultProcessNavCategoryOpen,
+  defaultProcessNavSectionOpen,
   filterAndGroupProcessNavItems,
 } from '../utils/processNavCategories'
 
@@ -12,6 +13,7 @@ import {
  *   activeNavPath: string | null,
  *   navPendingByPath: Record<string, number>,
  *   onNavigate: () => void,
+ *   collapseByDefault?: boolean,
  * }} props
  */
 export default function ProcessNavSidebarSection({
@@ -19,8 +21,9 @@ export default function ProcessNavSidebarSection({
   activeNavPath,
   navPendingByPath,
   onNavigate,
+  collapseByDefault = false,
 }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(() => defaultProcessNavSectionOpen(items, { collapseByDefault }))
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryOpen, setCategoryOpen] = useState({})
 
@@ -35,10 +38,10 @@ export default function ProcessNavSidebarSection({
   )
 
   useEffect(() => {
+    if (collapseByDefault) return
     if (items.length === 0) return
-    const hasPending = items.some((it) => Number(it.pendingCount) > 0)
-    setOpen(hasPending || items.length <= 12)
-  }, [items])
+    setOpen(defaultProcessNavSectionOpen(items, { collapseByDefault }))
+  }, [items, collapseByDefault])
 
   useEffect(() => {
     setCategoryOpen((prev) => {

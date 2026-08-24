@@ -295,3 +295,29 @@ def test_prep_state_portal_matrix():
     assert not portal_role_can_act_on_prep_state(
         "site_manager", "fall_semester_preparation", "interviewer_assignment"
     )
+
+
+def test_prep_interview_step_responsible_label_is_internal_manager():
+    from app.services.semester_prep_rbac import prep_responsible_role_label_fa
+
+    label = prep_responsible_role_label_fa(
+        "fall_semester_preparation",
+        "interviewer_assignment",
+        "deputy_education_director",
+        include_code=False,
+    )
+    assert label == "مدیر داخلی"
+    winter = prep_responsible_role_label_fa(
+        "winter_semester_preparation",
+        "interview_scheduling",
+        "staff",
+        include_code=False,
+    )
+    assert winter == "مدیر داخلی"
+    tuition = prep_responsible_role_label_fa(
+        "fall_semester_preparation",
+        "tuition_entry",
+        "deputy_education_director",
+        include_code=False,
+    )
+    assert tuition == "معاون مدیر آموزش"

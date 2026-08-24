@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
 import { processExecApi, studentApi, panelApi } from '../services/api'
-import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { labelProcess, labelState, formatStudentCodeDisplay, formatStudentFullNameFa } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { isDocumentReviewState } from '../utils/documentReviewStates'
@@ -251,7 +251,7 @@ export default function SupervisorPortal() {
 
   const filteredStudents = allStudents.filter(s => {
     if (!studentSearch) return true
-    return s.student_code?.includes(studentSearch)
+    return s.student_code?.includes(studentSearch) || (s.full_name_fa || '').includes(studentSearch)
   })
 
   const tabs = [
@@ -513,6 +513,7 @@ export default function SupervisorPortal() {
 
               <OperatorInstanceGuidanceBlock
                 instanceDetail={instanceDetail}
+                user={user}
                 portalRole={user?.role}
                 availableTransitions={availableTransitions}
               />
@@ -650,6 +651,7 @@ export default function SupervisorPortal() {
                 isCompleted={instanceDetail.is_completed}
                 isCancelled={instanceDetail.is_cancelled}
                 role={user?.role}
+                user={user}
                 showToast={showToast}
                 onUpdated={() => viewInstance(selectedInstance)}
               />
@@ -815,6 +817,7 @@ export default function SupervisorPortal() {
               <thead>
                 <tr>
                   <th>کد دانشجویی</th>
+                  <th>نام</th>
                   <th>نوع دوره</th>
                   <th>ترم</th>
                   <th>جلسات هفتگی</th>
@@ -827,6 +830,7 @@ export default function SupervisorPortal() {
                 {filteredStudents.map(s => (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600 }}>{formatStudentCodeDisplay(s.student_code)}</td>
+                    <td>{formatStudentFullNameFa(s.full_name_fa)}</td>
                     <td>
                       <span className={`badge ${s.course_type === 'comprehensive' ? 'badge-primary' : 'badge-info'}`}>
                         {s.course_type === 'comprehensive' ? 'جامع' : 'آشنایی'}

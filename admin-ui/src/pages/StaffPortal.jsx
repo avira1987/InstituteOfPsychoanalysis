@@ -3,7 +3,7 @@ import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
-import { processExecApi, studentApi, userApi, auditApi, assignmentApi, therapyApi, alocomApi, panelApi, semesterPrepApi } from '../services/api'
+import { processExecApi, studentApi, userApi, auditApi, assignmentApi, panelApi, semesterPrepApi } from '../services/api'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import {
   mergeInterviewResultFormPayload,
@@ -24,7 +24,7 @@ import LiveSessionPrepPanel from '../components/LiveSessionPrepPanel'
 import TaUpgradeCourseCommitteePanel from '../components/TaUpgradeCourseCommitteePanel'
 import StudentTaTrackChangePanel from '../components/StudentTaTrackChangePanel'
 import TaTrackChangeCommitteePanel from '../components/TaTrackChangeCommitteePanel'
-import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { labelProcess, labelState, formatStudentCodeDisplay, formatStudentFullNameFa } from '../utils/processDisplay'
 import { operatorDocumentReviewToastFa } from '../utils/documentReviewStates'
 import { useToast } from '../contexts/ToastContext'
 import InterviewSlotsManageSection from '../components/InterviewSlotsManageSection'
@@ -536,7 +536,7 @@ export default function StaffPortal() {
 
   const filteredStudents = allStudents.filter(s => {
     if (!studentSearch) return true
-    return s.student_code?.includes(studentSearch) || s.course_type?.includes(studentSearch)
+    return s.student_code?.includes(studentSearch) || s.course_type?.includes(studentSearch) || (s.full_name_fa || '').includes(studentSearch)
   })
 
   return (
@@ -568,7 +568,7 @@ export default function StaffPortal() {
 
       {isCourseCommitteeLane && <InstructorEvaluationCommitteePanel showToast={showToast} />}
 
-      {isInstructionLane && <InstructionSemesterCoursesPanel />}
+      {isInstructionLane && activeTab !== 'onlineClasses' && <InstructionSemesterCoursesPanel />}
 
       {isInstructionLane && <InstructionTaPortfolioPanel user={user} />}
 
@@ -921,7 +921,7 @@ export default function StaffPortal() {
                   <label className="form-label">کد دانشجویی</label>
                   <input className="form-input" value={newStudent.student_code}
                     onChange={e => setNewStudent({ ...newStudent, student_code: e.target.value })}
-                    placeholder="مثلاً: STU-001" />
+                    placeholder="خالی = خودکار STU-1001…" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">نوع دوره</label>
@@ -949,6 +949,7 @@ export default function StaffPortal() {
               <thead>
                 <tr>
                   <th>کد دانشجویی</th>
+                  <th>نام</th>
                   <th>نوع دوره</th>
                   <th>ترم</th>
                   <th>جلسات</th>
@@ -961,6 +962,7 @@ export default function StaffPortal() {
                 {filteredStudents.map(s => (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600 }}>{formatStudentCodeDisplay(s.student_code)}</td>
+                    <td>{formatStudentFullNameFa(s.full_name_fa)}</td>
                     <td>
                       <span className={`badge ${s.course_type === 'comprehensive' ? 'badge-primary' : 'badge-info'}`}>
                         {s.course_type === 'comprehensive' ? 'جامع' : 'آشنایی'}
@@ -1074,7 +1076,7 @@ export default function StaffPortal() {
       )}
 
       {activeTab === 'onlineClasses' && (
-        <StaffAlocomPanel students={filteredStudents} showToast={showToast} />
+        <InstructionSemesterCoursesPanel />
       )}
 
       {/* Activity Tab */}
@@ -1125,218 +1127,6 @@ export default function StaffPortal() {
           )}
         </div>
       )}
-    </div>
-  )
-}
-
-function StaffAlocomPanel({ students, showToast }) {
-  const [studentId, setStudentId] = useState('')
-  const [sessions, setSessions] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [agentServiceId, setAgentServiceId] = useState('')
-  const [feedbackDraft, setFeedbackDraft] = useState({})
-
-  const setFb = (sessionId, field, value) => {
-    setFeedbackDraft(prev => ({
-      ...prev,
-      [sessionId]: { ...prev[sessionId], [field]: value },
-    }))
-  }
-
-  const loadSessions = async () => {
-    if (!studentId) {
-      showToast('دانشجو را انتخاب کنید', 'error')
-      return
-    }
-    setLoading(true)
-    try {
-      const today = new Date()
-      const from = new Date(today)
-      from.setDate(from.getDate() - 7)
-      const to = new Date(today)
-      to.setDate(to.getDate() + 14)
-      const fmt = (d) => d.toISOString().slice(0, 10)
-      const r = await therapyApi.workbenchSessions({
-        student_id: studentId,
-        role_scope: 'staff',
-        from: fmt(from),
-        to: fmt(to),
-        page_size: 50,
-      })
-      const rows = r.data?.sessions || []
-      setSessions(rows.map((s) => ({
-        ...s,
-        id: s.session_id,
-      })))
-    } catch (e) {
-      setSessions([])
-      showToast(e.response?.data?.detail || 'خطا در بارگذاری جلسات', 'error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const provision = async (session) => {
-    const aid = parseInt(String(agentServiceId).trim(), 10)
-    if (!aid || Number.isNaN(aid)) {
-      showToast('شناسهٔ سرویس الوکام (agent_service_id) را وارد کنید', 'error')
-      return
-    }
-    try {
-      await alocomApi.provisionTherapySession(session.id, {
-        agent_service_id: aid,
-        title: `کلاس ${session.session_date}`,
-        fetch_student_event_link: true,
-      })
-      showToast('کلاس الوکام ایجاد شد')
-      loadSessions()
-    } catch (e) {
-      const d = e.response?.data?.detail
-      showToast(typeof d === 'string' ? d : (e.message || 'خطا'), 'error')
-    }
-  }
-
-  const saveAttendance = async (session, attendance_status) => {
-    if (!attendance_status) return
-    try {
-      await therapyApi.patchSession(session.id, { attendance_status })
-      showToast('حضور و غیاب ثبت شد')
-      loadSessions()
-    } catch (e) {
-      const d = e.response?.data?.detail
-      showToast(typeof d === 'string' ? d : (e.message || 'خطا'), 'error')
-    }
-  }
-
-  const saveInstructorFeedback = async (s) => {
-    const row = feedbackDraft[s.id] || {}
-    const comment = row.instructor_comment !== undefined ? row.instructor_comment : (s.instructor_comment || '')
-    const scoreRaw = row.instructor_score !== undefined ? row.instructor_score : (s.instructor_score ?? '')
-    const payload = { instructor_comment: comment || null }
-    if (scoreRaw !== '' && scoreRaw != null) {
-      const n = Number(scoreRaw)
-      if (!Number.isNaN(n)) payload.instructor_score = n
-    }
-    try {
-      await therapyApi.patchSession(s.id, payload)
-      showToast('نظر و نمره ذخیره شد')
-      loadSessions()
-    } catch (e) {
-      const d = e.response?.data?.detail
-      showToast(typeof d === 'string' ? d : (e.message || 'خطا'), 'error')
-    }
-  }
-
-  return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="card-title">کلاس آنلاین الوکام (اپراتور)</h3>
-      </div>
-      <div style={{ padding: '1rem', display: 'grid', gap: '1rem' }}>
-        <div className="inline-form" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div className="form-group">
-            <label className="form-label">دانشجو</label>
-            <select
-              className="form-input"
-              style={{ minWidth: '220px' }}
-              value={studentId}
-              onChange={e => setStudentId(e.target.value)}
-            >
-              <option value="">انتخاب…</option>
-              {students.map(s => (
-                <option key={s.id} value={s.id}>{formatStudentCodeDisplay(s.student_code)}</option>
-              ))}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">agent_service_id</label>
-            <input
-              className="form-input"
-              dir="ltr"
-              style={{ width: '140px', textAlign: 'left' }}
-              value={agentServiceId}
-              onChange={e => setAgentServiceId(e.target.value)}
-              placeholder="مثال: 14"
-            />
-          </div>
-          <button type="button" className="btn btn-primary btn-sm" onClick={loadSessions} disabled={loading}>
-            بارگذاری جلسات
-          </button>
-        </div>
-        {loading ? <p>در حال بارگذاری…</p> : null}
-        {!loading && sessions.length === 0 && studentId ? (
-          <p style={{ color: 'var(--text-secondary)' }}>جلسه‌ای برای این دانشجو ثبت نشده است.</p>
-        ) : null}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {sessions.map(s => (
-            <div
-              key={s.id}
-              style={{
-                padding: '1rem',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                display: 'grid',
-                gap: '0.5rem',
-              }}
-            >
-              <div style={{ fontWeight: 600 }}>تاریخ {s.session_date} | وضعیت {s.status}</div>
-              <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                لینک: {s.meeting_url ? 'دارد' : 'ندارد'} | رویداد الوکام: {s.alocom_event_id || '—'}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => provision(s)}>
-                  ایجاد کلاس الوکام
-                </button>
-                <select
-                  className="form-input"
-                  style={{ width: 'auto', minWidth: '160px' }}
-                  defaultValue=""
-                  onChange={e => {
-                    const v = e.target.value
-                    e.target.value = ''
-                    if (v) saveAttendance(s, v)
-                  }}
-                >
-                  <option value="">ثبت حضور/غیاب…</option>
-                  <option value="present">حاضر</option>
-                  <option value="absent_excused">غایب موجه</option>
-                  <option value="absent_unexcused">غایب غیرموجه</option>
-                </select>
-              </div>
-              <div style={{ display: 'grid', gap: '0.35rem', maxWidth: '480px' }}>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>نمره / بازخورد مدرس</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  dir="ltr"
-                  style={{ textAlign: 'left', maxWidth: '120px' }}
-                  placeholder="نمره"
-                  value={
-                    feedbackDraft[s.id]?.instructor_score !== undefined
-                      ? feedbackDraft[s.id].instructor_score
-                      : (s.instructor_score ?? '')
-                  }
-                  onChange={e => setFb(s.id, 'instructor_score', e.target.value)}
-                />
-                <textarea
-                  className="form-input"
-                  rows={2}
-                  placeholder="نظر مدرس"
-                  value={
-                    feedbackDraft[s.id]?.instructor_comment !== undefined
-                      ? feedbackDraft[s.id].instructor_comment
-                      : (s.instructor_comment || '')
-                  }
-                  onChange={e => setFb(s.id, 'instructor_comment', e.target.value)}
-                />
-                <button type="button" className="btn btn-secondary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => saveInstructorFeedback(s)}>
-                  ذخیرهٔ نظر و نمره
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }

@@ -31,3 +31,8 @@ export function getPastStepsFromVisitSequence(seq) {
   if (!seq || seq.length < 2) return []
   return seq.slice(0, -1)
 }
+
+/** دکمهٔ مرور مراحل قبلی فقط با پرچم ادمین/کارمند در extra_data روشن می‌شود. */
+export function isPreviousStepReviewEnabled(extraData) {
+  return extraData?.allow_previous_step_review === true
+}

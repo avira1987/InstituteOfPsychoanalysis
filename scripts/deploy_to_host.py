@@ -186,6 +186,13 @@ echo "=== UI bundle on server ==="
 grep -o 'index-[^"]*\\.js' /opt/anistito/admin-ui/dist/index.html 2>/dev/null || true
 curl -s http://127.0.0.1:3000/ | grep -o 'index-[^"]*\\.js' || true
 
+echo "=== Ensure daily backup cron ==="
+sed -i 's/\r$//' /opt/anistito/scripts/backup_daily.sh /opt/anistito/scripts/install_backup_cron.sh 2>/dev/null || true
+chmod +x /opt/anistito/scripts/backup_daily.sh /opt/anistito/scripts/install_backup_cron.sh
+if [ -x /opt/anistito/scripts/install_backup_cron.sh ]; then
+  /opt/anistito/scripts/install_backup_cron.sh || echo "WARN: backup cron install failed"
+fi
+
 echo "=== Health ==="
 sleep 10
 curl -s -o /dev/null -w "HTTP %{{http_code}}\n" http://127.0.0.1:3000/health || true

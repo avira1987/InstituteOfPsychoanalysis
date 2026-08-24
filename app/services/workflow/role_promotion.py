@@ -56,7 +56,12 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
                 user.role = "student"
             plain = secrets.token_urlsafe(8)[:12]
             user.hashed_password = get_password_hash(plain)
-            if not (user.username or "").strip() and (user.phone or "").strip():
+            from app.services.student_identity import is_canonical_student_code, sync_student_username
+
+            code = (student.student_code or "").strip()
+            if is_canonical_student_code(code):
+                await sync_student_username(db, user, code)
+            elif not (user.username or "").strip() and (user.phone or "").strip():
                 user.username = (user.phone or "").strip()
         extra["account_provisioned"] = True
         extra["account_provisioned_at"] = C.now_iso()

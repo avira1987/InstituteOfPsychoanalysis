@@ -73,9 +73,31 @@ PREP_STAFF_ASSIGNED_ROLES = frozenset({"staff", "admissions_officer"})
 
 INTERVIEW_SETUP_PORTAL_ROLES = _STAFF_PORTAL | frozenset({"admin"})
 
+# مرحلهٔ یکپارچهٔ مصاحبه‌ها (گام آخر عملیاتی) — مسئول نمایشی: مدیر داخلی
+PREP_INTERNAL_MANAGER_STATES = frozenset({"interviewer_assignment", "interview_scheduling"})
+
 
 def is_prep_process(process_code: str | None) -> bool:
     return (process_code or "").strip() in PREP_PROCESS_CODES
+
+
+def is_prep_internal_manager_state(process_code: str | None, state_code: str | None) -> bool:
+    return is_prep_process(process_code) and (state_code or "").strip() in PREP_INTERNAL_MANAGER_STATES
+
+
+def prep_responsible_role_label_fa(
+    process_code: str | None,
+    state_code: str | None,
+    assigned_role: str | None,
+    *,
+    include_code: bool = True,
+) -> str:
+    """برچسب فارسی نقش مسئول مرحله — دسترسی را عوض نمی‌کند."""
+    from app.meta.role_labels import label_role_fa
+
+    if is_prep_internal_manager_state(process_code, state_code):
+        return label_role_fa("internal_manager", include_code=include_code)
+    return label_role_fa(assigned_role, include_code=include_code)
 
 
 def _state_map(process_code: str) -> dict[str, frozenset[str]]:

@@ -1,7 +1,9 @@
 {
   "meta": {
     "real_handler_action_types": [
+      "activate_compensation_payment",
       "activate_online_session_link",
+      "activate_theory_retake_exam",
       "activate_therapy",
       "add_credit_if_paid",
       "add_extra_session_therapy_hours",
@@ -15,19 +17,32 @@
       "allocate_credit_to_sessions",
       "apply_24h_rule_for_start_date",
       "apply_electronic_signature_and_seal",
+      "apply_full_leave_intern_effects",
+      "apply_full_leave_therapist_decision",
+      "apply_return_supervision_schedule",
+      "apply_return_therapy_session_schedule",
       "apply_start_therapy_session_schedule",
       "archive_letter_in_student_file",
+      "auto_release_therapist_slot",
       "block_attendance_for_cancelled_sessions",
       "block_attendance_registration",
       "block_class_access",
       "block_future_applications",
       "block_future_enrollment",
       "block_next_term_registration",
+      "book_educational_therapist_slots",
+      "book_supervision_block_slots",
       "build_class_attendance_list",
       "call_bpms_subprocess",
       "cancel_all_future_sessions",
       "cancel_session",
       "cancel_supervision_session",
+      "clear_full_education_leave_flag",
+      "clear_installment_portal_lock",
+      "close_patient_referral_hub",
+      "compute_skills_final_grades",
+      "compute_theory_final_grades",
+      "compute_theory_retake_grades",
       "connect_to_supervision_50h_completion",
       "create_attendance_field_for_session",
       "create_debt_or_deduct_credit",
@@ -58,6 +73,9 @@
       "enable_online_session_link",
       "enable_pdf_export",
       "ensure_therapist_slots_freed",
+      "evaluate_et_supervision_readiness",
+      "evaluate_et_therapy_readiness",
+      "finalize_theory_borderline_fail",
       "forfeit_session_payment",
       "generate_certificate",
       "generate_cumulative_transcript",
@@ -68,6 +86,7 @@
       "generate_termination_letter",
       "increase_intern_capacity",
       "increment_absence_counter",
+      "lift_suspension_restrictions",
       "load_available_courses",
       "load_term3_courses",
       "lock_block_counter",
@@ -85,10 +104,15 @@
       "notification",
       "notify_committee",
       "notify_instructor",
+      "notify_therapy_coordination",
+      "persist_patient_referral_rows",
+      "prefill_return_context",
       "prepare_extra_session_payment",
+      "prepare_supervision_block_payment",
       "process_refund",
       "publish_academic_calendar_to_profiles",
       "publish_courses_to_website",
+      "publish_term_course_offerings",
       "reactivate_class_registration",
       "record_absence_auto",
       "record_accounting",
@@ -103,25 +127,38 @@
       "record_evaluation_closed",
       "record_evaluation_completion",
       "record_evaluation_submission",
+      "record_group_supervision_pass_fail",
+      "record_group_supervision_qualitative_eval",
+      "record_group_supervision_ta_grades",
       "record_intern_referral",
       "record_interruption_dates",
       "record_leave_request",
+      "record_live_supervision_attendance",
       "record_lms_links_placed",
       "record_merged_stub",
       "record_pause_dates_in_lms",
       "record_result_in_student_portal",
       "record_return_request",
       "record_session_prep",
+      "record_skills_qualitative_eval",
+      "record_skills_session_17_grades",
+      "record_skills_session_18_grades",
+      "record_skills_ta_grades",
+      "record_student_performance_traits",
       "record_supervision_attendance",
       "record_supervision_cancellation",
       "record_ta_leave",
       "record_termination_date",
       "record_termination_in_student_portal",
+      "record_theory_qualitative_eval",
+      "record_theory_session_18_grades",
       "record_therapy_change_history",
       "record_upgrade_decision",
+      "record_violation_performance_entry",
       "redirect_to_process",
       "refer_to_violation_registration",
       "register_courses_in_portal",
+      "register_et_availability_slots",
       "register_in_calendar",
       "register_lesson_teaching_assistants",
       "register_makeup_session",
@@ -137,6 +174,7 @@
       "remove_selected_therapy_sessions",
       "remove_slot_from_available",
       "remove_weekly_session_from_student_schedule",
+      "reopen_student_step_forms",
       "reset_therapy_sessions",
       "resolve_access_restrictions",
       "retain_patients",
@@ -152,18 +190,23 @@
       "send_to_dashboard",
       "send_to_progress_committee",
       "send_unlock_to_lms",
+      "set_full_education_leave_flag",
+      "set_installment_portal_lock",
       "set_leave_return_schedule",
       "set_student_status",
       "share_document_with_interviewer",
       "show_payment_confirmation",
       "show_popup",
       "start_process",
+      "start_sub_process",
       "store_executive_advisory_opinion",
       "store_nezarat_recommendation",
       "store_rejection_reason_confidential",
       "suspend_class_registration",
       "suspend_sessions",
       "sync_extra_session_reenter_fields",
+      "sync_financial_defaults_from_prep",
+      "sync_institute_license_from_prep",
       "unblock_attendance_registration",
       "unblock_next_term_registration",
       "unlock_attendance_registration",
@@ -198,9 +241,10 @@
       "rules_pct": 100.0,
       "forms_pct": 66.7,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 2,
       "real_actions": [
-        "record_article_milestone"
+        "record_article_milestone",
+        "record_student_performance_traits"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -235,9 +279,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 2,
       "real_actions": [
-        "record_class_attendance"
+        "record_class_attendance",
+        "record_live_supervision_attendance"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -262,10 +307,10 @@
       "name_fa": "کنسل کردن جلسات کالس‌های درسی"
     },
     "committees_review": {
-      "total_pct": 75.0,
+      "total_pct": 91.7,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 66.7,
       "portals_pct": 100.0,
       "n_actions": 15,
       "real_actions": [
@@ -292,22 +337,32 @@
       "name_fa": "بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)"
     },
     "comprehensive_course_registration": {
-      "total_pct": 78.1,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 12.5,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 9,
+      "n_actions": 19,
       "real_actions": [
+        "block_attendance_registration",
+        "build_class_attendance_list",
+        "clear_installment_portal_lock",
         "create_lms_course_links",
         "load_term3_courses",
+        "merge_instance_context",
         "notification",
+        "notify_instructor",
+        "record_accounting",
+        "record_lms_links_placed",
         "register_student_in_courses",
+        "schedule_installment_reminders",
         "schedule_reminder",
+        "set_installment_portal_lock",
         "share_document_with_interviewer",
         "show_payment_confirmation",
         "store_executive_advisory_opinion",
-        "store_rejection_reason_confidential"
+        "store_rejection_reason_confidential",
+        "unblock_attendance_registration"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -335,15 +390,22 @@
       "name_fa": "فرایند پایان ترم‌های دوره جامع"
     },
     "comprehensive_term_start": {
-      "total_pct": 87.5,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 50.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 2,
+      "n_actions": 9,
       "real_actions": [
+        "block_attendance_registration",
+        "clear_installment_portal_lock",
+        "merge_instance_context",
         "notification",
-        "record_accounting"
+        "notify_instructor",
+        "record_accounting",
+        "schedule_installment_reminders",
+        "set_installment_portal_lock",
+        "unblock_attendance_registration"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -399,19 +461,21 @@
       "name_fa": "برگزاری جلسه اضافی درمان آموزشی"
     },
     "extra_supervision_session": {
-      "total_pct": 75.0,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 6,
+      "n_actions": 8,
       "real_actions": [
         "activate_online_session_link",
         "add_hour_to_supervision_block",
         "create_attendance_field_for_session",
         "create_extra_supervision_session_record",
         "notification",
-        "record_supervision_attendance"
+        "prepare_extra_session_payment",
+        "record_supervision_attendance",
+        "sync_extra_session_reenter_fields"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -425,11 +489,13 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 3,
+      "n_actions": 5,
       "real_actions": [
         "notification",
         "publish_academic_calendar_to_profiles",
-        "publish_courses_to_website"
+        "publish_term_course_offerings",
+        "sync_financial_defaults_from_prep",
+        "sync_institute_license_from_prep"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -494,9 +560,23 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 15,
       "real_actions": [
-        "record_leave_request"
+        "apply_full_leave_intern_effects",
+        "apply_full_leave_therapist_decision",
+        "auto_release_therapist_slot",
+        "block_next_term_registration",
+        "clear_full_education_leave_flag",
+        "notification",
+        "notify_therapy_coordination",
+        "reactivate_class_registration",
+        "record_leave_request",
+        "set_full_education_leave_flag",
+        "set_leave_return_schedule",
+        "start_process",
+        "suspend_class_registration",
+        "unblock_next_term_registration",
+        "warn_if"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -510,9 +590,13 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 5,
       "real_actions": [
-        "record_course_grades"
+        "record_course_grades",
+        "record_group_supervision_pass_fail",
+        "record_group_supervision_qualitative_eval",
+        "record_group_supervision_ta_grades",
+        "start_sub_process"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -521,10 +605,10 @@
       "name_fa": "خاتمه هر درس سوپرویژن گروهی"
     },
     "intern_bulk_patient_referral": {
-      "total_pct": 81.3,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 25.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
@@ -537,10 +621,10 @@
       "name_fa": "ارجاع کلیه بیماران انترن به درمانگران دیگر"
     },
     "intern_hours_increase": {
-      "total_pct": 87.5,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 50.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 3,
       "real_actions": [
@@ -555,10 +639,10 @@
       "name_fa": "اضافه شدن حداکثر ساعت‌های ارائه درمان انترن"
     },
     "internship_12month_conditional_review": {
-      "total_pct": 83.3,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 33.3,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
@@ -571,10 +655,10 @@
       "name_fa": "۱۲ ماه پس از گذشت قبولی به صورت مشروط در انترنی"
     },
     "internship_readiness_consultation": {
-      "total_pct": 84.4,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 37.5,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
@@ -592,16 +676,22 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 10,
+      "n_actions": 16,
       "real_actions": [
         "block_attendance_registration",
+        "build_class_attendance_list",
+        "clear_installment_portal_lock",
+        "create_lms_course_links",
         "create_online_class_links",
         "load_available_courses",
         "merge_instance_context",
         "notification",
         "notify_instructor",
+        "record_accounting",
+        "record_lms_links_placed",
         "register_courses_in_portal",
         "schedule_installment_reminders",
+        "set_installment_portal_lock",
         "show_popup",
         "unblock_attendance_registration"
       ],
@@ -612,10 +702,10 @@
       "name_fa": "فرایند ثبت‌نام دانشجو برای ترم دوم دوره آشنایی"
     },
     "introductory_course_completion": {
-      "total_pct": 75.0,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 4,
       "real_actions": [
@@ -636,17 +726,24 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 10,
+      "n_actions": 17,
       "real_actions": [
         "block_attendance_registration",
         "block_future_applications",
+        "build_class_attendance_list",
+        "clear_installment_portal_lock",
+        "create_lms_course_links",
         "create_online_class_links",
         "create_user_account",
+        "merge_instance_context",
         "notification",
         "notify_instructor",
+        "record_accounting",
+        "record_lms_links_placed",
         "register_courses_in_portal",
         "schedule_installment_reminders",
         "scheduled_notification",
+        "set_installment_portal_lock",
         "unblock_attendance_registration"
       ],
       "stub_actions": [],
@@ -705,9 +802,11 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 3,
       "real_actions": [
-        "record_course_grades"
+        "record_course_grades",
+        "record_student_performance_traits",
+        "start_sub_process"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -721,9 +820,10 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 2,
       "real_actions": [
-        "notification"
+        "notification",
+        "record_session_prep"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -770,8 +870,9 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 2,
       "real_actions": [
+        "notification",
         "record_session_prep"
       ],
       "stub_actions": [],
@@ -814,14 +915,16 @@
       "name_fa": "ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس"
     },
     "patient_referral": {
-      "total_pct": 75.0,
+      "total_pct": 91.7,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 66.7,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 3,
       "real_actions": [
-        "notification"
+        "close_patient_referral_hub",
+        "notification",
+        "persist_patient_referral_rows"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -835,15 +938,16 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 2,
       "real_actions": [
-        "record_merged_stub"
+        "record_merged_stub",
+        "start_process"
       ],
       "stub_actions": [],
       "missing_actions": [],
       "undefined_conditions": [],
       "uncovered_roles": [],
-      "name_fa": "منتقل‌شده به فرایند شماره ۱"
+      "name_fa": "منتقل‌شده به فرایند شماره ۱ (مرخصی آموزشی)"
     },
     "return_to_full_education": {
       "total_pct": 100.0,
@@ -851,9 +955,19 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 11,
       "real_actions": [
-        "record_return_request"
+        "activate_therapy",
+        "apply_return_supervision_schedule",
+        "apply_return_therapy_session_schedule",
+        "book_educational_therapist_slots",
+        "clear_full_education_leave_flag",
+        "create_session_link",
+        "notification",
+        "prefill_return_context",
+        "record_return_request",
+        "unblock_attendance_registration",
+        "unblock_next_term_registration"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -890,9 +1004,15 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 7,
       "real_actions": [
-        "record_course_grades"
+        "compute_skills_final_grades",
+        "record_course_grades",
+        "record_skills_qualitative_eval",
+        "record_skills_session_17_grades",
+        "record_skills_session_18_grades",
+        "record_skills_ta_grades",
+        "start_sub_process"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -901,10 +1021,10 @@
       "name_fa": "خاتمه دروس تکنیک تمرین مهارت‌ها"
     },
     "specialized_commission_review": {
-      "total_pct": 75.0,
+      "total_pct": 87.5,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 50.0,
       "portals_pct": 100.0,
       "n_actions": 5,
       "real_actions": [
@@ -926,11 +1046,12 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 6,
+      "n_actions": 7,
       "real_actions": [
         "activate_therapy",
         "apply_start_therapy_session_schedule",
         "block_class_access",
+        "book_educational_therapist_slots",
         "create_session_link",
         "notification",
         "resolve_access_restrictions"
@@ -947,10 +1068,9 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 2,
+      "n_actions": 1,
       "real_actions": [
-        "record_evaluation_closed",
-        "record_evaluation_submission"
+        "record_evaluation_closed"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -959,10 +1079,10 @@
       "name_fa": "ارزیابی دانشجو از مدرسین"
     },
     "student_non_registration": {
-      "total_pct": 83.3,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 33.3,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
@@ -975,10 +1095,10 @@
       "name_fa": "عدم ثبت‌نام دانشجو برای ترم بعد"
     },
     "student_session_cancellation": {
-      "total_pct": 75.0,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 5,
       "real_actions": [
@@ -995,10 +1115,10 @@
       "name_fa": "کنسل کردن جلسات درمان آموزشی توسط دانشجو"
     },
     "student_supervision_cancellation": {
-      "total_pct": 75.0,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 5,
       "real_actions": [
@@ -1041,14 +1161,15 @@
       "name_fa": "تکمیل کردن دوره‌های ۵۰ ساعته سوپرویژن فردی"
     },
     "supervision_block_transition": {
-      "total_pct": 75.0,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 13,
+      "n_actions": 15,
       "real_actions": [
         "apply_24h_rule_for_start_date",
+        "book_supervision_block_slots",
         "create_online_link_50th",
         "display_available_supervisor_slots",
         "display_calculated_start_date",
@@ -1057,6 +1178,7 @@
         "enable_attendance_for_current_supervisor_50th",
         "enable_attendance_for_new_supervisor",
         "notification",
+        "prepare_supervision_block_payment",
         "redirect_to_process",
         "register_new_supervision_block_in_lms",
         "remove_slot_from_available",
@@ -1093,10 +1215,10 @@
       "name_fa": "فرایند وقفه در سوپرویژن فردی توسط دانشجو"
     },
     "supervision_session_increase": {
-      "total_pct": 75.0,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 3,
       "real_actions": [
@@ -1111,10 +1233,10 @@
       "name_fa": "درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن"
     },
     "supervision_session_reduction": {
-      "total_pct": 75.0,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 5,
       "real_actions": [
@@ -1154,10 +1276,10 @@
       "name_fa": "کنسل کردن جلسه از سوی سوپروایزر"
     },
     "ta_blog_content": {
-      "total_pct": 75.0,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
@@ -1170,10 +1292,10 @@
       "name_fa": "ثبت محتوای وبلاگ از محتوای درسی (کمک‌مدرس)"
     },
     "ta_conceptual_questions": {
-      "total_pct": 75.0,
+      "total_pct": 93.8,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 75.0,
       "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
@@ -1186,10 +1308,10 @@
       "name_fa": "ثبت ۳ سوال تستی‌مفهومی بعد از هر جلسه کلاس (کمک‌مدرس)"
     },
     "ta_essay_upload": {
-      "total_pct": 75.0,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
@@ -1311,9 +1433,16 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 8,
       "real_actions": [
-        "record_course_grades"
+        "activate_theory_retake_exam",
+        "compute_theory_final_grades",
+        "compute_theory_retake_grades",
+        "finalize_theory_borderline_fail",
+        "record_course_grades",
+        "record_theory_qualitative_eval",
+        "record_theory_session_18_grades",
+        "start_sub_process"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -1350,9 +1479,11 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 4,
+      "n_actions": 6,
       "real_actions": [
+        "book_educational_therapist_slots",
         "notification",
+        "release_therapist_slots_to_available_sheet",
         "reset_therapy_sessions",
         "update_schedule",
         "update_therapist"
@@ -1383,10 +1514,10 @@
       "name_fa": "تکمیل و خاتمه درمان آموزشی"
     },
     "therapy_early_termination": {
-      "total_pct": 75.0,
+      "total_pct": 87.5,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 0.0,
+      "forms_pct": 50.0,
       "portals_pct": 100.0,
       "n_actions": 8,
       "real_actions": [
@@ -1467,10 +1598,10 @@
       "name_fa": "درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی"
     },
     "thesis_defense_request": {
-      "total_pct": 87.5,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 50.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
@@ -1524,14 +1655,19 @@
       "name_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی"
     },
     "upgrade_to_educational_therapist": {
-      "total_pct": 81.3,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 25.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 6,
       "real_actions": [
-        "record_upgrade_decision"
+        "evaluate_et_supervision_readiness",
+        "evaluate_et_therapy_readiness",
+        "notification",
+        "record_upgrade_decision",
+        "register_et_availability_slots",
+        "reopen_student_step_forms"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -1540,10 +1676,10 @@
       "name_fa": "ارتقا به درمانگر آموزشی"
     },
     "upgrade_to_ta": {
-      "total_pct": 83.3,
+      "total_pct": 95.8,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 33.3,
+      "forms_pct": 83.3,
       "portals_pct": 100.0,
       "n_actions": 1,
       "real_actions": [
@@ -1556,14 +1692,21 @@
       "name_fa": "ارتقا به کمک‌مدرس"
     },
     "violation_registration": {
-      "total_pct": 81.3,
+      "total_pct": 100.0,
       "actions_pct": 100.0,
       "rules_pct": 100.0,
-      "forms_pct": 25.0,
+      "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 1,
+      "n_actions": 8,
       "real_actions": [
-        "notification"
+        "block_attendance_registration",
+        "block_next_term_registration",
+        "create_education_committee_task",
+        "lift_suspension_restrictions",
+        "notification",
+        "record_violation_performance_entry",
+        "revoke_student_access",
+        "suspend_class_registration"
       ],
       "stub_actions": [],
       "missing_actions": [],
@@ -1577,11 +1720,12 @@
       "rules_pct": 100.0,
       "forms_pct": 100.0,
       "portals_pct": 100.0,
-      "n_actions": 3,
+      "n_actions": 4,
       "real_actions": [
         "notification",
         "publish_academic_calendar_to_profiles",
-        "publish_courses_to_website"
+        "publish_term_course_offerings",
+        "sync_institute_license_from_prep"
       ],
       "stub_actions": [],
       "missing_actions": [],

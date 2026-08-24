@@ -1,5 +1,6 @@
 // اعتبارسنجی فرم یکپارچه در فرانت — هم‌تراز app/services/forms/validate.py
-import { fieldVisible, fieldRequired } from './formConditions'
+import { fieldVisible, fieldRequired } from './formConditions.js'
+import { roleMatchesAllowedList } from './userRoles.js'
 
 function normRole(r) {
   return (r || '').trim().toLowerCase()
@@ -19,19 +20,33 @@ function isEmpty(v) {
   return false
 }
 
+export function filterSchemaForRoles(schema, roles) {
+  const list = (Array.isArray(roles) ? roles : [])
+    .map(normRole)
+    .filter(Boolean)
+  if (!list.length) return filterSchemaForRoleImpl(schema, '')
+  return filterSchemaForRoleImpl(schema, list)
+}
+
 export function filterSchemaForRole(schema, role) {
+  return filterSchemaForRoles(schema, role ? [role] : [])
+}
+
+function filterSchemaForRoleImpl(schema, rolesOrOne) {
+  const list = Array.isArray(rolesOrOne)
+    ? rolesOrOne.map(normRole).filter(Boolean)
+    : (normRole(rolesOrOne) ? [normRole(rolesOrOne)] : [])
   const fields = Array.isArray(schema?.fields) ? schema.fields : []
-  const r = normRole(role)
-  const formVisibleTo = Array.isArray(schema?.visible_to) ? schema.visible_to.map(normRole) : null
-  if (formVisibleTo?.length && r && !formVisibleTo.includes(r)) {
+  const formVisibleTo = Array.isArray(schema?.visible_to) ? schema.visible_to : null
+  if (formVisibleTo?.length && list.length && !list.some((r) => roleMatchesAllowedList(r, formVisibleTo))) {
     return { ...(schema || {}), fields: [] }
   }
+  const studentOnly = list.length > 0 && list.every((r) => r === 'student')
   const out = fields.filter((f) => {
     if (!f || typeof f !== 'object') return false
-    if (r === 'student' && f.confidential) return false
+    if (studentOnly && f.confidential) return false
     if (Array.isArray(f.visible_to) && f.visible_to.length) {
-      const allowed = f.visible_to.map(normRole)
-      if (r && !allowed.includes(r)) return false
+      if (list.length && !list.some((r) => roleMatchesAllowedList(r, f.visible_to))) return false
     }
     return true
   })
@@ -177,12 +192,15 @@ export function validateSemesterPrepInterviewDateRanges(values) {
 /**
  * @param {object} schema { fields: [...] }
  * @param {object} answers
- * @param {{ role?: string, allowedFieldNames?: string[] }} [opts]
+ * @param {{ role?: string, roles?: string[], allowedFieldNames?: string[] }} [opts]
  * @returns {{ ok: boolean, missing: string[], fieldErrors: Record<string, string> }}
  */
 export function validateUnifiedAnswers(schema, answers, opts = {}) {
   const vals = answers || {}
-  const src = opts.role ? filterSchemaForRole(schema, opts.role) : schema
+  const roleList = Array.isArray(opts.roles) && opts.roles.length
+    ? opts.roles
+    : (opts.role ? [opts.role] : [])
+  const src = roleList.length ? filterSchemaForRoles(schema, roleList) : schema
   const fields = Array.isArray(src?.fields) ? src.fields : []
   const allow = Array.isArray(opts.allowedFieldNames) && opts.allowedFieldNames.length
     ? new Set(opts.allowedFieldNames)

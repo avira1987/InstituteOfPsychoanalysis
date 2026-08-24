@@ -3,7 +3,10 @@
 import pytest
 
 from app.meta import operator_state_catalog as osc
-from app.meta.student_lifecycle_matrix import get_panel_action_queue_for_role
+from app.meta.student_lifecycle_matrix import (
+    get_panel_action_queue_for_role,
+    get_panel_action_queue_for_roles,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -56,3 +59,21 @@ def test_action_queue_admin_has_many_state_definitions():
     out = get_panel_action_queue_for_role("admin")
     assert out["stats"].get("state_definition_count", 0) >= 10
     assert "state_definition" in [x.get("kind") for x in out["items"]]
+
+
+def test_action_queue_for_roles_unions_therapist_and_interviewer():
+    one = get_panel_action_queue_for_role("therapist")
+    two = get_panel_action_queue_for_roles(["therapist", "interviewer"], primary="therapist")
+    assert two["role"] == "therapist"
+    one_states = {
+        (i.get("process_code"), i.get("state_code"))
+        for i in one["items"]
+        if i.get("kind") == "state_definition"
+    }
+    two_states = {
+        (i.get("process_code"), i.get("state_code"))
+        for i in two["items"]
+        if i.get("kind") == "state_definition"
+    }
+    assert one_states <= two_states
+    assert two["stats"]["state_definition_count"] >= one["stats"]["state_definition_count"]

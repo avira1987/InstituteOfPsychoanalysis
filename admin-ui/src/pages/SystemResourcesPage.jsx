@@ -53,6 +53,7 @@ function MetricCard({ title, primary, secondary, pct }) {
 
 export default function SystemResourcesPage() {
   const [data, setData] = useState(null)
+  const [obs, setObs] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [updatedAt, setUpdatedAt] = useState(null)
@@ -60,8 +61,12 @@ export default function SystemResourcesPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await systemApi.resourceSnapshot()
+      const [res, obsRes] = await Promise.all([
+        systemApi.resourceSnapshot(),
+        systemApi.observability({ limit: 40 }).catch(() => ({ data: null })),
+      ])
       setData(res.data)
+      setObs(obsRes.data)
       setError('')
       setUpdatedAt(new Date())
     } catch (err) {
@@ -92,7 +97,7 @@ export default function SystemResourcesPage() {
         <div>
           <h1 className="page-title">منابع سرور</h1>
           <p className="page-subtitle">
-            وضعیت لحظه‌ای CPU، حافظه، دیسک و فرایند API
+            وضعیت لحظه‌ای CPU، حافظه، دیسک، فرایند API و خطاهای اخیر
             {updatedAt ? ` — به‌روزرسانی: ${updatedAt.toLocaleTimeString('fa-IR')}` : ''}
           </p>
         </div>
@@ -185,6 +190,100 @@ export default function SystemResourcesPage() {
             />
           </div>
 
+          {obs ? (
+            <>
+              <div
+                style={{
+                  display: 'grid',
+                  gap: '1rem',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                  marginBottom: '1.5rem',
+                }}
+              >
+                <MetricCard
+                  title="خطاهای ۵۰۰ از استارت"
+                  primary={String(obs.http_5xx ?? 0)}
+                  secondary={`استثنای گرفته‌نشده: ${obs.unhandled_exceptions ?? 0}`}
+                  pct={null}
+                />
+                <MetricCard
+                  title="درخواست کند"
+                  primary={String(obs.slow_requests ?? 0)}
+                  secondary={`آستانه ${obs.slow_request_ms ?? '—'} میلی‌ثانیه`}
+                  pct={null}
+                />
+                <MetricCard
+                  title="Sentry"
+                  primary={obs.sentry?.backend_enabled ? 'فعال' : 'خاموش'}
+                  secondary={
+                    obs.sentry?.frontend_configured
+                      ? `فرانت پیکربندی شده — ${obs.sentry?.environment || ''}`
+                      : `فرانت بدون DSN — ${obs.sentry?.environment || ''}`
+                  }
+                  pct={null}
+                />
+                <MetricCard
+                  title="استخر اتصال DB"
+                  primary={
+                    obs.db_pool
+                      ? `${obs.db_pool.checked_out ?? '—'} در حال استفاده`
+                      : '—'
+                  }
+                  secondary={
+                    obs.db_pool
+                      ? `size ${obs.db_pool.size} / overflow ${obs.db_pool.overflow}`
+                      : 'در دسترس نیست'
+                  }
+                  pct={null}
+                />
+              </div>
+
+              <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+                <h3 className="card-title" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
+                  خطاها و درخواست‌های کند اخیر
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 0 }}>
+                  این فهرست فقط در حافظهٔ همین پروسس است و با ریستارت خالی می‌شود.
+                  برای پیگیری پایدار از شناسهٔ درخواست در لاگ Docker یا Sentry استفاده کنید.
+                </p>
+                {!(obs.recent && obs.recent.length) ? (
+                  <p className="muted" style={{ margin: 0 }}>هنوز خطای ۵۰۰ یا درخواست کندی ثبت نشده.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr>
+                          <th>نوع</th>
+                          <th>شناسه درخواست</th>
+                          <th>مسیر</th>
+                          <th>وضعیت</th>
+                          <th>مدت (ms)</th>
+                          <th>خطا</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {obs.recent.map((row, idx) => (
+                          <tr key={`${row.request_id}-${idx}`}>
+                            <td>{row.kind}</td>
+                            <td style={{ fontFamily: 'ui-monospace, monospace', direction: 'ltr', textAlign: 'left' }}>
+                              {row.request_id || '—'}
+                            </td>
+                            <td style={{ direction: 'ltr', textAlign: 'left' }}>
+                              {(row.method || '') + ' ' + (row.path || '')}
+                            </td>
+                            <td>{row.status_code ?? '—'}</td>
+                            <td>{row.duration_ms ?? '—'}</td>
+                            <td>{row.error_type || row.error_message || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : null}
+
           <div className="card" style={{ padding: '1rem 1.25rem' }}>
             <h3 className="card-title" style={{ marginTop: 0, marginBottom: '0.75rem' }}>توضیح کوتاه</h3>
             <ul style={{ margin: 0, paddingRight: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.85 }}>
@@ -192,6 +291,7 @@ export default function SystemResourcesPage() {
               <li>«حافظهٔ کانتینر» سقف ست‌شده در docker-compose را نسبت به مصرف لحظه‌ای نشان می‌دهد. اگر «بدون cgroup limit» نشان داد، در docker-compose.prod.yml مقادیر mem_limit ثبت نشده.</li>
               <li>«RSS» بخش غیراشتراکی حافظهٔ پروسهٔ uvicorn است؛ افزایش بدون توقف یعنی نشت حافظه.</li>
               <li>اعداد هر ۱۲ ثانیه به‌روزرسانی می‌شوند.</li>
+              <li>شناسهٔ درخواست (X-Request-ID) را در لاگ JSON و Sentry جستجو کنید؛ جایگزین بکاپ نیست.</li>
             </ul>
           </div>
         </>

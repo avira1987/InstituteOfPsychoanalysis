@@ -3,10 +3,12 @@
 import {
   resolveCheckboxListOptions,
   normalizeSelectedCoursesValue,
+  normalizeCourseCode,
 } from './resolveCourseFieldOptions'
 // منطق شرط‌ها یکپارچه است: همان ارزیاب شیئی فرم یکپارچه.
 import { fieldVisible as unifiedVisible, fieldRequired as unifiedRequired } from './formConditions'
 import { checkRules } from './unifiedFormValidation'
+import { isStepOtpAlreadyVerified } from './stepOtpVerified'
 
 export function filterFormsForStudent(forms) {
   if (!Array.isArray(forms)) return []
@@ -53,6 +55,8 @@ export function validateStepForms(forms, values, opts = {}) {
     for (const field of form.fields || []) {
       const t = field.type || 'text'
       const isRulesGate = t === 'checkbox' && !!field.rules_link_href
+      const alreadyVerified = isStepOtpAlreadyVerified(values, contextData)
+      if (t === 'step_otp' && alreadyVerified) continue
       if (resubmitSet && !resubmitSet.has(field.name) && t !== 'step_otp' && !isRulesGate) continue
       if (!fieldVisible(field, values)) continue
       if (!fieldRequired(field, values)) continue
@@ -86,9 +90,13 @@ export function validateStepForms(forms, values, opts = {}) {
         if (t === 'checkbox_list' && contextData) {
           const res = resolveCheckboxListOptions(field, contextData)
           if (res.options && res.options.length > 0 && !res.useFallback) {
-            const arr = normalizeSelectedCoursesValue(raw)
+            const arr = normalizeSelectedCoursesValue(raw).map((c) => normalizeCourseCode(c))
+            const allowed = new Set(res.options.map((o) => normalizeCourseCode(o.value)))
             if (field.required && arr.length === 0) {
               missing.push(field.label_fa || field.name)
+            }
+            if (arr.some((c) => c && !allowed.has(c))) {
+              missing.push(`${field.label_fa || field.name} (درس غیرمجاز برای این نوع پذیرش)`)
             }
             if (res.maxSelect != null && arr.length > res.maxSelect) {
               missing.push(`${field.label_fa || field.name} (حداکثر ${res.maxSelect} درس)`)
@@ -165,6 +173,9 @@ export function collectFormFieldKeys(forms) {
       keys.add(field.name)
       if (t === 'radio_list' || t === 'checkbox_list') {
         keys.add(`${field.name}_ack`)
+      }
+      if (t === 'step_otp') {
+        keys.add('step_otp_verified')
       }
     }
   }

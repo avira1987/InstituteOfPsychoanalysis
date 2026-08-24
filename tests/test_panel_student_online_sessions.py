@@ -104,6 +104,15 @@ async def test_list_student_online_sessions_aggregates_sources(
     assert therapy_items[0]["meeting_link_is_visible"] is False
     assert therapy_items[0]["therapist_name_fa"] == "دکتر درمانگر نمونه"
 
+    course_items = [x for x in out["items"] if x["kind"] == "course"]
+    assert course_items
+    assert course_items[0]["meeting_link"] is None
+    assert course_items[0]["join_path"] == "/api/panel/courses/THEORY101/join"
+    assert course_items[0]["meeting_link_ready"] is True
+    assert course_items[0]["meeting_link_is_visible"] is True
+    dumped = str(out)
+    assert "https://example.com/class" not in dumped
+
 
 @pytest.mark.asyncio
 async def test_therapy_link_visible_when_unlocked(

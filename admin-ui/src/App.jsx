@@ -12,6 +12,7 @@ import { getCommitteeHomePathForRole, getPortalHomeHref, getPortalHomePath } fro
 import { canAccessStaffLane } from './utils/portalStaffLanes'
 import { canAccessCommitteeKind } from './utils/portalCommitteeKinds'
 import { getUserRoles, primaryRole, userHasAnyRole, userHasRole } from './utils/userRoles'
+import { captureClientException, getLastRequestId } from './observability/sentryClient'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ProcessEditor = lazy(() => import('./pages/ProcessEditor'))
@@ -67,6 +68,10 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     this.setState({ errorInfo })
     console.error('ErrorBoundary caught:', error, errorInfo)
+    captureClientException(error, {
+      componentStack: errorInfo?.componentStack,
+      request_id: getLastRequestId(),
+    })
   }
 
   render() {
@@ -140,6 +145,15 @@ function RequireStudentRole({ children }) {
   if (loading) return panelLoading()
   if (!user) return <Navigate to="/login" replace />
   if (!userHasRole(user, 'student', { adminBypass: false })) return <Navigate to="/panel" replace />
+  return children
+}
+
+/** پنل آموزشی: دانشجو یا مدیر سامانه (اشراف؛ بدون پروفایل دانشجو فرم پذیرش نشان داده نمی‌شود) */
+function RequireStudentPortalRole({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return panelLoading()
+  if (!user) return <Navigate to="/login" replace />
+  if (!userHasRole(user, 'student')) return <Navigate to="/panel" replace />
   return children
 }
 
@@ -402,9 +416,9 @@ export default function App() {
           <Route
             path="portal/student"
             element={
-              <RequireStudentRole>
+              <RequireStudentPortalRole>
                 <StudentPortal />
-              </RequireStudentRole>
+              </RequireStudentPortalRole>
             }
           />
           <Route path="portal/therapist" element={<TherapistPortal />} />

@@ -5,6 +5,7 @@ import { panelApi } from '../services/api'
 import { appendNotificationFollow } from '../utils/appendNotificationFollow'
 import { PANEL_FLASH_CREATED_EVENT } from '../contexts/ToastContext'
 import { PANEL_NOTIFICATIONS_CHANGED_EVENT } from '../utils/panelNotifications'
+import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import {
   ACTION_GROUPS,
   BELL_TABS,
@@ -19,6 +20,15 @@ const BELL_LIMITS = {
   actions: { actions: 12, popups: 0, systems: 0, group: 6 },
   popup: { actions: 0, popups: 10, systems: 0, group: 0 },
   system: { actions: 0, popups: 0, systems: 10, group: 0 },
+}
+
+function ItemWhen({ iso }) {
+  if (!iso) return null
+  return (
+    <span className="notification-bell-item-when" dir="ltr">
+      {formatShamsiTehran(iso, { includeMonthName: false })}
+    </span>
+  )
 }
 
 function ActionItem({ it, onNavigate }) {
@@ -39,6 +49,7 @@ function ActionItem({ it, onNavigate }) {
         {it.summary_fa ? (
           <span className="notification-bell-item-summary">{it.summary_fa}</span>
         ) : null}
+        <ItemWhen iso={it.sort_at} />
       </Link>
     </li>
   )
@@ -67,6 +78,7 @@ function MessageItem({ it, onNavigate }) {
         {it.summary_fa ? (
           <span className="notification-bell-item-summary">{it.summary_fa}</span>
         ) : null}
+        <ItemWhen iso={it.sort_at} />
       </button>
     </li>
   )

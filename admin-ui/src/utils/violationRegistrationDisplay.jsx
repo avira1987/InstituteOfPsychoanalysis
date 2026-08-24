@@ -98,7 +98,8 @@ export function resolveViolationContext(ctx = {}, stepFormValues = {}) {
   return {
     sourceReason: merged.source_reason || merged.reason || null,
     sourceProcessCode: merged.source_process_code || null,
-    description: (merged.description || '').trim() || null,
+    parentInstanceId: merged.parent_instance_id || null,
+    description: (merged.description || merged.title_fa || '').trim() || null,
     occurrenceDate: merged.occurrence_date || null,
     violationType: merged.violation_type || null,
     violationTypeLabel: labelViolationType(merged.violation_type),

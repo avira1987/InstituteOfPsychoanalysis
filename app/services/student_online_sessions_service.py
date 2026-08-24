@@ -23,6 +23,7 @@ from app.services.interview_slot_service import (
     interview_slot_result_recorded,
     maybe_provision_interview_slot_alocom_link,
 )
+from app.services.installment_access import student_course_join_fields
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,34 @@ def _lms_supervision_item(link: dict[str, Any], index: int) -> dict[str, Any]:
     }
 
 
+def _is_external_meeting_url(url: Any) -> bool:
+    s = str(url or "").strip()
+    if not s:
+        return False
+    if s.startswith("/panel/") or s.startswith("/online/"):
+        return False
+    return s.startswith("http://") or s.startswith("https://")
+
+
+def _enrolled_course_codes(lms: dict[str, Any]) -> list[str]:
+    codes: list[str] = []
+    for c in lms.get("enrolled_courses") or []:
+        if isinstance(c, dict):
+            code = str(c.get("code") or c.get("course_code") or "").strip()
+        else:
+            code = str(c or "").strip()
+        if code and code not in codes:
+            codes.append(code)
+    # also include portal/course link keys for legacy data without enrolled_courses
+    for key in (lms.get("portal_course_links") or {}), (lms.get("course_links") or {}):
+        if isinstance(key, dict):
+            for code in key.keys():
+                c = str(code or "").strip()
+                if c and c not in codes:
+                    codes.append(c)
+    return codes
+
+
 def _lms_course_item(
     course_code: str,
     url: str,
@@ -208,18 +237,26 @@ def _lms_course_item(
     offering: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     cid = f"course-{course_code}"
-    link = (url or "").strip()
+    external = _is_external_meeting_url(url)
+    join_fields = student_course_join_fields(
+        course_code=course_code,
+        has_external_url=external,
+    )
     title = f"{_KIND_LABELS['course']} — {course_code}"
     schedule_note = ""
+    day = None
+    time_text = None
     if offering:
         name = offering.get("course_name_fa") or offering.get("label_fa")
         if name:
             title = f"{_KIND_LABELS['course']} — {name}"
+        day = offering.get("day")
+        time_text = offering.get("time_text")
         parts = []
-        if offering.get("day"):
-            parts.append(str(offering["day"]))
-        if offering.get("time_text"):
-            parts.append(str(offering["time_text"]))
+        if day:
+            parts.append(str(day))
+        if time_text:
+            parts.append(str(time_text))
         if offering.get("classroom_location"):
             parts.append(str(offering["classroom_location"]))
         if parts:
@@ -228,25 +265,36 @@ def _lms_course_item(
             schedule_note = "برنامهٔ کلاسی این درس هنوز منتشر نشده است"
     if schedule_note:
         title = f"{title} ({schedule_note})"
+    if join_fields.get("meeting_link_ready"):
+        status_fa = "لینک کلاس آماده است"
+    elif offering and offering.get("classroom_location") and not offering.get("schedule_missing"):
+        status_fa = "کلاس حضوری — لینک آنلاین ثبت نشده"
+    else:
+        status_fa = "در انتظار لینک مدرس"
     return {
         "id": cid,
         "kind": "course",
+        "course_code": course_code,
         "title_fa": title,
         "starts_at": None,
         "ends_at": None,
-        "meeting_link": link or None,
-        "meeting_link_ready": bool(link),
-        "meeting_link_is_visible": bool(link),
+        "meeting_link": join_fields["meeting_link"],
+        "join_path": join_fields.get("join_path"),
+        "meeting_link_ready": join_fields["meeting_link_ready"],
+        "meeting_link_is_visible": join_fields["meeting_link_is_visible"],
         "meeting_link_open_at": None,
-        "status_fa": "لینک کلاس" if link else "در انتظار لینک",
+        "status_fa": status_fa,
         "payment_status": None,
         "session_status": None,
-        "student_join_open": False,
+        # کلاس درس قفل ۳۰ دقیقه‌ای مصاحبه ندارد
+        "student_join_open": True,
         "source_ref": f"lms_course_link:{course_code}",
         "meeting_provider": None,
         "links_unlocked": None,
         "instructor_name": (offering or {}).get("instructor_name"),
         "classroom_location": (offering or {}).get("classroom_location"),
+        "day": day,
+        "time_text": time_text,
     }
 
 
@@ -355,24 +403,56 @@ async def list_student_online_sessions(
     for i, link in enumerate(lms.get("online_links") or []):
         if isinstance(link, dict):
             items.append(_lms_supervision_item(link, i))
-    for course_code, url in (lms.get("portal_course_links") or {}).items():
-        if course_code:
-            offering_row = await get_offering_by_code(db, str(course_code), term_code=term_code)
-            offering = None
-            if offering_row:
+
+    # Courses from enrollment (not only portal_course_links) so registration alone shows classes
+    course_meta = StateMachineEngine._as_mapping(lms.get("course_link_meta"))
+    portal_links = StateMachineEngine._as_mapping(lms.get("portal_course_links"))
+    course_links = StateMachineEngine._as_mapping(lms.get("course_links"))
+    for course_code in _enrolled_course_codes(lms):
+        offering_row = await get_offering_by_code(db, str(course_code), term_code=term_code)
+        offering: dict[str, Any]
+        meeting_url = ""
+        if offering_row:
+            meeting_url = str(getattr(offering_row, "online_meeting_url", None) or "").strip()
+            offering = {
+                "course_name_fa": offering_row.course_name_fa,
+                "day": offering_row.day,
+                "time_text": offering_row.time_text,
+                "classroom_location": offering_row.classroom_location,
+                "instructor_name": offering_row.instructor_name,
+            }
+        else:
+            meta = course_meta.get(course_code) if isinstance(course_meta.get(course_code), dict) else {}
+            if meta:
+                meeting_url = str(meta.get("online_meeting_url") or "").strip()
                 offering = {
-                    "course_name_fa": offering_row.course_name_fa,
-                    "day": offering_row.day,
-                    "time_text": offering_row.time_text,
-                    "classroom_location": offering_row.classroom_location,
-                    "instructor_name": offering_row.instructor_name,
+                    "course_name_fa": meta.get("course_name_fa"),
+                    "day": meta.get("day"),
+                    "time_text": meta.get("time_text"),
+                    "classroom_location": meta.get("classroom_location"),
+                    "instructor_name": meta.get("instructor_name"),
                 }
             else:
                 offering = {"schedule_missing": True}
-            items.append(_lms_course_item(str(course_code), str(url or ""), offering=offering))
+        if not _is_external_meeting_url(meeting_url):
+            for candidate in (
+                portal_links.get(course_code),
+                course_links.get(course_code),
+            ):
+                if _is_external_meeting_url(candidate):
+                    meeting_url = str(candidate).strip()
+                    break
+            else:
+                meeting_url = ""
+        items.append(_lms_course_item(str(course_code), meeting_url, offering=offering))
 
     items.sort(key=_sort_key)
-    with_join = sum(1 for x in items if x.get("meeting_link_is_visible") and (x.get("meeting_link") or "").strip())
+    with_join = sum(
+        1
+        for x in items
+        if x.get("meeting_link_is_visible")
+        and ((x.get("meeting_link") or "").strip() or (x.get("join_path") or "").strip())
+    )
 
     return {
         "items": items,

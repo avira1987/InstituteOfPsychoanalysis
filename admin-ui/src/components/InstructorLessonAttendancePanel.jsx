@@ -110,7 +110,7 @@ export default function InstructorLessonAttendancePanel({
   const setStatus = (studentId, status) => {
     setRoster((prev) => prev.map((r) => {
       if (r.student_id !== studentId) return r
-      if (status === 'present' && r.present_blocked) return { ...r, status: 'absent' }
+      if (r.present_blocked) return { ...r, status: 'absent' }
       return { ...r, status }
     }))
   }
@@ -318,7 +318,7 @@ export default function InstructorLessonAttendancePanel({
                       color: '#991b1b',
                     }}
                   >
-                    برای برخی دانشجویان به‌دلیل بدهی شهریه، ثبت «حاضر» غیرفعال است؛ فقط «غایب» مجاز است.
+                    برای برخی دانشجویان به‌دلیل قسط معوق، ردیف حضور و غیاب قفل است و فقط «غایب» ثبت می‌شود.
                   </div>
                 )}
                 <table className="data-table" style={{ width: '100%', fontSize: '0.86rem' }}>
@@ -343,16 +343,32 @@ export default function InstructorLessonAttendancePanel({
                       return (
                         <tr
                           key={row.student_id || idx}
-                          style={blocked ? { background: '#fef2f2' } : undefined}
+                          data-testid={blocked ? 'attendance-row-installment-locked' : undefined}
+                          style={blocked ? { background: '#f1f5f9', color: '#64748b', opacity: 0.92 } : undefined}
                           title={blocked ? blockReason : undefined}
                         >
                           <td>{(idx + 1).toLocaleString('fa-IR')}</td>
                           <td>
                             {row.name_fa || row.student_code || '—'}
                             {blocked && (
-                              <div style={{ fontSize: '0.72rem', color: '#b91c1c', marginTop: '0.2rem', lineHeight: 1.5 }}>
-                                {blockReason}
-                              </div>
+                              <>
+                                <span
+                                  className="badge"
+                                  data-testid="attendance-overdue-badge"
+                                  style={{
+                                    marginRight: '0.4rem',
+                                    fontSize: '0.68rem',
+                                    background: '#fee2e2',
+                                    color: '#991b1b',
+                                    border: '1px solid #fecaca',
+                                  }}
+                                >
+                                  قسط معوق
+                                </span>
+                                <div style={{ fontSize: '0.72rem', color: '#b91c1c', marginTop: '0.2rem', lineHeight: 1.5 }}>
+                                  {blockReason}
+                                </div>
+                              </>
                             )}
                           </td>
                           <td>{row.role === 'teaching_assistant' ? 'کمک‌مدرس' : 'دانشجو'}</td>
@@ -375,8 +391,10 @@ export default function InstructorLessonAttendancePanel({
                               type="radio"
                               name={`att-${row.student_id}`}
                               checked={!isPresent}
+                              disabled={blocked}
                               onChange={() => setStatus(row.student_id, 'absent')}
                               aria-label={`غایب — ${row.name_fa || row.student_code}`}
+                              title={blocked ? blockReason : undefined}
                             />
                           </td>
                         </tr>

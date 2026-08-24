@@ -16,6 +16,7 @@ from app.services.course_committee_roster_service import (
     _slug_code,
     catalog_units_for_course,
     get_catalog_course,
+    list_course_catalog_options,
     resolve_track_for_course,
 )
 from app.services.institute_calendar_service import get_active_calendar
@@ -37,6 +38,14 @@ NO_OFFERINGS_REASON_FA = (
 )
 NO_SCHEDULE_REASON_FA = "برنامهٔ کلاسی این درس هنوز منتشر نشده است."
 NO_TUITION_REASON_FA = "شهریهٔ این ترم ثبت نشده است."
+SINGLE_COURSE_MISSING_REASON_FA = (
+    "درس مجاز پذیرش تک‌درس در فهرست ارائه‌شدهٔ این ترم نیست."
+)
+# پذیرش تک‌درس: فقط تئوری روانکاوی همان ترم (نه اولین آیتم الفبایی)
+SINGLE_COURSE_ALLOWED_BY_TERM: dict[int, str] = {
+    1: "theory_psychoanalysis_1",
+    2: "theory_psychoanalysis_2",
+}
 
 _COURSE_SELECTION_STATES: dict[str, frozenset[str]] = {
     "introductory_course_registration": frozenset({"course_selection", "payment"}),
@@ -50,7 +59,18 @@ _PROCESS_PROGRAM_TERM: dict[str, tuple[str, int]] = {
     "introductory_course_registration": ("introductory", 1),
     "intro_second_semester_registration": ("introductory", 2),
     "comprehensive_course_registration": ("comprehensive", 3),
+    "comprehensive_term_start": ("comprehensive", 3),
 }
+
+# فیلد انتخاب دانشجو — available_courses در ترم ۱ فهرست ارائه‌شده است نه انتخاب
+_PROCESS_SELECTION_FIELDS: dict[str, tuple[str, ...]] = {
+    "introductory_course_registration": ("selected_courses",),
+    "intro_second_semester_registration": ("selected_courses", "available_courses"),
+    "comprehensive_course_registration": ("selected_courses", "available_courses"),
+    "comprehensive_term_start": ("selected_courses", "available_courses"),
+}
+
+_DIGIT_TRANSLATE = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 
 
 def _normalize_name(name: str) -> str:
@@ -72,11 +92,81 @@ def resolve_course_code_from_name(course_name: str) -> str:
 
 
 def normalize_legacy_course_code(code: str) -> str:
-    """Convert legacy theory_N codes to catalog codes."""
+    """Convert legacy theory_N codes and informal Persian names to catalog codes."""
     c = (code or "").strip()
     if c in LEGACY_COURSE_CODE_MAP:
         return LEGACY_COURSE_CODE_MAP[c]
+    catalog = get_catalog_course(c)
+    if catalog and catalog.get("value"):
+        return str(catalog["value"])
     return c
+
+
+def parse_positive_int(value: Any) -> int:
+    """Parse units/counts; Persian digits allowed. 0 if missing/invalid."""
+    if value in (None, ""):
+        return 0
+    s = str(value).strip().translate(_DIGIT_TRANSLATE)
+    try:
+        n = int(round(float(s)))
+    except (TypeError, ValueError):
+        return 0
+    return n if n > 0 else 0
+
+
+def extract_course_codes(raw: Any) -> list[str]:
+    """Normalize selected-course payloads (list, JSON string, CSV, dict items)."""
+    if raw is None or raw == "":
+        return []
+    if isinstance(raw, dict):
+        val = raw.get("value") or raw.get("code") or raw.get("course_code")
+        return extract_course_codes(val)
+    if isinstance(raw, (list, tuple, set)):
+        out: list[str] = []
+        seen: set[str] = set()
+        for item in raw:
+            for code in extract_course_codes(item):
+                if code not in seen:
+                    seen.add(code)
+                    out.append(code)
+        return out
+    if isinstance(raw, str):
+        s = raw.strip()
+        if s.startswith("["):
+            try:
+                import json
+
+                parsed = json.loads(s)
+                if isinstance(parsed, (list, dict)):
+                    return extract_course_codes(parsed)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                return []
+        parts = [p.strip() for p in s.replace("،", ",").split(",") if p.strip()]
+        out: list[str] = []
+        seen: set[str] = set()
+        for part in parts:
+            code = normalize_legacy_course_code(part)
+            if code and code not in seen:
+                seen.add(code)
+                out.append(code)
+        return out
+    code = normalize_legacy_course_code(str(raw).strip())
+    return [code] if code else []
+
+
+def selected_course_codes_for_tuition(process_code: str, ctx: dict[str, Any]) -> list[str]:
+    """Student-chosen courses for tuition — not the full published catalog."""
+    data = ctx if isinstance(ctx, dict) else {}
+    fields = _PROCESS_SELECTION_FIELDS.get(str(process_code or ""), ("selected_courses",))
+    for key in fields:
+        codes = extract_course_codes(data.get(key))
+        if codes:
+            return codes
+    lms = data.get("lms") if isinstance(data.get("lms"), dict) else {}
+    enrolled = extract_course_codes(
+        lms.get("enrolled_courses") or data.get("enrolled_courses")
+    )
+    return enrolled
 
 
 def _row_from_prep(
@@ -105,7 +195,25 @@ def _row_from_prep(
             pass
     catalog_prereqs = []
     if catalog and isinstance(catalog.get("prerequisite_codes"), list):
-        catalog_prereqs = [str(c).strip() for c in catalog["prerequisite_codes"] if str(c).strip()]
+        catalog_prereqs = [
+            normalize_legacy_course_code(str(c).strip())
+            for c in catalog["prerequisite_codes"]
+            if str(c).strip()
+        ]
+    if "prerequisite_codes" in row and isinstance(row.get("prerequisite_codes"), list):
+        prereqs = [
+            normalize_legacy_course_code(str(c).strip())
+            for c in row["prerequisite_codes"]
+            if str(c).strip()
+        ]
+    elif prerequisite_codes is not None:
+        prereqs = [
+            normalize_legacy_course_code(str(c).strip())
+            for c in prerequisite_codes
+            if str(c).strip()
+        ]
+    else:
+        prereqs = catalog_prereqs
     return {
         "term_code": term_code,
         "course_code": code,
@@ -120,7 +228,7 @@ def _row_from_prep(
         "teaching_assistant_name": str(row.get("teaching_assistant") or "").strip() or None,
         "units": units,
         "per_unit_cost_rial": per_unit_cost_rial,
-        "prerequisite_codes": prerequisite_codes or catalog_prereqs,
+        "prerequisite_codes": prereqs,
     }
 
 
@@ -159,10 +267,73 @@ def _per_unit_cost_for_program(ctx: dict[str, Any], program_kind: str) -> Option
         return None
 
 
-def _prerequisite_codes_for_term(term_number: int, prior_codes: list[str]) -> list[str]:
-    if term_number <= 1 or not prior_codes:
-        return []
-    return list(prior_codes)
+def single_course_allowed_codes(term_number: int) -> list[str]:
+    """کدهای کاتالوگ مجاز تک‌درس برای این شماره ترم (پرچم کاتالوگ، وگرنه پیش‌فرض SOP)."""
+    try:
+        n = int(term_number)
+    except (TypeError, ValueError):
+        n = 1
+    if n < 1:
+        n = 1
+    flagged: list[str] = []
+    for opt in list_course_catalog_options():
+        if not isinstance(opt, dict) or not opt.get("single_course_allowed"):
+            continue
+        try:
+            term = int(opt.get("curriculum_term") or 0)
+        except (TypeError, ValueError):
+            continue
+        value = str(opt.get("value") or "").strip()
+        if term == n and value:
+            flagged.append(normalize_legacy_course_code(value))
+    if flagged:
+        return flagged
+    fallback = SINGLE_COURSE_ALLOWED_BY_TERM.get(n)
+    if not fallback and n <= 1:
+        fallback = SINGLE_COURSE_ALLOWED_BY_TERM[1]
+    return [fallback] if fallback else []
+
+
+def single_course_allowed_code(term_number: int) -> Optional[str]:
+    """کد کاتالوگ درس مجاز تک‌درس برای این شماره ترم."""
+    codes = single_course_allowed_codes(term_number)
+    return codes[0] if codes else None
+
+
+def _option_code(opt: dict[str, Any]) -> str:
+    return normalize_legacy_course_code(str(opt.get("value") or opt.get("course_code") or ""))
+
+
+def canonicalize_course_option(opt: dict[str, Any]) -> dict[str, Any]:
+    """کد کاتالوگ پایدار + پیش‌نیاز/پرچم تک‌درس از کاتالوگ."""
+    extra = dict(opt)
+    raw = str(opt.get("value") or opt.get("course_code") or "").strip()
+    name = str(opt.get("label_fa") or opt.get("course_name") or "").strip()
+    cat = get_catalog_course(raw) or get_catalog_course(name)
+    if cat and cat.get("value"):
+        code = str(cat["value"])
+    else:
+        code = normalize_legacy_course_code(raw or name)
+    extra["value"] = code or raw
+    if cat:
+        if cat.get("label_fa") and not extra.get("label_fa"):
+            extra["label_fa"] = cat["label_fa"]
+        extra["single_course_allowed"] = bool(cat.get("single_course_allowed"))
+        stored = extra.get("prerequisite_codes")
+        if not (isinstance(stored, list) and stored):
+            raw_prereqs = cat.get("prerequisite_codes") or []
+            extra["prerequisite_codes"] = [
+                normalize_legacy_course_code(str(c).strip())
+                for c in raw_prereqs
+                if str(c).strip()
+            ]
+        else:
+            extra["prerequisite_codes"] = [
+                normalize_legacy_course_code(str(c).strip())
+                for c in stored
+                if str(c).strip()
+            ]
+    return extra
 
 
 async def publish_term_tuition_from_prep(
@@ -230,13 +401,11 @@ async def publish_offerings_from_prep(
             "term_code": term_code,
         }
 
-    prior_intro_codes: list[str] = []
     published_codes: set[str] = set()
     upserted = 0
 
     for rows, program_kind, term_number in batches:
         per_unit = _per_unit_cost_for_program(ctx, program_kind)
-        prereq = _prerequisite_codes_for_term(term_number, prior_intro_codes)
         for row in rows:
             if not isinstance(row, dict):
                 continue
@@ -246,7 +415,6 @@ async def publish_offerings_from_prep(
                 term_number=term_number,
                 term_code=term_code,
                 per_unit_cost_rial=per_unit,
-                prerequisite_codes=prereq if program_kind == "introductory" else [],
             )
             if not payload:
                 continue
@@ -280,8 +448,6 @@ async def publish_offerings_from_prep(
                     )
                 )
             upserted += 1
-            if program_kind == "introductory" and term_number == 1:
-                prior_intro_codes.append(code)
 
     await publish_term_tuition_from_prep(db, ctx, published_by=published_by)
     await db.flush()
@@ -321,7 +487,23 @@ async def list_offerings(
     return list((await db.execute(stmt)).scalars().all())
 
 
-def offering_to_option(row: TermCourseOffering) -> dict[str, Any]:
+def _prereq_codes_for_offering(row: TermCourseOffering) -> list[str]:
+    stored = row.prerequisite_codes if isinstance(row.prerequisite_codes, list) else []
+    codes = [normalize_legacy_course_code(str(c).strip()) for c in stored if str(c).strip()]
+    if codes:
+        return codes
+    catalog = get_catalog_course(row.course_code) or get_catalog_course(row.course_name_fa or "")
+    raw = (catalog or {}).get("prerequisite_codes") or []
+    if not isinstance(raw, list):
+        return []
+    return [normalize_legacy_course_code(str(c).strip()) for c in raw if str(c).strip()]
+
+
+def offering_to_option(
+    row: TermCourseOffering,
+    *,
+    live_per_unit_rial: Optional[int] = None,
+) -> dict[str, Any]:
     opt: dict[str, Any] = {
         "value": row.course_code,
         "label_fa": row.course_name_fa,
@@ -331,16 +513,20 @@ def offering_to_option(row: TermCourseOffering) -> dict[str, Any]:
         "instructor_name": row.instructor_name,
         "teaching_assistant_name": row.teaching_assistant_name,
         "units": row.units,
-        "prerequisite_codes": row.prerequisite_codes or [],
+        "prerequisite_codes": _prereq_codes_for_offering(row),
         "track": row.track,
     }
     try:
-        if row.per_unit_cost_rial and row.units:
-            opt["line_amount_rial"] = int(row.units) * int(row.per_unit_cost_rial)
-            opt["per_unit_cost_rial"] = int(row.per_unit_cost_rial)
+        units = parse_positive_int(row.units)
+        live = parse_positive_int(live_per_unit_rial)
+        stored = parse_positive_int(row.per_unit_cost_rial)
+        unit_cost = live or stored
+        if units and unit_cost:
+            opt["line_amount_rial"] = units * unit_cost
+            opt["per_unit_cost_rial"] = unit_cost
     except (TypeError, ValueError):
         pass
-    return opt
+    return canonicalize_course_option(opt)
 
 
 async def get_offering_options(
@@ -356,7 +542,8 @@ async def get_offering_options(
         program_kind=program_kind,
         term_number=term_number,
     )
-    return [offering_to_option(r) for r in rows]
+    live = await _live_per_unit_rial(db, program_kind)
+    return [offering_to_option(r, live_per_unit_rial=live) for r in rows]
 
 
 async def get_offering_by_code(
@@ -457,6 +644,9 @@ def _filter_by_admission_kind(
         )
     if not options:
         return ([], None, NO_OFFERINGS_REASON_FA)
+    options = [
+        canonicalize_course_option(o) for o in options if isinstance(o, dict)
+    ]
 
     def _parse_allowed_count() -> Optional[int]:
         n = ctx.get("allowed_course_count")
@@ -469,12 +659,27 @@ def _filter_by_admission_kind(
             return None
 
     if kind == "single_course":
-        idx = 0 if term_number == 1 else min(1, len(options) - 1)
-        if term_number == 1:
-            pick = options[0:1]
-        else:
-            pick = options[idx : idx + 1] if options else []
-        return (pick, 1, None)
+        allowed_codes = {
+            normalize_legacy_course_code(c) for c in single_course_allowed_codes(term_number) if c
+        }
+        if not allowed_codes:
+            return ([], 1, SINGLE_COURSE_MISSING_REASON_FA)
+        pick = [o for o in options if _option_code(o) in allowed_codes]
+        if not pick:
+            return ([], 1, SINGLE_COURSE_MISSING_REASON_FA)
+        coreq_codes: set[str] = set()
+        for o in pick:
+            for c in o.get("corequisite_codes") or []:
+                n = normalize_legacy_course_code(str(c))
+                if n:
+                    coreq_codes.add(n)
+        extras = [
+            o
+            for o in options
+            if _option_code(o) in coreq_codes and _option_code(o) not in allowed_codes
+        ]
+        combined = list(pick) + extras
+        return (combined, max(1, len(combined)), None)
 
     cap = _parse_allowed_count()
     max_select = cap if cap is not None else len(options)
@@ -484,17 +689,16 @@ def _filter_by_admission_kind(
 def _filter_by_prerequisites(
     options: list[dict[str, Any]],
     completed_codes: set[str],
+    failed_codes: Optional[set[str]] = None,
 ) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    for opt in options:
-        prereqs = opt.get("prerequisite_codes") or []
-        if not prereqs:
-            out.append(opt)
-            continue
-        needed = {normalize_legacy_course_code(str(p)) for p in prereqs}
-        if needed.issubset(completed_codes):
-            out.append(opt)
-    return out
+    from app.services.course_prerequisite_service import partition_options_by_prerequisites
+
+    allowed, _blocked = partition_options_by_prerequisites(
+        options,
+        set(completed_codes or []),
+        set(failed_codes or []),
+    )
+    return allowed
 
 
 async def merge_offerings_into_instance_context(
@@ -503,13 +707,16 @@ async def merge_offerings_into_instance_context(
     ctx: dict[str, Any],
     *,
     student: Optional[Any] = None,
+    state_codes: Optional[list] = None,
 ) -> dict[str, Any]:
     """Attach available courses from published term offerings to process context."""
     spec = _PROCESS_PROGRAM_TERM.get(process_code)
     if not spec:
         return dict(ctx or {})
     program_kind, term_number = spec
-    out = dict(ctx or {})
+    from app.services.admission_type_service import overlay_admission_on_context
+
+    out = overlay_admission_on_context(ctx, student, state_codes=state_codes)
     cal = await get_active_calendar(db)
     term_code = cal.term_code if cal else out.get("term_code")
     options = await get_offering_options(
@@ -519,30 +726,36 @@ async def merge_offerings_into_instance_context(
         term_code=term_code,
     )
 
-    completed: set[str] = set()
-    if student is not None:
-        extra = getattr(student, "extra_data", None) or {}
-        lms = extra.get("lms") or {}
-        for c in lms.get("enrolled_courses") or []:
-            if isinstance(c, dict):
-                code = c.get("code") or c.get("course_code") or ""
-            else:
-                code = str(c)
-            if code:
-                completed.add(normalize_legacy_course_code(code))
+    from app.services.course_prerequisite_service import (
+        classify_student_course_progress,
+        partition_options_by_prerequisites,
+    )
 
-    if process_code == "intro_second_semester_registration":
-        options = _filter_by_prerequisites(options, completed)
+    passed, failed = classify_student_course_progress(out, student)
+    options, blocked = partition_options_by_prerequisites(options, passed, failed)
 
     filtered, max_select, hint = _filter_by_admission_kind(
         options, out, term_number=term_number
     )
+    from app.meta.course_selection_validation import resolve_admission_kind
+
+    kind = resolve_admission_kind(out)
+    allowed_codes = {
+        normalize_legacy_course_code(c) for c in single_course_allowed_codes(term_number) if c
+    }
+    if kind == "single_course" and allowed_codes:
+        blocked = [
+            b
+            for b in blocked
+            if normalize_legacy_course_code(str(b.get("value") or "")) in allowed_codes
+        ]
     codes = [o["value"] for o in filtered]
     labels = {o["value"]: o["label_fa"] for o in filtered}
 
     out["term_code"] = term_code
     out["available_course_options"] = filtered
     out["available_courses"] = codes
+    out["blocked_course_options"] = blocked
     out["course_labels"] = labels
     out["course_selection_max"] = max_select
     if hint:
@@ -588,6 +801,37 @@ def get_term_tuition_from_calendar(cal: Any) -> dict[str, Any]:
     return tuition if isinstance(tuition, dict) else {}
 
 
+async def _live_per_unit_rial(db: AsyncSession, program_kind: str) -> Optional[int]:
+    """نرخ هر واحد از پنل مالی / تقویم فعال — نه مقدار کهنه روی ردیف ارائه."""
+    key = f"per_unit_cost_{program_kind}"
+    cal = await get_active_calendar(db)
+    n = parse_positive_int(get_term_tuition_from_calendar(cal).get(key))
+    if n >= 1000:
+        return n
+    from app.services.financial_program_defaults_service import get_effective_financial_program_defaults
+
+    fd = await get_effective_financial_program_defaults(db)
+    n = parse_positive_int(fd.get(key))
+    return n if n > 0 else None
+
+
+def _options_by_code_from_ctx(ctx: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    blobs: list[Any] = []
+    if isinstance(ctx.get("available_course_options"), list):
+        blobs.extend(ctx["available_course_options"])
+    lms = ctx.get("lms") if isinstance(ctx.get("lms"), dict) else {}
+    if isinstance(lms.get("available_course_options"), list):
+        blobs.extend(lms["available_course_options"])
+    for opt in blobs:
+        if not isinstance(opt, dict):
+            continue
+        code = normalize_legacy_course_code(str(opt.get("value") or opt.get("course_code") or "").strip())
+        if code:
+            out[code] = opt
+    return out
+
+
 async def resolve_registration_fees(
     db: AsyncSession,
     process_code: str,
@@ -600,9 +844,8 @@ async def resolve_registration_fees(
     fd = await get_effective_financial_program_defaults(db)
     cal = await get_active_calendar(db)
     tuition = get_term_tuition_from_calendar(cal)
-    program_kind = "introductory"
-    if process_code == "comprehensive_course_registration":
-        program_kind = "comprehensive"
+    spec = _PROCESS_PROGRAM_TERM.get(process_code)
+    program_kind = spec[0] if spec else "introductory"
 
     interview_key = f"interview_fee_{program_kind}"
     per_unit_key = f"per_unit_cost_{program_kind}"
@@ -644,10 +887,7 @@ async def resolve_registration_fees(
     elif current_state == "interview_payment":
         interview_rial = int(fd["registration_interview_fee_rial"])
 
-    selected = ctx.get("selected_courses") or ctx.get("available_courses") or []
-    if not isinstance(selected, list):
-        selected = []
-    selected_codes = [normalize_legacy_course_code(str(c)) for c in selected if c]
+    selected_codes = selected_course_codes_for_tuition(process_code, ctx)
 
     tuition_toman: Optional[float] = None
     tuition_total_rial: Optional[int] = None
@@ -668,38 +908,42 @@ async def resolve_registration_fees(
                 program_kind=program_kind,
                 term_number=term_number,
             )
-            by_code = {o.course_code: o for o in offerings}
+            by_code = {normalize_legacy_course_code(o.course_code): o for o in offerings}
+        options_by_code = _options_by_code_from_ctx(ctx)
         total_rial = 0
+        live_unit_cost = int(per_unit_rial)
         for code in selected_codes:
             off = by_code.get(code)
-            if off is not None:
-                try:
-                    units = int(off.units) if off.units else 0
-                except (TypeError, ValueError):
-                    units = 0
-                unit_cost = (
-                    int(off.per_unit_cost_rial)
-                    if off.per_unit_cost_rial
-                    else int(per_unit_rial)
-                )
-                name_fa = off.course_name_fa or code
-            else:
+            opt = options_by_code.get(code) or {}
+            units = parse_positive_int(getattr(off, "units", None) if off is not None else None)
+            if units < 1:
+                units = parse_positive_int(opt.get("units"))
+            if units < 1:
                 units = catalog_units_for_course(code, default=1)
-                unit_cost = int(per_unit_rial)
-                catalog = get_catalog_course(code)
-                name_fa = (
-                    str((catalog or {}).get("label_fa") or code).strip() or code
-                )
             if units < 1:
                 units = 1
-            line_rial = units * unit_cost
+            # نرخ پنل مالی / تقویم فعال بر نرخ کهنهٔ ارائه اولویت دارد
+            unit_cost = live_unit_cost
+            if unit_cost <= 0:
+                unit_cost = parse_positive_int(
+                    getattr(off, "per_unit_cost_rial", None) if off is not None else None
+                ) or parse_positive_int(opt.get("per_unit_cost_rial"))
+            if off is not None:
+                name_fa = off.course_name_fa or code
+            else:
+                catalog = get_catalog_course(code)
+                name_fa = (
+                    str(opt.get("label_fa") or (catalog or {}).get("label_fa") or code).strip()
+                    or code
+                )
+            line_rial = units * int(unit_cost)
             total_rial += line_rial
             tuition_lines.append(
                 {
                     "course_code": code,
                     "course_name_fa": name_fa,
                     "units": units,
-                    "per_unit_cost_rial": unit_cost,
+                    "per_unit_cost_rial": int(unit_cost),
                     "line_amount_rial": line_rial,
                 }
             )

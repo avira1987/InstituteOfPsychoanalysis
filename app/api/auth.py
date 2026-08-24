@@ -207,13 +207,10 @@ async def authenticate_user(
     db: AsyncSession, username: str, password: str
 ) -> Optional[User]:
     """Authenticate a user by username and password."""
-    from app.demo_role_users import resolve_portal_login_username
+    from app.services.student_identity import find_user_for_password_login
 
-    resolved = resolve_portal_login_username(normalize_login_field(username))
     password = normalize_login_field(password)
-    stmt = select(User).where(User.username == resolved)
-    result = await db.execute(stmt)
-    user = result.scalars().first()
+    user = await find_user_for_password_login(db, username)
     if not user or not verify_password(password, user.hashed_password):
         return None
     return user

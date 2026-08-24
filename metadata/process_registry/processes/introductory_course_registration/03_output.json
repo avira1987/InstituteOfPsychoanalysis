@@ -73,7 +73,7 @@
         "allowed_courses": "1-5",
         "student_short_fa": "نتیجه: پذیرش مشروط به درمان",
         "student_task_fa": "پذیرش شما ثبت شد؛ به‌زودی مرحلهٔ آپلود مدارک در همین صفحه فعال می‌شود.",
-        "student_why_fa": "پذیرش مشروط به شروع درمان شخصی است؛ پس از مدارک و پرداخت، مسیر آموزشی ادامه می‌یابد."
+        "student_why_fa": "به علت پذیرش مشروط به آغاز درمان آموزشی در دوره آشنایی پس از آغاز درمان آموزشی امکان ثبت نام در ترم دوم وجود دارد."
       }
     },
     {
@@ -192,8 +192,8 @@
       "assigned_role": "system",
       "metadata": {
         "student_short_fa": "ثبت‌نام نهایی انجام شد",
-        "student_task_fa": "گام بعدی مسیر شما: آغاز درمان آموزشی. اگر مسیر اصلی پرتال به‌روز نشد، داشبورد را تازه کنید.",
-        "student_why_fa": "پس از آغاز درمان، مسیر آموزشی دوره آشنایی ادامه می‌یابد."
+        "student_task_fa": "ثبت‌نام نهایی شد. گام بعدی بسته به نوع پذیرش شماست (تک‌درس: ادامه از پنل دروس؛ مشروط: آغاز درمان تا قبل از ترم دوم؛ پذیرش کامل: آغاز درمان آموزشی). اگر مسیر اصلی پرتال به‌روز نشد، داشبورد را تازه کنید.",
+        "student_why_fa": "ثبت‌نام ترم اول دوره آشنایی تکمیل شد. اگر پذیرش شما مشروط به درمان باشد، تا آغاز درمان آموزشی امکان ثبت‌نام ترم دوم فراهم نیست."
       }
     },
     {
@@ -358,7 +358,7 @@
           "recipients": [
             "applicant"
           ],
-          "description_fa": "اطاعرسا شرط شرع درا شخص"
+          "description_fa": "اطلاع‌رسانی شرط شروع درمان شخصی"
         }
       ]
     },
@@ -379,7 +379,7 @@
           "recipients": [
             "applicant"
           ],
-          "description_fa": "اطاعرسا حددت تکدرس"
+          "description_fa": "اطلاع‌رسانی محدودیت تک‌درس"
         }
       ]
     },
@@ -400,7 +400,7 @@
           "recipients": [
             "applicant"
           ],
-          "description_fa": "اطاعرسا پذرش کا"
+          "description_fa": "اطلاع‌رسانی پذیرش کامل"
         }
       ]
     },
@@ -421,7 +421,7 @@
           "recipients": [
             "applicant"
           ],
-          "description_fa": "اطاعرسا رد درخاست"
+          "description_fa": "اطلاع‌رسانی رد درخواست"
         },
         {
           "type": "block_future_applications",
@@ -522,7 +522,7 @@
       "actions": [
         {
           "type": "create_user_account",
-          "description_fa": "اجاد حساب کاربر داشج در LMS"
+          "description_fa": "ایجاد حساب کاربری دانشجو در LMS"
         },
         {
           "type": "notification",
@@ -531,7 +531,7 @@
           "recipients": [
             "applicant"
           ],
-          "description_fa": "ارسا ا کاربر  رز عبر LMS"
+          "description_fa": "ارسال نام کاربری و رمز عبور LMS"
         }
       ]
     },
@@ -564,6 +564,10 @@
         {
           "type": "create_online_class_links",
           "description_fa": "اجاد ک کاس آا"
+        },
+        {
+          "type": "merge_instance_context",
+          "mode": "initial_payment"
         },
         {
           "type": "schedule_installment_reminders",

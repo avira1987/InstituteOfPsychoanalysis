@@ -4,14 +4,73 @@
     "name_fa": "ارجاع بیماران انترن به درمانگران دیگر",
     "name_en": "Patient Referral (Intern)",
     "description": "وقتی انترن در وقفه بلند (≥۴۲ روز) یا وقفه ۲ ترمی تایید شده یا قطع در committees_review؛ بیماران وی به درمانگران دیگر ارجاع می‌شوند.",
-    "initial_state": "referral_triggered"
+    "initial_state": "referral_triggered",
+    "initial_role": "monitoring_committee_officer"
   },
+  "forms": [
+    {
+      "code": "patient_list_form",
+      "title_fa": "لیست بیماران انترن برای ارجاع",
+      "used_in_state": "referral_triggered",
+      "fields": [
+        {
+          "name": "referral_patients",
+          "label_fa": "بیماران قابل ارجاع",
+          "type": "table",
+          "required": true,
+          "min_rows": 1,
+          "columns": [
+            {
+              "name": "patient_label",
+              "label_fa": "شناسه / نام بیمار",
+              "type": "text",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "submit_label_fa": "ثبت لیست بیماران"
+    },
+    {
+      "code": "patient_assignment_form",
+      "title_fa": "تخصیص درمانگر جایگزین",
+      "used_in_state": "patients_listed",
+      "fields": [
+        {
+          "name": "referral_patients",
+          "label_fa": "تخصیص درمانگر به هر بیمار",
+          "type": "table",
+          "required": true,
+          "min_rows": 1,
+          "columns": [
+            {
+              "name": "patient_label",
+              "label_fa": "شناسه / نام بیمار",
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": "assigned_therapist_user_id",
+              "label_fa": "شناسه کاربر درمانگر جایگزین",
+              "type": "text",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "submit_label_fa": "ثبت تخصیص"
+    }
+  ],
   "states": [
     {
       "code": "referral_triggered",
       "name_fa": "ارجاع راه‌اندازی شد",
       "type": "initial",
-      "assigned_role": "system"
+      "assigned_role": "monitoring_committee_officer",
+      "metadata": {
+        "operator_task_fa": "لیست بیماران انترن را در فرم ثبت کنید، سپس «ثبت لیست» را بزنید.",
+        "operator_short_fa": "ثبت لیست بیماران انترن"
+      }
     },
     {
       "code": "patients_listed",
@@ -19,8 +78,8 @@
       "type": "intermediate",
       "assigned_role": "monitoring_committee_officer",
       "metadata": {
-        "operator_task_fa": "بررسی گزارش و ثبت اقدام.",
-        "operator_short_fa": "لیست بیماران انترن ثبت شد"
+        "operator_task_fa": "برای هر بیمار درمانگر جایگزین را مشخص و ثبت کنید.",
+        "operator_short_fa": "تخصیص درمانگر جایگزین"
       }
     },
     {
@@ -29,8 +88,8 @@
       "type": "intermediate",
       "assigned_role": "monitoring_committee_officer",
       "metadata": {
-        "operator_task_fa": "بررسی گزارش و ثبت اقدام.",
-        "operator_short_fa": "درمانگران جایگزین تخصیص یافتند"
+        "operator_task_fa": "اطلاع‌رسانی به دانشجو و درمانگران تخصیص‌شده را ارسال کنید.",
+        "operator_short_fa": "ارسال اطلاع ارجاع"
       }
     },
     {
@@ -52,14 +111,24 @@
       "to": "patients_listed",
       "trigger": "list_submitted",
       "required_role": "monitoring_committee_officer",
-      "description_fa": "ثبت لیست بیماران انترن"
+      "description_fa": "ثبت لیست بیماران انترن",
+      "actions": [
+        {
+          "type": "persist_patient_referral_rows"
+        }
+      ]
     },
     {
       "from": "patients_listed",
       "to": "therapists_assigned",
       "trigger": "assignments_done",
       "required_role": "monitoring_committee_officer",
-      "description_fa": "تخصیص درمانگر جایگزین به هر بیمار"
+      "description_fa": "تخصیص درمانگر جایگزین به هر بیمار",
+      "actions": [
+        {
+          "type": "persist_patient_referral_rows"
+        }
+      ]
     },
     {
       "from": "therapists_assigned",
@@ -73,8 +142,12 @@
           "notification_type": "sms",
           "template": "patient_referral_notice",
           "recipients": [
-            "student"
+            "student",
+            "assigned_therapists"
           ]
+        },
+        {
+          "type": "close_patient_referral_hub"
         }
       ]
     },

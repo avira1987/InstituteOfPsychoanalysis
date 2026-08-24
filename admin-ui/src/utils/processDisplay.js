@@ -56,3 +56,10 @@ export function formatStudentCodeDisplay(code) {
   }
   return toFaDigits(s)
 }
+
+/** نام نمایشی دانشجو در لیست‌ها — مثل ستون «نام» در مدیریت کاربران. */
+export function formatStudentFullNameFa(name) {
+  if (name == null) return '-'
+  const s = String(name).trim()
+  return s || '-'
+}

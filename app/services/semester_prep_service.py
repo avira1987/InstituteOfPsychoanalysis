@@ -13,7 +13,6 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.engine import StateMachineEngine
 from app.meta.process_forms import get_process_state_metadata
-from app.meta.role_labels import label_role_fa
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance
 from app.services.institute_operational_anchor import ensure_institute_operational_student
@@ -929,8 +928,15 @@ async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
             sd = (await db.execute(sd_stmt)).scalars().first()
             entry["state_name_fa"] = sd.name_fa if sd else inst.current_state_code
             entry["assigned_role"] = sd.assigned_role if sd else None
-            if entry["assigned_role"]:
-                entry["assigned_role_fa"] = label_role_fa(entry["assigned_role"])
+            from app.services.semester_prep_rbac import (
+                is_prep_internal_manager_state,
+                prep_responsible_role_label_fa,
+            )
+
+            if is_prep_internal_manager_state(code, inst.current_state_code) or entry["assigned_role"]:
+                entry["assigned_role_fa"] = prep_responsible_role_label_fa(
+                    code, inst.current_state_code, entry["assigned_role"]
+                )
             if sd and sd.sla_hours:
                 entry["sla_hours"] = sd.sla_hours
             ctx = _ctx(inst)
@@ -963,6 +969,7 @@ async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
                             entry["sla_overdue"] = now > dl
                 except (TypeError, ValueError):
                     pass
+            entry["recorded"] = await recorded_snapshot_for_instance(db, inst)
         else:
             completed = await get_completed_prep_instance(db, code, student_id=anchor.id)
             if completed is not None:
@@ -982,6 +989,7 @@ async def build_prep_status(db: AsyncSession) -> dict[str, Any]:
                     entry["can_start_new_term"] = tehran_today() > term_end
                 else:
                     entry["can_start_new_term"] = True
+                entry["recorded"] = await recorded_snapshot_for_instance(db, completed)
             else:
                 entry["can_start_new_term"] = True
             if code == FALL_PREP:
@@ -1091,6 +1099,262 @@ SEMESTER_PREP_CALENDAR_DATE_RANGE_LIST_FIELDS: tuple[str, ...] = (
     "fall_break_periods",
     "winter_break_periods",
 )
+
+RECORDED_TUITION_KEYS: tuple[str, ...] = (
+    "per_unit_cost_introductory",
+    "per_unit_cost_comprehensive",
+    "interview_fee_introductory",
+    "interview_fee_comprehensive",
+    "registration_interview_fee_rial",
+    "start_therapy_first_session_fee_rial",
+    "extra_session_fee_rial",
+    "default_therapy_session_fee_toman",
+)
+
+RECORDED_LICENSE_KEYS: tuple[str, ...] = (
+    "license_status",
+    "current_license_number",
+    "new_license_number",
+    "license_notes",
+    "winter_license_notes",
+)
+
+RECORDED_COURSE_TABLE_KEYS: tuple[str, ...] = (
+    "courses_fall",
+    "courses_winter",
+    "courses",
+    "courses_finalized_fall",
+    "courses_finalized_winter",
+    "courses_finalized",
+)
+
+RECORDED_MARKETING_KEYS: tuple[str, ...] = (
+    "marketing_info_sent_to_manager",
+    "marketing_notes",
+)
+
+RECORDED_INTERVIEW_SCALAR_KEYS: tuple[str, ...] = (
+    "comprehensive_interviewers",
+    "comprehensive_date_range_start",
+    "comprehensive_date_range_end",
+    "introductory_interviewers",
+    "introductory_date_range_start",
+    "introductory_date_range_end",
+    "interview_mode",
+    "interview_location_fa",
+    "interview_location_or_link",
+    "interview_start_time",
+    "interview_end_time",
+    "slot_duration_minutes",
+)
+
+_INTERVIEWER_LIST_KEYS: tuple[str, ...] = (
+    "comprehensive_interviewers",
+    "introductory_interviewers",
+)
+
+
+def _recorded_value_present(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple)):
+        return any(_recorded_value_present(item) for item in value)
+    if isinstance(value, dict):
+        return any(
+            not str(key).startswith("__") and _recorded_value_present(item)
+            for key, item in value.items()
+        )
+    return True
+
+
+def _nonempty_course_rows(value: Any) -> list[Any]:
+    if not isinstance(value, list):
+        return []
+    rows: list[Any] = []
+    for row in value:
+        if isinstance(row, dict):
+            cleaned = {
+                key: cell
+                for key, cell in row.items()
+                if not str(key).startswith("__") and _recorded_value_present(cell)
+            }
+            if cleaned:
+                rows.append(row)
+        elif _recorded_value_present(row):
+            rows.append(row)
+    return rows
+
+
+def _copy_present_keys(ctx: dict[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key in keys:
+        if str(key).startswith("__"):
+            continue
+        value = ctx.get(key)
+        if _recorded_value_present(value):
+            out[key] = value
+    return out
+
+
+def _collect_interviewer_ids(ctx: dict[str, Any]) -> set[str]:
+    ids: set[str] = set()
+    for key in _INTERVIEWER_LIST_KEYS:
+        raw = ctx.get(key)
+        if isinstance(raw, (list, tuple)):
+            for item in raw:
+                text = str(item or "").strip()
+                if text:
+                    ids.add(text)
+        elif isinstance(raw, str) and raw.strip():
+            ids.add(raw.strip())
+    plan = ctx.get("interview_setup_plan")
+    if isinstance(plan, dict):
+        for group in plan.values():
+            if not isinstance(group, dict):
+                continue
+            for item in group.get("interviewer_ids") or []:
+                text = str(item or "").strip()
+                if text:
+                    ids.add(text)
+            for schedule in group.get("interviewers") or []:
+                if not isinstance(schedule, dict):
+                    continue
+                text = str(schedule.get("interviewer_id") or "").strip()
+                if text:
+                    ids.add(text)
+    return ids
+
+
+def _interviewer_label(raw: Any, name_map: dict[str, str] | None) -> str:
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    mapped = (name_map or {}).get(text)
+    if mapped:
+        return mapped
+    return text
+
+
+def _label_interviewer_list(value: Any, name_map: dict[str, str] | None) -> list[str]:
+    if isinstance(value, (list, tuple)):
+        items = value
+    elif _recorded_value_present(value):
+        items = [value]
+    else:
+        return []
+    out: list[str] = []
+    for item in items:
+        label = _interviewer_label(item, name_map)
+        if label:
+            out.append(label)
+    return out
+
+
+def _named_interview_setup_plan(
+    plan: Any, name_map: dict[str, str] | None
+) -> dict[str, Any] | None:
+    if not isinstance(plan, dict):
+        return None
+    out: dict[str, Any] = {}
+    for course_type, group in plan.items():
+        if not isinstance(group, dict):
+            continue
+        named = dict(group)
+        ids = named.get("interviewer_ids")
+        if isinstance(ids, list):
+            named["interviewer_ids"] = _label_interviewer_list(ids, name_map)
+        schedules: list[dict[str, Any]] = []
+        for schedule in named.get("interviewers") or []:
+            if not isinstance(schedule, dict):
+                continue
+            item = dict(schedule)
+            uid = item.get("interviewer_id")
+            item["interviewer_name_fa"] = _interviewer_label(uid, name_map)
+            schedules.append(item)
+        if schedules:
+            named["interviewers"] = schedules
+        if _recorded_value_present(named):
+            out[str(course_type)] = named
+    return out or None
+
+
+def build_prep_recorded_snapshot(
+    ctx: dict[str, Any] | None,
+    name_map: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Whitelist of SOP fields entered during semester prep — no internal keys."""
+    source = dict(ctx or {})
+    recorded: dict[str, Any] = {}
+
+    calendar = _copy_present_keys(source, SEMESTER_PREP_CALENDAR_DATE_FIELDS)
+    for key in SEMESTER_PREP_CALENDAR_DATE_RANGE_LIST_FIELDS:
+        rows = source.get(key)
+        if isinstance(rows, list) and _recorded_value_present(rows):
+            calendar[key] = rows
+    calendar.pop("calendar_sla_deadline_at", None)
+    if calendar:
+        recorded["calendar"] = calendar
+
+    tuition = _copy_present_keys(source, RECORDED_TUITION_KEYS)
+    if tuition:
+        recorded["tuition"] = tuition
+
+    license_block = _copy_present_keys(source, RECORDED_LICENSE_KEYS)
+    if license_block:
+        recorded["license"] = license_block
+
+    courses: dict[str, Any] = {}
+    for key in RECORDED_COURSE_TABLE_KEYS:
+        rows = _nonempty_course_rows(source.get(key))
+        if rows:
+            courses[key] = rows
+    if courses:
+        recorded["courses"] = courses
+
+    marketing = _copy_present_keys(source, RECORDED_MARKETING_KEYS)
+    if marketing:
+        recorded["marketing"] = marketing
+
+    interviews = _copy_present_keys(source, RECORDED_INTERVIEW_SCALAR_KEYS)
+    for key in _INTERVIEWER_LIST_KEYS:
+        if key in interviews:
+            interviews[key] = _label_interviewer_list(interviews[key], name_map)
+    plan = _named_interview_setup_plan(source.get("interview_setup_plan"), name_map)
+    if plan:
+        interviews["interview_setup_plan"] = plan
+    if interviews:
+        recorded["interviews"] = interviews
+
+    return recorded
+
+
+async def _interviewer_name_map(db: AsyncSession, raw_ids: set[str]) -> dict[str, str]:
+    from app.models.operational_models import User
+
+    parsed: list[uuid.UUID] = []
+    for raw in raw_ids:
+        try:
+            parsed.append(uuid.UUID(str(raw)))
+        except (TypeError, ValueError, AttributeError):
+            continue
+    if not parsed:
+        return {}
+    rows = (await db.execute(select(User).where(User.id.in_(parsed)))).scalars().all()
+    out: dict[str, str] = {}
+    for user in rows:
+        label = (user.full_name_fa or "").strip() or (user.username or "").strip()
+        if label:
+            out[str(user.id)] = label
+    return out
+
+
+async def recorded_snapshot_for_instance(db: AsyncSession, instance: ProcessInstance) -> dict[str, Any]:
+    ctx = _ctx(instance)
+    name_map = await _interviewer_name_map(db, _collect_interviewer_ids(ctx))
+    return build_prep_recorded_snapshot(ctx, name_map)
+
 
 _CALENDAR_FIELD_LABELS_FA: dict[str, str] = {
     "fall_start_date": "تاریخ شروع ترم پاییز",

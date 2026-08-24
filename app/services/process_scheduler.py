@@ -21,6 +21,7 @@ from app.services.institute_calendar_service import get_active_calendar, resolve
 from app.services.notification_service import notification_service
 from app.services.process_service import ProcessService
 from app.services.sms_gateway import normalize_ir_mobile
+from app.services.tuition_installment_service import installment_sms_still_owed
 from app.utils.date_utils import get_current_term_week
 
 logger = logging.getLogger(__name__)
@@ -162,6 +163,26 @@ async def dispatch_scheduled_reminders(db: AsyncSession, now: datetime) -> list[
             tpl = rec.get("template") or "process_reminder"
             trigger = rec.get("trigger_event")
             inst_id_raw = rec.get("instance_id")
+            if rec.get("type") == "installment" and inst_id_raw:
+                try:
+                    inst_row = await db.get(ProcessInstance, uuid.UUID(str(inst_id_raw)))
+                except (TypeError, ValueError):
+                    inst_row = None
+                if inst_row is not None and not installment_sms_still_owed(_context_as_dict(inst_row)):
+                    rec["sent"] = True
+                    rec["sent_at"] = now.isoformat()
+                    rec["skipped"] = True
+                    rec["skipped_reason"] = "not_installment_or_settled"
+                    changed = True
+                    out.append(
+                        {
+                            "student_id": str(st.id),
+                            "template": tpl,
+                            "reminder_id": rec.get("id"),
+                            "skipped": True,
+                        }
+                    )
+                    continue
             if phone and len(phone) >= 10:
                 sms_ctx = {"student_name": (user.full_name_fa or "").strip() if user else ""}
                 if rec.get("type") == "installment":
@@ -827,8 +848,17 @@ async def dispatch_lms_session_hooks(db: AsyncSession, now: datetime) -> list[di
                 if fps.get(fp):
                     continue
                 from app.services.class_attendance_service import infer_course_type
+                from app.services.course_session_calendar_service import (
+                    session_attendance_already_recorded,
+                )
 
                 course_code = str(course_id)
+                if session_attendance_already_recorded(lms, course_code, sess_date.isoformat()):
+                    fps[fp] = sess_date.isoformat()
+                    extra["scheduler_fingerprints"] = fps
+                    st.extra_data = extra
+                    flag_modified(st, "extra_data")
+                    continue
                 course_type = infer_course_type(course_code)
                 hit = await _start_process_if_absent(
                     db,

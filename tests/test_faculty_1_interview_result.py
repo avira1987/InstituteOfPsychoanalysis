@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_password_hash
 from app.api.interview_slots_routes import list_interview_result_queue
+from app.api.process.routes import OperatorStepFormsRegisterRequest, register_operator_step_forms
 from app.core.engine import StateMachineEngine
 from app.core.rule_engine import RuleEvaluator
 from app.core.transition import (
@@ -344,3 +345,45 @@ async def test_unrelated_faculty_1_does_not_see_result_transitions(
     )
     events = [t["trigger_event"] for t in transitions]
     assert "interview_result_submitted" not in events
+
+
+@pytest.mark.asyncio
+async def test_faculty_1_can_register_intro_interview_result_form(
+    db_session: AsyncSession, sample_student
+) -> None:
+    sara = await _make_user(
+        db_session,
+        role="faculty_1",
+        prefix="sara_form",
+        roles=["faculty_1"],
+        full_name_fa="سارا طراوتی",
+    )
+    staff = await _make_user(db_session, role="staff", prefix="staff_form")
+    inst, _slot = await _make_instance(
+        db_session,
+        sample_student=sample_student,
+        process_code="introductory_course_registration",
+        state="interview_completed",
+        interviewer=sara,
+        creator=staff,
+    )
+    await db_session.commit()
+
+    out = await register_operator_step_forms(
+        instance_id=str(inst.id),
+        request=OperatorStepFormsRegisterRequest(
+            state_code="interview_completed",
+            form_values={
+                "interview_result": "full_admission",
+                "allowed_course_count": 5,
+                "interviewer_notes": "پذیرش کامل",
+            },
+        ),
+        db=db_session,
+        current_user=sara,
+    )
+    assert out["success"] is True
+    refreshed = await db_session.get(ProcessInstance, inst.id)
+    ctx = refreshed.context_data or {}
+    assert ctx.get("interview_result") == "full_admission"
+    assert ctx.get("interviewer_notes") == "پذیرش کامل"

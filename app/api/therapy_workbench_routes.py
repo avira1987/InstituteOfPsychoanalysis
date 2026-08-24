@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user, require_role
+from app.core.user_roles import user_has_role
 from app.database import get_db
 from app.models.operational_models import User
 from app.services.therapy_session_schedule import repair_student_therapy_continuity
@@ -33,12 +34,13 @@ def _resolve_role_scope(user: User, role_scope: Optional[str]) -> RoleScope:
     if role_scope:
         if role_scope not in ("therapist", "staff", "site_manager"):
             raise HTTPException(status_code=400, detail="role_scope نامعتبر است.")
-        if role_scope == "therapist" and user.role != "therapist":
+        # ادمین می‌تواند scope درمانگر را باز کند (اشراف روی همهٔ منتسب‌ها).
+        if role_scope == "therapist" and not user_has_role(user, "therapist"):
             raise HTTPException(status_code=403, detail="این scope فقط برای درمانگر است.")
         return role_scope  # type: ignore[return-value]
-    if user.role == "therapist":
+    if user_has_role(user, "therapist", admin_bypass=False):
         return "therapist"
-    if user.role == "site_manager":
+    if user_has_role(user, "site_manager", admin_bypass=False):
         return "site_manager"
     return "staff"
 

@@ -31,7 +31,8 @@
       "operator": "and",
       "conditions": [
         {"field": "student.course_type", "operator": "in", "value": ["comprehensive", "introductory"]},
-        {"field": "student.term_count", "operator": "gte", "value": 1}
+        {"field": "student.term_count", "operator": "gte", "value": 1},
+        {"field": "student.admission_type", "operator": "ne", "value": "single_course"}
       ]
     }
   },
@@ -43,7 +44,8 @@
       "operator": "or",
       "conditions": [
         {"field": "student.term_count", "operator": "lt", "value": 1},
-        {"field": "student.is_suspended", "operator": "eq", "value": true}
+        {"field": "student.is_suspended", "operator": "eq", "value": true},
+        {"field": "student.admission_type", "operator": "eq", "value": "single_course"}
       ]
     }
   },
@@ -928,13 +930,13 @@
     "code": "term2_cash_payment",
     "name_fa": "پرداخت نقدی (ترم دوم دوره آشنایی)",
     "rule_type": "condition",
-    "expression": {"field": "payload.payment_method", "operator": "eq", "value": "cash"}
+    "expression": {"field": "instance.payment_method", "operator": "eq", "value": "cash"}
   },
   {
     "code": "term2_installment_payment",
     "name_fa": "پرداخت اقساطی (ترم دوم دوره آشنایی)",
     "rule_type": "condition",
-    "expression": {"field": "payload.payment_method", "operator": "eq", "value": "installment"}
+    "expression": {"field": "instance.payment_method", "operator": "eq", "value": "installment"}
   },
   {
     "code": "term2_ready_for_close",

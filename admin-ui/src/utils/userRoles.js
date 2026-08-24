@@ -65,9 +65,50 @@ export function userHasAnyRole(user, codes, { adminBypass = true } = {}) {
   return codes.some((c) => have.has(normalizeRoleCode(c)))
 }
 
+/** آیا یک کد نقش (با impliedهایی مثل faculty_1 → interviewer) در فهرست مجاز است؟ */
+export function roleMatchesAllowedList(role, allowed) {
+  const allowedNorm = (Array.isArray(allowed) ? allowed : [])
+    .map(normalizeRoleCode)
+    .filter(Boolean)
+  if (!allowedNorm.length) return true
+  const r = normalizeRoleCode(role)
+  if (!r) return false
+  if (allowedNorm.includes(r)) return true
+  const canon = canonicalPortalRole(r)
+  if (canon && allowedNorm.includes(canon)) return true
+  const have = expandedRoles([r, canon].filter(Boolean))
+  return allowedNorm.some((code) => have.has(code))
+}
+
 export function primaryRole(user) {
   const p = normalizeRoleCode(user?.role)
   if (p) return p
   const roles = getUserRoles(user)
   return roles[0] || 'student'
+}
+
+export function orderedActorRoles(user) {
+  const stored = getUserRoles(user)
+  const prim = primaryRole(user)
+  const ordered = []
+  const seen = new Set()
+  const add = (code) => {
+    const n = normalizeRoleCode(code)
+    if (!n || seen.has(n)) return
+    seen.add(n)
+    ordered.push(n)
+  }
+  add(prim)
+  for (const code of stored) add(code)
+  for (const code of [...ordered]) {
+    for (const implied of [...(ROLE_IMPLIES[code] || [])].sort()) add(implied)
+  }
+  return ordered
+}
+
+const STUDENT_PORTAL_ROLES = new Set(['student', 'applicant'])
+
+export function operatorPortalRoles(user) {
+  if (primaryRole(user) === 'student') return []
+  return orderedActorRoles(user).filter((c) => !STUDENT_PORTAL_ROLES.has(c))
 }

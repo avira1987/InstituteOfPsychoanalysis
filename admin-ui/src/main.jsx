@@ -7,9 +7,12 @@ import { SimulatedSmsProvider } from './contexts/SimulatedSmsContext'
 import { getRouterBasename } from './utils/routerBasename'
 import PersianDigitsBoundary from './components/PersianDigitsBoundary'
 import App from './App'
+import { initClientObservability } from './observability/sentryClient'
 /* باندل محلی — بدون وابستگی به cdn.jsdelivr (کند/فیلتر در برخی شبکه‌ها) */
 import '@fontsource-variable/vazirmatn/wght.css'
 import './styles/global.css'
+
+initClientObservability()
 
 const basename = getRouterBasename() || undefined
 

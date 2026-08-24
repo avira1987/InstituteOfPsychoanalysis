@@ -11,6 +11,7 @@ from typing import Any, Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.user_roles import operator_portal_roles, primary_role, user_has_role, user_matches_role_sql
 from app.models.operational_models import InterviewSlot, Student, TherapySession, User
 from app.services.interview_slot_service import interviewer_capacity_slot_filter
 
@@ -60,7 +61,7 @@ def _enrich_admin_readiness_alert(alert: dict[str, Any], subject: User, role_lab
 async def _list_users_by_role(db: AsyncSession, role: str, limit: int) -> list[User]:
     stmt = (
         select(User)
-        .where(User.role == role, User.is_active.is_(True))
+        .where(user_matches_role_sql(role), User.is_active.is_(True))
         .order_by(User.username.asc())
         .limit(max(1, limit))
     )
@@ -296,20 +297,31 @@ async def compute_operator_readiness_alerts(
     user: User,
 ) -> list[dict[str, Any]]:
     """
-    هشدارهای آمادگی برای نقش ورود.
+    هشدارهای آمادگی برای نقش‌های عملیاتی کاربر.
     برای admin: تجمیع برای همهٔ مصاحبه‌گران و درمانگران (طبق قواعد JSON).
     """
-    from app.core.user_roles import canonical_portal_role
-
-    role = canonical_portal_role(user.role) or (user.role or "").strip()
-    if role == "student" or not role:
+    if primary_role(user) == "student":
         return []
 
     cfg = _load_readiness_config()
     defaults = cfg.get("defaults") or {}
     rules = [r for r in (cfg.get("rules") or []) if r.get("enabled") is True]
 
-    if role == "admin":
+    if user_has_role(user, "admin", admin_bypass=False):
         return await _compute_readiness_for_admin(db, rules, defaults)
 
-    return await _compute_readiness_for_single_user(db, user, role, rules, defaults)
+    roles = operator_portal_roles(user)
+    if not roles:
+        return []
+
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for role in roles:
+        for alert in await _compute_readiness_for_single_user(db, user, role, rules, defaults):
+            aid = str(alert.get("id", ""))
+            if aid and aid in seen:
+                continue
+            if aid:
+                seen.add(aid)
+            out.append(alert)
+    return out

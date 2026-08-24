@@ -49,7 +49,90 @@ async def test_build_prep_status_includes_anchor_panel_fields(db_session: AsyncS
     assert status["anchor"]["hub_path"] == "/panel/semester-prep"
     assert "active_count" in status["anchor"]
     assert "readiness_ready" in status["anchor"]
+    assert "recorded" not in status["processes"][FALL_PREP]
+    assert "recorded" not in status["processes"][WINTER_PREP]
 
+
+def test_build_prep_recorded_snapshot_omits_internal_keys_and_empty_sections():
+    from app.services.semester_prep_service import build_prep_recorded_snapshot
+
+    interviewer_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    snap = build_prep_recorded_snapshot(
+        {
+            "calendar_sla_deadline_at": "2026-04-09T20:29:59+00:00",
+            "__lock": True,
+            "fall_start_date": "2026-09-23",
+            "fall_end_date": "2027-01-20",
+            "courses_fall": [{"course_name": "تئوری ۱", "track": "روانکاوی"}],
+            "courses_winter": [{}, {"course_name": ""}],
+            "comprehensive_interviewers": [interviewer_id],
+            "interview_setup_plan": {
+                "comprehensive": {
+                    "interviewer_ids": [interviewer_id],
+                    "interviewers": [
+                        {
+                            "interviewer_id": interviewer_id,
+                            "dates": ["2026-10-01"],
+                            "start_time": "09:00",
+                            "end_time": "13:00",
+                        }
+                    ],
+                    "session_minutes": 45,
+                }
+            },
+        },
+        name_map={interviewer_id: "دکتر رضایی"},
+    )
+    assert snap["calendar"]["fall_start_date"] == "2026-09-23"
+    assert "calendar_sla_deadline_at" not in snap["calendar"]
+    assert "__lock" not in snap
+    assert "tuition" not in snap
+    assert snap["courses"]["courses_fall"][0]["course_name"] == "تئوری ۱"
+    assert "courses_winter" not in snap["courses"]
+    assert snap["interviews"]["comprehensive_interviewers"] == ["دکتر رضایی"]
+    plan = snap["interviews"]["interview_setup_plan"]["comprehensive"]
+    assert plan["interviewer_ids"] == ["دکتر رضایی"]
+    assert plan["interviewers"][0]["interviewer_name_fa"] == "دکتر رضایی"
+
+
+@pytest.mark.asyncio
+async def test_build_prep_status_includes_recorded_snapshot(
+    db_session: AsyncSession, sample_user
+):
+    from sqlalchemy.orm.attributes import flag_modified
+
+    from app.services.semester_prep_service import build_prep_status
+
+    processes_dir = Path(__file__).resolve().parent.parent.parent / "metadata" / "processes"
+    await load_process(db_session, processes_dir / "fall_semester_preparation.json")
+    await db_session.commit()
+
+    inst, _ = await get_or_start_prep_instance(
+        db_session,
+        FALL_PREP,
+        actor_id=sample_user.id,
+        actor_role="admin",
+    )
+    ctx = dict(inst.context_data or {})
+    ctx.update(
+        {
+            "fall_start_date": "2026-09-23",
+            "fall_end_date": "2027-01-20",
+            "courses_fall": [{"course_name": "تئوری ۱", "instructor": "دکتر الف"}],
+            "comprehensive_interviewers": [str(sample_user.id)],
+        }
+    )
+    inst.context_data = ctx
+    flag_modified(inst, "context_data")
+    await db_session.commit()
+
+    status = await build_prep_status(db_session)
+    recorded = status["processes"][FALL_PREP]["recorded"]
+    assert recorded["calendar"]["fall_start_date"] == "2026-09-23"
+    assert "calendar_sla_deadline_at" not in recorded.get("calendar", {})
+    assert recorded["courses"]["courses_fall"][0]["course_name"] == "تئوری ۱"
+    assert recorded["interviews"]["comprehensive_interviewers"] == ["مدیر تست"]
+    assert "recorded" not in status["processes"][WINTER_PREP]
 
 
 @pytest.mark.asyncio

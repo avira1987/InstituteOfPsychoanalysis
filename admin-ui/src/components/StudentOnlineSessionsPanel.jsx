@@ -75,8 +75,16 @@ export default function StudentOnlineSessionsPanel({
     try {
       const res = await panelApi.myOnlineSessions(false)
       const list = Array.isArray(res.data?.items) ? res.data.items : []
-      setItems(list)
-      onSessionsLoaded?.(list, res.data?.summary)
+      // دروس کلاس در StudentEnrolledCoursesPanel جدا نمایش داده می‌شوند
+      const nonCourse = list.filter((x) => x?.kind !== 'course')
+      setItems(nonCourse)
+      onSessionsLoaded?.(nonCourse, {
+        ...(res.data?.summary || {}),
+        total: nonCourse.length,
+        with_join_link: nonCourse.filter(
+          (x) => x.meeting_link_is_visible && (x.meeting_link || '').trim(),
+        ).length,
+      })
     } catch (e) {
       setItems([])
       setError(e.response?.data?.detail || 'بارگذاری جلسات آنلاین ممکن نشد.')
@@ -130,7 +138,7 @@ export default function StudentOnlineSessionsPanel({
   return (
     <div className="card" data-testid="student-online-sessions-panel">
       <div className="card-header" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 className="card-title" style={{ margin: 0 }}>جلسات آنلاین</h3>
+        <h3 className="card-title" style={{ margin: 0 }}>سایر جلسات آنلاین</h3>
         <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           {loading ? 'در حال بارگذاری…' : 'تازه‌سازی'}
         </button>
@@ -142,8 +150,7 @@ export default function StudentOnlineSessionsPanel({
         <p style={{ padding: '1rem', color: 'var(--danger, #b91c1c)' }}>{error}</p>
       ) : items.length === 0 ? (
         <p style={{ padding: '1rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-          هنوز جلسه‌ای در تقویم شما ثبت نشده است. پس از تکمیل فرایند آغاز درمان، پرداخت هزینهٔ مصاحبه، یا ثبت‌نام کلاس،
-          جلسات و لینک‌های ورود (الوکام و …) در این بخش نمایش داده می‌شود.
+          هنوز جلسهٔ درمان، مصاحبه یا سوپرویژن در تقویم شما نیست. کلاس‌های درسی را در بخش «دروس من» ببینید.
         </p>
       ) : (
         <>
@@ -197,10 +204,19 @@ export default function StudentOnlineSessionsPanel({
                 <OnlineMeetingJoinCta
                   mode={item.kind === 'interview' && item.mode === 'in_person' ? 'in_person' : 'online'}
                   locationFa={item.location_fa || ''}
-                  meetingLink={item.meeting_link}
+                  meetingLink={item.kind === 'course' ? null : item.meeting_link}
                   meetingLinkReady={item.meeting_link_ready}
                   meetingLinkOpenAt={item.meeting_link_open_at}
                   meetingLinkIsVisible={Boolean(item.meeting_link_is_visible)}
+                  authenticatedJoinReady={item.kind === 'course' && Boolean(item.meeting_link_ready || item.join_path)}
+                  onAuthenticatedJoin={
+                    item.kind === 'course' && (item.meeting_link_ready || item.join_path)
+                      ? async () => {
+                          const res = await panelApi.courseJoin(item.course_code)
+                          return res.data?.join_url
+                        }
+                      : null
+                  }
                   startsAt={item.starts_at}
                   studentJoinOpen={Boolean(item.student_join_open)}
                   label="ورود به جلسه"

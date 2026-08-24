@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.auth import get_current_user, require_role
 from app.models.operational_models import User, Student, Assignment, AssignmentSubmission
+from app.services.installment_access import raise_if_student_installment_locked
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/assignments", tags=["Assignments"])
@@ -84,6 +85,7 @@ async def list_my_assignments(
     current_user: User = Depends(get_current_user),
 ):
     st = await _get_student_profile(db, current_user)
+    raise_if_student_installment_locked(st)
     r = await db.execute(
         select(Assignment).where(Assignment.student_id == st.id).order_by(Assignment.created_at.desc())
     )
@@ -108,6 +110,7 @@ async def get_submission(
     current_user: User = Depends(get_current_user),
 ):
     st = await _get_student_profile(db, current_user)
+    raise_if_student_installment_locked(st)
     aid = uuid.UUID(assignment_id)
     r = await db.execute(
         select(Assignment).where(Assignment.id == aid, Assignment.student_id == st.id)
@@ -150,6 +153,7 @@ async def submit_assignment(
     current_user: User = Depends(get_current_user),
 ):
     st = await _get_student_profile(db, current_user)
+    raise_if_student_installment_locked(st)
     aid = uuid.UUID(assignment_id)
     r = await db.execute(
         select(Assignment).where(Assignment.id == aid, Assignment.student_id == st.id)

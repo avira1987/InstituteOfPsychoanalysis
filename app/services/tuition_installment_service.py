@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.models.operational_models import ProcessInstance
+from app.models.operational_models import ProcessInstance, Student
 
 TUITION_INSTALLMENT_PROCESS_CODES = (
     "introductory_course_registration",
@@ -195,7 +195,9 @@ def apply_tuition_payment_context(
         except (TypeError, ValueError):
             existing_plan = None
     if existing_plan and pm == "cash":
-        existing_plan = None
+        first = existing_plan[0] if existing_plan else {}
+        if first.get("status") != "paid":
+            existing_plan = None
     plan = compute_installment_plan(total, str(pm), ic, base_due, gap_days, existing_plan)
     out["installment_plan"] = plan
 
@@ -203,8 +205,12 @@ def apply_tuition_payment_context(
         out["payable_amount_rial"] = total
         out["payment_amount_rial"] = total
         out["current_installment_index"] = 1
+        cash_paid = bool(plan) and plan[0].get("status") == "paid"
         out["pending_installments_remaining"] = 0
         out.pop("next_installment_due_at", None)
+        if cash_paid:
+            out["payable_amount_rial"] = 0
+            out["payment_amount_rial"] = 0
         return out
 
     payable, idx = get_current_payable_from_plan(plan)
@@ -268,6 +274,76 @@ def mark_installment_paid(
         out.pop("current_installment_index", None)
         out["payable_amount_rial"] = 0
     return apply_tuition_payment_context(out, gap_days=gap_days)
+
+
+def installment_sms_still_owed(ctx: dict | None) -> bool:
+    """True only when an installment plan still has unpaid remaining dues."""
+    data = ctx if isinstance(ctx, dict) else {}
+    if str(data.get("payment_method") or "") != "installment":
+        return False
+    plan = data.get("installment_plan") or []
+    if isinstance(plan, list) and plan:
+        return any(
+            isinstance(p, dict) and p.get("status") in ("pending", "overdue")
+            for p in plan
+        )
+    try:
+        pending = int(data.get("pending_installments_remaining") or 0)
+    except (TypeError, ValueError):
+        pending = 0
+    return pending > 0
+
+
+def cancel_unsent_installment_reminders(
+    student: Student,
+    *,
+    instance_id: str | uuid.UUID | None = None,
+    reason: str = "settled",
+) -> int:
+    """Mark unsent installment SMS reminders as skipped so the scheduler will not send them."""
+    extra = dict(student.extra_data or {}) if isinstance(student.extra_data, dict) else {}
+    items = list(extra.get("scheduled_reminders") or [])
+    if not items:
+        return 0
+    iid = str(instance_id) if instance_id is not None else None
+    now = datetime.now(timezone.utc).isoformat()
+    changed = 0
+    for rec in items:
+        if not isinstance(rec, dict):
+            continue
+        if rec.get("sent"):
+            continue
+        if rec.get("type") != "installment":
+            continue
+        if iid is not None and str(rec.get("instance_id") or "") != iid:
+            continue
+        rec["sent"] = True
+        rec["skipped"] = True
+        rec["skipped_reason"] = reason
+        rec["sent_at"] = now
+        changed += 1
+    if changed:
+        extra["scheduled_reminders"] = items
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+    return changed
+
+
+def sync_installment_reminder_queue(
+    student: Student,
+    instance: ProcessInstance,
+    ctx: dict | None = None,
+) -> int:
+    """Drop queued installment SMS when the student is cash-paid or fully settled."""
+    data = ctx if isinstance(ctx, dict) else dict(instance.context_data or {})
+    if installment_sms_still_owed(data):
+        return 0
+    reason = "not_installment" if str(data.get("payment_method") or "") != "installment" else "settled"
+    return cancel_unsent_installment_reminders(
+        student,
+        instance_id=str(instance.id),
+        reason=reason,
+    )
 
 
 async def refresh_instance_tuition_context(
@@ -365,11 +441,14 @@ async def apply_post_payment_context_update(
         instance.current_state_code or "",
         ctx,
     )
-    if ctx.get("payment_method") == "installment":
+    if ctx.get("payment_method") in ("installment", "cash"):
         ctx = mark_installment_paid(ctx, payment_ref, amount_rial, gap_days=gap_days)
     instance.context_data = ctx
     flag_modified(instance, "context_data")
     await db.flush()
+    student = await db.get(Student, instance.student_id) if instance.student_id else None
+    if student is not None:
+        sync_installment_reminder_queue(student, instance, ctx)
     return ctx
 
 

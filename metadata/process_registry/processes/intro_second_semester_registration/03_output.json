@@ -27,7 +27,7 @@
       "ui_hint": "popup_message",
       "metadata": {
         "student_short_fa": "توقف — شرط درمان برآورده نشده",
-        "student_task_fa": "برای ثبت‌نام ترم دوم ابتدا باید درمان شخصی خود را آغاز و درمانگر فعال ثبت کنید.",
+        "student_task_fa": "شما درمانگر فعالی ندارید و امکان ثبت‌نام شما برای ترم دوم ممکن نیست.",
         "student_why_fa": "پذیرش مشروط به درمان بدون درمانگر فعال، ثبت‌نام ترم دوم را مجاز نمی‌کند."
       }
     },
@@ -123,7 +123,7 @@
       "actions": [
         {
           "type": "show_popup",
-          "message_fa": "برای ثبت‌نام ترم دوم ابتدا باید درمان شخصی خود را آغاز و درمانگر فعال ثبت کنید."
+          "message_fa": "شما درمانگر فعالی ندارید و امکان ثبت‌نام شما برای ترم دوم ممکن نیست."
         }
       ],
       "required_role": "system"
@@ -205,11 +205,6 @@
           "description_fa": "ایجاد لینک کلاس آنلاین در LMS"
         },
         {
-          "type": "schedule_installment_reminders",
-          "condition": "payment_method == 'installment'",
-          "description_fa": "برنامه‌ریزی یادآوری اقساط: پیامک ۱ هفته قبل از سررسید هر قسط"
-        },
-        {
           "type": "notification",
           "notification_type": "sms",
           "template": "registration_confirmed_term2",
@@ -220,6 +215,11 @@
         {
           "type": "merge_instance_context",
           "mode": "initial_payment"
+        },
+        {
+          "type": "schedule_installment_reminders",
+          "condition": "payment_method == 'installment'",
+          "description_fa": "برنامه‌ریزی یادآوری اقساط: پیامک ۱ هفته قبل از سررسید هر قسط"
         }
       ],
       "required_role": "system"

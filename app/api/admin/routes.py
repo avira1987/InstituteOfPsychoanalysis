@@ -1093,6 +1093,10 @@ class RosterTrackCreate(BaseModel):
     code: Optional[str] = None
 
 
+class RosterTrackUpdate(BaseModel):
+    name_fa: str = Field(..., min_length=1)
+
+
 class RosterMemberCreate(BaseModel):
     track: str = Field(..., min_length=1)
     kind: Literal["instructor", "teaching_assistant", "educational_instructor"]
@@ -1151,6 +1155,7 @@ class CourseCatalogCreate(BaseModel):
     retake_exam: Optional[bool] = None
     evaluation_fa: Optional[str] = None
     prerequisite_codes: Optional[list[str]] = None
+    system_prerequisite_codes: Optional[list[str]] = None
     prerequisite_notes: Optional[str] = None
     subtitle_fa: Optional[str] = None
 
@@ -1165,6 +1170,7 @@ class CourseCatalogUpdate(BaseModel):
     retake_exam: Optional[bool] = None
     evaluation_fa: Optional[str] = None
     prerequisite_codes: Optional[list[str]] = None
+    system_prerequisite_codes: Optional[list[str]] = None
     prerequisite_notes: Optional[str] = None
     subtitle_fa: Optional[str] = None
 
@@ -1181,6 +1187,23 @@ async def create_course_committee_track(
         track = add_track_to_roster(body.name_fa, body.code)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    return {"track": track}
+
+
+@router.patch("/course-committee-roster/tracks/{track_code}")
+async def update_course_committee_track(
+    track_code: str,
+    body: RosterTrackUpdate,
+    current_user: User = Depends(require_role("admin", "staff", "deputy_education", "course_committee")),
+):
+    from app.services.course_committee_roster_service import update_track_in_roster
+
+    try:
+        track = update_track_in_roster(track_code, body.name_fa)
+    except ValueError as e:
+        detail = str(e)
+        status = 404 if "یافت نشد" in detail else 400
+        raise HTTPException(status_code=status, detail=detail)
     return {"track": track}
 
 
@@ -1474,6 +1497,7 @@ async def create_course_catalog_entry(
             retake_exam=body.retake_exam,
             evaluation_fa=body.evaluation_fa,
             prerequisite_codes=body.prerequisite_codes,
+            system_prerequisite_codes=body.system_prerequisite_codes,
             prerequisite_notes=body.prerequisite_notes,
             subtitle_fa=body.subtitle_fa,
         )
@@ -1502,6 +1526,7 @@ async def update_course_catalog_entry(
             retake_exam=body.retake_exam,
             evaluation_fa=body.evaluation_fa,
             prerequisite_codes=body.prerequisite_codes,
+            system_prerequisite_codes=body.system_prerequisite_codes,
             prerequisite_notes=body.prerequisite_notes,
             subtitle_fa=body.subtitle_fa,
         )
@@ -1966,6 +1991,33 @@ async def get_system_resource_snapshot(
     from app.services.system_resource_snapshot import collect_resource_snapshot
 
     return collect_resource_snapshot()
+
+
+@router.get("/system/observability")
+async def get_system_observability(
+    current_user: User = Depends(require_role("admin")),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """آخرین خطاها و درخواست‌های کند این پروسس + وضعیت Sentry — فقط ادمین."""
+    from app.database import db_pool_snapshot
+    from app.observability.ring_buffer import snapshot as observability_snapshot
+    from app.observability.sentry import frontend_sentry_dsn, sentry_enabled
+    from app.observability.setup import effective_environment
+
+    settings = get_settings()
+    data = observability_snapshot(limit=limit)
+    data["sentry"] = {
+        "backend_enabled": sentry_enabled(settings),
+        "frontend_configured": bool(frontend_sentry_dsn(settings)),
+        "environment": effective_environment(settings),
+        "traces_sample_rate": float(getattr(settings, "SENTRY_TRACES_SAMPLE_RATE", 0) or 0),
+    }
+    data["db_pool"] = db_pool_snapshot()
+    data["log_format"] = settings.LOG_FORMAT
+    data["log_level"] = settings.LOG_LEVEL
+    data["slow_request_ms"] = settings.SLOW_REQUEST_MS
+    data["slow_sql_ms"] = settings.SLOW_SQL_MS
+    return data
 
 
 def _backup_http(exc: BackupCatalogError) -> HTTPException:

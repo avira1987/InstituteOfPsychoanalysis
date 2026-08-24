@@ -4,6 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.config import get_settings
+from app.observability.slow_sql import register_slow_sql_listener
 
 settings = get_settings()
 
@@ -17,6 +18,22 @@ _engine_kwargs = {
 }
 
 engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
+register_slow_sql_listener(engine)
+
+
+def db_pool_snapshot() -> dict | None:
+    """SQLAlchemy pool counters for the admin observability panel."""
+    try:
+        pool = engine.sync_engine.pool
+        return {
+            "size": pool.size(),
+            "checked_in": pool.checkedin(),
+            "checked_out": pool.checkedout(),
+            "overflow": pool.overflow(),
+        }
+    except Exception:
+        return None
+
 
 async_session_factory = async_sessionmaker(
     engine,
@@ -101,6 +118,12 @@ async def apply_schema_safety_patches(conn) -> None:
         text(
             "ALTER TABLE interview_slots ADD COLUMN IF NOT EXISTS student_join_open BOOLEAN NOT NULL DEFAULT false"
         )
+    )
+    await conn.execute(
+        text("ALTER TABLE term_course_offerings ADD COLUMN IF NOT EXISTS online_meeting_url TEXT")
+    )
+    await conn.execute(
+        text("ALTER TABLE term_course_offerings ADD COLUMN IF NOT EXISTS host_meeting_url TEXT")
     )
 
 

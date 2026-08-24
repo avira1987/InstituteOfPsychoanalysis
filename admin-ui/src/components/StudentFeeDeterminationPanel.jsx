@@ -11,6 +11,18 @@ const SCENARIO_TONE = {
   triggered: { bg: '#fefce8', border: '#ca8a04', text: '#854d0e' },
 }
 
+function fmtToman(n) {
+  if (n == null || n === '' || Number.isNaN(Number(n))) return '—'
+  return `${Number(n).toLocaleString('fa-IR')} تومان`
+}
+
+function recordTypeFa(t) {
+  if (t === 'credit') return 'بستانکاری'
+  if (t === 'debt') return 'بدهی / کسر اعتبار'
+  if (t === 'absence_fee') return 'مصادره'
+  return t || '—'
+}
+
 function fmtDate(iso) {
   if (!iso) return '—'
   try {
@@ -129,6 +141,20 @@ export default function StudentFeeDeterminationPanel({ active = true, compact = 
             border={exceeded ? '#dc2626' : '#16a34a'}
             text={exceeded ? '#991b1b' : '#14532d'}
           />
+          <StatTile
+            label="مانده کیف درمان"
+            value={fmtToman(data?.therapy_wallet_balance_toman)}
+            bg="#ecfeff"
+            border="#0891b2"
+            text="#155e75"
+          />
+          <StatTile
+            label="آخرین تعیین تکلیف"
+            value={fmtToman(data?.last_fee_amount_toman)}
+            bg="#fff7ed"
+            border="#ea580c"
+            text="#9a3412"
+          />
           {!compact && (
             <StatTile
               label="جلسات در هفته"
@@ -210,6 +236,12 @@ export default function StudentFeeDeterminationPanel({ active = true, compact = 
                       <strong style={{ color: tone.text }}>{o.state_fa}</strong>
                       <span style={{ color: '#64748b' }}>{fmtDate(o.session_date || o.completed_at || o.started_at)}</span>
                     </div>
+                    {(o.amount_toman != null || o.record_type) && (
+                      <div data-testid="fee-outcome-amount" style={{ marginTop: '0.25rem', color: '#0f172a' }}>
+                        {fmtToman(o.amount_toman)}
+                        {o.record_type ? ` — ${recordTypeFa(o.record_type)}` : ''}
+                      </div>
+                    )}
                     {o.summary_fa && (
                       <div style={{ marginTop: '0.3rem', color: '#475569', lineHeight: 1.6 }}>{o.summary_fa}</div>
                     )}

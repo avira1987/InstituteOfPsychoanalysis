@@ -2,6 +2,7 @@ import axios from 'axios'
 import { getRouterBasename } from '../utils/routerBasename'
 import { emitSimulatedSmsFromApi } from '../utils/simulatedSmsBridge'
 import { dispatchPanelNotificationsChanged } from '../utils/panelNotifications'
+import { captureClientException, getLastRequestId, newRequestId, setLastRequestId } from '../observability/sentryClient'
 
 // API base. Override با VITE_API_BASE در .env در صورت نیاز.
 export function getApiBase() {
@@ -46,6 +47,9 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  const rid = newRequestId()
+  config.headers['X-Request-ID'] = rid
+  setLastRequestId(rid)
   return config
 })
 
@@ -54,6 +58,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => {
     try {
+      const rid = response?.headers?.['x-request-id']
+      if (rid) setLastRequestId(rid)
       emitSimulatedSmsFromApi(response?.data)
     } catch (_) {
       /* ignore */
@@ -61,6 +67,20 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
+    const rid =
+      error.response?.headers?.['x-request-id'] ||
+      error.config?.headers?.['X-Request-ID'] ||
+      getLastRequestId()
+    if (rid) setLastRequestId(rid)
+    const status = error.response?.status
+    if (status >= 500) {
+      captureClientException(error, {
+        request_id: rid,
+        path: error.config?.url,
+        status,
+        event: 'http.client_5xx',
+      })
+    }
     if (error.response?.status === 401) {
       const config = error.config
       const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
@@ -191,6 +211,8 @@ export const auditApi = {
 export const systemApi = {
   /** اسنپ‌شات منابع کانتینر/میزبان (RAM, CPU load, RSS, disk) — فقط ادمین. */
   resourceSnapshot: () => api.get('admin/system/resource-snapshot'),
+  /** خطاها و درخواست‌های کند همین پروسس API — فقط ادمین. */
+  observability: (params) => api.get('admin/system/observability', { params }),
   /** فهرست بکاپ‌های روزانه روی هاست — فقط ادمین. */
   listBackups: () => api.get('admin/system/backups'),
   /** جزئیات / verify یک بکاپ تاریخ‌دار (YYYY-MM-DD). */
@@ -568,6 +590,9 @@ export const panelApi = {
   /** لیست یکپارچهٔ جلسات و لینک‌های آنلاین دانشجو */
   myOnlineSessions: (includePast = false) =>
     api.get('panel/my-online-sessions', { params: { include_past: !!includePast } }),
+  myEnrolledCourses: () => api.get('panel/my-enrolled-courses'),
+  courseJoin: (courseCode) =>
+    api.get(`panel/courses/${encodeURIComponent(courseCode)}/join`),
   mySemesterCourses: () => api.get('panel/my-semester-courses'),
   instructorCourseRoster: (courseCode, options = {}) =>
     api.get('panel/instructor/course-roster', {
@@ -577,6 +602,10 @@ export const panelApi = {
         ...(options.enrichLiveTherapyReports ? { enrich_live_therapy_reports: true } : {}),
       },
     }),
+  updateCourseMeetingLink: (courseCode, body) =>
+    api.patch(`panel/instructor/courses/${encodeURIComponent(courseCode)}/meeting-link`, body),
+  recordCourseAttendance: (courseCode, body) =>
+    api.post(`panel/instructor/courses/${encodeURIComponent(courseCode)}/attendance`, body),
   classCancellationPreview: (courseCode, sessionKey = null) =>
     api.get('panel/instructor/class-cancellation-preview', {
       params: {
@@ -657,6 +686,7 @@ export const publicApi = {
   stats: () => api.get('public/stats'),
   processes: () => api.get('public/processes'),
   portalConfig: () => api.get('public/portal-config'),
+  installmentPolicy: () => api.get('public/installment-policy'),
   smsSimulationStatus: () => api.get('public/sms-simulation-status'),
   /** مسیر تحصیلی و نقش‌ها؛ دریافت عمومی بدون ورود */
   studentLifecycleMatrix: () => api.get('public/student-lifecycle-matrix'),
@@ -734,6 +764,8 @@ export const courseCommitteeRosterApi = {
   listMembers: (params) => api.get('admin/course-committee-roster', { params }),
   listCourses: () => api.get('admin/course-catalog'),
   createTrack: (body) => api.post('admin/course-committee-roster/tracks', body),
+  updateTrack: (trackCode, body) =>
+    api.patch(`admin/course-committee-roster/tracks/${encodeURIComponent(trackCode)}`, body),
   deleteTrack: (trackCode) =>
     api.delete(`admin/course-committee-roster/tracks/${encodeURIComponent(trackCode)}`),
   createCourse: (body) => api.post('admin/course-catalog', body),

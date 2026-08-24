@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { studentApi, processExecApi, processApi, userApi, semesterPrepApi } from '../services/api'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { notesPayload } from '../utils/decisionPayload'
-import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { labelProcess, labelState, formatStudentCodeDisplay, formatStudentFullNameFa } from '../utils/processDisplay'
 import OperatorInstanceContextSummary from '../components/OperatorInstanceContextSummary'
 import ProcessRestartSection from '../components/ProcessRestartSection'
 import DecisionNotesBlock from '../components/DecisionNotesBlock'
@@ -357,7 +357,10 @@ export default function StudentTracker() {
     if (isInstituteOperationalStudent(s)) return false
     if (!search) return true
     const q = search.toLowerCase()
-    return (s.student_code || '').toLowerCase().includes(q)
+    return (
+      (s.student_code || '').toLowerCase().includes(q)
+      || (s.full_name_fa || '').toLowerCase().includes(q)
+    )
   })
 
   const prepProcessEntries = useMemo(() => {
@@ -505,7 +508,7 @@ export default function StudentTracker() {
               className="form-input"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="جستجو با کد دانشجویی..."
+              placeholder="جستجو با نام یا کد دانشجویی..."
               style={{ maxWidth: '350px' }}
             />
           </div>
@@ -519,6 +522,7 @@ export default function StudentTracker() {
                 <thead>
                   <tr>
                     <th>کد</th>
+                    <th>نام</th>
                     <th>دوره</th>
                     <th>ترم</th>
                     <th>پیشرفت مسیر</th>
@@ -530,13 +534,14 @@ export default function StudentTracker() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>در حال بارگذاری...</td></tr>
+                    <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>در حال بارگذاری...</td></tr>
                   ) : filteredStudents.length === 0 ? (
-                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>دانشجویی یافت نشد</td></tr>
+                    <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>دانشجویی یافت نشد</td></tr>
                   ) : (
                     filteredStudents.map((s) => (
                       <tr key={s.id} style={{ background: selectedStudent === s.id ? 'var(--primary-light)' : '' }}>
                         <td><strong>{formatStudentCodeDisplay(s.student_code)}</strong></td>
+                        <td>{formatStudentFullNameFa(s.full_name_fa)}</td>
                         <td>{courseTypeLabel(s.course_type)}</td>
                         <td>{s.current_term}/{s.term_count}</td>
                         <td style={{ minWidth: '120px' }}>

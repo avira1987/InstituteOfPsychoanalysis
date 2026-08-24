@@ -3,7 +3,7 @@
 | فیلد | مقدار |
 |------|-------|
 | **وضعیت** | complete_in_metadata |
-| **آخرین به‌روزرسانی** | 2026-06-01 |
+| **آخرین به‌روزرسانی** | 2026-08-20 |
 | **منبع ورودی** | SOP مرحلهٔ ۳۱ (متن ۴ فاز + فلوچارت) |
 | **sop_order** | 31 |
 
@@ -43,7 +43,7 @@
 ## یادداشت
 از 2026-05-07: پس از انتخاب زمان مصاحبه (`timeslot_selected`) ورود مستقیم به `interview_payment`. متادیتای `student_short_fa` / `student_task_fa` / `student_why_fa` روی stateها برای نوار «وضعیت فعلی / اقدام بعدی» در پنل دانشجو.
 
-از 2026-08-03: راهنمای گام بعدی در `StudentQuestCard` و `StudentIntroductoryCourseRegistrationPanel`؛ گیت بسته روی نتیجهٔ پذیرش → `context_data.student_next_action_fa`؛ Sep برای `installment_overdue`.
+از 2026-08-20: پس از پرداخت هزینه مصاحبه و ثبت نتیجهٔ «پذیرش مشروط به شروع درمان شخصی (۱ تا ۵ درس)»، متن ثابت «به علت پذیرش مشروط به آغاز درمان آموزشی در دوره آشنایی پس از آغاز درمان آموزشی امکان ثبت نام در ترم دوم وجود دارد.» در پنل دانشجو (راهنمای مرحله، کارت داشبورد، ثبت‌نام تکمیل‌شده) نمایش داده می‌شود.
 
 همگام‌سازی SOP با DB:
 `scripts/sync_sop_doc_from_registry_files.py --code introductory_course_registration`

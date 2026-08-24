@@ -27,6 +27,12 @@ def test_supervisor_redirects_to_reviews_tab():
     assert default_tasks_tab_for_role("supervisor") == "reviews"
 
 
+def test_faculty_1_home_is_supervisor_portal():
+    assert redirect_url_for_role("faculty_1") == "/panel/portal/supervisor?tab=reviews"
+    assert portal_home_path("faculty_1") == "/panel/portal/supervisor"
+    assert default_tasks_tab_for_role("faculty_1") == "reviews"
+
+
 def test_staff_redirects_to_pending_tab():
     assert redirect_url_for_role("staff") == "/panel/portal/staff/admissions?tab=pending"
     assert portal_home_path("staff") == "/panel/portal/staff/admissions"

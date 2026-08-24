@@ -737,6 +737,9 @@ async def _apply_payment_success_transition(
     engine = StateMachineEngine(db)
     system_actor_id = await _get_system_actor_id(db)
     payload = {"amount": amount_toman, "ref_id": ref_id, "gateway_payment_ok": True}
+    ctx_pm = dict(inst.context_data or {})
+    if ctx_pm.get("payment_method"):
+        payload["payment_method"] = ctx_pm.get("payment_method")
 
     if inst.process_code == "session_payment" and inst.current_state_code == "awaiting_payment":
         try:

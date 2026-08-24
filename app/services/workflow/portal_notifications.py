@@ -67,6 +67,25 @@ def _parse_due(ctx: dict, action: dict) -> str:
     return (datetime.now(timezone.utc) + timedelta(days=d)).isoformat()
 
 
+def _as_aware_dt(value) -> Optional[datetime]:
+    """Coerce ISO/str/datetime to timezone-aware UTC datetime for timedelta math."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        s = str(value).strip()
+        if not s:
+            return None
+        try:
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, context: dict) -> Optional[str]:
     action_type = action.get("type", "")
     ctx = C.merged_context(instance, action, context)
@@ -92,8 +111,18 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
 
     if action_type in ("schedule_reminder", "scheduled_notification", "schedule_installment_reminders"):
         if action_type == "schedule_installment_reminders":
+            from app.services.tuition_installment_service import (
+                cancel_unsent_installment_reminders,
+                installment_sms_still_owed,
+                sync_installment_reminder_queue,
+            )
+
             ic = C.instance_ctx(instance)
             merged_ic = {**ic, **ctx}
+            if not installment_sms_still_owed(merged_ic):
+                n = sync_installment_reminder_queue(student, instance, merged_ic)
+                C.record_event(instance, action_type, {"skipped": True, "cancelled": n})
+                return f"skipped_not_installment cancelled={n}"
             plan = merged_ic.get("installment_plan") or []
             reminder_days = 7
             try:
@@ -112,15 +141,21 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
                 if isinstance(p, dict) and p.get("status") in ("pending", "overdue")
             ]
             if not pending_items:
-                count = action.get("installments") or merged_ic.get("installment_count") or merged_ic.get(
-                    "pending_installments_remaining"
-                )
+                count = action.get("installments") or merged_ic.get("installment_count")
                 try:
-                    count = max(1, int(count)) if count is not None else 3
+                    count = int(count) if count is not None else 0
                 except (TypeError, ValueError):
-                    count = 3
+                    count = 0
+                # Synthetic schedule only for an explicit remaining installment count (≥2).
+                # Never default to 3 — that queued SMS for cash payers with an empty plan.
+                if count <= 1:
+                    n = cancel_unsent_installment_reminders(
+                        student, instance_id=str(instance.id), reason="no_pending_installments"
+                    )
+                    C.record_event(instance, action_type, {"installments": 0, "cancelled": n})
+                    return f"scheduled_installment_reminders n=0"
                 next_due_raw = merged_ic.get("next_installment_due_at")
-                base_due = _parse_due(merged_ic, {"due_at": next_due_raw}) if next_due_raw else None
+                base_due = _as_aware_dt(_parse_due(merged_ic, {"due_at": next_due_raw})) if next_due_raw else None
                 if base_due is None:
                     base_due = datetime.now(timezone.utc) + timedelta(days=gap_days)
                 for i in range(count):
@@ -146,7 +181,7 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
             else:
                 for item in pending_items:
                     due_raw = item.get("due_at")
-                    due_at = _parse_due(merged_ic, {"due_at": due_raw})
+                    due_at = _as_aware_dt(_parse_due(merged_ic, {"due_at": due_raw}))
                     if due_at is None:
                         continue
                     remind_at = due_at - timedelta(days=reminder_days)

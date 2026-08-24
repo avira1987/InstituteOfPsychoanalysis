@@ -564,6 +564,8 @@ class TermCourseOffering(Base):
     day = Column(String(50), nullable=True)
     time_text = Column(String(50), nullable=True)
     classroom_location = Column(String(255), nullable=True)
+    online_meeting_url = Column(Text, nullable=True)
+    host_meeting_url = Column(Text, nullable=True)
     instructor_name = Column(String(255), nullable=True)
     teaching_assistant_name = Column(String(255), nullable=True)
     units = Column(Integer, nullable=False, default=1)

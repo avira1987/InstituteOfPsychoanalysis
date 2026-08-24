@@ -8,6 +8,8 @@ import { buildOperatorGuidance } from '../utils/operatorProcessGuidance'
 export function useOperatorProcessGuidance({
   instanceDetail,
   portalRole,
+  portalRoles,
+  user,
   availableTransitions = [],
   stepFormLocked = false,
 }) {
@@ -40,6 +42,8 @@ export function useOperatorProcessGuidance({
           transitions: availableTransitions,
           forms: Array.isArray(forms) ? forms : [],
           portalRole,
+          portalRoles,
+          user,
           stepFormLocked,
         })
         setGuidance(built)
@@ -56,6 +60,8 @@ export function useOperatorProcessGuidance({
   }, [
     instanceDetail,
     portalRole,
+    portalRoles,
+    user,
     availableTransitions,
     stepFormLocked,
   ])

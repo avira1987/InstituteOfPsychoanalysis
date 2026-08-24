@@ -255,3 +255,148 @@ async def test_documents_upload_step_otp_still_valid_before_three_minutes(
     )
     assert verify.status_code == 200, verify.text
     assert verify.json().get("success") is True
+
+
+def test_context_has_step_otp_verified_keeps_durable_flag_across_states():
+    from app.meta.student_step_forms import context_has_step_otp_verified
+
+    assert context_has_step_otp_verified({"step_otp_verified": True}, "documents_incomplete") is True
+    assert context_has_step_otp_verified({}, "documents_upload") is False
+    assert context_has_step_otp_verified(
+        {CTX_STEP_OTP_VERIFIED_STATE: "documents_upload"},
+        "documents_incomplete",
+    ) is False
+
+
+def test_validate_documents_resubmit_skips_otp_when_already_verified():
+    from app.meta.process_forms import get_process_forms
+    from app.meta.student_step_forms import CTX_DOCUMENTS_RESUBMIT_FIELDS, validate_student_step_forms
+
+    forms = get_process_forms("introductory_course_registration", "documents_incomplete")
+    ok, missing = validate_student_step_forms(
+        forms,
+        {
+            "digital_commitment": True,
+            "photo": {"file_name": "p.jpg", "url": "/uploads/p.jpg"},
+        },
+        {
+            "step_otp_verified": True,
+            CTX_DOCUMENTS_RESUBMIT_FIELDS: ["photo"],
+        },
+    )
+    assert ok is True, missing
+
+
+async def _seed_docs_incomplete(db_session: AsyncSession, *, otp_verified: bool = True):
+    from sqlalchemy.orm.attributes import flag_modified
+
+    from app.meta.student_step_forms import CTX_DOCUMENTS_RESUBMIT_FIELDS
+
+    await load_process(db_session, PROCESSES_DIR / "introductory_course_registration.json")
+    await db_session.commit()
+    suffix = f"{uuid.uuid4().int % 10_000_000:07d}"
+    seed = await seed_instance_at_state(
+        db_session,
+        "introductory_course_registration",
+        "documents_incomplete",
+        student_code=f"OTP-INC-{suffix}"[:50],
+        extra_ctx={
+            "step_otp_verified": otp_verified,
+            CTX_DOCUMENTS_RESUBMIT_FIELDS: ["photo"],
+            "digital_commitment": True,
+        },
+    )
+    await db_session.commit()
+    assert seed.current_state == "documents_incomplete", (
+        f"seed failed: mode={seed.mode} blocked={seed.blocked_at} got={seed.current_state}"
+    )
+    inst = await db_session.get(ProcessInstance, seed.instance_id)
+    assert inst is not None
+    ctx = dict(inst.context_data or {})
+    if otp_verified:
+        ctx["step_otp_verified"] = True
+    else:
+        ctx.pop("step_otp_verified", None)
+        ctx.pop(CTX_STEP_OTP_VERIFIED_STATE, None)
+    ctx[CTX_DOCUMENTS_RESUBMIT_FIELDS] = ["photo"]
+    ctx["digital_commitment"] = True
+    inst.context_data = ctx
+    flag_modified(inst, "context_data")
+    st = (
+        await db_session.execute(select(Student).where(Student.id == seed.student_id))
+    ).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == st.user_id))).scalar_one()
+    user.phone = f"0913{suffix}"
+    await db_session.commit()
+    token = create_access_token(
+        {"sub": str(user.id), "username": user.username, "role": user.role}
+    )
+    return seed, user, {"Authorization": f"Bearer {token}"}
+
+
+@pytest.mark.asyncio
+async def test_documents_incomplete_skips_otp_when_already_verified(
+    db_session: AsyncSession, api_client: AsyncClient
+):
+    from app.models.operational_models import OTPCode
+
+    seed, user, headers = await _seed_docs_incomplete(db_session, otp_verified=True)
+    iid = str(seed.instance_id)
+
+    n_before = len(
+        list(
+            (
+                await db_session.execute(select(OTPCode).where(OTPCode.phone == user.phone))
+            ).scalars().all()
+        )
+    )
+    req = await api_client.post(
+        f"/api/process/{iid}/student-step-forms/step-otp/request",
+        headers=headers,
+    )
+    assert req.status_code == 200, req.text
+    body = req.json()
+    assert body.get("success") is True
+    assert body.get("already_verified") is True
+    n_after = len(
+        list(
+            (
+                await db_session.execute(select(OTPCode).where(OTPCode.phone == user.phone))
+            ).scalars().all()
+        )
+    )
+    assert n_after == n_before
+
+    reg = await api_client.post(
+        f"/api/process/{iid}/student-step-forms/register",
+        json={
+            "form_values": {
+                "digital_commitment": True,
+                "photo": {"file_name": "fixed.jpg", "url": "/uploads/fixed.jpg"},
+            }
+        },
+        headers=headers,
+    )
+    assert reg.status_code == 200, reg.text
+    assert reg.json().get("success") is True
+
+
+@pytest.mark.asyncio
+async def test_documents_incomplete_still_requires_otp_if_never_verified(
+    db_session: AsyncSession, api_client: AsyncClient
+):
+    seed, _user, headers = await _seed_docs_incomplete(db_session, otp_verified=False)
+    iid = str(seed.instance_id)
+    reg = await api_client.post(
+        f"/api/process/{iid}/student-step-forms/register",
+        json={
+            "form_values": {
+                "digital_commitment": True,
+                "photo": {"file_name": "fixed.jpg", "url": "/uploads/fixed.jpg"},
+            }
+        },
+        headers=headers,
+    )
+    assert reg.status_code == 400, reg.text
+    detail = str(reg.json().get("detail") or "")
+    assert "کد" in detail or "پیامک" in detail or "otp" in detail.lower() or "validation" in detail.lower()

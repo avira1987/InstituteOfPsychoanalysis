@@ -14,11 +14,11 @@ export const ADMIN_ONLY_PATHS = new Set([
 
 /** مسیرهای پورتال تک‌صفحه‌ای */
 const SINGLE_PORTAL_NAV = [
-  { path: '/panel/portal/student', label: 'پنل آموزشی', icon: '🎓', roles: ['student'], strictRoles: true, priority: 20, groupId: 'home' },
-  { path: '/panel/portal/therapist', label: 'پنل درمانگر', icon: '💊', roles: ['therapist'], priority: 21, groupId: 'operations' },
-  { path: '/panel/portal/supervisor', label: 'پنل سوپروایزر', icon: '👁️', roles: ['supervisor', 'faculty_1'], priority: 22, groupId: 'operations' },
-  { path: '/panel/portal/interviewer', label: 'پنل مصاحبه‌گر', icon: '🎤', roles: ['interviewer', 'staff', 'faculty_1'], priority: 22, groupId: 'operations' },
-  { path: '/panel/portal/site-manager', label: 'پنل مسئول سایت', icon: '🏗️', roles: ['site_manager'], priority: 24, groupId: 'operations' },
+  { path: '/panel/portal/student', label: 'پنل آموزشی', icon: '🎓', roles: ['student', 'admin'], priority: 20, groupId: 'home' },
+  { path: '/panel/portal/therapist', label: 'پنل درمانگر', icon: '💊', roles: ['therapist', 'admin'], priority: 21, groupId: 'operations' },
+  { path: '/panel/portal/supervisor', label: 'پنل سوپروایزر', icon: '👁️', roles: ['supervisor', 'faculty_1', 'admin'], priority: 22, groupId: 'operations' },
+  { path: '/panel/portal/interviewer', label: 'پنل مصاحبه‌گر', icon: '🎤', roles: ['interviewer', 'staff', 'faculty_1', 'admin'], priority: 22, groupId: 'operations' },
+  { path: '/panel/portal/site-manager', label: 'پنل مسئول سایت', icon: '🏗️', roles: ['site_manager', 'admin'], priority: 24, groupId: 'operations' },
 ]
 
 const SHARED_NAV = [
@@ -29,6 +29,7 @@ const SHARED_NAV = [
     icon: '🎫',
     roles: [
       'student', 'admin', 'staff', 'finance', 'therapist', 'supervisor', 'faculty_1', 'site_manager', 'interviewer',
+      'instructor', 'educational_instructor',
       'progress_committee', 'education_committee', 'supervision_committee',
       'specialized_commission', 'therapy_committee_chair', 'therapy_committee_executor',
       'deputy_education', 'monitoring_committee_officer',
@@ -62,7 +63,7 @@ const SHARED_NAV = [
       'deputy_education', 'course_committee', 'teaching_assistant', 'monitoring_committee_officer',
       'progress_committee', 'education_committee', 'supervision_committee', 'specialized_commission',
       'therapy_committee_chair', 'therapy_committee_executor', 'applicant', 'instructor',
-      'admissions_officer',
+      'admissions_officer', 'educational_instructor', 'internal_manager',
     ],
     priority: 44,
     groupId: 'academic',

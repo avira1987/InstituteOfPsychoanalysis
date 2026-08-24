@@ -16,8 +16,91 @@ const BLOCKED_WHILE_REGISTRATION_ACTIVE = new Set([
 const REQUIRES_THERAPY_STARTED = new Set([
   'session_payment', 'extra_session', 'therapy_changes', 'therapy_session_increase',
   'therapy_session_reduction', 'therapy_interruption', 'student_session_cancellation',
-  'therapy_completion', 'therapy_early_termination', 'fee_determination',
+  'therapy_completion', 'therapy_early_termination',   'fee_determination',
 ])
+
+const ADMISSION_ALIASES = {
+  single_course: 'single_course',
+  result_single_course: 'single_course',
+  'تک درس': 'single_course',
+  'تک‌درس': 'single_course',
+  'پذیرش تک درس': 'single_course',
+  'پذیرش تک‌درس': 'single_course',
+  conditional_therapy: 'conditional_therapy',
+  result_conditional_therapy: 'conditional_therapy',
+  'مشروط به درمان': 'conditional_therapy',
+  'پذیرش مشروط': 'conditional_therapy',
+  full: 'full_admission',
+  full_admission: 'full_admission',
+  result_full_admission: 'full_admission',
+  'پذیرش کامل': 'full_admission',
+}
+
+export function canonicalAdmissionType(raw) {
+  if (raw == null || raw === '') return null
+  const key = String(raw).trim()
+  return ADMISSION_ALIASES[key] || ADMISSION_ALIASES[key.toLowerCase()] || null
+}
+
+function admissionFromProfile(studentProfile, ctx = {}) {
+  const extra = studentProfile?.extra_data || {}
+  const candidates = [
+    studentProfile?.admission_type,
+    extra.admission_type,
+    extra.interview_result,
+    ctx?.admission_type,
+    ctx?.interview_result,
+    ctx?.result,
+  ]
+  for (const raw of candidates) {
+    const canon = canonicalAdmissionType(raw)
+    if (canon) return canon
+  }
+  return null
+}
+
+export function isSingleCourseAdmission(studentProfile, ctx = {}) {
+  return admissionFromProfile(studentProfile, ctx) === 'single_course'
+}
+
+export function isConditionalTherapyAdmission(studentProfile, ctx = {}) {
+  return admissionFromProfile(studentProfile, ctx) === 'conditional_therapy'
+}
+
+/** متن ثابت پنل دانشجو پس از نتیجهٔ مصاحبه «پذیرش مشروط به شروع درمان شخصی (۱ تا ۵ درس)» */
+export const CONDITIONAL_THERAPY_TERM2_NOTICE_FA =
+  'به علت پذیرش مشروط به آغاز درمان آموزشی در دوره آشنایی پس از آغاز درمان آموزشی امکان ثبت نام در ترم دوم وجود دارد.'
+
+const INTRO_STATES_AFTER_CONDITIONAL_RESULT = new Set([
+  'result_conditional_therapy',
+  'documents_upload',
+  'documents_incomplete',
+  'documents_review',
+  'credentials_created',
+  'course_selection',
+  'payment',
+  'registration_complete',
+  'installment_overdue',
+])
+
+export function shouldShowConditionalTherapyTerm2Notice({
+  studentProfile = null,
+  contextData = {},
+  processCode = null,
+  currentState = null,
+} = {}) {
+  if (currentState === 'result_conditional_therapy') return true
+  if (!isConditionalTherapyAdmission(studentProfile, contextData)) return false
+  if (!processCode || processCode === 'start_therapy') return true
+  if (processCode === 'introductory_course_registration') {
+    return !currentState || INTRO_STATES_AFTER_CONDITIONAL_RESULT.has(currentState)
+  }
+  return false
+}
+
+export function startTherapyAppliesToStudent(studentProfile, ctx = {}) {
+  return !isSingleCourseAdmission(studentProfile, ctx)
+}
 
 export function hasActiveRegistrationProcess(activeProcesses) {
   if (!activeProcesses?.length) return false
@@ -33,8 +116,23 @@ export function resolvePrimaryInstanceId({ studentProfile, instances, activeProc
   )
   if (leaveActive?.instance_id) return leaveActive.instance_id
 
+  const list = instances || []
+  const byId = (id) => list.find((i) => String(i.instance_id) === String(id))
   const primaryRaw = studentProfile?.extra_data?.primary_instance_id
-  if (primaryRaw) return primaryRaw
+  if (primaryRaw) {
+    const primaryInst = byId(primaryRaw)
+    const skipStartTherapyPrimary = primaryInst?.process_code === 'start_therapy' && (
+      isSingleCourseAdmission(studentProfile, primaryInst?.context_data)
+      || (
+        isConditionalTherapyAdmission(studentProfile, primaryInst?.context_data)
+        && !studentProfile?.therapy_started
+        && !studentProfile?.conditional_therapy_start_opted_in
+        && !studentProfile?.extra_data?.conditional_therapy_start_opted_in
+        && primaryInst?.context_data?.source !== 'conditional_therapy_card_ensure'
+      )
+    )
+    if (!skipStartTherapyPrimary) return primaryRaw
+  }
 
   const courseType = studentProfile?.course_type
   const expectedReg = courseType === 'comprehensive'
@@ -135,6 +233,15 @@ export function canStartProcess(processCode, { studentProfile, activeProcesses, 
 
   if (processCode === 'start_therapy' && studentProfile.therapy_started) {
     return { ok: false, reasonFa: 'درمان آموزشی در پروندهٔ شما قبلاً ثبت شده است.' }
+  }
+
+  if (processCode === 'start_therapy') {
+    if (isSingleCourseAdmission(studentProfile)) {
+      return {
+        ok: false,
+        reasonFa: 'پذیرش تک‌درس شامل مسیر آغاز درمان آموزشی نیست.',
+      }
+    }
   }
 
   const ex = studentProfile?.extra_data || {}

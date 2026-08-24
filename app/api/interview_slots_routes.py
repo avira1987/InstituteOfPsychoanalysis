@@ -70,6 +70,18 @@ BOOKING_SLOT_OPS_ROLES = BOOKINGS_ROLES
 OPERATOR_MEETING_VIEW_ROLES = ("admin", "staff", "site_manager", "deputy_education", "interviewer")
 
 
+def _user_has_interviewer_capability(user: User) -> bool:
+    """مصاحبه‌گر یا نقش معادل (مثل faculty_1) — بدون bypass ادمین."""
+    return bool(user) and user_has_role(user, "interviewer", admin_bypass=False)
+
+
+def _restrict_bookings_to_owned_slots(user: User) -> bool:
+    """دفتر همهٔ رزروها را می‌بیند؛ مصاحبه‌گر/هیئت علمی فقط رزروهای خود را."""
+    if user_has_role(user, "admin", "staff", "site_manager", "deputy_education", admin_bypass=False):
+        return False
+    return _user_has_interviewer_capability(user)
+
+
 def _interviewer_owns_slot(user: User, slot: InterviewSlot) -> bool:
     uid = user.id
     if getattr(slot, "interviewer_user_id", None) == uid:
@@ -106,9 +118,9 @@ def _is_interviewer_candidate(user: User) -> bool:
 
 
 def _can_reschedule_booked_slot(user: User, slot: InterviewSlot) -> bool:
-    if user.role in SLOT_DEFINE_ROLES:
+    if _can_define_interview_slots(user):
         return True
-    if user.role == "interviewer":
+    if _user_has_interviewer_capability(user):
         return _interviewer_can_view_booking(user, slot)
     return False
 
@@ -136,7 +148,12 @@ def _meeting_link_for_viewer(slot: InterviewSlot, user: Optional[User]) -> str:
     if user and user.role == "student":
         return student_link
 
-    if user and user.role == "interviewer" and slot.interviewer_user_id == user.id and iv_link:
+    if (
+        user
+        and _user_has_interviewer_capability(user)
+        and slot.interviewer_user_id == user.id
+        and iv_link
+    ):
         return iv_link
 
     if host_link and host_link != student_link:
@@ -161,7 +178,7 @@ def _is_meeting_link_visible_for_user(slot: InterviewSlot, user: Optional[User],
         and getattr(slot, "booking_payment_deadline_at", None) is not None
     ):
         return False
-    if user.role in OPERATOR_MEETING_VIEW_ROLES:
+    if user_has_role(user, *OPERATOR_MEETING_VIEW_ROLES, admin_bypass=False):
         return True
     if user.role == "student":
         if bool(getattr(slot, "student_join_open", False)):
@@ -710,7 +727,7 @@ async def list_booked_slots_with_students(
     name_map = await _interviewer_names_for_slots(db, [slot for slot, *_ in rows])
     out: list[dict] = []
     for slot, student, u, inst in rows:
-        if user.role == "interviewer" and not _interviewer_can_view_booking(user, slot):
+        if _restrict_bookings_to_owned_slots(user) and not _interviewer_can_view_booking(user, slot):
             continue
         result_recorded = await _prepare_slot_meeting_links_for_staff(
             db, slot, viewer=user, instance=inst, log_context="bookings",

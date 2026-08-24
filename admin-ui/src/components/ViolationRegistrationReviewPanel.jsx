@@ -148,6 +148,13 @@ export default function ViolationRegistrationReviewPanel({
           <strong style={{ display: 'block', marginBottom: '0.5rem' }}>خلاصهٔ پرونده</strong>
           <ReadonlyRow label="منبع ارجاع" value={vr.sourceReason} testId="violation-source-reason" />
           <ReadonlyRow label="فرایند مبدأ" value={vr.sourceProcessCode} testId="violation-source-process" />
+          {vr.parentInstanceId && (
+            <ReadonlyRow
+              label="نمونهٔ والد"
+              value={String(vr.parentInstanceId)}
+              testId="violation-parent-instance"
+            />
+          )}
           <ReadonlyRow label="نوع تخلف" value={vr.violationTypeLabel} testId="violation-type" />
           <ReadonlyRow label="شرح تخلف" value={vr.description} testId="violation-description" />
           {vr.meetingAt && (

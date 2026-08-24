@@ -15,6 +15,7 @@ import {
 } from '../utils/processMetadataLabels'
 import TuitionQuoteSummary from './TuitionQuoteSummary'
 import InstituteActivityLicenseNotice from './InstituteActivityLicenseNotice'
+import InstallmentPlanTable from './InstallmentPlanTable'
 
 const PROCESS_TITLE_FA = 'ثبت‌نام ترم دوم دوره آشنایی (فرایند ۳۳)'
 const PROC_CODE = 'intro_second_semester_registration'
@@ -191,6 +192,10 @@ export default function StudentIntroSecondSemesterRegistrationPanel({
 
         {['course_selection', 'payment_method', 'payment_processing', 'installment_overdue'].includes(currentState) && (
           <TuitionQuoteSummary contextData={detail?.context_data || {}} compact={compact} />
+        )}
+
+        {Array.isArray(ctx.installment_plan) && ctx.installment_plan.length > 0 && ['payment_method', 'payment_processing', 'registration_complete', 'installment_overdue'].includes(currentState) && (
+          <InstallmentPlanTable plan={ctx.installment_plan} compact={compact} />
         )}
 
         {currentState === 'installment_overdue' && (

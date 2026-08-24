@@ -862,6 +862,19 @@ async def apply_pre_filled_fields(
         if not out.get("description") and merged.get("description"):
             out["description"] = merged["description"]
 
+    if process_code == "patient_referral":
+        merged = {**context_data, **out}
+        if "referral_patients" in field_names and not out.get("referral_patients"):
+            from app.services.hub_patient_referral import normalize_referral_patients
+
+            rows = normalize_referral_patients(merged.get("referral_patients"))
+            if rows:
+                out["referral_patients"] = rows
+        if "source_process_code" in field_names and not out.get("source_process_code"):
+            out["source_process_code"] = merged.get("source_process_code") or "—"
+        if "source_reason" in field_names and not out.get("source_reason"):
+            out["source_reason"] = merged.get("source_reason") or merged.get("reason") or "—"
+
     return out
 
 

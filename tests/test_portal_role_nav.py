@@ -8,6 +8,11 @@ def test_admin_sees_all_portal_paths():
     assert user_sees_nav_path("admin", "/panel/processes") is True
     assert user_sees_nav_path("admin", staff_lane_path("instruction")) is True
     assert user_sees_nav_path("admin", committee_kind_path("therapy")) is True
+    assert user_sees_nav_path("admin", "/panel/portal/student") is True
+    assert user_sees_nav_path("admin", "/panel/portal/therapist") is True
+    assert user_sees_nav_path("admin", "/panel/portal/supervisor") is True
+    assert user_sees_nav_path("admin", "/panel/portal/interviewer") is True
+    assert user_sees_nav_path("admin", "/panel/portal/site-manager") is True
 
 
 def test_interviewer_sees_admissions_lane_only():

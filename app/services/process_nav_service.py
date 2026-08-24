@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.core.user_roles import operator_portal_roles, primary_role
 from app.meta.operator_state_catalog import normalize_assigned_role
 from app.meta.process_nav_catalog import (
     attach_pending_counts,
@@ -21,13 +22,13 @@ from app.models.operational_models import ProcessInstance, Student, User
 
 async def _pending_by_process_for_operator(
     db: AsyncSession,
-    portal_role: str,
+    user: User,
 ) -> dict[str, int]:
-    from app.services.portal_role_inbox import build_portal_role_process_inbox
+    from app.services.portal_role_inbox import build_user_process_inbox
 
-    inbox = await build_portal_role_process_inbox(
+    inbox = await build_user_process_inbox(
         db,
-        portal_role=portal_role,
+        user,
         process_limit=200,
         scan_cap=2000,
         include_assignments_for_staff=False,
@@ -40,6 +41,19 @@ async def _pending_by_process_for_operator(
         if code:
             counts[code] += 1
     return dict(counts)
+
+
+def _merge_process_nav_catalogs(portal_roles: list[str]) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for role in portal_roles:
+        for row in get_process_nav_catalog_for_portal_role(role):
+            code = (row.get("process_code") or "").strip().lower()
+            if not code or code in seen:
+                continue
+            seen.add(code)
+            merged.append(dict(row))
+    return merged
 
 
 async def _pending_by_process_for_student(db: AsyncSession, user: User) -> dict[str, int]:
@@ -79,15 +93,14 @@ async def _pending_by_process_for_student(db: AsyncSession, user: User) -> dict[
 
 async def build_process_nav_items(db: AsyncSession, user: User) -> dict[str, Any]:
     """فهرست فرایندهای سایدبار برای نقش جاری با شمارش pending."""
-    role = (user.role or "").strip().lower()
-    catalog = get_process_nav_catalog_for_portal_role(role)
-
+    role = primary_role(user)
     if role == "student":
+        catalog = get_process_nav_catalog_for_portal_role("student")
         pending = await _pending_by_process_for_student(db, user)
-    elif role == "finance":
-        pending = {}
     else:
-        pending = await _pending_by_process_for_operator(db, role)
+        op_roles = operator_portal_roles(user) or [role]
+        catalog = _merge_process_nav_catalogs(op_roles)
+        pending = await _pending_by_process_for_operator(db, user)
 
     items = attach_pending_counts(catalog, pending)
     return {

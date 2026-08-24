@@ -91,10 +91,14 @@ async def _students_for_scope(
     student_id: Optional[uuid.UUID] = None,
 ) -> list[Student]:
     if role_scope == "therapist":
-        q = select(Student).where(
-            Student.therapist_id == user.id,
-            Student.therapy_started.is_(True),
-        )
+        # ادمین در پنل درمانگر همهٔ دانشجویان با درمان فعال را می‌بیند، نه فقط منتسب به خودش.
+        if user_has_role(user, "admin", admin_bypass=False):
+            q = select(Student).where(Student.therapy_started.is_(True))
+        else:
+            q = select(Student).where(
+                Student.therapist_id == user.id,
+                Student.therapy_started.is_(True),
+            )
         if student_id:
             q = q.where(Student.id == student_id)
         return list((await db.execute(q.order_by(Student.student_code))).scalars().all())
@@ -473,7 +477,7 @@ async def assert_can_repair_student(
     student = await db.get(Student, student_id)
     if not student:
         raise LookupError("دانشجو یافت نشد.")
-    if user.role == "therapist":
+    if user_has_role(user, "therapist", admin_bypass=False):
         if student.therapist_id != user.id:
             raise PermissionError("این دانشجو به شما منتسب نیست.")
     elif not user_has_role(user, "staff", "site_manager", admin_bypass=True):

@@ -21,6 +21,15 @@ import {
 
 const PAGE = 20
 
+function RowWhen({ iso }) {
+  if (!iso) return null
+  return (
+    <span className="notification-bell-item-when notifications-page-when muted" dir="ltr">
+      {formatShamsiTehran(iso, { includeMonthName: false })}
+    </span>
+  )
+}
+
 function ActionRow({ it, onDismiss }) {
   const group = actionGroupMeta(it)
   return (
@@ -36,6 +45,7 @@ function ActionRow({ it, onDismiss }) {
           {it.summary_fa ? (
             <span className="notifications-page-summary">{it.summary_fa}</span>
           ) : null}
+          <RowWhen iso={it.sort_at} />
         </Link>
         <button
           type="button"
@@ -52,7 +62,6 @@ function ActionRow({ it, onDismiss }) {
 }
 
 function MessageRow({ it, onDismiss }) {
-  const when = it.sort_at ? formatShamsiTehran(it.sort_at) : ''
   const cat = flashCategory(it)
   const badgeLabel = cat === 'system' ? 'سیستم' : 'پاپ‌آپ'
   const badgeClass =
@@ -70,9 +79,7 @@ function MessageRow({ it, onDismiss }) {
           {it.summary_fa ? (
             <span className="notifications-page-summary">{it.summary_fa}</span>
           ) : null}
-          {when ? (
-            <span className="notifications-page-when muted">{when}</span>
-          ) : null}
+          <RowWhen iso={it.sort_at} />
         </div>
         <button
           type="button"

@@ -5,12 +5,14 @@ import { useOperatorProcessGuidance } from '../hooks/useOperatorProcessGuidance'
 export default function OperatorInstanceGuidanceBlock({
   instanceDetail,
   portalRole,
+  user,
   availableTransitions = [],
   stepFormLocked = false,
 }) {
   const { guidance, loading } = useOperatorProcessGuidance({
     instanceDetail,
-    portalRole,
+    portalRole: portalRole || user?.role,
+    user,
     availableTransitions,
     stepFormLocked,
   })

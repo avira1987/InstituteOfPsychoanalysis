@@ -1,9 +1,8 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { fieldVisible, fieldRequired } from '../utils/formConditions'
-import { filterSchemaForRole } from '../utils/unifiedFormValidation'
+import { filterSchemaForRoles } from '../utils/unifiedFormValidation'
 import { resolveUploadPublicUrl, parseStepFileUploadValue } from '../utils/uploadPublicUrl'
-import { studentApi } from '../services/api'
 import EducationalTherapistSlotPicker from './EducationalTherapistSlotPicker'
 import ShamsiDatePicker from './ShamsiDatePicker'
 import ShamsiDateTimePicker from './ShamsiDateTimePicker'
@@ -34,90 +33,12 @@ import {
   isSemesterPrepCalendarDateField,
   semesterPrepCalendarShamsiYearBounds,
 } from '../utils/semesterPrepCalendarValidation'
-
-// انتخاب درمانگر — منبع پویا
-function TherapistSelect({ id, field, value, onChange, disabled }) {
-  const [options, setOptions] = useState([])
-  const [loading, setLoading] = useState(true)
-  useEffect(() => {
-    let active = true
-    studentApi
-      .therapists()
-      .then((res) => active && setOptions(Array.isArray(res.data) ? res.data : []))
-      .catch(() => active && setOptions([]))
-      .finally(() => active && setLoading(false))
-    return () => { active = false }
-  }, [])
-  return (
-    <select
-      id={id}
-      className="form-input psf-input"
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled || loading}
-    >
-      <option value="">{loading ? 'در حال بارگذاری…' : '— انتخاب کنید —'}</option>
-      {options.map((opt) => (
-        <option key={opt.id} value={opt.id}>{opt.label_fa}</option>
-      ))}
-    </select>
-  )
-}
-
-function FileField({ field, value, onChange, disabled, onUploadFile, showToast }) {
-  const parsed = parseStepFileUploadValue(value)
-  const src = parsed.url ? resolveUploadPublicUrl(parsed.url) : ''
-  const showImage = parsed.url && parsed.mime.startsWith('image/')
-  const showPdf = parsed.url && parsed.mime === 'application/pdf'
-  const maxMb = field.validation?.max_size_mb || 8
-
-  const handle = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) { onChange(null); return }
-    if (file.size > maxMb * 1024 * 1024) {
-      showToast?.(`حداکثر حجم فایل ${maxMb} مگابایت است.`, 'error')
-      return
-    }
-    if (typeof onUploadFile === 'function') {
-      try {
-        const result = await onUploadFile(field.name, file)
-        onChange(result)
-      } catch (err) {
-        showToast?.(err?.message || 'خطا در آپلود فایل', 'error')
-      }
-      return
-    }
-    // fallback: base64 درون answers
-    const reader = new FileReader()
-    reader.onload = () => {
-      onChange({
-        file_name: file.name,
-        content_base64: reader.result?.split(',')[1],
-        mime_type: file.type || 'application/octet-stream',
-      })
-    }
-    reader.readAsDataURL(file)
-  }
-
-  return (
-    <div>
-      <input type="file" accept={field.accept || field.validation?.accept || '*/*'} disabled={disabled} onChange={handle} />
-      {showImage && (
-        <div style={{ marginTop: '0.5rem' }}>
-          <a href={src} target="_blank" rel="noopener noreferrer">
-            <img src={src} alt="" style={{ maxWidth: '100%', maxHeight: '140px', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
-          </a>
-        </div>
-      )}
-      {showPdf && (
-        <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline" style={{ marginTop: '0.5rem' }}>باز کردن PDF</a>
-      )}
-      {(parsed.fileName || value?.file_name) && (
-        <span className="psf-file-name" style={{ display: 'block', marginTop: '0.35rem' }}>{parsed.fileName || value.file_name}</span>
-      )}
-    </div>
-  )
-}
+import { formatCourseOptionSpecs } from '../utils/introCourseCatalog'
+import { resolveCheckboxListOptions } from '../utils/resolveCourseFieldOptions'
+import { normalizeFieldType } from '../utils/formFieldTypes'
+import FileField from './fields/FileField'
+import TherapistSelect from './fields/TherapistSelect'
+import { FieldErrorMsg, RequiredMark, fieldShellClass } from './fields/FieldChrome'
 
 function formatRialDisplay(num) {
   if (num === '' || num === undefined || num === null) return ''
@@ -1032,21 +953,8 @@ function DateRangeListField({ value, onChange, disabled, listFieldName = null })
   )
 }
 
-function RequiredMark() {
-  return <span className="psf-required-mark" aria-hidden="true"> *</span>
-}
-
-function FieldErrorMsg({ message }) {
-  if (!message) return null
-  return <p className="psf-field-error-msg" role="alert">{message}</p>
-}
-
-function fieldShellClass(error, base = 'psf-field') {
-  return error ? `${base} psf-field--error` : base
-}
-
-function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, showToast, instanceId = null, fieldError = null, onRosterMemberCreated = null }) {
-  const t = (field.type || 'text').toLowerCase()
+function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, showToast, instanceId = null, fieldError = null, onRosterMemberCreated = null, contextData = null, audience = 'operator', studentUi = null }) {
+  const t = normalizeFieldType(field.type)
   const name = field.name
   const id = `uf-${name}`
   const value = values[name]
@@ -1123,7 +1031,7 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
     return (
       <label className={shellCls} htmlFor={id}>
         {labelEl}
-        <TherapistSelect id={id} field={field} value={value} onChange={onChange} disabled={disabled} />
+        <TherapistSelect id={id} field={field} value={value} onChange={onChange} disabled={disabled} allowManualFallback={audience === 'student' || !!studentUi?.allowTherapistManualFallback} />
         <FieldErrorMsg message={fieldError} />
       </label>
     )
@@ -1163,10 +1071,20 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
   }
 
   if ((t === 'select') && Array.isArray(field.options)) {
+    const handleSelect = (e) => {
+      const raw = e.target.value
+      if (audience === 'student') {
+        const num = raw === '' ? '' : Number(raw)
+        onChange(Number.isNaN(num) ? raw : num)
+      } else {
+        onChange(raw)
+      }
+    }
+    const addon = studentUi?.renderFieldAddon?.(field, { value, values })
     return (
       <label className={shellCls} htmlFor={id} data-testid={fieldTestId}>
         {labelEl}
-        <select id={id} className="psf-input form-input" data-testid={inputTestId} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+        <select id={id} className="psf-input form-input" data-testid={inputTestId} value={value ?? ''} disabled={disabled} onChange={handleSelect}>
           <option value="">— انتخاب کنید —</option>
           {field.options.map((opt) => {
             const v = typeof opt === 'object' ? opt.value : opt
@@ -1174,6 +1092,7 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
             return <option key={String(v)} value={v}>{lab}</option>
           })}
         </select>
+        {addon}
         <FieldErrorMsg message={fieldError} />
       </label>
     )
@@ -1200,54 +1119,78 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
     )
   }
 
-  if (t === 'checkbox_list' && Array.isArray(field.options)) {
-    const selected = Array.isArray(value) ? value : []
-    const maxSel = field.validation?.max_selection ?? field.max_selection
-    const toggle = (v) => {
-      let next = Array.isArray(value) ? [...value] : []
-      if (next.includes(v)) next = next.filter((x) => x !== v)
-      else if (maxSel == null || next.length < maxSel) next = [...next, v]
-      onChange(next)
-    }
-    return (
-      <div className={shellCls}>
-        {labelEl}
-        {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
-        <div className="psf-checkbox-grid" role="group">
-          {field.options.map((opt) => {
-            const v = typeof opt === 'object' ? opt.value : opt
-            let lab = typeof opt === 'object' ? (opt.display_label_fa || opt.label_fa || v) : opt
-            if (typeof opt === 'object' && opt.units != null && !String(lab).includes('واحد')) {
-              const units = Number(opt.units)
-              if (Number.isFinite(units) && units > 0) {
-                lab = `${opt.label_fa || v} — ${units.toLocaleString('fa-IR')} واحد`
-              }
-            }
-            let amountHint = ''
-            if (typeof opt === 'object' && opt.line_amount_rial != null) {
-              const rial = Number(opt.line_amount_rial)
-              if (Number.isFinite(rial) && rial > 0) {
-                amountHint = `${Math.round(rial / 10).toLocaleString('fa-IR')} تومان`
-              }
-            }
-            return (
-              <label key={String(v)} className="psf-check-row" style={{ display: 'flex', gap: '0.35rem', alignItems: 'flex-start' }}>
-                <input type="checkbox" checked={selected.includes(v)} disabled={disabled} onChange={() => toggle(v)} />
-                <span>
-                  {lab}
-                  {amountHint ? (
-                    <span className="muted" style={{ display: 'block', fontSize: '0.78rem', marginTop: '0.1rem' }}>
-                      شهریه این درس: {amountHint}
-                    </span>
-                  ) : null}
-                </span>
-              </label>
-            )
-          })}
+  if (t === 'checkbox_list') {
+    const fromSource = field.source
+      ? resolveCheckboxListOptions(field, contextData || {})
+      : { useFallback: true }
+    const sourceOptions = !fromSource.useFallback && Array.isArray(fromSource.options) ? fromSource.options : null
+    const options = sourceOptions && sourceOptions.length
+      ? sourceOptions
+      : (Array.isArray(field.options) ? field.options : [])
+    if (field.source && !fromSource.useFallback && options.length === 0) {
+      return (
+        <div className={shellCls}>
+          {labelEl}
+          {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
+          <p className="psf-hint psf-hint--warn" style={{ margin: 0, lineHeight: 1.65 }}>
+            {fromSource.hint || 'لیست دروس این ترم هنوز از فرایند آماده‌سازی ترم منتشر نشده است؛ پس از انتشار توسط انستیتو این بخش فعال می‌شود.'}
+          </p>
+          <FieldErrorMsg message={fieldError} />
         </div>
-        <FieldErrorMsg message={fieldError} />
-      </div>
-    )
+      )
+    }
+    if (options.length) {
+      const selected = Array.isArray(value) ? value : []
+      const maxSel = fromSource.maxSelect ?? field.validation?.max_selection ?? field.max_selection ?? field.maxSelect
+      const toggle = (v) => {
+        let next = Array.isArray(value) ? [...value] : []
+        if (next.includes(v)) next = next.filter((x) => x !== v)
+        else if (maxSel == null || next.length < maxSel) next = [...next, v]
+        onChange(next)
+      }
+      return (
+        <div className={shellCls}>
+          {labelEl}
+          {field.note_fa && <p className="psf-hint">{field.note_fa}</p>}
+          {fromSource.hint && <p className="psf-hint psf-hint--warn">{fromSource.hint}</p>}
+          <div className="psf-checkbox-grid" role="group">
+            {options.map((opt) => {
+              const v = typeof opt === 'object' ? opt.value : opt
+              let lab = typeof opt === 'object' ? (opt.display_label_fa || opt.label_fa || v) : opt
+              if (typeof opt === 'object' && opt.units != null && !String(lab).includes('واحد')) {
+                const units = Number(opt.units)
+                if (Number.isFinite(units) && units > 0) {
+                  lab = `${opt.label_fa || v} — ${units.toLocaleString('fa-IR')} واحد`
+                }
+              }
+              let amountHint = ''
+              if (typeof opt === 'object' && opt.line_amount_rial != null) {
+                const rial = Number(opt.line_amount_rial)
+                if (Number.isFinite(rial) && rial > 0) {
+                  amountHint = `${Math.round(rial / 10).toLocaleString('fa-IR')} تومان`
+                }
+              }
+              const specs = typeof opt === 'object' ? formatCourseOptionSpecs(opt) : ''
+              return (
+                <label key={String(v)} className="psf-check-row" style={{ display: 'flex', gap: '0.35rem', alignItems: 'flex-start' }}>
+                  <input type="checkbox" checked={selected.includes(v)} disabled={disabled} onChange={() => toggle(v)} />
+                  <span>
+                    {lab}
+                    {specs ? <span className="psf-course-specs">{specs}</span> : null}
+                    {amountHint ? (
+                      <span className="muted" style={{ display: 'block', fontSize: '0.78rem', marginTop: '0.1rem' }}>
+                        شهریه این درس: {amountHint}
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+          <FieldErrorMsg message={fieldError} />
+        </div>
+      )
+    }
   }
 
   if (t === 'number') {
@@ -1284,7 +1227,7 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
     return (
       <div className={shellCls}>
         <label className="psf-check" style={{ display: 'flex', gap: '0.4rem' }}>
-          <input type="checkbox" checked={!!value} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+          <input type="checkbox" checked={(studentUi?.forceChecked && studentUi.forceChecked[name]) ? true : !!value} disabled={disabled || !!(studentUi?.forceChecked && studentUi.forceChecked[name])} onChange={(e) => { if (!(studentUi?.forceChecked && studentUi.forceChecked[name])) onChange(e.target.checked) }} />
           {href ? (
             <span>
               {isExternal
@@ -1305,7 +1248,10 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
     return (
       <div className={shellCls}>
         {labelEl}
-        <FileField field={field} value={value} onChange={onChange} disabled={disabled} onUploadFile={onUploadFile} showToast={showToast} />
+        <FileField field={field} value={value} onChange={onChange} disabled={disabled || !!studentUi?.fileUploadBlocked} onUploadFile={onUploadFile} showToast={showToast} previewMode={studentUi?.previewMode || (audience === 'student' ? 'lightbox' : 'link')} />
+        {studentUi?.rejectionNotes?.[name] ? (
+          <p className="psf-hint psf-hint--warn">{studentUi.rejectionNotes[name]}</p>
+        ) : null}
         <FieldErrorMsg message={fieldError} />
       </div>
     )
@@ -1359,6 +1305,7 @@ function UnifiedField({ field, values, onFieldChange, disabled, onUploadFile, sh
         required={!!field.required}
         verified={!!values?.step_otp_verified}
         onVerifiedChange={(v) => onFieldChange('step_otp_verified', v)}
+        autoRequest={!!studentUi?.autoRequestOtp}
       />
     )
   }
@@ -1427,8 +1374,10 @@ export default function UnifiedFormRenderer({
   schemaJson,
   values,
   onChange,
+  onFieldChange = null,
   disabled,
   role,
+  roles,
   onUploadFile,
   showToast,
   /**
@@ -1441,8 +1390,18 @@ export default function UnifiedFormRenderer({
   fieldErrors = null,
   /** پس از افزودن مدرس/کمک‌مدرس جدید — برای همگام‌سازی همهٔ کشویی‌ها */
   onRosterMemberCreated = null,
+  contextData = null,
+  audience = 'operator',
+  studentUi = null,
 }) {
-  const filtered = useMemo(() => filterSchemaForRole(schemaJson || { fields: [] }, role), [schemaJson, role])
+  const filterRoles = useMemo(() => {
+    if (Array.isArray(roles) && roles.length) return roles
+    return role ? [role] : []
+  }, [role, roles])
+  const filtered = useMemo(
+    () => filterSchemaForRoles(schemaJson || { fields: [] }, filterRoles),
+    [schemaJson, filterRoles],
+  )
   const fields = filtered.fields || []
 
   const editableSet = useMemo(() => {
@@ -1451,8 +1410,14 @@ export default function UnifiedFormRenderer({
   }, [editableFieldNames])
 
   const setVal = useCallback(
-    (name, v) => onChange({ ...values, [name]: v }),
-    [values, onChange],
+    (name, v) => {
+      if (typeof onFieldChange === 'function') {
+        onFieldChange(name, v)
+        return
+      }
+      onChange?.({ ...values, [name]: v })
+    },
+    [onFieldChange, onChange, values],
   )
 
   return (
@@ -1462,7 +1427,25 @@ export default function UnifiedFormRenderer({
     >
       {fields.map((field) => {
         if (!field?.name) return null
-        if (!fieldVisible(field, values)) return null
+        const visible = fieldVisible(field, values)
+        if (!visible) {
+          if (
+            audience === 'student'
+            && normalizeFieldType(field.type) === 'select'
+            && Array.isArray(field.options)
+            && (field.show_if || field.visible_when || field.visible_if)
+          ) {
+            return (
+              <label key={field.name} className="psf-field" htmlFor={`uf-${field.name}`}>
+                <span className="psf-label">{field.label_fa || field.name}</span>
+                <select id={`uf-${field.name}`} className="psf-input" value="" disabled aria-disabled="true">
+                  <option value="">— انتخاب کنید —</option>
+                </select>
+              </label>
+            )
+          }
+          return null
+        }
         const fieldDisabled = disabled || (editableSet ? !editableSet.has(field.name) : false)
         const fieldError = fieldErrors?.[field.name] || null
         return (
@@ -1477,6 +1460,9 @@ export default function UnifiedFormRenderer({
             instanceId={instanceId}
             fieldError={fieldError}
             onRosterMemberCreated={onRosterMemberCreated}
+            contextData={contextData}
+            audience={audience}
+            studentUi={studentUi}
           />
         )
       })}

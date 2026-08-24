@@ -91,6 +91,57 @@ def _expanded_roles(have: set[str]) -> set[str]:
     return out
 
 
+def expanded_user_roles(user: Any) -> set[str]:
+    """نقش‌های ذخیره‌شده به‌علاوه implied (مثلاً faculty_1 → supervisor)."""
+    return _expanded_roles(set(normalize_user_roles(user)))
+
+
+def ordered_actor_roles(user: Any) -> list[str]:
+    """نقش‌های قابل‌اقدام: اول primary، بعد بقیهٔ ذخیره‌شده، بعد implied؛ بدون تکرار."""
+    stored = normalize_user_roles(user)
+    prim = primary_role(user)
+    ordered: list[str] = []
+    seen: set[str] = set()
+
+    def _add(code: str | None) -> None:
+        n = normalize_role_code(code)
+        if not n or n in seen:
+            return
+        seen.add(n)
+        ordered.append(n)
+
+    _add(prim)
+    for code in stored:
+        _add(code)
+    for code in list(ordered):
+        for implied in sorted(_ROLE_IMPLIES.get(code, frozenset())):
+            _add(implied)
+    return ordered
+
+
+def candidate_actor_roles(actor_role: str | None, user: Any | None) -> list[str]:
+    """نقش‌هایی که موتور برای RBAC امتحان می‌کند. system و نبود User: همان رشته."""
+    hint = normalize_role_code(actor_role) if actor_role else ""
+    if not hint and actor_role:
+        hint = str(actor_role).strip()
+    if hint == "system" or user is None:
+        return [hint or (actor_role or "").strip() or "student"]
+    ordered = ordered_actor_roles(user)
+    if hint and hint not in ordered:
+        ordered.append(hint)
+    return ordered or [hint or "student"]
+
+
+_STUDENT_PORTAL_ROLES = frozenset({"student", "applicant"})
+
+
+def operator_portal_roles(user: Any) -> list[str]:
+    """نقش‌های عملیاتی برای کارتابل/آمادگی؛ primary دانشجو → خالی."""
+    if primary_role(user) == "student":
+        return []
+    return [c for c in ordered_actor_roles(user) if c not in _STUDENT_PORTAL_ROLES]
+
+
 def user_has_role(user: Any, *codes: str, admin_bypass: bool = True) -> bool:
     """آیا کاربر حداقل یکی از نقش‌های داده‌شده را دارد؟"""
     needed = {normalize_role_code(c) for c in codes if c}

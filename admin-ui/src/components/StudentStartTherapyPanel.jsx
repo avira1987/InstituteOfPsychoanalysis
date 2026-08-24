@@ -5,6 +5,11 @@ import {
   PROCESS_STUDENT_TASK_LABELS_FA,
   PROCESS_STATE_LABELS_FA,
 } from '../utils/processMetadataLabels'
+import {
+  isSingleCourseAdmission,
+  isConditionalTherapyAdmission,
+  CONDITIONAL_THERAPY_TERM2_NOTICE_FA,
+} from '../utils/studentProcessAccess'
 
 const PROCESS_TITLE_FA = 'آغاز درمان آموزشی'
 const PROC_CODE = 'start_therapy'
@@ -86,6 +91,28 @@ export default function StudentStartTherapyPanel({
   const statusShort = (PROCESS_STATE_LABELS_FA[PROC_CODE]?.[currentState] || labelState(currentState)) ?? ''
   const isComplete = currentState === 'therapy_active'
   const isBlocked = currentState === 'week9_blocked'
+  const singleCourse = isSingleCourseAdmission(studentProfile, ctx)
+  const isConditional = isConditionalTherapyAdmission(studentProfile, ctx)
+
+  if (singleCourse) {
+    return (
+      <div
+        className="card"
+        data-testid="student-start-therapy-panel-single-course"
+        style={{ marginBottom: compact ? '0.75rem' : '1.25rem' }}
+      >
+        <div className="card-header">
+          <h3 className="card-title">{PROCESS_TITLE_FA}</h3>
+        </div>
+        <div style={{ padding: compact ? '0 0.75rem 0.75rem' : '0 1rem 1rem' }}>
+          <p className="psf-hint psf-hint--warn">
+            پذیرش شما به‌صورت تک‌درس است و برنامهٔ شروع درمان آموزشی برای این نوع پذیرش موضوعیت ندارد.
+            این فرم را تکمیل نکنید؛ مسیر شما از پنل دروس و کلاس‌ها ادامه دارد.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -111,22 +138,26 @@ export default function StudentStartTherapyPanel({
           </p>
         )}
 
-        {(studentProfile?.admission_type === 'conditional_therapy'
-          || studentProfile?.extra_data?.admission_type === 'conditional_therapy'
-          || ctx.admission_type === 'conditional_therapy') && !isComplete && (
+        {(isConditional) && !isComplete && (
           <p
             className="psf-hint psf-hint--warn"
             data-testid="start-therapy-conditional-banner"
             style={{ marginBottom: '0.75rem' }}
           >
-            پذیرش شما مشروط به آغاز درمان آموزشی است. تکمیل این فرایند تا قبل از آغاز ترم دوم الزامی است؛
-            در غیر این صورت ثبت‌نام ترم دوم برای شما باز نمی‌شود.
+            {CONDITIONAL_THERAPY_TERM2_NOTICE_FA}
           </p>
         )}
 
-        {isBlocked && (
+        {isBlocked && courseType === 'comprehensive' && (
           <p className="psf-hint psf-hint--warn">
             دسترسی کلاس‌های آنلاین و حضور/غیاب به‌دلیل عدم آغاز درمان تا هفتهٔ نهم مسدود شده است.
+            با تکمیل انتخاب درمانگر و پرداخت جلسهٔ اول، محدودیت‌ها رفع می‌شود.
+          </p>
+        )}
+
+        {isBlocked && courseType !== 'comprehensive' && (
+          <p className="psf-hint psf-hint--warn">
+            شما درمانگر فعالی ندارید و امکان ثبت‌نام شما برای ترم دوم ممکن نیست.
             با تکمیل انتخاب درمانگر و پرداخت جلسهٔ اول، محدودیت‌ها رفع می‌شود.
           </p>
         )}

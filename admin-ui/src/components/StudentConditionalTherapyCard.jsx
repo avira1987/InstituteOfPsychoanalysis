@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { studentApi } from '../services/api'
+import { CONDITIONAL_THERAPY_TERM2_NOTICE_FA } from '../utils/studentProcessAccess'
 
 /**
  * کارت داشبورد برای دانشجوی پذیرش مشروط — ensure/ادامهٔ فرایند آغاز درمان آموزشی.
@@ -16,7 +17,7 @@ export default function StudentConditionalTherapyCard({
 
   const hint =
     studentProfile?.therapy_deadline_hint_fa
-    || 'پذیرش شما مشروط به آغاز درمان آموزشی است. تا قبل از آغاز ترم دوم باید این فرایند را تکمیل کنید؛ در غیر این صورت ثبت‌نام ترم دوم باز نمی‌شود.'
+    || CONDITIONAL_THERAPY_TERM2_NOTICE_FA
 
   const hasActiveTherapyPrimary =
     studentProfile?.extra_data?.primary_instance_id

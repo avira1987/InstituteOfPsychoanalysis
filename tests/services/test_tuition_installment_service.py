@@ -99,3 +99,37 @@ def test_mark_installment_paid_advances_payable():
     assert payable == 400_000
     assert idx == 2
     assert ctx["pending_installments_remaining"] == 2
+
+
+def test_cash_mark_paid_keeps_plan_settled():
+    ctx = apply_tuition_payment_context(
+        {
+            "tuition_total_rial": 700_000,
+            "payment_method": "cash",
+        }
+    )
+    assert ctx["installment_plan"][0]["status"] == "pending"
+    ctx = mark_installment_paid(ctx, "cash-ref", 700_000)
+    assert ctx["installment_plan"][0]["status"] == "paid"
+    assert ctx["pending_installments_remaining"] == 0
+    assert ctx.get("next_installment_due_at") is None
+
+
+def test_installment_sms_still_owed_false_for_cash():
+    from app.services.tuition_installment_service import installment_sms_still_owed
+
+    assert installment_sms_still_owed({"payment_method": "cash", "pending_installments_remaining": 0}) is False
+    assert installment_sms_still_owed(
+        {
+            "payment_method": "installment",
+            "pending_installments_remaining": 2,
+            "installment_plan": [{"status": "paid"}, {"status": "pending"}],
+        }
+    ) is True
+    assert installment_sms_still_owed(
+        {
+            "payment_method": "installment",
+            "pending_installments_remaining": 0,
+            "installment_plan": [{"status": "paid"}],
+        }
+    ) is False

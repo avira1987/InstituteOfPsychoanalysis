@@ -17,22 +17,29 @@
 
 ### نصب روی هاست
 
+پنل ادمین (`/panel/backups`) **فقط پوشه‌های تاریخ‌دار** را نشان می‌دهد:
+
+```text
+/var/backups/anistito/YYYY-MM-DD/{db.dump, uploads.tar.gz, manifest.json}
+```
+
+فایل‌های تکی مثل `pre_deploy_*.dump` در همان پوشه در فهرست پنل ظاهر نمی‌شوند.
+
+بکاپ روزانه **خودکار داخل کانتینر API اجرا نمی‌شود**؛ باید cron روی خود هاست نصب شود.
+اسکریپت `scripts/install_backup_cron.sh` این کار را انجام می‌دهد (و از دیپلوی `deploy_to_host.py` هم صدا زده می‌شود).
+
 ```bash
 sudo mkdir -p /var/backups/anistito
 sudo chmod 755 /var/backups/anistito
 
-# کپی/لینک اسکریپت کنار دیپلوی (مثال مسیر پروژه روی سرور)
-# /opt/anistito/scripts/backup_daily.sh باید executable باشد
-chmod +x /opt/anistito/scripts/backup_daily.sh
+# نصب/تازه‌سازی cron ساعت ۰۴:۰۰ UTC (۰۷:۳۰ ایران)
+sudo /opt/anistito/scripts/install_backup_cron.sh
 
-# یک‌بار تست دستی
+# یک‌بار تست دستی — پس از موفقیت، تاریخ امروز در پنل ثبت می‌شود
 sudo BACKUP_ROOT=/var/backups/anistito /opt/anistito/scripts/backup_daily.sh
-
-# cron روزانه ساعت ۴ صبح (زمان محلی هاست)
-sudo crontab -e
-# این خط را اضافه کنید:
-# 0 4 * * * /opt/anistito/scripts/backup_daily.sh >> /var/log/anistito-backup.log 2>&1
 ```
+
+لاگ اجرا: `/var/log/anistito-backup.log`
 
 در `docker-compose.prod.yml` پوشهٔ هاست به‌صورت فقط‌خواندنی به API مانت می‌شود:
 

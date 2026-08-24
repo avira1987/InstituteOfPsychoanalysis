@@ -15,6 +15,7 @@ import {
 } from '../utils/comprehensiveTermStartDisplay'
 import TuitionQuoteSummary from './TuitionQuoteSummary'
 import InstituteActivityLicenseNotice from './InstituteActivityLicenseNotice'
+import InstallmentPlanTable from './InstallmentPlanTable'
 
 const PROCESS_TITLE_FA = 'آغاز ترم‌های دوره جامع (فرایند ۴۰)'
 const PROC_CODE = 'comprehensive_term_start'
@@ -210,6 +211,10 @@ export default function StudentComprehensiveTermStartPanel({
 
         {['course_display', 'payment_choice', 'payment_processing', 'installment_overdue'].includes(currentState) && (
           <TuitionQuoteSummary contextData={ctx} compact={compact} />
+        )}
+
+        {Array.isArray(ctx.installment_plan) && ctx.installment_plan.length > 0 && ['payment_choice', 'payment_processing', 'registration_complete', 'installment_overdue'].includes(currentState) && (
+          <InstallmentPlanTable plan={ctx.installment_plan} compact={compact} />
         )}
 
         {showCourses && (

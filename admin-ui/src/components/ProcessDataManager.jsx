@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { processExecApi } from '../services/api'
 import UnifiedFormRenderer from './UnifiedFormRenderer'
 import { validateSemesterPrepCalendarDates } from '../utils/semesterPrepCalendarValidation'
+import { formRolesForUser } from '../utils/portalRoleAccess'
 
 /**
  * لایهٔ عمومی متادیتا-محور برای «مشاهده + ویرایش/به‌روزرسانی دادهٔ ثبت‌شدهٔ فرایند».
@@ -13,6 +14,8 @@ import { validateSemesterPrepCalendarDates } from '../utils/semesterPrepCalendar
 export default function ProcessDataManager({
   instanceId,
   role,
+  roles,
+  user,
   showToast,
   onUpdated,
   title = 'دادهٔ ثبت‌شدهٔ پرونده',
@@ -26,6 +29,10 @@ export default function ProcessDataManager({
   const [reason, setReason] = useState('')
   const [editing, setEditing] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
+  const formRoles = useMemo(
+    () => (Array.isArray(roles) && roles.length ? roles : formRolesForUser(user, role)),
+    [roles, user, role],
+  )
 
   const load = useCallback(() => {
     if (!instanceId) return
@@ -163,7 +170,8 @@ export default function ProcessDataManager({
               setValues(next)
               setFieldErrors({})
             }}
-            role={role}
+            role={formRoles[0] || role}
+            roles={formRoles}
             disabled={!editing}
             editableFieldNames={editing ? editableSet : new Set()}
             fieldErrors={fieldErrors}

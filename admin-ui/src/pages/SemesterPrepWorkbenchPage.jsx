@@ -15,7 +15,8 @@ import {
   SEMESTER_PREP_CODES,
   useSemesterPrepWorkbench,
 } from '../hooks/useSemesterPrepWorkbench'
-import { portalRoleCanActOnState } from '../utils/portalRoleAccess'
+import { anyPortalRoleCanActOnState, formRolesForUser } from '../utils/portalRoleAccess'
+import { effectiveSemesterPrepAssignedRole } from '../utils/semesterPrepRoles'
 import { userHasAnyRole, userHasRole } from '../utils/userRoles'
 import { OVERRIDE_ROLES } from '../utils/processRollbackUtils'
 import { contextHasOutlierCalendarDates } from '../utils/semesterPrepCalendarValidation'
@@ -126,6 +127,18 @@ export default function SemesterPrepWorkbenchPage() {
       warningRecipientsFa: entry.sla_warning_recipients_fa || [],
     }
   }, [entry, currentState])
+
+  const lockAssignedRole = effectiveSemesterPrepAssignedRole(
+    resolvedCode,
+    currentState,
+    entry?.assigned_role,
+  )
+  const formRoles = formRolesForUser(user, user?.role)
+  const stepFormLocked = !!(
+    formRoles.length
+    && lockAssignedRole
+    && !anyPortalRoleCanActOnState(formRoles, lockAssignedRole)
+  )
 
   const isPublished = currentState === 'published'
 
@@ -357,11 +370,10 @@ export default function SemesterPrepWorkbenchPage() {
 
           <OperatorInstanceGuidanceBlock
             instanceDetail={instanceDetail}
+            user={user}
             portalRole={user?.role}
             availableTransitions={actionTransitions}
-            stepFormLocked={
-              !!(user?.role && entry?.assigned_role && !portalRoleCanActOnState(user.role, entry.assigned_role))
-            }
+            stepFormLocked={stepFormLocked}
           />
 
           {showCalendarCorrection ? (
@@ -385,6 +397,7 @@ export default function SemesterPrepWorkbenchPage() {
               ) : null}
               <ProcessDataManager
                 instanceId={instanceId}
+                user={user}
                 role={user?.role}
                 stateCode="calendar_entry"
                 title="ویرایش تقویم آموزشی (پاییز و زمستان)"
@@ -402,6 +415,7 @@ export default function SemesterPrepWorkbenchPage() {
             isCompleted={instanceDetail?.is_completed}
             isCancelled={instanceDetail?.is_cancelled}
             role={user?.role}
+            user={user}
             stateAssignedRole={entry?.assigned_role}
             showToast={showToast}
             onUpdated={handleFormsUpdated}
@@ -459,11 +473,10 @@ export default function SemesterPrepWorkbenchPage() {
         <>
           <OperatorInstanceGuidanceBlock
             instanceDetail={instanceDetail}
+            user={user}
             portalRole={user?.role}
             availableTransitions={actionTransitions}
-            stepFormLocked={
-              !!(user?.role && entry?.assigned_role && !portalRoleCanActOnState(user.role, entry.assigned_role))
-            }
+            stepFormLocked={stepFormLocked}
           />
 
           <OperatorStepFormsSection
@@ -474,6 +487,7 @@ export default function SemesterPrepWorkbenchPage() {
             isCompleted={instanceDetail?.is_completed}
             isCancelled={instanceDetail?.is_cancelled}
             role={user?.role}
+            user={user}
             stateAssignedRole={entry?.assigned_role}
             showToast={showToast}
             onUpdated={handleFormsUpdated}

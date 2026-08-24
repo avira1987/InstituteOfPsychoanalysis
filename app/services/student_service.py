@@ -11,7 +11,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.engine import StateMachineEngine
 from app.meta.loader import MetadataLoader
-from app.models.operational_models import ProcessInstance, Student, TherapySession, User
+from app.models.operational_models import ProcessInstance, StateHistory, Student, TherapySession, User
 from app.services.process_service import ProcessService
 from app.services.student_tracker_summary import build_roadmap_states
 
@@ -467,14 +467,175 @@ class StudentService:
         )
         return None
 
+    async def hydrate_admission_type(self, student: Student) -> bool:
+        """اگر extra_data نوع پذیرش ندارد — یا تک‌درس در ثبت‌نام است و extra چیز دیگری است — همگام کن."""
+        from app.services.admission_type_service import (
+            ADMISSION_SINGLE_COURSE,
+            admission_type_from_result_state,
+            persist_admission_type_on_student,
+            resolve_admission_type_from_context,
+            normalize_admission_type,
+        )
+
+        extra = StateMachineEngine._as_mapping(student.extra_data)
+        current = normalize_admission_type(extra.get("admission_type"))
+
+        stmt = (
+            select(ProcessInstance)
+            .where(
+                ProcessInstance.student_id == student.id,
+                ProcessInstance.process_code == "introductory_course_registration",
+            )
+            .order_by(ProcessInstance.started_at.desc())
+            .limit(1)
+        )
+        reg = (await self.db.execute(stmt)).scalars().first()
+        if not reg:
+            return False
+
+        ctx = StateMachineEngine._as_mapping(reg.context_data)
+        from_ctx = resolve_admission_type_from_context(ctx)
+        result_state = None
+        hist = (
+            await self.db.execute(
+                select(StateHistory)
+                .where(StateHistory.instance_id == reg.id)
+                .order_by(StateHistory.entered_at.desc())
+            )
+        ).scalars().all()
+        for row in hist:
+            found = admission_type_from_result_state(row.to_state_code)
+            if found:
+                result_state = row.to_state_code
+                break
+        derived = from_ctx or admission_type_from_result_state(
+            result_state or reg.current_state_code
+        )
+        should_write = False
+        if derived == ADMISSION_SINGLE_COURSE and current != ADMISSION_SINGLE_COURSE:
+            should_write = True
+        elif current is None and derived:
+            should_write = True
+        if not should_write:
+            return False
+
+        canonical = persist_admission_type_on_student(
+            student,
+            admission_type=derived,
+            interview_result=ctx.get("interview_result") or ctx.get("result"),
+            result_state=result_state or reg.current_state_code,
+        )
+        return bool(canonical)
+
+    async def reconcile_start_therapy_for_admission(self, student: Student) -> bool:
+        """نمونهٔ start_therapy را با نوع پذیرش هم‌تراز کن.
+
+        تک‌درس: نمونهٔ فعال لغو می‌شود و از مسیر اصلی برداشته می‌شود.
+        مشروط: تا وقتی دانشجو از کارت اختیاری شروع نکرده، primary به درمان نمی‌چسبد.
+        """
+        from app.services.admission_type_service import (
+            ADMISSION_CONDITIONAL_THERAPY,
+            ADMISSION_SINGLE_COURSE,
+            SINGLE_COURSE_NO_START_THERAPY_FA,
+            normalize_admission_type,
+        )
+
+        changed = await self.hydrate_admission_type(student)
+        extra = dict(StateMachineEngine._as_mapping(student.extra_data))
+        admission = normalize_admission_type(extra.get("admission_type"))
+
+        stmt = select(ProcessInstance).where(
+            ProcessInstance.student_id == student.id,
+            ProcessInstance.process_code == "start_therapy",
+            ProcessInstance.is_completed == False,
+            ProcessInstance.is_cancelled == False,
+        )
+        active_rows = list((await self.db.execute(stmt)).scalars().all())
+        pid_raw = extra.get("primary_instance_id")
+
+        def _lookup_uuid(raw):
+            try:
+                return uuid.UUID(str(raw))
+            except (TypeError, ValueError):
+                return None
+
+        if admission == ADMISSION_SINGLE_COURSE:
+            now = datetime.now(timezone.utc)
+            for inst in active_rows:
+                live = inst
+                if live.current_state_code == "eligibility_check":
+                    actor_id = await self._resolve_system_actor_id(live.started_by)
+                    await self._advance_start_therapy_eligibility(live.id, actor_id)
+                    live = await StateMachineEngine(self.db).get_process_instance(live.id)
+                if (
+                    live
+                    and not live.is_completed
+                    and not live.is_cancelled
+                    and live.current_state_code not in self._START_THERAPY_TERMINAL
+                ):
+                    ctx = dict(StateMachineEngine._as_mapping(live.context_data))
+                    ctx["cancelled_reason"] = "single_course_admission"
+                    ctx["student_next_action_fa"] = SINGLE_COURSE_NO_START_THERAPY_FA
+                    live.is_cancelled = True
+                    live.last_transition_at = now
+                    live.context_data = ctx
+                    flag_modified(live, "context_data")
+                    changed = True
+                if pid_raw and live and str(pid_raw) == str(live.id):
+                    extra.pop("primary_instance_id", None)
+                    pid_raw = None
+                    changed = True
+            if changed:
+                student.extra_data = extra
+                flag_modified(student, "extra_data")
+            return changed
+
+        if admission == ADMISSION_CONDITIONAL_THERAPY and not extra.get(
+            "conditional_therapy_start_opted_in"
+        ):
+            if pid_raw:
+                primary_inst = next(
+                    (i for i in active_rows if str(i.id) == str(pid_raw)),
+                    None,
+                )
+                if primary_inst is None:
+                    uid = _lookup_uuid(pid_raw)
+                    if uid is not None:
+                        primary_inst = (
+                            await self.db.execute(
+                                select(ProcessInstance).where(ProcessInstance.id == uid)
+                            )
+                        ).scalars().first()
+                src = ""
+                if primary_inst is not None:
+                    src = str(
+                        StateMachineEngine._as_mapping(primary_inst.context_data).get("source") or ""
+                    )
+                if (
+                    primary_inst is not None
+                    and primary_inst.process_code == "start_therapy"
+                    and src != "conditional_therapy_card_ensure"
+                ):
+                    extra.pop("primary_instance_id", None)
+                    student.extra_data = extra
+                    flag_modified(student, "extra_data")
+                    changed = True
+            return changed
+
+        return changed
+
     async def maybe_start_followup_after_intro_registration(
         self,
         registration_instance: ProcessInstance,
     ) -> None:
         """
-        پس از تکمیل ثبت‌نام دوره آشنایی (registration_complete)، فرایند «آغاز درمان آموزشی»
-        را در صورت نبودن نمونهٔ فعال باز می‌کند، از مرحلهٔ بررسی صلاحیت عبور می‌دهد
-        و primary_instance_id دانشجو را به آن نمونه می‌چسباند تا مسیر اصلی پورتال ادامه داشته باشد.
+        پس از تکمیل ثبت‌نام دوره آشنایی (registration_complete):
+
+        - تک‌درس: مسیر درمان موضوعیت ندارد — start_therapy ساخته نمی‌شود.
+        - مشروط به درمان: درمان الان اجباری نیست؛ فقط یادآوری مهلت ترم دوم (SMS/hint).
+          دانشجو از کارت اختیاری ensure می‌تواند start_therapy را شروع کند.
+        - پذیرش کامل: فرایند «آغاز درمان آموزشی» را در صورت نبودن نمونهٔ فعال باز می‌کند،
+          از مرحلهٔ بررسی صلاحیت عبور می‌دهد و primary_instance_id را می‌چسباند.
         """
         if registration_instance.process_code != "introductory_course_registration":
             return
@@ -483,12 +644,68 @@ class StudentService:
         if not registration_instance.is_completed:
             return
 
+        from app.services.admission_type_service import (
+            ADMISSION_CONDITIONAL_THERAPY,
+            ADMISSION_SINGLE_COURSE,
+            CONDITIONAL_THERAPY_TERM2_NOTICE_FA,
+            normalize_admission_type,
+            persist_admission_type_on_student,
+            resolve_admission_type_from_context,
+            should_auto_start_educational_therapy,
+        )
+
         stmt = select(Student).where(Student.id == registration_instance.student_id)
         result = await self.db.execute(stmt)
         student = result.scalars().first()
         if not student:
             return
 
+        ctx = dict(StateMachineEngine._as_mapping(registration_instance.context_data))
+        extra = StateMachineEngine._as_mapping(student.extra_data)
+        admission = (
+            normalize_admission_type(extra.get("admission_type"))
+            or resolve_admission_type_from_context(ctx)
+        )
+        if admission:
+            persist_admission_type_on_student(
+                student,
+                admission_type=admission,
+                interview_result=ctx.get("interview_result") or admission,
+            )
+        else:
+            await self.hydrate_admission_type(student)
+            extra = StateMachineEngine._as_mapping(student.extra_data)
+            admission = normalize_admission_type(extra.get("admission_type"))
+
+        # —— تک‌درس: بدون مسیر درمان ——
+        if admission == ADMISSION_SINGLE_COURSE:
+            reg_ctx = dict(ctx)
+            reg_ctx["intro_registration_next_step_fa"] = (
+                "ثبت‌نام دوره آشنایی تکمیل شد. پذیرش شما تک‌درس است و مسیر "
+                "آغاز درمان آموزشی برای شما فعال نمی‌شود؛ ادامه از پنل دروس و کلاس‌ها."
+            )
+            registration_instance.context_data = reg_ctx
+            flag_modified(registration_instance, "context_data")
+            await self.reconcile_start_therapy_for_admission(student)
+            return
+
+        # —— مشروط: یادآوری مهلت بدون اجبار start_therapy / دزدیدن primary ——
+        if admission == ADMISSION_CONDITIONAL_THERAPY:
+            reg_ctx = dict(ctx)
+            reg_ctx["intro_registration_next_step_fa"] = CONDITIONAL_THERAPY_TERM2_NOTICE_FA
+            registration_instance.context_data = reg_ctx
+            flag_modified(registration_instance, "context_data")
+            await self._notify_conditional_therapy_deadline_after_registration(
+                student, registration_instance
+            )
+            await self.reconcile_start_therapy_for_admission(student)
+            return
+
+        if not should_auto_start_educational_therapy(admission, student.course_type):
+            await self.reconcile_start_therapy_for_admission(student)
+            return
+
+        # —— پذیرش کامل: زنجیرهٔ فعلی start_therapy ——
         stmt = select(ProcessInstance).where(
             ProcessInstance.student_id == student.id,
             ProcessInstance.process_code == "start_therapy",
@@ -524,7 +741,6 @@ class StudentService:
             )
             return
 
-        ctx = dict(StateMachineEngine._as_mapping(registration_instance.context_data))
         initial = {
             "parent_registration_instance_id": str(registration_instance.id),
             "source": "after_introductory_registration_complete",
@@ -628,6 +844,12 @@ class StudentService:
         student.extra_data = extra
         flag_modified(student, "extra_data")
 
+    def _mark_conditional_therapy_opted_in(self, student: Student) -> None:
+        extra = dict(StateMachineEngine._as_mapping(student.extra_data))
+        extra["conditional_therapy_start_opted_in"] = True
+        student.extra_data = extra
+        flag_modified(student, "extra_data")
+
     async def ensure_conditional_start_therapy(
         self,
         student: Student,
@@ -644,6 +866,10 @@ class StudentService:
 
         extra = StateMachineEngine._as_mapping(student.extra_data)
         admission = normalize_admission_type(extra.get("admission_type"))
+        if admission != ADMISSION_CONDITIONAL_THERAPY:
+            await self.hydrate_admission_type(student)
+            extra = StateMachineEngine._as_mapping(student.extra_data)
+            admission = normalize_admission_type(extra.get("admission_type"))
         if admission != ADMISSION_CONDITIONAL_THERAPY:
             # try recover from latest intro registration context
             stmt = (
@@ -686,6 +912,7 @@ class StudentService:
                 await self._advance_start_therapy_eligibility(active.id, actor_id)
                 active = await StateMachineEngine(self.db).get_process_instance(active.id)
             await self.set_primary_instance_for_student(student, active.id)
+            self._mark_conditional_therapy_opted_in(student)
             return {
                 "ok": True,
                 "already_existed": True,
@@ -720,6 +947,7 @@ class StudentService:
         await self._advance_start_therapy_eligibility(sub.id, actor_id)
         sub = await StateMachineEngine(self.db).get_process_instance(sub.id)
         await self.set_primary_instance_for_student(student, sub.id)
+        self._mark_conditional_therapy_opted_in(student)
         return {
             "ok": True,
             "already_existed": False,

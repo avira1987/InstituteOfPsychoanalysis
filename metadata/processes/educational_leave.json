@@ -325,7 +325,11 @@
         },
         {
           "type": "start_process",
-          "process_code": "patient_referral"
+          "process_code": "patient_referral",
+          "payload": {
+            "reason": "educational_leave_intern_2term",
+            "leave_terms": 2
+          }
         },
         {
           "type": "notification",

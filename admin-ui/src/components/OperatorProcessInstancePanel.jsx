@@ -4,7 +4,6 @@ import { notesPayload } from '../utils/decisionPayload'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
 import { operatorDocumentReviewToastFa } from '../utils/documentReviewStates'
 import OperatorInstanceContextSummary from './OperatorInstanceContextSummary'
-import DecisionNotesBlock from './DecisionNotesBlock'
 import OperatorInstanceGuidanceBlock from './OperatorInstanceGuidanceBlock'
 import OperatorCourseSelectionEditor from './OperatorCourseSelectionEditor'
 import OperatorStepFormsSection from './OperatorStepFormsSection'
@@ -12,6 +11,7 @@ import ProcessDataManager from './ProcessDataManager'
 import ProcessRollbackSection from './ProcessRollbackSection'
 import ProcessRestartSection from './ProcessRestartSection'
 import { isInstituteLevelProcess } from '../utils/instituteProcesses'
+import GenericProcessPanel from './GenericProcessPanel'
 
 /**
  * پنل یکپارچهٔ جزئیات پروندهٔ فرایند برای اپراتورها — فرم مرحله، راهنما، ترنزیشن.
@@ -93,14 +93,6 @@ export default function OperatorProcessInstancePanel({
 
   const triggerTransition = onTriggerTransition || defaultTrigger
 
-  const actionBox = actionsBoxStyle || {
-    padding: '1.25rem',
-    background: 'var(--info-light, #eff6ff)',
-    borderRadius: '10px',
-    marginBottom: '1.5rem',
-    borderRight: '4px solid var(--info, #2563eb)',
-  }
-
   return (
     <div className="card" data-testid={testId}>
       <div className="card-header">
@@ -138,51 +130,70 @@ export default function OperatorProcessInstancePanel({
         </div>
       </div>
 
-      <OperatorInstanceGuidanceBlock
+      <GenericProcessPanel
+        audience="operator"
         instanceDetail={instanceDetail}
-        portalRole={user?.role}
-        availableTransitions={availableTransitions}
-      />
-
-      {showCourseSelection && (
-        <OperatorCourseSelectionEditor
-          instanceId={instanceId}
-          processCode={instanceDetail.process_code}
-          currentState={instanceDetail.current_state}
-          contextData={instanceDetail.context_data}
-          isCompleted={instanceDetail.is_completed}
-          isCancelled={instanceDetail.is_cancelled}
-          showToast={showToast}
-          onUpdated={() => onRefreshInstance?.()}
-        />
-      )}
-
-      <OperatorStepFormsSection
-        instanceId={instanceId}
-        processCode={instanceDetail.process_code}
-        currentState={instanceDetail.current_state}
-        contextData={instanceDetail.context_data}
-        isCompleted={instanceDetail.is_completed}
-        isCancelled={instanceDetail.is_cancelled}
-        role={user?.role}
-        showToast={showToast}
-        onUpdated={() => onRefreshInstance?.()}
-      />
-
-      {!isInstituteLevelProcess(instanceDetail.process_code) && (
-        <ProcessDataManager
-          instanceId={instanceId}
-          role={user?.role}
-          showToast={showToast}
-          onUpdated={() => onRefreshInstance?.()}
-        />
-      )}
-
-      <OperatorInstanceContextSummary
-        user={user}
-        instanceDetail={instanceDetail}
-        availableTransitions={availableTransitions}
-        title={contextSummaryTitle}
+        guidance={(
+          <OperatorInstanceGuidanceBlock
+            instanceDetail={instanceDetail}
+            user={user}
+            portalRole={user?.role}
+            availableTransitions={availableTransitions}
+          />
+        )}
+        formsNode={(
+          <>
+            {showCourseSelection && (
+              <OperatorCourseSelectionEditor
+                instanceId={instanceId}
+                processCode={instanceDetail.process_code}
+                currentState={instanceDetail.current_state}
+                contextData={instanceDetail.context_data}
+                isCompleted={instanceDetail.is_completed}
+                isCancelled={instanceDetail.is_cancelled}
+                showToast={showToast}
+                onUpdated={() => onRefreshInstance?.()}
+              />
+            )}
+            <OperatorStepFormsSection
+              instanceId={instanceId}
+              processCode={instanceDetail.process_code}
+              currentState={instanceDetail.current_state}
+              contextData={instanceDetail.context_data}
+              isCompleted={instanceDetail.is_completed}
+              isCancelled={instanceDetail.is_cancelled}
+              role={user?.role}
+              user={user}
+              showToast={showToast}
+              onUpdated={() => onRefreshInstance?.()}
+            />
+          </>
+        )}
+        historyNode={(
+          <>
+            {!isInstituteLevelProcess(instanceDetail.process_code) && (
+              <ProcessDataManager
+                instanceId={instanceId}
+                user={user}
+                role={user?.role}
+                showToast={showToast}
+                onUpdated={() => onRefreshInstance?.()}
+              />
+            )}
+            <OperatorInstanceContextSummary
+              user={user}
+              instanceDetail={instanceDetail}
+              availableTransitions={availableTransitions}
+              title={contextSummaryTitle}
+            />
+          </>
+        )}
+        extraBeforeActions={renderExtraBeforeActions}
+        transitions={transitionsForActions}
+        onTriggerTransition={triggerTransition}
+        decisionNotes={decisionNotes}
+        onDecisionNotesChange={setDecisionNotes}
+        triggerBusy={triggerBusy}
       />
 
       {showRollback && onRollback && (
@@ -202,52 +213,6 @@ export default function OperatorProcessInstancePanel({
           onRestartComplete={onRestartComplete}
           busy={restartBusy}
         />
-      )}
-
-      {typeof renderExtraBeforeActions === 'function' && renderExtraBeforeActions({
-        triggerTransition,
-        transitionsForActions,
-        triggerBusy,
-      })}
-
-      {transitionsForActions.length > 0 && (
-        <div style={actionBox}>
-          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--info, #1e40af)' }}>اقدامات</h4>
-          <DecisionNotesBlock
-            value={decisionNotes}
-            onChange={setDecisionNotes}
-            title="توضیح یا نظر (اختیاری)"
-            hint="متن همراه همان دکمه‌ای که می‌زنید در پرونده ثبت می‌شود."
-          />
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {transitionsForActions.map((t, idx) => {
-              const isApproval = t.trigger_event?.includes('approved') || t.trigger_event?.includes('confirm') || t.trigger_event?.includes('verified') || t.trigger_event?.includes('submitted') || t.trigger_event?.includes('done')
-              const isReject = t.trigger_event?.includes('reject') || t.trigger_event?.includes('decline') || t.trigger_event?.includes('escalate')
-              return (
-                <button
-                  key={`${t.trigger_event}-${t.to_state || idx}`}
-                  type="button"
-                  data-testid={`operator-transition-${t.trigger_event}`}
-                  disabled={triggerBusy}
-                  onClick={() => triggerTransition(t)}
-                  style={{
-                    padding: '0.6rem 1.2rem',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: triggerBusy ? 'wait' : 'pointer',
-                    fontWeight: 500,
-                    fontSize: '0.85rem',
-                    background: isApproval ? 'var(--success, #16a34a)' : isReject ? 'var(--danger, #dc2626)' : 'var(--primary, #2563eb)',
-                    color: '#fff',
-                    opacity: triggerBusy ? 0.7 : 1,
-                  }}
-                >
-                  {t.description || t.trigger_event}
-                </button>
-              )
-            })}
-          </div>
-        </div>
       )}
     </div>
   )

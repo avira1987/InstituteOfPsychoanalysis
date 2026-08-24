@@ -22,3 +22,10 @@ test('isStepOtpAlreadyVerified false when server stamp is other state', () => {
 test('isStepOtpAlreadyVerified false when neither flag nor stamp', () => {
   assert.equal(isStepOtpAlreadyVerified({ digital_commitment: true }, {}, 'documents_upload'), false)
 })
+
+test('isStepOtpAlreadyVerified true when durable context flag set on later state', () => {
+  assert.equal(
+    isStepOtpAlreadyVerified({}, { step_otp_verified: true }, 'documents_incomplete'),
+    true,
+  )
+})

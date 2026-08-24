@@ -10,7 +10,7 @@ import json
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from app.meta.operator_state_catalog import get_state_catalog_for_portal_role
 
@@ -436,6 +436,77 @@ def get_panel_action_queue_for_role(role: str) -> dict[str, Any]:
             "total": len(items),
             "pattern_count": len(patterns),
             "state_definition_count": len(state_rows),
+            "registry_count": registry_count,
+        },
+    }
+
+
+def get_panel_action_queue_for_roles(
+    roles: Sequence[str],
+    *,
+    primary: str | None = None,
+) -> dict[str, Any]:
+    """اجتماع کاتالوگ اقدام برای چند نقش پورتال؛ تکراری state با (process_code, state_code)."""
+    from app.core.user_roles import normalize_role_code
+
+    cleaned: list[str] = []
+    seen_roles: set[str] = set()
+    for raw in roles:
+        n = normalize_role_code(raw)
+        if not n or n in seen_roles:
+            continue
+        seen_roles.add(n)
+        cleaned.append(n)
+    prim = normalize_role_code(primary) or (cleaned[0] if cleaned else "student")
+    if not cleaned:
+        return get_panel_action_queue_for_role(prim)
+    if len(cleaned) == 1:
+        out = get_panel_action_queue_for_role(cleaned[0])
+        out["role"] = prim
+        return out
+
+    items: list[dict[str, Any]] = []
+    seen_pattern_titles: set[str] = set()
+    seen_states: set[tuple[Any, Any]] = set()
+    seen_registry: set[str] = set()
+    pattern_count = 0
+    state_count = 0
+    registry_count = 0
+    for role in cleaned:
+        part = get_panel_action_queue_for_role(role)
+        for it in part.get("items") or []:
+            kind = it.get("kind")
+            if kind == "role_pattern":
+                title = it.get("title_fa") or ""
+                if title in seen_pattern_titles:
+                    continue
+                seen_pattern_titles.add(title)
+                items.append(it)
+                pattern_count += 1
+            elif kind == "state_definition":
+                key = (it.get("process_code"), it.get("state_code"))
+                if key in seen_states:
+                    continue
+                seen_states.add(key)
+                items.append(it)
+                state_count += 1
+            elif kind == "registry_process":
+                code = str(it.get("process_code") or "")
+                if code in seen_registry:
+                    continue
+                seen_registry.add(code)
+                items.append(it)
+                registry_count += 1
+            else:
+                items.append(it)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "role": prim,
+        "items": items,
+        "stats": {
+            "total": len(items),
+            "pattern_count": pattern_count,
+            "state_definition_count": state_count,
             "registry_count": registry_count,
         },
     }

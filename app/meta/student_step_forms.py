@@ -14,16 +14,32 @@ CTX_SUBMITTED = "__student_forms_submitted_states"
 CTX_EDIT_UNLOCK = "__student_forms_edit_unlock"
 # پس از رد جزئی مدارک: نام فیلدهایی که دانشجو باید دوباره بارگذاری کند
 CTX_DOCUMENTS_RESUBMIT_FIELDS = "__documents_resubmit_fields"
+CTX_DOCUMENT_FIELD_REJECTION_NOTES = "__document_field_rejection_notes"
+CTX_DOCUMENT_FIELD_LABELS_FA = "__document_field_labels_fa"
 # پس از تأیید موفق OTP مرحله (قبل از register) — جلوگیری از مصرف دوبارهٔ کد
 CTX_STEP_OTP_VERIFIED_STATE = "__step_otp_verified_state"
 CTX_STEP_OTP_VERIFIED_AT = "__step_otp_verified_at"
 
 
-def context_has_step_otp_verified(context_data: Optional[dict], state_code: str) -> bool:
-    """آیا برای همین وضعیت فعلی، OTP مرحله قبلاً روی سرور تأیید شده است؟"""
-    if not state_code:
+def context_has_step_otp_verified(
+    context_data: Optional[dict],
+    state_code: Optional[str] = None,
+) -> bool:
+    """آیا OTP مرحله قبلاً روی سرور تأیید شده است؟
+
+    پس از ثبت موفق فرم، فلگ ماندگار ``step_otp_verified`` در context می‌ماند
+    (حتی اگر وضعیت از documents_upload به documents_incomplete عوض شود).
+    فلگ موقت ``__step_otp_verified_state`` فقط فاصلهٔ verify تا register را پوشش می‌دهد.
+    """
+    ctx = context_data or {}
+    if ctx.get("step_otp_verified") is True:
+        return True
+    stamped = ctx.get(CTX_STEP_OTP_VERIFIED_STATE)
+    if not stamped or not isinstance(stamped, str):
         return False
-    return (context_data or {}).get(CTX_STEP_OTP_VERIFIED_STATE) == state_code
+    if not state_code:
+        return True
+    return stamped == state_code
 
 
 def stamp_step_otp_verified(context_data: Optional[dict], state_code: str) -> dict:
@@ -116,9 +132,11 @@ def validate_student_step_forms(
             if not name:
                 continue
             if partial_set is not None and name not in partial_set:
-                # تأیید قوانین + OTP همیشه در ثبت مجدد مدارک هم الزامی است
                 t_early = field.get("type") or "text"
                 is_rules_gate = t_early == "checkbox" and bool(field.get("rules_link_href"))
+                # OTP فقط اگر هنوز در این پرونده تأیید نشده باشد در ثبت مجدد الزامی است
+                if t_early == "step_otp" and context_has_step_otp_verified(context_data):
+                    continue
                 if t_early != "step_otp" and not is_rules_gate:
                     continue
             # فیلد نامرئی (show_if شیئی) را اعتبارسنجی نکن.
@@ -131,6 +149,8 @@ def validate_student_step_forms(
                     missing.append(field.get("label_fa") or name)
                 continue
             if t == "step_otp":
+                if context_has_step_otp_verified(context_data):
+                    continue
                 if _is_empty(vals.get(name)):
                     missing.append(field.get("label_fa") or name)
                 continue
@@ -251,6 +271,25 @@ def documents_resubmit_field_names(context_data: Optional[object]) -> list[str]:
     if not isinstance(raw, list):
         return []
     return [str(x) for x in raw if x]
+
+
+def format_documents_deficiency_list(context_data: Optional[object]) -> str:
+    """فهرست مدارک ردشده به‌همراه توضیح پذیرش — برای SMS و نمایش دانشجو."""
+    ctx = StateMachineEngine._as_mapping(context_data)
+    names = documents_resubmit_field_names(ctx)
+    labels_raw = ctx.get(CTX_DOCUMENT_FIELD_LABELS_FA)
+    labels = labels_raw if isinstance(labels_raw, dict) else {}
+    notes_raw = ctx.get(CTX_DOCUMENT_FIELD_REJECTION_NOTES)
+    notes = notes_raw if isinstance(notes_raw, dict) else {}
+    lines: list[str] = []
+    for i, fname in enumerate(names, 1):
+        label = str(labels.get(fname) or labels.get(str(fname)) or fname)
+        note = str(notes.get(fname) or notes.get(str(fname)) or "").strip()
+        if note:
+            lines.append(f"{i}- {label}: {note}")
+        else:
+            lines.append(f"{i}- {label}")
+    return "\n".join(lines) if lines else "—"
 
 
 def collect_partial_allowed_keys(forms: list, partial_names: set[str]) -> set[str]:

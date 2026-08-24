@@ -11,7 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user, require_admin_only
 from app.database import get_db
-from app.meta.student_lifecycle_matrix import get_panel_action_queue_for_role
+from app.meta.student_lifecycle_matrix import (
+    get_panel_action_queue_for_role,
+    get_panel_action_queue_for_roles,
+)
 from app.models.operational_models import Student, User
 from app.services.nav_pending_counts import compute_nav_pending_counts
 from app.services.operator_followup_inbox import build_operator_followup_inbox_full
@@ -19,10 +22,11 @@ from app.services.operator_readiness import compute_operator_readiness_alerts
 from app.services.panel_action_notifications import build_action_notifications
 from app.services.panel_notification_dismiss import dismiss_action_notification
 from app.services.panel_flash_messages import create_panel_flash_message
-from app.services.portal_role_inbox import build_portal_role_process_inbox
+from app.services.portal_role_inbox import build_user_process_inbox
 from app.services.process_nav_service import build_process_nav_items
 from app.services import sms_simulation_service
 from app.services.student_online_sessions_service import list_student_online_sessions
+from app.services.installment_access import raise_if_student_installment_locked
 from sqlalchemy import select
 
 router = APIRouter(prefix="/api/panel", tags=["Panel"])
@@ -62,7 +66,13 @@ def _merge_readiness_into_inbox_items(
 @router.get("/action-queue")
 async def panel_action_queue(user: User = Depends(get_current_user)):
     """اقدامات منتظر انجام (الگوی نقش + فرایندهای رجیستری مرتبط) — نیاز به JWT."""
-    return get_panel_action_queue_for_role(user.role)
+    from app.core.user_roles import operator_portal_roles, primary_role
+
+    prim = primary_role(user)
+    roles = operator_portal_roles(user)
+    if not roles:
+        return get_panel_action_queue_for_role(prim)
+    return get_panel_action_queue_for_roles(roles, primary=prim)
 
 
 @router.get("/my-process-inbox")
@@ -83,15 +93,11 @@ async def panel_my_process_inbox(
         }
     pl = min(process_limit, 200)
     sc = min(max(scan_cap, pl), 2000)
-    from app.core.user_roles import canonical_portal_role, user_has_role
-
-    portal_role = canonical_portal_role(user.role) or user.role
-    return await build_portal_role_process_inbox(
+    return await build_user_process_inbox(
         db,
-        portal_role=portal_role,
+        user,
         process_limit=pl,
         scan_cap=sc,
-        include_assignments_for_staff=user_has_role(user, "staff", admin_bypass=True),
     )
 
 
@@ -118,15 +124,11 @@ async def panel_my_operator_followup(
         }
     pl = min(process_limit, 200)
     sc = min(max(scan_cap, pl), 2000)
-    from app.core.user_roles import canonical_portal_role, user_has_role
-
-    portal_role = canonical_portal_role(user.role) or user.role
-    core = await build_portal_role_process_inbox(
+    core = await build_user_process_inbox(
         db,
-        portal_role=portal_role,
+        user,
         process_limit=pl,
         scan_cap=sc,
-        include_assignments_for_staff=user_has_role(user, "staff", admin_bypass=True),
     )
     alerts = await compute_operator_readiness_alerts(db, user)
     summary = dict(core.get("summary") or {})
@@ -333,7 +335,47 @@ async def panel_my_online_sessions(
     st = (await db.execute(select(Student).where(Student.user_id == user.id))).scalars().first()
     if not st:
         raise HTTPException(status_code=404, detail="پروفایل دانشجو یافت نشد")
+    raise_if_student_installment_locked(st)
     return await list_student_online_sessions(db, st, user, include_past=include_past)
+
+
+@router.get("/my-enrolled-courses")
+async def panel_my_enrolled_courses(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """دروس ثبت‌نام‌شده دانشجو با برنامه، لینک ورود و خلاصه حضور."""
+    if user.role != "student":
+        raise HTTPException(status_code=403, detail="این endpoint فقط برای دانشجو است")
+    st = (await db.execute(select(Student).where(Student.user_id == user.id))).scalars().first()
+    if not st:
+        raise HTTPException(status_code=404, detail="پروفایل دانشجو یافت نشد")
+    raise_if_student_installment_locked(st)
+    from app.services.student_enrolled_courses_service import list_student_enrolled_courses
+
+    return await list_student_enrolled_courses(db, st)
+
+
+@router.get("/courses/{course_code}/join")
+async def panel_student_course_join(
+    course_code: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """ورود احراز هویت‌شده به کلاس آنلاین — URL خام در پاسخ لیست نیست."""
+    if user.role != "student":
+        raise HTTPException(status_code=403, detail="این endpoint فقط برای دانشجو است")
+    st = (await db.execute(select(Student).where(Student.user_id == user.id))).scalars().first()
+    if not st:
+        raise HTTPException(status_code=404, detail="پروفایل دانشجو یافت نشد")
+    raise_if_student_installment_locked(st)
+    from app.services.student_enrolled_courses_service import resolve_student_course_join_url
+
+    try:
+        join_url = await resolve_student_course_join_url(db, st, course_code)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="لینک کلاس برای شما در دسترس نیست.")
+    return {"join_url": join_url}
 
 
 @router.get("/academic-calendar/active")
@@ -342,7 +384,9 @@ async def panel_active_academic_calendar(
     user: User = Depends(get_current_user),
 ):
     """تقویم آموزشی فعال انستیتو — read-only برای دانشجو و سایر نقش‌های پورتال."""
-    if user.role not in _PANEL_CALENDAR_ROLES:
+    from app.core.user_roles import user_has_any_role
+
+    if not user_has_any_role(user, _PANEL_CALENDAR_ROLES):
         raise HTTPException(status_code=403, detail="دسترسی به تقویم آموزشی برای این نقش مجاز نیست")
     from app.services.institute_calendar_service import calendar_to_response_dict, get_active_calendar
 
@@ -390,6 +434,7 @@ async def panel_operator_followup_inbox(
 
 @router.get("/my-semester-courses")
 async def panel_my_semester_courses(
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """دروس انتساب‌یافته از آماده‌سازی ترم — برای پنل مدرس و کمک‌مدرس."""
@@ -401,7 +446,99 @@ async def panel_my_semester_courses(
     if role in ("instructor", "teaching_assistant"):
         kind = "instructor" if role == "instructor" else "teaching_assistant"
         items = [x for x in items if isinstance(x, dict) and (x.get("role_kind") in (None, kind))]
-    return {"courses": items, "role": role}
+    from app.services.student_enrolled_courses_service import enrich_semester_courses_for_user
+
+    enriched = await enrich_semester_courses_for_user(db, user, items)
+    return {"courses": enriched, "role": role}
+
+
+class InstructorMeetingLinkBody(BaseModel):
+    online_meeting_url: Optional[str] = Field(None, description="لینک ورود دانشجو")
+    host_meeting_url: Optional[str] = Field(None, description="لینک میزبان مدرس")
+
+
+class InstructorAttendanceRow(BaseModel):
+    student_id: str
+    status: str = "present"
+    student_name: Optional[str] = None
+    person_name: Optional[str] = None
+    role: Optional[str] = "student"
+
+
+class InstructorAttendanceBody(BaseModel):
+    session_date: str = Field(..., description="تاریخ جلسه YYYY-MM-DD")
+    rows: list[InstructorAttendanceRow] = Field(default_factory=list)
+    course_type: Optional[str] = None
+    session_number: Optional[int] = None
+
+
+@router.patch("/instructor/courses/{course_code}/meeting-link")
+async def panel_instructor_update_meeting_link(
+    course_code: str,
+    body: InstructorMeetingLinkBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """ثبت/به‌روزرسانی لینک کلاس آنلاین روی درس ترم."""
+    role = (user.role or "").strip()
+    if role not in ("admin", "staff", "instructor", "teaching_assistant"):
+        raise HTTPException(status_code=403, detail="دسترسی مدرس یا کمک‌مدرس لازم است.")
+    from app.services.student_enrolled_courses_service import update_offering_meeting_link
+
+    try:
+        result = await update_offering_meeting_link(
+            db,
+            user,
+            course_code,
+            online_meeting_url=body.online_meeting_url,
+            host_meeting_url=body.host_meeting_url,
+        )
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="این درس به شما انتساب داده نشده است.") from None
+    except LookupError:
+        raise HTTPException(status_code=404, detail="درس ترم برای کد داده‌شده یافت نشد.") from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()
+    return result
+
+
+@router.post("/instructor/courses/{course_code}/attendance")
+async def panel_instructor_record_attendance(
+    course_code: str,
+    body: InstructorAttendanceBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """ثبت حضور و غیاب جلسه‌ای بدون نیاز به نمونهٔ فرایند کارتابل."""
+    role = (user.role or "").strip()
+    if role not in ("admin", "staff", "instructor", "teaching_assistant"):
+        raise HTTPException(status_code=403, detail="دسترسی مدرس یا کمک‌مدرس لازم است.")
+    from app.services.class_attendance_service import apply_session_attendance
+    from app.services.instructor_course_roster_service import user_may_access_course
+
+    code = str(course_code or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="course_code الزامی است.")
+    if not user_may_access_course(user, code):
+        raise HTTPException(status_code=403, detail="این درس به شما انتساب داده نشده است.")
+    session_date = str(body.session_date or "").strip()[:10]
+    if not session_date:
+        raise HTTPException(status_code=400, detail="session_date الزامی است.")
+    rows = [r.model_dump() for r in (body.rows or [])]
+    if not rows:
+        raise HTTPException(status_code=400, detail="لیست حضور خالی است.")
+    summary = await apply_session_attendance(
+        db,
+        code,
+        session_date,
+        rows,
+        course_type=body.course_type,
+        actor_id=user.id,
+        session_number=body.session_number,
+    )
+    await db.commit()
+    return {"ok": True, "summary": summary}
 
 
 @router.get("/instructor/course-roster")

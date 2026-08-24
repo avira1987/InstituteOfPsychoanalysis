@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import DBAPIError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -218,15 +218,46 @@ async def _mirror_term_tuition_to_active_calendar(db: AsyncSession, normalized: 
         if n >= 1000 and tuition.get(key) != n:
             tuition[key] = n
             changed = True
-    if not changed:
-        return
-    tuition["published_at"] = datetime.now(timezone.utc).isoformat()
-    tuition["synced_from"] = "financial_program_defaults"
-    extra["tuition"] = tuition
-    cal.extra_data = extra
-    from sqlalchemy.orm.attributes import flag_modified
+    if changed:
+        tuition["published_at"] = datetime.now(timezone.utc).isoformat()
+        tuition["synced_from"] = "financial_program_defaults"
+        extra["tuition"] = tuition
+        cal.extra_data = extra
+        from sqlalchemy.orm.attributes import flag_modified
 
-    flag_modified(cal, "extra_data")
+        flag_modified(cal, "extra_data")
+    await _sync_offering_per_unit_costs(db, getattr(cal, "term_code", None), normalized)
+
+
+async def _sync_offering_per_unit_costs(
+    db: AsyncSession,
+    term_code: str | None,
+    normalized: dict[str, Any],
+) -> None:
+    """پس از تغییر نرخ پنل مالی، ردیف‌های ارائهٔ فعال همان ترم را هم‌تراز کن."""
+    if not term_code:
+        return
+    from app.models.operational_models import TermCourseOffering
+
+    for program_kind, key in (
+        ("introductory", "per_unit_cost_introductory"),
+        ("comprehensive", "per_unit_cost_comprehensive"),
+    ):
+        try:
+            n = int(normalized.get(key) or 0)
+        except (TypeError, ValueError):
+            n = 0
+        if n < 1000:
+            continue
+        await db.execute(
+            update(TermCourseOffering)
+            .where(
+                TermCourseOffering.term_code == term_code,
+                TermCourseOffering.program_kind == program_kind,
+                TermCourseOffering.is_active.is_(True),
+            )
+            .values(per_unit_cost_rial=n)
+        )
 
 
 async def get_effective_financial_program_defaults(db: AsyncSession) -> dict[str, Any]:

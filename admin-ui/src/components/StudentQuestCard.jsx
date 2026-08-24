@@ -9,6 +9,11 @@ import {
   stepFormsBlockTransition,
   CTX_DOCUMENTS_RESUBMIT_FIELDS,
 } from '../utils/processFormsStudent'
+import {
+  isSingleCourseAdmission,
+  CONDITIONAL_THERAPY_TERM2_NOTICE_FA,
+  shouldShowConditionalTherapyTerm2Notice,
+} from '../utils/studentProcessAccess'
 import { labelProcess, labelState, resolveStateDisplayLabel } from '../utils/processDisplay'
 import { labelRoleFa } from '../utils/roleLabels'
 import {
@@ -19,6 +24,7 @@ import {
 } from '../utils/studentTransitionCta'
 import { showStudentTransitionCta } from '../utils/studentTransitionCtaVisibility'
 import SepPaymentPanel from './SepPaymentPanel'
+import InstallmentPlanTable from './InstallmentPlanTable'
 import StudentSessionPaymentPanel from './StudentSessionPaymentPanel'
 import StudentTherapyCompletionPanel from './StudentTherapyCompletionPanel'
 import StudentSupervisionBlockTransitionPanel from './StudentSupervisionBlockTransitionPanel'
@@ -42,6 +48,7 @@ import StudentClassAttendancePanel from './StudentClassAttendancePanel'
 import StudentInstructorEvaluationPanel from './StudentInstructorEvaluationPanel'
 import StudentProcessStepReview from './StudentProcessStepReview'
 import StudentSmsHistorySection from './StudentSmsHistorySection'
+import { isPreviousStepReviewEnabled } from '../utils/studentProcessStepReview'
 
 const REGISTRATION_PROCESS_CODES = ['introductory_course_registration', 'comprehensive_course_registration']
 const TERM2_REG_CODE = 'intro_second_semester_registration'
@@ -139,7 +146,13 @@ export default function StudentQuestCard({
   onGoToOnlineSessions = null,
 }) {
   const [selectedTransitionIdx, setSelectedTransitionIdx] = useState(0)
-  const transitionList = transitions || []
+  const hideStartTherapyForAdmission =
+    detail?.process_code === 'start_therapy'
+    && isSingleCourseAdmission(
+      { extra_data: extraData, admission_type: extraData?.admission_type },
+      detail?.context_data,
+    )
+  const transitionList = hideStartTherapyForAdmission ? [] : (transitions || [])
 
   useEffect(() => {
     setSelectedTransitionIdx(0)
@@ -205,7 +218,7 @@ export default function StudentQuestCard({
   const introRegGateReason =
     registrationGate?.reason_fa ||
     'ثبت‌نام دورهٔ آشنایی پس از انتشار تقویم آموزشی باز می‌شود.'
-  const studentForms = filterFormsForStudent(forms || [])
+  const studentForms = hideStartTherapyForAdmission ? [] : filterFormsForStudent(forms || [])
   const rawResubmit = detail?.context_data?.[CTX_DOCUMENTS_RESUBMIT_FIELDS]
   const docsResubmit = Array.isArray(rawResubmit) && rawResubmit.length ? rawResubmit : null
   const transitionBlocked = !done && studentForms.length > 0 && !stepFormLocked
@@ -216,8 +229,8 @@ export default function StudentQuestCard({
   const guidance = buildStudentGuidance({
     definition,
     detail,
-    transitions,
-    forms,
+    transitions: hideStartTherapyForAdmission ? [] : transitions,
+    forms: hideStartTherapyForAdmission ? [] : forms,
     stepFormLocked,
     registrationGate,
   })
@@ -357,6 +370,31 @@ export default function StudentQuestCard({
 
       <StudentProcessGuidancePanel guidance={guidance} variant="quest" />
 
+      {shouldShowConditionalTherapyTerm2Notice({
+        studentProfile: { extra_data: extraData, admission_type: extraData?.admission_type },
+        contextData: detail?.context_data,
+        processCode: detail?.process_code,
+        currentState: detail?.current_state,
+      }) && (
+        <div
+          className="quest-staff-wait"
+          role="status"
+          data-testid="student-quest-conditional-therapy-term2-notice"
+          style={{
+            marginTop: '0.85rem',
+            padding: '1rem 1.25rem',
+            borderRadius: '10px',
+            background: '#fffbeb',
+            borderRight: '4px solid #d97706',
+            fontSize: '0.88rem',
+            lineHeight: 1.8,
+            color: '#92400e',
+          }}
+        >
+          {CONDITIONAL_THERAPY_TERM2_NOTICE_FA}
+        </div>
+      )}
+
       {introRegGateClosed && !done && (
         <div
           className="quest-staff-wait"
@@ -374,6 +412,29 @@ export default function StudentQuestCard({
         >
           <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>ثبت‌نام موقتاً متوقف است</div>
           <p style={{ margin: 0 }}>{introRegGateReason}</p>
+        </div>
+      )}
+
+      {hideStartTherapyForAdmission && !done && (
+        <div
+          className="quest-staff-wait"
+          role="status"
+          data-testid="student-quest-single-course-no-therapy"
+          style={{
+            marginTop: '0.85rem',
+            padding: '1rem 1.25rem',
+            borderRadius: '10px',
+            background: '#fffbeb',
+            borderRight: '4px solid #d97706',
+            fontSize: '0.9rem',
+            lineHeight: 1.75,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>آغاز درمان آموزشی برای پذیرش تک‌درس موضوعیت ندارد</div>
+          <p style={{ margin: 0 }}>
+            پذیرش شما به‌صورت تک‌درس است و برنامهٔ شروع درمان آموزشی برای این نوع پذیرش اجرا نمی‌شود.
+            مسیر شما از پنل دروس و کلاس‌ها ادامه دارد.
+          </p>
         </div>
       )}
 
@@ -1185,7 +1246,11 @@ export default function StudentQuestCard({
 
       <StudentSmsHistorySection refreshKey={smsRefreshKey ?? `${detail?.instance_id || ''}-${detail?.current_state || ''}`} />
 
-      <StudentProcessStepReview detail={detail} definition={definition} />
+      <StudentProcessStepReview
+        detail={detail}
+        definition={definition}
+        enabled={isPreviousStepReviewEnabled(extraData)}
+      />
 
       {!done && studentForms.length > 0 && stepFormLocked && (
         <div className="quest-forms-wrap">
@@ -1210,6 +1275,7 @@ export default function StudentQuestCard({
             resubmitFieldNames={docsResubmit}
             onRegisterSubmit={onFormRegisterSubmit}
             contextData={detail?.context_data}
+            extraData={extraData}
             currentState={detail?.current_state}
           />
           {transitionBlocked && (transitions?.length || 0) > 0 && (
@@ -1255,14 +1321,19 @@ export default function StudentQuestCard({
             </p>
           )}
           {(isInstallmentPayment || (livePaymentMethod === 'installment' && liveInstallmentCount > 1)) && tuitionTotalRial > 0 && (
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.86rem', color: '#1e3a8a', lineHeight: 1.7 }}>
-              شهریه کل: {Math.round(tuitionTotalRial / 10).toLocaleString('fa-IR')} تومان
-              {' · '}
-              {liveInstallmentCount > 1
-                ? `${Number(liveInstallmentCount).toLocaleString('fa-IR')} قسط — مبلغ هر قسط (قسط اول): `
-                : 'مبلغ قابل پرداخت: '}
-              <strong>{Math.round(paymentAmountRial / 10).toLocaleString('fa-IR')} تومان</strong>
-            </p>
+            <div style={{ margin: '0 0 0.5rem' }}>
+              <p style={{ margin: '0 0 0.35rem', fontSize: '0.86rem', color: '#1e3a8a', lineHeight: 1.7 }}>
+                شهریه کل: {Math.round(tuitionTotalRial / 10).toLocaleString('fa-IR')} تومان
+                {' · '}
+                مبلغ قابل پرداخت الان:
+                {' '}
+                <strong>{Math.round(paymentAmountRial / 10).toLocaleString('fa-IR')} تومان</strong>
+              </p>
+              <InstallmentPlanTable
+                plan={Array.isArray(ctx.installment_plan) && ctx.installment_plan.length ? ctx.installment_plan : null}
+                compact
+              />
+            </div>
           )}
           {livePaymentMethod === 'cash' && tuitionTotalRial > 0 && (
             <p style={{ margin: '0 0 0.5rem', fontSize: '0.86rem', color: '#1e3a8a', lineHeight: 1.7 }}>

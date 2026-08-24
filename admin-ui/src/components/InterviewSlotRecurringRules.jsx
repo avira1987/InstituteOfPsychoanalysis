@@ -25,7 +25,7 @@ function sortDays(arr) {
 
 export default function InterviewSlotRecurringRules({ showToast, onCapacityChanged }) {
   const { user } = useAuth()
-  const canPickRuleOwner = canManageInterviewSlots(user?.role)
+  const canPickRuleOwner = canManageInterviewSlots(user)
   const [interviewers, setInterviewers] = useState([])
   const [targetIvId, setTargetIvId] = useState('')
 

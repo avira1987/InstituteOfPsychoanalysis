@@ -1,7 +1,6 @@
 """Shared logic for public and authenticated student registration."""
 
 import logging
-import re
 import uuid
 from typing import Literal, Optional
 
@@ -10,12 +9,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.operational_models import Student, User
+from app.services.student_identity import next_student_code, unify_student_identity
 from app.services.student_service import StudentService
 
 logger = logging.getLogger(__name__)
-
-_STUDENT_CODE_RE = re.compile(r"^STU-(\d+)$")
-_STUDENT_CODE_BASE = 1000  # شماره‌گذاری از STU-1001 به‌بعد
 
 
 async def find_student_by_national_code(db: AsyncSession, national_code: str) -> Optional[Student]:
@@ -33,20 +30,8 @@ async def find_student_by_national_code(db: AsyncSession, national_code: str) ->
 
 
 async def _next_student_code(db: AsyncSession) -> str:
-    """STU-<n+1> با n=بزرگ‌ترین عدد موجود در ستون student_code (نه از روی COUNT(*) که با حذف/seed تصادم می‌دهد)."""
-    rows = await db.execute(select(Student.student_code).where(Student.student_code.like("STU-%")))
-    max_num = _STUDENT_CODE_BASE
-    for code in rows.scalars().all():
-        m = _STUDENT_CODE_RE.match(code or "")
-        if not m:
-            continue
-        try:
-            n = int(m.group(1))
-        except ValueError:
-            continue
-        if n > max_num:
-            max_num = n
-    return f"STU-{max_num + 1}"
+    """سازگاری با importهای قبلی؛ قالب یکپارچه در student_identity."""
+    return await next_student_code(db)
 
 
 async def create_student_profile_for_user(
@@ -93,6 +78,7 @@ async def create_student_profile_for_user(
                 )
                 db.add(student)
                 await db.flush()
+                await unify_student_identity(db, student, user)
             last_err = None
             break
         except IntegrityError as e:
@@ -119,7 +105,7 @@ async def create_student_profile_for_user(
             student.student_code,
         )
 
-    return student, student_code
+    return student, student.student_code
 
 
 async def commit_registration_or_rollback(db: AsyncSession) -> None:
@@ -147,7 +133,10 @@ def build_public_registration_response(
         "student_code": student_code,
         "username": username,
         "phone": phone,
-        "login_hint_fa": "رمز عبور اولیه از طریق پیامک برای شما ارسال شده است.",
+        "login_hint_fa": (
+            "نام کاربری ورود بدون پیامک همان کد دانشجویی (STU-…) است. "
+            "ورود با پیامک همچنان با شماره موبایل انجام می‌شود."
+        ),
     }
     if settings.DEBUG and initial_password_plain:
         out["initial_password"] = initial_password_plain

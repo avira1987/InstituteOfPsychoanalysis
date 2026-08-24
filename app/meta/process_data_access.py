@@ -57,18 +57,39 @@ _EDITABLE_ROLE_ALIASES: dict[str, frozenset[str]] = {
 }
 
 
-def _role_matches_editable_list(role: str, allowed: list[str]) -> bool:
+def role_matches_allowed_list(role: str, allowed: list[str]) -> bool:
+    """آیا نقش پورتال با فهرست visible_to / editable_by جور است؟
+
+    شامل تطابق مستقیم، aliasهای سازمانی، و impliedها
+    (مثلاً faculty_1 → interviewer).
+    """
+    from app.core.user_roles import role_grants
+
     r = _norm(role)
-    allowed_norm = set(allowed)
+    allowed_norm = [a for a in allowed if a]
+    if not allowed_norm:
+        return True
+    if not r:
+        return False
     if r in allowed_norm:
         return True
-    for code in allowed_norm:
+    raw = (role or "").strip().lower()
+    if raw and raw in allowed_norm:
+        return True
+    if role_grants(role, *allowed_norm) or role_grants(r, *allowed_norm):
+        return True
+    allowed_set = set(allowed_norm)
+    for code in allowed_set:
         if r in _EDITABLE_ROLE_ALIASES.get(code, frozenset()):
             return True
     for alias in _EDITABLE_ROLE_ALIASES.get(r, frozenset()):
-        if alias in allowed_norm:
+        if alias in allowed_set:
             return True
     return False
+
+
+def _role_matches_editable_list(role: str, allowed: list[str]) -> bool:
+    return role_matches_allowed_list(role, allowed)
 
 
 def _inherit(field: dict, form: dict, key: str):
@@ -85,7 +106,7 @@ def field_visible_to_role(form: dict, field: dict, role: str) -> bool:
         return False
     visible_to = _inherit(field, form, "visible_to")
     allowed = _norm_list(visible_to)
-    if allowed and r and r not in allowed:
+    if allowed and r and not role_matches_allowed_list(role, allowed):
         return False
     return True
 
@@ -124,6 +145,18 @@ def editable_field_names(forms: list, role: str) -> set[str]:
         for form, field in _iter_fields(forms)
         if field_editable_by_role(form, field, role)
     }
+
+
+def first_role_that_can_edit_forms(roles: Iterable[str], forms: list) -> str | None:
+    """اولین نقش کاربر که حداقل یک فیلد قابل‌ویرایش در فرم‌ها دارد."""
+    for role in roles or []:
+        code = (role or "").strip()
+        if not code:
+            continue
+        vis = visible_forms_for_role(forms, code)
+        if vis and editable_field_names(vis, code):
+            return code
+    return None
 
 
 def visible_forms_for_role(forms: list, role: str) -> list[dict]:

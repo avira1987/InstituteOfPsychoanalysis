@@ -39,8 +39,9 @@ def _generate_portal_password() -> str:
 def _student_portal_welcome_sms_text(username: str, password: str) -> str:
     return (
         "انستیتو روانکاوی تهران: خوش آمدید. "
-        f"نام کاربری ورود بدون پیامک (همان شماره موبایل): {username} "
+        f"نام کاربری ورود بدون پیامک (کد دانشجویی): {username} "
         f"رمز عبور: {password} "
+        "ورود با پیامک همچنان با شماره موبایل است. "
         "از صفحهٔ ورود، «ورود پرسنل و مدیران» را بزنید و همین نام کاربری و رمز را وارد کنید."
     )
 
@@ -49,8 +50,9 @@ def _student_portal_welcome_ui_message() -> str:
     """بدون افشای رمز در پاسخ JSON؛ فقط پس از صدور اولین رمز پورتال."""
     return (
         "به انستیتو روانکاوی تهران خوش آمدید. "
-        "نام کاربری ورود «بدون پیامک» همان شماره موبایل شماست و یک رمز عددی ساده برایتان صادر و در سامانه ذخیره شد. "
-        "در صورت فعال بودن پیامک، همان نام کاربری و رمز نیز برای شما پیامک می‌شود؛ "
+        "نام کاربری ورود «بدون پیامک» همان کد دانشجویی (STU-…) است و یک رمز عددی ساده برایتان صادر شد. "
+        "ورود با پیامک همچنان با شماره موبایل انجام می‌شود. "
+        "در صورت فعال بودن پیامک، نام کاربری و رمز نیز برایتان پیامک می‌شود؛ "
         "می‌توانید از پایین صفحهٔ ورود با لینک «ورود پرسنل و مدیران» با این مشخصات وارد شوید."
     )
 
@@ -67,8 +69,17 @@ async def _issue_student_portal_password_if_needed(
     if user.hashed_password and (user.username or "").strip() == phone:
         return False, None
 
+    from app.services.student_identity import is_canonical_student_username
+
+    current = (user.username or "").strip()
+    # قالب یکپارچه STU-… را به موبایل برنگردان؛ رمز موجود را هم هر بار OTP عوض نکن
+    if is_canonical_student_username(current):
+        return False, None
+    if current and user.hashed_password:
+        return False, None
+
     settings = get_settings()
-    if (user.username or "").strip() != phone:
+    if current != phone:
         taken = (
             await db.execute(
                 select(User.id).where(User.username == phone, User.id != user.id).limit(1)

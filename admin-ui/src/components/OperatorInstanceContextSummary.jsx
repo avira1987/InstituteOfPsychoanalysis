@@ -28,6 +28,7 @@ export default function OperatorInstanceContextSummary({
   const { guidance } = useOperatorProcessGuidance({
     instanceDetail,
     portalRole,
+    user,
     availableTransitions,
   })
 

@@ -27,10 +27,15 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.meta.loader import MetadataLoader
 from app.meta.process_forms import get_process_forms, get_process_ui_requirements, get_state_assigned_role
+from app.services.installment_settings_service import (
+    forms_with_installment_policy,
+    new_installment_disabled_reason,
+)
 from app.meta.process_data_access import (
     apply_data_update_to_context,
     editable_field_names,
     extract_values,
+    first_role_that_can_edit_forms,
     sanitize_editable_payload,
     visible_field_names,
     visible_forms_for_role,
@@ -1267,6 +1272,7 @@ async def get_process_forms_for_state(
     forms = _lock_forms_when_cannot_act(forms, can_act=can_act_on_state)
     state_assigned_role = get_state_assigned_role(process_code, state or "") if state else None
     suggested_context: dict = {}
+    ctx_for_policy: dict | None = None
     if instance_id and state:
         try:
             iid = uuid.UUID(instance_id)
@@ -1277,9 +1283,11 @@ async def get_process_forms_for_state(
             from app.services.process_form_prefill import apply_pre_filled_fields
 
             base_ctx = StateMachineEngine._as_mapping(inst.context_data)
+            ctx_for_policy = base_ctx
             suggested_context = await apply_pre_filled_fields(
                 db, process_code, state, base_ctx, student_id=inst.student_id,
             )
+    forms = await forms_with_installment_policy(db, forms, ctx_for_policy)
     return {
         "process_code": process_code,
         "state": state,
@@ -1375,6 +1383,7 @@ async def start_process(
             )
 
     extra = StateMachineEngine._as_mapping(student_row.extra_data)
+    student_svc = StudentService(db)
     if (
         scope == "student"
         and request.process_code in _REGISTRATION_PROCESS_CODES_BLOCKED_UNDER_CLASS_ACCESS
@@ -1385,18 +1394,41 @@ async def start_process(
             detail="به‌دلیل مرخصی آموزشی فعال، ثبت‌نام ترم/درس تا زمان بازگشت و رفع مسدودیت در سامانه مجاز نیست.",
         )
 
+    if request.process_code == "start_therapy":
+        from app.services.admission_type_service import (
+            SINGLE_COURSE_NO_START_THERAPY_FA,
+            therapy_start_applicable,
+            normalize_admission_type,
+        )
+
+        await student_svc.hydrate_admission_type(student_row)
+        extra_st = StateMachineEngine._as_mapping(student_row.extra_data)
+        admission_st = normalize_admission_type(extra_st.get("admission_type"))
+        if not therapy_start_applicable(admission_st):
+            raise HTTPException(status_code=400, detail=SINGLE_COURSE_NO_START_THERAPY_FA)
+
     if (
         scope == "student"
         and request.process_code == "intro_second_semester_registration"
     ):
+        from app.services.admission_type_service import (
+            TERM2_THERAPY_REQUIRED_FA,
+            derive_has_active_therapist,
+            normalize_admission_type,
+            term2_blocked_without_active_therapist,
+        )
+
+        await student_svc.hydrate_admission_type(student_row)
+        extra = StateMachineEngine._as_mapping(student_row.extra_data)
         gates = extra.get("gates") if isinstance(extra.get("gates"), dict) else {}
-        if gates.get("next_term_registration_blocked"):
+        admission_t2 = normalize_admission_type(extra.get("admission_type"))
+        has_therapist = derive_has_active_therapist(student_row, extra)
+        if gates.get("next_term_registration_blocked") or term2_blocked_without_active_therapist(
+            admission_t2, has_active_therapist=has_therapist
+        ):
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    "ثبت‌نام در ترم دوم دوره آشنایی منوط به آغاز درمان آموزشی و ثبت درمانگر فعال است. "
-                    "لطفاً ابتدا از کارت/فرایند «آغاز درمان آموزشی» در پورتال اقدام کنید."
-                ),
+                detail=TERM2_THERAPY_REQUIRED_FA,
             )
 
     if request.process_code == "introductory_course_registration":
@@ -1437,7 +1469,6 @@ async def start_process(
             initial_ctx.setdefault("interview_result", admission)
         initial_ctx["has_active_therapist"] = derive_has_active_therapist(student_row, extra_st)
 
-    student_svc = StudentService(db)
     if scope == "student" and request.process_code in REGISTRATION_PROCESS_CODES:
         existing_reg = await student_svc.pick_best_active_registration_instance(
             student_uuid,
@@ -1515,6 +1546,21 @@ async def trigger_transition(
         await db.execute(select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id)))
     ).scalars().first()
     await _ensure_student_owns_instance(db, current_user, inst_early)
+    if inst_early and inst_early.process_code == "start_therapy":
+        from app.services.admission_type_service import (
+            SINGLE_COURSE_NO_START_THERAPY_FA,
+            therapy_start_applicable,
+        )
+
+        st_row = (
+            await db.execute(select(Student).where(Student.id == inst_early.student_id))
+        ).scalars().first()
+        if st_row:
+            svc_st = StudentService(db)
+            await svc_st.hydrate_admission_type(st_row)
+            extra_st = StateMachineEngine._as_mapping(st_row.extra_data)
+            if not therapy_start_applicable(extra_st.get("admission_type")):
+                raise HTTPException(status_code=400, detail=SINGLE_COURSE_NO_START_THERAPY_FA)
     if inst_early and inst_early.process_code == "therapy_session_increase":
         merged_payload = _apply_therapy_session_increase_trigger_rules(
             request.trigger_event,
@@ -1886,8 +1932,24 @@ async def register_student_step_forms(
     if not student or student.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your process instance")
 
+    if instance.process_code == "start_therapy":
+        from app.services.admission_type_service import (
+            SINGLE_COURSE_NO_START_THERAPY_FA,
+            therapy_start_applicable,
+        )
+
+        svc_st = StudentService(db)
+        await svc_st.hydrate_admission_type(student)
+        extra_st = StateMachineEngine._as_mapping(student.extra_data)
+        if not therapy_start_applicable(extra_st.get("admission_type")):
+            raise HTTPException(status_code=400, detail=SINGLE_COURSE_NO_START_THERAPY_FA)
+
     forms = get_process_forms(instance.process_code, state_code=instance.current_state_code)
     ctx_before = instance.context_data or {}
+    forms = await forms_with_installment_policy(db, forms, ctx_before)
+    blocked = await new_installment_disabled_reason(db, request.form_values or {}, ctx_before)
+    if blocked:
+        raise HTTPException(status_code=400, detail=blocked)
     ok, missing = validate_student_step_forms(forms, request.form_values or {}, ctx_before)
     if not ok:
         raise HTTPException(status_code=400, detail={"error": "validation_failed", "missing": missing})
@@ -1904,6 +1966,29 @@ async def register_student_step_forms(
         instance=instance,
         sanitized=sanitized,
     )
+    from app.meta.course_selection_validation import (
+        course_selection_config,
+        normalize_course_codes,
+        validate_selected_courses_for_process,
+    )
+
+    course_cfg = course_selection_config(instance.process_code)
+    if course_cfg:
+        field_name = course_cfg.get("field_name") or "selected_courses"
+        selected_raw = sanitized.get(field_name)
+        if selected_raw in (None, "", []):
+            selected_raw = sanitized.get("selected_courses")
+        if selected_raw not in (None, "", []):
+            ok_cs, err_cs = await validate_selected_courses_for_process(
+                db,
+                instance.process_code,
+                {**(instance.context_data or {}), **sanitized},
+                normalize_course_codes(selected_raw),
+                student=student,
+                instance=instance,
+            )
+            if not ok_cs:
+                raise HTTPException(status_code=400, detail=err_cs or "انتخاب درس مجاز نیست.")
     ctx = apply_register_to_context(
         clear_step_otp_verified_flags(instance.context_data or {}),
         instance.current_state_code,
@@ -1930,6 +2015,12 @@ async def register_student_step_forms(
             ctx.pop("current_installment_index", None)
             ctx.pop("pending_installments_remaining", None)
             ctx.pop("next_installment_due_at", None)
+            if sanitized.get("payment_method") == "cash":
+                from app.services.tuition_installment_service import cancel_unsent_installment_reminders
+
+                cancel_unsent_installment_reminders(
+                    student, instance_id=str(instance.id), reason="switched_to_cash"
+                )
 
         ctx = await refresh_instance_tuition_context(
             db,
@@ -2008,6 +2099,8 @@ async def request_student_step_otp(
     phone = (current_user.phone or "").strip()
     if not phone:
         raise HTTPException(status_code=400, detail="شماره موبایل در پروفایل شما ثبت نشده است.")
+    if context_has_step_otp_verified(instance.context_data, instance.current_state_code):
+        return {"success": True, "already_verified": True, "expires_in": 0}
     from app.services.otp_service import STEP_OTP_EXPIRY_SECONDS, request_otp as do_request
 
     result = await do_request(db, phone, expiry_seconds=STEP_OTP_EXPIRY_SECONDS)
@@ -2162,7 +2255,12 @@ async def operator_update_selected_courses(
     field_name = cfg["field_name"]
     form_state = cfg["form_state"]
     new_codes = normalize_course_codes(request.selected_courses)
-    ok, err = await validate_selected_courses_for_process(db, instance.process_code, ctx, new_codes)
+    st_row = (
+        await db.execute(select(Student).where(Student.id == instance.student_id))
+    ).scalars().first()
+    ok, err = await validate_selected_courses_for_process(
+        db, instance.process_code, ctx, new_codes, student=st_row, instance=instance
+    )
     if not ok:
         raise HTTPException(status_code=400, detail=err or "انتخاب دروس نامعتبر است.")
 
@@ -2304,14 +2402,21 @@ async def register_operator_step_forms(
             break
 
     raw_forms = get_process_forms(instance.process_code, state_code=state)
+    raw_forms = await forms_with_installment_policy(db, raw_forms, instance.context_data)
     forms = visible_forms_for_role(raw_forms, actor_role)
+    edit_names = editable_field_names(forms, actor_role) if forms else set()
+    if not forms or not edit_names:
+        fallback = first_role_that_can_edit_forms(roles_list, raw_forms)
+        if fallback:
+            actor_role = _normalize_actor_role(fallback)
+            forms = visible_forms_for_role(raw_forms, actor_role)
+            edit_names = editable_field_names(forms, actor_role)
     if not forms:
         raise HTTPException(
             status_code=403,
             detail="شما اجازهٔ ثبت فرم این مرحله را ندارید.",
         )
 
-    edit_names = editable_field_names(forms, actor_role)
     if not edit_names:
         raise HTTPException(
             status_code=403,
@@ -2339,6 +2444,11 @@ async def register_operator_step_forms(
             status_code=403,
             detail="شما اجازهٔ ثبت فرم این مرحله را ندارید.",
         )
+    blocked = await new_installment_disabled_reason(
+        db, form_values, instance.context_data
+    )
+    if blocked:
+        raise HTTPException(status_code=400, detail=blocked)
 
     if (
         state == "course_finalization"
@@ -2380,6 +2490,27 @@ async def register_operator_step_forms(
     ok, missing = validate_operator_step_forms(forms, form_values, instance.context_data or {})
     if not ok:
         raise HTTPException(status_code=400, detail={"error": "validation_failed", "missing": missing})
+
+    course_cfg = course_selection_config(instance.process_code)
+    if course_cfg:
+        field_name = course_cfg.get("field_name") or "selected_courses"
+        selected_raw = form_values.get(field_name)
+        if selected_raw in (None, "", []):
+            selected_raw = form_values.get("selected_courses")
+        if selected_raw not in (None, "", []):
+            st_row = (
+                await db.execute(select(Student).where(Student.id == instance.student_id))
+            ).scalars().first()
+            ok_cs, err_cs = await validate_selected_courses_for_process(
+                db,
+                instance.process_code,
+                {**(instance.context_data or {}), **form_values},
+                normalize_course_codes(selected_raw),
+                student=st_row,
+                instance=instance,
+            )
+            if not ok_cs:
+                raise HTTPException(status_code=400, detail=err_cs or "انتخاب درس مجاز نیست.")
 
     if (
         state == "calendar_entry"
@@ -2536,6 +2667,7 @@ async def get_process_instance_data(
 
     role = _normalize_actor_role(current_user.role)
     forms = get_process_forms(instance.process_code) or []
+    forms = await forms_with_installment_policy(db, forms, instance.context_data)
     vis_forms = visible_forms_for_role(forms, role)
     vis_names = visible_field_names(forms, role)
     edit_names = editable_field_names(forms, role)
@@ -2567,12 +2699,16 @@ async def update_process_instance_data(
 
     role = _normalize_actor_role(current_user.role)
     forms = get_process_forms(instance.process_code) or []
+    forms = await forms_with_installment_policy(db, forms, instance.context_data)
     sanitized = sanitize_editable_payload(forms, role, request.field_values or {})
     if not sanitized:
         raise HTTPException(
             status_code=403,
             detail="هیچ فیلدی برای ویرایش با مجوز نقش شما در این درخواست وجود ندارد.",
         )
+    blocked = await new_installment_disabled_reason(db, sanitized, instance.context_data)
+    if blocked:
+        raise HTTPException(status_code=400, detail=blocked)
 
     _validate_semester_prep_calendar_payload_if_present(instance.process_code, sanitized)
 
@@ -2725,6 +2861,7 @@ async def get_instance_dashboard(
             status.get("process_code", ""),
             state_code=status.get("current_state"),
         )
+        forms = await forms_with_installment_policy(db, forms, inst.context_data)
         ui_requirements = get_process_ui_requirements(status.get("process_code", ""))
         out = {
             "status": _redact_confidential_for_student(status, current_user),

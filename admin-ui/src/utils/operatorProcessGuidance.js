@@ -4,8 +4,13 @@ import {
   PROCESS_STATE_LABELS_FA,
   STATE_LABELS_FA,
 } from './processMetadataLabels.js'
-import { normalizeAssignedRole, portalRoleCanActOnState } from './portalRoleAccess.js'
+import { normalizeAssignedRole, anyPortalRoleCanActOnState, formRolesForUser } from './portalRoleAccess.js'
 import { labelRoleFa } from './roleLabels.js'
+import {
+  effectiveSemesterPrepAssignedRole,
+  isSemesterPrepInternalManagerState,
+  semesterPrepResponsibleRoleLabelFa,
+} from './semesterPrepRoles.js'
 
 function findStateDefinition(definition, stateCode) {
   if (!definition?.states || !stateCode) return null
@@ -17,12 +22,15 @@ function labelState(code) {
 }
 
 /** برچسب فارسی assigned_role — از منبع واحد roleLabels.js */
-export function assignedRoleLabelFa(roleCode) {
+export function assignedRoleLabelFa(roleCode, { processCode, stateCode } = {}) {
+  if (processCode && stateCode) {
+    return semesterPrepResponsibleRoleLabelFa(processCode, stateCode, roleCode)
+  }
   return labelRoleFa(roleCode)
 }
 
-export function buildWaitingForRoleTaskFa(assignedRole) {
-  const label = assignedRoleLabelFa(assignedRole)
+export function buildWaitingForRoleTaskFa(assignedRole, { processCode, stateCode } = {}) {
+  const label = assignedRoleLabelFa(assignedRole, { processCode, stateCode })
   if (label) {
     return (
       `در این مرحله فرایند منتظر «${label}» است — شما فقط می‌توانید مشاهده کنید. `
@@ -93,6 +101,8 @@ export function buildOperatorGuidance({
   transitions,
   forms,
   portalRole,
+  portalRoles,
+  user,
   stepFormLocked = false,
 }) {
   const proc = definition?.process
@@ -103,24 +113,34 @@ export function buildOperatorGuidance({
   const shortFa = (meta.operator_short_fa || '').trim()
     || (procCode && PROCESS_STATE_LABELS_FA[procCode]?.[detail?.current_state])
     || (st?.name_fa || detail?.current_state || '')
-  const role = st?.assigned_role
+  const rawRole = st?.assigned_role
+  const stateCode = detail?.current_state
+  const role = isSemesterPrepInternalManagerState(procCode, stateCode)
+    ? 'internal_manager'
+    : rawRole
   const done = detail?.is_completed || detail?.is_cancelled
-  const canAct = portalRoleCanActOnState(portalRole, role)
+  const roleList = Array.isArray(portalRoles) && portalRoles.length
+    ? portalRoles
+    : formRolesForUser(user, portalRole)
+  const isAdmin = roleList.includes('admin') || portalRole === 'admin'
+  const canAct = isAdmin || anyPortalRoleCanActOnState(
+    roleList,
+    effectiveSemesterPrepAssignedRole(procCode, stateCode, rawRole),
+  )
 
   let taskFa = ''
   if (!done && st) {
-    const stateCode = detail?.current_state
     const customTask = (
       (procCode && PROCESS_OPERATOR_TASK_LABELS_FA[procCode]?.[stateCode])
       || (stateCode && OPERATOR_TASK_LABELS_FA[stateCode])
       || meta.operator_task_fa
       || ''
     ).trim()
-    if (!canAct && portalRole !== 'admin') {
-      taskFa = buildWaitingForRoleTaskFa(role)
+    if (!canAct && !isAdmin) {
+      taskFa = buildWaitingForRoleTaskFa(role, { processCode: procCode, stateCode })
     } else if (customTask) {
       taskFa = customTask
-    } else if (canAct || portalRole === 'admin') {
+    } else if (canAct || isAdmin) {
       taskFa = fallbackOperatorTask(role, transitions, forms, stepFormLocked)
     }
   }
@@ -130,7 +150,9 @@ export function buildOperatorGuidance({
     shortFa,
     taskFa: taskFa || '',
     role,
-    waitingRoleLabelFa: !canAct && !done ? assignedRoleLabelFa(role) : '',
+    waitingRoleLabelFa: !canAct && !done
+      ? assignedRoleLabelFa(role, { processCode: procCode, stateCode })
+      : '',
     done,
     canAct,
   }

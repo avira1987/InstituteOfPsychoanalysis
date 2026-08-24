@@ -40,7 +40,7 @@ export default function InterviewSlotsAdmin({
   semesterPrepMode = false,
 }) {
   const { user } = useAuth()
-  const canEditInterviewer = canManageInterviewSlots(user?.role)
+  const canEditInterviewer = canManageInterviewSlots(user)
   const [slots, setSlots] = useState([])
   const [includePast, setIncludePast] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -477,13 +477,14 @@ export default function InterviewSlotsAdmin({
                       )}
                     </td>
                     <td>{s.mode === 'online' ? 'آنلاین' : 'حضوری'}</td>
-                    <td style={{ maxWidth: '14rem', fontSize: '0.8rem' }} dir={s.mode === 'online' ? 'ltr' : 'rtl'}>
-                      {s.mode === 'online' ? (() => {
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {(() => {
                         const linkState = interviewMeetingLinkPreparingState(s)
                         return (
                         <OnlineMeetingJoinCta
                           compact
-                          mode="online"
+                          mode={s.mode === 'online' ? 'online' : 'in_person'}
+                          locationFa={s.location_fa}
                           meetingLink={s.meeting_link}
                           meetingLinkReady={s.meeting_link_ready}
                           meetingLinkOpenAt={s.meeting_link_open_at}
@@ -504,9 +505,7 @@ export default function InterviewSlotsAdmin({
                           resultRecorded={!!linkState.resultRecorded}
                         />
                         )
-                      })() : (
-                        s.location_fa || '—'
-                      )}
+                      })()}
                     </td>
                     <td>
                       {s.mode === 'online' && s.assigned_student_id && !s.booking_payment_deadline_at ? (

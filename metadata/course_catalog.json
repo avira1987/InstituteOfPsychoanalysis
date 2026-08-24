@@ -1,6 +1,32 @@
 {
-  "version": "1.1",
-  "description_fa": "کاتالوگ دروس برنامه آموزشی — واحد، ترم، پیش‌نیاز و ساعت کلاس از جداول SOP «درس‌های ترم‌ها». شهریه = تعداد واحد × هزینه هر واحد.",
+  "version": "1.4",
+  "description_fa": "کاتالوگ دروس برنامه آموزشی — واحد، ترم، پیش‌نیاز، مجاز بودن تک‌درس، و ساعت کلاس از جداول SOP «درس‌های ترم‌ها». شهریه = تعداد واحد × هزینه هر واحد.",
+  "system_prerequisites": [
+    {
+      "code": "internship_started",
+      "label_fa": "شروع انترنی",
+      "enforced": false,
+      "activation_hint_fa": "بعداً به فلگ internship_started روی پرونده دانشجو وصل شود"
+    },
+    {
+      "code": "clinical_hours_500",
+      "label_fa": "۵۰۰ ساعت کسب تجربه بالینی",
+      "enforced": false,
+      "activation_hint_fa": "بعداً به clinical_hours >= 500 وصل شود"
+    },
+    {
+      "code": "individual_supervision_50h",
+      "label_fa": "خاتمه ۵۰ ساعت سوپرویژن فردی",
+      "enforced": false,
+      "activation_hint_fa": "بعداً به فرایند supervision_50h_completion وصل شود"
+    },
+    {
+      "code": "individual_supervision_100h",
+      "label_fa": "خاتمه ۱۰۰ ساعت سوپرویژن فردی",
+      "enforced": false,
+      "activation_hint_fa": "بعداً به دو بلوک ۵۰ ساعته / supervision_hours >= 100 وصل شود"
+    }
+  ],
   "courses": [
     {
       "value": "theory_psychoanalysis_1",
@@ -8,7 +34,9 @@
       "subtitle_fa": "اصول بنیادین در روانکاوی",
       "aliases": [
         "تئوری روانکاوی (1)",
-        "تئوری روانکاوی (1): اصول بنیادین در روانکاوی"
+        "تئوری روانکاوی (1): اصول بنیادین در روانکاوی",
+        "تئوری روانکاوی یک",
+        "تئوری روانکاوی 1"
       ],
       "track": "analytic_psychotherapy",
       "program_kind": "introductory",
@@ -18,14 +46,18 @@
       "retake_exam": true,
       "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
       "prerequisite_codes": [],
-      "prerequisite_notes": "ندارد"
+      "prerequisite_notes": "ندارد",
+      "single_course_allowed": true
     },
     {
       "value": "theory_technique_1",
       "label_fa": "تئوری تکنیک‌ها ۱",
       "aliases": [
         "تئوری تکنیک (1)",
-        "تئوری تکنیک 1"
+        "تئوری تکنیک 1",
+        "تئوری تکنیک یک",
+        "تئوری تکنیک‌ها یک",
+        "تئوری تکنیک ها 1"
       ],
       "track": "technique_theory_1_3",
       "program_kind": "introductory",
@@ -102,8 +134,11 @@
       "class_hours": "1:30",
       "retake_exam": true,
       "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
-      "prerequisite_codes": [],
-      "prerequisite_notes": "ندارد"
+      "prerequisite_codes": [
+        "theory_psychoanalysis_1"
+      ],
+      "prerequisite_notes": "تئوری روانکاوی ۱",
+      "single_course_allowed": true
     },
     {
       "value": "theory_technique_2",
@@ -118,8 +153,10 @@
       "class_hours": "2:15",
       "retake_exam": true,
       "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
-      "prerequisite_codes": [],
-      "prerequisite_notes": "ندارد"
+      "prerequisite_codes": [
+        "theory_technique_1"
+      ],
+      "prerequisite_notes": "تئوری تکنیک‌ها ۱"
     },
     {
       "value": "skills_practice_2",
@@ -134,8 +171,10 @@
       "class_hours": "1:30",
       "retake_exam": false,
       "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال (۳۲ تستی-مفهومی و ۵۰ عملی)",
-      "prerequisite_codes": [],
-      "prerequisite_notes": "ندارد"
+      "prerequisite_codes": [
+        "skills_practice_1"
+      ],
+      "prerequisite_notes": "تکنیک (1): تمرین مهارت‌های اولیه"
     },
     {
       "value": "clinical_case_conference",
@@ -163,8 +202,10 @@
       "class_hours": "1:30",
       "retake_exam": true,
       "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره گزارش",
-      "prerequisite_codes": [],
-      "prerequisite_notes": "ندارد"
+      "prerequisite_codes": [
+        "film_observation_1"
+      ],
+      "prerequisite_notes": "مشاهده فیلم‌های درمانی (1)"
     },
     {
       "value": "theory_psychoanalysis_3",
@@ -181,8 +222,10 @@
       "class_hours": "2:15",
       "retake_exam": true,
       "evaluation_fa": "۸ نمره حضور و غیاب، ۱۰ نمره مشارکت، ۸۲ نمره امتحان فاینال",
-      "prerequisite_codes": [],
-      "prerequisite_notes": "ندارد"
+      "prerequisite_codes": [
+        "theory_psychoanalysis_2"
+      ],
+      "prerequisite_notes": "تئوری روانکاوی ۲"
     },
     {
       "value": "theory_technique_3",
@@ -285,6 +328,9 @@
         "theory_psychoanalysis_2",
         "theory_psychoanalysis_3"
       ],
+      "system_prerequisite_codes": [
+        "internship_started"
+      ],
       "prerequisite_notes": "تئوری روانکاوی (1) تا (3)، شروع انترنی"
     },
     {
@@ -305,6 +351,9 @@
         "skills_practice_2",
         "skills_practice_3",
         "film_observation_continuous"
+      ],
+      "system_prerequisite_codes": [
+        "internship_started"
       ],
       "prerequisite_notes": "شروع انترنی، تئوری تکنیک (1) تا (3) / تکنیک (1) تا (3)، مشاهده فیلم‌های مستمر"
     },
@@ -352,6 +401,9 @@
         "skills_practice_3",
         "film_observation_continuous"
       ],
+      "system_prerequisite_codes": [
+        "individual_supervision_50h"
+      ],
       "prerequisite_notes": "سوپرویژن گروهی (1)، تئوری تکنیک (1) تا (3)، تئوری روانکاوی (4)، تکنیک (1) تا (3)، خاتمه ۵۰ ساعت سوپرویژن فردی، مشاهده فیلم‌های مستمر"
     },
     {
@@ -396,6 +448,9 @@
         "film_observation_continuous",
         "theory_psychoanalysis_4"
       ],
+      "system_prerequisite_codes": [
+        "individual_supervision_50h"
+      ],
       "prerequisite_notes": "تکنیک (1) تا (4)، تئوری تکنیک (1) تا (3)، مشاهده فیلم‌های مستمر، خاتمه ۵۰ ساعت سوپرویژن فردی، تئوری روانکاوی (4)"
     },
     {
@@ -424,6 +479,9 @@
         "film_observation_3",
         "film_observation_continuous"
       ],
+      "system_prerequisite_codes": [
+        "clinical_hours_500"
+      ],
       "prerequisite_notes": "تکنیک (1) تا (4)، تئوری تکنیک (1) تا (3)، انتقال، مشاهده فیلم‌های درمانی 1 تا 3 و مستمر، ۵۰۰ ساعت تجربه بالینی"
     },
     {
@@ -441,6 +499,9 @@
       "retake_exam": true,
       "evaluation_fa": "در صورت عدم تکمیل گزارش یک ترم دیگر وقت دارد؛ پس از ۲ ترم اخطار آموزشی",
       "prerequisite_codes": [],
+      "system_prerequisite_codes": [
+        "clinical_hours_500"
+      ],
       "prerequisite_notes": "۵۰۰ ساعت تجربه بالینی + انتخاب بیماری که حداقل ۵۰ جلسه درمانی گذرانده باشد"
     },
     {
@@ -456,6 +517,9 @@
       "prerequisite_codes": [
         "theory_psychoanalysis_1",
         "theory_psychoanalysis_2"
+      ],
+      "system_prerequisite_codes": [
+        "internship_started"
       ],
       "prerequisite_notes": "تئوری روانکاوی (1) و (2)، شروع انترنی"
     },
@@ -480,6 +544,9 @@
         "film_observation_continuous",
         "theory_psychoanalysis_4"
       ],
+      "system_prerequisite_codes": [
+        "clinical_hours_500"
+      ],
       "prerequisite_notes": "تکنیک (1) تا (4)، تئوری تکنیک (1) تا (3)، انتقال مشاهده فیلم‌های مستمر، ۵۰۰ ساعت تجربه بالینی، تئوری روانکاوی (4)"
     },
     {
@@ -499,6 +566,9 @@
         "theory_technique_2",
         "theory_technique_3",
         "theory_psychoanalysis_4"
+      ],
+      "system_prerequisite_codes": [
+        "individual_supervision_50h"
       ],
       "prerequisite_notes": "سوپرویژن گروهی (1) و (2)، تئوری تکنیک (1) تا (3)، تئوری روانکاوی (4)، تکنیک (1) تا (3)، خاتمه ۵۰ ساعت سوپرویژن فردی"
     },
@@ -525,12 +595,21 @@
         "skills_practice_3",
         "skills_practice_4"
       ],
+      "system_prerequisite_codes": [
+        "clinical_hours_500",
+        "individual_supervision_100h"
+      ],
       "prerequisite_notes": "سوپرویژن گروهی (1) و (2)، تئوری تکنیک (1) تا (3)، تئوری روانکاوی (4)، انتقال، تکنیک (1) تا (4)، ۵۰۰ ساعت تجربه بالینی و ۱۰۰ ساعت سوپرویژن فردی"
     },
     {
       "value": "theory_inheritance",
       "label_fa": "تئوری وراثت",
       "track": "analytic_psychotherapy"
+    },
+    {
+      "value": "course_درس_آزمایشی",
+      "label_fa": "درس آزمایشی",
+      "track": "track_رسته_آزمایشی"
     }
   ]
 }

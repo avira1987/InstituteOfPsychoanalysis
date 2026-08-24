@@ -68,9 +68,11 @@ async def _persist_admission_from_instance(db, instance: ProcessInstance, to_sta
         interview_result=ctx.get("interview_result") or ctx.get("result"),
         result_state=to_state,
     )
-    if canonical and not ctx.get("admission_type"):
+    if canonical:
         ctx = dict(ctx)
         ctx["admission_type"] = canonical
+        ctx["interview_result"] = canonical
+        ctx["result"] = canonical
         instance.context_data = ctx
         flag_modified(instance, "context_data")
     if canonical:

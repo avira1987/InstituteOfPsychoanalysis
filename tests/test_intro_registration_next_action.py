@@ -77,3 +77,47 @@ def test_build_student_guidance_why_fa_from_metadata():
     out = build_student_guidance(definition, detail, [], [], step_form_locked=False)
     assert out.get("why_fa")
     assert "رزرو" in out["why_fa"] or "پرداخت" in out["why_fa"]
+
+
+def test_build_student_guidance_conditional_therapy_term2_notice():
+    from app.services.admission_type_service import CONDITIONAL_THERAPY_TERM2_NOTICE_FA
+
+    definition = _load_intro_definition()
+    after_interview = build_student_guidance(
+        definition,
+        {
+            "current_state": "result_conditional_therapy",
+            "is_completed": False,
+            "context_data": {"admission_type": "conditional_therapy"},
+        },
+        [],
+        [],
+        step_form_locked=False,
+    )
+    assert after_interview["why_fa"] == CONDITIONAL_THERAPY_TERM2_NOTICE_FA
+
+    after_payment = build_student_guidance(
+        definition,
+        {
+            "current_state": "registration_complete",
+            "is_completed": True,
+            "context_data": {"admission_type": "conditional_therapy"},
+        },
+        [],
+        [],
+        step_form_locked=False,
+    )
+    assert after_payment["why_fa"] == CONDITIONAL_THERAPY_TERM2_NOTICE_FA
+
+    full_done = build_student_guidance(
+        definition,
+        {
+            "current_state": "registration_complete",
+            "is_completed": True,
+            "context_data": {"admission_type": "full_admission"},
+        },
+        [],
+        [],
+        step_form_locked=False,
+    )
+    assert full_done["why_fa"] != CONDITIONAL_THERAPY_TERM2_NOTICE_FA

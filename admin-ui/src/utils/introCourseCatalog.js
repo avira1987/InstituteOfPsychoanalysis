@@ -19,6 +19,38 @@ export function formatCourseOptionLabel(opt) {
   return base
 }
 
+function trimText(value) {
+  return String(value || '').trim()
+}
+
+/** روز و ساعت کلاس از گزینهٔ درس منتشرشده */
+export function formatCourseScheduleFa(opt) {
+  if (!opt || typeof opt !== 'object') return ''
+  const day = trimText(opt.day)
+  const time = trimText(opt.time_text || opt.time)
+  return [day, time].filter(Boolean).join(' ')
+}
+
+/** نام مدرس از گزینهٔ درس منتشرشده */
+export function formatCourseInstructorFa(opt) {
+  if (!opt || typeof opt !== 'object') return ''
+  return trimText(opt.instructor_name || opt.instructor)
+}
+
+/**
+ * خط مشخصات برای فرم انتخاب درس: ساعت و مدرس.
+ * اگر هیچ‌کدام موجود نباشد رشتهٔ خالی برمی‌گردد.
+ */
+export function formatCourseOptionSpecs(opt) {
+  const parts = []
+  const schedule = formatCourseScheduleFa(opt)
+  const instructor = formatCourseInstructorFa(opt)
+  if (schedule) parts.push(`ساعت: ${schedule}`)
+  if (instructor) parts.push(`مدرس: ${instructor}`)
+  if (!parts.length) return ''
+  return `مشخصات: ${parts.join('  ·  ')}`
+}
+
 export function formatRialAsToman(rial) {
   try {
     const n = Number(rial)
@@ -32,18 +64,23 @@ export function formatRialAsToman(rial) {
 /** گزینه‌های درس از context نمونه فرایند (خروجی آماده‌سازی ترم). */
 export function optionsFromContext(contextData) {
   const ctx = contextData && typeof contextData === 'object' ? contextData : {}
-  const raw = ctx.available_course_options
+  const raw = ctx.available_course_options || ctx.lms?.available_course_options
   if (Array.isArray(raw) && raw.length) {
     return raw.map((o) => {
       const item = {
         value: String(o.value),
         label_fa: o.label_fa || String(o.value),
         day: o.day,
-        time_text: o.time_text,
+        time_text: o.time_text || o.time,
         classroom_location: o.classroom_location,
-        instructor_name: o.instructor_name,
+        instructor_name: o.instructor_name || o.instructor,
         units: o.units,
         prerequisite_codes: o.prerequisite_codes,
+        corequisite_codes: o.corequisite_codes,
+        corequisite_note_fa: o.corequisite_note_fa,
+        is_corequisite: o.is_corequisite,
+        lock_reason_fa: o.lock_reason_fa,
+        selectable: o.selectable,
         track: o.track,
         per_unit_cost_rial: o.per_unit_cost_rial,
         line_amount_rial: o.line_amount_rial,

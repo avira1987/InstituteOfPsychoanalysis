@@ -21,6 +21,13 @@ _ALIAS_TO_CANONICAL = {
     "full": ADMISSION_FULL,
     "full_admission": ADMISSION_FULL,
     "result_full_admission": ADMISSION_FULL,
+    "تک درس": ADMISSION_SINGLE_COURSE,
+    "تک‌درس": ADMISSION_SINGLE_COURSE,
+    "پذیرش تک درس": ADMISSION_SINGLE_COURSE,
+    "پذیرش تک‌درس": ADMISSION_SINGLE_COURSE,
+    "مشروط به درمان": ADMISSION_CONDITIONAL_THERAPY,
+    "پذیرش مشروط": ADMISSION_CONDITIONAL_THERAPY,
+    "پذیرش کامل": ADMISSION_FULL,
 }
 
 _STATE_TO_ADMISSION = {
@@ -59,7 +66,49 @@ def resolve_admission_type_from_context(ctx: dict | None) -> Optional[str]:
         normalized = normalize_admission_type(ctx.get(key))
         if normalized:
             return normalized
+    nested = ctx.get("student")
+    if isinstance(nested, dict):
+        return resolve_admission_type_from_context(nested)
     return None
+
+
+def overlay_admission_on_context(
+    ctx: dict | None,
+    student: Any = None,
+    state_codes: Optional[list] = None,
+) -> dict:
+    """نوع پذیرش کانونی برای فیلتر درس: اگر هر منبع تک‌درس باشد، تک‌درس می‌ماند."""
+    out = _as_mapping(ctx)
+    extra = _as_mapping(getattr(student, "extra_data", None) if student is not None else None)
+    from_student = resolve_admission_type_from_context(extra)
+    from_ctx = resolve_admission_type_from_context(out)
+    from_states = None
+    for code in state_codes or []:
+        found = admission_type_from_result_state(code)
+        if found:
+            from_states = found
+    sources = [from_ctx, from_student, from_states]
+    if ADMISSION_SINGLE_COURSE in sources:
+        canon = ADMISSION_SINGLE_COURSE
+    else:
+        canon = from_ctx or from_student or from_states
+    if not canon:
+        return out
+    out["admission_type"] = canon
+    if canon == ADMISSION_SINGLE_COURSE:
+        out["interview_result"] = ADMISSION_SINGLE_COURSE
+        out["result"] = ADMISSION_SINGLE_COURSE
+    else:
+        out["interview_result"] = (
+            normalize_admission_type(out.get("interview_result"))
+            or normalize_admission_type(extra.get("interview_result"))
+            or canon
+        )
+        out["result"] = out["interview_result"]
+    nested = _as_mapping(out.get("student"))
+    nested["admission_type"] = canon
+    out["student"] = nested
+    return out
 
 
 def derive_has_active_therapist(student: Student, extra: dict | None = None) -> bool:
@@ -117,15 +166,114 @@ def conditional_therapy_required(student: Student) -> bool:
     return normalize_admission_type(extra.get("admission_type")) == ADMISSION_CONDITIONAL_THERAPY
 
 
-def therapy_deadline_hint_fa(*, deadline: Optional[str] = None) -> str:
-    if deadline:
-        return (
-            "پذیرش شما مشروط به آغاز درمان آموزشی است. "
-            f"تا قبل از آغاز ترم دوم (مهلت: {deadline}) باید فرایند «آغاز درمان آموزشی» را تکمیل کنید؛ "
-            "در غیر این صورت ثبت‌نام ترم دوم برای شما باز نمی‌شود."
-        )
+def therapy_start_applicable(admission: Any = None) -> bool:
+    """آیا مسیر «آغاز درمان آموزشی» برای این نوع پذیرش موضوعیت دارد؟
+
+    تک‌درس اصلاً مسیر درمان ندارد. مشروط و پذیرش کامل (و جامع بدون admission) بله.
+    """
+    canonical = normalize_admission_type(admission)
+    if canonical == ADMISSION_SINGLE_COURSE:
+        return False
+    return True
+
+
+def should_auto_start_educational_therapy(
+    admission: Any = None,
+    course_type: Any = None,
+) -> bool:
+    """آیا پس از ثبت‌نام باید start_therapy به‌اجبار به‌عنوان مسیر اصلی باز شود؟
+
+    دوره جامع: بله (مهلت هفته نهم). آشنایی فقط برای پذیرش کامل. مشروط و تک‌درس خیر.
+    """
+    ct = str(course_type or "").strip().lower()
+    if ct == "comprehensive":
+        return True
+    return normalize_admission_type(admission) == ADMISSION_FULL
+
+
+def term2_blocked_without_active_therapist(
+    admission: Any = None,
+    *,
+    has_active_therapist: bool = False,
+) -> bool:
+    """ثبت‌نام ترم دوم برای پذیرش مشروط بدون درمانگر فعال مجاز نیست."""
     return (
-        "پذیرش شما مشروط به آغاز درمان آموزشی است. "
-        "تا قبل از آغاز ترم دوم باید فرایند «آغاز درمان آموزشی» را تکمیل کنید؛ "
-        "در غیر این صورت ثبت‌نام ترم دوم برای شما باز نمی‌شود."
+        normalize_admission_type(admission) == ADMISSION_CONDITIONAL_THERAPY
+        and not bool(has_active_therapist)
     )
+
+
+TERM2_THERAPY_REQUIRED_FA = (
+    "شما درمانگر فعالی ندارید و امکان ثبت‌نام شما برای ترم دوم ممکن نیست. "
+    "پذیرش مشروط به درمان تا قبل از ثبت‌نام ترم دوم باید فرایند «آغاز درمان آموزشی» را تکمیل کند."
+)
+
+SINGLE_COURSE_NO_START_THERAPY_FA = (
+    "پذیرش تک‌درس شامل مسیر آغاز درمان آموزشی نیست؛ ادامه از پنل دروس و کلاس‌هاست."
+)
+
+# متن ثابت پنل دانشجو پس از نتیجهٔ مصاحبه «پذیرش مشروط به شروع درمان شخصی (۱ تا ۵ درس)»
+CONDITIONAL_THERAPY_TERM2_NOTICE_FA = (
+    "به علت پذیرش مشروط به آغاز درمان آموزشی در دوره آشنایی پس از آغاز درمان آموزشی "
+    "امکان ثبت نام در ترم دوم وجود دارد."
+)
+
+_INTRO_STATES_AFTER_CONDITIONAL_RESULT = frozenset({
+    "result_conditional_therapy",
+    "documents_upload",
+    "documents_incomplete",
+    "documents_review",
+    "credentials_created",
+    "course_selection",
+    "payment",
+    "registration_complete",
+    "installment_overdue",
+})
+
+
+def therapy_deadline_hint_fa(*, deadline: Optional[str] = None) -> str:
+    del deadline
+    return CONDITIONAL_THERAPY_TERM2_NOTICE_FA
+
+
+def should_show_conditional_therapy_term2_notice(
+    *,
+    process_code: Optional[str] = None,
+    state_code: Optional[str] = None,
+    context: Optional[dict] = None,
+) -> bool:
+    """پس از پرداخت مصاحبه و ثبت نتیجهٔ پذیرش مشروط، همین پیام به دانشجو نشان داده شود."""
+    if str(state_code or "").strip() == "result_conditional_therapy":
+        return True
+    admission = resolve_admission_type_from_context(context)
+    if admission != ADMISSION_CONDITIONAL_THERAPY:
+        return False
+    code = str(process_code or "").strip()
+    if not code:
+        return True
+    if code == "start_therapy":
+        return True
+    if code == "introductory_course_registration":
+        if not state_code:
+            return True
+        return str(state_code).strip() in _INTRO_STATES_AFTER_CONDITIONAL_RESULT
+    return False
+
+
+def resolve_conditional_therapy_student_why_fa(
+    *,
+    process_code: Optional[str] = None,
+    state_code: Optional[str] = None,
+    context: Optional[dict] = None,
+    existing_why: str = "",
+) -> str:
+    if should_show_conditional_therapy_term2_notice(
+        process_code=process_code,
+        state_code=state_code,
+        context=context,
+    ) and str(state_code or "").strip() in {
+        "result_conditional_therapy",
+        "registration_complete",
+    }:
+        return CONDITIONAL_THERAPY_TERM2_NOTICE_FA
+    return existing_why

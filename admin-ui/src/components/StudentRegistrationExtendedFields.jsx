@@ -1,5 +1,9 @@
 import React from 'react'
-import { REGISTRATION_FIELD_LABELS } from '../utils/studentRegistrationProfile'
+import {
+  REGISTRATION_FIELD_LABELS,
+  commitAgeInput,
+  sanitizeAgeDraft,
+} from '../utils/studentRegistrationProfile'
 
 function YesNoRadios({ name, label, value, onChange, required }) {
   return (
@@ -48,6 +52,15 @@ function SectionTitle({ children }) {
  * @param {{ form: Record<string, string>, onChange: (e: React.ChangeEvent) => void, className?: string }} props
  */
 export default function StudentRegistrationExtendedFields({ form, onChange, className = '' }) {
+  const handleAgeChange = (e) => {
+    onChange({ target: { name: 'age', value: sanitizeAgeDraft(e.target.value) } })
+  }
+  const handleAgeBlur = () => {
+    const value = commitAgeInput(form.age || '')
+    if (value === (form.age || '')) return
+    onChange({ target: { name: 'age', value } })
+  }
+
   return (
     <div className={className || undefined} data-testid="registration-extended-fields">
       <SectionTitle>اطلاعات شخصی تکمیلی</SectionTitle>
@@ -80,14 +93,13 @@ export default function StudentRegistrationExtendedFields({ form, onChange, clas
           <input
             name="age"
             value={form.age || ''}
-            onChange={onChange}
+            onChange={handleAgeChange}
+            onBlur={handleAgeBlur}
             inputMode="numeric"
+            maxLength={3}
             placeholder="مثلاً ۳۵"
             required
           />
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-light)' }}>
-            لطفاً یک عدد مابین ۶ تا ۱۲۰ وارد کنید.
-          </span>
         </div>
         <div className="pub-form-group">
           <label>{REGISTRATION_FIELD_LABELS.birth_certificate_number} *</label>

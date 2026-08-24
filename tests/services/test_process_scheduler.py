@@ -126,6 +126,44 @@ async def test_dispatch_scheduled_reminders_sends_and_marks_sent(
 
 
 @pytest.mark.asyncio
+async def test_dispatch_scheduled_reminders_skips_cash_instance(
+    db_session: AsyncSession, sample_student, sample_student_user
+):
+    inst = ProcessInstance(
+        id=uuid.uuid4(),
+        process_code="introductory_course_registration",
+        student_id=sample_student.id,
+        current_state_code="registration_complete",
+        context_data={"payment_method": "cash", "pending_installments_remaining": 0},
+    )
+    db_session.add(inst)
+    extra = dict(sample_student.extra_data or {})
+    extra["scheduled_reminders"] = [
+        {
+            "id": "cash-r1",
+            "type": "installment",
+            "instance_id": str(inst.id),
+            "due_at": (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(),
+            "template": "installment_reminder",
+            "amount_rial": 70000,
+            "sent": False,
+        }
+    ]
+    sample_student.extra_data = extra
+    flag_modified(sample_student, "extra_data")
+    await db_session.commit()
+
+    hits = await dispatch_scheduled_reminders(db_session, datetime.now(timezone.utc))
+    await db_session.commit()
+
+    assert any(h.get("skipped") for h in hits)
+    st = (await db_session.execute(select(Student).where(Student.id == sample_student.id))).scalars().first()
+    rems = (st.extra_data or {}).get("scheduled_reminders") or []
+    assert rems[0].get("sent") is True
+    assert rems[0].get("skipped") is True
+
+
+@pytest.mark.asyncio
 async def test_dispatch_generic_sla_triggers_theory_course(
     db_session: AsyncSession, sample_student, sample_user
 ):

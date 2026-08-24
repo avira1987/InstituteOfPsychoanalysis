@@ -180,6 +180,31 @@ class PaymentService:
         self.db.add(record)
         return record
 
+    async def consume_credit(
+        self,
+        student_id: uuid.UUID,
+        amount: float,
+        reason: str = "کسر از بستانکاری جلسه (تعیین تکلیف هزینه)",
+        reference_id: Optional[uuid.UUID] = None,
+        created_by: Optional[uuid.UUID] = None,
+        category: Optional[str] = None,
+    ) -> FinancialRecord:
+        """کاهش ماندهٔ بستانکاری با ردیف بدهی — قرینهٔ ``process_refund``."""
+        record = FinancialRecord(
+            id=uuid.uuid4(),
+            student_id=student_id,
+            record_type="debt",
+            amount=amount,
+            description_fa=reason,
+            reference_id=reference_id,
+            created_by=created_by,
+            ledger_category=normalize_ledger_category(category, LEDGER_THERAPY),
+            created_at=datetime.now(timezone.utc),
+        )
+        self.db.add(record)
+        logger.info("Credit consumed: student=%s amount=%s", student_id, amount)
+        return record
+
     async def get_student_balance(
         self,
         student_id: uuid.UUID,

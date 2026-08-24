@@ -6,19 +6,25 @@ import uuid
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.gzip import GZipMiddleware
 
 from app.config import get_settings
 from app.database import init_db, async_session_factory, apply_schema_safety_patches, engine
+from app.observability.frontend import observability_bootstrap_script
+from app.observability.ring_buffer import record_event
+from app.observability.sentry import dsn_connect_hosts, init_sentry
+from app.observability.setup import setup_logging
 from app.services.sla_monitor import sla_monitor
 from app.services.calendar_triggers import calendar_trigger_monitor
 
 settings = get_settings()
+setup_logging(settings)
+init_sentry(settings)
 logger = logging.getLogger(__name__)
 
 # ثبت مدل‌های فرم داینامیک روی metadata (بدون وابستگی چرخه‌ای با operational_models)
@@ -116,6 +122,21 @@ async def _seed_if_empty():
 
         await ensure_institute_operational_student(db)
         await db.commit()
+        try:
+            from app.services.student_identity import unify_existing_student_identities
+
+            stats = await unify_existing_student_identities(db)
+            await db.commit()
+            if stats.get("codes") or stats.get("usernames"):
+                logger.info(
+                    "Unified student identity template: codes=%s usernames=%s scanned=%s",
+                    stats.get("codes"),
+                    stats.get("usernames"),
+                    stats.get("scanned"),
+                )
+        except Exception:
+            await db.rollback()
+            logger.exception("student identity unify on startup failed")
 
         # Check if process definitions exist
         result = await db.execute(select(func.count(ProcessDefinition.id)))
@@ -216,7 +237,8 @@ async def _maybe_seed_demo_financial_if_empty():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan - startup and shutdown events."""
-    logging.basicConfig(level=logging.INFO)
+    setup_logging(settings, force=True)
+    init_sentry(settings)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     # Startup
@@ -328,6 +350,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.middleware.sms_simulation_capture import SmsSimulationCaptureMiddleware
 from app.middleware.login_rate_limit import LoginRateLimitMiddleware
 from app.middleware.uploads_auth import UploadsAuthMiddleware
+from app.middleware.request_context import RequestContextMiddleware
 
 class StripPathPrefixMiddleware(BaseHTTPMiddleware):
     """Strip /anistito prefix and normalize trailing slashes to avoid 307 redirects behind proxy."""
@@ -354,6 +377,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "geolocation=(), microphone=(), camera=(), payment=()",
         )
         # CSP پایه — گزارش‌محور برای سازگاری با SPA؛ سخت‌گیری بیشتر در Apache
+        connect_src = "connect-src 'self'"
+        for host in dsn_connect_hosts(settings):
+            connect_src += f" https://{host}"
         response.headers.setdefault(
             "Content-Security-Policy",
             "default-src 'self'; "
@@ -361,7 +387,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob:; "
             "font-src 'self' data:; "
-            "connect-src 'self'; "
+            f"{connect_src}; "
             "frame-ancestors 'self'; "
             "base-uri 'self'; "
             "form-action 'self'",
@@ -379,7 +405,9 @@ def _cors_origins_and_credentials():
 
 _origins, _cors_cred = _cors_origins_and_credentials()
 
-# ترتیب: اولین add = بیرونی‌ترین؛ مسیر /anistito باید قبل از CORS و هدرها اصلاح شود.
+# ترتیب Starlette: آخرین add بیرونی‌ترین است. StripPrefix باید قبل از RequestContext اجرا شود
+# تا path لاگ‌شده بدون /anistito باشد؛ RequestContext نزدیک‌ترین لایه به اپ است.
+app.add_middleware(RequestContextMiddleware)
 app.add_middleware(StripPathPrefixMiddleware)
 app.add_middleware(LoginRateLimitMiddleware)
 app.add_middleware(UploadsAuthMiddleware)
@@ -481,6 +509,51 @@ async def debug_process_count():
     return {"process_count": count}
 
 
+@app.get("/debug/observability-boom")
+async def debug_observability_boom():
+    """عمداً RuntimeError — فقط DEBUG، برای تست error_id و لاگ ۵۰۰."""
+    if not settings.DEBUG:
+        raise StarletteHTTPException(status_code=404, detail="Not Found")
+    raise RuntimeError("observability_test_boom")
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    from fastapi import HTTPException as FastAPIHTTPException
+    from fastapi.exceptions import RequestValidationError
+
+    if isinstance(exc, (FastAPIHTTPException, StarletteHTTPException, RequestValidationError)):
+        raise exc
+    request_id = getattr(getattr(request, "state", None), "request_id", None) or uuid.uuid4().hex
+    logger.exception(
+        "unhandled_exception",
+        extra={
+            "event": "unhandled_exception",
+            "error_id": request_id,
+            "error_type": type(exc).__name__,
+            "error_message": str(exc)[:400],
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+        },
+    )
+    record_event(
+        kind="unhandled",
+        request_id=str(request_id),
+        method=request.method,
+        path=request.url.path,
+        status_code=500,
+        error_type=type(exc).__name__,
+        error_message=str(exc),
+        event="unhandled_exception",
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "خطای داخلی سرور", "error_id": str(request_id)},
+        headers={"X-Request-ID": str(request_id)},
+    )
+
+
 # ─── Serve Admin UI (همان build با base=/anistito/؛ پشت Apache مسیر به /assets ستریپ می‌شود) ───
 ADMIN_UI_DIR = Path(__file__).parent.parent / "admin-ui" / "dist"
 
@@ -494,7 +567,13 @@ if ADMIN_UI_DIR.exists():
     _index = ADMIN_UI_DIR / "index.html"
 
     def _spa_index_response():
-        response = FileResponse(str(_index))
+        html = _index.read_text(encoding="utf-8")
+        snippet = observability_bootstrap_script(settings)
+        if "</head>" in html:
+            html = html.replace("</head>", snippet + "</head>", 1)
+        else:
+            html = snippet + html
+        response = HTMLResponse(html)
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
 

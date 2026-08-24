@@ -16,6 +16,7 @@ from app.api.interview_slots_routes import (
     _interviewer_owns_slot,
     _is_meeting_link_visible_for_user,
     _meeting_link_for_viewer,
+    _restrict_bookings_to_owned_slots,
     _slot_to_dict,
 )
 
@@ -97,6 +98,17 @@ def test_interviewer_cannot_view_booking_for_slot_assigned_to_colleague() -> Non
     assert _interviewer_can_view_booking(u, s) is False
 
 
+def test_faculty_1_bookings_restricted_like_interviewer() -> None:
+    faculty = SimpleNamespace(id=uuid.uuid4(), role="faculty_1", roles=["faculty_1"])
+    interviewer = SimpleNamespace(id=uuid.uuid4(), role="interviewer", roles=["interviewer"])
+    staff = SimpleNamespace(id=uuid.uuid4(), role="staff", roles=["staff"])
+    admin = SimpleNamespace(id=uuid.uuid4(), role="admin", roles=["admin"])
+    assert _restrict_bookings_to_owned_slots(faculty) is True
+    assert _restrict_bookings_to_owned_slots(interviewer) is True
+    assert _restrict_bookings_to_owned_slots(staff) is False
+    assert _restrict_bookings_to_owned_slots(admin) is False
+
+
 def test_online_link_hidden_for_student_before_window() -> None:
     slot = _slot(created_by=uuid.uuid4(), interviewer_user_id=None)
     slot.assigned_student_id = None
@@ -174,6 +186,19 @@ def test_interviewer_gets_teacher_link() -> None:
     )
     interviewer = SimpleNamespace(id=iv_id, role="interviewer")
     assert _meeting_link_for_viewer(slot, interviewer) == "https://alocom.test/teacher-token"
+
+
+def test_faculty_1_gets_teacher_link_when_assigned() -> None:
+    iv_id = uuid.uuid4()
+    slot = SimpleNamespace(
+        mode="online",
+        meeting_link="https://alocom.test/student-token",
+        host_meeting_link="https://alocom.test/host-room",
+        interviewer_meeting_link="https://alocom.test/teacher-token",
+        interviewer_user_id=iv_id,
+    )
+    faculty = SimpleNamespace(id=iv_id, role="faculty_1", roles=["faculty_1"])
+    assert _meeting_link_for_viewer(slot, faculty) == "https://alocom.test/teacher-token"
 
 
 def test_interviewer_sees_link_before_join_window_after_payment() -> None:

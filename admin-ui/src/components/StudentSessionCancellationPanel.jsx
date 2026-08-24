@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { labelState } from '../utils/processDisplay'
+import { HUB_VIOLATION, studentProcessInstanceHref } from '../utils/hubProcessLinks'
 
 function normalizeSelectedSessions(raw) {
   if (Array.isArray(raw)) {
@@ -304,6 +305,20 @@ export default function StudentSessionCancellationPanel({
           >
             کنسلی ثبت شد. گزارش «هشدار پیشگیری از تخلف» برای کمیته ارسال شد و
             تعیین تکلیف مالی برای جلسات آغاز شده است.
+            {ctx.violation_registration_instance_id && (
+              <p style={{ margin: '0.5rem 0 0' }}>
+                <a
+                  data-testid="session-cancellation-violation-link"
+                  href={studentProcessInstanceHref({
+                    processCode: HUB_VIOLATION,
+                    instanceId: ctx.violation_registration_instance_id,
+                    studentId: detail?.student_id,
+                  })}
+                >
+                  مشاهده پرونده تخلف
+                </a>
+              </p>
+            )}
           </div>
         )}
 
@@ -322,6 +337,20 @@ export default function StudentSessionCancellationPanel({
           >
             کنسلی ثبت شد. تخلف آموزشی به کمیته نظارت گزارش شد و تعیین تکلیف مالی
             برای جلسات در حال اجراست.
+            {ctx.violation_registration_instance_id && (
+              <p style={{ margin: '0.5rem 0 0' }}>
+                <a
+                  data-testid="session-cancellation-violation-link"
+                  href={studentProcessInstanceHref({
+                    processCode: HUB_VIOLATION,
+                    instanceId: ctx.violation_registration_instance_id,
+                    studentId: detail?.student_id,
+                  })}
+                >
+                  مشاهده پرونده تخلف
+                </a>
+              </p>
+            )}
           </div>
         )}
 

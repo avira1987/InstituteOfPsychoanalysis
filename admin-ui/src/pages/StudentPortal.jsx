@@ -14,10 +14,9 @@ import StudentProcessStepReview from '../components/StudentProcessStepReview'
 import StudentDynamicFormsSection from '../components/StudentDynamicFormsSection'
 import InstanceContextSummary from '../components/InstanceContextSummary'
 import ProcessRestartSection from '../components/ProcessRestartSection'
-import DecisionNotesBlock from '../components/DecisionNotesBlock'
 import { buildRoadmapStates } from '../utils/studentRoadmap'
-import { buildStudentProcessVisitSequence } from '../utils/studentProcessStepReview'
-import { canStartProcess, hasActiveRegistrationProcess, resolvePrimaryInstanceId } from '../utils/studentProcessAccess'
+import { buildStudentProcessVisitSequence, isPreviousStepReviewEnabled } from '../utils/studentProcessStepReview'
+import { canStartProcess, hasActiveRegistrationProcess, resolvePrimaryInstanceId, isSingleCourseAdmission } from '../utils/studentProcessAccess'
 import {
   mergeFormPayload,
   stepFormsBlockTransition,
@@ -26,7 +25,7 @@ import {
   filterFormsForStudent,
   CTX_DOCUMENTS_RESUBMIT_FIELDS,
 } from '../utils/processFormsStudent'
-import ProcessStepForms from '../components/ProcessStepForms'
+import GenericProcessPanel from '../components/GenericProcessPanel'
 import StudentProcessGuidancePanel from '../components/StudentProcessGuidancePanel'
 import { useToast } from '../contexts/ToastContext'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
@@ -36,13 +35,7 @@ import { mergeUpgradeToTaTriggerPayload } from '../utils/upgradeToTaTriggerPaylo
 import { mergeReturnToFullEducationTriggerPayload } from '../utils/returnToFullEducationTriggerPayload'
 import { isInstituteLevelProcess } from '../utils/instituteProcesses'
 import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
-import {
-  STUDENT_TRANSITION_CTA_INTRO,
-  getStudentTransitionButtonMain,
-  getStudentTransitionButtonSub,
-  getStudentTransitionTooltip,
-  getStudentNextStepHintBox,
-} from '../utils/studentTransitionCta'
+import { getStudentNextStepHintBox } from '../utils/studentTransitionCta'
 import { showStudentTransitionCta } from '../utils/studentTransitionCtaVisibility'
 import StudentRegistration from './public/StudentRegistration'
 import StudentProfileDocumentsSection from '../components/StudentProfileDocumentsSection'
@@ -101,6 +94,7 @@ import StudentTaTrackChangePanel from '../components/StudentTaTrackChangePanel'
 import StudentTaToInstructorAutoPanel from '../components/StudentTaToInstructorAutoPanel'
 import SepPaymentPanel from '../components/SepPaymentPanel'
 import StudentOnlineSessionsPanel from '../components/StudentOnlineSessionsPanel'
+import StudentEnrolledCoursesPanel from '../components/StudentEnrolledCoursesPanel'
 import { InterviewPaidBookingSummary } from '../components/InterviewSlotPicker'
 
 const studentProcessCodes = [
@@ -332,7 +326,7 @@ export default function StudentPortal() {
 
   useEffect(() => {
     if (!studentProfile?.extra_data?.installment_portal_lock?.active) return
-    const allowed = new Set(['profile', 'processes', 'dashboard'])
+    const allowed = new Set(['profile', 'processes'])
     if (!allowed.has(activeTab)) {
       setActiveTab('processes')
     }
@@ -417,12 +411,12 @@ export default function StudentPortal() {
         myProfile = meRes.data ?? null
         setAdmissionRequired(false)
         if (!myProfile) {
-          setAdmissionRequired(true)
+          setAdmissionRequired(userHasRole(user, 'student', { adminBypass: false }))
         }
       } catch (e) {
         if (e.response?.status === 404) {
           myProfile = null
-          setAdmissionRequired(true)
+          setAdmissionRequired(userHasRole(user, 'student', { adminBypass: false }))
         } else if (userHasRole(user, 'staff')) {
           const listRes = await studentApi.list().catch(() => ({ data: [] }))
           myProfile = listRes.data?.find(s => s.user_id === user?.id)
@@ -853,12 +847,20 @@ export default function StudentPortal() {
 
   const activeNavGroup = STUDENT_TAB_TO_GROUP[activeTab] || 'journey'
   const installmentLockActive = Boolean(studentProfile?.extra_data?.installment_portal_lock?.active)
+  const installmentAllowedTabs = new Set(['profile', 'processes'])
+  const navGroups = installmentLockActive
+    ? STUDENT_NAV_GROUPS.filter((g) => g.id !== 'learning')
+    : STUDENT_NAV_GROUPS
+  const navSubTabs = (STUDENT_SUB_TABS_BY_GROUP[activeNavGroup] || []).filter((tab) => (
+    !installmentLockActive || installmentAllowedTabs.has(tab.id)
+  ))
 
   const roadmapStates = processDefinition ? buildRoadmapStates(processDefinition) : []
   const roadmapProgress = instanceDetail && roadmapStates.length
     ? Math.min(100, Math.round((roadmapStates.findIndex(s => s.code === instanceDetail.current_state) + 1) / roadmapStates.length * 100))
     : 0
   const nextStepHintBox = getStudentNextStepHintBox(availableTransitions)
+  const previousStepReviewEnabled = isPreviousStepReviewEnabled(studentProfile?.extra_data)
   const stepFormLockedProcess = isStudentStepFormLocked(instanceDetail?.context_data, instanceDetail?.current_state)
   const stepFormLockedPrimary = isStudentStepFormLocked(primaryJourney?.detail?.context_data, primaryJourney?.detail?.current_state)
   const docsResubmitProcess = Array.isArray(instanceDetail?.context_data?.[CTX_DOCUMENTS_RESUBMIT_FIELDS])
@@ -871,7 +873,9 @@ export default function StudentPortal() {
     contextData: instanceDetail?.context_data,
   })
   const instanceDetailDone = !!(instanceDetail?.is_completed || instanceDetail?.is_cancelled)
-  const showProcessTransitionCta = instanceDetail && showStudentTransitionCta({
+  const hideStartTherapyForms = instanceDetail?.process_code === 'start_therapy'
+    && isSingleCourseAdmission(studentProfile, instanceDetail?.context_data)
+  const showProcessTransitionCta = instanceDetail && !hideStartTherapyForms && showStudentTransitionCta({
     transitions: availableTransitions,
     transitionBlocked: Boolean(processTransitionBlocked),
     detailDone: instanceDetailDone,
@@ -1300,10 +1304,32 @@ export default function StudentPortal() {
               ? `${user?.full_name_fa || user?.username || 'کاربر گرامی'} — فرم پذیرش را در کارت زیر تکمیل کنید تا مسیر دوره برایتان فعال شود.`
               : studentProfile
                 ? `${user?.full_name_fa || user?.username} · کد: ${formatStudentCodeDisplay(studentProfile.student_code)} · دورهٔ ${studentProfile.course_type === 'comprehensive' ? 'جامع' : 'آشنایی'}`
-                : 'پروفایل دانشجو یافت نشد — با واحد اداری تماس بگیرید.'}
+                : userHasRole(user, 'admin', { adminBypass: false })
+                  ? `${user?.full_name_fa || user?.username} — نمای پنل آموزشی (حساب شما پروفایل دانشجو ندارد).`
+                  : 'پروفایل دانشجو یافت نشد — با واحد اداری تماس بگیرید.'}
           </p>
         </div>
       </div>
+
+      {userHasRole(user, 'admin', { adminBypass: false }) && !studentProfile && !admissionRequired && (
+        <div
+          className="card"
+          data-testid="admin-student-portal-oversight-banner"
+          style={{
+            marginBottom: '1.25rem',
+            padding: '1rem 1.25rem',
+            borderRadius: '12px',
+            border: '1px solid #dbeafe',
+            background: '#eff6ff',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.7, color: '#1e3a8a' }}>
+            این صفحه نمای پنل آموزشی دانشجو است. حساب مدیر پروفایل دانشجو ندارد؛ برای پروندهٔ هر دانشجو از{' '}
+            <Link to="/panel/students">ردیابی دانشجو</Link>
+            {' '}استفاده کنید.
+          </p>
+        </div>
+      )}
 
       {admissionRequired && (
         <div
@@ -1353,7 +1379,7 @@ export default function StudentPortal() {
       {/* ناوبری گروه‌بندی‌شدهٔ پنل آموزشی */}
       <div className="student-portal-nav" data-testid="student-portal-tab-bar">
         <div className="student-portal-nav-groups" role="tablist" aria-label="بخش‌های پنل آموزشی">
-          {STUDENT_NAV_GROUPS.map(g => (
+          {navGroups.map(g => (
             <button
               key={g.id}
               type="button"
@@ -1361,7 +1387,11 @@ export default function StudentPortal() {
               aria-selected={activeNavGroup === g.id}
               data-testid={`student-portal-group-${g.id}`}
               className={`student-portal-nav-group-btn ${activeNavGroup === g.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(STUDENT_DEFAULT_TAB_BY_GROUP[g.id])}
+              onClick={() => setActiveTab(
+                installmentLockActive && g.id === 'journey'
+                  ? 'processes'
+                  : STUDENT_DEFAULT_TAB_BY_GROUP[g.id],
+              )}
             >
               <span className="student-portal-nav-group-icon" aria-hidden="true">{g.icon}</span>
               {g.label}
@@ -1369,7 +1399,7 @@ export default function StudentPortal() {
           ))}
         </div>
         <div className="tab-bar student-portal-nav-sub" role="tablist" aria-label="زیربخش">
-          {(STUDENT_SUB_TABS_BY_GROUP[activeNavGroup] || []).map(tab => (
+          {navSubTabs.map(tab => (
             <button
               key={tab.id}
               type="button"
@@ -1671,13 +1701,14 @@ export default function StudentPortal() {
                       const curIdx = roadmapStates.findIndex(s => s.code === instanceDetail.current_state)
                       const isCurrent = st.code === instanceDetail.current_state
                       const past = curIdx >= 0 && i < curIdx
+                      const canReviewPast = past && previousStepReviewEnabled
                       return (
                         <div key={st.code} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <div
-                            role={past ? 'button' : undefined}
-                            tabIndex={past ? 0 : undefined}
-                            onClick={past ? () => setReviewRoadmapFocus(st.code) : undefined}
-                            onKeyDown={past ? (e) => {
+                            role={canReviewPast ? 'button' : undefined}
+                            tabIndex={canReviewPast ? 0 : undefined}
+                            onClick={canReviewPast ? () => setReviewRoadmapFocus(st.code) : undefined}
+                            onKeyDown={canReviewPast ? (e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault()
                                 setReviewRoadmapFocus(st.code)
@@ -1687,9 +1718,9 @@ export default function StudentPortal() {
                               padding: '0.35rem 0.6rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: isCurrent ? 700 : 500,
                               background: isCurrent ? 'var(--primary-light)' : past ? '#ecfdf5' : '#f3f4f6',
                               border: isCurrent ? '2px solid var(--primary)' : '1px solid #e5e7eb',
-                              cursor: past ? 'pointer' : 'default',
+                              cursor: canReviewPast ? 'pointer' : 'default',
                             }}
-                            title={past ? 'مشاهدهٔ همان مرحله در حالت مرور (فقط خواندنی)' : undefined}
+                            title={canReviewPast ? 'مشاهدهٔ همان مرحله در حالت مرور (فقط خواندنی)' : undefined}
                           >
                             {i + 1}. {st.name_fa || st.code}
                           </div>
@@ -1712,6 +1743,7 @@ export default function StudentPortal() {
                 definition={processDefinition}
                 focusStateCode={reviewRoadmapFocus}
                 onFocusConsumed={consumeReviewRoadmapFocus}
+                enabled={previousStepReviewEnabled}
               />
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -2334,6 +2366,7 @@ export default function StudentPortal() {
               )}
 
               {filterFormsForStudent(instanceForms || []).length > 0 && stepFormLockedProcess
+                && !hideStartTherapyForms
                 && instanceDetail.process_code !== 'film_observation_course_completion'
                 && instanceDetail.process_code !== 'student_instructor_evaluation' && (
                 <div className="psf-locked-banner" role="status" style={{
@@ -2344,162 +2377,100 @@ export default function StudentPortal() {
                   اطلاعات این مرحله قبلاً ثبت شده است. برای ویرایش، مسئول مربوط (اداری) باید از پنل کارمندان، امکان ویرایش را برای شما باز کند؛ سپس همین صفحه را تازه کنید.
                 </div>
               )}
-              {!stepFormLockedProcess
-                && instanceDetail.process_code !== 'film_observation_course_completion'
-                && instanceDetail.process_code !== 'student_instructor_evaluation' && (
-                <>
-                  <ProcessStepForms
-                    forms={instanceForms}
-                    values={stepFormValues}
-                    onFieldChange={handleStepFieldChange}
-                    disabled={false}
-                    hasAvailableTransitions={(availableTransitions?.length || 0) > 0}
-                    instanceId={selectedInstance}
-                    resubmitFieldNames={docsResubmitProcess || null}
-                    contextData={instanceDetail?.context_data}
-                    currentState={instanceDetail?.current_state}
-                    onRegisterSubmit={async ({ ok, missing }) => {
-                      if (!ok) {
-                        showToast(`موارد ناقص: ${missing.join('، ')}`, 'error')
-                        return
-                      }
-                      if (!selectedInstance) {
-                        showToast('فرایند انتخاب نشده است', 'error')
-                        return
-                      }
-                      try {
-                        const regRes = await processExecApi.registerStudentStepForms(selectedInstance, { form_values: stepFormValues })
-                        await viewInstance(selectedInstance)
-                        if (regRes.data?.auto_advanced_to_documents_review) {
-                          showToast(
-                            'مدارک در پرونده ثبت شد و به‌صورت خودکار برای بررسی پذیرش ارسال شد. در پنل کارمند در «بررسی مدارک» دیده می‌شود.',
-                            'success',
-                          )
-                        } else {
-                          showToast(
-                            'اطلاعات این مرحله ثبت شد. اگر دکمهٔ «ادامه و ثبت مرحله» را می‌بینید همان را بزنید تا پرونده برای پذیرش برود؛ در غیر این صورت منتظر اقدام اداری بمانید.',
-                            'success',
-                          )
-                        }
-                      } catch (e) {
-                        const d = e.response?.data?.detail
-                        if (d && typeof d === 'object' && Array.isArray(d.missing)) {
-                          showToast(`موارد ناقص: ${d.missing.join('، ')}`, 'error')
-                        } else {
-                          showToast(typeof d === 'string' ? d : (e.message || 'خطا در ثبت'), 'error')
-                        }
-                      }
-                    }}
-                  />
-                  {processTransitionBlocked && (availableTransitions?.length || 0) > 0
-                    && filterFormsForStudent(instanceForms || []).length > 0 && (
-                    <p
-                      style={{
-                        fontSize: '0.82rem',
-                        color: '#b45309',
-                        marginTop: '0.75rem',
-                        marginBottom: '1rem',
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      ابتدا فرم بالا را تکمیل کنید؛ سپس دکمهٔ ثبت مرحله در همین پنل ظاهر می‌شود.
-                    </p>
-                  )}
-                </>
-              )}
-
-              {/* Available Actions — یک دکمه؛ چند مسیر = انتخابگر + همان دکمه */}
-              {showProcessTransitionCta && selectedProcessTransition && (
-                <div
-                  style={{
-                    padding: '1.25rem', background: 'linear-gradient(135deg, var(--primary-light) 0%, #f0f4ff 100%)',
-                    borderRadius: '10px', marginBottom: '1.5rem', borderRight: '4px solid var(--primary)',
-                  }}
-                  data-testid="process-detail-transition-block"
-                >
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--primary)' }}>
-                    قدم بعد در مسیر
-                  </h4>
-                  <p style={{ fontSize: '0.8rem', color: '#475569', marginBottom: '0.85rem', lineHeight: 1.75 }}>
-                    {STUDENT_TRANSITION_CTA_INTRO}
-                  </p>
-                  {availableTransitions.length > 1 && (
-                    <div style={{ marginBottom: '0.85rem' }}>
-                      <label
-                        htmlFor="process-detail-transition-select"
-                        style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}
-                      >
-                        انتخاب مسیر بعدی
-                      </label>
-                      <select
-                        id="process-detail-transition-select"
-                        data-testid="process-detail-transition-select"
-                        value={Math.min(selectedProcessTransitionIdx, availableTransitions.length - 1)}
-                        onChange={(e) => setSelectedProcessTransitionIdx(Number(e.target.value))}
+              <GenericProcessPanel
+                audience="student"
+                instanceDetail={instanceDetail}
+                hideGuidance
+                hideHistory
+                hideForms={
+                  stepFormLockedProcess
+                  || hideStartTherapyForms
+                  || instanceDetail.process_code === 'film_observation_course_completion'
+                  || instanceDetail.process_code === 'student_instructor_evaluation'
+                }
+                forms={instanceForms}
+                values={stepFormValues}
+                onFieldChange={handleStepFieldChange}
+                disabled={false}
+                hasAvailableTransitions={(availableTransitions?.length || 0) > 0}
+                instanceId={selectedInstance}
+                resubmitFieldNames={docsResubmitProcess || null}
+                contextData={instanceDetail?.context_data}
+                studentProfile={studentProfile}
+                currentState={instanceDetail?.current_state}
+                onRegisterSubmit={async ({ ok, missing }) => {
+                  if (!ok) {
+                    showToast(`موارد ناقص: ${missing.join('، ')}`, 'error')
+                    return
+                  }
+                  if (!selectedInstance) {
+                    showToast('فرایند انتخاب نشده است', 'error')
+                    return
+                  }
+                  try {
+                    const regRes = await processExecApi.registerStudentStepForms(selectedInstance, { form_values: stepFormValues })
+                    await viewInstance(selectedInstance)
+                    if (regRes.data?.auto_advanced_to_documents_review) {
+                      showToast(
+                        'مدارک در پرونده ثبت شد و به‌صورت خودکار برای بررسی پذیرش ارسال شد. در پنل کارمند در «بررسی مدارک» دیده می‌شود.',
+                        'success',
+                      )
+                    } else {
+                      showToast(
+                        'اطلاعات این مرحله ثبت شد. اگر دکمهٔ «ادامه و ثبت مرحله» را می‌بینید همان را بزنید تا پرونده برای پذیرش برود؛ در غیر این صورت منتظر اقدام اداری بمانید.',
+                        'success',
+                      )
+                    }
+                  } catch (e) {
+                    const d = e.response?.data?.detail
+                    if (d && typeof d === 'object' && Array.isArray(d.missing)) {
+                      showToast(`موارد ناقص: ${d.missing.join('، ')}`, 'error')
+                    } else {
+                      showToast(typeof d === 'string' ? d : (e.message || 'خطا در ثبت'), 'error')
+                    }
+                  }
+                }}
+                transitions={showProcessTransitionCta ? availableTransitions : []}
+                hideTransitions={!showProcessTransitionCta}
+                onTriggerTransition={triggerTransition}
+                decisionNotes={decisionNotes}
+                onDecisionNotesChange={setDecisionNotes}
+                transitionBlockedHint={
+                  processTransitionBlocked && (availableTransitions?.length || 0) > 0
+                    && filterFormsForStudent(instanceForms || []).length > 0 ? (
+                      <p
                         style={{
-                          width: '100%',
-                          padding: '0.5rem 0.75rem',
-                          borderRadius: '8px',
-                          border: '1px solid var(--border)',
-                          fontSize: '0.9rem',
-                          background: 'var(--bg)',
+                          fontSize: '0.82rem',
+                          color: '#b45309',
+                          marginTop: '0.75rem',
+                          marginBottom: '1rem',
+                          lineHeight: 1.6,
                         }}
                       >
-                        {availableTransitions.map((t, idx) => (
-                          <option key={`${t.trigger_event}-${t.to_state}-${idx}`} value={idx}>
-                            {labelState(t.to_state) !== '—' ? labelState(t.to_state) : (t.trigger_event || `مسیر ${idx + 1}`)}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', lineHeight: 1.5 }}>
-                        در صورت چند گزینه، ابتدا مرحلهٔ بعد را انتخاب کنید، سپس دکمهٔ زیر را بزنید.
+                        ابتدا فرم بالا را تکمیل کنید؛ سپس دکمهٔ ثبت مرحله در همین پنل ظاهر می‌شود.
                       </p>
-                    </div>
-                  )}
-                  <DecisionNotesBlock
-                    value={decisionNotes}
-                    onChange={setDecisionNotes}
-                    title="توضیح همراه اقدام (اختیاری)"
-                    hint="با زدن دکمه، این متن به‌عنوان یادداشت همراه انتقال ثبت می‌شود (با مقادیر فرم ادغام می‌شود)."
-                  />
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      data-testid={`process-detail-transition-${selectedProcessTransition.to_state || selectedProcessTransition.trigger_event || selectedProcessTransitionIdx}`}
-                      onClick={() => triggerTransition(selectedProcessTransition)}
-                      className="btn btn-primary"
-                      style={{
-                        fontSize: '0.85rem',
-                        display: 'inline-flex',
-                        flexDirection: 'column',
-                        alignItems: 'stretch',
-                        gap: '0.2rem',
-                      }}
-                      title={getStudentTransitionTooltip(selectedProcessTransition)}
-                    >
-                      <span>{getStudentTransitionButtonMain(selectedProcessTransition, 1)}</span>
-                      {selectedProcessTransition.to_state && (
-                        <span style={{ fontSize: '0.7rem', opacity: 0.88 }}>
-                          {getStudentTransitionButtonSub(selectedProcessTransition)}
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
+                    ) : null
+                }
+              />
 
             </div>
           )}
         </div>
       )}
 
-      {/* Online sessions */}
+      {/* Online sessions / enrolled courses */}
       {activeTab === 'sessions' && (
-        <StudentOnlineSessionsPanel
-          studentProfile={studentProfile}
-          active={activeTab === 'sessions'}
-          onSessionsLoaded={handleOnlineSessionsLoaded}
-        />
+        <>
+          <StudentEnrolledCoursesPanel
+            studentProfile={studentProfile}
+            active={activeTab === 'sessions'}
+          />
+          <StudentOnlineSessionsPanel
+            studentProfile={studentProfile}
+            active={activeTab === 'sessions'}
+            onSessionsLoaded={handleOnlineSessionsLoaded}
+          />
+        </>
       )}
 
       {/* Assignments */}

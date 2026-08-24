@@ -257,7 +257,7 @@ export default function StudentRegistration({ mode = 'public', embedded = false,
           <p style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
             از این پس با همان شماره موبایل از صفحه ورود، کد پیامکی بگیرید و وارد پنل شوید.
             {result.initial_password && result.username
-              ? ' در صورت نیاز می‌توانید یک‌بار با نام کاربری و رمز اولیهٔ بالا هم از مسیر «ورود پرسنل» در صفحه ورود وارد شوید.'
+              ? ' نام کاربری ورود بدون پیامک همان کد دانشجویی (STU-…) است؛ می‌توانید از مسیر «ورود پرسنل» هم وارد شوید.'
               : ''}
           </p>
           <Link

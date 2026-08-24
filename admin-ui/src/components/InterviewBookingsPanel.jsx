@@ -128,13 +128,13 @@ export default function InterviewBookingsPanel({ showToast, onOpenResult }) {
                     && ins?.id
                     && ins?.current_state === 'interview_completed'
                   const canReschedule = !s.booking_payment_deadline_at
-                  const loc = s.mode === 'online'
-                    ? (() => {
-                      const linkState = interviewMeetingLinkPreparingState(s)
-                      return (
+                  const loc = (() => {
+                    const linkState = interviewMeetingLinkPreparingState(s)
+                    return (
                       <OnlineMeetingJoinCta
                         compact
-                        mode="online"
+                        mode={s.mode === 'online' ? 'online' : 'in_person'}
+                        locationFa={s.location_fa}
                         meetingLink={s.meeting_link}
                         meetingLinkReady={s.meeting_link_ready}
                         meetingLinkOpenAt={s.meeting_link_open_at}
@@ -154,9 +154,8 @@ export default function InterviewBookingsPanel({ showToast, onOpenResult }) {
                         preparingText={linkState.preparingText}
                         resultRecorded={!!linkState.resultRecorded}
                       />
-                      )
-                    })()
-                    : (s.location_fa || '—')
+                    )
+                  })()
                   return (
                     <tr key={s.id}>
                       <td>{formatSlotShamsi(s.starts_at)}</td>
@@ -167,7 +166,7 @@ export default function InterviewBookingsPanel({ showToast, onOpenResult }) {
                       <td>{s.interviewer_name_fa || '—'}</td>
                       <td>{st.course_type === 'comprehensive' ? 'جامع' : st.course_type === 'introductory' ? 'آشنایی' : (st.course_type || '—')}</td>
                       <td>{s.mode === 'online' ? 'آنلاین' : 'حضوری'}</td>
-                      <td style={{ fontSize: '0.78rem', maxWidth: '12rem', wordBreak: 'break-word' }} dir={s.mode === 'online' ? 'ltr' : 'rtl'}>{loc}</td>
+                      <td style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{loc}</td>
                       <td>
                         {s.mode === 'online' && !s.booking_payment_deadline_at ? (
                           <label

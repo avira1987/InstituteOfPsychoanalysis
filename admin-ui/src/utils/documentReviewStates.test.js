@@ -4,6 +4,8 @@ import {
   documentReviewDecisionMessageFa,
   isDocumentReviewDecisionTrigger,
   operatorDocumentReviewToastFa,
+  listDocumentResubmitFeedback,
+  readDocumentRejectionNotes,
 } from './documentReviewStates.js'
 
 test('documents_approved tells the operator this student review is finished', () => {
@@ -43,4 +45,30 @@ test('operatorDocumentReviewToastFa only applies to document decisions', () => {
     toStateLabel: 'حساب کاربری ایجاد شد',
   })
   assert.match(approved, /کار تأیید مدارک دانشجو ۱۴۰۳۱۲۳ تمام شد/)
+})
+
+test('readDocumentRejectionNotes keeps trimmed officer notes', () => {
+  const notes = readDocumentRejectionNotes({
+    __document_field_rejection_notes: {
+      photo: '  تصویر تار است  ',
+      id_card: '',
+    },
+  })
+  assert.deepEqual(notes, { photo: 'تصویر تار است' })
+})
+
+test('listDocumentResubmitFeedback includes officer notes per field', () => {
+  const out = listDocumentResubmitFeedback(
+    {
+      __documents_resubmit_fields: ['photo', 'id_card'],
+      __document_field_rejection_notes: { photo: 'تصویر تار است' },
+      notes: 'لطفاً با نور بهتر دوباره بفرستید',
+    },
+    { photo: 'عکس پرسنلی', id_card: 'شناسنامه' },
+  )
+  assert.deepEqual(out.items, [
+    { fieldName: 'photo', label: 'عکس پرسنلی', note: 'تصویر تار است' },
+    { fieldName: 'id_card', label: 'شناسنامه', note: '' },
+  ])
+  assert.equal(out.generalNote, 'لطفاً با نور بهتر دوباره بفرستید')
 })

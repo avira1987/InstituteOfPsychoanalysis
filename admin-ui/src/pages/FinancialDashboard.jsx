@@ -86,7 +86,9 @@ export default function FinancialDashboard() {
 
   const [gapDays, setGapDays] = useState('25')
   const [countOptsStr, setCountOptsStr] = useState('2, 3, 4')
+  const [instEnabled, setInstEnabled] = useState(true)
   const [instSaving, setInstSaving] = useState(false)
+  const [instToggleBusy, setInstToggleBusy] = useState(false)
   const [instLoaded, setInstLoaded] = useState(false)
   const [instUpdatedAt, setInstUpdatedAt] = useState(null)
 
@@ -169,6 +171,7 @@ export default function FinancialDashboard() {
         const d = r.data || {}
         setGapDays(String(d.term2_installment_gap_days ?? 25))
         setCountOptsStr((d.installment_count_options || [2, 3, 4]).join(', '))
+        setInstEnabled(d.installment_enabled !== false)
         setInstUpdatedAt(d.updated_at || null)
         setInstLoaded(true)
       })
@@ -293,17 +296,37 @@ export default function FinancialDashboard() {
         return
       }
       const r = await financeApi.patchInstallmentSettings({
+        installment_enabled: instEnabled,
         term2_installment_gap_days: g,
         installment_count_options,
       })
       const d = r.data || {}
       setGapDays(String(d.term2_installment_gap_days ?? g))
       setCountOptsStr((d.installment_count_options || installment_count_options).join(', '))
+      setInstEnabled(d.installment_enabled !== false)
       setInstUpdatedAt(d.updated_at || null)
     } catch (e) {
       setErr(e.response?.data?.detail || e.message)
     } finally {
       setInstSaving(false)
+    }
+  }
+
+  const toggleInstallmentEnabled = async (nextEnabled) => {
+    const prev = instEnabled
+    setErr(null)
+    setInstEnabled(nextEnabled)
+    setInstToggleBusy(true)
+    try {
+      const r = await financeApi.patchInstallmentSettings({ installment_enabled: nextEnabled })
+      const d = r.data || {}
+      setInstEnabled(d.installment_enabled !== false)
+      setInstUpdatedAt(d.updated_at || null)
+    } catch (e) {
+      setInstEnabled(prev)
+      setErr(e.response?.data?.detail || e.message)
+    } finally {
+      setInstToggleBusy(false)
     }
   }
 
@@ -437,17 +460,49 @@ export default function FinancialDashboard() {
       {instLoaded && (
         <FinancePanel title="تنظیمات اقساط وب‌سایت" collapsible={false}>
           <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.7 }}>
-            فاصلهٔ روز بین سررسید هر قسط (ترم دوم آشنایی و فرایندهایی که از «ادغام زمینهٔ اقساط» استفاده می‌کنند) و گزینه‌های
-            مجاز تعداد اقساط برای نمایش در بخش عمومی (
+            با سوییچ زیر می‌توانید پرداخت قسطی را برای همهٔ فرایندهای ثبت‌نام شهریه یکجا فعال یا غیرفعال کنید.
+            وقتی غیرفعال باشد، دانشجو و اپراتور گزینهٔ اقساط را در فرم روش پرداخت نمی‌بینند و انتخاب جدید اقساط رد می‌شود.
+            اقساط دانشجویان قبلی تا تسویه ادامه دارد. فاصلهٔ روز بین سررسید هر قسط و گزینه‌های تعداد اقساط برای نمایش در بخش عمومی (
             <code style={{ fontSize: '0.85rem' }}>/api/public/installment-policy</code>
-            ). فرم‌های ثبت‌نام در متادیتا ممکن است جداگانه به‌روز شوند.
+            ) هم از همین پنل ذخیره می‌شود.
           </p>
+          <div
+            className={`finance-installment-master${instEnabled ? ' is-on' : ' is-off'}`}
+            data-testid="finance-installment-master"
+          >
+            <div>
+              <div className="finance-installment-master__title">پرداخت قسطی</div>
+              <p className="finance-installment-master__hint">
+                {instEnabled
+                  ? 'فعال است؛ دانشجویان می‌توانند نقدی یا اقساطی پرداخت کنند.'
+                  : 'غیرفعال است؛ فقط پرداخت نقدی (یکجا) در فرم‌ها نمایش داده می‌شود.'}
+              </p>
+            </div>
+            <label className="finance-switch">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label="فعال‌سازی پرداخت قسطی"
+                data-testid="finance-installment-enabled"
+                checked={instEnabled}
+                disabled={instToggleBusy || instSaving}
+                onChange={(e) => toggleInstallmentEnabled(e.target.checked)}
+              />
+              <span className="finance-switch__track" aria-hidden>
+                <span className="finance-switch__thumb" />
+              </span>
+              <span className="finance-switch__text">
+                {instToggleBusy ? 'در حال ذخیره…' : instEnabled ? 'فعال' : 'غیرفعال'}
+              </span>
+            </label>
+          </div>
           <div
             style={{
               display: 'grid',
               gap: '1rem',
               gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
               alignItems: 'flex-end',
+              opacity: instEnabled ? 1 : 0.72,
             }}
           >
             <div className="form-group" style={{ marginBottom: 0 }}>

@@ -290,6 +290,59 @@ def test_list_course_catalog_options():
     assert theory1.get("units") == 2
     assert theory1.get("curriculum_term") == 1
     assert theory1.get("program_kind") == "introductory"
+    assert theory1.get("single_course_allowed") is True
+    technique1 = next(o for o in opts if o["value"] == "theory_technique_1")
+    assert not technique1.get("single_course_allowed")
+    theory2 = next(o for o in opts if o["value"] == "theory_psychoanalysis_2")
+    assert theory2.get("prerequisite_codes") == ["theory_psychoanalysis_1"]
+
+
+_SYSTEM_PREREQ_COURSE_MAP = {
+    "internship_started": {
+        "theory_psychoanalysis_4",
+        "group_supervision_1",
+        "borderline_difficult_patients",
+    },
+    "clinical_hours_500": {
+        "live_supervision",
+        "case_report_writing",
+        "countertransference",
+        "live_therapy_observation",
+    },
+    "individual_supervision_50h": {
+        "group_supervision_2",
+        "early_termination_of_treatment",
+        "group_supervision_3",
+    },
+    "individual_supervision_100h": {"live_therapy_observation"},
+}
+
+
+def test_system_prerequisite_catalog_mapping():
+    from app.services.course_committee_roster_service import (
+        KNOWN_SYSTEM_PREREQUISITE_CODES,
+        list_course_catalog_options,
+        list_system_prerequisites,
+        reload_catalog_cache,
+    )
+
+    reload_catalog_cache()
+    registry = list_system_prerequisites()
+    assert [item["code"] for item in registry] == list(KNOWN_SYSTEM_PREREQUISITE_CODES)
+    assert all(item.get("enforced") is False for item in registry)
+
+    by_code = {o["value"]: o for o in list_course_catalog_options()}
+    expected_by_course: dict[str, set[str]] = {}
+    for sys_code, courses in _SYSTEM_PREREQ_COURSE_MAP.items():
+        for course_code in courses:
+            expected_by_course.setdefault(course_code, set()).add(sys_code)
+    for course_code, codes in expected_by_course.items():
+        row = by_code[course_code]
+        assert set(row.get("system_prerequisite_codes") or []) == codes
+        assert not codes.intersection(row.get("prerequisite_codes") or [])
+    for value, row in by_code.items():
+        if value not in expected_by_course:
+            assert not row.get("system_prerequisite_codes")
 
 
 def test_add_course_to_catalog(tmp_path, monkeypatch):
@@ -374,11 +427,59 @@ def test_update_and_remove_course_and_track(tmp_path, monkeypatch):
     assert all(o["value"] != created["value"] for o in svc.list_course_catalog_options())
 
     extra = svc.add_track_to_roster("رسته موقت تست")
+    renamed = svc.update_track_in_roster(extra["value"], "رسته ویرایش‌شده")
+    assert renamed["value"] == extra["value"]
+    assert renamed["label_fa"] == "رسته ویرایش‌شده"
+    assert any(
+        o["value"] == extra["value"] and o["label_fa"] == "رسته ویرایش‌شده"
+        for o in svc.list_track_options()
+    )
+    with pytest.raises(ValueError, match="وجود دارد"):
+        svc.update_track_in_roster(extra["value"], "روان‌درمانی تحلیلی")
+    with pytest.raises(ValueError, match="یافت نشد"):
+        svc.update_track_in_roster("missing_track", "نام جدید")
     assert svc.remove_track_from_roster(extra["value"]) is True
 
     with pytest.raises(ValueError, match="درس"):
         svc.add_course_to_catalog("وابسته", track="analytic_psychotherapy")
         svc.remove_track_from_roster("analytic_psychotherapy")
+
+
+def test_system_prerequisite_codes_roundtrip(tmp_path, monkeypatch):
+    from app.services import course_committee_roster_service as svc
+
+    catalog_file = tmp_path / "course_catalog.json"
+    catalog_file.write_text('{"courses": []}', encoding="utf-8")
+    roster_file = tmp_path / "course_committee_roster.json"
+    roster_file.write_text(
+        '{"tracks": [{"code": "analytic_psychotherapy", "name_fa": "روان‌درمانی تحلیلی",'
+        ' "instructors": [], "teaching_assistants": []}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(svc, "_CATALOG_PATH", catalog_file)
+    monkeypatch.setattr(svc, "_ROSTER_PATH", roster_file)
+    svc.reload_catalog_cache()
+    svc.reload_roster_cache()
+
+    created = svc.add_course_to_catalog(
+        "درس پیش‌نیاز سیستمی",
+        track="analytic_psychotherapy",
+        system_prerequisite_codes=["internship_started", "clinical_hours_500"],
+    )
+    assert created["system_prerequisite_codes"] == [
+        "internship_started",
+        "clinical_hours_500",
+    ]
+    updated = svc.update_course_in_catalog(
+        created["value"],
+        units=2,
+        system_prerequisite_codes=["individual_supervision_50h"],
+    )
+    assert updated["system_prerequisite_codes"] == ["individual_supervision_50h"]
+    kept = svc.update_course_in_catalog(created["value"], class_hours="1:30")
+    assert kept["system_prerequisite_codes"] == ["individual_supervision_50h"]
+    listed = next(o for o in svc.list_course_catalog_options() if o["value"] == created["value"])
+    assert listed["system_prerequisite_codes"] == ["individual_supervision_50h"]
 
 
 @pytest.mark.asyncio

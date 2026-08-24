@@ -1,7 +1,7 @@
 # ممیزی گردش کار بین‌فرایندی و نواقص اتوماسیون
 
 **نسخه:** 1.0  
-**تاریخ:** 2026-07-18  
+**تاریخ:** 2026-08-21  
 **هدف:** نقشه جامع گردش کار، ارتباط بین‌فرایندی، وظایف هر نقش در پنل‌ها، و چک‌لیست نواقص — از آماده‌سازی ترم تا فارغ‌التحصیلی.
 
 **مکمل (نه جایگزین):**
@@ -114,11 +114,11 @@ flowchart TB
 
 - **فاز ۳ — چرخه جامع:** `comprehensive_term_end`, `comprehensive_term_start`, `student_non_registration`
 
-- **فاز ۴ — درمان آموزشی:** `therapy_changes`, `extra_session`, `session_payment`, `attendance_tracking`, `fee_determination`, `therapy_completion`, `therapy_session_increase`, `therapy_session_reduction`, `therapy_early_termination`, `specialized_commission_review`, `committees_review`, `therapist_session_cancellation`, `unannounced_absence_reaction`, `therapy_interruption`, `student_session_cancellation`, `start_therapy`
+- **فاز ۴ — درمان آموزشی:** `start_therapy`, `therapy_changes`, `extra_session`, `session_payment`, `attendance_tracking`, `fee_determination`, `therapy_completion`, `therapy_session_increase`, `therapy_session_reduction`, `therapy_early_termination`, `specialized_commission_review`, `committees_review`, `therapist_session_cancellation`, `unannounced_absence_reaction`, `therapy_interruption`, `student_session_cancellation`
 
 - **فاز ۵ — سوپرویژن:** `supervision_block_transition`, `supervision_50h_completion`, `supervision_session_increase`, `extra_supervision_session`, `supervision_session_reduction`, `student_supervision_cancellation`, `supervisor_session_cancellation`, `unannounced_supervision_absence_reaction`, `supervision_interruption`
 
-- **فاز ۶ — مرخصی و بازگشت:** `process_merged_to_one`, `full_education_leave`, `return_to_full_education`, `educational_leave`
+- **فاز ۶ — مرخصی و بازگشت:** `educational_leave`, `process_merged_to_one`, `full_education_leave`, `return_to_full_education`
 
 - **فاز ۷ — کمک‌مدرس / مدرس / تخلف:** `ta_conceptual_questions`, `ta_student_consultation`, `ta_essay_upload`, `ta_blog_content`, `upgrade_to_ta`, `mentor_private_sessions`, `ta_to_assistant_faculty`, `ta_to_instructor_auto`, `ta_track_change`, `ta_track_completion`, `ta_instructor_leave`, `class_attendance`, `violation_registration`, `class_session_cancellation`, `student_instructor_evaluation`
 
@@ -136,7 +136,7 @@ flowchart TB
 
 #### `fall_semester_preparation` (SOP 29) — 🟡
 
-- **نام:** آادساز تر پاز
+- **نام:** آماده‌سازی ترم پاییز
 - **فاز:** P0_prep
 - **وضعیت اولیه:** `calendar_entry` | **نقش اولیه:** `None`
 - **تعداد state:** 9
@@ -147,7 +147,7 @@ flowchart TB
 - `deputy_education` → CommitteePortal / education + SemesterPrep | پنل: SemesterPrepWorkbenchPage
 - `course_committee_scientific` → StaffPortal / course-committee lane | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
 - `admissions_officer` → StaffPortal / admissions lane | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
-- `site_manager` → SiteManagerPortal | پنل: SemesterPrepWorkbenchPage (interview slots)
+- `staff` → StaffPortal (generic) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
 - `system` → — (automated; no human panel) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
 - **Staff lane پیشنهادی:** `course-committee`
 
@@ -164,8 +164,8 @@ flowchart TB
 - `course_list_creation` → `scientific_officer_course_committee` (intermediate) — بررسی علمی و ثبت نظر.
 - `course_finalization` → `scientific_officer_course_committee` (intermediate) — بررسی علمی و ثبت نظر.
 - `marketing_campaign` → `admissions_officer` (intermediate) — بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.
-- `interviewer_assignment` → `deputy_education_director` (intermediate) — بررسی پرونده و ثبت تصمیم مدیریتی.
-- `interview_scheduling` → `site_manager` (intermediate) — نوع برگزاری را مشخص کنید، اسلات‌های قابل رزرو را ثبت کنید و فرم را ذخیره کنید.
+- `interviewer_assignment` → `staff` (intermediate) — مصاحبه‌گرها و زمان‌بندی را ثبت کنید.
+- `interview_scheduling` → `staff` (intermediate) — نوع برگزاری را مشخص کنید، اسلات‌های قابل رزرو را ثبت کنید و فرم را ذخیره کنید.
 - `published` → `system` (terminal)
 
 **نواقص / یادداشت:**
@@ -174,7 +174,7 @@ flowchart TB
 
 #### `winter_semester_preparation` (SOP 30) — 🟡
 
-- **نام:** آادساز تر زستا
+- **نام:** آماده‌سازی ترم زمستان
 - **فاز:** P0_prep
 - **وضعیت اولیه:** `license_check` | **نقش اولیه:** `None`
 - **تعداد state:** 7
@@ -184,7 +184,7 @@ flowchart TB
 - `deputy_education` → CommitteePortal / education + SemesterPrep | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
 - `course_committee_scientific` → StaffPortal / course-committee lane | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
 - `admissions_officer` → StaffPortal / admissions lane | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
-- `site_manager` → SiteManagerPortal | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
+- `staff` → StaffPortal (generic) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
 - `system` → — (automated; no human panel) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
 - **Staff lane پیشنهادی:** `course-committee`
 
@@ -199,8 +199,8 @@ flowchart TB
 - `course_list_review` → `scientific_officer_course_committee` (intermediate) — بررسی علمی و ثبت نظر.
 - `course_finalization` → `scientific_officer_course_committee` (intermediate) — بررسی علمی و ثبت نظر.
 - `marketing_campaign` → `admissions_officer` (intermediate) — بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.
-- `interviewer_assignment` → `deputy_education_director` (intermediate) — بررسی پرونده و ثبت تصمیم مدیریتی.
-- `interview_scheduling` → `site_manager` (intermediate) — نوع برگزاری را مشخص کنید، اسلات‌های قابل رزرو را ثبت کنید و فرم را ذخیره کنید.
+- `interviewer_assignment` → `staff` (intermediate) — مصاحبه‌گرها و زمان‌بندی را ثبت کنید.
+- `interview_scheduling` → `staff` (intermediate) — نوع برگزاری را مشخص کنید، اسلات‌های قابل رزرو را ثبت کنید و فرم را ذخیره کنید.
 - `published` → `system` (terminal)
 
 **نواقص / یادداشت:**
@@ -211,7 +211,7 @@ flowchart TB
 
 #### `introductory_course_registration` (SOP 31) — ❓
 
-- **نام:** فرایند ثبت‌نام دوره آشنایی
+- **نام:** ثبت‌نام دوره آشنایی
 - **فاز:** P1_admission
 - **وضعیت اولیه:** `application_submitted` | **نقش اولیه:** `None`
 - **تعداد state:** 17
@@ -231,18 +231,18 @@ flowchart TB
 - — (leaf یا بدون زیرفرایند)
 
 **گردش کار (state → نقش):**
-- `application_submitted` → `applicant` (initial) — باید زمان مصاحبه را از مسیر اعلام‌شده در سایت یا پیامک پذیرش انتخاب کنید؛ پس از رزرو موفق، مرحلهٔ پرداخت هزینهٔ مصاحبه ب…
-- `interview_scheduled` → `applicant` (intermediate) — باید هزینه مصاحبه را در درگاه پرداخت همین صفحه بپردازید؛ پس از پرداخت، مرحله بعد به‌صورت خودکار فعال می‌شود.
-- `interview_payment` → `applicant` (intermediate) — باید هزینه مصاحبه را در درگاه پرداخت تکمیل کنید؛ در صورت خطا دوباره تلاش کنید تا تأیید پرداخت ثبت شود.
-- `interview_payment_confirmed` → `system` (intermediate) — پرداخت شما ثبت شد و جزئیات زمان مصاحبه از طریق پیامک ارسال شده است. در زمان مقرر در مصاحبه حاضر شوید؛ پس از برگزاری مصاح…
-- `interview_completed` → `interviewer` (intermediate) — منتظر ثبت نتیجه مصاحبه توسط مصاحبه‌گر باشید؛ اگر فرم یا اقدامی برای شما باز شد، آن را تکمیل کنید.
-- `result_conditional_therapy` → `system` (intermediate) — پذیرش شما مشروط به شروع درمان شخصی است؛ مراحل بعد (آپلود مدارک و پرداخت) را طبق راهنمای پنل پیش ببرید.
-- `result_single_course` → `system` (intermediate) — پذیرش شما محدود به درس(های) اعلام‌شده است؛ آپلود و پرداخت را طبق محدودیت‌های پنل انجام دهید (در صورت نیاز فقط پرداخت نقد…
-- `result_full_admission` → `system` (intermediate) — پذیرش کامل دریافت شد؛ مراحل بعد را طبق پنل (آپلود مدارک، انتخاب درس و پرداخت) پیش ببرید.
+- `application_submitted` → `applicant` (initial) — از تقویم همین صفحه یک وقت مصاحبه انتخاب و رزرو کنید.
+- `interview_scheduled` → `applicant` (intermediate) — هزینه مصاحبه را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.
+- `interview_payment` → `applicant` (intermediate) — هزینه مصاحبه را از بخش پرداخت سپ همین صفحه تکمیل کنید؛ در صورت خطا دوباره تلاش کنید.
+- `interview_payment_confirmed` → `system` (intermediate) — در زمان مقرر در مصاحبه حاضر شوید؛ پس از برگزاری مصاحبه، همین صفحه را تازه کنید.
+- `interview_completed` → `interviewer` (intermediate) — منتظر ثبت نتیجه مصاحبه توسط مصاحبه‌گر بمانید؛ فرمی برای شما باز نمی‌شود.
+- `result_conditional_therapy` → `system` (intermediate) — پذیرش شما ثبت شد؛ به‌زودی مرحلهٔ آپلود مدارک در همین صفحه فعال می‌شود.
+- `result_single_course` → `system` (intermediate) — پذیرش شما ثبت شد؛ به‌زودی مرحلهٔ آپلود مدارک در همین صفحه فعال می‌شود.
+- `result_full_admission` → `system` (intermediate) — پذیرش کامل شما ثبت شد؛ به‌زودی مرحلهٔ آپلود مدارک در همین صفحه فعال می‌شود.
 - `rejected` → `system` (terminal) — پرونده شما در این دوره رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید.
-- `documents_upload` → `applicant` (intermediate) — باید مدارک و تأییدیه‌های خواسته‌شده را در همین پورتال بارگذاری و ثبت کنید.
-- `documents_review` → `admissions_officer` (intermediate) — در این مرحله بررسی توسط مسئول پذیرش انجام می‌شود؛ اگر فرمی برای شما باز است تکمیل کنید، در غیر این صورت بعداً صفحه را تا…
-- `documents_incomplete` → `applicant` (intermediate) — باید کاستی‌های اعلام‌شده را برطرف و مدارک را دوباره بارگذاری کنید.
+- `documents_upload` → `applicant` (intermediate) — مدارک و تأییدیه‌های خواسته‌شده را در همین صفحه بارگذاری و ثبت کنید؛ سپس دکمهٔ ادامه را بزنید.
+- `documents_review` → `admissions_officer` (intermediate) — الان کاری در پرتال ندارید؛ منتظر بررسی مسئول پذیرش بمانید و بعداً همین صفحه را تازه کنید.
+- `documents_incomplete` → `applicant` (intermediate) — کاستی‌های اعلام‌شده را برطرف کنید و مدارک را دوباره در همین صفحه بارگذاری کنید؛ سپس ادامه دهید.
 - … و 5 state دیگر
 
 **نواقص / یادداشت:**
@@ -250,10 +250,10 @@ flowchart TB
 
 #### `comprehensive_course_registration` (SOP 35) — 🟡
 
-- **نام:** ثبتا در در جاع
+- **نام:** ثبت‌نام در دوره جامع
 - **فاز:** P1_admission
 - **وضعیت اولیه:** `application_submitted` | **نقش اولیه:** `None`
-- **تعداد state:** 16
+- **تعداد state:** 17
 - **رجیستری:** 01_input=False | 04_status=False | sop_mapping=False
 
 **نقش‌ها و پنل:**
@@ -273,19 +273,19 @@ flowchart TB
 - — (leaf یا بدون زیرفرایند)
 
 **گردش کار (state → نقش):**
-- `application_submitted` → `student` (initial)
+- `application_submitted` → `student` (initial) — دکمهٔ «ادامه و ثبت مرحله» را بزنید تا پروندهٔ شما برای بررسی کمیته نظارت ارسال شود.
 - `supervision_committee_review` → `supervision_committee` (intermediate) — بررسی/صدور مجوز طبق دستور کار.
-- `supervision_rejected` → `system` (terminal)
+- `supervision_rejected` → `system` (terminal) — پرونده شما در این مرحله رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید.
 - `executive_review` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
 - `scientific_review` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
-- `scientific_rejected` → `system` (terminal)
-- `document_upload` → `student` (intermediate)
-- `interview_scheduled` → `student` (intermediate)
-- `interview_payment` → `student` (intermediate) — از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.
+- `scientific_rejected` → `system` (terminal) — پرونده شما در این مرحله رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید.
+- `document_upload` → `student` (intermediate) — گزارش تجربه شخصی را طبق قالب اعلام‌شده در همین صفحه بارگذاری و ثبت کنید؛ سپس دکمهٔ ادامه را بزنید.
+- `interview_scheduled` → `student` (intermediate) — از تقویم همین صفحه یک وقت مصاحبه انتخاب و رزرو کنید.
+- `interview_payment` → `student` (intermediate) — هزینه مصاحبه را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.
 - `interview_completed` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
-- `result_accepted` → `system` (intermediate)
-- `result_rejected` → `system` (terminal)
-- … و 4 state دیگر
+- `result_accepted` → `system` (intermediate) — پذیرش شما ثبت شد؛ به‌زودی مرحلهٔ نمایش دروس ترم ۳ در همین صفحه فعال می‌شود.
+- `result_rejected` → `system` (terminal) — پرونده شما رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید.
+- … و 5 state دیگر
 
 **نواقص / یادداشت:**
 - [ ] فاقد 04_status.md در رجیستری
@@ -295,7 +295,7 @@ flowchart TB
 
 #### `introductory_term_end` (SOP 32) — 🟡
 
-- **نام:** پاا ترا در آشا
+- **نام:** پایان ترم‌های دوره آشنایی
 - **فاز:** P2_intro_terms
 - **وضعیت اولیه:** `grades_submitted` | **نقش اولیه:** `None`
 - **تعداد state:** 8
@@ -313,14 +313,14 @@ flowchart TB
 - — (leaf یا بدون زیرفرایند)
 
 **گردش کار (state → نقش):**
-- `grades_submitted` → `system` (initial)
-- `transcript_generated` → `system` (intermediate)
-- `therapy_check` → `system` (intermediate)
-- `therapy_blocked` → `system` (intermediate)
-- `registration_notification_sent` → `system` (intermediate)
-- `decline_list_generated` → `system` (intermediate)
+- `grades_submitted` → `system` (initial) — سامانه در حال تولید کارنامه ترمی و تجمیعی است؛ چند دقیقه بعد صفحه را تازه کنید.
+- `transcript_generated` → `system` (intermediate) — کارنامه ترمی و تجمیعی در تب پروفایل قابل مشاهده است؛ مراحل بعد خودکار ادامه می‌یابد.
+- `therapy_check` → `system` (intermediate) — سامانه در حال بررسی شرط درمان است؛ در صورت نیاز به اقدام، در همین صفحه اعلام می‌شود.
+- `therapy_blocked` → `system` (intermediate) — شما درمانگر فعالی ندارید و امکان ثبت‌نام شما برای ترم دوم ممکن نیست. از فرایند «آغاز درمان آموزشی» در پورتال اقدام کنید …
+- `registration_notification_sent` → `system` (intermediate) — در مهلت اعلام‌شده دروس ترم بعد را انتخاب و شهریه را پرداخت کنید.
+- `decline_list_generated` → `system` (intermediate) — فرایند پایان ترم در حال تکمیل است؛ در صورت افت تحصیلی، مسئول پذیرش ممکن است با شما تماس بگیرد.
 - `followup_in_progress` → `admissions_officer` (intermediate) — بررسی مدارک/پرونده؛ تأیید، نقص، یا ادامه.
-- `followup_complete` → `system` (terminal)
+- `followup_complete` → `system` (terminal) — کارنامه‌ها در تب پروفایل در دسترس است؛ برای ترم بعد طبق پیامک و راهنمای پنل اقدام کنید.
 
 **نواقص / یادداشت:**
 - [ ] فاقد 04_status.md در رجیستری
@@ -329,7 +329,7 @@ flowchart TB
 
 #### `intro_second_semester_registration` (SOP 33) — 🟡
 
-- **نام:** ثبتا داشج برا تر د در آشا
+- **نام:** ثبت‌نام دانشجو برای ترم دوم دوره آشنایی
 - **فاز:** P2_intro_terms
 - **وضعیت اولیه:** `eligibility_check` | **نقش اولیه:** `None`
 - **تعداد state:** 9
@@ -346,15 +346,15 @@ flowchart TB
 `start_therapy`
 
 **گردش کار (state → نقش):**
-- `eligibility_check` → `system` (initial)
-- `therapy_check_failed` → `system` (terminal)
-- `suspension_check_failed` → `system` (terminal)
-- `course_selection` → `student` (intermediate)
-- `payment_method` → `student` (intermediate)
-- `payment_processing` → `student` (intermediate) — از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.
-- `registration_complete` → `system` (intermediate)
-- `installment_overdue` → `system` (intermediate)
-- `term2_registration_closed` → `system` (terminal)
+- `eligibility_check` → `system` (initial) — سامانه در حال بررسی شرط درمان و وضعیت تعلیق است؛ چند لحظه بعد همین صفحه را تازه کنید.
+- `therapy_check_failed` → `system` (terminal) — شما درمانگر فعالی ندارید و امکان ثبت‌نام شما برای ترم دوم ممکن نیست.
+- `suspension_check_failed` → `system` (terminal) — به دلیل تعلیق از آموزش، امکان ثبت‌نام در ترم دوم وجود ندارد؛ برای رفع تعلیق با واحد انستیتو تماس بگیرید.
+- `course_selection` → `student` (intermediate) — دروس مجاز ترم دوم را در فرم همین صفحه انتخاب و تأیید کنید؛ سپس دکمهٔ ادامه را بزنید.
+- `payment_method` → `student` (intermediate) — روش پرداخت را در فرم همین صفحه انتخاب کنید (نقدی یا اقساط تا ۴ قسط)؛ دانشجوی تک‌درس فقط نقدی — سپس ادامه دهید.
+- `payment_processing` → `student` (intermediate) — شهریه ترم دوم را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.
+- `registration_complete` → `system` (intermediate) — ثبت‌نام ترم دوم تکمیل شد؛ لینک کلاس فعال است. اگر اقساطی پرداخت کردید، اقساط بعدی را در سررسید از همین پرتال بپردازید.
+- `installment_overdue` → `system` (intermediate) — قسط معوق را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را تازه کنید.
+- `term2_registration_closed` → `system` (terminal) — فرایند ثبت‌نام ترم دوم بسته شد؛ دروس و لینک‌های کلاس در پنل آموزش در دسترس است.
 
 **نواقص / یادداشت:**
 - [ ] بدون operator_gap rule برای CTA دستی ترم ۲ (اختیاری)
@@ -363,7 +363,7 @@ flowchart TB
 
 #### `introductory_course_completion` (SOP 34) — 🟡
 
-- **نام:** خات در آشا
+- **نام:** خاتمه دوره آشنایی
 - **فاز:** P2_intro_terms
 - **وضعیت اولیه:** `all_courses_passed` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -380,11 +380,11 @@ flowchart TB
 - — (leaf یا بدون زیرفرایند)
 
 **گردش کار (state → نقش):**
-- `all_courses_passed` → `system` (initial)
+- `all_courses_passed` → `system` (initial) — سامانه در حال اجرای مراحل بعد (دعوت به دوره جامع و صدور گواهی) است؛ چند دقیقه بعد صفحه را تازه کنید.
 - `invitation_sent` → `system` (intermediate) — پیامک مهلت درخواست ورود به دوره جامع ارسال شده؛ در مهلت اعلام‌شده با بخش پذیرش تماس بگیرید.
-- `certificate_draft_generated` → `system` (intermediate)
+- `certificate_draft_generated` → `system` (intermediate) — پیش‌نویس گواهی در صف بررسی کمیته نظارت است؛ پس از تأیید در تب پروفایل قابل دانلود خواهد بود.
 - `certificate_review` → `supervision_committee` (intermediate) — پیش‌نویس گواهی پایان دوره آشنایی را بررسی کنید؛ در صورت صحت «committee_approved_certificate» و در صورت نیاز به اصلاح «co…
-- `certificate_approved` → `system` (intermediate)
+- `certificate_approved` → `system` (intermediate) — گواهی پایان دوره در تب پروفایل → کارنامه‌ها قابل دانلود است.
 - `process_complete` → `system` (terminal) — گواهی پایان دوره آماده است؛ از تب پروفایل → کارنامه‌ها دانلود کنید.
 
 **نواقص / یادداشت:**
@@ -394,7 +394,7 @@ flowchart TB
 
 #### `lesson_start_per_term` (SOP 41) — 🟡
 
-- **نام:** آغاز ر درس در ر تر
+- **نام:** آغاز هر درس در هر ترم
 - **فاز:** P2_intro_terms
 - **وضعیت اولیه:** `student_enrollment` | **نقش اولیه:** `None`
 - **تعداد state:** 4
@@ -415,9 +415,9 @@ flowchart TB
 `fall_semester_preparation`, `winter_semester_preparation`
 
 **گردش کار (state → نقش):**
-- `student_enrollment` → `student` (initial)
-- `links_created` → `system` (intermediate)
-- `attendance_list_ready` → `system` (intermediate)
+- `student_enrollment` → `student` (initial) — درس مورد نظر را از فرم زیر انتخاب و ثبت کنید.
+- `links_created` → `system` (intermediate) — سامانه در حال ایجاد لینک کلاس آنلاین است؛ چند لحظه بعد صفحه را تازه کنید.
+- `attendance_list_ready` → `system` (intermediate) — سامانه در حال تشکیل لیست حضور و غیاب است؛ صفحه را تازه کنید.
 - `lesson_active` → `instructor` (terminal) — ثبت نمره/حضور/تأیید TA.
 
 **نواقص / یادداشت:**
@@ -428,7 +428,7 @@ flowchart TB
 
 #### `comprehensive_term_end` (SOP 36) — 🟡
 
-- **نام:** پاا ترا در جاع
+- **نام:** پایان ترم‌های دوره جامع
 - **فاز:** P3_comprehensive
 - **وضعیت اولیه:** `grades_submitted` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -444,12 +444,12 @@ flowchart TB
 - — (leaf یا بدون زیرفرایند)
 
 **گردش کار (state → نقش):**
-- `grades_submitted` → `system` (initial)
-- `transcript_generated` → `system` (intermediate)
-- `graduation_check` → `system` (intermediate)
-- `completed_all_courses` → `system` (terminal)
-- `registration_notification_sent` → `system` (intermediate)
-- `process_complete` → `system` (terminal)
+- `grades_submitted` → `system` (initial) — سامانه در حال تولید کارنامه ترمی و کارنامه کلی است؛ چند دقیقه بعد صفحه را تازه کنید.
+- `transcript_generated` → `system` (intermediate) — کارنامه ترمی و کارنامه کلی در تب پروفایل قابل مشاهده است؛ بررسی اتمام دروس خودکار ادامه می‌یابد.
+- `graduation_check` → `system` (intermediate) — سامانه در حال بررسی اتمام دروس دوره جامع است؛ در صورت نیاز به اقدام، در همین صفحه اعلام می‌شود.
+- `completed_all_courses` → `system` (terminal) — تمام دروس دوره جامع را با موفقیت پاس کرده‌اید؛ کارنامه‌ها در تب پروفایل در دسترس است.
+- `registration_notification_sent` → `system` (intermediate) — در مهلت اعلام‌شده دروس ترم بعد را انتخاب و شهریه را پرداخت کنید.
+- `process_complete` → `system` (terminal) — کارنامه‌ها در تب پروفایل در دسترس است؛ برای ترم بعد طبق پیامک و راهنمای پنل اقدام کنید.
 
 **نواقص / یادداشت:**
 - [ ] فاقد 04_status.md در رجیستری
@@ -460,7 +460,7 @@ flowchart TB
 - **نام:** آغاز ترم‌های دوره جامع
 - **فاز:** P3_comprehensive
 - **وضعیت اولیه:** `eligibility_check` | **نقش اولیه:** `student`
-- **تعداد state:** 6
+- **تعداد state:** 7
 - **رجیستری:** 01_input=False | 04_status=True | sop_mapping=False
 
 **نقش‌ها و پنل:**
@@ -477,11 +477,12 @@ flowchart TB
 
 **گردش کار (state → نقش):**
 - `eligibility_check` → `system` (initial)
-- `blocked` → `system` (terminal)
+- `blocked` → `system` (terminal) — به دلیل تعلیق انضباطی یا مرخصی تحصیلی، ثبت‌نام ترم جدید مسدود است. برای رفع مانع با بخش آموزش تماس بگیرید.
 - `course_display` → `student` (intermediate) — دروس ثابت ترم را مشاهده کنید و پس از تأیید، به مرحلهٔ انتخاب روش پرداخت بروید.
 - `payment_choice` → `student` (intermediate) — روش پرداخت (نقدی یا ۲ تا ۴ قسط) را انتخاب کنید.
 - `payment_processing` → `student` (intermediate) — از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.
-- `registration_complete` → `system` (terminal)
+- `registration_complete` → `system` (intermediate) — لینک کلاس‌های آنلاین فعال است؛ در صورت انتخاب پرداخت اقساطی، اقساط بعدی را در سررسید پرداخت کنید.
+- `installment_overdue` → `student` (intermediate) — قسط شهریه سررسید گذشته است. از بخش پرداخت آنلاین همین صفحه یا پروفایل مالی، قسط معوق را پرداخت کنید.
 
 **نواقص / یادداشت:**
 - [ ] فاقد 01_input.md / 02_flowchart در رجیستری
@@ -489,7 +490,7 @@ flowchart TB
 
 #### `student_non_registration` (SOP 42) — 🟡
 
-- **نام:** عد ثبتا داشج برا تر بعد
+- **نام:** عدم ثبت‌نام دانشجو برای ترم بعد
 - **فاز:** P3_comprehensive
 - **وضعیت اولیه:** `list_generated` | **نقش اولیه:** `None`
 - **تعداد state:** 9
@@ -524,13 +525,46 @@ flowchart TB
 
 ### فاز ۴ — درمان آموزشی
 
+#### `start_therapy` (SOP 2) — 🟡
+
+- **نام:** آغاز درمان آموزشی
+- **فاز:** P4_therapy
+- **وضعیت اولیه:** `eligibility_check` | **نقش اولیه:** `None`
+- **تعداد state:** 8
+- **رجیستری:** 01_input=True | 04_status=True | sop_mapping=False
+
+**نقش‌ها و پنل:**
+- `student` → StudentPortal (/panel/portal/student) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
+- `therapist` → TherapistPortal | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
+- `system` → — (automated; no human panel) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
+
+**ورودی (started_by):**
+`intro_second_semester_registration`
+
+**خروجی (sub_process_refs / chaining):**
+- — (leaf یا بدون زیرفرایند)
+
+**گردش کار (state → نقش):**
+- `eligibility_check` → `system` (initial) — سامانه در حال بررسی صلاحیت شما برای آغاز درمان است. اگر متوقف ماند، صفحه را تازه کنید.
+- `already_completed` → `system` (terminal) — شما قبلاً آغاز درمان آموزشی را تکمیل کرده‌اید. اگر نیاز به پشتیبانی دارید، تیکت ثبت کنید یا با پذیرش تماس بگیرید.
+- `therapist_selection` → `student` (intermediate) — از شیت وقت‌های آزاد (ثبت‌شده توسط کمیته نظارت) درمانگر و برنامهٔ جلسات را انتخاب کنید؛ سپس ادامه دهید تا تاریخ شروع محاس…
+- `first_session_24h_check` → `system` (intermediate) — سامانه تاریخ اولین جلسه را از روی برنامهٔ انتخاب‌شده و قانون ۲۴ ساعت محاسبه می‌کند. اگر متوقف ماند، صفحه را تازه کنید.
+- `payment_pending` → `student` (intermediate) — هزینهٔ جلسهٔ اول را از طریق درگاه بانک همین صفحه بپردازید. پس از تأیید بانک، درمان در پروندهٔ شما فعال می‌شود و به مرحله…
+- `therapy_active` → `system` (terminal) — گام بعدی: پرداخت جلسات آتی درمان. مسیر اصلی پرتال به «پرداخت برای جلسات آتی» منتقل شده یا خواهد شد.
+- `ineligible` → `system` (terminal) — پذیرش تک‌درس شامل آغاز درمان آموزشی نیست. مسیر شما از پنل دروس و کلاس‌ها ادامه دارد. اگر پذیرش مشروط دارید، تا قبل از ثب…
+- `week9_blocked` → `system` (terminal) — مهلت هفتهٔ نهم برای آغاز درمان گذشته است. برای رفع مسدودیت کلاس‌ها، با پذیرش یا پشتیبانی تماس بگیرید.
+
+**نواقص / یادداشت:**
+- [ ] UI توضیحی ضعیف برای week9_blocked
+- [ ] ۳ گام SOP بدون نگاشت در audit
+
 #### `therapy_changes` (SOP 3) — 🟡
 
-- **نام:** درت تغرات درا آزش
+- **نام:** مدیریت تغییرات درمان آموزشی (آغاز مجدد، تغییر درمانگر، تغییر ساعت)
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `change_request` | **نقش اولیه:** `None`
 - **تعداد state:** 9
-- **رجیستری:** 01_input=False | 04_status=False | sop_mapping=False
+- **رجیستری:** 01_input=False | 04_status=True | sop_mapping=False
 
 **نقش‌ها و پنل:**
 - `student` → StudentPortal (/panel/portal/student) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
@@ -555,12 +589,11 @@ flowchart TB
 - `restart_activated` → `system` (terminal)
 
 **نواقص / یادداشت:**
-- [ ] فاقد 04_status.md در رجیستری
 - [ ] فاقد 01_input.md / 02_flowchart در رجیستری
 
 #### `extra_session` (SOP 4) — ❓
 
-- **نام:** برگزار جس اضاف درا آزش
+- **نام:** برگزاری جلسه اضافی درمان آموزشی
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `extra_request` | **نقش اولیه:** `None`
 - **تعداد state:** 8
@@ -584,15 +617,15 @@ flowchart TB
 - `payment_required` → `student` (intermediate) — ابتدا از بخش پرداخت درگاه همین صفحه مبلغ جلسه اضافی را بپردازید؛ پس از تأیید بانک، مرحلهٔ بعد به‌صورت خودکار ثبت می‌شود.
 - `extra_session_confirmed` → `system` (intermediate) — جلسه در سیستم ثبت شده است؛ لینک جلسه در همین مسیر یا پیامک آمده است. در زمان مقرر حاضر شوید.
 - `extra_session_completed` → `therapist` (terminal) — بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.
-- `extra_session_cancelled` → `system` (terminal)
-- `extra_request_rejected` → `system` (terminal)
+- `extra_session_cancelled` → `system` (terminal) — جلسهٔ اضافی لغو شد (مثلاً به‌دلیل مهلت پرداخت یا انصراف). در صورت نیاز می‌توانید دوباره درخواست جلسه اضافی ثبت کنید.
+- `extra_request_rejected` → `system` (terminal) — درمانگر در حال حاضر امکان برگزاری جلسهٔ اضافی را اعلام نکرده است؛ در صورت نیاز بعداً می‌توانید دوباره درخواست دهید.
 
 **نواقص / یادداشت:**
 - [ ] — (نیاز به بررسی دستی)
 
 #### `session_payment` (SOP 5) — 🟡
 
-- **نام:** پرداخت برا جسات آت درا آزش
+- **نام:** پرداخت برای جلسات آتی درمان آموزشی
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `payment_due` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -610,18 +643,18 @@ flowchart TB
 
 **گردش کار (state → نقش):**
 - `payment_due` → `student` (initial) — دکمهٔ «ادامه به انتخاب جلسات و تسویه» را بزنید. اگر بدهی جلسهٔ قبلی دارید، در مرحلهٔ بعد آن را همراه پرداخت انتخاب کنید.
-- `payment_selection` → `student` (intermediate) — فرم همین صفحه را تکمیل کنید؛ در صورت بدهی، گزینهٔ تسویه را فعال کنید. سپس دکمهٔ «ادامه و ثبت مرحله» را بزنید تا به درگاه…
+- `payment_selection` → `student` (intermediate) — تعداد جلسات پیش‌پرداخت را وارد کنید. اگر بدهی جلسه دارید، در بالای صفحه با مبلغ نمایش داده می‌شود و تسویه به‌صورت خودکار…
 - `awaiting_payment` → `student` (intermediate) — از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید.
-- `payment_confirmed` → `system` (terminal)
-- `payment_failed` → `student` (intermediate) — می‌توانید دوباره تلاش کنید یا در صورت نیاز با پشتیبانی تماس بگیرید.
-- `session_suspended` → `system` (terminal)
+- `payment_confirmed` → `system` (terminal) — ثبت‌نام مالی جلسات انجام شد. برای شرکت در جلسات به تب «جلسات آنلاین» بروید.
+- `payment_failed` → `student` (intermediate) — پرداخت قبلی ناموفق بود. دوباره از درگاه سپ همین صفحه پرداخت کنید؛ در صورت نیاز با پشتیبانی تماس بگیرید.
+- `session_suspended` → `system` (terminal) — جلسات درمان به‌دلیل مشکل پرداخت معلق شده است. برای تسویه یا رفع تعلیق با پشتیبانی تماس بگیرید.
 
 **نواقص / یادداشت:**
 - [ ] ۵ از ۶ گام SOP بدون نگاشت
 
 #### `attendance_tracking` (SOP 6) — ❓
 
-- **نام:** تک شد ساعات درا آزش (حضر  غاب)
+- **نام:** تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `session_scheduled` | **نقش اولیه:** `None`
 - **تعداد state:** 11
@@ -657,7 +690,7 @@ flowchart TB
 
 #### `fee_determination` (SOP 7) — 🟡
 
-- **نام:** تع تکف ز جس درا آزش ا سپر فرد
+- **نام:** تعیین تکلیف هزینه جلسه درمان آموزشی یا سوپرویژن فردی
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `triggered` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -688,7 +721,7 @@ flowchart TB
 
 #### `therapy_completion` (SOP 8) — ❓
 
-- **نام:** تک  خات درا آزش
+- **نام:** تکمیل و خاتمه درمان آموزشی
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `initiated` | **نقش اولیه:** `None`
 - **تعداد state:** 3
@@ -707,15 +740,15 @@ flowchart TB
 
 **گردش کار (state → نقش):**
 - `initiated` → `student` (initial) — ساعات درمان، بالینی و سوپرویژن را در باکس پایین با حدنصاب‌ها ببینید؛ اگر همهٔ شرایط احراز است، دکمهٔ «ادامه و ثبت مرحله»…
-- `conditions_not_met` → `system` (terminal)
-- `therapy_completed` → `system` (terminal)
+- `conditions_not_met` → `system` (terminal) — ساعات درمان، بالینی یا سوپرویژن هنوز به حدنصاب نرسیده است؛ پس از تکمیل ساعات دوباره همین فرایند را اجرا کنید.
+- `therapy_completed` → `system` (terminal) — درمان آموزشی با موفقیت تکمیل و خاتمه یافت؛ برای مراحل بعد طبق راهنمای پنل اقدام کنید.
 
 **نواقص / یادداشت:**
 - [ ] — (نیاز به بررسی دستی)
 
 #### `therapy_session_increase` (SOP 9) — ❓
 
-- **نام:** درخاست داشج برا افزاش جسات فتگ درا آزش
+- **نام:** درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `request_submitted` | **نقش اولیه:** `None`
 - **تعداد state:** 5
@@ -744,7 +777,7 @@ flowchart TB
 
 #### `therapy_session_reduction` (SOP 10) — ❓
 
-- **نام:** درخاست داشج برا کاش جسات فتگ درا آزش
+- **نام:** درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `initiated` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -774,7 +807,7 @@ flowchart TB
 
 #### `therapy_early_termination` (SOP 11) — ❓
 
-- **نام:** طع زدرس درا آزش تسط دراگر آزش
+- **نام:** قطع زودرس درمان آموزشی توسط درمانگر آموزشی
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `reason_selection` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -805,7 +838,7 @@ flowchart TB
 
 #### `specialized_commission_review` (SOP 12) — ❓
 
-- **نام:** بررس کس تخصص (زرفراد اف)
+- **نام:** بررسی کمیسیون تخصصی (زیرفرایند الف)
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `commission_review` | **نقش اولیه:** `None`
 - **تعداد state:** 5
@@ -835,7 +868,7 @@ flowchart TB
 
 #### `committees_review` (SOP 13) — ❓
 
-- **نام:** بررس کتا ظارت  آزش (زرفراد ب)
+- **نام:** بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `supervision_review` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -868,7 +901,7 @@ flowchart TB
 
 #### `therapist_session_cancellation` (SOP 14) — ❓
 
-- **نام:** کس کرد جس از س دراگر آزش
+- **نام:** کنسل کردن جلسه از سوی درمانگر آموزشی
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `session_selection` | **نقش اولیه:** `None`
 - **تعداد state:** 8
@@ -900,7 +933,7 @@ flowchart TB
 
 #### `unannounced_absence_reaction` (SOP 15) — ❓
 
-- **نام:** اکش استت ب غبت بد اطاع در جس آد
+- **نام:** واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `identified` | **نقش اولیه:** `None`
 - **تعداد state:** 10
@@ -935,7 +968,7 @@ flowchart TB
 
 #### `therapy_interruption` (SOP 16) — ❓
 
-- **نام:** ف در درا آزش تسط داشج
+- **نام:** وقفه در درمان آموزشی توسط دانشجو
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `request_submitted` | **نقش اولیه:** `None`
 - **تعداد state:** 8
@@ -967,7 +1000,7 @@ flowchart TB
 
 #### `student_session_cancellation` (SOP 17) — ❓
 
-- **نام:** کس کرد جسات درا آزش تسط داشج
+- **نام:** ۱۷: کنسل کردن جلسات درمان آموزشی توسط دانشجو
 - **فاز:** P4_therapy
 - **وضعیت اولیه:** `calendar_displayed` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -994,46 +1027,11 @@ flowchart TB
 **نواقص / یادداشت:**
 - [ ] — (نیاز به بررسی دستی)
 
-#### `start_therapy` (بدون شماره SOP) — 🟡
-
-- **نام:** آغاز درا آزش
-- **فاز:** P4_therapy
-- **وضعیت اولیه:** `eligibility_check` | **نقش اولیه:** `None`
-- **تعداد state:** 10
-- **رجیستری:** 01_input=True | 04_status=True | sop_mapping=False
-
-**نقش‌ها و پنل:**
-- `student` → StudentPortal (/panel/portal/student) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
-- `therapist` → TherapistPortal | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
-- `system` → — (automated; no human panel) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
-
-**ورودی (started_by):**
-`intro_second_semester_registration`
-
-**خروجی (sub_process_refs / chaining):**
-- — (leaf یا بدون زیرفرایند)
-
-**گردش کار (state → نقش):**
-- `eligibility_check` → `system` (initial)
-- `already_completed` → `system` (terminal)
-- `therapist_selection` → `student` (intermediate) — درمانگر آموزشی و برنامهٔ هفتگی (مثلاً ۲ جلسه در هفته برای دوره جامع) را در فرم زیر مشخص کنید؛ سپس دکمهٔ ادامه را بزنید ت…
-- `therapist_confirmation` → `therapist` (intermediate) — بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید.
-- `schedule_first_session` → `student` (intermediate) — تاریخ شروع اولین جلسه را ثبت کنید؛ سامانه قانون ۲۴ ساعت را اعمال می‌کند و در صورت نیاز تاریخ را به هفتهٔ بعد موکول می‌کن…
-- `first_session_24h_check` → `system` (intermediate) — این مرحله معمولاً به‌صورت خودکار طی چند ثانیه تکمیل می‌شود. اگر متوقف ماند، صفحه را تازه کنید.
-- `payment_pending` → `student` (intermediate) — هزینهٔ جلسهٔ اول را از طریق درگاه بانک همین صفحه بپردازید. پس از تأیید بانک، درمان در پروندهٔ شما فعال می‌شود و به مرحله…
-- `therapy_active` → `system` (terminal)
-- `ineligible` → `system` (terminal)
-- `week9_blocked` → `system` (terminal)
-
-**نواقص / یادداشت:**
-- [ ] UI توضیحی ضعیف برای week9_blocked
-- [ ] ۳ گام SOP بدون نگاشت در audit
-
 ### فاز ۵ — سوپرویژن
 
 #### `supervision_block_transition` (SOP 18) — ❓
 
-- **نام:** درت تغرات سپر فرد (آغاز جدد تغر سپرازر تغر ساعت)
+- **نام:** مدیریت تغییرات سوپرویژن فردی (آغاز مجدد، تغییر سوپروایزر، تغییر ساعت)
 - **فاز:** P5_supervision
 - **وضعیت اولیه:** `payment_intent_50th` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -1050,19 +1048,19 @@ flowchart TB
 `session_payment`
 
 **گردش کار (state → نقش):**
-- `payment_intent_50th` → `student` (initial)
-- `not_at_50th` → `system` (terminal)
-- `supervisor_slots_displayed` → `student` (intermediate)
-- `slot_selected` → `student` (intermediate)
-- `new_block_first_paid` → `system` (intermediate)
-- `both_paid_completed` → `system` (terminal)
+- `payment_intent_50th` → `student` (initial) — اگر به جلسه ۵۰ رسیده‌اید، «ادامه و ثبت مرحله» را بزنید تا سوابق و وقت‌های آزاد نمایش داده شود؛ در غیر این صورت از پرداخت…
+- `not_at_50th` → `system` (terminal) — از فرایند پرداخت جلسات یا تکمیل بلوک ۵۰ ساعته ادامه دهید.
+- `supervisor_slots_displayed` → `student` (intermediate) — سوابق و شیت وقت‌های آزاد را ببینید؛ سپس در فرم، سوپروایزر و یک زمان (حداکثر ۱ جلسه در هفته) را انتخاب کنید.
+- `slot_selected` → `student` (intermediate) — تاریخ شروع با قانون ۲۴ ساعت محاسبه شده است. ابتدا هزینهٔ جلسه اول دوره جدید را بپردازید.
+- `new_block_first_paid` → `student` (intermediate) — از بخش پرداخت همین صفحه برای جلسه پنجاهم دوره فعلی استفاده کنید.
+- `both_paid_completed` → `system` (terminal) — هر دو پرداخت انجام شد؛ جزئیات جلسه جدید از طریق پیامک به شما و سوپروایزر ارسال می‌شود.
 
 **نواقص / یادداشت:**
 - [ ] — (نیاز به بررسی دستی)
 
 #### `supervision_50h_completion` (SOP 20) — ❓
 
-- **نام:** تک درا ۵۰ ساعت سپر فرد
+- **نام:** تکمیل کردن دوره‌های ۵۰ ساعته سوپرویژن فردی
 - **فاز:** P5_supervision
 - **وضعیت اولیه:** `session_scheduled` | **نقش اولیه:** `None`
 - **تعداد state:** 11
@@ -1081,24 +1079,24 @@ flowchart TB
 `fee_determination`, `violation_registration`
 
 **گردش کار (state → نقش):**
-- `session_scheduled` → `system` (initial)
-- `recording_closed` → `system` (terminal)
-- `auto_absence_unpaid` → `system` (terminal)
+- `session_scheduled` → `system` (initial) — پیش از جلسه، هزینهٔ سوپرویژن را پرداخت کنید؛ پس از پرداخت، لینک آنلاین فعال می‌شود.
+- `recording_closed` → `system` (terminal) — جلسه کنسل شده یا در وقفه سوپرویژن هستید؛ ثبت حضور/غیاب بسته است.
+- `auto_absence_unpaid` → `system` (terminal) — جلسه بدون پرداخت گذشت و غیبت خودکار ثبت شد؛ در صورت نیاز فرایند تعیین تکلیف هزینه آغاز می‌شود.
 - `supervisor_recording` → `supervisor` (intermediate) — ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.
 - `site_manager_pending` → `site_manager` (intermediate) — بررسی درخواست و ثبت تصمیم.
 - `deputy_escalated` → `deputy_education` (terminal) — بررسی پرونده و تأیید یا ارجاع.
-- `session_completed` → `system` (terminal)
-- `absence_recorded` → `system` (intermediate)
+- `session_completed` → `system` (terminal) — جلسه سوپرویژن تکمیل شد و یک ساعت به بلوک فعلی افزوده شد.
+- `absence_recorded` → `system` (intermediate) — غیبت شما ثبت شد؛ در صورت نیاز فرایند تعیین تکلیف هزینه آغاز می‌شود.
 - `evaluation_pending` → `supervisor` (intermediate) — ثبت/بررسی جلسه سوپرویژن؛ سپس دکمه تأیید.
-- `evaluation_completed` → `system` (terminal)
-- `evaluation_sla_breach` → `system` (terminal)
+- `evaluation_completed` → `system` (terminal) — فرم ارزیابی ۵۰ ساعت سوپرویژن توسط سوپروایزر تکمیل شد.
+- `evaluation_sla_breach` → `system` (terminal) — فرم ارزیابی ۵۰ ساعت در مهلت تکمیل نشد؛ گزارش تخلف ثبت شده است.
 
 **نواقص / یادداشت:**
 - [ ] — (نیاز به بررسی دستی)
 
 #### `supervision_session_increase` (SOP 21) — ❓
 
-- **نام:** درخاست داشج برا افزاش جسات فتگ سپر
+- **نام:** ۲۱: درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن
 - **فاز:** P5_supervision
 - **وضعیت اولیه:** `request_submitted` | **نقش اولیه:** `None`
 - **تعداد state:** 5
@@ -1127,7 +1125,7 @@ flowchart TB
 
 #### `extra_supervision_session` (SOP 22) — ❓
 
-- **نام:** درخاست داشج برا برگزار جس اضاف سپر
+- **نام:** ۲۲: درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن
 - **فاز:** P5_supervision
 - **وضعیت اولیه:** `extra_request` | **نقش اولیه:** `None`
 - **تعداد state:** 7
@@ -1158,7 +1156,7 @@ flowchart TB
 
 #### `supervision_session_reduction` (SOP 24) — ❓
 
-- **نام:** درخاست داشج برا کاش جسات فتگ سپر
+- **نام:** ۲۳: درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن
 - **فاز:** P5_supervision
 - **وضعیت اولیه:** `initiated` | **نقش اولیه:** `None`
 - **تعداد state:** 7
@@ -1189,7 +1187,7 @@ flowchart TB
 
 #### `student_supervision_cancellation` (SOP 25) — 🟡
 
-- **نام:** کس کرد جسات سپر تسط داشج  اکش استت
+- **نام:** کنسل کردن جلسات سوپرویژن توسط دانشجو و واکنش انستیتو
 - **فاز:** P5_supervision
 - **وضعیت اولیه:** `calendar_displayed` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -1220,7 +1218,7 @@ flowchart TB
 
 #### `supervisor_session_cancellation` (SOP 26) — 🟡
 
-- **نام:** کس کرد جس از س سپرازر
+- **نام:** کنسل کردن جلسه از سوی سوپروایزر
 - **فاز:** P5_supervision
 - **وضعیت اولیه:** `session_selection` | **نقش اولیه:** `None`
 - **تعداد state:** 9
@@ -1254,7 +1252,7 @@ flowchart TB
 
 #### `unannounced_supervision_absence_reaction` (SOP 27) — 🟡
 
-- **نام:** اکش استت ب غبت بد اطاع در جس آد سپر فرد
+- **نام:** واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی
 - **فاز:** P5_supervision
 - **وضعیت اولیه:** `identified` | **نقش اولیه:** `None`
 - **تعداد state:** 10
@@ -1291,7 +1289,7 @@ flowchart TB
 
 #### `supervision_interruption` (SOP 28) — 🟡
 
-- **نام:** ف در سپر فرد تسط داشج
+- **نام:** وقفه در سوپرویژن فردی توسط دانشجو
 - **فاز:** P5_supervision
 - **وضعیت اولیه:** `request_submitted` | **نقش اولیه:** `None`
 - **تعداد state:** 9
@@ -1325,9 +1323,47 @@ flowchart TB
 
 ### فاز ۶ — مرخصی و بازگشت
 
+#### `educational_leave` (SOP 1) — ❓
+
+- **نام:** مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها
+- **فاز:** P6_leave
+- **وضعیت اولیه:** `request_form` | **نقش اولیه:** `None`
+- **تعداد state:** 13
+- **رجیستری:** 01_input=True | 04_status=True | sop_mapping=False
+
+**نقش‌ها و پنل:**
+- `student` → StudentPortal (/panel/portal/student) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
+- `progress_committee` → CommitteePortal / progress | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
+- `deputy_education` → CommitteePortal / education + SemesterPrep | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
+- `monitoring_committee_officer` → CommitteePortal / supervision | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
+
+**ورودی (started_by):**
+`process_merged_to_one`, `student_non_registration`
+
+**خروجی (sub_process_refs / chaining):**
+`patient_referral`, `violation_registration`
+
+**گردش کار (state → نقش):**
+- `request_form` → `student` (initial) — مدت وقفه (۱ یا ۲ ترم) را در فرم زیر انتخاب کنید؛ پس از ثبت، درخواست برای کمیته پیشرفت ارسال می‌شود.
+- `committee_review` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
+- `deputy_alerted` → `deputy_education` (intermediate) — بررسی پرونده و تأیید یا ارجاع.
+- `session_scheduled` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
+- `committee_decision` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
+- `rejected` → `system` (terminal) — علت رد درخواست در همین صفحه نمایش داده می‌شود. در صورت پرسش با کمیته پیشرفت یا پذیرش تماس بگیرید.
+- `approved_non_intern` → `student` (intermediate) — با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را در سامانه فعال کنید؛ پس از آن ثبت‌نام کلاس برای شما تا زمان بازگشت مسدو…
+- `approved_intern_1term` → `student` (intermediate) — با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ سوپرویژن و درمان طبق مصوبه ادامه می‌یابد.
+- `approved_intern_2term` → `student` (intermediate) — با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ پس از آن وضعیت انترنی و سوپروایزر طبق مصوبه به‌روز می‌شود.
+- `on_leave` → `system` (intermediate) — ثبت‌نام دروس کلاس تا اعلام بازگشت در سامانه برای شما مسدود است. زمان تقریبی یادآوری بازگشت و مهلت اعلام ثبت‌نام ترم در ج…
+- `return_reminder_sent` → `system` (intermediate) — پس از ثبت‌نام واقعی دروس ترم آینده در سامانه، فرم تأیید بازگشت را پر کنید و دکمهٔ «ثبت بازگشت» را بزنید.
+- `returned` → `system` (terminal) — بازگشت شما به تحصیل در سامانه ثبت شد. ثبت‌نام کلاس دوباره برای شما فعال است؛ از بخش آموزش و کلاس‌ها ادامه دهید.
+- … و 1 state دیگر
+
+**نواقص / یادداشت:**
+- [ ] — (نیاز به بررسی دستی)
+
 #### `process_merged_to_one` (SOP 58) — 🔴
 
-- **نام:** تشد ب فراد شار ۱
+- **نام:** منتقل‌شده به فرایند شماره ۱
 - **فاز:** P6_leave
 - **وضعیت اولیه:** `merged` | **نقش اولیه:** `system`
 - **تعداد state:** 1
@@ -1355,7 +1391,7 @@ flowchart TB
 
 #### `full_education_leave` (SOP 59) — 🟡
 
-- **نام:** رخص ت از ک آزش
+- **نام:** مرخصی موقت از کل آموزش
 - **فاز:** P6_leave
 - **وضعیت اولیه:** `leave_request` | **نقش اولیه:** `student`
 - **تعداد state:** 11
@@ -1385,8 +1421,8 @@ flowchart TB
 - `therapist_assignment` → `therapy_education_coordinator` (intermediate) — تعیین تکلیف وقت درمانگر (مهلت ۴ روز).
 - `on_leave` → `system` (intermediate) — ثبت‌نام دروس و فعالیت‌های آموزشی مسدود است. برای بازگشت، فرایند «بازگشت به کل آموزش» (فرایند ۶۰) را آغاز کنید.
 - `return_reminder_sent` → `system` (intermediate) — مهلت بازگشت فرا رسیده است. فرایند «بازگشت به کل آموزش پس از مرخصی» (فرایند ۶۰) را آغاز و تکمیل کنید.
-- `leave_complete` → `system` (terminal)
-- `violation_registered` → `system` (terminal)
+- `leave_complete` → `system` (terminal) — بازگشت به کل آموزش با موفقیت انجام شد. ثبت‌نام دروس و ادامهٔ مسیر آموزشی از بخش‌های مربوط در پرتال در دسترس است.
+- `violation_registered` → `system` (terminal) — به‌دلیل عدم بازگشت در مهلت مقرر، گزارش تخلف ثبت شده است. برای پیگیری با کمیته نظارت یا پذیرش تماس بگیرید.
 
 **نواقص / یادداشت:**
 - [ ] audit: ۳ گام SOP بدون نگاشت
@@ -1395,7 +1431,7 @@ flowchart TB
 
 #### `return_to_full_education` (SOP 60) — 🟡
 
-- **نام:** بازگشت دبار ب ک آزش پس از رخص از ک آزش
+- **نام:** بازگشت دوباره به کل آموزش پس از مرخصی
 - **فاز:** P6_leave
 - **وضعیت اولیه:** `return_request` | **نقش اولیه:** `student`
 - **تعداد state:** 11
@@ -1421,55 +1457,17 @@ flowchart TB
 - `supervision_24h_scheduled` → `system` (intermediate) — این مرحله معمولاً خودکار تکمیل می‌شود.
 - `supervision_payment_pending` → `student` (intermediate) — هزینهٔ جلسهٔ اول سوپرویژن را از درگاه بانک همین صفحه بپردازید.
 - `registration_unlocked` → `system` (intermediate) — محدودیت ثبت‌نام دروس برداشته شد. می‌توانید در ترم جدید ثبت‌نام کنید.
-- `return_complete` → `system` (terminal)
-- `return_rejected` → `system` (terminal)
+- `return_complete` → `system` (terminal) — بازگشت به کل آموزش با موفقیت تکمیل شد. ثبت‌نام دروس ترم جدید برای شما باز شده است.
+- `return_rejected` → `system` (terminal) — بازگشت به کل آموزش در این مرحله تأیید نشد. برای اطلاع از دلیل و راه‌حل با پذیرش یا کمیته پیشرفت تماس بگیرید.
 
 **نواقص / یادداشت:**
 - [ ] فاقد 01_input.md / 02_flowchart در رجیستری
-
-#### `educational_leave` (بدون شماره SOP) — ❓
-
-- **نام:** رخص آزش ت از ثبتا در کاسا
-- **فاز:** P6_leave
-- **وضعیت اولیه:** `request_form` | **نقش اولیه:** `None`
-- **تعداد state:** 13
-- **رجیستری:** 01_input=True | 04_status=True | sop_mapping=False
-
-**نقش‌ها و پنل:**
-- `student` → StudentPortal (/panel/portal/student) | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
-- `progress_committee` → CommitteePortal / progress | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
-- `deputy_education` → CommitteePortal / education + SemesterPrep | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
-- `monitoring_committee_officer` → CommitteePortal / supervision | پنل: ProcessStepForms / OperatorProcessInstancePanel / QuestCard
-
-**ورودی (started_by):**
-`process_merged_to_one`, `student_non_registration`
-
-**خروجی (sub_process_refs / chaining):**
-`patient_referral`, `violation_registration`
-
-**گردش کار (state → نقش):**
-- `request_form` → `student` (initial)
-- `committee_review` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
-- `deputy_alerted` → `deputy_education` (intermediate) — بررسی پرونده و تأیید یا ارجاع.
-- `session_scheduled` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
-- `committee_decision` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
-- `rejected` → `system` (terminal) — علت رد درخواست در همین صفحه نمایش داده می‌شود. در صورت پرسش با کمیته پیشرفت یا پذیرش تماس بگیرید.
-- `approved_non_intern` → `student` (intermediate) — با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را در سامانه فعال کنید؛ پس از آن ثبت‌نام کلاس برای شما تا زمان بازگشت مسدو…
-- `approved_intern_1term` → `student` (intermediate) — با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ سوپرویژن و درمان طبق مصوبه ادامه می‌یابد.
-- `approved_intern_2term` → `student` (intermediate) — با دکمهٔ «تأیید نهایی: فعال‌سازی مرخصی…» وقفه را فعال کنید؛ پس از آن وضعیت انترنی و سوپروایزر طبق مصوبه به‌روز می‌شود.
-- `on_leave` → `system` (intermediate) — ثبت‌نام دروس کلاس تا اعلام بازگشت در سامانه برای شما مسدود است. زمان تقریبی یادآوری بازگشت و مهلت اعلام ثبت‌نام ترم در ج…
-- `return_reminder_sent` → `system` (intermediate) — پس از ثبت‌نام واقعی دروس ترم آینده در سامانه، فرم تأیید بازگشت را پر کنید و دکمهٔ «ثبت بازگشت» را بزنید.
-- `returned` → `system` (terminal)
-- … و 1 state دیگر
-
-**نواقص / یادداشت:**
-- [ ] — (نیاز به بررسی دستی)
 
 ### فاز ۷ — کمک‌مدرس / مدرس / تخلف
 
 #### `ta_conceptual_questions` (SOP 43) — 🟡
 
-- **نام:** ثبت ۳ سا تستف (ککدرس)
+- **نام:** ثبت ۳ سوال تستی‌مفهومی پس از هر جلسه کلاس (کمک‌مدرس)
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `session_ended` | **نقش اولیه:** `None`
 - **تعداد state:** 6
@@ -1501,7 +1499,7 @@ flowchart TB
 
 #### `ta_student_consultation` (SOP 44) — 🟡
 
-- **نام:** شاسا تش  شرت آزش (ککدرس)
+- **نام:** شناسایی، تشویق و مشورت آموزشی به دانشجویان (کمک‌مدرس)
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `session_5_10_15` | **نقش اولیه:** `None`
 - **تعداد state:** 4
@@ -1531,7 +1529,7 @@ flowchart TB
 
 #### `ta_essay_upload` (SOP 45) — 🔴
 
-- **نام:** آپد جستار  دا تخب ف (ککدرس)
+- **نام:** آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس (کمک‌مدرس)
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `session_ended` | **نقش اولیه:** `None`
 - **تعداد state:** 7
@@ -1569,7 +1567,7 @@ flowchart TB
 
 #### `ta_blog_content` (SOP 46) — 🟡
 
-- **نام:** ثبت حتا باگ از حتا درس (ککدرس)
+- **نام:** ثبت محتوای وبلاگ از محتوای درسی توسط کمک‌مدرس
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `session_ended` | **نقش اولیه:** `None`
 - **تعداد state:** 5
@@ -1602,7 +1600,7 @@ flowchart TB
 
 #### `upgrade_to_ta` (SOP 47) — 🟡
 
-- **نام:** ارتا ب ککدرس
+- **نام:** ارتقا دانشجو به کمک‌مدرس
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `student_click` | **نقش اولیه:** `student`
 - **تعداد state:** 10
@@ -1640,7 +1638,7 @@ flowchart TB
 
 #### `mentor_private_sessions` (SOP 48) — 🟡
 
-- **نام:** ثبت تارخ ۲ جس تدرس خصص درس ب ککدرس
+- **نام:** ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `instructor_click` | **نقش اولیه:** `instructor`
 - **تعداد state:** 4
@@ -1672,7 +1670,7 @@ flowchart TB
 
 #### `ta_to_assistant_faculty` (SOP 49) — 🟡
 
-- **نام:** ارتا رتب از ککدرس ب دستار ئت ع
+- **نام:** ارتقا رتبهٔ تحلیل دانشجو از کمک‌مدرسی به دستیار هیئت علمی
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `auto_or_manual_trigger` | **نقش اولیه:** `None`
 - **تعداد state:** 5
@@ -1703,7 +1701,7 @@ flowchart TB
 
 #### `ta_to_instructor_auto` (SOP 50) — 🟡
 
-- **نام:** تبد خدکار ککدرس ب درس در ر درس
+- **نام:** تبدیل شدن کمک‌مدرس به مدرس در هر درس
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `end_of_term_check` | **نقش اولیه:** `None`
 - **تعداد state:** 3
@@ -1731,7 +1729,7 @@ flowchart TB
 
 #### `ta_track_change` (SOP 51) — 🟡
 
-- **نام:** تغر ا اضاف کرد رست ککدرس
+- **نام:** تغییر یا اضافه کردن رسته کمک‌مدرسی
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `ta_click` | **نقش اولیه:** `teaching_assistant`
 - **تعداد state:** 6
@@ -1763,7 +1761,7 @@ flowchart TB
 
 #### `ta_track_completion` (SOP 52) — 🟡
 
-- **نام:** خات ککدرس برا ر رست
+- **نام:** خاتمه کمک‌مدرسی برای هر رسته
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `end_of_track_check` | **نقش اولیه:** `system`
 - **تعداد state:** 2
@@ -1791,7 +1789,7 @@ flowchart TB
 
 #### `ta_instructor_leave` (SOP 53) — 🟡
 
-- **نام:** رخص ککدرس  درس
+- **نام:** مرخصی کمک‌مدرسی و مدرسین
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `leave_request` | **نقش اولیه:** `teaching_assistant_or_instructor`
 - **تعداد state:** 6
@@ -1824,7 +1822,7 @@ flowchart TB
 
 #### `class_attendance` (SOP 54) — 🟡
 
-- **نام:** حضر  غاب در تا کاسا
+- **نام:** حضور و غیاب در تمامی کلاس‌ها
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `attendance_list_ready` | **نقش اولیه:** `instructor`
 - **تعداد state:** 4
@@ -1858,7 +1856,7 @@ flowchart TB
 
 #### `violation_registration` (SOP 55) — 🟡
 
-- **نام:** ثبت تخفات
+- **نام:** ثبت تخلفات
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `violation_reported` | **نقش اولیه:** `reporter`
 - **تعداد state:** 9
@@ -1894,7 +1892,7 @@ flowchart TB
 
 #### `class_session_cancellation` (SOP 56) — 🟡
 
-- **نام:** کس کرد جسات کاسا درس
+- **نام:** کنسل کردن جلسات کلاس‌های درسی
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `cancellation_request` | **نقش اولیه:** `instructor`
 - **تعداد state:** 2
@@ -1924,7 +1922,7 @@ flowchart TB
 
 #### `student_instructor_evaluation` (SOP 57) — 🟡
 
-- **نام:** ارزاب داشج از درس
+- **نام:** ارزیابی دانشجو از مدرسین
 - **فاز:** P7_ta
 - **وضعیت اولیه:** `evaluation_open` | **نقش اولیه:** `student`
 - **تعداد state:** 2
@@ -1955,7 +1953,7 @@ flowchart TB
 
 #### `internship_readiness_consultation` (SOP 37) — 🟡
 
-- **نام:** شرت  تع آادگ برا آغاز اتر
+- **نام:** مشورت و تعیین آمادگی برای آغاز انترنی
 - **فاز:** P8_internship
 - **وضعیت اولیه:** `auto_trigger` | **نقش اولیه:** `None`
 - **تعداد state:** 17
@@ -1975,17 +1973,17 @@ flowchart TB
 `violation_registration`
 
 **گردش کار (state → نقش):**
-- `auto_trigger` → `system` (initial)
-- `student_request` → `student` (intermediate)
+- `auto_trigger` → `system` (initial) — درخواست ارتقا به انترن را در همین صفحه ثبت کنید.
+- `student_request` → `student` (intermediate) — درخواست ارتقا به انترن را ثبت کنید تا پروندهٔ شما برای بررسی کمیته نظارت ارسال شود.
 - `supervision_committee_review` → `supervision_committee` (intermediate) — بررسی/صدور مجوز طبق دستور کار.
-- `supervision_rejected` → `system` (terminal)
+- `supervision_rejected` → `system` (terminal) — کمیته نظارت مجوز آغاز انترنی را صادر نکرد؛ برای اطلاعات بیشتر با دفتر آموزش تماس بگیرید.
 - `interview_scheduling` → `progress_committee_project` (intermediate) — بررسی پروژه و ثبت تصمیم کمیته پیشرفت.
 - `interview_held` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
-- `interview_result_unconditional` → `system` (intermediate)
-- `interview_result_conditional` → `system` (intermediate)
-- `interview_result_retry` → `system` (terminal)
-- `contract_practice` → `student` (intermediate)
-- `contract_rules` → `student` (intermediate)
+- `interview_result_unconditional` → `system` (intermediate) — نتیجه مصاحبه: قبولی بدون شرط با ظرفیت ۳ ساعت در هفته. سامانه شما را به مرحلهٔ قراردادها هدایت می‌کند.
+- `interview_result_conditional` → `system` (intermediate) — نتیجه مصاحبه: قبولی مشروط با ظرفیت ۱ ساعت در هفته. سامانه شما را به مرحلهٔ قراردادها هدایت می‌کند.
+- `interview_result_retry` → `system` (terminal) — پس از تکمیل ۳۰ ساعت درمان، دوباره درخواست ارتقا به انترن را ثبت کنید.
+- `contract_practice` → `student` (intermediate) — متن قرارداد پرکیس را مطالعه کنید، گزینهٔ پذیرش را تأیید و کد پیامکی را وارد کنید تا قرارداد امضا شود.
+- `contract_rules` → `student` (intermediate) — متن قوانین اداری، آموزشی و بالینی را مطالعه کنید و با کد پیامکی امضای الکترونیکی را تکمیل کنید.
 - `promissory_note` → `student` (intermediate) — سفته را حضوری تحویل دهید؛ پس از ثبت توسط کمیته پیشرفت مرحله بعد فعال می‌شود.
 - … و 5 state دیگر
 
@@ -1996,7 +1994,7 @@ flowchart TB
 
 #### `internship_12month_conditional_review` (SOP 38) — 🟡
 
-- **نام:** ۱۲ ا پس از ب شرط در اتر
+- **نام:** ۱۲ ماه پس از گذشت قبولی به صورت مشروط در انترنی
 - **فاز:** P8_internship
 - **وضعیت اولیه:** `month_12_trigger` | **نقش اولیه:** `None`
 - **تعداد state:** 7
@@ -2015,13 +2013,13 @@ flowchart TB
 `violation_registration`
 
 **گردش کار (state → نقش):**
-- `month_12_trigger` → `system` (initial)
+- `month_12_trigger` → `system` (initial) — انترنی مشروط شما به ماه ۱۲ رسیده؛ فرایند ارزیابی مجدد آغاز شده است.
 - `supervision_review` → `supervision_committee` (intermediate) — بررسی/صدور مجوز طبق دستور کار.
-- `supervision_rejected` → `system` (terminal)
+- `supervision_rejected` → `system` (terminal) — کمیته نظارت مجوز ارزیابی مجدد را صادر نکرد؛ با دفتر آموزش تماس بگیرید.
 - `interview_scheduling` → `progress_committee_project` (intermediate) — بررسی پروژه و ثبت تصمیم کمیته پیشرفت.
 - `interview_held` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
-- `result_unrestricted` → `system` (terminal)
-- `result_conditional` → `system` (terminal)
+- `result_unrestricted` → `system` (terminal) — نتیجه: ادامه انترنی با رفع کامل محدودیت؛ افزایش ساعات از ماه ۱۶ طبق الگوی استاندارد.
+- `result_conditional` → `system` (terminal) — نتیجه: ادامه مشروط انترنی با الگوی محدود افزایش ساعات.
 
 **نواقص / یادداشت:**
 - [ ] فاقد 04_status.md در رجیستری
@@ -2029,7 +2027,7 @@ flowchart TB
 
 #### `intern_hours_increase` (SOP 39) — 🟡
 
-- **نام:** اضاف شد حداکثر ساعتا ارائ درا اتر
+- **نام:** اضافه شدن حداکثر ساعت‌های ارائه درمان انترن
 - **فاز:** P8_internship
 - **وضعیت اولیه:** `deadline_reached` | **نقش اولیه:** `None`
 - **تعداد state:** 5
@@ -2047,11 +2045,11 @@ flowchart TB
 `violation_registration`
 
 **گردش کار (state → نقش):**
-- `deadline_reached` → `system` (initial)
+- `deadline_reached` → `system` (initial) — به سررسید افزایش ساعت‌های درمان انترنی رسیده‌اید؛ کمیته نظارت در حال بررسی است.
 - `supervision_review` → `supervision_committee` (intermediate) — بررسی/صدور مجوز طبق دستور کار.
-- `rejected_referral` → `system` (terminal)
+- `rejected_referral` → `system` (terminal) — افزایش ساعت تأیید نشد؛ ممکن است پرونده به کمیته تخلفات ارجاع شود. با دفتر آموزش تماس بگیرید.
 - `approved_time_coordination` → `supervision_committee` (intermediate) — بررسی/صدور مجوز طبق دستور کار.
-- `hours_increased` → `system` (terminal)
+- `hours_increased` → `system` (terminal) — ظرفیت درمان شما افزایش یافت؛ جزئیات از طریق پیامک اعلام می‌شود.
 
 **نواقص / یادداشت:**
 - [ ] فاقد 04_status.md در رجیستری
@@ -2059,7 +2057,7 @@ flowchart TB
 
 #### `live_therapy_observation_session_prep` (SOP 66) — 🟡
 
-- **نام:** دات برگزار جسات شاد زد درا
+- **نام:** مقدمات برگزاری جلسات مشاهده زنده درمان
 - **فاز:** P8_internship
 - **وضعیت اولیه:** `patient_referral` | **نقش اولیه:** `admission_officer`
 - **تعداد state:** 4
@@ -2090,7 +2088,7 @@ flowchart TB
 
 #### `live_supervision_session_prep` (SOP 68) — 🟡
 
-- **نام:** دات برگزار جسات سپر زد
+- **نام:** مقدمات برگزاری جلسات سوپرویژن زنده
 - **فاز:** P8_internship
 - **وضعیت اولیه:** `patient_referral` | **نقش اولیه:** `admission_officer`
 - **تعداد state:** 4
@@ -2120,7 +2118,7 @@ flowchart TB
 
 #### `intern_bulk_patient_referral` (SOP 72) — 🟡
 
-- **نام:** ارجاع ک بارا اتر ب دراگرا دگر
+- **نام:** ارجاع کلیه بیماران انترن به درمانگران دیگر
 - **فاز:** P8_internship
 - **وضعیت اولیه:** `supervision_start` | **نقش اولیه:** `supervision_committee`
 - **تعداد state:** 6
@@ -2188,7 +2186,7 @@ flowchart TB
 
 #### `theory_course_completion` (SOP 61) — 🔴
 
-- **نام:** خات درس تئر
+- **نام:** خاتمه دروس تئوری
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `awaiting_session_18` | **نقش اولیه:** `system`
 - **تعداد state:** 10
@@ -2217,9 +2215,9 @@ flowchart TB
 - `borderline_student_choice` → `student` (intermediate) — نمره شما در بازه مرزی (۶۴–۷۳) است. امتحان مجدد یا دوباره گذراندن درس را انتخاب کنید.
 - `retake_exam_open` → `student` (intermediate) — پس از پرداخت، آزمون مجدد با پک جدید برگزار می‌شود.
 - `qualitative_eval_pending` → `instructor` (intermediate) — فرم ارزیابی کیفی (سوال ۷ و ۸) را برای تک‌تک دانشجویان تکمیل کنید.
-- `grades_locked` → `system` (terminal)
-- `session_18_delay` → `system` (terminal)
-- `qualitative_eval_delay` → `system` (terminal)
+- `grades_locked` → `system` (terminal) — نمره نهایی ثبت و قفل شد.
+- `session_18_delay` → `system` (terminal) — مهلت ثبت جلسه ۱۸ گذشته است. با دفتر آموزش تماس بگیرید.
+- `qualitative_eval_delay` → `system` (terminal) — تأخیر در ارزیابی کیفی. با دفتر آموزش تماس بگیرید.
 
 **نواقص / یادداشت:**
 - [ ] audit: user_can_complete NO — action_missing start_sub_process
@@ -2229,7 +2227,7 @@ flowchart TB
 
 #### `group_supervision_course_completion` (SOP 62) — 🔴
 
-- **نام:** خات ر درس سپر گر
+- **نام:** خاتمه هر درس سوپرویژن گروهی
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `awaiting_session_18` | **نقش اولیه:** `system`
 - **تعداد state:** 8
@@ -2256,9 +2254,9 @@ flowchart TB
 - `pass_fail_applied` → `system` (intermediate) — سیستم در حال اعمال Pass/Fail و افزودن ساعات سوپرویژن گروهی است.
 - `ta_evaluation_entry` → `instructor` (intermediate) — نمره حضور (۰–۸) و وظایف کمک‌مدرس را بررسی و ثبت کنید. ≥ ۷۴ PASS.
 - `qualitative_eval_pending` → `instructor` (intermediate) — فرم ارزیابی کیفی (سوال ۷ و ۸) را برای تک‌تک دانشجویان تکمیل کنید.
-- `grades_locked` → `system` (terminal)
-- `session_18_delay` → `system` (terminal)
-- `qualitative_eval_delay` → `system` (terminal)
+- `grades_locked` → `system` (terminal) — نتیجه نهایی ثبت و قفل شد.
+- `session_18_delay` → `system` (terminal) — مهلت ثبت Pass/Fail گذشته است. با دفتر آموزش تماس بگیرید.
+- `qualitative_eval_delay` → `system` (terminal) — تأخیر در ارزیابی کیفی. با دفتر آموزش تماس بگیرید.
 
 **نواقص / یادداشت:**
 - [ ] audit: user_can_complete NO — action_missing start_sub_process
@@ -2267,7 +2265,7 @@ flowchart TB
 
 #### `skills_course_completion` (SOP 63) — 🔴
 
-- **نام:** خات درس تکک تر ارتا
+- **نام:** خاتمه دروس تکنیک تمرین مهارت‌ها
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `awaiting_session_17` | **نقش اولیه:** `system`
 - **تعداد state:** 10
@@ -2296,9 +2294,9 @@ flowchart TB
 - `grades_computed` → `system` (intermediate) — سیستم در حال محاسبه جمع نمره و وضعیت PASS/FAIL/Incomplete.
 - `ta_evaluation_entry` → `instructor` (intermediate) — نمره حضور و وظایف کمک‌مدرس را بررسی و ثبت کنید.
 - `qualitative_eval_pending` → `instructor` (intermediate) — فرم ارزیابی کیفی (سوال ۷ و ۸) را برای تک‌تک دانشجویان تکمیل کنید.
-- `grades_locked` → `system` (terminal)
-- `session_17_delay` → `system` (terminal)
-- `qualitative_eval_delay` → `system` (terminal)
+- `grades_locked` → `system` (terminal) — نمره نهایی ثبت و قفل شد.
+- `session_17_delay` → `system` (terminal) — مهلت ثبت جلسه ۱۷ گذشته است. با دفتر آموزش تماس بگیرید.
+- `qualitative_eval_delay` → `system` (terminal) — تأخیر در ارزیابی کیفی. با دفتر آموزش تماس بگیرید.
 
 **نواقص / یادداشت:**
 - [ ] audit: user_can_complete NO — action_missing + stuck_state
@@ -2307,7 +2305,7 @@ flowchart TB
 
 #### `film_observation_course_completion` (SOP 64) — 🟡
 
-- **نام:** خات ر درس ع کاربرد شاد فا  بخش آپد گزارش پاا
+- **نام:** خاتمه هر درس عملی کاربردی و مشاهده فیلم‌ها
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `grades_entry` | **نقش اولیه:** `instructor`
 - **تعداد state:** 3
@@ -2327,15 +2325,15 @@ flowchart TB
 
 **گردش کار (state → نقش):**
 - `grades_entry` → `instructor` (initial) — ثبت نمره/حضور/تأیید TA.
-- `grades_locked` → `system` (terminal)
-- `delay_reported` → `system` (terminal)
+- `grades_locked` → `system` (terminal) — نمره گزارش ثبت شد. اگر نمره نهایی شما در بازه مرزی ۶۴ تا ۷۳ باشد، می‌توانید امتحان مجدد یا دوباره گذراندن درس را انتخاب …
+- `delay_reported` → `system` (terminal) — مهلت ثبت یا تصحیح گزارش گذشته است. برای پیگیری با دفتر آموزش تماس بگیرید.
 
 **نواقص / یادداشت:**
 - [ ] فاقد 01_input.md / 02_flowchart در رجیستری
 
 #### `live_therapy_observation_course_completion` (SOP 65) — 🟡
 
-- **نام:** خات درس شاد زد درا  بخش آپد گزارش پاا
+- **نام:** خاتمه درس مشاهده زنده درمان – بخش آپلود گزارش پایانی
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `grades_entry` | **نقش اولیه:** `instructor`
 - **تعداد state:** 3
@@ -2355,15 +2353,15 @@ flowchart TB
 
 **گردش کار (state → نقش):**
 - `grades_entry` → `instructor` (initial) — ثبت نمره/حضور/تأیید TA.
-- `grades_locked` → `system` (terminal)
-- `delay_reported` → `system` (terminal)
+- `grades_locked` → `system` (terminal) — نمره گزارش ثبت شد. اگر نمره نهایی شما در بازه مرزی ۶۴ تا ۷۳ باشد، می‌توانید امتحان مجدد یا دوباره گذراندن درس را انتخاب …
+- `delay_reported` → `system` (terminal) — مهلت ثبت یا تصحیح گزارش گذشته است. برای پیگیری با دفتر آموزش تماس بگیرید.
 
 **نواقص / یادداشت:**
 - [ ] فاقد 01_input.md / 02_flowchart در رجیستری
 
 #### `live_supervision_course_completion` (SOP 67) — 🔴
 
-- **نام:** خات درس سپر زد
+- **نام:** خاتمه درس سوپرویژن زنده
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `sessions_in_progress` | **نقش اولیه:** `instructor`
 - **تعداد state:** 8
@@ -2388,10 +2386,10 @@ flowchart TB
 - `mirror_implementation_pending` → `student` (intermediate) — فرم پیاده‌سازی جلسه پشت‌آینه را تکمیل کنید.
 - `mirror_eval_pending` → `instructor` (intermediate) — فرم ارزیابی بالینی جلسات پشت‌آینه را تکمیل کنید.
 - `final_eval_pending` → `instructor` (intermediate) — فرم ارزیابی نهایی (سوال ۷ و ۸) را تکمیل کنید.
-- `completed` → `system` (terminal)
-- `mirror_write_violation` → `system` (terminal)
-- `mirror_eval_violation` → `system` (terminal)
-- `final_eval_delay` → `system` (terminal)
+- `completed` → `system` (terminal) — درس سوپرویژن زنده برای شما تکمیل شد و در کارنامه ثبت می‌گردد.
+- `mirror_write_violation` → `system` (terminal) — مهلت پیاده‌سازی پشت‌آینه گذشته است. گزارش به کمیته نظارت ارسال شده؛ هرچه سریع‌تر تکلیف را ثبت کنید.
+- `mirror_eval_violation` → `system` (terminal) — تأخیر در ارزیابی پشت‌آینه گزارش شده؛ با دفتر آموزش تماس بگیرید.
+- `final_eval_delay` → `system` (terminal) — تأخیر در ارزیابی نهایی گزارش شده؛ با دفتر آموزش تماس بگیرید.
 
 **نواقص / یادداشت:**
 - [ ] audit: user_can_complete NO — action_missing start_sub_process
@@ -2400,7 +2398,7 @@ flowchart TB
 
 #### `article_writing_completion` (SOP 69) — 🟡
 
-- **نام:** خات درس اس جت گزارش رد
+- **نام:** خاتمه درس مقاله‌نویسی جهت گزارش موردی
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `course_active` | **نقش اولیه:** `instructor`
 - **تعداد state:** 7
@@ -2435,7 +2433,7 @@ flowchart TB
 
 #### `thesis_defense_request` (SOP 70) — 🟡
 
-- **نام:** درخاست ثبت دفاع پااا
+- **نام:** درخواست ثبت دفاع پایان‌نامه
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `eligibility_check` | **نقش اولیه:** `student`
 - **تعداد state:** 16
@@ -2456,18 +2454,18 @@ flowchart TB
 `article_writing_completion`, `violation_registration`
 
 **گردش کار (state → نقش):**
-- `eligibility_check` → `student` (initial)
-- `conditions_not_met` → `system` (terminal)
+- `eligibility_check` → `student` (initial) — وضعیت چهار شرط را بررسی کنید. در صورت احراز همهٔ شروط، فایل PDF گزارش ۱۵۰ ساعت بیماران سایکوتیک را بارگذاری و «ادامه و ث…
+- `conditions_not_met` → `system` (terminal) — شرایط دفاع هنوز کامل نیست؛ جزئیات در همین صفحه نمایش داده می‌شود.
 - `progress_committee_review` → `progress_committee` (intermediate) — بررسی پرونده و ثبت تصمیم جلسه.
-- `report_rejected` → `system` (terminal)
-- `report_revision` → `student` (intermediate)
+- `report_rejected` → `system` (terminal) — کمیته پیشرفت گزارش را رد کرده است؛ با کمیته پیشرفت تماس بگیرید.
+- `report_revision` → `student` (intermediate) — کمیته پیشرفت نیاز به اصلاح گزارش سایکوتیک اعلام کرده است؛ فایل اصلاح‌شده را بارگذاری کنید.
 - `supervision_committee_review` → `supervision_committee` (intermediate) — بررسی/صدور مجوز طبق دستور کار.
-- `defense_permit_denied` → `system` (terminal)
-- `thesis_upload` → `student` (intermediate)
+- `defense_permit_denied` → `system` (terminal) — کمیته نظارت مجوز دفاع صادر نکرده است. توضیحات در باکس زیر آمده است.
+- `thesis_upload` → `student` (intermediate) — مجوز دفاع صادر شد. فایل پایان‌نامه / گزارش موردی (PDF) را بارگذاری کنید.
 - `education_committee_scheduling` → `education_committee` (intermediate) — بررسی پرونده در جلسه کمیته آموزش.
-- `first_defense_held` → `system` (intermediate)
-- `defense_passed` → `system` (terminal)
-- `revision_required` → `student` (intermediate)
+- `first_defense_held` → `system` (intermediate) — زمان دفاع ثبت شده است. در روز مقرر طبق اعلام کمیته حاضر شوید.
+- `defense_passed` → `system` (terminal) — تبریک — دفاع با موفقیت (PASS) به پایان رسید.
+- `revision_required` → `student` (intermediate) — حداقل یک داور نمره C/D/F داده است. حداکثر ۲ هفته فرصت دارید فایل اصلاح‌شده را بارگذاری کنید.
 - … و 4 state دیگر
 
 **نواقص / یادداشت:**
@@ -2476,7 +2474,7 @@ flowchart TB
 
 #### `upgrade_to_educational_therapist` (SOP 71) — 🔴
 
-- **نام:** ارتا ب دراگر آزش
+- **نام:** ارتقا به درمانگر آموزشی
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `student_start` | **نقش اولیه:** `student`
 - **تعداد state:** 20
@@ -2495,14 +2493,14 @@ flowchart TB
 `violation_registration`
 
 **گردش کار (state → نقش):**
-- `student_start` → `student` (initial)
-- `eligibility_failed` → `system` (terminal)
+- `student_start` → `student` (initial) — شرایط ارتقا را مطالعه کنید و درخواست را ثبت کنید.
+- `eligibility_failed` → `system` (terminal) — دانشجوی گرامی، شما شرایط لازم جهت ارتقا به درمانگر آموزشی را کسب نکرده‌اید.
 - `monitoring_review` → `supervision_committee` (intermediate) — بررسی/صدور مجوز طبق دستور کار.
-- `monitoring_rejected` → `system` (terminal)
+- `monitoring_rejected` → `system` (terminal) — صلاحیت شما توسط کمیته نظارت تأیید نشد. برای پیگیری با بخش آموزش تماس بگیرید.
 - `interview_scheduling` → `education_committee` (intermediate) — هماهنگی وقت مصاحبه با دانشجو و ثبت در LMS.
 - `interview_held` → `education_committee` (intermediate) — بررسی پرونده در جلسه کمیته آموزش.
-- `interview_rejected` → `system` (terminal)
-- `therapy_readiness_check` → `system` (intermediate)
+- `interview_rejected` → `system` (terminal) — صلاحیت شما پس از مصاحبه تأیید نشد. برای پیگیری با کمیته درمان آموزشی تماس بگیرید.
+- `therapy_readiness_check` → `system` (intermediate) — سامانه در حال بررسی وضعیت درمان شخصی شماست.
 - `therapy_frequency_adjustment` → `student` (intermediate) — درمان شخصی را به حداقل یک جلسه در هفته افزایش دهید. مهلت: ۱۰ روز.
 - `therapy_frequency_escalation` → `education_committee` (intermediate) — پیگیری عدم فعال‌سازی درمان هفتگی در مهلت ۱۰ روز.
 - `personal_therapy_hours` → `student` (intermediate) — ۵۰ ساعت دیگر درمان شخصی را دریافت کنید؛ قوانین سختگیرانه غیبت/کنسلی اعمال نمی‌شود.
@@ -2517,7 +2515,7 @@ flowchart TB
 
 #### `live_supervision_ta_evaluation` (SOP 73) — 🟡
 
-- **نام:** ارزاب ککدرس درس سپر زد
+- **نام:** ارزیابی کمک مدرس درس سوپرویژن زنده
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `session_18_completed` | **نقش اولیه:** `system`
 - **تعداد state:** 4
@@ -2549,7 +2547,7 @@ flowchart TB
 
 #### `live_therapy_observation_ta_attendance_completion` (SOP 74) — 🟡
 
-- **نام:** خات درس شاد زد درا  بخش کک درس  ر حضر  غاب  شارکت
+- **نام:** خاتمه درس مشاهده زنده درمان – بخش کمک مدرس و نمره حضور و غیاب و مشارکت
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `grades_entry` | **نقش اولیه:** `instructor`
 - **تعداد state:** 3
@@ -2583,7 +2581,7 @@ flowchart TB
 
 #### `film_observation_ta_attendance_completion` (SOP 75) — 🟡
 
-- **نام:** خات ر درس ع کاربرد شاد فا  بخش کک درس  ر حضر  غاب  شارکت
+- **نام:** خاتمه هر درس عملی کاربردی، مشاهده فیلم‌ها — بخش کمک مدرس و نمره حضور و غیاب و مشارکت
 - **فاز:** P9_completion
 - **وضعیت اولیه:** `grades_entry` | **نقش اولیه:** `instructor`
 - **تعداد state:** 3
@@ -2807,7 +2805,7 @@ flowchart LR
 
 - فقط **۶** فرایند در [`sop_step_mappings.json`](../metadata/process_registry/sop_step_mappings.json)
 - **22** فرایند دارای `01_input.md`
-- **43** فرایند دارای `04_status.md`
+- **44** فرایند دارای `04_status.md`
 - فرایندهای با بیشترین SOP unmapped (از audit): student_non_registration، film_observation_ta_attendance_completion، ta_instructor_leave
 
 ### ۴.۴ شکاف SLA / اعلان
@@ -2873,4 +2871,4 @@ flowchart LR
 
 ---
 
-*تولید خودکار اولیه: `scripts/_gen_workflow_audit_doc.py` — 2026-07-18 — 74 فرایند*
+*تولید خودکار اولیه: `scripts/_gen_workflow_audit_doc.py` — 2026-08-21 — 74 فرایند*

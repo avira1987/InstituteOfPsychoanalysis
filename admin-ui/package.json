@@ -11,7 +11,7 @@
     "test:e2e:ci": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:unit": "node --test src/utils/operatorContextFilter.test.js src/utils/userRoles.test.js src/utils/stepOtpVerified.test.js src/utils/resolveFormOptionsSource.test.js src/utils/courseTableRowNormalize.test.js src/utils/semesterPrepCourseFinalization.test.js src/utils/interviewResultAccess.test.js src/utils/documentReviewStates.test.js",
+    "test:unit": "node --test src/utils/operatorContextFilter.test.js src/utils/userRoles.test.js src/utils/portalRoleAccess.test.js src/utils/unifiedFormValidation.test.js src/utils/operatorProcessGuidance.test.js src/utils/stepOtpVerified.test.js src/utils/resolveFormOptionsSource.test.js src/utils/courseTableRowNormalize.test.js src/utils/semesterPrepCourseFinalization.test.js src/utils/interviewResultAccess.test.js src/utils/interviewSlotAccess.test.js src/utils/documentReviewStates.test.js src/utils/introCourseCatalog.test.js src/utils/resolveCourseFieldOptions.test.js src/utils/catalogCurriculum.test.js src/utils/studentProcessStepReview.test.js src/utils/studentProcessAccess.test.js src/utils/semesterPrepRecordedSummary.test.js src/utils/hubProcessLinks.test.js src/utils/formFieldTypes.test.js src/utils/processPanelRegistry.test.js",
     "test:flow-through": "playwright test e2e/flow-through/matrix.spec.ts",
     "test:onboarding": "playwright test e2e/flow-through/onboarding.spec.ts"
   },
@@ -21,6 +21,7 @@
     "dompurify": "^3.4.13",
     "jalaali-js": "^1.2.8",
     "lucide-react": "^0.344.0",
+    "@sentry/react": "^8.47.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.22.0"

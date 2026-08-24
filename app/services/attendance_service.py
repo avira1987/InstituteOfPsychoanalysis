@@ -35,6 +35,10 @@ class AttendanceService:
         notes: Optional[str] = None,
     ) -> AttendanceRecord:
         """Record attendance for a therapy session."""
+        if shamsi_year is None:
+            from app.utils.date_utils import get_current_shamsi_year
+
+            shamsi_year = get_current_shamsi_year(record_date)
         record = AttendanceRecord(
             id=uuid.uuid4(),
             student_id=student_id,

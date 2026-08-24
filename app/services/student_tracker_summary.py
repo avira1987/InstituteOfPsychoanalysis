@@ -17,6 +17,7 @@ from app.meta.process_forms import get_process_forms
 from app.meta.student_step_forms import filter_forms_for_student, is_state_locked_for_student
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance, Student
+from app.services.admission_type_service import resolve_conditional_therapy_student_why_fa
 
 INBOX_ITEM_CAP = 20
 
@@ -99,6 +100,12 @@ def build_student_guidance(
         (st.get("name_fa") if st else "") or detail.get("current_state") or ""
     )
     why_fa = str(meta.get("student_why_fa") or "").strip()
+    why_fa = resolve_conditional_therapy_student_why_fa(
+        process_code=proc_code,
+        state_code=detail.get("current_state"),
+        context=ctx,
+        existing_why=why_fa,
+    )
     role = (st or {}).get("assigned_role")
     done = detail.get("is_completed") or detail.get("is_cancelled")
 

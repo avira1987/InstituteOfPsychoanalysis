@@ -40,7 +40,7 @@ export const INTRO_REG_STATE_LABELS = {
 /** برچسب فارسی نوع پذیرش. */
 export const ADMISSION_TYPE_LABELS = {
   conditional_therapy: 'پذیرش مشروط به شروع درمان شخصی',
-  single_course: 'پذیرش تک‌درس (فقط اولین درس مجاز این ترم)',
+  single_course: 'پذیرش تک‌درس (فقط تئوری روانکاوی همان ترم)',
   full_admission: 'پذیرش کامل (بدون شرط)',
 }
 

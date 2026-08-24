@@ -208,6 +208,8 @@ class TransitionManager:
             return False
         if actor_role == required:
             return True
+        if required and role_grants(actor_role, required):
+            return True
         if required == "interviewer" and (
             actor_role in (
                 "interviewer",

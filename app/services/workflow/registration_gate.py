@@ -41,6 +41,13 @@ async def handle(db: AsyncSession, instance: ProcessInstance, action: dict, cont
     gates[flag] = value
     gates[f"{flag}_at"] = C.now_iso()
     extra["gates"] = gates
+    if (
+        getattr(instance, "process_code", None) == "violation_registration"
+        and flag == "next_term_registration_blocked"
+    ):
+        from app.services.hub_student_flags import set_is_suspended
+
+        set_is_suspended(extra, bool(value))
     C.commit_student_extra(student, extra)
     C.record_event(instance, action_type, {flag: value})
     return f"gate:{flag}={value}"

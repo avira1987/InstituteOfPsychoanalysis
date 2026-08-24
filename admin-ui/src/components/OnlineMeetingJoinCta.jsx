@@ -25,8 +25,32 @@ async function copyTextToClipboard(text) {
   document.body.removeChild(el)
 }
 
+function firstWord(text, fallback = '') {
+  const t = String(text || '').trim()
+  if (!t) return fallback
+  return t.split(/\s+/)[0]
+}
+
+function lockedJoinHintText(meetingLinkOpenAt, startsAt) {
+  let text = `ورود پس از فعال‌سازی توسط مصاحبه‌گر/پذیرش، یا از ${formatOpenTimeTehran(meetingLinkOpenAt)}`
+  if (startsAt) {
+    text += ` (۳۰ دقیقه قبل از شروع مصاحبه در ${formatMeetingTimeTehran(startsAt)})`
+  }
+  return `${text} فعال می‌شود.`
+}
+
+function CompactTip({ compact, title, children }) {
+  if (!compact || !title) return children
+  return (
+    <span className="online-meeting-join-cta__tip" data-tip={title} title={title}>
+      {children}
+    </span>
+  )
+}
+
 function MeetingLinkCopyButton({ meetingLink, compact = false }) {
   const [copied, setCopied] = useState(false)
+  const fullLabel = copied ? 'کپی شد' : 'کپی لینک کامل الوکام'
 
   const handleCopy = async (e) => {
     e.preventDefault()
@@ -43,15 +67,18 @@ function MeetingLinkCopyButton({ meetingLink, compact = false }) {
   }
 
   return (
-    <button
-      type="button"
-      className={`online-meeting-join-cta__copy-btn${compact ? ' online-meeting-join-cta__copy-btn--compact' : ''}`}
-      onClick={handleCopy}
-      data-testid="online-meeting-copy-btn"
-      title="کپی لینک کامل الوکام"
-    >
-      {copied ? 'کپی شد' : 'کپی لینک'}
-    </button>
+    <CompactTip compact={compact} title={fullLabel}>
+      <button
+        type="button"
+        className={`online-meeting-join-cta__copy-btn${compact ? ' online-meeting-join-cta__copy-btn--compact' : ''}`}
+        onClick={handleCopy}
+        data-testid="online-meeting-copy-btn"
+        title={compact ? undefined : fullLabel}
+        aria-label={fullLabel}
+      >
+        {compact ? 'کپی' : (copied ? 'کپی شد' : 'کپی لینک')}
+      </button>
+    </CompactTip>
   )
 }
 
@@ -114,19 +141,38 @@ export default function OnlineMeetingJoinCta({
   allowStaffCopy = false,
   onToggleStudentJoinOpen = null,
   togglingStudentJoin = false,
+  /** اگر داده شود، ورود با API احراز هویت انجام می‌شود و URL خام در href نیست */
+  onAuthenticatedJoin = null,
+  authenticatedJoinReady = false,
 }) {
   const [now, setNow] = useState(() => Date.now())
+
+  const [joining, setJoining] = useState(false)
+  const [joinErr, setJoinErr] = useState(null)
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30000)
     return () => clearInterval(timer)
   }, [])
 
+  const shortLabel = firstWord(label, 'ورود')
+  const visibleLabel = compact ? shortLabel : label
+
   if (mode !== 'online') {
+    const place = (locationFa || '').trim() || '—'
+    if (compact) {
+      return (
+        <div className="online-meeting-join-cta online-meeting-join-cta--in-person online-meeting-join-cta--compact">
+          <CompactTip compact title={place}>
+            <span className="online-meeting-join-cta__chip" data-testid="online-meeting-location-chip" aria-label={place}>مکان</span>
+          </CompactTip>
+        </div>
+      )
+    }
     return (
-      <div className={`online-meeting-join-cta online-meeting-join-cta--in-person${compact ? ' online-meeting-join-cta--compact' : ''}`}>
+      <div className="online-meeting-join-cta online-meeting-join-cta--in-person">
         <span className="online-meeting-join-cta__location-label">محل حضوری:</span>
-        <span className="online-meeting-join-cta__location">{locationFa || '—'}</span>
+        <span className="online-meeting-join-cta__location">{place}</span>
       </div>
     )
   }
@@ -135,18 +181,21 @@ export default function OnlineMeetingJoinCta({
     return (
       <div className={`online-meeting-join-cta online-meeting-join-cta--closed${compact ? ' online-meeting-join-cta--compact' : ''}`}>
         <div className="online-meeting-join-cta__actions">
-          <button
-            type="button"
-            className="online-meeting-join-cta__btn"
-            disabled
-            aria-disabled="true"
-            data-testid="online-meeting-closed-btn"
-          >
-            <span className="online-meeting-join-cta__icon" aria-hidden>🔒</span>
-            {label}
-          </button>
+          <CompactTip compact={compact} title={resultRecordedText}>
+            <button
+              type="button"
+              className="online-meeting-join-cta__btn"
+              disabled
+              aria-disabled="true"
+              data-testid="online-meeting-closed-btn"
+              aria-label={resultRecordedText}
+            >
+              {compact ? null : <span className="online-meeting-join-cta__icon" aria-hidden>🔒</span>}
+              {compact ? 'بسته' : label}
+            </button>
+          </CompactTip>
         </div>
-        <p className="online-meeting-join-cta__hint">{resultRecordedText}</p>
+        {compact ? null : <p className="online-meeting-join-cta__hint">{resultRecordedText}</p>}
       </div>
     )
   }
@@ -154,12 +203,12 @@ export default function OnlineMeetingJoinCta({
   const openMs = meetingLinkOpenAt ? new Date(meetingLinkOpenAt).getTime() : null
   const studentCanEnterByTime = studentJoinOpen || openMs == null || now >= openMs
   const canEnterByTime = studentCanEnterByTime || allowStaffCopy
-  const linkPresent = Boolean((meetingLink || '').trim())
-  const linkReady = meetingLinkReady == null ? linkPresent : Boolean(meetingLinkReady)
-  const linkVisibleForViewer = meetingLinkIsVisible || (allowStaffCopy && linkReady)
+  const linkPresent = Boolean((meetingLink || '').trim()) || Boolean(onAuthenticatedJoin && authenticatedJoinReady)
+  const linkReady = meetingLinkReady == null ? linkPresent : Boolean(meetingLinkReady || authenticatedJoinReady)
+  const linkVisibleForViewer = meetingLinkIsVisible || authenticatedJoinReady || (allowStaffCopy && linkReady)
   const canJoin = linkPresent && linkVisibleForViewer && canEnterByTime
   const showStaffCopy = allowStaffCopy && linkPresent && linkVisibleForViewer
-  const studentJoinControl = allowStaffCopy ? (
+  const studentJoinControl = !compact && allowStaffCopy ? (
     <StudentJoinOpenControl
       studentJoinOpen={studentJoinOpen}
       onToggleStudentJoinOpen={onToggleStudentJoinOpen}
@@ -169,62 +218,133 @@ export default function OnlineMeetingJoinCta({
   ) : null
 
   if (!studentCanEnterByTime && meetingLinkOpenAt && !studentJoinOpen && !allowStaffCopy) {
+    const lockedHint = lockedJoinHintText(meetingLinkOpenAt, startsAt)
     return (
       <div className={`online-meeting-join-cta online-meeting-join-cta--locked${compact ? ' online-meeting-join-cta--compact' : ''}`}>
         <div className="online-meeting-join-cta__actions">
-          <button type="button" className="online-meeting-join-cta__btn" disabled aria-disabled="true">
-            <span className="online-meeting-join-cta__icon" aria-hidden>🎥</span>
-            {label}
-          </button>
+          <CompactTip compact={compact} title={lockedHint}>
+            <button
+              type="button"
+              className="online-meeting-join-cta__btn"
+              disabled
+              aria-disabled="true"
+              aria-label={lockedHint}
+            >
+              {compact ? null : <span className="online-meeting-join-cta__icon" aria-hidden>🎥</span>}
+              {visibleLabel}
+            </button>
+          </CompactTip>
         </div>
-        <p className="online-meeting-join-cta__hint">
-          ورود پس از فعال‌سازی توسط مصاحبه‌گر/پذیرش، یا از{' '}
-          <strong>{formatOpenTimeTehran(meetingLinkOpenAt)}</strong>
-          {startsAt ? (
-            <>
-              {' '}
-              (۳۰ دقیقه قبل از شروع مصاحبه در{' '}
-              <strong>{formatMeetingTimeTehran(startsAt)}</strong>)
-            </>
-          ) : null}
-          {' '}فعال می‌شود.
-        </p>
+        {compact ? null : (
+          <p className="online-meeting-join-cta__hint">
+            ورود پس از فعال‌سازی توسط مصاحبه‌گر/پذیرش، یا از{' '}
+            <strong>{formatOpenTimeTehran(meetingLinkOpenAt)}</strong>
+            {startsAt ? (
+              <>
+                {' '}
+                (۳۰ دقیقه قبل از شروع مصاحبه در{' '}
+                <strong>{formatMeetingTimeTehran(startsAt)}</strong>)
+              </>
+            ) : null}
+            {' '}فعال می‌شود.
+          </p>
+        )}
       </div>
     )
   }
 
   if (preparing && !linkReady) {
+    const waitText = preparingFailed ? preparingErrorText : preparingText
     return (
       <div className={`online-meeting-join-cta online-meeting-join-cta--waiting${compact ? ' online-meeting-join-cta--compact' : ''}`}>
-        <p className={`online-meeting-join-cta__hint${preparingFailed ? ' online-meeting-join-cta__hint--warn' : ''}`}>
-          {preparingFailed ? preparingErrorText : preparingText}
-        </p>
+        {compact ? (
+          <CompactTip compact title={waitText}>
+            <span
+              className={`online-meeting-join-cta__chip${preparingFailed ? ' online-meeting-join-cta__chip--warn' : ''}`}
+              data-testid="online-meeting-preparing-chip"
+            >
+              لینک
+            </span>
+          </CompactTip>
+        ) : (
+          <p className={`online-meeting-join-cta__hint${preparingFailed ? ' online-meeting-join-cta__hint--warn' : ''}`}>
+            {waitText}
+          </p>
+        )}
         {studentJoinControl}
       </div>
     )
   }
 
   if (canJoin) {
+    const handleAuthJoin = async (e) => {
+      e.preventDefault()
+      if (!onAuthenticatedJoin || joining) return
+      setJoinErr(null)
+      setJoining(true)
+      try {
+        const url = await onAuthenticatedJoin()
+        if (url) window.open(url, '_blank', 'noopener,noreferrer')
+      } catch (err) {
+        setJoinErr(err?.response?.data?.detail || err?.message || 'ورود به کلاس ممکن نشد.')
+      } finally {
+        setJoining(false)
+      }
+    }
+    const readyHint = allowStaffCopy && !studentCanEnterByTime
+      ? 'ورود برای شما باز است؛ دانشجو هنوز نمی‌تواند وارد شود مگر «ورود زودهنگام دانشجو» را فعال کنید.'
+      : 'برای ورود به کلاس روی دکمه بالا کلیک کنید.'
+    const joinTip = compact ? label : undefined
+    const joinInnerLabel = compact ? shortLabel : (joining ? 'در حال ورود…' : label)
+    const joinControl = onAuthenticatedJoin ? (
+      <CompactTip compact={compact} title={joinTip}>
+        <button
+          type="button"
+          className="online-meeting-join-cta__btn online-meeting-join-cta__btn--active"
+          data-testid="online-meeting-join-btn"
+          disabled={joining}
+          onClick={handleAuthJoin}
+          aria-label={label}
+        >
+          {compact ? null : <span className="online-meeting-join-cta__icon" aria-hidden>▶</span>}
+          {joinInnerLabel}
+        </button>
+      </CompactTip>
+    ) : (
+      <CompactTip compact={compact} title={joinTip}>
+        <a
+          href={meetingLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="online-meeting-join-cta__btn online-meeting-join-cta__btn--active"
+          data-testid="online-meeting-join-btn"
+          aria-label={label}
+        >
+          {compact ? null : <span className="online-meeting-join-cta__icon" aria-hidden>▶</span>}
+          {joinInnerLabel}
+        </a>
+      </CompactTip>
+    )
     return (
       <div className={`online-meeting-join-cta online-meeting-join-cta--ready${compact ? ' online-meeting-join-cta--compact' : ''}`}>
         <div className="online-meeting-join-cta__actions">
-          <a
-            href={meetingLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="online-meeting-join-cta__btn online-meeting-join-cta__btn--active"
-            data-testid="online-meeting-join-btn"
-          >
-            <span className="online-meeting-join-cta__icon" aria-hidden>▶</span>
-            {label}
-          </a>
+          {joinControl}
           {showStaffCopy ? <MeetingLinkCopyButton meetingLink={meetingLink} compact={compact} /> : null}
         </div>
-        <p className="online-meeting-join-cta__hint online-meeting-join-cta__hint--success">
-          {allowStaffCopy && !studentCanEnterByTime
-            ? 'ورود برای شما باز است؛ دانشجو هنوز نمی‌تواند وارد شود مگر «ورود زودهنگام دانشجو» را فعال کنید.'
-            : 'برای ورود به کلاس الوکام روی دکمه بالا کلیک کنید.'}
-        </p>
+        {compact ? null : (
+          <p className="online-meeting-join-cta__hint online-meeting-join-cta__hint--success">
+            {readyHint}
+          </p>
+        )}
+        {joinErr ? (
+          compact ? (
+            <CompactTip compact title={joinErr}>
+              <span className="online-meeting-join-cta__chip online-meeting-join-cta__chip--warn">خطا</span>
+            </CompactTip>
+          ) : (
+            <p className="online-meeting-join-cta__hint online-meeting-join-cta__hint--warn">{joinErr}</p>
+          )
+        ) : null}
         {studentJoinControl}
       </div>
     )
@@ -234,9 +354,11 @@ export default function OnlineMeetingJoinCta({
     return (
       <div className={`online-meeting-join-cta online-meeting-join-cta--ready${compact ? ' online-meeting-join-cta--compact' : ''}`}>
         <MeetingLinkCopyButton meetingLink={meetingLink} compact={compact} />
-        <p className="online-meeting-join-cta__hint">
-          لینک میزبان آماده است؛ برای ورود از «کپی لینک» استفاده کنید.
-        </p>
+        {compact ? null : (
+          <p className="online-meeting-join-cta__hint">
+            لینک میزبان آماده است؛ برای ورود از «کپی لینک» استفاده کنید.
+          </p>
+        )}
         {studentJoinControl}
       </div>
     )
@@ -244,9 +366,13 @@ export default function OnlineMeetingJoinCta({
 
   return (
     <div className={`online-meeting-join-cta online-meeting-join-cta--waiting${compact ? ' online-meeting-join-cta--compact' : ''}`}>
-      <p className="online-meeting-join-cta__hint">
-        {preparingText}
-      </p>
+      {compact ? (
+        <CompactTip compact title={preparingText}>
+          <span className="online-meeting-join-cta__chip" data-testid="online-meeting-preparing-chip">لینک</span>
+        </CompactTip>
+      ) : (
+        <p className="online-meeting-join-cta__hint">{preparingText}</p>
+      )}
       {studentJoinControl}
     </div>
   )

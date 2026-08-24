@@ -17,6 +17,8 @@ export default function StudentProcessStepReview({
   /** با کلیک روی chip رودمپ: کد وضعیت برای باز کردن مرور روی همان مرحله */
   focusStateCode = null,
   onFocusConsumed = null,
+  /** فقط وقتی ادمین/کارمند در مدیریت کاربران فعال کرده باشد */
+  enabled = false,
 }) {
   const processCode = detail?.process_code
   const history = detail?.history
@@ -146,7 +148,7 @@ export default function StudentProcessStepReview({
     }
   }
 
-  if (!processCode || !detail) return null
+  if (!enabled || !processCode || !detail) return null
 
   return (
     <div className="student-process-step-review" data-testid="student-process-step-review">

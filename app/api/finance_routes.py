@@ -134,6 +134,7 @@ async def finance_education_context(
 class InstallmentPolicyPatch(BaseModel):
     """به‌روزرسانی جزئی سیاست اقساط."""
 
+    installment_enabled: Optional[bool] = None
     term2_installment_gap_days: Optional[int] = Field(None, ge=1, le=365)
     installment_count_options: Optional[list[int]] = None
 
@@ -143,7 +144,7 @@ async def finance_get_installment_settings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("finance")),
 ):
-    """خواندن تنظیمات اقساط (سررسید بین اقساط ترم دوم، گزینه‌های تعداد قسط برای وب‌سایت)."""
+    """خواندن تنظیمات اقساط (فعال بودن پرداخت قسطی، سررسید، گزینه‌های تعداد قسط)."""
     return await get_installment_policy(db)
 
 
@@ -156,6 +157,7 @@ async def finance_patch_installment_settings(
     """ذخیرهٔ تنظیمات اقساط توسط اپراتور مالی یا مدیر."""
     return await update_installment_policy(
         db,
+        installment_enabled=body.installment_enabled,
         term2_installment_gap_days=body.term2_installment_gap_days,
         installment_count_options=body.installment_count_options,
     )

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { usePortalInstanceDeepLink } from '../hooks/usePortalInstanceDeepLink'
 import { useProcessCodeUrlFilter } from '../hooks/useProcessCodeUrlFilter'
 import { processExecApi, studentApi, panelApi } from '../services/api'
-import { labelProcess, labelState, formatStudentCodeDisplay } from '../utils/processDisplay'
+import { labelProcess, labelState, formatStudentCodeDisplay, formatStudentFullNameFa } from '../utils/processDisplay'
 import { notesPayload } from '../utils/decisionPayload'
 import { mergeInterviewBranchPayload } from '../utils/transitionInterviewPayload'
 import { isDocumentReviewState } from '../utils/documentReviewStates'
@@ -27,7 +27,7 @@ import OperatorFollowupSection from '../components/OperatorFollowupSection'
 import ResolvedProcessHistoryBanner from '../components/ResolvedProcessHistoryBanner'
 import OperatorStepFormsSection from '../components/OperatorStepFormsSection'
 import OperatorInstanceGuidanceBlock from '../components/OperatorInstanceGuidanceBlock'
-import { userHasAnyRole } from '../utils/userRoles'
+import { userHasAnyRole, userHasRole } from '../utils/userRoles'
 import { mergeEducationalLeaveTriggerPayload } from '../utils/educationalLeaveTriggerPayload'
 import { mergeFullEducationLeaveTriggerPayload } from '../utils/fullEducationLeaveTriggerPayload'
 import { mergeCommitteesReviewTriggerPayload } from '../utils/committeesReviewTriggerPayload'
@@ -58,6 +58,7 @@ import { mergeUpgradeToTaTriggerPayload } from '../utils/upgradeToTaTriggerPaylo
 import { mergeTaTrackChangeTriggerPayload } from '../utils/taTrackChangeTriggerPayload'
 import TaTrackChangeCommitteePanel from '../components/TaTrackChangeCommitteePanel'
 import TaTrackCompletionInstancePanel from '../components/TaTrackCompletionInstancePanel'
+import PatientReferralHubPanel from '../components/PatientReferralHubPanel'
 import InternBulkPatientReferralSupervisionPanel from '../components/InternBulkPatientReferralSupervisionPanel'
 import InternBulkPatientReferralTherapyCommitteePanel from '../components/InternBulkPatientReferralTherapyCommitteePanel'
 import { mergeNonRegistrationTriggerPayload } from '../utils/nonRegistrationTriggerPayload'
@@ -80,7 +81,6 @@ import {
 const DEPUTY_SEMESTER_PREP_STATES = new Set([
   'tuition_entry',
   'license_check',
-  'interviewer_assignment',
 ])
 
 export default function CommitteePortal() {
@@ -171,7 +171,7 @@ export default function CommitteePortal() {
     if (!state) return false
     if (
       SEMESTER_PREP_PROCESSES.has(processCode)
-      && user?.role === 'deputy_education'
+      && userHasRole(user, 'deputy_education')
       && DEPUTY_SEMESTER_PREP_STATES.has(state)
     ) {
       return true
@@ -181,14 +181,14 @@ export default function CommitteePortal() {
       && (state === 'supervision_review' || state === 'education_review')
     ) {
       const kindRoles = kindMeta?.portalRoles || []
-      if (user?.role === 'admin' || kindRoles.includes(user?.role)) return true
+      if (userHasRole(user, 'admin') || userHasAnyRole(user, kindRoles)) return true
       if (userHasAnyRole(user, ['supervision_committee', 'monitoring_committee_officer']) && state === 'supervision_review') return true
-      if (user?.role === 'education_committee' && state === 'education_review') return true
-      if (user?.role === 'deputy_education' && state === 'education_review') return true
+      if (userHasRole(user, 'education_committee') && state === 'education_review') return true
+      if (userHasRole(user, 'deputy_education') && state === 'education_review') return true
       return false
     }
     if (processCode === 'specialized_commission_review' && state === 'commission_review') {
-      if (user?.role === 'specialized_commission' || user?.role === 'admin') return true
+      if (userHasRole(user, 'specialized_commission') || userHasRole(user, 'admin')) return true
       return false
     }
     if (
@@ -203,7 +203,7 @@ export default function CommitteePortal() {
       && state === 'certificate_review'
     ) {
       const kindRoles = kindMeta?.portalRoles || []
-      return user?.role === 'admin' || kindRoles.includes(user?.role)
+      return userHasRole(user, 'admin') || userHasAnyRole(user, kindRoles)
     }
     if (
       processCode === 'student_non_registration'
@@ -218,7 +218,7 @@ export default function CommitteePortal() {
       if (
         ['interview_scheduling', 'interview_held', 'therapist_committee_review', 'therapy_frequency_escalation'].includes(state)
       ) {
-        return user?.role === 'education_committee' || user?.role === 'admin'
+        return userHasRole(user, 'education_committee') || userHasRole(user, 'admin')
       }
       return false
     }
@@ -243,8 +243,28 @@ export default function CommitteePortal() {
       }
       return false
     }
+    if (processCode === 'violation_registration') {
+      const terminals = ['closed', 'expelled']
+      if (terminals.includes(state)) return false
+      if (state === 'referred_to_education_committee') {
+        return userHasAnyRole(user, ['education_committee', 'admin'])
+      }
+      return userHasAnyRole(user, [
+        'supervision_committee',
+        'monitoring_committee_officer',
+        'admin',
+      ])
+    }
+    if (processCode === 'patient_referral') {
+      if (['closed'].includes(state)) return false
+      return userHasAnyRole(user, [
+        'supervision_committee',
+        'monitoring_committee_officer',
+        'admin',
+      ]) && ['referral_triggered', 'patients_listed', 'therapists_assigned'].includes(state)
+    }
     if (processCode === 'internship_12month_conditional_review') {
-      if (user?.role === 'admin') return true
+      if (userHasRole(user, 'admin')) return true
       if (
         state === 'interview_scheduling'
         && userHasAnyRole(user, ['progress_committee', 'progress_committee_project'])
@@ -268,7 +288,7 @@ export default function CommitteePortal() {
     })
     if (!keywordMatch) return false
     const kindRoles = kindMeta?.portalRoles || []
-    if (user?.role === 'admin' || kindRoles.includes(user?.role)) return true
+    if (userHasRole(user, 'admin') || userHasAnyRole(user, kindRoles)) return true
     return false
   }
 
@@ -499,15 +519,15 @@ export default function CommitteePortal() {
       { id: 'reviews', label: `کارهای من (${displayPendingReviews.length})`, icon: '📥' },
       { id: 'dashboard', label: 'داشبورد', icon: '📊' },
     ]
-    if (kindMeta?.showAllTab || user?.role === 'admin') {
+    if (kindMeta?.showAllTab || userHasRole(user, 'admin')) {
       base.push({ id: 'all', label: 'همه فرایندها', icon: '🔄' })
     }
     base.push({ id: 'students', label: 'دانشجویان', icon: '👨‍🎓' })
-    if (kind === 'supervision' || user?.role === 'admin') {
+    if (kind === 'supervision' || userHasRole(user, 'admin')) {
       base.push({ id: 'etTherapistSlots', label: 'شیت وقت درمان آموزشی', icon: '🗓️' })
     }
     return base
-  }, [displayPendingReviews.length, kindMeta, user?.role, kind])
+  }, [displayPendingReviews.length, kindMeta, user, kind])
 
   if (loading) {
     return (
@@ -784,6 +804,7 @@ export default function CommitteePortal() {
 
               <OperatorInstanceGuidanceBlock
                 instanceDetail={instanceDetail}
+                user={user}
                 portalRole={user?.role}
                 availableTransitions={availableTransitions}
               />
@@ -825,6 +846,13 @@ export default function CommitteePortal() {
               <TaUpgradeSupervisionReviewPanel detail={instanceDetail} user={user} />
               <TaToAssistantFacultyReviewPanel detail={instanceDetail} user={user} />
               <InternBulkPatientReferralSupervisionPanel detail={instanceDetail} />
+              <PatientReferralHubPanel
+                detail={instanceDetail}
+                availableTransitions={availableTransitions}
+                instanceId={selectedInstance}
+                showToast={showToast}
+                onRefreshInstance={viewInstance}
+              />
               <InternBulkPatientReferralTherapyCommitteePanel detail={instanceDetail} />
 
               <TaTrackCompletionInstancePanel
@@ -850,6 +878,7 @@ export default function CommitteePortal() {
                 isCompleted={instanceDetail.is_completed}
                 isCancelled={instanceDetail.is_cancelled}
                 role={user?.role}
+                user={user}
                 showToast={showToast}
                 onUpdated={() => viewInstance(selectedInstance)}
               />
@@ -1021,6 +1050,7 @@ export default function CommitteePortal() {
               <thead>
                 <tr>
                   <th>کد دانشجویی</th>
+                  <th>نام</th>
                   <th>نوع دوره</th>
                   <th>ترم</th>
                   <th>جلسات هفتگی</th>
@@ -1032,6 +1062,7 @@ export default function CommitteePortal() {
                 {allStudents.map(s => (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600 }}>{formatStudentCodeDisplay(s.student_code)}</td>
+                    <td>{formatStudentFullNameFa(s.full_name_fa)}</td>
                     <td>
                       <span className={`badge ${s.course_type === 'comprehensive' ? 'badge-primary' : 'badge-info'}`}>
                         {s.course_type === 'comprehensive' ? 'جامع' : 'آشنایی'}
@@ -1053,7 +1084,7 @@ export default function CommitteePortal() {
         </div>
       )}
 
-      {activeTab === 'etTherapistSlots' && (kind === 'supervision' || user?.role === 'admin') && (
+      {activeTab === 'etTherapistSlots' && (kind === 'supervision' || userHasRole(user, 'admin')) && (
         <EducationalTherapistSlotsAdmin showToast={showToast} />
       )}
     </div>

@@ -2,8 +2,8 @@
   "processes": [
     {
       "code": "educational_leave",
-      "name_fa": "رخص آزش ت از ثبتا در کاسا",
-      "sop_order": null,
+      "name_fa": "مرخصی آموزشی موقت از ثبت‌نام در کلاس‌ها",
+      "sop_order": 1,
       "phase": "P6_leave",
       "initial_state": "request_form",
       "initial_role": null,
@@ -22,7 +22,7 @@
           "state": "request_form",
           "role": "student",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "مدت وقفه (۱ یا ۲ ترم) را در فرم زیر انتخاب کنید؛ پس از ثبت، درخواست برای کمیته پیشرفت ارسال می‌شود."
         },
         {
           "state": "committee_review",
@@ -88,13 +88,13 @@
           "state": "returned",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "بازگشت شما به تحصیل در سامانه ثبت شد. ثبت‌نام کلاس دوباره برای شما فعال است؛ از بخش آموزش و کلاس‌ها ادامه دهید."
         },
         {
           "state": "violation_registered",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "مهلت بازگشت و ثبت‌نام ترم گذشته است و تخلف در پرونده ثبت شده است. برای پیگیری با کمیته نظارت یا پذیرش تماس بگیرید."
         }
       ],
       "state_count": 13,
@@ -115,8 +115,8 @@
     },
     {
       "code": "start_therapy",
-      "name_fa": "آغاز درا آزش",
-      "sop_order": null,
+      "name_fa": "آغاز درمان آموزشی",
+      "sop_order": 2,
       "phase": "P4_therapy",
       "initial_state": "eligibility_check",
       "initial_role": null,
@@ -131,37 +131,25 @@
           "state": "eligibility_check",
           "role": "system",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "سامانه در حال بررسی صلاحیت شما برای آغاز درمان است. اگر متوقف ماند، صفحه را تازه کنید."
         },
         {
           "state": "already_completed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "شما قبلاً آغاز درمان آموزشی را تکمیل کرده‌اید. اگر نیاز به پشتیبانی دارید، تیکت ثبت کنید یا با پذیرش تماس بگیرید."
         },
         {
           "state": "therapist_selection",
           "role": "student",
           "type": "intermediate",
-          "task_fa": "درمانگر آموزشی و برنامهٔ هفتگی (مثلاً ۲ جلسه در هفته برای دوره جامع) را در فرم زیر مشخص کنید؛ سپس دکمهٔ ادامه را بزنید ت…"
-        },
-        {
-          "state": "therapist_confirmation",
-          "role": "therapist",
-          "type": "intermediate",
-          "task_fa": "بررسی درخواست؛ فرم را تکمیل و دکمه تصمیم را بزنید."
-        },
-        {
-          "state": "schedule_first_session",
-          "role": "student",
-          "type": "intermediate",
-          "task_fa": "تاریخ شروع اولین جلسه را ثبت کنید؛ سامانه قانون ۲۴ ساعت را اعمال می‌کند و در صورت نیاز تاریخ را به هفتهٔ بعد موکول می‌کن…"
+          "task_fa": "از شیت وقت‌های آزاد (ثبت‌شده توسط کمیته نظارت) درمانگر و برنامهٔ جلسات را انتخاب کنید؛ سپس ادامه دهید تا تاریخ شروع محاس…"
         },
         {
           "state": "first_session_24h_check",
           "role": "system",
           "type": "intermediate",
-          "task_fa": "این مرحله معمولاً به‌صورت خودکار طی چند ثانیه تکمیل می‌شود. اگر متوقف ماند، صفحه را تازه کنید."
+          "task_fa": "سامانه تاریخ اولین جلسه را از روی برنامهٔ انتخاب‌شده و قانون ۲۴ ساعت محاسبه می‌کند. اگر متوقف ماند، صفحه را تازه کنید."
         },
         {
           "state": "payment_pending",
@@ -173,22 +161,22 @@
           "state": "therapy_active",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "گام بعدی: پرداخت جلسات آتی درمان. مسیر اصلی پرتال به «پرداخت برای جلسات آتی» منتقل شده یا خواهد شد."
         },
         {
           "state": "ineligible",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "پذیرش تک‌درس شامل آغاز درمان آموزشی نیست. مسیر شما از پنل دروس و کلاس‌ها ادامه دارد. اگر پذیرش مشروط دارید، تا قبل از ثب…"
         },
         {
           "state": "week9_blocked",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "مهلت هفتهٔ نهم برای آغاز درمان گذشته است. برای رفع مسدودیت کلاس‌ها، با پذیرش یا پشتیبانی تماس بگیرید."
         }
       ],
-      "state_count": 10,
+      "state_count": 8,
       "has_01": true,
       "has_04": true,
       "in_sop_mapping": false,
@@ -204,7 +192,7 @@
     },
     {
       "code": "therapy_changes",
-      "name_fa": "درت تغرات درا آزش",
+      "name_fa": "مدیریت تغییرات درمان آموزشی (آغاز مجدد، تغییر درمانگر، تغییر ساعت)",
       "sop_order": 3,
       "phase": "P4_therapy",
       "initial_state": "change_request",
@@ -273,7 +261,7 @@
       ],
       "state_count": 9,
       "has_01": false,
-      "has_04": false,
+      "has_04": true,
       "in_sop_mapping": false,
       "staff_lane": null,
       "role_portals": {
@@ -285,7 +273,7 @@
     },
     {
       "code": "extra_session",
-      "name_fa": "برگزار جس اضاف درا آزش",
+      "name_fa": "برگزاری جلسه اضافی درمان آموزشی",
       "sop_order": 4,
       "phase": "P4_therapy",
       "initial_state": "extra_request",
@@ -339,13 +327,13 @@
           "state": "extra_session_cancelled",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "جلسهٔ اضافی لغو شد (مثلاً به‌دلیل مهلت پرداخت یا انصراف). در صورت نیاز می‌توانید دوباره درخواست جلسه اضافی ثبت کنید."
         },
         {
           "state": "extra_request_rejected",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "درمانگر در حال حاضر امکان برگزاری جلسهٔ اضافی را اعلام نکرده است؛ در صورت نیاز بعداً می‌توانید دوباره درخواست دهید."
         }
       ],
       "state_count": 8,
@@ -362,7 +350,7 @@
     },
     {
       "code": "session_payment",
-      "name_fa": "پرداخت برا جسات آت درا آزش",
+      "name_fa": "پرداخت برای جلسات آتی درمان آموزشی",
       "sop_order": 5,
       "phase": "P4_therapy",
       "initial_state": "payment_due",
@@ -383,7 +371,7 @@
           "state": "payment_selection",
           "role": "student",
           "type": "intermediate",
-          "task_fa": "فرم همین صفحه را تکمیل کنید؛ در صورت بدهی، گزینهٔ تسویه را فعال کنید. سپس دکمهٔ «ادامه و ثبت مرحله» را بزنید تا به درگاه…"
+          "task_fa": "تعداد جلسات پیش‌پرداخت را وارد کنید. اگر بدهی جلسه دارید، در بالای صفحه با مبلغ نمایش داده می‌شود و تسویه به‌صورت خودکار…"
         },
         {
           "state": "awaiting_payment",
@@ -395,19 +383,19 @@
           "state": "payment_confirmed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "ثبت‌نام مالی جلسات انجام شد. برای شرکت در جلسات به تب «جلسات آنلاین» بروید."
         },
         {
           "state": "payment_failed",
           "role": "student",
           "type": "intermediate",
-          "task_fa": "می‌توانید دوباره تلاش کنید یا در صورت نیاز با پشتیبانی تماس بگیرید."
+          "task_fa": "پرداخت قبلی ناموفق بود. دوباره از درگاه سپ همین صفحه پرداخت کنید؛ در صورت نیاز با پشتیبانی تماس بگیرید."
         },
         {
           "state": "session_suspended",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "جلسات درمان به‌دلیل مشکل پرداخت معلق شده است. برای تسویه یا رفع تعلیق با پشتیبانی تماس بگیرید."
         }
       ],
       "state_count": 6,
@@ -426,7 +414,7 @@
     },
     {
       "code": "attendance_tracking",
-      "name_fa": "تک شد ساعات درا آزش (حضر  غاب)",
+      "name_fa": "تکمیل شدن ساعات درمان آموزشی (حضور و غیاب)",
       "sop_order": 6,
       "phase": "P4_therapy",
       "initial_state": "session_scheduled",
@@ -526,7 +514,7 @@
     },
     {
       "code": "fee_determination",
-      "name_fa": "تع تکف ز جس درا آزش ا سپر فرد",
+      "name_fa": "تعیین تکلیف هزینه جلسه درمان آموزشی یا سوپرویژن فردی",
       "sop_order": 7,
       "phase": "P4_therapy",
       "initial_state": "triggered",
@@ -595,7 +583,7 @@
     },
     {
       "code": "therapy_completion",
-      "name_fa": "تک  خات درا آزش",
+      "name_fa": "تکمیل و خاتمه درمان آموزشی",
       "sop_order": 8,
       "phase": "P4_therapy",
       "initial_state": "initiated",
@@ -617,13 +605,13 @@
           "state": "conditions_not_met",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "ساعات درمان، بالینی یا سوپرویژن هنوز به حدنصاب نرسیده است؛ پس از تکمیل ساعات دوباره همین فرایند را اجرا کنید."
         },
         {
           "state": "therapy_completed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "درمان آموزشی با موفقیت تکمیل و خاتمه یافت؛ برای مراحل بعد طبق راهنمای پنل اقدام کنید."
         }
       ],
       "state_count": 3,
@@ -640,7 +628,7 @@
     },
     {
       "code": "therapy_session_increase",
-      "name_fa": "درخاست داشج برا افزاش جسات فتگ درا آزش",
+      "name_fa": "درخواست دانشجو برای افزایش جلسات هفتگی درمان آموزشی",
       "sop_order": 9,
       "phase": "P4_therapy",
       "initial_state": "request_submitted",
@@ -697,7 +685,7 @@
     },
     {
       "code": "therapy_session_reduction",
-      "name_fa": "درخاست داشج برا کاش جسات فتگ درا آزش",
+      "name_fa": "درخواست دانشجو برای کاهش جلسات هفتگی درمان آموزشی",
       "sop_order": 10,
       "phase": "P4_therapy",
       "initial_state": "initiated",
@@ -762,7 +750,7 @@
     },
     {
       "code": "therapy_early_termination",
-      "name_fa": "طع زدرس درا آزش تسط دراگر آزش",
+      "name_fa": "قطع زودرس درمان آموزشی توسط درمانگر آموزشی",
       "sop_order": 11,
       "phase": "P4_therapy",
       "initial_state": "reason_selection",
@@ -831,7 +819,7 @@
     },
     {
       "code": "specialized_commission_review",
-      "name_fa": "بررس کس تخصص (زرفراد اف)",
+      "name_fa": "بررسی کمیسیون تخصصی (زیرفرایند الف)",
       "sop_order": 12,
       "phase": "P4_therapy",
       "initial_state": "commission_review",
@@ -895,7 +883,7 @@
     },
     {
       "code": "committees_review",
-      "name_fa": "بررس کتا ظارت  آزش (زرفراد ب)",
+      "name_fa": "بررسی کمیته‌های نظارت و آموزش (زیرفرایند ب)",
       "sop_order": 13,
       "phase": "P4_therapy",
       "initial_state": "supervision_review",
@@ -970,7 +958,7 @@
     },
     {
       "code": "therapist_session_cancellation",
-      "name_fa": "کس کرد جس از س دراگر آزش",
+      "name_fa": "کنسل کردن جلسه از سوی درمانگر آموزشی",
       "sop_order": 14,
       "phase": "P4_therapy",
       "initial_state": "session_selection",
@@ -1047,7 +1035,7 @@
     },
     {
       "code": "unannounced_absence_reaction",
-      "name_fa": "اکش استت ب غبت بد اطاع در جس آد",
+      "name_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده",
       "sop_order": 15,
       "phase": "P4_therapy",
       "initial_state": "identified",
@@ -1138,7 +1126,7 @@
     },
     {
       "code": "unannounced_supervision_absence_reaction",
-      "name_fa": "اکش استت ب غبت بد اطاع در جس آد سپر فرد",
+      "name_fa": "واکنش انستیتو به غیبت بدون اطلاع در جلسه آینده سوپرویژن فردی",
       "sop_order": 27,
       "phase": "P5_supervision",
       "initial_state": "identified",
@@ -1233,7 +1221,7 @@
     },
     {
       "code": "therapy_interruption",
-      "name_fa": "ف در درا آزش تسط داشج",
+      "name_fa": "وقفه در درمان آموزشی توسط دانشجو",
       "sop_order": 16,
       "phase": "P4_therapy",
       "initial_state": "request_submitted",
@@ -1311,7 +1299,7 @@
     },
     {
       "code": "student_session_cancellation",
-      "name_fa": "کس کرد جسات درا آزش تسط داشج",
+      "name_fa": "۱۷: کنسل کردن جلسات درمان آموزشی توسط دانشجو",
       "sop_order": 17,
       "phase": "P4_therapy",
       "initial_state": "calendar_displayed",
@@ -1375,7 +1363,7 @@
     },
     {
       "code": "supervision_block_transition",
-      "name_fa": "درت تغرات سپر فرد (آغاز جدد تغر سپرازر تغر ساعت)",
+      "name_fa": "مدیریت تغییرات سوپرویژن فردی (آغاز مجدد، تغییر سوپروایزر، تغییر ساعت)",
       "sop_order": 18,
       "phase": "P5_supervision",
       "initial_state": "payment_intent_50th",
@@ -1392,37 +1380,37 @@
           "state": "payment_intent_50th",
           "role": "student",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "اگر به جلسه ۵۰ رسیده‌اید، «ادامه و ثبت مرحله» را بزنید تا سوابق و وقت‌های آزاد نمایش داده شود؛ در غیر این صورت از پرداخت…"
         },
         {
           "state": "not_at_50th",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "از فرایند پرداخت جلسات یا تکمیل بلوک ۵۰ ساعته ادامه دهید."
         },
         {
           "state": "supervisor_slots_displayed",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "سوابق و شیت وقت‌های آزاد را ببینید؛ سپس در فرم، سوپروایزر و یک زمان (حداکثر ۱ جلسه در هفته) را انتخاب کنید."
         },
         {
           "state": "slot_selected",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "تاریخ شروع با قانون ۲۴ ساعت محاسبه شده است. ابتدا هزینهٔ جلسه اول دوره جدید را بپردازید."
         },
         {
           "state": "new_block_first_paid",
-          "role": "system",
+          "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "از بخش پرداخت همین صفحه برای جلسه پنجاهم دوره فعلی استفاده کنید."
         },
         {
           "state": "both_paid_completed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "هر دو پرداخت انجام شد؛ جزئیات جلسه جدید از طریق پیامک به شما و سوپروایزر ارسال می‌شود."
         }
       ],
       "state_count": 6,
@@ -1438,7 +1426,7 @@
     },
     {
       "code": "supervision_50h_completion",
-      "name_fa": "تک درا ۵۰ ساعت سپر فرد",
+      "name_fa": "تکمیل کردن دوره‌های ۵۰ ساعته سوپرویژن فردی",
       "sop_order": 20,
       "phase": "P5_supervision",
       "initial_state": "session_scheduled",
@@ -1458,19 +1446,19 @@
           "state": "session_scheduled",
           "role": "system",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "پیش از جلسه، هزینهٔ سوپرویژن را پرداخت کنید؛ پس از پرداخت، لینک آنلاین فعال می‌شود."
         },
         {
           "state": "recording_closed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "جلسه کنسل شده یا در وقفه سوپرویژن هستید؛ ثبت حضور/غیاب بسته است."
         },
         {
           "state": "auto_absence_unpaid",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "جلسه بدون پرداخت گذشت و غیبت خودکار ثبت شد؛ در صورت نیاز فرایند تعیین تکلیف هزینه آغاز می‌شود."
         },
         {
           "state": "supervisor_recording",
@@ -1494,13 +1482,13 @@
           "state": "session_completed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "جلسه سوپرویژن تکمیل شد و یک ساعت به بلوک فعلی افزوده شد."
         },
         {
           "state": "absence_recorded",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "غیبت شما ثبت شد؛ در صورت نیاز فرایند تعیین تکلیف هزینه آغاز می‌شود."
         },
         {
           "state": "evaluation_pending",
@@ -1512,13 +1500,13 @@
           "state": "evaluation_completed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "فرم ارزیابی ۵۰ ساعت سوپرویژن توسط سوپروایزر تکمیل شد."
         },
         {
           "state": "evaluation_sla_breach",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "فرم ارزیابی ۵۰ ساعت در مهلت تکمیل نشد؛ گزارش تخلف ثبت شده است."
         }
       ],
       "state_count": 11,
@@ -1540,7 +1528,7 @@
     },
     {
       "code": "supervision_session_increase",
-      "name_fa": "درخاست داشج برا افزاش جسات فتگ سپر",
+      "name_fa": "۲۱: درخواست دانشجو برای افزایش جلسات هفتگی سوپرویژن",
       "sop_order": 21,
       "phase": "P5_supervision",
       "initial_state": "request_submitted",
@@ -1599,7 +1587,7 @@
     },
     {
       "code": "extra_supervision_session",
-      "name_fa": "درخاست داشج برا برگزار جس اضاف سپر",
+      "name_fa": "۲۲: درخواست دانشجو برای برگزاری جلسه اضافی سوپرویژن",
       "sop_order": 22,
       "phase": "P5_supervision",
       "initial_state": "extra_request",
@@ -1671,7 +1659,7 @@
     },
     {
       "code": "supervision_session_reduction",
-      "name_fa": "درخاست داشج برا کاش جسات فتگ سپر",
+      "name_fa": "۲۳: درخواست دانشجو برای کاهش جلسات هفتگی سوپرویژن",
       "sop_order": 24,
       "phase": "P5_supervision",
       "initial_state": "initiated",
@@ -1740,7 +1728,7 @@
     },
     {
       "code": "student_supervision_cancellation",
-      "name_fa": "کس کرد جسات سپر تسط داشج  اکش استت",
+      "name_fa": "کنسل کردن جلسات سوپرویژن توسط دانشجو و واکنش انستیتو",
       "sop_order": 25,
       "phase": "P5_supervision",
       "initial_state": "calendar_displayed",
@@ -1806,7 +1794,7 @@
     },
     {
       "code": "supervisor_session_cancellation",
-      "name_fa": "کس کرد جس از س سپرازر",
+      "name_fa": "کنسل کردن جلسه از سوی سوپروایزر",
       "sop_order": 26,
       "phase": "P5_supervision",
       "initial_state": "session_selection",
@@ -1889,7 +1877,7 @@
     },
     {
       "code": "supervision_interruption",
-      "name_fa": "ف در سپر فرد تسط داشج",
+      "name_fa": "وقفه در سوپرویژن فردی توسط دانشجو",
       "sop_order": 28,
       "phase": "P5_supervision",
       "initial_state": "request_submitted",
@@ -1973,7 +1961,7 @@
     },
     {
       "code": "fall_semester_preparation",
-      "name_fa": "آادساز تر پاز",
+      "name_fa": "آماده‌سازی ترم پاییز",
       "sop_order": 29,
       "phase": "P0_prep",
       "initial_state": "calendar_entry",
@@ -1983,7 +1971,7 @@
         "deputy_education",
         "course_committee_scientific",
         "admissions_officer",
-        "site_manager",
+        "staff",
         "system"
       ],
       "sub_process_refs": [],
@@ -2026,13 +2014,13 @@
         },
         {
           "state": "interviewer_assignment",
-          "role": "deputy_education_director",
+          "role": "staff",
           "type": "intermediate",
-          "task_fa": "بررسی پرونده و ثبت تصمیم مدیریتی."
+          "task_fa": "مصاحبه‌گرها و زمان‌بندی را ثبت کنید."
         },
         {
           "state": "interview_scheduling",
-          "role": "site_manager",
+          "role": "staff",
           "type": "intermediate",
           "task_fa": "نوع برگزاری را مشخص کنید، اسلات‌های قابل رزرو را ثبت کنید و فرم را ذخیره کنید."
         },
@@ -2053,7 +2041,7 @@
         "deputy_education": "CommitteePortal / education + SemesterPrep",
         "course_committee_scientific": "StaffPortal / course-committee lane",
         "admissions_officer": "StaffPortal / admissions lane",
-        "site_manager": "SiteManagerPortal",
+        "staff": "StaffPortal (generic)",
         "system": "— (automated; no human panel)"
       },
       "started_by": [
@@ -2063,7 +2051,7 @@
     },
     {
       "code": "winter_semester_preparation",
-      "name_fa": "آادساز تر زستا",
+      "name_fa": "آماده‌سازی ترم زمستان",
       "sop_order": 30,
       "phase": "P0_prep",
       "initial_state": "license_check",
@@ -2072,7 +2060,7 @@
         "deputy_education",
         "course_committee_scientific",
         "admissions_officer",
-        "site_manager",
+        "staff",
         "system"
       ],
       "sub_process_refs": [
@@ -2105,13 +2093,13 @@
         },
         {
           "state": "interviewer_assignment",
-          "role": "deputy_education_director",
+          "role": "staff",
           "type": "intermediate",
-          "task_fa": "بررسی پرونده و ثبت تصمیم مدیریتی."
+          "task_fa": "مصاحبه‌گرها و زمان‌بندی را ثبت کنید."
         },
         {
           "state": "interview_scheduling",
-          "role": "site_manager",
+          "role": "staff",
           "type": "intermediate",
           "task_fa": "نوع برگزاری را مشخص کنید، اسلات‌های قابل رزرو را ثبت کنید و فرم را ذخیره کنید."
         },
@@ -2131,7 +2119,7 @@
         "deputy_education": "CommitteePortal / education + SemesterPrep",
         "course_committee_scientific": "StaffPortal / course-committee lane",
         "admissions_officer": "StaffPortal / admissions lane",
-        "site_manager": "SiteManagerPortal",
+        "staff": "StaffPortal (generic)",
         "system": "— (automated; no human panel)"
       },
       "started_by": [
@@ -2140,7 +2128,7 @@
     },
     {
       "code": "introductory_course_registration",
-      "name_fa": "فرایند ثبت‌نام دوره آشنایی",
+      "name_fa": "ثبت‌نام دوره آشنایی",
       "sop_order": 31,
       "phase": "P1_admission",
       "initial_state": "application_submitted",
@@ -2157,49 +2145,49 @@
           "state": "application_submitted",
           "role": "applicant",
           "type": "initial",
-          "task_fa": "باید زمان مصاحبه را از مسیر اعلام‌شده در سایت یا پیامک پذیرش انتخاب کنید؛ پس از رزرو موفق، مرحلهٔ پرداخت هزینهٔ مصاحبه ب…"
+          "task_fa": "از تقویم همین صفحه یک وقت مصاحبه انتخاب و رزرو کنید."
         },
         {
           "state": "interview_scheduled",
           "role": "applicant",
           "type": "intermediate",
-          "task_fa": "باید هزینه مصاحبه را در درگاه پرداخت همین صفحه بپردازید؛ پس از پرداخت، مرحله بعد به‌صورت خودکار فعال می‌شود."
+          "task_fa": "هزینه مصاحبه را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
         },
         {
           "state": "interview_payment",
           "role": "applicant",
           "type": "intermediate",
-          "task_fa": "باید هزینه مصاحبه را در درگاه پرداخت تکمیل کنید؛ در صورت خطا دوباره تلاش کنید تا تأیید پرداخت ثبت شود."
+          "task_fa": "هزینه مصاحبه را از بخش پرداخت سپ همین صفحه تکمیل کنید؛ در صورت خطا دوباره تلاش کنید."
         },
         {
           "state": "interview_payment_confirmed",
           "role": "system",
           "type": "intermediate",
-          "task_fa": "پرداخت شما ثبت شد و جزئیات زمان مصاحبه از طریق پیامک ارسال شده است. در زمان مقرر در مصاحبه حاضر شوید؛ پس از برگزاری مصاح…"
+          "task_fa": "در زمان مقرر در مصاحبه حاضر شوید؛ پس از برگزاری مصاحبه، همین صفحه را تازه کنید."
         },
         {
           "state": "interview_completed",
           "role": "interviewer",
           "type": "intermediate",
-          "task_fa": "منتظر ثبت نتیجه مصاحبه توسط مصاحبه‌گر باشید؛ اگر فرم یا اقدامی برای شما باز شد، آن را تکمیل کنید."
+          "task_fa": "منتظر ثبت نتیجه مصاحبه توسط مصاحبه‌گر بمانید؛ فرمی برای شما باز نمی‌شود."
         },
         {
           "state": "result_conditional_therapy",
           "role": "system",
           "type": "intermediate",
-          "task_fa": "پذیرش شما مشروط به شروع درمان شخصی است؛ مراحل بعد (آپلود مدارک و پرداخت) را طبق راهنمای پنل پیش ببرید."
+          "task_fa": "پذیرش شما ثبت شد؛ به‌زودی مرحلهٔ آپلود مدارک در همین صفحه فعال می‌شود."
         },
         {
           "state": "result_single_course",
           "role": "system",
           "type": "intermediate",
-          "task_fa": "پذیرش شما محدود به درس(های) اعلام‌شده است؛ آپلود و پرداخت را طبق محدودیت‌های پنل انجام دهید (در صورت نیاز فقط پرداخت نقد…"
+          "task_fa": "پذیرش شما ثبت شد؛ به‌زودی مرحلهٔ آپلود مدارک در همین صفحه فعال می‌شود."
         },
         {
           "state": "result_full_admission",
           "role": "system",
           "type": "intermediate",
-          "task_fa": "پذیرش کامل دریافت شد؛ مراحل بعد را طبق پنل (آپلود مدارک، انتخاب درس و پرداخت) پیش ببرید."
+          "task_fa": "پذیرش کامل شما ثبت شد؛ به‌زودی مرحلهٔ آپلود مدارک در همین صفحه فعال می‌شود."
         },
         {
           "state": "rejected",
@@ -2211,49 +2199,49 @@
           "state": "documents_upload",
           "role": "applicant",
           "type": "intermediate",
-          "task_fa": "باید مدارک و تأییدیه‌های خواسته‌شده را در همین پورتال بارگذاری و ثبت کنید."
+          "task_fa": "مدارک و تأییدیه‌های خواسته‌شده را در همین صفحه بارگذاری و ثبت کنید؛ سپس دکمهٔ ادامه را بزنید."
         },
         {
           "state": "documents_review",
           "role": "admissions_officer",
           "type": "intermediate",
-          "task_fa": "در این مرحله بررسی توسط مسئول پذیرش انجام می‌شود؛ اگر فرمی برای شما باز است تکمیل کنید، در غیر این صورت بعداً صفحه را تا…"
+          "task_fa": "الان کاری در پرتال ندارید؛ منتظر بررسی مسئول پذیرش بمانید و بعداً همین صفحه را تازه کنید."
         },
         {
           "state": "documents_incomplete",
           "role": "applicant",
           "type": "intermediate",
-          "task_fa": "باید کاستی‌های اعلام‌شده را برطرف و مدارک را دوباره بارگذاری کنید."
+          "task_fa": "کاستی‌های اعلام‌شده را برطرف کنید و مدارک را دوباره در همین صفحه بارگذاری کنید؛ سپس ادامه دهید."
         },
         {
           "state": "credentials_created",
           "role": "system",
           "type": "intermediate",
-          "task_fa": "اطلاعات ورود از سامانه آموزش ارسال شده است؛ سپس مرحله انتخاب درس در LMS برای شما فعال می‌شود — صفحه را بعداً تازه کنید."
+          "task_fa": "اطلاعات ورود را در بخش بالا ببینید؛ سپس دکمهٔ «ورود به سامانه و شروع انتخاب درس» را بزنید."
         },
         {
           "state": "course_selection",
           "role": "student",
           "type": "intermediate",
-          "task_fa": "باید دروس مجاز را در LMS طبق سطح پذیرش انتخاب و ثبت کنید؛ اگر دکمه مرحله بعد در پنل فعال شد پس از ثبت درس آن را بزنید."
+          "task_fa": "دروس مجاز را در فرم همین صفحه انتخاب و ثبت کنید؛ سپس دکمهٔ ادامه را بزنید."
         },
         {
           "state": "payment",
           "role": "student",
           "type": "intermediate",
-          "task_fa": "باید شهریه را حداکثر در ۴ قسط طبق راهنمای پنل پرداخت کنید تا ثبت‌نام نهایی شود."
+          "task_fa": "روش پرداخت را در فرم همین صفحه انتخاب کنید؛ سپس شهریه را از بخش پرداخت سپ بپردازید و صفحه را تازه کنید."
         },
         {
           "state": "registration_complete",
           "role": "system",
           "type": "terminal",
-          "task_fa": "ثبت‌نام شما در این فرایند تکمیل شد؛ برای مراحل بعد آموزش سراغ دگر بخش‌های پنل بروید."
+          "task_fa": "ثبت‌نام نهایی شد. گام بعدی بسته به نوع پذیرش شماست (تک‌درس: ادامه از پنل دروس؛ مشروط: آغاز درمان تا قبل از ترم دوم؛ پذیر…"
         },
         {
           "state": "installment_overdue",
           "role": "system",
           "type": "intermediate",
-          "task_fa": "قسط معوق را پرداخت کنید تا پس از رفع بلاک، حضور شما در کلاس‌ها ثبت شود."
+          "task_fa": "قسط معوق را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را تازه کنید."
         }
       ],
       "state_count": 17,
@@ -2271,7 +2259,7 @@
     },
     {
       "code": "introductory_term_end",
-      "name_fa": "پاا ترا در آشا",
+      "name_fa": "پایان ترم‌های دوره آشنایی",
       "sop_order": 32,
       "phase": "P2_intro_terms",
       "initial_state": "grades_submitted",
@@ -2287,37 +2275,37 @@
           "state": "grades_submitted",
           "role": "system",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "سامانه در حال تولید کارنامه ترمی و تجمیعی است؛ چند دقیقه بعد صفحه را تازه کنید."
         },
         {
           "state": "transcript_generated",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "کارنامه ترمی و تجمیعی در تب پروفایل قابل مشاهده است؛ مراحل بعد خودکار ادامه می‌یابد."
         },
         {
           "state": "therapy_check",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "سامانه در حال بررسی شرط درمان است؛ در صورت نیاز به اقدام، در همین صفحه اعلام می‌شود."
         },
         {
           "state": "therapy_blocked",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "شما درمانگر فعالی ندارید و امکان ثبت‌نام شما برای ترم دوم ممکن نیست. از فرایند «آغاز درمان آموزشی» در پورتال اقدام کنید …"
         },
         {
           "state": "registration_notification_sent",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "در مهلت اعلام‌شده دروس ترم بعد را انتخاب و شهریه را پرداخت کنید."
         },
         {
           "state": "decline_list_generated",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "فرایند پایان ترم در حال تکمیل است؛ در صورت افت تحصیلی، مسئول پذیرش ممکن است با شما تماس بگیرد."
         },
         {
           "state": "followup_in_progress",
@@ -2329,7 +2317,7 @@
           "state": "followup_complete",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "کارنامه‌ها در تب پروفایل در دسترس است؛ برای ترم بعد طبق پیامک و راهنمای پنل اقدام کنید."
         }
       ],
       "state_count": 8,
@@ -2346,7 +2334,7 @@
     },
     {
       "code": "intro_second_semester_registration",
-      "name_fa": "ثبتا داشج برا تر د در آشا",
+      "name_fa": "ثبت‌نام دانشجو برای ترم دوم دوره آشنایی",
       "sop_order": 33,
       "phase": "P2_intro_terms",
       "initial_state": "eligibility_check",
@@ -2363,55 +2351,55 @@
           "state": "eligibility_check",
           "role": "system",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "سامانه در حال بررسی شرط درمان و وضعیت تعلیق است؛ چند لحظه بعد همین صفحه را تازه کنید."
         },
         {
           "state": "therapy_check_failed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "شما درمانگر فعالی ندارید و امکان ثبت‌نام شما برای ترم دوم ممکن نیست."
         },
         {
           "state": "suspension_check_failed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "به دلیل تعلیق از آموزش، امکان ثبت‌نام در ترم دوم وجود ندارد؛ برای رفع تعلیق با واحد انستیتو تماس بگیرید."
         },
         {
           "state": "course_selection",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "دروس مجاز ترم دوم را در فرم همین صفحه انتخاب و تأیید کنید؛ سپس دکمهٔ ادامه را بزنید."
         },
         {
           "state": "payment_method",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "روش پرداخت را در فرم همین صفحه انتخاب کنید (نقدی یا اقساط تا ۴ قسط)؛ دانشجوی تک‌درس فقط نقدی — سپس ادامه دهید."
         },
         {
           "state": "payment_processing",
           "role": "student",
           "type": "intermediate",
-          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+          "task_fa": "شهریه ترم دوم را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
         },
         {
           "state": "registration_complete",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "ثبت‌نام ترم دوم تکمیل شد؛ لینک کلاس فعال است. اگر اقساطی پرداخت کردید، اقساط بعدی را در سررسید از همین پرتال بپردازید."
         },
         {
           "state": "installment_overdue",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "قسط معوق را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را تازه کنید."
         },
         {
           "state": "term2_registration_closed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "فرایند ثبت‌نام ترم دوم بسته شد؛ دروس و لینک‌های کلاس در پنل آموزش در دسترس است."
         }
       ],
       "state_count": 9,
@@ -2427,7 +2415,7 @@
     },
     {
       "code": "introductory_course_completion",
-      "name_fa": "خات در آشا",
+      "name_fa": "خاتمه دوره آشنایی",
       "sop_order": 34,
       "phase": "P2_intro_terms",
       "initial_state": "all_courses_passed",
@@ -2442,7 +2430,7 @@
           "state": "all_courses_passed",
           "role": "system",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "سامانه در حال اجرای مراحل بعد (دعوت به دوره جامع و صدور گواهی) است؛ چند دقیقه بعد صفحه را تازه کنید."
         },
         {
           "state": "invitation_sent",
@@ -2454,7 +2442,7 @@
           "state": "certificate_draft_generated",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "پیش‌نویس گواهی در صف بررسی کمیته نظارت است؛ پس از تأیید در تب پروفایل قابل دانلود خواهد بود."
         },
         {
           "state": "certificate_review",
@@ -2466,7 +2454,7 @@
           "state": "certificate_approved",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "گواهی پایان دوره در تب پروفایل → کارنامه‌ها قابل دانلود است."
         },
         {
           "state": "process_complete",
@@ -2488,7 +2476,7 @@
     },
     {
       "code": "comprehensive_course_registration",
-      "name_fa": "ثبتا در در جاع",
+      "name_fa": "ثبت‌نام در دوره جامع",
       "sop_order": 35,
       "phase": "P1_admission",
       "initial_state": "application_submitted",
@@ -2508,7 +2496,7 @@
           "state": "application_submitted",
           "role": "student",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "دکمهٔ «ادامه و ثبت مرحله» را بزنید تا پروندهٔ شما برای بررسی کمیته نظارت ارسال شود."
         },
         {
           "state": "supervision_committee_review",
@@ -2520,7 +2508,7 @@
           "state": "supervision_rejected",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "پرونده شما در این مرحله رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید."
         },
         {
           "state": "executive_review",
@@ -2538,25 +2526,25 @@
           "state": "scientific_rejected",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "پرونده شما در این مرحله رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید."
         },
         {
           "state": "document_upload",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "گزارش تجربه شخصی را طبق قالب اعلام‌شده در همین صفحه بارگذاری و ثبت کنید؛ سپس دکمهٔ ادامه را بزنید."
         },
         {
           "state": "interview_scheduled",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "از تقویم همین صفحه یک وقت مصاحبه انتخاب و رزرو کنید."
         },
         {
           "state": "interview_payment",
           "role": "student",
           "type": "intermediate",
-          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+          "task_fa": "هزینه مصاحبه را از بخش پرداخت سپ همین صفحه بپردازید؛ پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
         },
         {
           "state": "interview_completed",
@@ -2568,40 +2556,46 @@
           "state": "result_accepted",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "پذیرش شما ثبت شد؛ به‌زودی مرحلهٔ نمایش دروس ترم ۳ در همین صفحه فعال می‌شود."
         },
         {
           "state": "result_rejected",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "پرونده شما رد شده است؛ برای پرسش از طریق تیکت با بخش پذیرش تماس بگیرید."
         },
         {
           "state": "result_rejected_with_suggestion",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "نتیجهٔ مصاحبه رد با پیشنهاد ثبت شده است؛ جزئیات در پیامک یا تیکت پذیرش را ببینید و در صورت نیاز تماس بگیرید."
         },
         {
           "state": "course_display",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "دروس ترم ۳ (اول جامع) را در همین صفحه ببینید؛ تمامی دروس الزامی هستند — پس از تأیید، دکمهٔ ادامه را بزنید."
         },
         {
           "state": "payment",
           "role": "student",
           "type": "intermediate",
-          "task_fa": "از بخش پرداخت سپ همین صفحه استفاده کنید. پس از بازگشت از بانک، صفحه را یک‌بار تازه کنید."
+          "task_fa": "روش پرداخت را در فرم همین صفحه انتخاب کنید؛ سپس شهریه را از بخش پرداخت سپ بپردازید و صفحه را تازه کنید."
         },
         {
           "state": "registration_complete",
           "role": "system",
-          "type": "terminal",
-          "task_fa": ""
+          "type": "intermediate",
+          "task_fa": "ثبت‌نام دوره جامع تکمیل شد؛ کلاس‌ها و لینک‌های آنلاین در پنل آموزش برای شما فعال می‌شود. در صورت پرداخت اقساطی، اقساط بع…"
+        },
+        {
+          "state": "installment_overdue",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "قسط شهریه سررسید گذشته است. از بخش پرداخت آنلاین همین صفحه یا پروفایل مالی، قسط معوق را پرداخت کنید."
         }
       ],
-      "state_count": 16,
+      "state_count": 17,
       "has_01": false,
       "has_04": false,
       "in_sop_mapping": false,
@@ -2619,7 +2613,7 @@
     },
     {
       "code": "comprehensive_term_end",
-      "name_fa": "پاا ترا در جاع",
+      "name_fa": "پایان ترم‌های دوره جامع",
       "sop_order": 36,
       "phase": "P3_comprehensive",
       "initial_state": "grades_submitted",
@@ -2633,37 +2627,37 @@
           "state": "grades_submitted",
           "role": "system",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "سامانه در حال تولید کارنامه ترمی و کارنامه کلی است؛ چند دقیقه بعد صفحه را تازه کنید."
         },
         {
           "state": "transcript_generated",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "کارنامه ترمی و کارنامه کلی در تب پروفایل قابل مشاهده است؛ بررسی اتمام دروس خودکار ادامه می‌یابد."
         },
         {
           "state": "graduation_check",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "سامانه در حال بررسی اتمام دروس دوره جامع است؛ در صورت نیاز به اقدام، در همین صفحه اعلام می‌شود."
         },
         {
           "state": "completed_all_courses",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "تمام دروس دوره جامع را با موفقیت پاس کرده‌اید؛ کارنامه‌ها در تب پروفایل در دسترس است."
         },
         {
           "state": "registration_notification_sent",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "در مهلت اعلام‌شده دروس ترم بعد را انتخاب و شهریه را پرداخت کنید."
         },
         {
           "state": "process_complete",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "کارنامه‌ها در تب پروفایل در دسترس است؛ برای ترم بعد طبق پیامک و راهنمای پنل اقدام کنید."
         }
       ],
       "state_count": 6,
@@ -2678,7 +2672,7 @@
     },
     {
       "code": "internship_readiness_consultation",
-      "name_fa": "شرت  تع آادگ برا آغاز اتر",
+      "name_fa": "مشورت و تعیین آمادگی برای آغاز انترنی",
       "sop_order": 37,
       "phase": "P8_internship",
       "initial_state": "auto_trigger",
@@ -2698,13 +2692,13 @@
           "state": "auto_trigger",
           "role": "system",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "درخواست ارتقا به انترن را در همین صفحه ثبت کنید."
         },
         {
           "state": "student_request",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "درخواست ارتقا به انترن را ثبت کنید تا پروندهٔ شما برای بررسی کمیته نظارت ارسال شود."
         },
         {
           "state": "supervision_committee_review",
@@ -2716,7 +2710,7 @@
           "state": "supervision_rejected",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "کمیته نظارت مجوز آغاز انترنی را صادر نکرد؛ برای اطلاعات بیشتر با دفتر آموزش تماس بگیرید."
         },
         {
           "state": "interview_scheduling",
@@ -2734,31 +2728,31 @@
           "state": "interview_result_unconditional",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "نتیجه مصاحبه: قبولی بدون شرط با ظرفیت ۳ ساعت در هفته. سامانه شما را به مرحلهٔ قراردادها هدایت می‌کند."
         },
         {
           "state": "interview_result_conditional",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "نتیجه مصاحبه: قبولی مشروط با ظرفیت ۱ ساعت در هفته. سامانه شما را به مرحلهٔ قراردادها هدایت می‌کند."
         },
         {
           "state": "interview_result_retry",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "پس از تکمیل ۳۰ ساعت درمان، دوباره درخواست ارتقا به انترن را ثبت کنید."
         },
         {
           "state": "contract_practice",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "متن قرارداد پرکیس را مطالعه کنید، گزینهٔ پذیرش را تأیید و کد پیامکی را وارد کنید تا قرارداد امضا شود."
         },
         {
           "state": "contract_rules",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "متن قوانین اداری، آموزشی و بالینی را مطالعه کنید و با کد پیامکی امضای الکترونیکی را تکمیل کنید."
         },
         {
           "state": "promissory_note",
@@ -2776,13 +2770,13 @@
           "state": "pending_patient",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "فعلاً بیماری برای ارجاع موجود نیست؛ پرونده در وضعیت انتظار است تا بیمار مناسب تأمین شود."
         },
         {
           "state": "supervisor_selection",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "از فهرست سوپروایزرهای دارای وقت آزاد، یک سوپروایزر و زمان جلسه انتخاب کنید. قانون ۲۴ ساعت برای تاریخ شروع اعمال می‌شود."
         },
         {
           "state": "first_session_payment",
@@ -2794,7 +2788,7 @@
           "state": "internship_started",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "انترنی شما آغاز شد؛ جلسات سوپرویژن در LMS ثبت شده و جزئیات از طریق پیامک اعلام می‌شود."
         }
       ],
       "state_count": 17,
@@ -2813,7 +2807,7 @@
     },
     {
       "code": "internship_12month_conditional_review",
-      "name_fa": "۱۲ ا پس از ب شرط در اتر",
+      "name_fa": "۱۲ ماه پس از گذشت قبولی به صورت مشروط در انترنی",
       "sop_order": 38,
       "phase": "P8_internship",
       "initial_state": "month_12_trigger",
@@ -2832,7 +2826,7 @@
           "state": "month_12_trigger",
           "role": "system",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "انترنی مشروط شما به ماه ۱۲ رسیده؛ فرایند ارزیابی مجدد آغاز شده است."
         },
         {
           "state": "supervision_review",
@@ -2844,7 +2838,7 @@
           "state": "supervision_rejected",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "کمیته نظارت مجوز ارزیابی مجدد را صادر نکرد؛ با دفتر آموزش تماس بگیرید."
         },
         {
           "state": "interview_scheduling",
@@ -2862,13 +2856,13 @@
           "state": "result_unrestricted",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "نتیجه: ادامه انترنی با رفع کامل محدودیت؛ افزایش ساعات از ماه ۱۶ طبق الگوی استاندارد."
         },
         {
           "state": "result_conditional",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "نتیجه: ادامه مشروط انترنی با الگوی محدود افزایش ساعات."
         }
       ],
       "state_count": 7,
@@ -2886,7 +2880,7 @@
     },
     {
       "code": "intern_hours_increase",
-      "name_fa": "اضاف شد حداکثر ساعتا ارائ درا اتر",
+      "name_fa": "اضافه شدن حداکثر ساعت‌های ارائه درمان انترن",
       "sop_order": 39,
       "phase": "P8_internship",
       "initial_state": "deadline_reached",
@@ -2904,7 +2898,7 @@
           "state": "deadline_reached",
           "role": "system",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "به سررسید افزایش ساعت‌های درمان انترنی رسیده‌اید؛ کمیته نظارت در حال بررسی است."
         },
         {
           "state": "supervision_review",
@@ -2916,7 +2910,7 @@
           "state": "rejected_referral",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "افزایش ساعت تأیید نشد؛ ممکن است پرونده به کمیته تخلفات ارجاع شود. با دفتر آموزش تماس بگیرید."
         },
         {
           "state": "approved_time_coordination",
@@ -2928,7 +2922,7 @@
           "state": "hours_increased",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "ظرفیت درمان شما افزایش یافت؛ جزئیات از طریق پیامک اعلام می‌شود."
         }
       ],
       "state_count": 5,
@@ -2968,7 +2962,7 @@
           "state": "blocked",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "به دلیل تعلیق انضباطی یا مرخصی تحصیلی، ثبت‌نام ترم جدید مسدود است. برای رفع مانع با بخش آموزش تماس بگیرید."
         },
         {
           "state": "course_display",
@@ -2991,11 +2985,17 @@
         {
           "state": "registration_complete",
           "role": "system",
-          "type": "terminal",
-          "task_fa": ""
+          "type": "intermediate",
+          "task_fa": "لینک کلاس‌های آنلاین فعال است؛ در صورت انتخاب پرداخت اقساطی، اقساط بعدی را در سررسید پرداخت کنید."
+        },
+        {
+          "state": "installment_overdue",
+          "role": "student",
+          "type": "intermediate",
+          "task_fa": "قسط شهریه سررسید گذشته است. از بخش پرداخت آنلاین همین صفحه یا پروفایل مالی، قسط معوق را پرداخت کنید."
         }
       ],
-      "state_count": 6,
+      "state_count": 7,
       "has_01": false,
       "has_04": true,
       "in_sop_mapping": false,
@@ -3010,7 +3010,7 @@
     },
     {
       "code": "lesson_start_per_term",
-      "name_fa": "آغاز ر درس در ر تر",
+      "name_fa": "آغاز هر درس در هر ترم",
       "sop_order": 41,
       "phase": "P2_intro_terms",
       "initial_state": "student_enrollment",
@@ -3031,19 +3031,19 @@
           "state": "student_enrollment",
           "role": "student",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "درس مورد نظر را از فرم زیر انتخاب و ثبت کنید."
         },
         {
           "state": "links_created",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "سامانه در حال ایجاد لینک کلاس آنلاین است؛ چند لحظه بعد صفحه را تازه کنید."
         },
         {
           "state": "attendance_list_ready",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "سامانه در حال تشکیل لیست حضور و غیاب است؛ صفحه را تازه کنید."
         },
         {
           "state": "lesson_active",
@@ -3068,7 +3068,7 @@
     },
     {
       "code": "student_non_registration",
-      "name_fa": "عد ثبتا داشج برا تر بعد",
+      "name_fa": "عدم ثبت‌نام دانشجو برای ترم بعد",
       "sop_order": 42,
       "phase": "P3_comprehensive",
       "initial_state": "list_generated",
@@ -3152,7 +3152,7 @@
     },
     {
       "code": "ta_conceptual_questions",
-      "name_fa": "ثبت ۳ سا تستف (ککدرس)",
+      "name_fa": "ثبت ۳ سوال تستی‌مفهومی پس از هر جلسه کلاس (کمک‌مدرس)",
       "sop_order": 43,
       "phase": "P7_ta",
       "initial_state": "session_ended",
@@ -3219,7 +3219,7 @@
     },
     {
       "code": "ta_student_consultation",
-      "name_fa": "شاسا تش  شرت آزش (ککدرس)",
+      "name_fa": "شناسایی، تشویق و مشورت آموزشی به دانشجویان (کمک‌مدرس)",
       "sop_order": 44,
       "phase": "P7_ta",
       "initial_state": "session_5_10_15",
@@ -3270,7 +3270,7 @@
     },
     {
       "code": "ta_essay_upload",
-      "name_fa": "آپد جستار  دا تخب ف (ککدرس)",
+      "name_fa": "آپلود جستار هر جلسه و دقایق منتخب فیلم کلاس (کمک‌مدرس)",
       "sop_order": 45,
       "phase": "P7_ta",
       "initial_state": "session_ended",
@@ -3347,7 +3347,7 @@
     },
     {
       "code": "ta_blog_content",
-      "name_fa": "ثبت حتا باگ از حتا درس (ککدرس)",
+      "name_fa": "ثبت محتوای وبلاگ از محتوای درسی توسط کمک‌مدرس",
       "sop_order": 46,
       "phase": "P7_ta",
       "initial_state": "session_ended",
@@ -3410,7 +3410,7 @@
     },
     {
       "code": "upgrade_to_ta",
-      "name_fa": "ارتا ب ککدرس",
+      "name_fa": "ارتقا دانشجو به کمک‌مدرس",
       "sop_order": 47,
       "phase": "P7_ta",
       "initial_state": "student_click",
@@ -3501,7 +3501,7 @@
     },
     {
       "code": "mentor_private_sessions",
-      "name_fa": "ثبت تارخ ۲ جس تدرس خصص درس ب ککدرس",
+      "name_fa": "ثبت تاریخ ۲ جلسه تدریس خصوصی مدرس به کمک‌مدرس",
       "sop_order": 48,
       "phase": "P7_ta",
       "initial_state": "instructor_click",
@@ -3558,7 +3558,7 @@
     },
     {
       "code": "ta_to_assistant_faculty",
-      "name_fa": "ارتا رتب از ککدرس ب دستار ئت ع",
+      "name_fa": "ارتقا رتبهٔ تحلیل دانشجو از کمک‌مدرسی به دستیار هیئت علمی",
       "sop_order": 49,
       "phase": "P7_ta",
       "initial_state": "auto_or_manual_trigger",
@@ -3617,7 +3617,7 @@
     },
     {
       "code": "ta_to_instructor_auto",
-      "name_fa": "تبد خدکار ککدرس ب درس در ر درس",
+      "name_fa": "تبدیل شدن کمک‌مدرس به مدرس در هر درس",
       "sop_order": 50,
       "phase": "P7_ta",
       "initial_state": "end_of_term_check",
@@ -3662,7 +3662,7 @@
     },
     {
       "code": "ta_track_change",
-      "name_fa": "تغر ا اضاف کرد رست ککدرس",
+      "name_fa": "تغییر یا اضافه کردن رسته کمک‌مدرسی",
       "sop_order": 51,
       "phase": "P7_ta",
       "initial_state": "ta_click",
@@ -3725,7 +3725,7 @@
     },
     {
       "code": "ta_track_completion",
-      "name_fa": "خات ککدرس برا ر رست",
+      "name_fa": "خاتمه کمک‌مدرسی برای هر رسته",
       "sop_order": 52,
       "phase": "P7_ta",
       "initial_state": "end_of_track_check",
@@ -3764,7 +3764,7 @@
     },
     {
       "code": "ta_instructor_leave",
-      "name_fa": "رخص ککدرس  درس",
+      "name_fa": "مرخصی کمک‌مدرسی و مدرسین",
       "sop_order": 53,
       "phase": "P7_ta",
       "initial_state": "leave_request",
@@ -3829,7 +3829,7 @@
     },
     {
       "code": "class_attendance",
-      "name_fa": "حضر  غاب در تا کاسا",
+      "name_fa": "حضور و غیاب در تمامی کلاس‌ها",
       "sop_order": 54,
       "phase": "P7_ta",
       "initial_state": "attendance_list_ready",
@@ -3886,7 +3886,7 @@
     },
     {
       "code": "violation_registration",
-      "name_fa": "ثبت تخفات",
+      "name_fa": "ثبت تخلفات",
       "sop_order": 55,
       "phase": "P7_ta",
       "initial_state": "violation_reported",
@@ -4005,7 +4005,7 @@
     },
     {
       "code": "class_session_cancellation",
-      "name_fa": "کس کرد جسات کاسا درس",
+      "name_fa": "کنسل کردن جلسات کلاس‌های درسی",
       "sop_order": 56,
       "phase": "P7_ta",
       "initial_state": "cancellation_request",
@@ -4050,7 +4050,7 @@
     },
     {
       "code": "student_instructor_evaluation",
-      "name_fa": "ارزاب داشج از درس",
+      "name_fa": "ارزیابی دانشجو از مدرسین",
       "sop_order": 57,
       "phase": "P7_ta",
       "initial_state": "evaluation_open",
@@ -4091,7 +4091,7 @@
     },
     {
       "code": "process_merged_to_one",
-      "name_fa": "تشد ب فراد شار ۱",
+      "name_fa": "منتقل‌شده به فرایند شماره ۱",
       "sop_order": 58,
       "phase": "P6_leave",
       "initial_state": "merged",
@@ -4122,7 +4122,7 @@
     },
     {
       "code": "full_education_leave",
-      "name_fa": "رخص ت از ک آزش",
+      "name_fa": "مرخصی موقت از کل آموزش",
       "sop_order": 59,
       "phase": "P6_leave",
       "initial_state": "leave_request",
@@ -4199,13 +4199,13 @@
           "state": "leave_complete",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "بازگشت به کل آموزش با موفقیت انجام شد. ثبت‌نام دروس و ادامهٔ مسیر آموزشی از بخش‌های مربوط در پرتال در دسترس است."
         },
         {
           "state": "violation_registered",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "به‌دلیل عدم بازگشت در مهلت مقرر، گزارش تخلف ثبت شده است. برای پیگیری با کمیته نظارت یا پذیرش تماس بگیرید."
         }
       ],
       "state_count": 11,
@@ -4227,7 +4227,7 @@
     },
     {
       "code": "return_to_full_education",
-      "name_fa": "بازگشت دبار ب ک آزش پس از رخص از ک آزش",
+      "name_fa": "بازگشت دوباره به کل آموزش پس از مرخصی",
       "sop_order": 60,
       "phase": "P6_leave",
       "initial_state": "return_request",
@@ -4298,13 +4298,13 @@
           "state": "return_complete",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "بازگشت به کل آموزش با موفقیت تکمیل شد. ثبت‌نام دروس ترم جدید برای شما باز شده است."
         },
         {
           "state": "return_rejected",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "بازگشت به کل آموزش در این مرحله تأیید نشد. برای اطلاع از دلیل و راه‌حل با پذیرش یا کمیته پیشرفت تماس بگیرید."
         }
       ],
       "state_count": 11,
@@ -4322,7 +4322,7 @@
     },
     {
       "code": "theory_course_completion",
-      "name_fa": "خات درس تئر",
+      "name_fa": "خاتمه دروس تئوری",
       "sop_order": 61,
       "phase": "P9_completion",
       "initial_state": "awaiting_session_18",
@@ -4385,19 +4385,19 @@
           "state": "grades_locked",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "نمره نهایی ثبت و قفل شد."
         },
         {
           "state": "session_18_delay",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "مهلت ثبت جلسه ۱۸ گذشته است. با دفتر آموزش تماس بگیرید."
         },
         {
           "state": "qualitative_eval_delay",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "تأخیر در ارزیابی کیفی. با دفتر آموزش تماس بگیرید."
         }
       ],
       "state_count": 10,
@@ -4417,7 +4417,7 @@
     },
     {
       "code": "group_supervision_course_completion",
-      "name_fa": "خات ر درس سپر گر",
+      "name_fa": "خاتمه هر درس سوپرویژن گروهی",
       "sop_order": 62,
       "phase": "P9_completion",
       "initial_state": "awaiting_session_18",
@@ -4468,19 +4468,19 @@
           "state": "grades_locked",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "نتیجه نهایی ثبت و قفل شد."
         },
         {
           "state": "session_18_delay",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "مهلت ثبت Pass/Fail گذشته است. با دفتر آموزش تماس بگیرید."
         },
         {
           "state": "qualitative_eval_delay",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "تأخیر در ارزیابی کیفی. با دفتر آموزش تماس بگیرید."
         }
       ],
       "state_count": 8,
@@ -4500,7 +4500,7 @@
     },
     {
       "code": "skills_course_completion",
-      "name_fa": "خات درس تکک تر ارتا",
+      "name_fa": "خاتمه دروس تکنیک تمرین مهارت‌ها",
       "sop_order": 63,
       "phase": "P9_completion",
       "initial_state": "awaiting_session_17",
@@ -4563,19 +4563,19 @@
           "state": "grades_locked",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "نمره نهایی ثبت و قفل شد."
         },
         {
           "state": "session_17_delay",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "مهلت ثبت جلسه ۱۷ گذشته است. با دفتر آموزش تماس بگیرید."
         },
         {
           "state": "qualitative_eval_delay",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "تأخیر در ارزیابی کیفی. با دفتر آموزش تماس بگیرید."
         }
       ],
       "state_count": 10,
@@ -4595,7 +4595,7 @@
     },
     {
       "code": "film_observation_course_completion",
-      "name_fa": "خات ر درس ع کاربرد شاد فا  بخش آپد گزارش پاا",
+      "name_fa": "خاتمه هر درس عملی کاربردی و مشاهده فیلم‌ها",
       "sop_order": 64,
       "phase": "P9_completion",
       "initial_state": "grades_entry",
@@ -4617,13 +4617,13 @@
           "state": "grades_locked",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "نمره گزارش ثبت شد. اگر نمره نهایی شما در بازه مرزی ۶۴ تا ۷۳ باشد، می‌توانید امتحان مجدد یا دوباره گذراندن درس را انتخاب …"
         },
         {
           "state": "delay_reported",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "مهلت ثبت یا تصحیح گزارش گذشته است. برای پیگیری با دفتر آموزش تماس بگیرید."
         }
       ],
       "state_count": 3,
@@ -4642,7 +4642,7 @@
     },
     {
       "code": "live_therapy_observation_course_completion",
-      "name_fa": "خات درس شاد زد درا  بخش آپد گزارش پاا",
+      "name_fa": "خاتمه درس مشاهده زنده درمان – بخش آپلود گزارش پایانی",
       "sop_order": 65,
       "phase": "P9_completion",
       "initial_state": "grades_entry",
@@ -4664,13 +4664,13 @@
           "state": "grades_locked",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "نمره گزارش ثبت شد. اگر نمره نهایی شما در بازه مرزی ۶۴ تا ۷۳ باشد، می‌توانید امتحان مجدد یا دوباره گذراندن درس را انتخاب …"
         },
         {
           "state": "delay_reported",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "مهلت ثبت یا تصحیح گزارش گذشته است. برای پیگیری با دفتر آموزش تماس بگیرید."
         }
       ],
       "state_count": 3,
@@ -4689,7 +4689,7 @@
     },
     {
       "code": "live_therapy_observation_session_prep",
-      "name_fa": "دات برگزار جسات شاد زد درا",
+      "name_fa": "مقدمات برگزاری جلسات مشاهده زنده درمان",
       "sop_order": 66,
       "phase": "P8_internship",
       "initial_state": "patient_referral",
@@ -4740,7 +4740,7 @@
     },
     {
       "code": "live_supervision_course_completion",
-      "name_fa": "خات درس سپر زد",
+      "name_fa": "خاتمه درس سوپرویژن زنده",
       "sop_order": 67,
       "phase": "P9_completion",
       "initial_state": "sessions_in_progress",
@@ -4784,25 +4784,25 @@
           "state": "completed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "درس سوپرویژن زنده برای شما تکمیل شد و در کارنامه ثبت می‌گردد."
         },
         {
           "state": "mirror_write_violation",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "مهلت پیاده‌سازی پشت‌آینه گذشته است. گزارش به کمیته نظارت ارسال شده؛ هرچه سریع‌تر تکلیف را ثبت کنید."
         },
         {
           "state": "mirror_eval_violation",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "تأخیر در ارزیابی پشت‌آینه گزارش شده؛ با دفتر آموزش تماس بگیرید."
         },
         {
           "state": "final_eval_delay",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "تأخیر در ارزیابی نهایی گزارش شده؛ با دفتر آموزش تماس بگیرید."
         }
       ],
       "state_count": 8,
@@ -4823,7 +4823,7 @@
     },
     {
       "code": "live_supervision_session_prep",
-      "name_fa": "دات برگزار جسات سپر زد",
+      "name_fa": "مقدمات برگزاری جلسات سوپرویژن زنده",
       "sop_order": 68,
       "phase": "P8_internship",
       "initial_state": "patient_referral",
@@ -4874,7 +4874,7 @@
     },
     {
       "code": "article_writing_completion",
-      "name_fa": "خات درس اس جت گزارش رد",
+      "name_fa": "خاتمه درس مقاله‌نویسی جهت گزارش موردی",
       "sop_order": 69,
       "phase": "P9_completion",
       "initial_state": "course_active",
@@ -4951,7 +4951,7 @@
     },
     {
       "code": "thesis_defense_request",
-      "name_fa": "درخاست ثبت دفاع پااا",
+      "name_fa": "درخواست ثبت دفاع پایان‌نامه",
       "sop_order": 70,
       "phase": "P9_completion",
       "initial_state": "eligibility_check",
@@ -4973,13 +4973,13 @@
           "state": "eligibility_check",
           "role": "student",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "وضعیت چهار شرط را بررسی کنید. در صورت احراز همهٔ شروط، فایل PDF گزارش ۱۵۰ ساعت بیماران سایکوتیک را بارگذاری و «ادامه و ث…"
         },
         {
           "state": "conditions_not_met",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "شرایط دفاع هنوز کامل نیست؛ جزئیات در همین صفحه نمایش داده می‌شود."
         },
         {
           "state": "progress_committee_review",
@@ -4991,13 +4991,13 @@
           "state": "report_rejected",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "کمیته پیشرفت گزارش را رد کرده است؛ با کمیته پیشرفت تماس بگیرید."
         },
         {
           "state": "report_revision",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "کمیته پیشرفت نیاز به اصلاح گزارش سایکوتیک اعلام کرده است؛ فایل اصلاح‌شده را بارگذاری کنید."
         },
         {
           "state": "supervision_committee_review",
@@ -5009,13 +5009,13 @@
           "state": "defense_permit_denied",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "کمیته نظارت مجوز دفاع صادر نکرده است. توضیحات در باکس زیر آمده است."
         },
         {
           "state": "thesis_upload",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "مجوز دفاع صادر شد. فایل پایان‌نامه / گزارش موردی (PDF) را بارگذاری کنید."
         },
         {
           "state": "education_committee_scheduling",
@@ -5027,19 +5027,19 @@
           "state": "first_defense_held",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "زمان دفاع ثبت شده است. در روز مقرر طبق اعلام کمیته حاضر شوید."
         },
         {
           "state": "defense_passed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "تبریک — دفاع با موفقیت (PASS) به پایان رسید."
         },
         {
           "state": "revision_required",
           "role": "student",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "حداقل یک داور نمره C/D/F داده است. حداکثر ۲ هفته فرصت دارید فایل اصلاح‌شده را بارگذاری کنید."
         },
         {
           "state": "revision_upload",
@@ -5051,19 +5051,19 @@
           "state": "revision_delay_violation",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "مهلت بارگذاری اصلاحات گذشته است؛ گزارش تخلف ثبت شده است."
         },
         {
           "state": "second_defense_held",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "دفاع مجدد برنامه‌ریزی شده است. در روز مقرر حاضر شوید."
         },
         {
           "state": "defense_failed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "نتیجه نهایی دفاع: مردود (FAIL). در صورت پرسش با کمیته پیشرفت تماس بگیرید."
         }
       ],
       "state_count": 16,
@@ -5083,7 +5083,7 @@
     },
     {
       "code": "upgrade_to_educational_therapist",
-      "name_fa": "ارتا ب دراگر آزش",
+      "name_fa": "ارتقا به درمانگر آموزشی",
       "sop_order": 71,
       "phase": "P9_completion",
       "initial_state": "student_start",
@@ -5102,13 +5102,13 @@
           "state": "student_start",
           "role": "student",
           "type": "initial",
-          "task_fa": ""
+          "task_fa": "شرایط ارتقا را مطالعه کنید و درخواست را ثبت کنید."
         },
         {
           "state": "eligibility_failed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "دانشجوی گرامی، شما شرایط لازم جهت ارتقا به درمانگر آموزشی را کسب نکرده‌اید."
         },
         {
           "state": "monitoring_review",
@@ -5120,7 +5120,7 @@
           "state": "monitoring_rejected",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "صلاحیت شما توسط کمیته نظارت تأیید نشد. برای پیگیری با بخش آموزش تماس بگیرید."
         },
         {
           "state": "interview_scheduling",
@@ -5138,13 +5138,13 @@
           "state": "interview_rejected",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "صلاحیت شما پس از مصاحبه تأیید نشد. برای پیگیری با کمیته درمان آموزشی تماس بگیرید."
         },
         {
           "state": "therapy_readiness_check",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "سامانه در حال بررسی وضعیت درمان شخصی شماست."
         },
         {
           "state": "therapy_frequency_adjustment",
@@ -5180,7 +5180,7 @@
           "state": "supervision_readiness_check",
           "role": "system",
           "type": "intermediate",
-          "task_fa": ""
+          "task_fa": "سامانه در حال بررسی وضعیت سوپرویژن فردی شماست."
         },
         {
           "state": "supervision_frequency_adjustment",
@@ -5216,7 +5216,7 @@
           "state": "promotion_completed",
           "role": "system",
           "type": "terminal",
-          "task_fa": ""
+          "task_fa": "ارتقا به درمانگر آموزشی با موفقیت تکمیل شد."
         }
       ],
       "state_count": 20,
@@ -5234,7 +5234,7 @@
     },
     {
       "code": "intern_bulk_patient_referral",
-      "name_fa": "ارجاع ک بارا اتر ب دراگرا دگر",
+      "name_fa": "ارجاع کلیه بیماران انترن به درمانگران دیگر",
       "sop_order": 72,
       "phase": "P8_internship",
       "initial_state": "supervision_start",
@@ -5305,7 +5305,7 @@
     },
     {
       "code": "live_supervision_ta_evaluation",
-      "name_fa": "ارزاب ککدرس درس سپر زد",
+      "name_fa": "ارزیابی کمک مدرس درس سوپرویژن زنده",
       "sop_order": 73,
       "phase": "P9_completion",
       "initial_state": "session_18_completed",
@@ -5361,7 +5361,7 @@
     },
     {
       "code": "live_therapy_observation_ta_attendance_completion",
-      "name_fa": "خات درس شاد زد درا  بخش کک درس  ر حضر  غاب  شارکت",
+      "name_fa": "خاتمه درس مشاهده زنده درمان – بخش کمک مدرس و نمره حضور و غیاب و مشارکت",
       "sop_order": 74,
       "phase": "P9_completion",
       "initial_state": "grades_entry",
@@ -5415,7 +5415,7 @@
     },
     {
       "code": "film_observation_ta_attendance_completion",
-      "name_fa": "خات ر درس ع کاربرد شاد فا  بخش کک درس  ر حضر  غاب  شارکت",
+      "name_fa": "خاتمه هر درس عملی کاربردی، مشاهده فیلم‌ها — بخش کمک مدرس و نمره حضور و غیاب و مشارکت",
       "sop_order": 75,
       "phase": "P9_completion",
       "initial_state": "grades_entry",

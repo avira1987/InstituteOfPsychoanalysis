@@ -14,6 +14,9 @@ os.environ["ALLOW_DEMO_SEED"] = "true"
 # پرداخت: mock + اجازه برای تست کال‌بک با سایر الگوها
 os.environ["PAYMENT_PROVIDER"] = "mock"
 os.environ["PAYMENT_ZIBAL_ONLY"] = "false"
+os.environ["LOG_FORMAT"] = "text"
+os.environ["SENTRY_DSN"] = ""
+os.environ["SENTRY_DSN_FRONTEND"] = ""
 
 # PostgreSQL تست — باید قبل از import app.database باشد تا موتور اپ و فیکسچر db_engine به یک DB وصل شوند
 TEST_DATABASE_URL = os.environ.get(
@@ -125,6 +128,16 @@ def pytest_sessionstart(session):
                     "CREATE INDEX IF NOT EXISTS ix_sms_sim_dismiss_user ON sms_simulation_dismissals (user_id)"
                 )
             )
+            conn.execute(
+                text(
+                    "ALTER TABLE term_course_offerings ADD COLUMN IF NOT EXISTS online_meeting_url TEXT"
+                )
+            )
+            conn.execute(
+                text(
+                    "ALTER TABLE term_course_offerings ADD COLUMN IF NOT EXISTS host_meeting_url TEXT"
+                )
+            )
         eng.dispose()
     except Exception:
         pass
@@ -167,6 +180,16 @@ async def db_engine():
         await conn.execute(
             text(
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS portal_password_plain VARCHAR(128)"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE term_course_offerings ADD COLUMN IF NOT EXISTS online_meeting_url TEXT"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE term_course_offerings ADD COLUMN IF NOT EXISTS host_meeting_url TEXT"
             )
         )
     # state_history و سرویس‌های تقویم به این کاربر سیستمی ارجاع می‌دهند

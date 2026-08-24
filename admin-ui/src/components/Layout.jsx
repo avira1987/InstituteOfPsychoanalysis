@@ -299,6 +299,7 @@ export default function Layout() {
               activeNavPath={activeNavPath}
               navPendingByPath={navPendingByPath}
               onNavigate={closeMobile}
+              collapseByDefault={primaryRole(user) === 'student'}
             />
           )}
         </nav>

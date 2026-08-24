@@ -12,7 +12,7 @@ from sqlalchemy.orm import aliased
 
 from app.models.meta_models import ProcessDefinition, StateDefinition
 from app.models.operational_models import ProcessInstance, Student, User, InterviewSlot
-from app.core.user_roles import canonical_portal_role, user_has_role
+from app.core.user_roles import user_has_role
 from app.services.panel_task_reminders import load_active_panel_reminders
 from app.services.panel_flash_messages import load_panel_flash_messages
 from app.services.panel_notification_dismiss import (
@@ -21,7 +21,7 @@ from app.services.panel_notification_dismiss import (
     prune_stale_task_reminders,
 )
 from app.services.operator_readiness import compute_operator_readiness_alerts
-from app.services.portal_role_inbox import build_portal_role_process_inbox
+from app.services.portal_role_inbox import build_user_process_inbox
 from app.core.portal_role_home import (
     committee_kind_for_assigned_role,
     committee_kind_path,
@@ -365,8 +365,11 @@ async def _upcoming_paid_interview_slot_notifications(
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
     """اسلات‌های مصاحبهٔ پرداخت‌تأییدشدهٔ آینده برای مصاحبه‌گر/کارمند."""
-    role = canonical_portal_role(user.role)
-    if role not in ("interviewer", "staff", "admin", "site_manager", "deputy_education"):
+    is_office = user_has_role(
+        user, "admin", "staff", "site_manager", "deputy_education", admin_bypass=False
+    )
+    is_interviewer = user_has_role(user, "interviewer", admin_bypass=False)
+    if not is_office and not is_interviewer:
         return []
     now = now or datetime.now(timezone.utc)
     su = aliased(User)
@@ -380,7 +383,7 @@ async def _upcoming_paid_interview_slot_notifications(
             InterviewSlot.ends_at >= now,
         )
     )
-    if role == "interviewer":
+    if is_interviewer and not is_office:
         stmt = stmt.where(
             or_(
                 InterviewSlot.interviewer_user_id == user.id,
@@ -407,7 +410,7 @@ async def _upcoming_paid_interview_slot_notifications(
         summary = f"{mode_fa} · {st_iso[:19].replace('T', ' ')} · {loc_part}"
         iid = str(slot.assigned_instance_id) if slot.assigned_instance_id else None
         sid = str(student.id)
-        if role == "interviewer":
+        if is_interviewer and not is_office:
             href = "/panel/portal/interviewer"
             action_path = _path_query(href, {"student_id": sid, "instance_id": iid} if iid else {"student_id": sid})
         else:
@@ -434,8 +437,7 @@ async def _pending_payment_interview_slot_notifications(
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
     """اسلات‌های در انتظار پرداخت برای مصاحبه‌گر اختصاص‌یافته."""
-    role = (user.role or "").strip().lower()
-    if role != "interviewer":
+    if not user_has_role(user, "interviewer", admin_bypass=False):
         return []
     now = now or datetime.now(timezone.utc)
     su = aliased(User)
@@ -517,12 +519,11 @@ async def build_action_notifications(
     else:
         pl = min(max(process_limit, 1), 200)
         sc = min(max(scan_cap, pl), 2000)
-        core = await build_portal_role_process_inbox(
+        core = await build_user_process_inbox(
             db,
-            portal_role=canonical_portal_role(user.role) or (user.role or ""),
+            user,
             process_limit=pl,
             scan_cap=sc,
-            include_assignments_for_staff=user_has_role(user, "staff", admin_bypass=True),
         )
         alerts = await compute_operator_readiness_alerts(db, user)
         merged = _merge_readiness_into_inbox_items(core.get("items") or [], alerts)

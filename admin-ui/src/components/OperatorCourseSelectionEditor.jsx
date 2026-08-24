@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { processExecApi } from '../services/api'
-import { formatCourseCodesDisplay, NO_OFFERINGS_HINT_FA } from '../utils/introCourseCatalog'
+import { formatCourseCodesDisplay, formatCourseOptionSpecs, NO_OFFERINGS_HINT_FA } from '../utils/introCourseCatalog'
 import {
   resolveCheckboxListOptions,
   normalizeSelectedCoursesValue,
@@ -91,7 +91,8 @@ export default function OperatorCourseSelectionEditor({
       : []
 
   const maxSelect = resolved.maxSelect
-  const noOfferings = options.length === 0
+  const blockedOptions = Array.isArray(resolved.blockedOptions) ? resolved.blockedOptions : []
+  const noOfferings = options.length === 0 && blockedOptions.length === 0
 
   const toggle = (code) => {
     setSelected((prev) => {
@@ -158,29 +159,57 @@ export default function OperatorCourseSelectionEditor({
         </p>
       ) : (
         <div style={{ display: 'grid', gap: '0.4rem', marginBottom: '0.75rem' }}>
-          {options.map((opt) => (
-            <label
-              key={opt.value}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.88rem' }}
-            >
-              <input
-                type="checkbox"
-                checked={selected.includes(opt.value)}
-                onChange={() => toggle(opt.value)}
-                disabled={
-                  !selected.includes(opt.value) &&
-                  maxSelect != null &&
-                  selected.length >= maxSelect
-                }
-              />
-              <span>{opt.label_fa || opt.value}</span>
-            </label>
-          ))}
+          {options.map((opt) => {
+            const specs = formatCourseOptionSpecs(opt)
+            return (
+              <label
+                key={opt.value}
+                style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.88rem' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(opt.value)}
+                  onChange={() => toggle(opt.value)}
+                  disabled={
+                    !selected.includes(opt.value) &&
+                    maxSelect != null &&
+                    selected.length >= maxSelect
+                  }
+                  style={{ marginTop: '0.2rem' }}
+                />
+                <span>
+                  {opt.label_fa || opt.value}
+                  {specs ? <span className="psf-course-specs">{specs}</span> : null}
+                  {opt.corequisite_note_fa || opt.is_corequisite ? (
+                    <span className="psf-course-specs">
+                      {opt.corequisite_note_fa || 'هم‌نیاز: مردودی ترم قبل — قابل اخذ همزمان'}
+                    </span>
+                  ) : null}
+                </span>
+              </label>
+            )
+          })}
           {maxSelect != null && (
             <p style={{ fontSize: '0.78rem', color: '#78716c', margin: 0 }}>
               حداکثر {maxSelect} درس — انتخاب‌شده: {selected.length}
             </p>
           )}
+          {Array.isArray(resolved.blockedOptions) && resolved.blockedOptions.length > 0
+            ? resolved.blockedOptions.map((opt) => (
+                <label
+                  key={`blocked-${opt.value}`}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.88rem', opacity: 0.7 }}
+                >
+                  <input type="checkbox" disabled checked={false} style={{ marginTop: '0.2rem' }} />
+                  <span>
+                    {opt.label_fa || opt.value}
+                    {opt.lock_reason_fa ? (
+                      <span className="psf-course-specs">{opt.lock_reason_fa}</span>
+                    ) : null}
+                  </span>
+                </label>
+              ))
+            : null}
         </div>
       )}
 

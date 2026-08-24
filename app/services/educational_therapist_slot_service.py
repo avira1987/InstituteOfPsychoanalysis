@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.operational_models import EducationalTherapistSlot, Student, User
-from app.core.user_roles import user_matches_role_sql
+from app.core.user_roles import user_has_role, user_matches_role_sql
 from app.services.return_to_full_education_service import validate_weekly_sessions
 
 logger = logging.getLogger(__name__)
@@ -38,10 +38,6 @@ SLOT_MANAGE_ROLES = frozenset(
         "monitoring_committee_officer",
     }
 )
-
-SUPERVISOR_SLOT_ROLES = frozenset({"supervisor"})
-THERAPIST_OR_SUPERVISOR_ROLES = frozenset({"therapist", "supervisor"})
-
 
 def day_label_fa(day_of_week: int) -> str:
     if 0 <= day_of_week <= 6:
@@ -196,13 +192,13 @@ async def list_available_grouped_by_supervisor(
     *,
     course_type: str | None = None,
 ) -> dict[str, Any]:
-    """شیت وقت‌های آزاد سوپروایزرها — همان جدول اسلات با نقش supervisor."""
+    """شیت وقت‌های آزاد سوپروایزرها — primary یا implied (مثل faculty_1)."""
     stmt = (
         select(EducationalTherapistSlot, User)
         .join(User, EducationalTherapistSlot.therapist_user_id == User.id)
         .where(
             EducationalTherapistSlot.status == "free",
-            User.role.in_(tuple(SUPERVISOR_SLOT_ROLES)),
+            user_matches_role_sql("supervisor"),
             User.is_active.is_(True),
         )
         .order_by(
@@ -247,7 +243,7 @@ async def create_slot(
     if start_local_time >= end_local_time:
         raise ValueError("ساعت پایان باید بعد از ساعت شروع باشد.")
     user = await db.get(User, therapist_user_id)
-    if not user or user.role not in THERAPIST_OR_SUPERVISOR_ROLES:
+    if not user or not user_has_role(user, "therapist", "supervisor", admin_bypass=False):
         raise ValueError("درمانگر/سوپروایزر معتبر یافت نشد.")
     slot = EducationalTherapistSlot(
         id=uuid.uuid4(),

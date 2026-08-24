@@ -12,12 +12,25 @@
         "member_kind": "instructor",
         "instructor_authorized_courses": [
           "theory_psychoanalysis_3",
-          "theory_psychoanalysis_4"
+          "theory_psychoanalysis_4",
+          "theory_psychoanalysis_1",
+          "theory_psychoanalysis_2",
+          "professional_ethics_heal",
+          "theory_psychoanalysis_5",
+          "borderline_difficult_patients",
+          "theory_inheritance"
         ],
         "authorized_courses": [
           "theory_psychoanalysis_3",
-          "theory_psychoanalysis_4"
-        ]
+          "theory_psychoanalysis_4",
+          "theory_psychoanalysis_1",
+          "theory_psychoanalysis_2",
+          "professional_ethics_heal",
+          "theory_psychoanalysis_5",
+          "borderline_difficult_patients",
+          "theory_inheritance"
+        ],
+        "roster_legacy": false
       },
       "instructors": [
         {
@@ -72,7 +85,16 @@
           "roster_key": "inst_t1_05",
           "name_fa": "فريبا حاتمي",
           "tier": 1,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "professional_ethics_heal",
+            "theory_psychoanalysis_2"
+          ],
+          "authorized_courses": [
+            "professional_ethics_heal",
+            "theory_psychoanalysis_2"
+          ]
         },
         {
           "roster_key": "inst_t1_06",
@@ -105,49 +127,133 @@
           "roster_key": "inst_t1_07",
           "name_fa": "ياسمن اكرامي",
           "tier": 1,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_psychoanalysis_3"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_3"
+          ]
         },
         {
           "roster_key": "inst_t2_01",
           "name_fa": "زهرا رشوند",
           "tier": 2,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_psychoanalysis_5"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_5"
+          ]
         },
         {
           "roster_key": "inst_t2_03",
           "name_fa": "زهره كريمي",
           "tier": 2,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_psychoanalysis_3"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_3"
+          ]
         },
         {
           "roster_key": "inst_t2_04",
           "name_fa": "راحله نوبخت",
           "tier": 2,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_2",
+            "professional_ethics_heal",
+            "theory_psychoanalysis_3",
+            "theory_psychoanalysis_4",
+            "theory_psychoanalysis_5",
+            "borderline_difficult_patients",
+            "theory_inheritance"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_2",
+            "professional_ethics_heal",
+            "theory_psychoanalysis_3",
+            "theory_psychoanalysis_4",
+            "theory_psychoanalysis_5",
+            "borderline_difficult_patients",
+            "theory_inheritance"
+          ]
         },
         {
           "roster_key": "inst_t2_05",
           "name_fa": "مبينا منظريان",
           "tier": 2,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "borderline_difficult_patients"
+          ],
+          "authorized_courses": [
+            "borderline_difficult_patients"
+          ]
         },
         {
           "roster_key": "inst_t2_06",
           "name_fa": "پريسا روشن",
           "tier": 2,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_inheritance",
+            "borderline_difficult_patients",
+            "theory_psychoanalysis_5",
+            "theory_psychoanalysis_4",
+            "professional_ethics_heal",
+            "theory_psychoanalysis_2",
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_3"
+          ],
+          "authorized_courses": [
+            "theory_inheritance",
+            "borderline_difficult_patients",
+            "theory_psychoanalysis_5",
+            "theory_psychoanalysis_4",
+            "professional_ethics_heal",
+            "theory_psychoanalysis_2",
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_3"
+          ]
         },
         {
           "roster_key": "inst_t2_07",
           "name_fa": "الناز بهمن زاد",
           "tier": 2,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_psychoanalysis_1"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_1"
+          ]
         },
         {
           "roster_key": "inst_دانشجوی_تست",
           "name_fa": "دانشجوی تست",
           "tier": 2,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_inheritance"
+          ],
+          "authorized_courses": [
+            "theory_inheritance"
+          ]
         },
         {
           "roster_key": "inst_مدرس_تست",
@@ -159,7 +265,14 @@
           "roster_key": "inst_ادريس_صالحي",
           "name_fa": "ادريس صالحي",
           "tier": 2,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_psychoanalysis_2"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_2"
+          ]
         },
         {
           "roster_key": "inst_علی_علوی",
@@ -171,7 +284,14 @@
           "roster_key": "inst_ادريس_صالحي",
           "name_fa": "ادريس صالحي",
           "tier": 2,
-          "member_kind": "instructor"
+          "member_kind": "instructor",
+          "roster_legacy": false,
+          "instructor_authorized_courses": [
+            "theory_psychoanalysis_2"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_2"
+          ]
         }
       ],
       "teaching_assistants": [
@@ -191,24 +311,43 @@
           "roster_key": "ta_t3_03",
           "name_fa": "هانيه پور جبار",
           "tier": 3,
-          "member_kind": "teaching_assistant"
+          "member_kind": "teaching_assistant",
+          "roster_legacy": false,
+          "ta_authorized_courses": [
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_2",
+            "professional_ethics_heal",
+            "theory_psychoanalysis_3",
+            "theory_psychoanalysis_4",
+            "theory_psychoanalysis_5",
+            "borderline_difficult_patients",
+            "theory_inheritance"
+          ],
+          "authorized_courses": [
+            "theory_psychoanalysis_1",
+            "theory_psychoanalysis_2",
+            "professional_ethics_heal",
+            "theory_psychoanalysis_3",
+            "theory_psychoanalysis_4",
+            "theory_psychoanalysis_5",
+            "borderline_difficult_patients",
+            "theory_inheritance"
+          ]
         },
         {
           "roster_key": "ta_دانشجوی_کمک_مدرس",
           "name_fa": "دانشجوی کمک‌مدرس",
           "tier": 3,
           "member_kind": "teaching_assistant",
-          "roster_legacy": false,
-          "ta_authorized_courses": [
-            "theory_psychoanalysis_1",
-            "theory_psychoanalysis_2",
-            "professional_ethics_heal"
-          ],
-          "authorized_courses": [
-            "theory_psychoanalysis_1",
-            "theory_psychoanalysis_2",
-            "professional_ethics_heal"
-          ]
+          "roster_legacy": true,
+          "ta_authorized_courses": [],
+          "authorized_courses": []
+        },
+        {
+          "roster_key": "ta_دانشجوی_تست",
+          "name_fa": "دانشجوی تست",
+          "tier": 3,
+          "member_kind": "teaching_assistant"
         }
       ]
     },

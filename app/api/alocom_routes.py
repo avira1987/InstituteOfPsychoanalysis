@@ -26,9 +26,17 @@ router = APIRouter(prefix="/api/integrations/alocom", tags=["Alocom"])
 def _can_access_session(user: User, session: TherapySession) -> bool:
     if user_has_role(user, "staff", admin_bypass=True):
         return True
-    if user.role == "therapist" and session.therapist_id == user.id:
+    if user_has_role(user, "therapist", admin_bypass=False) and session.therapist_id == user.id:
         return True
     return False
+
+
+def _can_provision_interview_slot(user: User, slot: InterviewSlot) -> bool:
+    if user_has_role(user, "staff", admin_bypass=True):
+        return True
+    if user_has_role(user, "interviewer", admin_bypass=False):
+        return slot.interviewer_user_id == user.id or slot.created_by == user.id
+    return True
 
 
 class AlocomProvisionBody(BaseModel):
@@ -112,9 +120,8 @@ async def provision_interview_slot(
         raise HTTPException(status_code=404, detail="اسلات مصاحبه یافت نشد.")
     if slot.mode != "online":
         raise HTTPException(status_code=400, detail="فقط اسلات مصاحبهٔ آنلاین قابل اتصال به الوکام است.")
-    if current_user.role == "interviewer":
-        if slot.interviewer_user_id != current_user.id and slot.created_by != current_user.id:
-            raise HTTPException(status_code=403, detail="دسترسی به این اسلات ندارید.")
+    if not _can_provision_interview_slot(current_user, slot):
+        raise HTTPException(status_code=403, detail="دسترسی به این اسلات ندارید.")
 
     agent_service_id = body.agent_service_id or 0
     if agent_service_id <= 0:

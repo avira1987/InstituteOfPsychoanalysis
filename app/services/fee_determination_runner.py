@@ -17,6 +17,36 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_ACTOR_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
+_PROVIDER_CANCEL_TAGS = (
+    "therapist_session_cancellation",
+    "supervisor_session_cancellation",
+)
+_STUDENT_CANCEL_TAGS = (
+    "student_session_cancellation",
+    "student_supervision_cancellation",
+)
+_PROVIDER_CANCELLED_BY = frozenset({"therapist", "supervisor"})
+
+
+def infer_session_cancelled_by(notes: str | None, existing: Any = None) -> Optional[str]:
+    """منبع حقیقت کنسلی ارائه‌دهنده در برابر دانشجو — هم‌تراز قانون cancelled_by."""
+    if existing not in (None, ""):
+        return str(existing).strip().lower()
+    text = str(notes or "")
+    for tag in _PROVIDER_CANCEL_TAGS:
+        if tag in text:
+            if "supervisor" in tag:
+                return "supervisor"
+            return "therapist"
+    for tag in _STUDENT_CANCEL_TAGS:
+        if tag in text:
+            return "student"
+    return None
+
+
+def provider_cancel_flag(cancelled_by: Optional[str]) -> bool:
+    return str(cancelled_by or "").strip().lower() in _PROVIDER_CANCELLED_BY
+
 _FEE_DETERMINATION_SUMMARY_FA: dict[str, str] = {
     "scenario_1_credit_returned": "تعیین تکلیف مالی: یک جلسه به بستانکاری شما اضافه شد.",
     "scenario_2_no_action": "تعیین تکلیف مالی: در محدوده سهمیه سالانه بدون اقدام مالی ثبت شد.",
@@ -140,6 +170,8 @@ async def enrich_fee_determination_payload_from_therapy_session(
     merged["therapy_session_id"] = str(ts.id)
     merged["session_paid"] = ts.payment_status == "paid"
     merged["session_date"] = ts.session_date.isoformat() if ts.session_date else None
-    if merged.get("session_cancelled_by_provider") is None:
-        merged["session_cancelled_by_provider"] = ts.status == "cancelled"
+    cancelled_by = infer_session_cancelled_by(ts.notes, merged.get("cancelled_by"))
+    if cancelled_by:
+        merged["cancelled_by"] = cancelled_by
+    merged["session_cancelled_by_provider"] = provider_cancel_flag(merged.get("cancelled_by"))
     return merged

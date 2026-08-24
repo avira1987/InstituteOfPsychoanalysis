@@ -49,8 +49,11 @@ async function loadInterviewerPoolCandidates() {
   }
 }
 
-export function canEditInterviewSetup(role) {
-  return EDITOR_ROLES.has(String(role || '').trim())
+export function canEditInterviewSetup(role, roles) {
+  const list = (Array.isArray(roles) && roles.length ? roles : [role])
+    .map((r) => String(r || '').trim())
+    .filter(Boolean)
+  return list.some((r) => EDITOR_ROLES.has(r))
 }
 
 function shamsiLabel(isoDate) {
@@ -313,6 +316,7 @@ export default function SemesterPrepInterviewSetupPanel({
   instanceId,
   contextData,
   role,
+  roles,
   showToast,
   onUpdated,
   onPublished = null,
@@ -322,7 +326,8 @@ export default function SemesterPrepInterviewSetupPanel({
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState([])
 
-  const disabled = !canEditInterviewSetup(role) || busy
+  const canEdit = canEditInterviewSetup(role, roles)
+  const disabled = !canEdit || busy
 
   useEffect(() => {
     let cancelled = false
@@ -496,9 +501,9 @@ export default function SemesterPrepInterviewSetupPanel({
         </span>
       </div>
 
-      {!canEditInterviewSetup(role) && (
+      {!canEdit && (
         <p style={{ fontSize: '0.8rem', color: '#b45309', marginTop: '0.6rem' }}>
-          ثبت این مرحله فقط برای معاون آموزش، مدیر داخلی و مدیر سیستم مجاز است.
+          ثبت این مرحله فقط برای مدیر داخلی و مدیر سیستم مجاز است.
         </p>
       )}
     </div>

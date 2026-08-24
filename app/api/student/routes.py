@@ -45,7 +45,7 @@ router = APIRouter(prefix="/api/students", tags=["Students"])
 
 class StudentCreate(BaseModel):
     user_id: str
-    student_code: str
+    student_code: str = ""
     course_type: str  # "introductory" | "comprehensive"
     is_intern: bool = False
     term_count: int = 1
@@ -81,6 +81,8 @@ class CompleteStudentRegistrationBody(StudentRegistrationProfileFields):
 class StudentRegistrationProfileUpdate(StudentRegistrationProfileFields):
     """ویرایش فیلدهای تکمیلی ثبت‌نام (ادمین/کارمند)."""
 
+    allow_previous_step_review: Optional[bool] = None
+
 
 class RegistrationCourseTypeUpdate(BaseModel):
     """تغییر نوع دورهٔ انتخاب‌شده در فرم اولیهٔ ثبت‌نام."""
@@ -92,6 +94,7 @@ class StudentResponse(BaseModel):
     id: str
     user_id: str
     student_code: str
+    full_name_fa: Optional[str] = None
     course_type: str
     is_intern: bool
     term_count: int
@@ -110,6 +113,7 @@ class StudentResponse(BaseModel):
     admission_type: Optional[str] = None
     conditional_therapy_required: Optional[bool] = None
     therapy_deadline_hint_fa: Optional[str] = None
+    conditional_therapy_start_opted_in: Optional[bool] = None
 
     model_config = {"from_attributes": True}
 
@@ -119,6 +123,31 @@ def _extra_for_response(raw) -> Optional[dict]:
     if raw is None:
         return None
     return StateMachineEngine._as_mapping(raw)
+
+
+def _normalize_full_name_fa(raw: Optional[str]) -> Optional[str]:
+    name = (raw or "").strip()
+    return name or None
+
+
+async def _full_name_fa_for_user_id(db: AsyncSession, user_id) -> Optional[str]:
+    if not user_id:
+        return None
+    user = await db.get(User, user_id)
+    if not user:
+        return None
+    return _normalize_full_name_fa(user.full_name_fa)
+
+
+async def _full_name_fa_by_user_ids(db: AsyncSession, user_ids) -> dict:
+    ids = list({uid for uid in user_ids if uid})
+    if not ids:
+        return {}
+    result = await db.execute(select(User.id, User.full_name_fa).where(User.id.in_(ids)))
+    return {
+        row.id: _normalize_full_name_fa(row.full_name_fa)
+        for row in result.all()
+    }
 
 
 def _admission_fields_for_response(student: Student) -> dict:
@@ -133,11 +162,12 @@ def _admission_fields_for_response(student: Student) -> dict:
     required = admission == ADMISSION_CONDITIONAL_THERAPY and not student.therapy_started
     hint = None
     if required:
-        hint = extra.get("conditional_therapy_deadline_hint_fa") or therapy_deadline_hint_fa()
+        hint = therapy_deadline_hint_fa()
     return {
         "admission_type": admission,
         "conditional_therapy_required": bool(required),
         "therapy_deadline_hint_fa": hint,
+        "conditional_therapy_start_opted_in": bool(extra.get("conditional_therapy_start_opted_in")),
     }
 
 
@@ -150,10 +180,15 @@ async def create_student(
     current_user: User = Depends(require_role("admin", "staff")),
 ):
     """Create a new student profile."""
+    from app.services.student_identity import next_student_code, unify_student_identity
+
+    code = (student_data.student_code or "").strip()
+    if not code:
+        code = await next_student_code(db)
     student = Student(
         id=uuid.uuid4(),
         user_id=uuid.UUID(student_data.user_id),
-        student_code=student_data.student_code,
+        student_code=code,
         course_type=student_data.course_type,
         is_intern=student_data.is_intern,
         term_count=student_data.term_count,
@@ -161,6 +196,11 @@ async def create_student(
         weekly_sessions=student_data.weekly_sessions,
     )
     db.add(student)
+    await db.flush()
+
+    linked_user = await db.get(User, student.user_id)
+    if linked_user:
+        await unify_student_identity(db, student, linked_user)
 
     # Auto-start initial registration process for the new student and mark it as primary,
     # using the admin/staff user as actor.
@@ -177,25 +217,23 @@ async def create_student(
 
     await db.flush()
 
-    return StudentResponse(
-        id=str(student.id),
-        user_id=str(student.user_id),
-        student_code=student.student_code,
-        course_type=student.course_type,
-        is_intern=student.is_intern,
-        term_count=student.term_count,
-        current_term=student.current_term,
-        therapy_started=student.therapy_started,
-        weekly_sessions=student.weekly_sessions,
-        extra_data=_extra_for_response(student.extra_data),
+    return _student_to_response(
+        student,
+        full_name_fa=linked_user.full_name_fa if linked_user else None,
     )
 
 
-def _student_to_response(s: Student, tracker: Optional[dict] = None) -> StudentResponse:
+def _student_to_response(
+    s: Student,
+    tracker: Optional[dict] = None,
+    *,
+    full_name_fa: Optional[str] = None,
+) -> StudentResponse:
     base = dict(
         id=str(s.id),
         user_id=str(s.user_id),
         student_code=s.student_code,
+        full_name_fa=_normalize_full_name_fa(full_name_fa),
         course_type=s.course_type,
         is_intern=s.is_intern,
         term_count=s.term_count,
@@ -226,6 +264,7 @@ async def list_students(
     stmt = select(Student).where(Student.student_code != ops_code)
     result = await db.execute(stmt)
     students = result.scalars().all()
+    name_by_user_id = await _full_name_fa_by_user_ids(db, [s.user_id for s in students])
     out: list[StudentResponse] = []
     for s in students:
         # دفاع در عمق: پرچم extra_data حتی اگر کد تغییر کرده باشد
@@ -234,7 +273,7 @@ async def list_students(
         tr: Optional[dict] = None
         if tracker_summary:
             tr = await summarize_primary_path_for_student(db, s)
-        out.append(_student_to_response(s, tr))
+        out.append(_student_to_response(s, tr, full_name_fa=name_by_user_id.get(s.user_id)))
     return out
 
 
@@ -248,7 +287,16 @@ async def list_therapists(
     with_free_slots: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(
-        require_role("student", "admin", "staff", "interviewer", "supervisor", "site_manager")
+        require_role(
+            "student",
+            "admin",
+            "staff",
+            "interviewer",
+            "supervisor",
+            "site_manager",
+            "monitoring_committee_officer",
+            "supervision_committee",
+        )
     ),
 ):
     """فهرست درمانگران آموزشی برای انتخاب توسط دانشجو (نام نمایشی + شناسه).
@@ -457,6 +505,9 @@ async def get_my_student_profile(
     if profile_changed:
         flag_modified(student, "extra_data")
 
+    if await service.reconcile_start_therapy_for_admission(student):
+        profile_changed = True
+
     extra = StateMachineEngine._as_mapping(student.extra_data)
     hp = extra.get("hidden_progress")
     g = extra.get("gamification")
@@ -498,20 +549,13 @@ async def get_my_student_profile(
 
         intro_gate = (await check_intro_registration_gate(db)).to_dict()
 
-    return StudentResponse(
-        id=str(student.id),
-        user_id=str(student.user_id),
-        student_code=student.student_code,
-        course_type=student.course_type,
-        is_intern=student.is_intern,
-        term_count=student.term_count,
-        current_term=student.current_term,
-        therapy_started=student.therapy_started,
-        weekly_sessions=student.weekly_sessions,
-        extra_data=_extra_for_response(student.extra_data),
-        therapy_hours_progress_fa=therapy_hours_progress_fa,
-        intro_registration_gate=intro_gate,
-        **_admission_fields_for_response(student),
+    return _student_to_response(
+        student,
+        {
+            "therapy_hours_progress_fa": therapy_hours_progress_fa,
+            "intro_registration_gate": intro_gate,
+        },
+        full_name_fa=current_user.full_name_fa,
     )
 
 
@@ -566,17 +610,9 @@ async def get_student(
         details={"resource": "student", "student_id": student_id},
     )
 
-    return StudentResponse(
-        id=str(student.id),
-        user_id=str(student.user_id),
-        student_code=student.student_code,
-        course_type=student.course_type,
-        is_intern=student.is_intern,
-        term_count=student.term_count,
-        current_term=student.current_term,
-        therapy_started=student.therapy_started,
-        weekly_sessions=student.weekly_sessions,
-        extra_data=_extra_for_response(student.extra_data),
+    return _student_to_response(
+        student,
+        full_name_fa=await _full_name_fa_for_user_id(db, student.user_id),
     )
 
 
@@ -609,17 +645,9 @@ async def update_student(
 
     await db.flush()
 
-    return StudentResponse(
-        id=str(student.id),
-        user_id=str(student.user_id),
-        student_code=student.student_code,
-        course_type=student.course_type,
-        is_intern=student.is_intern,
-        term_count=student.term_count,
-        current_term=student.current_term,
-        therapy_started=student.therapy_started,
-        weekly_sessions=student.weekly_sessions,
-        extra_data=_extra_for_response(student.extra_data),
+    return _student_to_response(
+        student,
+        full_name_fa=await _full_name_fa_for_user_id(db, student.user_id),
     )
 
 
@@ -629,6 +657,10 @@ async def _student_for_user_id(db: AsyncSession, user_id: uuid.UUID) -> Student:
     if not student:
         raise HTTPException(status_code=404, detail="پروفایل دانشجویی یافت نشد.")
     return student
+
+
+def _allow_previous_step_review(extra: dict) -> bool:
+    return extra.get("allow_previous_step_review") is True
 
 
 @router.get("/by-user/{user_id}/registration-profile")
@@ -652,6 +684,7 @@ async def get_registration_profile_by_user(
         "field_of_study": extra.get("field_of_study"),
         "motivation": extra.get("motivation"),
         "national_code": extra.get("national_code"),
+        "allow_previous_step_review": _allow_previous_step_review(extra),
         **registration_profile_from_extra(extra),
     }
 
@@ -719,6 +752,8 @@ async def update_registration_profile_by_user(
     patch = validate_registration_profile_fields(body, require_all=False)
     merged = dict(StateMachineEngine._as_mapping(student.extra_data))
     merged.update(patch)
+    if body.allow_previous_step_review is not None:
+        merged["allow_previous_step_review"] = bool(body.allow_previous_step_review)
     student.extra_data = merged
     flag_modified(student, "extra_data")
     await db.flush()
@@ -726,5 +761,6 @@ async def update_registration_profile_by_user(
     return {
         "student_id": str(student.id),
         "user_id": user_id,
+        "allow_previous_step_review": _allow_previous_step_review(extra),
         **registration_profile_from_extra(extra),
     }

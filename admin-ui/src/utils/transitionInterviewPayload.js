@@ -18,7 +18,10 @@ export function mergeInterviewBranchPayload(payload, toState, triggerEvent) {
   const out = { ...(payload && typeof payload === 'object' ? payload : {}) }
   if (triggerEvent !== 'interview_result_submitted') return out
   if (toState && INTERVIEW_RESULT_BY_TO_STATE[toState]) {
-    out.interview_result = INTERVIEW_RESULT_BY_TO_STATE[toState]
+    const ir = INTERVIEW_RESULT_BY_TO_STATE[toState]
+    out.interview_result = ir
+    out.result = ir
+    if (ir !== 'rejected') out.admission_type = ir
   }
   return out
 }

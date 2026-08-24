@@ -25,7 +25,12 @@ import {
 } from '../utils/resolveFormOptionsSource'
 import { SEMESTER_PREP_PROCESSES } from '../utils/instituteProcesses'
 import { buildWaitingForRoleTaskFa } from '../utils/operatorProcessGuidance'
-import { portalRoleCanActOnState } from '../utils/portalRoleAccess'
+import {
+  anyPortalRoleCanActOnState,
+  effectivePortalRole,
+  formRolesForUser,
+} from '../utils/portalRoleAccess'
+import { effectiveSemesterPrepAssignedRole } from '../utils/semesterPrepRoles'
 import { resolveCheckboxListOptions } from '../utils/resolveCourseFieldOptions'
 import {
   defaultShamsiDate,
@@ -347,6 +352,7 @@ export default function OperatorStepFormsSection({
   isCompleted,
   isCancelled,
   role,
+  user,
   showToast,
   onUpdated,
   /** اگر تنظیم شود، پس از ثبت موفق فرم همان ترنزیشن اجرا می‌شود. */
@@ -375,7 +381,11 @@ export default function OperatorStepFormsSection({
   const [canActOnState, setCanActOnState] = useState(true)
   const [fetchedStateAssignedRole, setFetchedStateAssignedRole] = useState(null)
   const [loading, setLoading] = useState(false)
-  const effectiveStateAssignedRole = fetchedStateAssignedRole ?? stateAssignedRole
+  const effectiveStateAssignedRole = effectiveSemesterPrepAssignedRole(
+    processCode,
+    currentState,
+    fetchedStateAssignedRole ?? stateAssignedRole,
+  )
   const [busy, setBusy] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
   const [locallySubmittedState, setLocallySubmittedState] = useState(null)
@@ -424,17 +434,28 @@ export default function OperatorStepFormsSection({
     return hasEditableFlag ? names : null
   }, [forms])
 
+  const formRoles = useMemo(() => formRolesForUser(user, role), [user, role])
+  const effectiveRole = useMemo(
+    () => (user ? effectivePortalRole(user, effectiveStateAssignedRole) : role) || role,
+    [user, effectiveStateAssignedRole, role],
+  )
   const roleLocked =
-    role !== 'admin'
+    !formRoles.includes('admin')
     && (
       canActOnState === false
-      || !!(role && effectiveStateAssignedRole && !portalRoleCanActOnState(role, effectiveStateAssignedRole))
+      || !!(effectiveStateAssignedRole && formRoles.length
+        && !anyPortalRoleCanActOnState(formRoles, effectiveStateAssignedRole))
     )
 
   const canEditForms =
     (editableFieldNames == null || editableFieldNames.size > 0) && !roleLocked
 
-  const waitingTaskFa = roleLocked ? buildWaitingForRoleTaskFa(effectiveStateAssignedRole) : ''
+  const waitingTaskFa = roleLocked
+    ? buildWaitingForRoleTaskFa(effectiveStateAssignedRole, {
+        processCode,
+        stateCode: currentState,
+      })
+    : ''
 
   const visible = useMemo(
     () => !!(instanceId && currentState && !isCompleted && !isCancelled),
@@ -586,7 +607,7 @@ export default function OperatorStepFormsSection({
       const { ok, missing, fieldErrors: formFieldErrors } = validateUnifiedAnswers(
         { fields: form.fields || [] },
         values,
-        { role },
+        { roles: formRoles, role: effectiveRole || role },
       )
       if (!ok) {
         allMissing.push(...missing)
@@ -702,7 +723,8 @@ export default function OperatorStepFormsSection({
         <SemesterPrepInterviewSetupPanel
           instanceId={instanceId}
           contextData={contextData}
-          role={role}
+          role={effectiveRole || role}
+          roles={formRoles}
           showToast={showToast}
           onUpdated={onUpdated}
           onPublished={onSemesterPrepPublished}
@@ -873,12 +895,14 @@ export default function OperatorStepFormsSection({
             schemaJson={{ fields: visibleFields, visible_to: form.visible_to, editable_by: form.editable_by }}
             values={values}
             onChange={onChange}
-            role={role}
+            role={effectiveRole || role}
+            roles={formRoles}
             editableFieldNames={editableFieldNames}
             disabled={!canEditForms}
             showToast={showToast}
             fieldErrors={fieldErrors}
             onRosterMemberCreated={handleRosterMemberCreated}
+            contextData={contextData}
           />
         </div>
         )

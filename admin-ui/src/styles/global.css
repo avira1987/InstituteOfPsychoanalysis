@@ -510,6 +510,14 @@ input, select, textarea { font-family: inherit; }
   line-height: 1.45;
 }
 
+.notification-bell-item-when {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted, #64748b);
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
 .notification-bell-item button.notification-bell-item,
 button.notification-bell-item {
   width: 100%;
@@ -753,7 +761,7 @@ button.notification-bell-item {
 }
 
 .notifications-page-when {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }
 
 .notification-history-banner {
@@ -1233,7 +1241,104 @@ button.notification-bell-item {
   overflow-wrap: anywhere;
 }
 
+.semester-prep-recorded-summary {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #e2e8f0;
+  min-width: 0;
+}
+
+.semester-prep-recorded-summary__title {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+.semester-prep-recorded-summary__section {
+  margin-bottom: 0.85rem;
+}
+
+.semester-prep-recorded-summary__section-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.semester-prep-recorded-summary__row {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, auto) minmax(0, 1fr);
+  gap: 0.2rem 0.55rem;
+  font-size: 0.82rem;
+  margin-bottom: 0.22rem;
+  align-items: start;
+}
+
+.semester-prep-recorded-summary__label {
+  color: #64748b;
+}
+
+.semester-prep-recorded-summary__value {
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  color: #1e293b;
+}
+
+.semester-prep-recorded-summary__table-wrap {
+  margin: 0.35rem 0 0.7rem;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.semester-prep-recorded-summary__table-caption {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.3rem;
+}
+
+.semester-prep-recorded-summary__table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.semester-prep-recorded-summary__table-wrap th,
+.semester-prep-recorded-summary__table-wrap td {
+  border: 1px solid #e2e8f0;
+  padding: 0.32rem 0.45rem;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.semester-prep-recorded-summary__table-wrap th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+}
+
+.semester-prep-recorded-summary__plan {
+  margin-top: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.semester-prep-recorded-summary__plan-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 0.25rem;
+}
+
 @media (max-width: 640px) {
+  .semester-prep-recorded-summary__row {
+    grid-template-columns: 1fr;
+    gap: 0.08rem;
+  }
+
   .fall-semester-readonly-summary__row {
     grid-template-columns: 1fr;
     gap: 0.1rem;
@@ -1553,6 +1658,87 @@ button.notification-bell-item {
 }
 .finance-panel.finance-panel--static .finance-panel__body {
   padding: 0;
+}
+
+.finance-installment-master {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--primary-light, #e0e7ff) 55%, white);
+}
+.finance-installment-master.is-off {
+  background: #f8fafc;
+}
+.finance-installment-master__title {
+  font-weight: 700;
+  font-size: 0.98rem;
+  margin-bottom: 0.25rem;
+}
+.finance-installment-master__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.finance-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+.finance-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.finance-switch__track {
+  width: 2.7rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  background: #cbd5e1;
+  position: relative;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+.finance-switch input:checked + .finance-switch__track {
+  background: var(--primary, #4f46e5);
+}
+.finance-switch input:focus-visible + .finance-switch__track {
+  outline: 2px solid var(--primary, #4f46e5);
+  outline-offset: 2px;
+}
+.finance-switch input:disabled + .finance-switch__track {
+  opacity: 0.6;
+}
+.finance-switch__thumb {
+  position: absolute;
+  top: 0.16rem;
+  inset-inline-start: 0.16rem;
+  width: 1.12rem;
+  height: 1.12rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+  transition: inset-inline-start 0.15s ease, inset-inline-end 0.15s ease;
+}
+.finance-switch input:checked + .finance-switch__track .finance-switch__thumb {
+  inset-inline-start: auto;
+  inset-inline-end: 0.16rem;
+}
+.finance-switch__text {
+  font-size: 0.88rem;
+  font-weight: 600;
+  min-width: 3.5rem;
 }
 
 /* ─── Stats Grid ────────────────────────────────────────────── */
@@ -6550,7 +6736,8 @@ button.student-profile-summary-value.link-like:hover {
 }
 
 .online-meeting-join-cta--compact {
-  margin-top: 0.35rem;
+  margin-top: 0;
+  gap: 0.25rem;
 }
 
 .online-meeting-join-cta__actions {
@@ -6558,6 +6745,11 @@ button.student-profile-summary-value.link-like:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
+}
+
+.online-meeting-join-cta--compact .online-meeting-join-cta__actions {
+  flex-wrap: nowrap;
+  gap: 0.25rem;
 }
 
 .online-meeting-join-cta__copy-btn {
@@ -6591,6 +6783,7 @@ button.student-profile-summary-value.link-like:hover {
   padding: 0.85rem 1.25rem;
   border: none;
   border-radius: 12px;
+  font-family: inherit;
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.4;
@@ -6603,9 +6796,74 @@ button.student-profile-summary-value.link-like:hover {
 }
 
 .online-meeting-join-cta--compact .online-meeting-join-cta__btn {
-  max-width: 100%;
-  padding: 0.55rem 0.85rem;
-  font-size: 0.88rem;
+  width: auto;
+  max-width: none;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.online-meeting-join-cta--compact .online-meeting-join-cta__copy-btn {
+  padding: 0.28rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 8px;
+}
+
+.online-meeting-join-cta__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem 0.6rem;
+  border-radius: 8px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.online-meeting-join-cta__chip--warn {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.online-meeting-join-cta__tip {
+  position: relative;
+  display: inline-flex;
+  cursor: default;
+}
+
+.online-meeting-join-cta__tip[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  min-width: 7rem;
+  max-width: 16rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  text-align: right;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.online-meeting-join-cta__tip[data-tip]:hover::after,
+.online-meeting-join-cta__tip[data-tip]:focus-within::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .online-meeting-join-cta__btn--active {
@@ -6615,11 +6873,17 @@ button.student-profile-summary-value.link-like:hover {
   box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
 }
 
-.online-meeting-join-cta__btn--active:hover {
+.online-meeting-join-cta__btn--active:hover:not(:disabled) {
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(22, 163, 74, 0.45);
   color: #fff;
+}
+
+.online-meeting-join-cta__btn--active:disabled {
+  cursor: wait;
+  opacity: 0.8;
+  transform: none;
 }
 
 .online-meeting-join-cta--closed .online-meeting-join-cta__btn {
@@ -6734,6 +6998,39 @@ button.student-profile-summary-value.link-like:hover {
 
 .quest-card .student-session-payment-panel th {
   color: #334155;
+}
+
+/* جدول سررسید/مبلغ اقساط — پس‌زمینه روشن داخل .quest-card؛ بدون color صریح، td از والد #e0e7ff می‌گیرد */
+.installment-plan-table {
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem 0.3rem;
+}
+
+.installment-plan-table__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  color: #1e3a8a;
+}
+
+.installment-plan-table table,
+.installment-plan-table th,
+.installment-plan-table td {
+  color: #1e293b;
+}
+
+.installment-plan-table th {
+  color: #475569;
+}
+
+.installment-plan-table tr:hover td {
+  background: #eef2ff;
 }
 
 .spg-details {
@@ -7363,6 +7660,7 @@ button.link-like {
   background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  color: #0f172a;
 }
 
 .quest-forms-wrap .psf-card-title {
@@ -7652,8 +7950,38 @@ select.psf-input:focus {
   cursor: not-allowed;
 }
 
+.psf-course-specs {
+  display: block;
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 0.12rem;
+  line-height: 1.55;
+}
+
 .psf-hint--warn {
   color: #b45309;
+}
+
+.psf-doc-reject-note {
+  margin: 0.4rem 0 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  background: #fff7ed;
+  border-right: 3px solid #ea580c;
+  color: #9a3412;
+  font-size: 0.86rem;
+  line-height: 1.65;
+}
+
+.psf-doc-reject-list {
+  margin: 0.4rem 0 0;
+  padding-right: 1.2rem;
+  line-height: 1.7;
+}
+
+.psf-doc-reject-general {
+  margin: 0.5rem 0 0;
+  line-height: 1.7;
 }
 
 .psf-check {

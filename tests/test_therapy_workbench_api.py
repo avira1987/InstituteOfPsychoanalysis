@@ -191,3 +191,60 @@ async def test_workbench_repair_denied_for_unassigned_therapist(
     headers = _login_headers(client, therapist.username)
     r = client.post(f"/api/therapy-workbench/repair/{sample_student.id}", headers=headers)
     assert r.status_code == 403
+
+
+async def _make_role_user(db_session: AsyncSession, role: str) -> User:
+    suid = uuid.uuid4().hex[:12]
+    user = User(
+        id=uuid.uuid4(),
+        username=f"wb_{role}_{suid}",
+        email=f"wb_{role}_{suid}@test.com",
+        hashed_password=get_password_hash("testpass"),
+        full_name_fa=f"کاربر {role}",
+        role=role,
+        roles=[role],
+    )
+    db_session.add(user)
+    await db_session.commit()
+    return user
+
+
+@pytest.mark.asyncio
+async def test_admin_workbench_therapist_scope_sees_other_therapist_students(
+    db_session: AsyncSession,
+    sample_student: Student,
+    client: TestClient,
+):
+    therapist = await _make_therapist(db_session)
+    admin = await _make_role_user(db_session, "admin")
+    sample_student.therapist_id = therapist.id
+    sample_student.therapy_started = True
+    await db_session.commit()
+
+    headers = _login_headers(client, admin.username)
+    r = client.get(
+        "/api/therapy-workbench/summary",
+        headers=headers,
+        params={"role_scope": "therapist"},
+    )
+    assert r.status_code == 200, r.text
+    row = next(
+        (s for s in r.json().get("students") or [] if s["student_id"] == str(sample_student.id)),
+        None,
+    )
+    assert row is not None
+
+
+@pytest.mark.asyncio
+async def test_staff_workbench_therapist_scope_forbidden(
+    db_session: AsyncSession,
+    client: TestClient,
+):
+    staff = await _make_role_user(db_session, "staff")
+    headers = _login_headers(client, staff.username)
+    r = client.get(
+        "/api/therapy-workbench/summary",
+        headers=headers,
+        params={"role_scope": "therapist"},
+    )
+    assert r.status_code == 403

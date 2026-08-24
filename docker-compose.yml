@@ -17,6 +17,11 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
 
   # ─── Redis Cache & Message Broker ─────────────────────────────
   redis:
@@ -30,6 +35,11 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
 
   # ─── FastAPI Application ──────────────────────────────────────
   api:
@@ -71,11 +81,16 @@ services:
       - ./admin-ui/dist:/app/admin-ui/dist
       - ./scripts:/app/scripts
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
     command: >
       sh -c "python /app/scripts/wait_for_db.py &&
              python /app/scripts/repair_alembic_if_empty_schema.py &&
              alembic upgrade head &&
-             uvicorn app.main:app --host 0.0.0.0 --port 3000 --log-level warning"
+             uvicorn app.main:app --host 0.0.0.0 --port 3000 --log-level warning --no-access-log"
 
   # ─── بیلد فرانت در داکر: خروجی در ./admin-ui/dist (همان پوشه‌ای که api mount می‌کند)
   # اجرا: docker compose --profile admin-ui-build run -T --rm admin-ui-build

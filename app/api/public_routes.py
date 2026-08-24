@@ -83,7 +83,7 @@ async def public_portal_config():
 
 @router.get("/installment-policy")
 async def public_installment_policy(db: AsyncSession = Depends(get_db)):
-    """سیاست اقساط برای نمایش در وب‌سایت (بدون احراز هویت)."""
+    """سیاست اقساط برای نمایش در وب‌سایت (بدون احراز هویت) — شامل فعال/غیرفعال بودن پرداخت قسطی."""
     return await get_installment_policy(db)
 
 

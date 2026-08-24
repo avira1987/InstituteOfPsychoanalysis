@@ -16,6 +16,51 @@ export const DOCUMENT_REVIEW_DECISION_TRIGGERS = Object.freeze([
   'documents_rejected',
 ])
 
+export const CTX_DOCUMENT_FIELD_REJECTION_NOTES = '__document_field_rejection_notes'
+export const CTX_DOCUMENTS_RESUBMIT_FIELDS = '__documents_resubmit_fields'
+
+/**
+ * توضیح پذیرش برای هر مدرک ردشده (فیلد → متن).
+ * @param {Record<string, unknown>|null|undefined} contextData
+ * @returns {Record<string, string>}
+ */
+export function readDocumentRejectionNotes(contextData) {
+  const raw = contextData?.[CTX_DOCUMENT_FIELD_REJECTION_NOTES]
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out = {}
+  for (const [key, value] of Object.entries(raw)) {
+    const note = String(value || '').trim()
+    if (note) out[key] = note
+  }
+  return out
+}
+
+/**
+ * فهرست مدارک نیازمند اصلاح به‌همراه توضیح پذیرش و یادداشت کلی.
+ * @param {Record<string, unknown>|null|undefined} contextData
+ * @param {Record<string, string>} [fieldLabelByName]
+ * @returns {{ items: { fieldName: string, label: string, note: string }[], generalNote: string }}
+ */
+export function listDocumentResubmitFeedback(contextData, fieldLabelByName = {}) {
+  const names = Array.isArray(contextData?.[CTX_DOCUMENTS_RESUBMIT_FIELDS])
+    ? contextData[CTX_DOCUMENTS_RESUBMIT_FIELDS]
+    : []
+  const notes = readDocumentRejectionNotes(contextData)
+  const items = names
+    .map((name) => {
+      const fieldName = String(name || '').trim()
+      if (!fieldName) return null
+      return {
+        fieldName,
+        label: fieldLabelByName[fieldName] || fieldName,
+        note: notes[fieldName] || '',
+      }
+    })
+    .filter(Boolean)
+  const generalNote = String(contextData?.notes || '').trim()
+  return { items, generalNote }
+}
+
 /**
  * آیا این وضعیت یکی از مراحل بررسی/تکمیل مدارک است؟
  * @param {string} state کد وضعیت فعلی فرایند

@@ -123,6 +123,11 @@ export default function StepOtpField({
     setMsg('')
     try {
       const res = await requestStepOtpOnce(instanceId)
+      if (res.data?.already_verified) {
+        setVerified(true)
+        setMsg('تأیید پیامکی قبلاً انجام شده است.')
+        return
+      }
       if (res.data?.success === false) {
         setErr(res.data?.error || 'ارسال کد ناموفق بود.')
       } else {
@@ -156,6 +161,11 @@ export default function StepOtpField({
       try {
         const res = await requestStepOtpOnce(instanceId)
         if (cancelled) return
+        if (res.data?.already_verified) {
+          setVerified(true)
+          setMsg('تأیید پیامکی قبلاً انجام شده است.')
+          return
+        }
         if (res.data?.success === false) {
           setErr(res.data?.error || 'ارسال کد ناموفق بود.')
           return

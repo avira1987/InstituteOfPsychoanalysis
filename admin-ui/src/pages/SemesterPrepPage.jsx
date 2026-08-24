@@ -5,6 +5,7 @@ import { semesterPrepApi } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import SemesterPrepReadinessPanel from '../components/SemesterPrepReadinessPanel'
 import InstituteOperationalAnchorPanel from '../components/InstituteOperationalAnchorPanel'
+import SemesterPrepRecordedSummary from '../components/SemesterPrepRecordedSummary'
 import { formatShamsiTehran } from '../utils/shamsiDateTime'
 import { labelRoleFa } from '../utils/roleLabels'
 
@@ -227,6 +228,7 @@ export default function SemesterPrepPage() {
                     )}
                   </div>
                 </div>
+                <SemesterPrepRecordedSummary entry={entry} />
               </div>
             )
           })}
